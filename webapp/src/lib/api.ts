@@ -1609,6 +1609,10 @@ export interface ForecastRow {
   row: string; key: string; coin: string; tf: string; tp: number; sl: number;
   trades: number; wins: number; losses: number; win_rate: number; pnl: number;
   unclear: number; worst_run: number; signals: number; cost_refused: number;
+  id?: string;
+  /** set when another switched-on row fires on exactly the same bars with
+   *  the same prices — this row can only ever copy that one's trades */
+  twin_of?: string | null; twin_id?: string;
 }
 export interface ForecastSide {
   book: "demo" | "live"; sizing: "martingale" | "flat";
@@ -1620,7 +1624,7 @@ export interface ForecastSide {
   pnl: number; worst_run: { pnl: number; trades: number }; unclear: number;
   still_open: number; slices_per_coin: number; leverage: number; base_margin: number;
   window: { first_ms: number | null; last_ms: number | null };
-  rows: ForecastRow[]; assumptions: string[];
+  rows: ForecastRow[]; twins: Record<string, string>; assumptions: string[];
   cost_sources: { saved: number; default: number }; seconds: number;
 }
 export interface ForecastActual {

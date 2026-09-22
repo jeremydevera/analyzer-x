@@ -141,6 +141,13 @@ export default function PortfolioForecast() {
               sub={`${a.rows_deployed - a.rows_traded} did not trade — see why below`} />
         <Tile label="both prices in one minute" value={a.unclear.toLocaleString()} sub="counted as losses" />
       </div>
+      {Object.keys(a.twins).length > 0 && (
+        <p className="mt-3 px-5 text-theme-xs text-warning-600 dark:text-warning-400">
+          {Object.keys(a.twins).length} of these rows are twins: a second row that fires on exactly the same
+          bars as another with the same prices (stoch14 and willr14 are one formula under two names), so its
+          trades are the same trades taken twice — marked in the table.
+        </p>
+      )}
 
       {/* refusals, by name, in plain words */}
       {refusedTotal > 0 && (
@@ -222,7 +229,15 @@ export default function PortfolioForecast() {
             {rows.map((r) => (
               <TableRow key={r.row} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03]"
                         onClick={() => setShowLog(showLog === r.row ? null : r.row)}>
-                <TableCell className="px-3 py-2 text-theme-xs font-mono text-gray-700 dark:text-gray-300">#{(r as ForecastRow & { id?: string }).id ?? ""}</TableCell>
+                <TableCell className="px-3 py-2 text-theme-xs font-mono text-gray-700 dark:text-gray-300">
+                  #{r.id ?? ""}
+                  {r.twin_of ? (
+                    <span className="ml-1 font-sans text-warning-600 dark:text-warning-400"
+                          title={`fires on exactly the same bars as #${r.twin_id ?? ""} with the same prices — the same trade, taken twice`}>
+                      twin of #{r.twin_id ?? ""}
+                    </span>
+                  ) : null}
+                </TableCell>
                 <TableCell className="px-3 py-2 text-theme-xs text-gray-700 dark:text-gray-300">{r.coin}</TableCell>
                 <TableCell className="px-3 py-2 text-theme-xs text-gray-700 dark:text-gray-300">{r.tf}</TableCell>
                 <TableCell className="px-3 py-2 text-theme-xs text-gray-700 dark:text-gray-300">{r.key}</TableCell>

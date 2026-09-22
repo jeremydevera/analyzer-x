@@ -241,9 +241,9 @@ def test_book_readings_come_from_the_recorder_the_refusals_and_the_fills(tmp_pat
          "why": "round-trip cost 2.490% vs take-profit 0.40% = 623% of the target"},
         {"ts": 1_790_000_200, "symbol": SYM, "action": "enter", "dry_run": True,
          "trade_id": "T1", "margin": 5.0, "leverage": 20, "opened_at": 1_790_000_201},
-        # a LONG from 100 to 101.2 booking +$1.00 on $100: the fee once, cost
-        # 0.2%; before the fix this exit would carry 2 * FEE_FALLBACK extra
-        {"ts": pr.DEMO_FEE_TWICE_UNTIL_S + 10, "symbol": SYM, "action": "exit",
+        # a LONG from 100 to 101.2 booking +$1.00 on $100 BEFORE the fix: the
+        # realised 0.2% carries the doubled fee, which is taken back out
+        {"ts": pr.DEMO_FEE_TWICE_UNTIL_S - 10, "symbol": SYM, "action": "exit",
          "dry_run": True, "trade_id": "T1", "why": "TP", "side": "LONG",
          "entry": 100.0, "exit": 101.2, "pnl_est": 1.00},
         {"ts": 1_790_000_300, "symbol": SYM, "action": "gate_blocked", "dry_run": False,
@@ -254,7 +254,7 @@ def test_book_readings_come_from_the_recorder_the_refusals_and_the_fills(tmp_pat
     assert ts == [1_790_000_000_000, 1_790_000_100_000, 1_790_000_201_000]
     assert cs[0] == pytest.approx(0.0031)
     assert cs[1] == pytest.approx(0.0249)
-    assert cs[2] == pytest.approx(0.012 - 1.00 / 100.0)
+    assert cs[2] == pytest.approx(0.012 - 1.00 / 100.0 - 2 * at.FEE_FALLBACK)
     assert 0.09 not in cs, "the live book's readings are the live book's"
 
 
@@ -406,3 +406,58 @@ def test_the_rca_entries_exist():
     rca = (ROOT / "docs" / "RCA.md").read_text(encoding="utf-8")
     for letter in "BCDEF":
         assert re.search(rf"^## RCA-2026-09-23-{letter} ", rca, re.M), letter
+
+
+# --------------------------------------- RCA-G: the entry spread, once
+def test_the_paper_book_charges_the_entry_spread_once():
+    """A paper buy is filled at the ASK, so the entry's half-spread is in the
+    fill; the round trip charged at exit holds both sides' slippage. Measured
+    0.022% a trade adverse on 92 matched fills (Sep 15-22, 2026). A position
+    carrying `book_slippage` pays the round trip less that one side; one
+    without it (opened before Sep 23, 2026) pays as before."""
+    class Fx:
+        def contract_spec(self, symbol):
+            return {"takerFeeRate": 0}
+    fee = at.taker_fee(SYM, fx=Fx())
+    rt = 2 * (0.0005 + fee) + 0.0001
+    assert at.paper_round_trip({"rt_cost": rt, "book_slippage": 0.0005}, SYM,
+                               fx=Fx()) == pytest.approx(rt - 0.0005)
+    assert at.paper_round_trip({"rt_cost": rt}, SYM, fx=Fx()) == rt
+    # never below zero, whatever the book said
+    assert at.paper_round_trip({"rt_cost": 0.001, "book_slippage": 0.01}, SYM,
+                               fx=Fx()) == 0.0
+    # and the position is given the figure at entry, from the gate it read
+    src = inspect.getsource(at._process_slot)
+    assert '"book_slippage": float(gate.get("slippage") or 0.0),' in src
+
+
+def test_a_fill_is_a_book_reading_only_before_the_recorder_existed():
+    rows = [
+        {"ts": 1_790_000_200, "symbol": SYM, "action": "enter", "dry_run": True,
+         "trade_id": "T1", "margin": 5.0, "leverage": 20, "opened_at": 1_790_000_201},
+        {"ts": pr.DEMO_FEE_TWICE_UNTIL_S + 5, "symbol": SYM, "action": "exit",
+         "dry_run": True, "trade_id": "T1", "why": "TP", "side": "LONG",
+         "entry": 100.0, "exit": 101.2, "pnl_est": 1.00},
+    ]
+    rd = pr.book_readings(rows, dry=True, readings_path=Path("nowhere"))
+    assert SYM not in rd, "after the fix a fill's realised cost is net of the entry spread and is not the gate's number"
+
+
+# ---------------------------------------------------- twins are named
+def test_a_row_that_can_only_copy_another_is_named_its_twin(tmp_path,
+                                                             signal_on_bar_two):
+    """KEY_A and KEY_B fire on the same bars with the same prices: the second
+    is a twin, and the screen says so instead of counting two opinions."""
+    bars = _minutes(120)
+    bars["h"][52] = 101.3
+    r = pr.replay(_settings(), store=_store(tmp_path, bars),
+                  readings=_readings(0.002))
+    assert r["twins"] == {f"{KEY_B}|{SYM}": f"{KEY_A}|{SYM}"}
+    by = {row["row"]: row for row in r["rows"]}
+    assert by[f"{KEY_B}|{SYM}"]["twin_of"] == f"{KEY_A}|{SYM}"
+    assert by[f"{KEY_A}|{SYM}"]["twin_of"] is None
+    panel = (ROOT / "webapp" / "src" / "components" / "backtest" /
+             "PortfolioForecast.tsx").read_text(encoding="utf-8")
+    assert "twin of #" in panel
+    src = (ROOT / "tradingagents" / "api.py").read_text(encoding="utf-8")
+    assert 'r["twin_id"] = ids.get(r["twin_of"], "")' in src

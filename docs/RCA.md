@@ -172,6 +172,69 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-23-G — the practice account paid the entry spread twice: once in the fill price, once again at the exit
+
+**CEO**
+
+* Every practice trade got in at the exchange's asking price — a little
+  worse than the bar's own price, 0.022% on average across 92 trades — and
+  then, when it closed, was charged the full cost of getting in AND out,
+  which already contained that same 0.022%.
+* Why: two good ideas added on the same day never met — "fill the practice
+  trade at the real asking price" and "charge the practice trade the real
+  round trip" — and each one carried the entry half of the spread.
+* What stops it now: a practice trade remembers the spread its fill already
+  paid and is charged the round trip minus that one side; on an XPIN trade
+  that is 0.057% less taken off every close.
+
+**DEV**
+
+* `auto_trader._process_slot`: the paper fill prices at the ask/bid via
+  `_CYCLE_PRICES` (Sep 05, 2026) and the position carried
+  `rt_cost = 2 * (slippage + taker_fee) + funding` (Sep 05, 2026, same day);
+  `paper_round_trip` charged all of `rt_cost` at exit. Measured on the 92
+  practice fills matched to the account replay's bar-open entry, Sep 15-22,
+  2026: median 0.022% adverse, 64% of fills adverse — the half-spread. The
+  position now carries `book_slippage = gate["slippage"]` and
+  `paper_round_trip` returns `max(rt_cost - book_slippage, 0)` when it is
+  present; a position from before today pays as before.
+* Invariant broken: **one trade, one cost, charged once** — the same rule
+  RCA-2026-09-23-E bought for the fee, in its spread half.
+* Guard: `tests/test_the_backtest_forecasts_the_account.py::test_the_paper_book_charges_the_entry_spread_once`.
+
+**SAW** — the account replay and the practice account agreed on which trades
+and which outcomes (37 of 39 matched) and disagreed on the money; after the
+fee fix (E) a residual of ~$0.02–$0.05 a trade remained.
+
+**TIMELINE**
+
+1. `Sep 05, 2026` — `_CYCLE_PRICES`: a paper buy prices at the ask, a sell
+   at the bid ("read once, both books use that one number"). Same day:
+   `rt_cost` carried on the position and charged at exit.
+2. `Sep 15 → Sep 22, 2026` — 92 practice fills matched to their bar:
+   PSXSTOCK `Sep 15, 2026 10:00pm` filled 261.95 against a bar price of
+   262.1 (a short — 0.06% better), `Sep 15 11:15pm` 262.7 against 262.3 (a
+   short — 0.15% worse); median across all 92: 0.022% worse.
+3. `Sep 23, 2026` — `book_slippage` carried; the exit charges the round trip
+   less that side.
+
+**ROOT CAUSE** — the entry half of the spread lived in two places: the fill
+price and the round-trip charge.
+
+**WHY IT WAS NOT CAUGHT** — `test_demo_matches_live` checked the practice
+charge against the gate's round trip and the fill against the ask
+separately; nothing summed what one trade paid end to end against what a
+live fill pays. Two lists modelling one trade were never added up.
+
+**COST** — none in money (paper book); ~0.02%-0.06% of notional a trade,
+$0.02–$0.06 at $100, on 166 trades ≈ $5 of the practice account's stated loss.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_backtest_forecasts_the_account.py::test_the_paper_book_charges_the_entry_spread_once`.
+
+---
+
 ## RCA-2026-09-23-F — the fee helper believed a spec that under-states: the venue takes 0.08% a side where the spec says 0.04%
 
 **CEO**

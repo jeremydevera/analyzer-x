@@ -209,6 +209,12 @@ def book_readings(rows: list[dict], *, dry: bool = True,
         elif act == "enter" and r.get("trade_id"):
             enters[r["trade_id"]] = r
         elif act == "exit" and r.get("why") in ("TP", "SL"):
+            # a fill is a reading only for the days BEFORE the recorder: from
+            # Sep 23, 2026 every fresh read is in `book_readings.jsonl`, and
+            # a later fill's realised cost is net of the entry half-spread
+            # (`paper_round_trip`), so it no longer equals the gate's number
+            if int(r.get("ts") or 0) >= DEMO_FEE_TWICE_UNTIL_S:
+                continue
             e = enters.get(r.get("trade_id"))
             if not e or not e.get("margin") or not r.get("entry"):
                 continue
@@ -400,6 +406,8 @@ def replay(settings: dict | None = None, *, store=None, dry: bool = True,
     events: list[tuple] = []                   # (t_ms, order, key, sym, dir, i)
     rows_meta: dict[tuple, dict] = {}
     n_rows = 0
+    twin_of_fp: dict[tuple, str] = {}         # fingerprint -> first row
+    twins: dict[str, str] = {}                # later row -> the row it copies
 
     for key, syms in coins_by_key.items():
         spec = at.STRATEGY_SPECS.get(key) or {}
@@ -455,6 +463,19 @@ def replay(settings: dict | None = None, *, store=None, dry: bool = True,
                 refused["formula_error"] += 1
                 continue
             rows_meta[(key, sym)].update({"ts": ts, "op": op})
+            # A TWIN is a second row that can only ever place the same trade:
+            # same coin, same bars, same win/lose prices, and a formula that
+            # fired on exactly the same bars. `stoch14_*` and `willr14_*` are
+            # one formula under two names — 48 of the operator's rows on
+            # Sep 22, 2026 — so two rows on PSXSTOCK 15m took 45 identical
+            # trades each. The account holds the second as a second slice;
+            # the screen must not read it as a second opinion.
+            fp = (sym, tf, float(spec["tp"]), float(spec["sl"]),
+                  tuple(int(x) for x in dirs))
+            if fp in twin_of_fp:
+                twins[f"{key}|{sym}"] = twin_of_fp[fp]
+            else:
+                twin_of_fp[fp] = f"{key}|{sym}"
             for i, d in enumerate(dirs):
                 if not d or i + 1 >= len(ts):
                     continue
@@ -600,6 +621,7 @@ def replay(settings: dict | None = None, *, store=None, dry: bool = True,
         r["worst_run"] = round(min(r["worst_run"], r["_cur"]), 2)
     for r in per_row.values():
         r.pop("_cur", None)
+        r["twin_of"] = twins.get(r["row"])
         r["win_rate"] = round(100 * r["wins"] / r["trades"], 1)
         meta = rows_meta.get((r["key"], r["coin"] + "_USDT")) or {}
         r["signals"] = meta.get("signals", 0)
@@ -634,6 +656,7 @@ def replay(settings: dict | None = None, *, store=None, dry: bool = True,
         "base_margin": float(settings.get("margin", 10.0)),
         "window": {"first_ms": first, "last_ms": last},
         "rows": sorted(per_row.values(), key=lambda r: -r["pnl"]),
+        "twins": twins,
         "log": closed,
         "refusal_log": refusal_log,
         "assumptions": list(ASSUMPTIONS),

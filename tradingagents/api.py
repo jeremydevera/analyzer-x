@@ -3476,12 +3476,19 @@ def portfolio_forecast_v2(book: str = "demo", fresh: int = 0) -> dict:
     # (kit item H): hashed from the combination, never a per-page sequence
     import tradingagents.auto_trader as at
     settings = at.load_settings()
+    ids: dict[str, str] = {}
     for side in (out.get("account"), out.get("checked")):
         for r in (side or {}).get("rows") or []:
             try:
                 r["id"] = row_id_for(r["key"], r["coin"], settings)
             except Exception:                                  # noqa: BLE001
                 r["id"] = ""
+            ids[r["row"]] = r["id"]
+    # a twin names the row it copies BY ID, the way the screen names rows
+    for side in (out.get("account"), out.get("checked")):
+        for r in (side or {}).get("rows") or []:
+            if r.get("twin_of"):
+                r["twin_id"] = ids.get(r["twin_of"], "")
     out["computed_at"] = int(now)
     _PORTFOLIO_CACHE[dry] = (now, out)
     return out

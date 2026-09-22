@@ -1899,12 +1899,24 @@ def paper_round_trip(pos: dict, symbol: str, *, fx=None) -> float:
     replay built to forecast the account could not be reconciled to it until
     this was found (docs/RCA.md RCA-2026-09-23-E).
 
+    AND THE ENTRY SPREAD ONCE. Since Sep 05, 2026 a paper buy is priced at
+    the ASK and a sell at the BID (`_CYCLE_PRICES`, the operator's own
+    "read once, both books use that one number"), so the entry's half-spread
+    is already inside the fill. `rt_cost` is `2 * (slippage + fee)`: both
+    sides' slippage. Charging all of it at exit paid the entry side twice.
+    Measured on 92 practice fills matched to their bar, Sep 15-22, 2026: the
+    fill sat 0.022% (median) against the trade versus the bar's own price —
+    the half-spread — and the exit then charged it again. A position that
+    carries `book_slippage` (opened after Sep 23, 2026) is charged the round
+    trip LESS that one side; older positions are charged as before.
+
     A position opened before `rt_cost` was carried (Sep 05, 2026) has none;
     it is charged the fee once plus the flat paper slippage, as before.
     """
     rt = float(pos.get("rt_cost") or 0)
     if rt > 0:
-        return rt
+        slip = float(pos.get("book_slippage") or 0)
+        return max(rt - slip, 0.0)
     return live_fee_estimate(symbol, fx=fx) + 2 * PAPER_SLIPPAGE
 # How far SHY of a resting barrier a real fill may land and still be named
 # after it. A fill THROUGH the barrier always counts (a stop slips past by
@@ -5277,6 +5289,14 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                           # charges it at exit so a demo trade cannot be
                           # cheaper than the live one beside it.
                           "rt_cost": float(gate.get("round_trip_cost") or 0.0),
+                          # the ONE side of that round trip the fill price
+                          # already carries: a paper buy is priced at the ask
+                          # (`_CYCLE_PRICES`), so charging the whole round
+                          # trip at exit paid the entry half-spread twice —
+                          # measured 0.022% a trade adverse against the bar's
+                          # own price on 92 matched practice fills, Sep 23,
+                          # 2026 (RCA-2026-09-23-G)
+                          "book_slippage": float(gate.get("slippage") or 0.0),
                           "strategy": key, "entry_ts": last_ts,
                           "position_id": position_id, "dry": bool(dry),
                           # entry_ts is the CANDLE's time; opened_at is when

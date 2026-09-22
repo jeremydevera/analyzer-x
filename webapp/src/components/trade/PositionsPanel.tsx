@@ -160,8 +160,67 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
                         : "bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400"}`}>
         {label}<span className="font-normal">· {rows.length} open</span>
       </div>
+      {/* PHONE: CARDS, NOT FIFTEEN COLUMNS (operator, Sep 23, 2026, reading
+          this on their phone over Tailscale: "the live trade table is not
+          mobile responsive"). Fifteen columns on a 390px screen is 26px each.
+
+          Order is what a person actually asks of an OPEN trade: what is it
+          doing right now (coin, side, unrealised), how close is it to either
+          barrier, what it entered at, and how to shut it. The CLOSE button
+          rides the card — a real position that cannot be closed from the
+          device in your hand is the one thing this panel must never be. */}
       {rows.length ? (
-        <div className="w-full">
+        <div className="flex flex-col gap-2 p-3 md:hidden">
+          {rows.map((r) => (
+            <div key={`m-${book}-${r.symbol}`}
+              className="rounded-xl border border-gray-200 p-3 dark:border-white/[0.08]">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <span className="text-theme-sm font-medium text-gray-800 dark:text-white/90">{r.coin}</span>
+                  <span className={`text-theme-xs font-medium ${r.side === "LONG" ? "text-success-600" : "text-error-500"}`}>{r.side}</span>
+                </div>
+                <span className={`shrink-0 text-theme-sm font-semibold ${(r.unrealized ?? 0) >= 0 ? "text-success-600" : "text-error-500"}`}>
+                  {r.unrealized == null ? "—" : fmtMoney(r.unrealized)}
+                </span>
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-theme-xs text-gray-500 dark:text-gray-400">
+                {r.id ? <CopyableId id={r.id} /> : null}
+                <span className="min-w-0 break-words">{r.strategy}</span>
+              </div>
+              <div className="mt-2"><Progress r={r} /></div>
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-theme-xs text-gray-600 dark:text-gray-300">
+                <span>TP <Barrier v={r.tp_value} win /></span>
+                <span>SL <Barrier v={r.sl_value} win={false} /></span>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-theme-xs text-gray-500 dark:text-gray-400">
+                <span>entry {r.entry ?? "—"}</span>
+                <span className="inline-flex items-center gap-1">live <Live sym={r.symbol} feed={feed} /></span>
+                <span>margin {r.margin ?? "—"}</span>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-theme-xs text-gray-500 dark:text-gray-400">
+                <span>opened {r.opened}</span>
+                <span>held {r.held}</span>
+                <span className="text-success-600">{r.wins}W</span>
+                <span className="text-error-500">{r.losses}L</span>
+                <span>{r.trades} trd</span>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {r.bracket
+                  ? <Badge size="sm" color="error">{r.bracket}</Badge>
+                  : <span className="text-theme-xs text-gray-400">no bracket</span>}
+                {book === "REAL" && (
+                  <button onClick={() => closeOne(r)} disabled={busy === r.symbol}
+                    className="ml-auto rounded-lg border border-error-200 px-3 py-1 text-theme-xs font-medium text-error-500 hover:bg-error-50 disabled:opacity-50 dark:border-error-500/30">
+                    {busy === r.symbol ? "closing…" : "close"}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {rows.length ? (
+        <div className="hidden w-full md:block">
           <Table fixed>
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>

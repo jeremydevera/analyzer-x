@@ -172,6 +172,80 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-23-A — the Auto Trade tables were unreadable on a phone, and 15 columns had nowhere to go
+
+**CEO**
+
+* You opened the app on your phone for the first time and the live trade table
+  was unusable — columns cut off at the edge of the screen with no way to
+  reach them.
+* Why: that screen lays out 15 columns for open trades and 10 for closed ones.
+  On a phone that is about 26 pixels per column, and the table was built to
+  squeeze rather than scroll, so the text was simply clipped.
+* What stops it now: on a phone the same trades are shown as one card each —
+  what it made, on what, which way, how close to your win or lose price — with
+  the CLOSE button on the card. On a computer nothing changed at all.
+
+**DEV**
+
+* `PositionsPanel.tsx` renders `HEADS` of 15 columns and `TradeHistory.tsx`
+  10, both through `<Table fixed>` — `table-fixed w-full` with `break-words`
+  cells, whose own comment says the Auto Trade screen must not scroll
+  sideways. `TradeHistory` then put `whitespace-nowrap` on nearly every cell,
+  which defeats that wrapping, and the panel's `overflow-hidden` clipped the
+  result.
+* Invariant broken: a screen must be READABLE on the device it is opened on.
+  Neither "wrap" nor "scroll" was ever going to work at 26px a column; the
+  layout had to change shape, not squeeze.
+* Guard: `tests/test_the_trade_tables_work_on_a_phone.py` (5 tests).
+
+**SAW** — the operator, `Sep 23, 2026`: *"in mobile. the live trade table is
+not mobile responsive"*, minutes after reaching the app from their phone over
+Tailscale for the first time.
+
+**TIMELINE**
+
+1. `Sep 23, 2026` — Tailscale is set up and the app becomes reachable from a
+   phone at all. Before this, every view of it was on a 1920px desktop.
+2. Minutes later the operator reports the live trade table.
+3. Measured: `PositionsPanel` 15 columns, `TradeHistory` 10, on a ~390px
+   viewport — 26px and 39px per column respectively, with
+   `whitespace-nowrap` on the history cells and `overflow-hidden` on the card.
+4. Fixed: below `md`, both render stacked cards; at `md` and up the tables are
+   untouched. Built and served over Tailscale, `md:hidden` present in the
+   shipped chunk.
+
+**ROOT CAUSE** — a fixed-width table of 15 columns has no readable form on a
+390px screen, and the component was built to squeeze into the viewport rather
+than change shape.
+
+**WHY IT WAS NOT CAUGHT** — every check in this repo renders at desktop width.
+The Playwright gate (`.claude/skills/verify-ui-change`) screenshots ONE
+viewport and its whole discipline is about composition — nested chrome,
+baselines, semantic colour — none of which is wrong at 1920px here.
+`test_port_audit` asks whether a control EXISTS, and **a column pushed off the
+side of a 390px screen exists perfectly.** There was no phone to test on until
+today, so the gap was real for as long as the screen has existed and could not
+have been reported.
+
+**COST** — none in money. The operator could not read their own open trades on
+the device they had in their hand.
+
+**FIX** — this commit. Cards below `md` in both panels, tables unchanged above
+it. The close button rides the phone card, because a real position that cannot
+be shut from the device in your hand is the one thing that panel must never
+be; the empty state is rendered in the phone view too, since it lived inside
+the table body and would otherwise have vanished with it.
+
+**GUARD** — `tests/test_the_trade_tables_work_on_a_phone.py`: each table has a
+phone layout AND hides the table there (rendering both would show every row
+twice); the phone card can still close a REAL position; both ids stay
+copyable; the empty state still says how many trades were examined; and the
+column counts that made this necessary are pinned, so a table that grows
+starts hiding data silently rather than re-arranging it.
+
+---
+
 ## RCA-2026-09-22-A — Backtest v2 lost the whole DAILY timeframe, because it rebuilt the bars out of the minutes
 
 **CEO**

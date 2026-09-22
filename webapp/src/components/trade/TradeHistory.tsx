@@ -110,7 +110,86 @@ export default function TradeHistory() {
       </div>
       <PanelStatus err={err} loaded={d !== null} />
 
-      <div className="w-full">
+      {/* PHONE: CARDS, NOT A TABLE (operator, Sep 23, 2026, reading this on
+          their phone over Tailscale: "the live trade table is not mobile
+          responsive").
+
+          Ten columns on a 390px screen is 39px each. The `Table` component is
+          built to WRAP rather than scroll sideways (`table-fixed` +
+          `break-words`, and its own comment says the Auto Trade screen must
+          not scroll sideways) — but every cell here carries
+          `whitespace-nowrap`, which defeats that, so the text was simply
+          clipped by the card's `overflow-hidden`. Wrapping instead would put
+          "Sep 22, 2026 9:34am" into a 39px column one character wide.
+
+          So below `md` the same rows are stacked as cards, headline first:
+          what it made, on what, which way. The table is unchanged above `md`,
+          because on a desktop ten columns side by side is the point. */}
+      <div className="flex flex-col gap-2 px-4 pb-2 md:hidden">
+        {(d?.rows ?? []).map((r, i) => (
+          <div key={`m-${r.ts}-${i}`}
+            className="rounded-xl border border-gray-200 p-3 dark:border-white/[0.07]">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                {searching && (
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${r.book === "demo"
+                    ? "bg-gray-100 text-gray-600 dark:bg-white/[0.08] dark:text-gray-300"
+                    : "bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-400"}`}>
+                    {r.book === "demo" ? "demo" : "live"}
+                  </span>
+                )}
+                <span className="text-theme-sm font-medium text-gray-800 dark:text-white/90">
+                  {r.coin}
+                </span>
+                <span className={`text-theme-xs ${r.side === "LONG" ? "text-success-600" : "text-error-500"}`}>
+                  {r.side}
+                </span>
+                {r.why ? (
+                  <span className="text-theme-xs text-gray-500 dark:text-gray-400">· {r.why}</span>
+                ) : null}
+              </div>
+              {/* the money leads, because it is the one thing read first */}
+              <span className={`shrink-0 text-theme-sm font-semibold ${r.profit >= 0 ? "text-success-600" : "text-error-500"}`}>
+                {fmtMoney(r.profit)}
+              </span>
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-theme-xs text-gray-500 dark:text-gray-400">
+              {r.id ? (
+                <button title="copy this trade's id"
+                  onClick={() => { navigator.clipboard?.writeText(String(r.id)); }}
+                  className="font-mono text-gray-700 hover:underline dark:text-gray-300">
+                  {r.id}
+                </button>
+              ) : null}
+              {r.strategy_id ? <CopyableId id={r.strategy_id} /> : null}
+              <span className="min-w-0 break-words">{r.strategy}</span>
+            </div>
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-theme-xs text-gray-500 dark:text-gray-400">
+              <span>opened {r.opened ?? "—"}</span>
+              <span>closed {r.when}</span>
+              {r.held ? <span>held {r.held}</span> : null}
+              <span className={r.running >= 0 ? "text-success-600" : "text-error-500"}>
+                running {fmtMoney(r.running)}
+              </span>
+            </div>
+          </div>
+        ))}
+        {/* THE EMPTY STATE RENDERS HERE TOO. It lives inside the table body,
+            so hiding the table on a phone would have hidden the sentence that
+            says what was searched — an empty screen speaking for nothing
+            (CLAUDE.md, Sep 12, 2026). */}
+        {d && !d.rows.length && (
+          <p className="py-3 text-theme-sm text-gray-500 dark:text-gray-400">
+            {searching
+              ? `No trade or strategy id matching ${d.q ?? q} in the `
+                + `${d.examined ?? 0} closed trades on either book — `
+                + "ids are 8 characters, and the # is optional."
+              : `No closed trades on the ${dry ? "demo" : "live"} book yet.`}
+          </p>
+        )}
+      </div>
+
+      <div className="hidden w-full md:block">
         <Table fixed>
           <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
             <TableRow>

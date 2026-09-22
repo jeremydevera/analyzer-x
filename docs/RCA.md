@@ -292,9 +292,12 @@ pinned the spec's word, and no test had ever read a real fill's fee back from
 backtest row and in the gate; on the practice book it was masked by
 RCA-2026-09-23-E charging the fee twice.
 
-**FIX** — this commit.
+**FIX** — this commit; and the cached copy of the spec's fee in each coin's
+cost file (`CTC_USDT.json`, `XPIN_USDT.json`: 0.0004, Sep 22, 2026) is floored
+the same way where `trades_for` and `window_rows` read it back.
 
-**GUARD** — `tests/test_the_backtest_forecasts_the_account.py::test_the_fee_helper_believes_the_venues_fills_over_a_low_spec`.
+**GUARD** — `tests/test_the_backtest_forecasts_the_account.py::test_the_fee_helper_believes_the_venues_fills_over_a_low_spec`,
+`::test_an_old_cost_files_fee_is_floored_like_the_fee_helper`.
 
 ---
 

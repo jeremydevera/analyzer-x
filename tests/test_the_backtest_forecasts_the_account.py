@@ -461,3 +461,13 @@ def test_a_row_that_can_only_copy_another_is_named_its_twin(tmp_path,
     assert "twin of #" in panel
     src = (ROOT / "tradingagents" / "api.py").read_text(encoding="utf-8")
     assert 'r["twin_id"] = ids.get(r["twin_of"], "")' in src
+
+
+def test_an_old_cost_files_fee_is_floored_like_the_fee_helper():
+    """CTC_USDT.json and XPIN_USDT.json (Sep 22, 2026) cache the spec's
+    0.0004; the venue takes 0.0008 (RCA-2026-09-23-F). The window re-measure
+    and the trade log read those files back, so they apply the same floor."""
+    ms = (ROOT / "tradingagents" / "market_sweep.py").read_text(encoding="utf-8")
+    assert ms.count('fee = max(float(costs["fee"] or 0), at.FEE_FALLBACK)') == 2
+    assert 'fee, liq, fund = costs["fee"]' not in ms
+    assert 'fee = costs["fee"]' not in ms

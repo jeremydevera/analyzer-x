@@ -1806,7 +1806,12 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
         save_costs(symbol, fee=fee, liq=liq, funding=fund, root=root)
         slip = at.PAPER_SLIPPAGE
     else:
-        fee, liq, fund = costs["fee"], costs.get("liq"), costs.get("funding") or []
+        # A COST FILE IS A CACHED COPY OF THE SPEC'S FEE, and the spec
+        # under-states (RCA-2026-09-23-F): CTC's and XPIN's files say 0.0004
+        # while the venue takes 0.0008 a side. The same floor `taker_fee`
+        # applies, applied here to the copy.
+        fee = max(float(costs["fee"] or 0), at.FEE_FALLBACK)
+        liq, fund = costs.get("liq"), costs.get("funding") or []
         # the cost the SWEEP charged this row, so the click's log and the
         # stored row agree; a cost file written before Sep 23, 2026 has none
         slip = float(costs.get("slippage") or 0.0) or at.PAPER_SLIPPAGE
@@ -2009,7 +2014,8 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                 save_costs(sym, fee=fee, liq=liq, funding=fund, root=root)
                 slip = at.PAPER_SLIPPAGE
             else:
-                fee = costs["fee"]
+                # the cached spec fee, floored like `taker_fee` (RCA-2026-09-23-F)
+                fee = max(float(costs["fee"] or 0), at.FEE_FALLBACK)
                 liq = costs.get("liq")
                 fund = costs.get("funding") or []
                 slip = float(costs.get("slippage") or 0.0) or at.PAPER_SLIPPAGE

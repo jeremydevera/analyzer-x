@@ -503,6 +503,21 @@ STATUS_CACHE_S = 30.0
 STATUS_FAIL_S = 120.0
 
 
+def finished_at(d: dict):
+    """Epoch seconds of the LAST machine's completion — only once the run has
+    a conclusion and every job carries `completedAt`; None while it runs or
+    when GitHub's stamps cannot be read."""
+    jobs = [j for j in d.get("jobs", []) if j.get("name") != "plan"] or d.get("jobs", [])
+    if not d.get("conclusion") or not jobs or not all(j.get("completedAt") for j in jobs):
+        return None
+    try:
+        import datetime as _dt
+        return max(int(_dt.datetime.fromisoformat(
+            str(j["completedAt"]).replace("Z", "+00:00")).timestamp()) for j in jobs)
+    except (ValueError, TypeError):
+        return None
+
+
 def status(run_id: int, slug: str | None = None) -> dict:
     """Where a run is, shard by shard. Cached, and a rate-limited answer serves
     the last good one rather than blanking the panel."""
@@ -544,6 +559,10 @@ def status(run_id: int, slug: str | None = None) -> dict:
     waiting = (not jobs and plan
                and plan[0].get("status") in ("queued", "waiting", "pending"))
     payload = {"status": d.get("status"), "conclusion": d.get("conclusion"),
+            # WHEN IT FINISHED, so a finished run's card reads "Tested … →
+            # 3:59am", never "Testing … → now" (the wall clock kept moving
+            # under a run that had been over for three hours, Sep 23, 2026)
+            "finished": finished_at(d),
             "url": d.get("url"), "shards": len(jobs), "shards_done": done,
             "running": running, "queued": queued,
             "waiting_for_runners": bool(waiting),

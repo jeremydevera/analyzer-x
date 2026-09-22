@@ -172,6 +172,141 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-23-I — the run card said "Testing … → now" and "nothing has arrived yet" about a run that had finished and landed hours earlier
+
+**CEO**
+
+* At 6:42am the Backtest v2 run card still read "Testing Jul 25, 2026 6:42am
+  → Sep 23, 2026 6:42am" and "results are landing here — nothing has arrived
+  yet", while the same card showed the run 100% green with an "already in
+  this PC" badge: the run had finished at 3:59am and 35 of its 50 pairs were
+  already in your store. You asked whether it was still testing and whether
+  you had to refresh.
+* Why: the end date was the clock on the wall, not the run's end, so it kept
+  moving; and the "arrived" counter is kept per run while a two-account press
+  puts two runs on one card, so it counted the wrong one.
+* What stops it now: a finished run reads "Tested … → 3:59am" with the last
+  machine's real finish time, and a run whose rows are in this PC says
+  exactly that instead of "nothing has arrived yet".
+
+**DEV**
+
+* `JobsPanel.tsx:581` rendered `Testing {from} → {fmtWhenMs(Date.now())}`
+  regardless of `cloud.conclusion`; `cloud_sweep.status` carried
+  `jobs[].completedAt` but no run-level finish. `finished_at(d)` (max
+  `completedAt` once every job has one and the run has a conclusion) is now in
+  the payload as `finished`, and the card prints `{done ? "Tested" :
+  "Testing"} … → {finished}`. `JobsPanel.tsx:623` printed "nothing has
+  arrived yet" whenever `live.at` was unset; `live_ingest` keys its counter by
+  ONE run id (`cur = {"run": run_id, …}`) and the card showed runs
+  35776582134 + 35776595829 together. `cloud.collected` — the store's own
+  word — is checked first and prints "every coin of this run is in this PC's
+  store".
+* Invariant broken: **label-must-match-data** — a tense and a date are labels;
+  a moving clock under a finished run and "nothing" over 35 landed pairs were
+  both false.
+* Guard: `tests/test_the_screen_says_the_index_is_rebuilding.py::test_a_finished_run_speaks_in_the_past_tense_and_ends_when_it_ended`,
+  `::test_the_finish_time_is_the_last_machines_completion`,
+  `::test_rows_already_in_this_pc_are_never_nothing_has_arrived`.
+
+**SAW** — "GitHub run #35776582134 + #35776595829 · 2 accounts · success ·
+100.0% · 10/10 coins · 939,144 rows measured · Testing Jul 25, 2026 6:42am →
+Sep 23, 2026 6:42am … results are landing here as each coin finishes —
+nothing has arrived yet … already in this PC".
+
+**TIMELINE**
+
+1. `Sep 23, 2026 3:52am` — two runs dispatched, 5 coins each.
+2. `3:57am → 4:00am` — 35 pairs land through the live door (XPIN-4h.json
+   `4:00am`); `3:59am` — the last machine finishes; both runs green.
+3. `6:42am` — the card: "Testing … → 6:42am", "nothing has arrived yet",
+   "already in this PC", all on one screen.
+
+**ROOT CAUSE** — `Date.now()` as the end of a finished window, and a
+per-run-id counter read for a two-run card.
+
+**WHY IT WAS NOT CAUGHT** — the card's tests assert on counts (rows, coins,
+machines); the sentence's tense and its end date were literals nobody
+compared to `conclusion`.
+
+**COST** — none in money; a morning spent asking whether a finished run was
+running.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_screen_says_the_index_is_rebuilding.py` (10).
+
+---
+
+## RCA-2026-09-23-H — a 99-million-row rebuild of the Backtest v2 index ran for three hours and no screen said so; its progress was written to the other store's file
+
+**CEO**
+
+* Row #AA2CRSTY BASECAT 1h showed "last backtest Sep 17, 2026 9:00pm" at
+  6:42am on Sep 23 while its new measurement had landed at 2:20am — because
+  the table reads an index file that was being rebuilt from scratch
+  underneath it (5,003 pairs, 98,986,982 rows, 25 GB, three hours in), and
+  nothing on the page said a rebuild was happening. You asked to be shown
+  when indexing is happening.
+* Why: the rebuild wrote its progress to one shared file meant for the old
+  store, so the Backtest v2 screen had nowhere to read it from.
+* What stops it now: each store keeps its own progress file, and the
+  strategies table prints a pulsing "REBUILDING this row index — phase, pairs,
+  rows, running 2h 52m — the dates on this table catch up when it finishes"
+  the moment one is in flight; a rebuild from before today is shown too,
+  marked as not saying which store it is filing.
+
+**DEV**
+
+* `rows_index.REBUILD_PROGRESS` was `~/.tradingagents/rows_rebuild.json`
+  for every `DB_PATH`; `rebuild()` under `stores.V2.env_for()` wrote there;
+  `status(db_path=V2)` carried no `rebuild` field and `StrategiesPanel` had
+  no sentence for it. Now `REBUILD_PROGRESS = DB_PATH.parent /
+  "rows_rebuild.json"`, `_say` writes `"db"`, `rebuild_progress(db_path)`
+  reads this store's file (or the legacy one as `store: "unknown"`), marks
+  `running` by file age (`REBUILD_FRESH_S`), and `status()` carries it as
+  `rebuild`; the panel prints it first.
+* Invariant broken: **a request for store X reads store X, on the WRITE paths
+  too** (RCA-2026-09-18-B), and **the screen says which state it is in**
+  (RCA-2026-09-14-B).
+* Guard: `tests/test_the_screen_says_the_index_is_rebuilding.py` — per-store
+  path, another store's file refused, a dead rebuild's file not "running",
+  the legacy file read as unknown, the status field, the panel sentence.
+
+**SAW** — Backtest v2, Stored strategies: `#AA2CRSTY` … last backtest
+`Sep 17, 2026 9:00pm`; no spinner, no sentence; `rows.rebuild.db` at 25.5 GB
+on disk.
+
+**TIMELINE**
+
+1. `Sep 23, 2026 1:12am–1:25am` — six `pairbt_v2` index writes raise
+   "database disk image is malformed"; the rows are measured, not filed.
+2. `3:51am` — `rows_index --rebuild` started under the v2 store; progress
+   to `~/.tradingagents/rows_rebuild.json` (v1's readers' path).
+3. `2:20am` (earlier) — BASECAT-1h.json lands from GitHub, measured through
+   `Sep 22, 2026 10:00pm`; the table keeps saying `Sep 17, 2026 9:00pm`.
+4. `6:42am` — the operator asks; progress file reads "indexing 3 of 4:
+   rows_coin · 5,003 of 5,003 pairs · 98,986,982 rows · 10,350 s".
+
+**ROOT CAUSE** — one progress path for two stores, and no reader of it on
+the store's own screen.
+
+**WHY IT WAS NOT CAUGHT** — `test_the_indexer_is_never_allowed_to_stay_dead`
+and `test_index_stall_is_visible` cover the INDEXER process (which v2 does not
+have); a REBUILD is a third state neither imagined, and every path test for
+v2 was about `rows.db`, never the progress file beside it.
+
+**COST** — none in money; the store's own numbers were on disk and invisible
+for hours.
+
+**FIX** — this commit. The rebuild started at 3:51am keeps writing to the
+legacy path and is shown as "a row index (started before Sep 23, 2026)" until
+it finishes.
+
+**GUARD** — `tests/test_the_screen_says_the_index_is_rebuilding.py` (10).
+
+---
+
 ## RCA-2026-09-23-G — the practice account paid the entry spread twice: once in the fill price, once again at the exit
 
 **CEO**

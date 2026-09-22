@@ -268,7 +268,11 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
                              # had pressed UPDATE on lost its place in the
                              # queue to a fixture (RCA-2026-09-18-K).
                              ("ASKED_FIRST", "rows_index_asked.json"),
-                             ("REBUILD_PROGRESS", "rows_rebuild.json")):
+                             ("REBUILD_PROGRESS", "rows_rebuild.json"),
+                             # the pre-Sep 23, 2026 shared progress path: a
+                             # real rebuild running on this PC must never be
+                             # read by a test as "a rebuild is in flight"
+                             ("LEGACY_REBUILD_PROGRESS", "rows_rebuild.legacy.json")):
             if hasattr(_ri, _name):
                 monkeypatch.setattr(_ri, _name, sandbox / _leaf)
     except Exception:

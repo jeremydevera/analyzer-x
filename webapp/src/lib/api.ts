@@ -537,6 +537,8 @@ export interface CloudStatus {
   run: { id?: number; url?: string; res?: string } | null;
   shards: CloudShard[];
   conclusion?: string | null;
+  /** when the last machine finished, epoch seconds — set only on a finished run */
+  finished?: number | null;
   done?: number;
   /** THE OTHER ACCOUNTS' RUNS from the same press. Since Sep 21, 2026 one
    *  press deals the board between every GitHub account this checkout has a
@@ -1765,6 +1767,13 @@ export type IndexStatus = {
   /** "job" on Backtest v2: its rows are filed by the backtest job when it
    *  finishes — there is no indexer process to be "catching up" */
   filed_by?: "job" | "indexer";
+  /** a fresh-file rebuild of THIS store's index in flight (empty when none):
+   *  the table reads the old file until it swaps in, so its dates are stale */
+  rebuild?: {
+    phase?: string; pairs_done?: number; pairs_total?: number; rows?: number;
+    seconds?: number; pairs_per_min?: number; running?: boolean;
+    store?: "this" | "unknown"; age_s?: number;
+  };
   /** the OTHER store's running job, which shares this machine's one disk:
    *  the backlog waits for it, a row you press UPDATE on does not */
   deferring_to?: string;

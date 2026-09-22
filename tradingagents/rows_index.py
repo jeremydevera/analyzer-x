@@ -1487,7 +1487,19 @@ def compact(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
             "backup": str(backup) if keep_backup else ""}
 
 
-REBUILD_PROGRESS = Path.home() / ".tradingagents" / "rows_rebuild.json"
+# PER STORE. This sat at `~/.tradingagents/rows_rebuild.json` for every store,
+# so the Backtest v2 rebuild of Sep 23, 2026 (5,003 pairs, 98,986,982 rows,
+# 25 GB) wrote its progress where v1's readers look, and no v2 screen could
+# say it was running — the operator: *"you should show if there is index
+# happening right now so im aware its indexing"*. A request for store X reads
+# store X, on the write paths too (RCA-2026-09-18-B's rule).
+REBUILD_PROGRESS = DB_PATH.parent / "rows_rebuild.json"
+# where rebuilds started before Sep 23, 2026 still write; read only as a
+# fallback and named as such, because it cannot say which store it is about
+LEGACY_REBUILD_PROGRESS = Path.home() / ".tradingagents" / "rows_rebuild.json"
+# a rebuild writes its progress at least once a minute; older than this and
+# the file describes a run that is no longer there
+REBUILD_FRESH_S = 300
 # How old the rebuild's progress file may be before it stops counting as a
 # live rebuild. A running one republishes constantly (every long phase does),
 # so anything older than this is a rebuild that died without tidying up — and
@@ -1633,6 +1645,7 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
             REBUILD_PROGRESS.parent.mkdir(parents=True, exist_ok=True)
             mins = max(1e-9, (_t.time() - started) / 60)
             REBUILD_PROGRESS.write_text(json.dumps({
+                "db": str(DB_PATH),
                 "phase": phase, "pairs_done": done, "pairs_total": len(files),
                 "rows": rows, "seconds": round(_t.time() - started, 1),
                 "pid": os.getpid(),
@@ -1887,14 +1900,36 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
             "backup": str(backup) if keep_backup else ""}
 
 
-def rebuild_progress() -> dict:
-    """What `rebuild()` is doing, for a caller in another process."""
-    def _read():
-        return json.loads(REBUILD_PROGRESS.read_text(encoding="utf-8"))
-    try:
-        return _read()
-    except (OSError, ValueError):
-        return {}
+def rebuild_progress(db_path: Path | None = None) -> dict:
+    """What `rebuild()` is doing to THIS store, for a caller in another
+    process — `{}` when nothing is, or the file is older than
+    `REBUILD_FRESH_S` (a dead rebuild's last words are not progress).
+
+    `running` says whether the file is fresh; `store` is "this" when the
+    progress names this store, "unknown" when it came from the legacy path a
+    pre-Sep 23, 2026 rebuild writes to (it cannot say which store it is about,
+    and the screen must not claim one)."""
+    db = Path(db_path) if db_path else DB_PATH
+    # this process's own store reads the module path (a test sandbox points
+    # it into tmp); another store's reads beside that store's db
+    own = REBUILD_PROGRESS if db_path is None else db.parent / "rows_rebuild.json"
+    for path, store in ((own, "this"), (LEGACY_REBUILD_PROGRESS, "unknown")):
+        try:
+            got = json.loads(path.read_text(encoding="utf-8"))
+            age = time.time() - path.stat().st_mtime
+        except (OSError, ValueError):
+            continue
+        if not isinstance(got, dict):
+            continue
+        if store == "this" and got.get("db") and Path(got["db"]) != db:
+            continue
+        if store == "unknown" and own.exists():
+            continue
+        got["store"] = store
+        got["running"] = age < REBUILD_FRESH_S
+        got["age_s"] = round(age)
+        return got
+    return {}
 
 
 def _kept_index_names() -> set:
@@ -4444,6 +4479,11 @@ def status(db_path=None) -> dict:
             "indexer_running": (None if _DB_OVERRIDE.get()
                                 else _running_elsewhere()),
             "filed_by": "job" if _DB_OVERRIDE.get() else "indexer",
+            # A REBUILD IN FLIGHT IS SAID OUT LOUD. The table reads the old
+            # file until the fresh one swaps in, so every date on it is stale
+            # for hours; without this the screen showed Sep 17 dates while
+            # 99M rows were being re-filed underneath it (Sep 23, 2026).
+            "rebuild": rebuild_progress(_DB_OVERRIDE.get() or DB_PATH),
             "last_error": "" if _DB_OVERRIDE.get() else _last_error,
             "blocked_by": "" if _DB_OVERRIDE.get() else lock_holder(),
             # kept for older readers; both mean "a sweep owns the disk"

@@ -576,13 +576,20 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
                 </p>
               );
             }
+            // A FINISHED RUN IS IN THE PAST TENSE, ending when it ended. This
+            // read "Testing … → <now>" for hours after runs 35776582134 and
+            // 35776595829 had finished at 3:59am on Sep 23, 2026, so the
+            // operator asked whether it was still testing.
+            const done = !!cloud.conclusion;
+            const to = done && cloud.finished ? cloud.finished * 1000 : Date.now();
             return (
               <p className="mt-2 text-theme-sm text-gray-800 dark:text-white/90">
-                <span className="font-semibold">Testing {fmtWhenMs(from)} → {fmtWhenMs(Date.now())}</span>
+                <span className="font-semibold">{done ? "Tested" : "Testing"} {fmtWhenMs(from)} → {fmtWhenMs(to)}</span>
                 <span className="text-theme-xs text-gray-500 dark:text-gray-400">
                   {" "}— the whole {days}-day window plus 30 days of warm-up, from scratch (BACKTEST).
                   Every coin&apos;s position at its last bar is saved, so the next UPDATE tests only the new
                   candles. Each machine&apos;s tile shows its own coin&apos;s exact dates.
+                  {done && !cloud.finished ? " The run has finished." : ""}
                 </span>
               </p>
             );
@@ -611,6 +618,19 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
                   every row is still in the run&apos;s files and lands when it finishes
                 </p>
               ) : null;
+            }
+            // ROWS ALREADY IN THIS PC ARE NEVER "nothing has arrived". The
+            // receiver's counter is kept per run id, and a two-account press
+            // shows two runs on one card, so on Sep 23, 2026 the card said
+            // "nothing has arrived yet" under an "already in this PC" badge
+            // while 35 pairs had landed. `collected` is the store's own word.
+            if (cloud.conclusion && cloud.collected) {
+              return (
+                <p className="mt-1 text-theme-xs text-success-600 dark:text-success-500">
+                  every coin of this run is in this PC&apos;s store — the live door wrote them as
+                  the machines finished, and the collect confirmed it
+                </p>
+              );
             }
             const landed = live.pairs ?? 0;
             // arrived and ALREADY UP TO DATE is a success, not a loss: on run

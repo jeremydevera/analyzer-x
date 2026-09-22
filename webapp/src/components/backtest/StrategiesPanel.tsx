@@ -1011,6 +1011,22 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
             finishes, so "catching up on its own in the background" — the
             sentence below, derived from v1's indexer process — was false on
             this screen (Sep 18, 2026 review). The store says who files it. */}
+        {/* A REBUILD IN FLIGHT IS THE FIRST THING SAID. The table keeps
+            reading the OLD index file until the fresh one swaps in, so every
+            "last backtest" date on it is hours stale while this runs —
+            #AA2CRSTY read Sep 17, 2026 9:00pm on Sep 23 while its pair had
+            landed at 2:20am (operator: "you should show if there is index
+            happening right now so im aware its indexing"). */}
+        {idx?.rebuild?.running ? (
+          <span className="flex items-center gap-2 text-theme-xs font-medium text-warning-600 dark:text-warning-400 text-right">
+            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-warning-500" aria-hidden />
+            {`REBUILDING ${idx.rebuild.store === "unknown" ? "a" : "this"} row index — ${idx.rebuild.phase ?? "working"}`
+              + ` · ${(idx.rebuild.pairs_done ?? 0).toLocaleString()} of ${(idx.rebuild.pairs_total ?? 0).toLocaleString()} pairs`
+              + ` · ${(idx.rebuild.rows ?? 0).toLocaleString()} rows · running ${Math.floor((idx.rebuild.seconds ?? 0) / 3600)}h ${Math.floor(((idx.rebuild.seconds ?? 0) % 3600) / 60)}m`
+              + ` — the dates and rows on this table catch up when it finishes`
+              + (idx.rebuild.store === "unknown" ? " (started before Sep 23, 2026, so it does not say which store it is filing)" : "")}
+          </span>
+        ) : null}
         {idx && indexTodo > 0 && (store === "v2" || idx.filed_by === "job") ? (
           <span className="text-theme-xs text-warning-600 dark:text-warning-400 text-right">
             {`${indexTodo.toLocaleString()} pair(s) measured but not in this table yet — `

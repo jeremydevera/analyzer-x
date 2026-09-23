@@ -121,7 +121,10 @@ def _keep_the_row_index_current() -> None:
         # queue behind it (1.7s for a one-file endpoint) and the health probe
         # time out, printed on screen as "API unreachable".
         pid = ri.spawn_indexer()
-        print(f"[rows-index] indexer pid={pid or 'already running'}", flush=True)
+        off = ri.indexer_switched_off()
+        print(f"[rows-index] indexer "
+              f"{'switched off (' + off + ')' if off else 'pid=' + str(pid or 'already running')}",
+              flush=True)
     except Exception as exc:
         print(f"[rows-index] COULD NOT START: {exc!r}", flush=True)
 
@@ -488,6 +491,43 @@ def _screen_note(event: str, args: dict, got: dict, took: float) -> None:
 _CSV_BREATHE = 25
 
 
+# DOWNLOADS IN FLIGHT. A CSV with a days window re-measures every row it
+# writes and takes MINUTES (110 s warm, far longer cold, on the operator's
+# own filter, Sep 24, 2026). Killing the API under one cuts it: the UI's
+# proxy then answers the browser with its catch-all "Internal Server Error"
+# (next/dist/server/lib/router-utils/proxy-request.js) or appends those words
+# to the partial file. The operator's 5:01am download died exactly so, under
+# a restart. `start.py` reads this list (GET /api/system/busy) and waits.
+_ACTIVE_DOWNLOADS: dict = {}
+_DOWNLOADS_SEQ = [0]
+
+
+def _download_started(what: str) -> dict:
+    _DOWNLOADS_SEQ[0] += 1
+    rec = {"id": _DOWNLOADS_SEQ[0], "what": what, "since": _time.time(),
+           "rows": 0}
+    _ACTIVE_DOWNLOADS[rec["id"]] = rec
+    return rec
+
+
+def _download_finished(rec: dict) -> None:
+    _ACTIVE_DOWNLOADS.pop(rec.get("id"), None)
+
+
+@app.get("/api/system/busy")
+def system_busy() -> dict:
+    """What a restart would cut right now — the downloads being streamed."""
+    from tradingagents import positions_view as pv
+
+    now = _time.time()
+    items = sorted(_ACTIVE_DOWNLOADS.values(), key=lambda r: r["since"])
+    return {"count": len(items),
+            "downloads": [{"what": r["what"], "rows": r["rows"],
+                           "since": pv.fmt_when(r["since"]),
+                           "seconds": round(now - r["since"])}
+                          for r in items]}
+
+
 def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          sort="profit", min_trades=0, min_winrate=0,
                          max_tp=0, sizing=None, row_id=None, group=None,
@@ -546,108 +586,118 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
     _bal_at = (cols.index("winrate") + 1) if "winrate" in cols else len(cols)
     head = list(cols)
     head[_bal_at:_bal_at] = ["balanced", "balanced_why"]
-    w.writerow(head + ["monthly_json"])
-    yield flush()
-    # A StreamingResponse has already sent 200 by the time a row fails, so an
-    # exception here cannot become an error page — it just ENDS the download.
-    # That is how 5,000 rows of 43,867 arrived looking like the whole file
-    # (2026-08-27). So: count what left, and if the stream dies, SAY SO in the
-    # file itself and in the log. A short file that says it is short is worth
-    # more than a short file that does not.
-    sent = 0
-    stats: dict = {}
-    # THE PRESS, IN WRITING. The operator asked for a log of every Apply and
-    # every download so the status can be read back (Sep 09, 2026). `Watch`
-    # tests each row as it streams — the file must not hold them — so a
-    # download that carries rows its own filename denies says so in the log.
-    from tradingagents import screen_log as _sl
-    _asked = {"coin": coin, "tf": tf, "signal": signal,
-              "profitable": profitable, "min_trades": min_trades,
-              "min_winrate": min_winrate, "max_tp": max_tp, "max_sl": max_sl,
-              "min_tp": min_tp, "min_sl": min_sl, "tp_over_sl": tp_over_sl,
-              "asset": asset, "sizing": sizing, "group": group,
-              "row_id": row_id, "days": days, "sort": sort, "desc": desc}
-    _watch = _sl.Watch(_asked)
-    _csv_t0 = _time.time()
-    # A DOWNLOAD IN FLIGHT MUST BE VISIBLE. The completion line below is
-    # written when the stream ENDS, so on Sep 09, 2026 the operator pressed
-    # download, watched the browser sit at "0 B", asked why, and the log had
-    # nothing to show — the request was running and no line existed yet. Now
-    # the start is a line of its own, so "started and never finished" reads
-    # differently from "never pressed".
-    _sl.record("csv START", _asked, {"streaming": True}, 0.0)
+    _dl = _download_started(
+        "strategies CSV" + (f" · {coin}" if coin else "")
+        + (f" · {tf}" if tf else "")
+        + (f" · win % >= {min_winrate:g}" if min_winrate else "")
+        + (" · TP >= SL" if tp_over_sl else "")
+        + (f" · last {int(days)} days" if days else ""))
     try:
-        for r in ri.iter_rows(coin=coin, tf=tf, signal=signal,
-                              profitable=profitable, sort=sort,
-                              min_trades=min_trades, min_winrate=min_winrate,
-                              max_tp=max_tp, sizing=sizing, row_id=row_id,
-                              group=group, max_sl=max_sl, days=days,
-                              desc=desc, batch=batch,
-                              min_tp=min_tp, min_sl=min_sl,
-                              tp_over_sl=tp_over_sl, asset=asset,
-                              measured_days=measured_days,
-                              # Backtest v2's rows.db when the v2 CSV asks,
-                              # and its store for the window's re-measure
-                              db_path=db_path, store=store,
-                              stats=stats):
-            score, why = ri.balanced_score(r)
-            # THE PROJECT'S ONE DATE FORMAT (`Aug 03, 2026 8:03pm`), never a
-            # raw epoch and never `strftime` — CLAUDE.md's date rule, which
-            # has been broken by hand-rolled copies four times.
-            r["measured_through"] = (pv.fmt_when(r["measured_ms"] / 1000)
-                                     if r.get("measured_ms") else None)
-            r["last_backtest_run"] = (pv.fmt_when(r["measured_run_ms"] / 1000)
-                                      if r.get("measured_run_ms") else None)
-            _watch.see(r)
-            _row = [r.get(c) for c in cols]
-            _row[_bal_at:_bal_at] = [score, why]
-            w.writerow(_row + [_json.dumps(r.get("monthly") or {},
-                                           separators=(",", ":"))])
-            sent += 1
-            yield flush()
-            # LET THE REST OF THE APP BREATHE. A windowed download RE-MEASURES
-            # every row from this PC's candles — about 0.09 s of pure Python
-            # each — and that holds the interpreter lock. Measured Sep 09,
-            # 2026 while one such download ran for 78 s: `/api/health` took
-            # 23.8 s and `/api/backtest/logs` TIMED OUT at 47 s, so the page
-            # the operator was looking at filled with errors and read as
-            # "internal server error" while the file itself was fine.
-            # A 2 ms sleep every `_CSV_BREATHE` rows hands the lock over and
-            # costs well under a second on a run this long.
-            if sent % _CSV_BREATHE == 0:
-                _time.sleep(0.002)
-        if days and sent >= ri.DAYS_CSV_MAX:
-            # a capped file SAYS it is capped, IN the file (kit rule: a capped
-            # grid says what it capped)
-            w.writerow([f"WINDOW CAPPED: this download re-measured the first "
-                        f"{sent} rows over the last {int(days)} days; a days "
-                        f"window is a re-measurement (~0.09 s a row), so it "
-                        f"stops there. Narrow the filter, or download without "
-                        f"the window for every matching row's whole history."])
-            yield flush()
-        if stats.get("window_hidden"):
-            # a cut row is counted out loud, IN the file (rule 20)
-            w.writerow([f"WINDOW FLOOR: {stats['window_hidden']} row(s) passed "
-                        f"the floors over their whole history but not inside "
-                        f"the last {int(days)} days, and were left out — the "
-                        f"rows above are the ones the window itself clears."])
-            yield flush()
-    except Exception as exc:                                   # noqa: BLE001
-        print(f"[strategies.csv] export stopped after {sent:,} rows: "
-              f"{type(exc).__name__}: {exc}", flush=True)
-        w.writerow([f"EXPORT INCOMPLETE after {sent} rows: "
-                    f"{type(exc).__name__}: {exc}"])
+        w.writerow(head + ["monthly_json"])
         yield flush()
-        _sl.record("csv FAILED", _asked,
-                   {"rows": sent, "why": f"{type(exc).__name__}: {exc}"},
-                   _time.time() - _csv_t0, notes=_watch.notes())
-        raise
-    else:
-        _sl.record("csv", _asked,
-                   {"rows": sent,
-                    "window_hidden": stats.get("window_hidden") or None,
-                    "capped": (days and sent >= ri.DAYS_CSV_MAX) or None},
-                   _time.time() - _csv_t0, notes=_watch.notes())
+        # A StreamingResponse has already sent 200 by the time a row fails, so an
+        # exception here cannot become an error page — it just ENDS the download.
+        # That is how 5,000 rows of 43,867 arrived looking like the whole file
+        # (2026-08-27). So: count what left, and if the stream dies, SAY SO in the
+        # file itself and in the log. A short file that says it is short is worth
+        # more than a short file that does not.
+        sent = 0
+        stats: dict = {}
+        # THE PRESS, IN WRITING. The operator asked for a log of every Apply and
+        # every download so the status can be read back (Sep 09, 2026). `Watch`
+        # tests each row as it streams — the file must not hold them — so a
+        # download that carries rows its own filename denies says so in the log.
+        from tradingagents import screen_log as _sl
+        _asked = {"coin": coin, "tf": tf, "signal": signal,
+                  "profitable": profitable, "min_trades": min_trades,
+                  "min_winrate": min_winrate, "max_tp": max_tp, "max_sl": max_sl,
+                  "min_tp": min_tp, "min_sl": min_sl, "tp_over_sl": tp_over_sl,
+                  "asset": asset, "sizing": sizing, "group": group,
+                  "row_id": row_id, "days": days, "sort": sort, "desc": desc}
+        _watch = _sl.Watch(_asked)
+        _csv_t0 = _time.time()
+        # A DOWNLOAD IN FLIGHT MUST BE VISIBLE. The completion line below is
+        # written when the stream ENDS, so on Sep 09, 2026 the operator pressed
+        # download, watched the browser sit at "0 B", asked why, and the log had
+        # nothing to show — the request was running and no line existed yet. Now
+        # the start is a line of its own, so "started and never finished" reads
+        # differently from "never pressed".
+        _sl.record("csv START", _asked, {"streaming": True}, 0.0)
+        try:
+            for r in ri.iter_rows(coin=coin, tf=tf, signal=signal,
+                                  profitable=profitable, sort=sort,
+                                  min_trades=min_trades, min_winrate=min_winrate,
+                                  max_tp=max_tp, sizing=sizing, row_id=row_id,
+                                  group=group, max_sl=max_sl, days=days,
+                                  desc=desc, batch=batch,
+                                  min_tp=min_tp, min_sl=min_sl,
+                                  tp_over_sl=tp_over_sl, asset=asset,
+                                  measured_days=measured_days,
+                                  # Backtest v2's rows.db when the v2 CSV asks,
+                                  # and its store for the window's re-measure
+                                  db_path=db_path, store=store,
+                                  stats=stats):
+                score, why = ri.balanced_score(r)
+                # THE PROJECT'S ONE DATE FORMAT (`Aug 03, 2026 8:03pm`), never a
+                # raw epoch and never `strftime` — CLAUDE.md's date rule, which
+                # has been broken by hand-rolled copies four times.
+                r["measured_through"] = (pv.fmt_when(r["measured_ms"] / 1000)
+                                         if r.get("measured_ms") else None)
+                r["last_backtest_run"] = (pv.fmt_when(r["measured_run_ms"] / 1000)
+                                          if r.get("measured_run_ms") else None)
+                _watch.see(r)
+                _row = [r.get(c) for c in cols]
+                _row[_bal_at:_bal_at] = [score, why]
+                w.writerow(_row + [_json.dumps(r.get("monthly") or {},
+                                               separators=(",", ":"))])
+                sent += 1
+                _dl["rows"] = sent
+                yield flush()
+                # LET THE REST OF THE APP BREATHE. A windowed download RE-MEASURES
+                # every row from this PC's candles — about 0.09 s of pure Python
+                # each — and that holds the interpreter lock. Measured Sep 09,
+                # 2026 while one such download ran for 78 s: `/api/health` took
+                # 23.8 s and `/api/backtest/logs` TIMED OUT at 47 s, so the page
+                # the operator was looking at filled with errors and read as
+                # "internal server error" while the file itself was fine.
+                # A 2 ms sleep every `_CSV_BREATHE` rows hands the lock over and
+                # costs well under a second on a run this long.
+                if sent % _CSV_BREATHE == 0:
+                    _time.sleep(0.002)
+            if days and sent >= ri.DAYS_CSV_MAX:
+                # a capped file SAYS it is capped, IN the file (kit rule: a capped
+                # grid says what it capped)
+                w.writerow([f"WINDOW CAPPED: this download re-measured the first "
+                            f"{sent} rows over the last {int(days)} days; a days "
+                            f"window is a re-measurement (~0.09 s a row), so it "
+                            f"stops there. Narrow the filter, or download without "
+                            f"the window for every matching row's whole history."])
+                yield flush()
+            if stats.get("window_hidden"):
+                # a cut row is counted out loud, IN the file (rule 20)
+                w.writerow([f"WINDOW FLOOR: {stats['window_hidden']} row(s) passed "
+                            f"the floors over their whole history but not inside "
+                            f"the last {int(days)} days, and were left out — the "
+                            f"rows above are the ones the window itself clears."])
+                yield flush()
+        except Exception as exc:                                   # noqa: BLE001
+            print(f"[strategies.csv] export stopped after {sent:,} rows: "
+                  f"{type(exc).__name__}: {exc}", flush=True)
+            w.writerow([f"EXPORT INCOMPLETE after {sent} rows: "
+                        f"{type(exc).__name__}: {exc}"])
+            yield flush()
+            _sl.record("csv FAILED", _asked,
+                       {"rows": sent, "why": f"{type(exc).__name__}: {exc}"},
+                       _time.time() - _csv_t0, notes=_watch.notes())
+            raise
+        else:
+            _sl.record("csv", _asked,
+                       {"rows": sent,
+                        "window_hidden": stats.get("window_hidden") or None,
+                        "capped": (days and sent >= ri.DAYS_CSV_MAX) or None},
+                       _time.time() - _csv_t0, notes=_watch.notes())
+    finally:
+        _download_finished(_dl)
 
 
 def strategies_csv_name(coin=None, tf=None, signal=None, min_trades=0,
@@ -785,6 +835,13 @@ def strategies_reindex() -> dict:
 
     st = ri.status()
     behind = int(st.get("behind") or 0)
+    # SWITCHED OFF BY THE OPERATOR (Sep 24, 2026: "stop the v1 i dont need it
+    # anymore"). A catch-up is the same work by another door.
+    if st.get("indexer_off"):
+        return {"started": False, "behind": behind,
+                "todo": int(st.get("stale") or 0) or behind,
+                "why": f"the v1 indexer is switched off ({st['indexer_off']}) "
+                       f"— nothing is filed until it is switched back on"}
     # THE NUMBER THE BUTTON PRINTS IS THE NUMBER IT WILL WALK. `behind` counts
     # never-indexed pairs only; `sync()` walks `stale_pairs()`, which also
     # holds every pair whose file MOVED since it was indexed. On 2026-09-10
@@ -1443,7 +1500,7 @@ def _background_activity() -> list:
     try:
         idx = index_status()
         behind = int(idx.get("behind") or 0) + int(idx.get("stale") or 0)
-        if behind > 0 and idx.get("indexer_running"):
+        if behind > 0 and idx.get("indexer_running") and not idx.get("indexer_off"):
             # NAME THE STORE AND THE REAL TIME LEFT. Operator, Sep 24, 2026,
             # after being told Backtest v2 was finished: "why is it still
             # indexing on upper right. fix this ui bug its confusing". This

@@ -38,6 +38,10 @@ WINDOWS = os.name == "nt"
 UI_PORT = int(os.environ.get("UI_PORT", "8503"))
 API_PORT = int(os.environ.get("API_PORT", "8787"))
 READY_SECONDS = 30
+# How long a restart waits for downloads in flight before cutting them. The
+# operator's own 30-day window CSV measured 67-110 s warm on Sep 24, 2026 and
+# the cold one had run more than six minutes when a restart killed it.
+RESTART_WAIT_S = 900
 
 
 # ---------------------------------------------------------------- helpers
@@ -120,6 +124,67 @@ def health(port: int) -> bool:
         return False
 
 
+def downloads_in_flight(port: int = API_PORT) -> list | None:
+    """The downloads the API is streaming right now (GET /api/system/busy);
+    None when the API is not answering or is too old to say — then there is
+    nothing a restart could be cutting that we could know about."""
+    try:
+        with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/api/system/busy", timeout=3) as r:
+            import json as _json
+            return list(_json.loads(r.read().decode("utf-8")).get("downloads") or [])
+    except (urllib.error.URLError, OSError, ValueError):
+        return None
+
+
+def wait_for_downloads(max_s: float = RESTART_WAIT_S, *, sleep=time.sleep,
+                       clock=time.time, port: int = API_PORT) -> bool:
+    """Wait until no download is being streamed, up to `max_s`.
+
+    A RESTART NEVER CUTS A DOWNLOAD IN FLIGHT (RCA-2026-09-24-D). The
+    operator's CSV started at Sep 24, 2026 5:01am and died when the app was
+    restarted under it; the UI's proxy told them "Internal Server Error".
+    True when nothing is (or can be seen) in flight; False when it gave up
+    and the caller is about to cut something — said out loud either way."""
+    t0 = clock()
+    said = False
+    while True:
+        got = downloads_in_flight(port)
+        if not got:
+            if said:
+                print("  the download(s) finished — restarting now")
+            return True
+        if not said:
+            names = "; ".join(f"{d.get('what')} ({d.get('rows', 0):,} rows so far, "
+                              f"since {d.get('since')})" for d in got)
+            print(f"waiting for {len(got)} download(s) to finish before "
+                  f"stopping the API — {names} (up to {int(max_s // 60)} min; "
+                  f"`start.py start --now` skips the wait)", flush=True)
+            said = True
+        if clock() - t0 >= max_s:
+            print(f"  still downloading after {int(max_s // 60)} min — restarting "
+                  f"anyway; that download will have to be pressed again",
+                  flush=True)
+            return False
+        sleep(5)
+
+
+def keep_previous(path: Path) -> Path:
+    """The last run's log becomes `<name>.prev<ext>` instead of being deleted.
+
+    A restart deleted `api.log` and `ui.log`, so the one record of what the
+    previous API did — including the operator's download that a restart cut
+    at 5:01am on Sep 24, 2026 — was gone before anyone could read it. A rename
+    is a new inode for the fresh log, so the iCloud reason `fresh()` exists
+    for still holds."""
+    prev = path.with_name(path.stem + ".prev" + path.suffix)
+    with contextlib.suppress(OSError):
+        prev.unlink()
+    with contextlib.suppress(OSError):
+        path.rename(prev)
+    return path
+
+
 def fresh(path: Path) -> Path:
     """Unlink before rewriting. The operator's Mac keeps this repo in iCloud
     Drive, which evicts idle files; opening one for truncation blocks until the
@@ -140,7 +205,7 @@ def spawn(cmd: list[str], log: Path, cwd: Path, env: dict[str, str] | None = Non
                                    | subprocess.DETACHED_PROCESS)       # type: ignore[attr-defined]
     else:
         kwargs["start_new_session"] = True
-    with open(fresh(log), "w", encoding="utf-8") as fh:
+    with open(keep_previous(log), "w", encoding="utf-8") as fh:
         proc = subprocess.Popen(cmd, cwd=str(cwd), stdin=subprocess.DEVNULL, stdout=fh,
                                 stderr=subprocess.STDOUT, env=env, **kwargs)
     return proc.pid
@@ -165,15 +230,19 @@ def cmd_status() -> int:
     return 0
 
 
-def cmd_stop() -> int:
+def cmd_stop(now: bool = False) -> int:
+    if not now:
+        wait_for_downloads()
     free_port(UI_PORT, tree=True)
     free_port(API_PORT, tree=False)
     print("stopped")
     return 0
 
 
-def cmd_start() -> int:
+def cmd_start(now: bool = False) -> int:
     LOGS.mkdir(exist_ok=True)
+    if not now:
+        wait_for_downloads()
     free_port(API_PORT, tree=False)
     free_port(UI_PORT, tree=True)
 
@@ -181,7 +250,9 @@ def cmd_start() -> int:
     # UTF-8 everywhere: Windows' default text encoding is cp1252, and the
     # store's JSON/progress files carry em dashes and coin names. Every job the
     # API spawns inherits this.
-    api_env = dict(os.environ, PYTHONUTF8="1")
+    # UNBUFFERED, so the log is complete and in order when it is read — a
+    # restart is often exactly when someone needs its last lines
+    api_env = dict(os.environ, PYTHONUTF8="1", PYTHONUNBUFFERED="1")
     api_pid = spawn([venv_python(), "-m", "uvicorn", "tradingagents.api:app",
                      "--host", "127.0.0.1", "--port", str(API_PORT)],
                     LOGS / "api.log", ROOT, api_env)
@@ -217,10 +288,13 @@ COMMANDS = {"start": cmd_start, "stop": cmd_stop, "status": cmd_status}
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
-    action = args[0] if args else "start"
+    words = [a for a in args if not a.startswith("--")]
+    action = words[0] if words else "start"
     if action not in COMMANDS:
-        print(f"usage: {Path(sys.argv[0]).name} [start|stop|status]")
+        print(f"usage: {Path(sys.argv[0]).name} [start|stop|status] [--now]")
         return 2
+    if action in ("start", "stop"):
+        return COMMANDS[action](now="--now" in args)
     return COMMANDS[action]()
 
 

@@ -172,6 +172,87 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-24-D — restarting the app cut the operator's CSV download half-way, and the site called it "Internal Server Error"
+
+**CEO**
+
+* You pressed download on Backtest v2 (Winrate 70% or better, TP at least as
+  wide as SL, last 30 days) at 5:01am and got "Internal Server Error". Nothing
+  was wrong with the filter or the file: the download takes one to two minutes
+  or more, and I restarted the app while it was still being made, which killed
+  it; a second download at 5:12am was cut the same way at 373 KB of 905 KB.
+* Why: restarting the app stopped it immediately, whatever it was in the
+  middle of, and the website's go-between turns "the app vanished" into the
+  words "Internal Server Error" — the same words the 30-second limit produced
+  on Sep 09, which is why it looked like the old problem coming back.
+* What stops it now: a restart first asks the app what downloads are in
+  progress and waits for them (up to 15 minutes, and it says what it is
+  waiting for); and the previous run's log is kept instead of deleted, so if
+  anything cuts a download again the evidence is still there to read.
+
+**DEV**
+
+* `start.py:cmd_start` / `cmd_stop` called `free_port(API_PORT)` at once;
+  `strategies_csv_lines` (both `/api/strategies.csv` and
+  `/api/v2/strategies.csv`) streams for minutes, and killing uvicorn under it
+  makes `next/dist/server/lib/router-utils/proxy-request.js` answer
+  `500 Internal Server Error` (or append it to the partial body).
+  `spawn()` opened each log with `fresh()`, which unlinks it — so the 5:13am
+  restart deleted the only record of the 5:01am request. Now:
+  `api._ACTIVE_DOWNLOADS` + `GET /api/system/busy`; the generator lists itself
+  and unlists in a `finally` (so an abandoned download does not linger);
+  `start.wait_for_downloads()` polls it before either command frees the API
+  port (`--now` skips); `keep_previous()` rotates `api.log`/`ui.log` to
+  `*.prev.log`; the API runs with `PYTHONUNBUFFERED=1`.
+* Invariant broken: **a job that cannot finish must SAY SO** (RCA-2026-09-10-C)
+  — and its restart-side twin: **whatever stops the API must first see what it
+  would cut.** A guard is only as wide as its pattern: the Sep 09 fix closed
+  the proxy's 30-second cause and left every other way to produce the same
+  500 open.
+* Guard: `tests/test_a_restart_never_cuts_a_download.py` (8) — listed while
+  streaming, unlisted when finished or abandoned, start/stop wait BEFORE
+  `free_port`, give up loudly after the limit, never wait on an API that does
+  not answer, and the previous log survives.
+
+**SAW** — "when downloading using this filter im having internal server error
+in csv, why is this occuring again? i had same issue from the past", under
+Stored strategies · V2 · Filters 3: Past 30 days · Winrate 70% or better · TP
+at least as wide as SL.
+
+**TIMELINE** (from `~/.tradingagents/screen.log`, which survives restarts)
+
+1. `Sep 24, 2026 5:01am` — `csv START | min_winrate=70.0 AND tp_over_sl=True
+   AND days=30 AND sort=profit AND desc=True`. No completion line follows —
+   ever.
+2. `~5:03am–5:08am` — `start.py start` (after commit c8bcd3cd7591) frees port
+   8787; the download dies with the API; the UI's proxy answers
+   "Internal Server Error".
+3. `5:12am` — another download of the same filter starts; `5:13:23am` a
+   second restart kills it at **373,236 bytes** (the complete file is
+   905,744) — and `fresh()` deletes `api.log` and `ui.log`, the only record of
+   both requests.
+4. `5:13am–5:17am` — the same filter downloaded three times on the new API:
+   complete each time, **1,735 rows, 265 cut by the window, 905,744 bytes**,
+   in 110 s, 67 s and 64 s (the last through the UI's proxy, as the browser
+   does).
+
+**ROOT CAUSE** — a restart that stopped the API without looking at what it
+was serving, and logs deleted on the way.
+
+**WHY IT WAS NOT CAUGHT** — `tests/test_start_launcher.py` asserts WHICH
+process a restart kills and how (tree or not, SIGTERM or taskkill); nothing
+asked WHAT that process was doing at the time. The Sep 09 CSV fix asserted the
+proxy timeout value, not the words the proxy prints for every other failure.
+
+**COST** — none in money; two downloads lost and a report of an error that
+was not in the export.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_a_restart_never_cuts_a_download.py`.
+
+---
+
 ## RCA-2026-09-24-C — the "indexing" spinner was Backtest v1's seven-month re-file, and it looked like Backtest v2 still running
 
 **CEO**

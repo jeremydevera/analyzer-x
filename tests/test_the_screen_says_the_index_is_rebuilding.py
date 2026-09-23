@@ -65,6 +65,23 @@ def test_a_dead_rebuilds_last_words_are_not_progress(tmp_path, monkeypatch):
     assert got["running"] is False and got["age_s"] >= ri.REBUILD_FRESH_S
 
 
+def test_a_quiet_verify_phase_is_still_running_while_its_process_lives(tmp_path, monkeypatch):
+    """The verify is one long check that writes nothing for hours; the pid is
+    the truth. 11 minutes into it on Sep 23, 2026 the chip and the line
+    vanished while pid 24444 was alive and working."""
+    v2 = tmp_path / "v2" / "rows.db"
+    monkeypatch.setattr(ri, "LEGACY_REBUILD_PROGRESS", tmp_path / "legacy.json")
+    p = v2.parent / "rows_rebuild.json"
+    _write(p, db=str(v2), phase="verifying", pairs_done=5003, pairs_total=5003, pid=24444)
+    old = time.time() - ri.REBUILD_FRESH_S - 600
+    import os
+    os.utime(p, (old, old))
+    monkeypatch.setattr(ri.portable, "pid_alive", lambda pid: pid == 24444)
+    assert ri.rebuild_progress(v2)["running"] is True
+    monkeypatch.setattr(ri.portable, "pid_alive", lambda pid: False)
+    assert ri.rebuild_progress(v2)["running"] is False, "a recycled or dead pid is not a rebuild"
+
+
 def test_the_legacy_file_is_read_as_a_rebuild_of_an_unknown_store(tmp_path, monkeypatch):
     """A rebuild started before Sep 23, 2026 writes to the old shared path and
     cannot say which store it is filing; the screen says so rather than

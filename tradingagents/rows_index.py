@@ -1926,7 +1926,16 @@ def rebuild_progress(db_path: Path | None = None) -> dict:
         if store == "unknown" and own.exists():
             continue
         got["store"] = store
-        got["running"] = age < REBUILD_FRESH_S
+        # ALIVE IS THE PROCESS, NOT THE FILE'S AGE. The verify phase is one
+        # long quick_check that publishes nothing for its whole length
+        # (estimated 7,449 s on the v2 rebuild of Sep 23, 2026), so a
+        # freshness rule alone read "not running" 11 minutes into it and the
+        # header's chip and the table's line both vanished while pid 24444
+        # was at 567 MB doing exactly what they had said. The pid decides
+        # when there is one; the file's age is the fallback.
+        pid = int(got.get("pid") or 0)
+        got["running"] = (portable.pid_alive(pid) if pid
+                          else age < REBUILD_FRESH_S)
         got["age_s"] = round(age)
         return got
     return {}

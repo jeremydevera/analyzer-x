@@ -137,3 +137,59 @@ def test_a_restart_keeps_the_previous_log(start, tmp_path):
     src = inspect.getsource(start.spawn)
     assert "open(keep_previous(log)" in src, "the API and UI logs are rotated, not deleted"
     assert 'PYTHONUNBUFFERED="1"' in inspect.getsource(start.cmd_start)
+
+
+
+def test_the_route_lists_the_download_the_instant_the_request_arrives(monkeypatch):
+    """harddev round 2, measured on the live app Sep 24, 2026 7:09am: six
+    seconds into the operator's download the list was still empty — the route
+    was planning the query — so a restart in those seconds would have cut it.
+    Listed before the plan; unlisted if the route refuses."""
+    from tradingagents import rows_index as ri
+    from fastapi import HTTPException
+    api._ACTIVE_DOWNLOADS.clear()
+    seen = {}
+
+    def plan(**kw):
+        seen["listed_during_plan"] = api.system_busy()["count"]
+        raise ri.SortNotReady("the win-rate list is being built")
+    monkeypatch.setattr(ri, "export_plan", plan)
+    with pytest.raises(HTTPException) as e:
+        api.strategies_csv(min_winrate=70, tp_over_sl=True, days=30)
+    assert e.value.status_code == 503
+    assert seen["listed_during_plan"] == 1, "listed BEFORE the plan runs"
+    assert api.system_busy()["count"] == 0, "a refused download is unlisted"
+
+    monkeypatch.setattr(ri, "export_plan", lambda **kw: None)
+    resp = api.strategies_csv(min_winrate=70, tp_over_sl=True, days=30)
+    assert resp.media_type == "text/csv"
+    busy = api.system_busy()
+    assert busy["count"] == 1 and "last 30 days" in busy["downloads"][0]["what"]
+    for src in (inspect.getsource(api.strategies_csv), inspect.getsource(api.strategies_csv_v2)):
+        assert "strategies_csv_lines(_dl=_dl, " in src, "the stream adopts the route's listing"
+        assert src.index("_download_started(") < src.index("export_plan("),             "listed before anything slow"
+    api._ACTIVE_DOWNLOADS.clear()
+
+
+def test_a_listing_whose_stream_never_started_is_dropped_after_the_proxy_gave_up(quiet_csv):
+    rec = api._download_started("strategies CSV · abandoned before its first byte")
+    assert api.system_busy()["count"] == 1
+    rec["at"] -= api.DOWNLOAD_STALE_S + 1
+    assert api.system_busy()["count"] == 0
+    # a live stream keeps its listing fresh: every row it writes stamps `at`
+    gen = api.strategies_csv_lines(_dl=api._download_started("live"))
+    next(gen); next(gen)
+    live = list(api._ACTIVE_DOWNLOADS.values())
+    assert len(live) == 1 and api._time.time() - live[0]["at"] < 5
+    for _ in gen:
+        pass
+    assert api.system_busy()["count"] == 0
+
+
+def test_a_restart_cannot_crash_on_a_character_the_console_lacks(start, monkeypatch, capsys):
+    monkeypatch.setattr(start, "downloads_in_flight",
+                        lambda port=0: [{"what": "win % ≥ 70", "rows": 1, "since": "now"}] if not seen else [])
+    seen = []
+    def sleep(s):
+        seen.append(s)
+    assert start.wait_for_downloads(sleep=sleep) is True

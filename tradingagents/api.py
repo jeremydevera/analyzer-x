@@ -500,11 +500,26 @@ _CSV_BREATHE = 25
 # a restart. `start.py` reads this list (GET /api/system/busy) and waits.
 _ACTIVE_DOWNLOADS: dict = {}
 _DOWNLOADS_SEQ = [0]
+# A download listed by its ROUTE whose stream then never starts (the browser
+# left before the first byte) is never unlisted by the generator's finally —
+# an unstarted generator runs no code at all. Past the UI proxy's own limit
+# (next.config.ts: 30 minutes) nothing can still be waiting on it.
+DOWNLOAD_STALE_S = 1800
+
+
+def _download_label(coin=None, tf=None, min_winrate=0, tp_over_sl=False,
+                    days=0) -> str:
+    return ("strategies CSV" + (f" · {coin}" if coin else "")
+            + (f" · {tf}" if tf else "")
+            + (f" · win % >= {float(min_winrate):g}" if min_winrate else "")
+            + (" · TP >= SL" if tp_over_sl else "")
+            + (f" · last {int(days)} days" if days else ""))
 
 
 def _download_started(what: str) -> dict:
     _DOWNLOADS_SEQ[0] += 1
-    rec = {"id": _DOWNLOADS_SEQ[0], "what": what, "since": _time.time(),
+    now = _time.time()
+    rec = {"id": _DOWNLOADS_SEQ[0], "what": what, "since": now, "at": now,
            "rows": 0}
     _ACTIVE_DOWNLOADS[rec["id"]] = rec
     return rec
@@ -516,10 +531,15 @@ def _download_finished(rec: dict) -> None:
 
 @app.get("/api/system/busy")
 def system_busy() -> dict:
-    """What a restart would cut right now — the downloads being streamed."""
+    """What a restart would cut right now — the downloads being streamed,
+    from the moment the request ARRIVED (the route lists it before it plans
+    the query, which took ~7 s on Sep 24, 2026)."""
     from tradingagents import positions_view as pv
 
     now = _time.time()
+    for k, r in list(_ACTIVE_DOWNLOADS.items()):
+        if now - r.get("at", r["since"]) > DOWNLOAD_STALE_S:
+            _ACTIVE_DOWNLOADS.pop(k, None)
     items = sorted(_ACTIVE_DOWNLOADS.values(), key=lambda r: r["since"])
     return {"count": len(items),
             "downloads": [{"what": r["what"], "rows": r["rows"],
@@ -534,7 +554,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          max_sl=0, days=0,
                          desc=None, batch=5_000, min_tp=0, min_sl=0,
                          tp_over_sl=False, asset=None, measured_days=0,
-                         db_path=None, store=None):
+                         db_path=None, store=None, _dl: dict | None = None):
     """The CSV, one chunk at a time — a module-level generator on purpose.
 
     Inside the route it was only reachable through StreamingResponse's ASYNC
@@ -586,12 +606,11 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
     _bal_at = (cols.index("winrate") + 1) if "winrate" in cols else len(cols)
     head = list(cols)
     head[_bal_at:_bal_at] = ["balanced", "balanced_why"]
-    _dl = _download_started(
-        "strategies CSV" + (f" · {coin}" if coin else "")
-        + (f" · {tf}" if tf else "")
-        + (f" · win % >= {min_winrate:g}" if min_winrate else "")
-        + (" · TP >= SL" if tp_over_sl else "")
-        + (f" · last {int(days)} days" if days else ""))
+    # the ROUTE listed this download when the request arrived (`_dl`); a
+    # direct caller (tests, tools) gets its own listing here
+    if _dl is None:
+        _dl = _download_started(_download_label(coin, tf, min_winrate,
+                                                tp_over_sl, days))
     try:
         w.writerow(head + ["monthly_json"])
         yield flush()
@@ -652,6 +671,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                                                separators=(",", ":"))])
                 sent += 1
                 _dl["rows"] = sent
+                _dl["at"] = _time.time()
                 yield flush()
                 # LET THE REST OF THE APP BREATHE. A windowed download RE-MEASURES
                 # every row from this PC's candles — about 0.09 s of pure Python
@@ -763,41 +783,52 @@ def strategies_csv(coin: str | None = None, tf: str | None = None,
 
     from tradingagents import rows_index as ri
 
-    # Fail BEFORE the stream starts — an error mid-download is a truncated file
-    # that looks complete — but WITHOUT running the query. This used to pull the
-    # first row out of `iter_rows`, so one download ran the whole query TWICE,
-    # and COLD on this store that is 126.1 s a pass (0.8 s warm): the check
-    # alone blew the 30 s proxy limit and the operator got "Internal Server
-    # Error" at 30.018 s with nothing written, twice (Sep 03, 2026: "ITS STILL
-    # NOT WORKING"). `export_plan` reads no rows and refuses with exactly what
-    # the query would have refused with, so the stream now starts at once.
+    # LISTED THE INSTANT THE REQUEST ARRIVES (RCA-2026-09-24-D):
+    # planning the query took ~7 s on Sep 24, 2026, and a restart in
+    # those seconds could not see the download it was about to cut.
+    # A refusal below unlists it; the stream unlists it when it ends.
+    _dl = _download_started(_download_label(coin, tf, min_winrate,
+                                            tp_over_sl, days))
     try:
-        ri.export_plan(coin=coin, signal=signal, sort=sort, row_id=row_id,
-                       group=group, min_winrate=min_winrate,
-                       min_trades=min_trades, desc=desc)
-    except ri.SortNotReady as exc:
-        raise HTTPException(503, str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
 
-    name = strategies_csv_name(coin, tf, signal, min_trades, sort,
-                               min_winrate=min_winrate, max_tp=max_tp,
-                               sizing=sizing, group=group, max_sl=max_sl,
-                               min_tp=min_tp, min_sl=min_sl,
-                               tp_over_sl=tp_over_sl, asset=asset,
-                               days=0 if months else days)
-    return StreamingResponse(
-        strategies_csv_lines(coin=coin, tf=tf, signal=signal,
-                            profitable=profitable, sort=sort,
-                            min_trades=min_trades, min_winrate=min_winrate,
-                            max_tp=max_tp, sizing=sizing, row_id=row_id,
-                            group=group, max_sl=max_sl,
-                            min_tp=min_tp, min_sl=min_sl,
-                            tp_over_sl=tp_over_sl, asset=asset,
-                            days=0 if months else days,
-                            measured_days=measured_days, desc=desc),
-        media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{name}"'})
+        # Fail BEFORE the stream starts — an error mid-download is a truncated file
+        # that looks complete — but WITHOUT running the query. This used to pull the
+        # first row out of `iter_rows`, so one download ran the whole query TWICE,
+        # and COLD on this store that is 126.1 s a pass (0.8 s warm): the check
+        # alone blew the 30 s proxy limit and the operator got "Internal Server
+        # Error" at 30.018 s with nothing written, twice (Sep 03, 2026: "ITS STILL
+        # NOT WORKING"). `export_plan` reads no rows and refuses with exactly what
+        # the query would have refused with, so the stream now starts at once.
+        try:
+            ri.export_plan(coin=coin, signal=signal, sort=sort, row_id=row_id,
+                           group=group, min_winrate=min_winrate,
+                           min_trades=min_trades, desc=desc)
+        except ri.SortNotReady as exc:
+            raise HTTPException(503, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+        name = strategies_csv_name(coin, tf, signal, min_trades, sort,
+                                   min_winrate=min_winrate, max_tp=max_tp,
+                                   sizing=sizing, group=group, max_sl=max_sl,
+                                   min_tp=min_tp, min_sl=min_sl,
+                                   tp_over_sl=tp_over_sl, asset=asset,
+                                   days=0 if months else days)
+        return StreamingResponse(
+            strategies_csv_lines(_dl=_dl, coin=coin, tf=tf, signal=signal,
+                                profitable=profitable, sort=sort,
+                                min_trades=min_trades, min_winrate=min_winrate,
+                                max_tp=max_tp, sizing=sizing, row_id=row_id,
+                                group=group, max_sl=max_sl,
+                                min_tp=min_tp, min_sl=min_sl,
+                                tp_over_sl=tp_over_sl, asset=asset,
+                                days=0 if months else days,
+                                measured_days=measured_days, desc=desc),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{name}"'})
+    except BaseException:
+        _download_finished(_dl)
+        raise
 
 
 @app.get("/api/screen/log")
@@ -3573,42 +3604,53 @@ def strategies_csv_v2(coin: str | None = None, tf: str | None = None,
 
     from tradingagents import rows_index as ri
 
-    db = _v2_rows_db()
-    if db is None:
-        raise HTTPException(404, _V2_EMPTY_WHY)
-    if months:
-        raise HTTPException(400, _V2_NO_WINDOW)
+    # LISTED THE INSTANT THE REQUEST ARRIVES (RCA-2026-09-24-D):
+    # planning the query took ~7 s on Sep 24, 2026, and a restart in
+    # those seconds could not see the download it was about to cut.
+    # A refusal below unlists it; the stream unlists it when it ends.
+    _dl = _download_started(_download_label(coin, tf, min_winrate,
+                                            tp_over_sl, days))
     try:
-        ri.export_plan(coin=coin, signal=signal, sort=sort, row_id=row_id,
-                       group=group, min_winrate=min_winrate,
-                       min_trades=min_trades, desc=desc, db_path=db)
-    except ri.SortNotReady as exc:
-        raise HTTPException(503, str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-    name = "v2-" + strategies_csv_name(coin, tf, signal, min_trades, sort,
-                                       min_winrate=min_winrate, max_tp=max_tp,
-                                       sizing=sizing, group=group,
-                                       max_sl=max_sl, min_tp=min_tp,
-                                       min_sl=min_sl, tp_over_sl=tp_over_sl,
-                                       asset=asset, days=days)
-    return StreamingResponse(
-        strategies_csv_lines(coin=coin, tf=tf, signal=signal,
-                            profitable=profitable, sort=sort,
-                            min_trades=min_trades, min_winrate=min_winrate,
-                            max_tp=max_tp, sizing=sizing, row_id=row_id,
-                            group=group, max_sl=max_sl,
-                            min_tp=min_tp, min_sl=min_sl,
-                            tp_over_sl=tp_over_sl, asset=asset,
-                            # the window re-measures from the v2 store's own
-                            # 1-minute candles, exits settled by the minute:
-                            # `store` travels with the generator because the
-                            # request's ContextVar is not visible in the
-                            # thread that drains it
-                            days=days, measured_days=measured_days, desc=desc,
-                            db_path=db, store=_stores.V2),
-        media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+        db = _v2_rows_db()
+        if db is None:
+            raise HTTPException(404, _V2_EMPTY_WHY)
+        if months:
+            raise HTTPException(400, _V2_NO_WINDOW)
+        try:
+            ri.export_plan(coin=coin, signal=signal, sort=sort, row_id=row_id,
+                           group=group, min_winrate=min_winrate,
+                           min_trades=min_trades, desc=desc, db_path=db)
+        except ri.SortNotReady as exc:
+            raise HTTPException(503, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        name = "v2-" + strategies_csv_name(coin, tf, signal, min_trades, sort,
+                                           min_winrate=min_winrate, max_tp=max_tp,
+                                           sizing=sizing, group=group,
+                                           max_sl=max_sl, min_tp=min_tp,
+                                           min_sl=min_sl, tp_over_sl=tp_over_sl,
+                                           asset=asset, days=days)
+        return StreamingResponse(
+            strategies_csv_lines(_dl=_dl, coin=coin, tf=tf, signal=signal,
+                                profitable=profitable, sort=sort,
+                                min_trades=min_trades, min_winrate=min_winrate,
+                                max_tp=max_tp, sizing=sizing, row_id=row_id,
+                                group=group, max_sl=max_sl,
+                                min_tp=min_tp, min_sl=min_sl,
+                                tp_over_sl=tp_over_sl, asset=asset,
+                                # the window re-measures from the v2 store's own
+                                # 1-minute candles, exits settled by the minute:
+                                # `store` travels with the generator because the
+                                # request's ContextVar is not visible in the
+                                # thread that drains it
+                                days=days, measured_days=measured_days, desc=desc,
+                                db_path=db, store=_stores.V2),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{name}"'})
+    except BaseException:
+        _download_finished(_dl)
+        raise
 
 
 @app.post("/api/v2/strategies/trades")

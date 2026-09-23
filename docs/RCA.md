@@ -247,9 +247,21 @@ proxy timeout value, not the words the proxy prints for every other failure.
 **COST** — none in money; two downloads lost and a report of an error that
 was not in the export.
 
-**FIX** — this commit.
+**FIX** — 0e61980a8aaf, and a second round found by pressing the real
+download on the live app (`Sep 24, 2026 7:09am`): six seconds in, the list of
+downloads in flight was still EMPTY — the route was planning the query before
+its stream started — so a restart in those seconds would still have cut it.
+Both CSV routes now list the download the instant the request arrives, unlist
+it if they refuse (a 503/400 never lingers), and hand the listing to the
+stream; a listing whose stream never starts is dropped after
+`DOWNLOAD_STALE_S` (the proxy's own 30 minutes). The same press, watched: a
+restart would have waited **155 s** and then gone ahead with the file complete
+(905,744 bytes, 1,735 rows, "WINDOW FLOOR" trailer). The launcher's messages
+print through `_say()`, so a console missing a character cannot abort a
+restart half-way.
 
-**GUARD** — `tests/test_a_restart_never_cuts_a_download.py`.
+**GUARD** — `tests/test_a_restart_never_cuts_a_download.py` (11), including
+`test_the_route_lists_the_download_the_instant_the_request_arrives`.
 
 ---
 

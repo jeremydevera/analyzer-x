@@ -137,6 +137,14 @@ def downloads_in_flight(port: int = API_PORT) -> list | None:
         return None
 
 
+def _say(msg: str) -> None:
+    """print() that cannot crash a restart on a console that lacks a
+    character (a cp1252 pipe has no "≥"); a raise here would abort the
+    restart after half of it had run."""
+    enc = getattr(sys.stdout, "encoding", None) or "utf-8"
+    print(msg.encode(enc, "replace").decode(enc, "replace"), flush=True)
+
+
 def wait_for_downloads(max_s: float = RESTART_WAIT_S, *, sleep=time.sleep,
                        clock=time.time, port: int = API_PORT) -> bool:
     """Wait until no download is being streamed, up to `max_s`.
@@ -152,19 +160,18 @@ def wait_for_downloads(max_s: float = RESTART_WAIT_S, *, sleep=time.sleep,
         got = downloads_in_flight(port)
         if not got:
             if said:
-                print("  the download(s) finished — restarting now")
+                _say("  the download(s) finished — restarting now")
             return True
         if not said:
             names = "; ".join(f"{d.get('what')} ({d.get('rows', 0):,} rows so far, "
                               f"since {d.get('since')})" for d in got)
-            print(f"waiting for {len(got)} download(s) to finish before "
-                  f"stopping the API — {names} (up to {int(max_s // 60)} min; "
-                  f"`start.py start --now` skips the wait)", flush=True)
+            _say(f"waiting for {len(got)} download(s) to finish before "
+                 f"stopping the API — {names} (up to {int(max_s // 60)} min; "
+                 f"`start.py start --now` skips the wait)")
             said = True
         if clock() - t0 >= max_s:
-            print(f"  still downloading after {int(max_s // 60)} min — restarting "
-                  f"anyway; that download will have to be pressed again",
-                  flush=True)
+            _say(f"  still downloading after {int(max_s // 60)} min — restarting "
+                 f"anyway; that download will have to be pressed again")
             return False
         sleep(5)
 

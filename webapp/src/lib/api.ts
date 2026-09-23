@@ -1092,6 +1092,15 @@ export const fmtMoney = (v: number | undefined | null) =>
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+/** "1h 40m" / "12m" / "under a minute" — for a wait the screen is naming */
+export function fmtLeft(seconds: number | null | undefined): string {
+  if (seconds == null || !isFinite(seconds)) return "";
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 60) return "under a minute";
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+
 export function fmtWhenMs(ms: number | undefined | null): string {
   if (ms == null || !Number.isFinite(ms)) return "—";
   const d = new Date(ms);
@@ -1701,6 +1710,8 @@ export function storeApi(store: StoreName) {
 // ------------------------------------------------------------- running jobs
 export interface RunningJob {
   kind: string; now: string; done: number; total: number; pct: number | null;
+  /** seconds left, from the work's own measured pace — absent when the step has none */
+  eta_s?: number | null; eta_at?: number | null; eta_why?: string;
 }
 export interface JobsAll {
   jobs: Record<string, JobStatus>;
@@ -1773,6 +1784,9 @@ export type IndexStatus = {
     phase?: string; pairs_done?: number; pairs_total?: number; rows?: number;
     seconds?: number; pairs_per_min?: number; running?: boolean;
     store?: "this" | "unknown"; age_s?: number;
+    /** seconds left and the clock time it lands, from the rebuild's own pace;
+     *  null when this step has no measured pace — `eta_why` says which */
+    eta_s?: number | null; eta_at?: number | null; eta_why?: string;
   };
   /** the OTHER store's running job, which shares this machine's one disk:
    *  the backlog waits for it, a row you press UPDATE on does not */

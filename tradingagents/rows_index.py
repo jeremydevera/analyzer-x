@@ -1900,6 +1900,27 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
             "backup": str(backup) if keep_backup else ""}
 
 
+def _rebuild_eta(got: dict, age_s: float):
+    """(seconds left, why) for one progress record; (None, why) when this
+    phase has no measured rate to speak from."""
+    phase = str(got.get("phase") or "")
+    try:
+        if "load" in phase:
+            rate = float(got.get("pairs_per_min") or 0)
+            left = int(got.get("pairs_total") or 0) - int(got.get("pairs_done") or 0)
+            if rate > 0:
+                return round(left / rate * 60), "pairs left at this run's pace"
+            return None, "no pace measured yet"
+        if phase.startswith("verif"):
+            est = float(got.get("verify_estimate_s") or 0)
+            if est > 0:
+                return max(round(est - age_s), 0), "the file's size at this disk's read speed"
+            return None, "no size estimate written"
+    except (TypeError, ValueError):
+        pass
+    return None, "this step has no measured pace"
+
+
 def rebuild_progress(db_path: Path | None = None) -> dict:
     """What `rebuild()` is doing to THIS store, for a caller in another
     process — `{}` when nothing is, or the file is older than
@@ -1937,6 +1958,15 @@ def rebuild_progress(db_path: Path | None = None) -> dict:
         got["running"] = (portable.pid_alive(pid) if pid
                           else age < REBUILD_FRESH_S)
         got["age_s"] = round(age)
+        # HOW LONG IS LEFT, from the rebuild's own measured rates — never a
+        # guess. Loading: pairs left at this run's pairs/min. Verifying: the
+        # disk-rate estimate the rebuild wrote when it started that phase,
+        # less the time since. Building an index has no measured rate, so it
+        # says so (the operator asked for the ETA on Sep 23, 2026, 20 minutes
+        # into a 2-hour verify with nothing on screen but "verifying").
+        got["eta_s"], got["eta_why"] = _rebuild_eta(got, age)
+        got["eta_at"] = (round(time.time() + got["eta_s"])
+                         if got["eta_s"] is not None else None)
         return got
     return {}
 

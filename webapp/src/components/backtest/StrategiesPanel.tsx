@@ -7,8 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StoreBadge from "@/components/StoreBadge";
-import { api as coreApi, ApiError, fmtMoney, fmtWhenMs, JobStatus, STRATEGY_SORTS, StrategyRow, storeApi, StoreName,
-  TradesResult, type IndexStatus, type StrategySort } from "@/lib/api";
+import { api as coreApi, ApiError, fmtMoney, fmtWhenMs, JobStatus, STRATEGY_SORTS, StrategyRow, storeApi, StoreName, TradesResult, type IndexStatus, type StrategySort, fmtLeft, fmtWhen } from "@/lib/api";
 import { pageWindow } from "@/lib/pager";
 import Badge from "@/components/ui/badge/Badge";
 import { Modal } from "@/components/ui/modal";
@@ -1023,6 +1022,9 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
             {`REBUILDING ${idx.rebuild.store === "unknown" ? "a" : "this"} row index — ${idx.rebuild.phase ?? "working"}`
               + ` · ${(idx.rebuild.pairs_done ?? 0).toLocaleString()} of ${(idx.rebuild.pairs_total ?? 0).toLocaleString()} pairs`
               + ` · ${(idx.rebuild.rows ?? 0).toLocaleString()} rows · running ${Math.floor((idx.rebuild.seconds ?? 0) / 3600)}h ${Math.floor(((idx.rebuild.seconds ?? 0) % 3600) / 60)}m`
+              + (idx.rebuild.eta_s != null
+                  ? ` · about ${fmtLeft(idx.rebuild.eta_s)} left${idx.rebuild.eta_at ? ` (around ${fmtWhen(idx.rebuild.eta_at)})` : ""}`
+                  : ` · no time estimate for this step${idx.rebuild.eta_why ? ` (${idx.rebuild.eta_why})` : ""}`)
               + ` — the dates and rows on this table catch up when it finishes`
               + (idx.rebuild.store === "unknown" ? " (started before this fix landed, so it does not say which store it is filing)" : "")}
           </span>

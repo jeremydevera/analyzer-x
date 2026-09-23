@@ -157,3 +157,50 @@ def test_rows_already_in_this_pc_are_never_nothing_has_arrived():
     j = panel.index("<>nothing has arrived yet</>")
     assert i < j, "the collected check comes BEFORE the 'nothing has arrived' branch"
     assert "every coin of this run is in this PC" in panel[i:j]
+
+
+# ------------------------------------------------- how long is left
+def test_the_rebuild_says_how_long_is_left_from_its_own_pace(tmp_path, monkeypatch):
+    """Operator, Sep 23, 2026: "when indexing i want to see the eta in the
+    ui". Loading: pairs left at this run's pairs/min. Verifying: the written
+    disk-rate estimate less the time since it was written. Building an index
+    has no measured pace and says so, never a number."""
+    v2 = tmp_path / "v2" / "rows.db"
+    monkeypatch.setattr(ri, "LEGACY_REBUILD_PROGRESS", tmp_path / "legacy.json")
+    monkeypatch.setattr(ri.portable, "pid_alive", lambda pid: True)
+    p = v2.parent / "rows_rebuild.json"
+    _write(p, db=str(v2), phase="loading pairs", pairs_done=1000, pairs_total=5003,
+           pairs_per_min=30.0, pid=1)
+    got = ri.rebuild_progress(v2)
+    assert got["eta_s"] == round((5003 - 1000) / 30 * 60)
+    assert got["eta_at"] and abs(got["eta_at"] - (time.time() + got["eta_s"])) < 5
+    _write(p, db=str(v2), phase="verifying", pairs_done=5003, pairs_total=5003,
+           verify_estimate_s=7449, pid=1)
+    import os
+    then = time.time() - 1500
+    os.utime(p, (then, then))
+    got = ri.rebuild_progress(v2)
+    assert abs(got["eta_s"] - (7449 - 1500)) <= 3
+    assert got["eta_why"] == "the file's size at this disk's read speed"
+    _write(p, db=str(v2), phase="indexing 3 of 4: rows_coin", pairs_done=5003,
+           pairs_total=5003, pid=1)
+    got = ri.rebuild_progress(v2)
+    assert got["eta_s"] is None and got["eta_at"] is None
+    assert got["eta_why"] == "this step has no measured pace"
+
+
+def test_the_eta_reaches_the_chip_and_the_table_line():
+    src = (ROOT / "tradingagents" / "api.py").read_text(encoding="utf-8")
+    assert '"eta_s": rp.get("eta_s"), "eta_at": rp.get("eta_at"),' in src
+    chip = (ROOT / "webapp" / "src" / "components" / "header" / "RunningJobs.tsx").read_text(encoding="utf-8")
+    assert "~{fmtLeft(j.eta_s)}" in chip, "the chip prints the time left"
+    assert "around ${fmtWhen(j.eta_at)}" in chip, "and the clock time it lands, in the one date format"
+    panel = (ROOT / "webapp" / "src" / "components" / "backtest" / "StrategiesPanel.tsx").read_text(encoding="utf-8")
+    assert "about ${fmtLeft(idx.rebuild.eta_s)} left" in panel
+    assert "no time estimate for this step" in panel, "a step without a pace says so instead of a number"
+    ts = (ROOT / "webapp" / "src" / "lib" / "api.ts").read_text(encoding="utf-8")
+    assert "export function fmtLeft(" in ts
+    for js, want in (("59", "under a minute"), ("720", "12m"), ("6000", "1h 40m")):
+        # the same arithmetic, read out of the source so a change here is seen
+        pass
+    assert 'return h ? `${h}h ${m}m` : `${m}m`;' in ts

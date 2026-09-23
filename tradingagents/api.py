@@ -1401,7 +1401,9 @@ def _background_activity() -> list:
             # indexes are built and the file verified every pair is loaded,
             # and "100%" beside "indexing 4 of 4" reads as finished
             "pct": (round(100 * done / total)
-                    if total and "load" in str(rp.get("phase") or "") else None)})
+                    if total and "load" in str(rp.get("phase") or "") else None),
+            "eta_s": rp.get("eta_s"), "eta_at": rp.get("eta_at"),
+            "eta_why": rp.get("eta_why")})
     # the v1 indexer working off a backlog
     try:
         idx = index_status()

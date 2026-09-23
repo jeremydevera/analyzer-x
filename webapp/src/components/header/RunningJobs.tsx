@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { jobsApi, RunningJob } from "@/lib/api";
+import { fmtLeft, fmtWhen, jobsApi, RunningJob } from "@/lib/api";
 
 const POLL_MS = 4000;
 
@@ -76,7 +76,9 @@ export default function RunningJobs() {
     <div className="flex items-center gap-2">
       {running.map((j) => (
         <Link key={j.kind} href={HREF[j.kind] ?? "/"}
-          title={j.now ? `${NAME[j.kind] ?? j.kind} · ${j.now}` : undefined}
+          title={[NAME[j.kind] ?? j.kind, j.now,
+                  j.eta_s != null ? `about ${fmtLeft(j.eta_s)} left${j.eta_at ? ` (around ${fmtWhen(j.eta_at)})` : ""}` : (j.eta_why ? `no estimate: ${j.eta_why}` : "")]
+                 .filter(Boolean).join(" · ")}
           className="flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-theme-xs font-medium text-brand-700 transition hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300">
           {/* a moving spinner: a static label cannot say "still working" */}
           <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -88,6 +90,11 @@ export default function RunningJobs() {
           <span>{NAME[j.kind] ?? j.kind}</span>
           {j.pct != null && (
             <span className="font-mono tabular-nums">{j.pct}%</span>
+          )}
+          {/* HOW LONG IS LEFT, from the work's own pace (operator, Sep 23,
+              2026: "when indexing i want to see the eta in the ui") */}
+          {j.eta_s != null && (
+            <span className="font-mono tabular-nums">~{fmtLeft(j.eta_s)}</span>
           )}
         </Link>
       ))}

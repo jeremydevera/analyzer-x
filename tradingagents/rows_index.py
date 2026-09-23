@@ -3159,6 +3159,42 @@ class QueryTooSlow(SortNotReady):
     """
 
 
+WIDE_WINRATE_LISTS = ("rows_wr4", "rows_wr3", "rows_wr2")
+
+
+def _winrate_list_note(need: str | None = None) -> str:
+    """What the fast win-rate list is doing RIGHT NOW — "" once one exists.
+
+    `need` names the ONE list a refusal is about (rows_wr4 carries TP, SL,
+    timeframe and signal; wr2/wr3 cannot stand in for it). Without it, any
+    wide win-rate list counts.
+
+    SAID ONLY WHEN TRUE. The old sentence — "The wide win-rate index that
+    makes this instant is still being built" — was printed whenever
+    `rows_wr2` was missing, without asking whether anything was building.
+    Measured Sep 24, 2026 12:29am on Backtest v2 (98,986,982 rows): no
+    win-rate list existed, the only build running was `rows_pr2` (the PROFIT
+    list), and the operator's win % >= 85 filter spun for as long as it was
+    left. A REPORT, never an action: the callers that refuse a read start
+    the list themselves (`_build_index`) BEFORE asking this what to say, so a
+    message helper can never spawn a process — the first draft did, from a
+    test, into a temp store.
+    """
+    lists = (need,) if need else WIDE_WINRATE_LISTS
+    if any(has_index(n) is True for n in lists):
+        return ""
+    busy = build_running()
+    if busy in lists:
+        return (f" The fast win-rate list ({busy}) that makes this instant "
+                f"is being built now — this answers the moment it finishes.")
+    if busy:
+        return (f" The fast win-rate list that makes this instant is not "
+                f"built yet; it starts when the {busy} build finishes "
+                f"(one build at a time).")
+    return (f" The fast win-rate list ({need or 'rows_wr4'}) that makes this "
+            f"instant is not built, and nothing is building it yet.")
+
+
 def _slow_why(coin, tf, signal, min_winrate, min_trades, sort,
               sizing=None, max_tp=0) -> str:
     """Why this read ran out of budget, and what makes it fast - named from the
@@ -3178,8 +3214,21 @@ def _slow_why(coin, tf, signal, min_winrate, min_trades, sort,
     if float(min_winrate or 0) > 0:
         # "the wide win-rate index ... is still being built" was printed after
         # it HAD been built (operator's screenshot, 2026-08-27) — a false label
-        # on a true refusal. Say it only while it is actually missing.
-        building = " The wide win-rate index that makes this instant is still being built." if has_index("rows_wr2") is not True else ""
+        # on a true refusal — and on Sep 24, 2026 while NOTHING was building
+        # it. `_winrate_list_note` says only what is true right now.
+        # Only at SIZE: a small store sorts without any wide list, and the
+        # workarounds below really are fast there.
+        building = (_winrate_list_note()
+                    if _rows_estimate() > UNINDEXED_LIMIT else "")
+        if building:
+            # WITHOUT A WIDE LIST NO WORKAROUND ANSWERS IN TIME. "Add a
+            # min-trades floor", "rank by win %" and "name a coin" were all
+            # measured on a store that had one; on Backtest v2 without it all
+            # three were refused too (13 s, 24 s and 22 s, Sep 24, 2026).
+            return (f"a win % floor of {float(min_winrate):g} over {what} "
+                    f"needs more than {QUERY_BUDGET_S:g}s without a fast "
+                    f"win-rate list, and this store does not have one "
+                    f"yet.{building}")
         if not (min_trades and int(min_trades) > 0):
             return (f"a win % floor of {float(min_winrate):g} over {what} "
                     f"needs more than {QUERY_BUDGET_S:g}s on this store. "
@@ -3831,6 +3880,20 @@ def query(coin=None, tf=None, signal=None, profitable=False,
                     tf=tf, signal=signal, signal_seeks=signal_seeks,
                     group=group, max_sl=max_sl, min_sl=min_sl,
                     tp_over_sl=tp_over_sl, asset=asset))
+    # NO WIDE WIN-RATE LIST, NO 20-SECOND ATTEMPT. Without one, a win % floor
+    # that could not seek walks the whole store until QUERY_BUDGET_S and is
+    # refused anyway — and the panel re-asks every 15 s, so on Sep 24, 2026
+    # Backtest v2's disk spent 13-37 s per retry reading for nothing, while
+    # the list that would fix it was trying to build on the same disk. Refuse
+    # at once, name the list's real state, start it if nothing is building.
+    # Only while no wide list exists — the moment one does, this never fires.
+    if (float(min_winrate or 0) > 0 and not coin and not winrate_seeks
+            and not row_id and _rows_estimate() > UNINDEXED_LIMIT
+            and not any(has_index(n) is True for n in WIDE_WINRATE_LISTS)):
+        _build_index("rows_wr4")        # a no-op while any build runs
+        raise SortNotReady(_slow_why(coin, tf, signal, min_winrate,
+                                     min_trades, key, sizing=sizing,
+                                     max_tp=max_tp))
     # `ORDER BY profit` with a filter beside it: the wide profit index makes
     # that walk index-only (see WIDE_PROFIT). When it is missing, start it —
     # the request itself still runs, and the 20 s budget is what answers 503.
@@ -3915,9 +3978,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             f"win % >= {float(min_winrate):g} with filters beside it (TP, SL, "
             f"timeframe, signal or the crypto/stocks split) needs the widest "
             f"win-rate index (rows_wr4) — without it every row above the "
-            f"floor is read off the disk to test the rest. It is being built "
-            f"in the background; try again in a while, or name a coin, which "
-            f"is answered now")
+            f"floor is read off the disk to test the rest."
+            f"{_winrate_list_note('rows_wr4') or ' It exists now - ask again.'}")
     need = SORT_INDEX.get(key)
     # A missing index only matters at size. Sorting 4,000 rows without one is
     # instant; sorting 21,582,584 had not finished in ten minutes (measured

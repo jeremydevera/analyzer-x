@@ -172,6 +172,84 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-24-B — the win % filter on Backtest v2 spun for ever, claiming a build that was not happening
+
+**CEO**
+
+* Your filter on Backtest v2 (win 85% or better, the "close it, I won" price
+  at least as wide as the "close it, I was wrong" price, last 30 days) showed
+  "still working — asking again in a moment" and never finished.
+* Why: Backtest v2's table grew to about 99 million strategies and was
+  missing the fast list that answers a win-rate filter. Each try read the
+  disk for 20 seconds, gave up, and tried again 15 seconds later, for ever.
+  It said the list was "still being built" — nothing was building it — and
+  every shortcut it suggested was refused too.
+* What stops it now: the answer comes back in under a second and says what
+  is really happening; the missing list was started at 12:36am and your
+  filter answers by itself the moment it finishes.
+
+**DEV**
+
+* `rows_index._slow_why` printed "The wide win-rate index … is still being
+  built" whenever `has_index("rows_wr2")` was not True — no `build_running()`
+  check. On the v2 store (98,986,982 rows) wr2/wr3/wr4 were all missing and
+  the only build was `rows_pr2`. `_winrate_list_note(need)` now reports the
+  real state (being built / queued behind X / nothing building) with no
+  side effects, and the min-trades / rank-by-win-% / name-a-coin advice is
+  dropped at size while no wide list exists (all three measured refused).
+* `rows_index.query`: a win % floor that cannot seek, on a big store with no
+  wide list, used to walk until `QUERY_BUDGET_S` (27 s measured) on every
+  panel retry; it now starts `rows_wr4` and refuses at once (0.7 s
+  measured), and the `rows_wr4` refusal stopped claiming "being built in the
+  background" unconditionally.
+* Invariant broken: **a status line is derived from what is HAPPENING, never
+  from what is missing** (`rows_index.py:3198`, `_slow_why`) — the same shape
+  as RCA-2026-09-24-A an hour earlier. Guard:
+  `tests/test_the_winrate_refusal_tells_the_truth.py` (8), six of which fail
+  on the pre-fix file.
+
+**SAW** — the operator's screenshot, `Sep 24, 2026 12:2xam`: Backtest v2 →
+min win % 85, TP ≥ SL, last days 30, and the badge "still working — asking
+again in a moment…".
+
+**TIMELINE**
+
+1. `Sep 23, 2026` — the v2 table is rebuilt from scratch (RCA-2026-09-23-H)
+   and comes back with the basic search lists only; the on-demand ones
+   (rows_wr2/wr3/wr4, rows_pr2) are gone.
+2. `Sep 24, 2026 12:18am` — a `rows_pr2` build starts on v2.
+3. `12:29am` — the operator's filter, replayed against the app: HTTP 503
+   after **27.0 s**, "…still being built". Min trades 100 → 503 in 13.0 s;
+   rank by win % → 503 in 23.9 s; coin XPIN → 503 in 22.3 s. The panel's
+   retry is every 15 s, so the disk was reading for nothing almost
+   continuously, beside the build.
+4. `12:36am` — on the operator's "start now", the `rows_pr2` build is stopped
+   (18 minutes in; SQLite rolls the half-built index back) and `rows_wr4`
+   started in pid 27296, reading the 32.3 GB file at ~6 MB/s.
+5. `12:43am` — with the fix, the same filter is refused in **0.7 s** with
+   "…rows_wr4 … is being built now — this answers the moment it finishes."
+
+**ROOT CAUSE** — a status sentence derived from "is the index missing"
+instead of "is anything building it", on a store that had just lost every
+on-demand index in a rebuild.
+
+**WHY IT WAS NOT CAUGHT** — `test_query_budget.py` pins that the refusal
+suggests a min-trades floor, on a 400-row fixture where that is true. Every
+test of the refusal text runs on a store too small to need a wide list, so
+neither "nothing is building" nor "the workaround fails too" could occur. The
+workarounds were measured once, on the v1 store, and written into the
+sentence as facts about every store.
+
+**COST** — none in money or rows; about an hour of a filter that could not
+answer, and a disk kept busy by retries while the fix was trying to build.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_winrate_refusal_tells_the_truth.py::test_it_never_claims_a_build_that_is_not_running`
+and `::test_the_query_refuses_fast_instead_of_walking_the_store`.
+
+---
+
 ## RCA-2026-09-24-A — a finished index build still said "building NOW", so Backtest v2 could not look a strategy up
 
 **CEO**

@@ -225,7 +225,7 @@ never wrote a second heartbeat and asked whether the figure went down.
 
 **FIX** — this commit.
 
-**GUARD** — as above; the test now writes two heartbeats.
+**GUARD** — `tests/test_the_screen_says_the_index_is_rebuilding.py::test_the_rebuild_says_how_long_is_left_from_its_own_pace` — it now writes two heartbeats and demands the second reads less time left.
 
 ---
 

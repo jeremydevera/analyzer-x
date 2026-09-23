@@ -1097,6 +1097,12 @@ export function fmtLeft(seconds: number | null | undefined): string {
   if (seconds == null || !isFinite(seconds)) return "";
   const s = Math.max(0, Math.round(seconds));
   if (s < 60) return "under a minute";
+  // DAYS past one day: the v1 re-file's honest estimate was ~5,300 hours and
+  // printed as "5341h 0m", which nobody reads as seven months
+  if (s >= 86400) {
+    const d = Math.floor(s / 86400), dh = Math.floor((s % 86400) / 3600);
+    return dh ? `${d}d ${dh}h` : `${d}d`;
+  }
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
   return h ? `${h}h ${m}m` : `${m}m`;
 }

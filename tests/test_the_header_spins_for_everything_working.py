@@ -77,7 +77,9 @@ def test_the_indexer_working_off_a_backlog_is_a_chip(monkeypatch):
         "behind": 806, "stale": 40, "indexer_running": True})
     got = api._background_activity()
     assert [g["kind"] for g in got] == ["indexing"]
-    assert "846 pair(s)" in got[0]["now"]
+    # the store is NAMED since Sep 24, 2026 — "indexing N pair(s)" read as the
+    # Backtest v2 run the operator had just been told was finished
+    assert "Backtest (v1)" in got[0]["now"] and "846" in got[0]["now"], got[0]["now"]
     # a backlog with NO worker is not "working" — that is the stalled screen
     # RCA-2026-09-14-B was about, and a spinner would say the opposite
     monkeypatch.setattr(api, "index_status", lambda pending=None: {

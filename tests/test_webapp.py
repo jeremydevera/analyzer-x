@@ -873,6 +873,11 @@ def test_the_two_date_formatters_agree(tmp_path):
     # lift the real implementation, not a copy of it
     lifted = (body[start:end].replace("export function", "function")
               .replace(": number | undefined | null", "")
+              # fmtLeft (between MONTHS and fmtWhen since the rebuild ETA
+              # work) spells the same type the other way round, and node
+              # refused the whole file — so this guard of the MANDATORY date
+              # format was red and proving nothing
+              .replace(": number | null | undefined", "")
               .replace(": string", ""))
     js.write_text(lifted + "\nconsole.log(JSON.stringify("
                   + json.dumps(stamps) + ".map(s => fmtWhenMs(s * 1000))));\n")

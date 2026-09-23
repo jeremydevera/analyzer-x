@@ -50,7 +50,10 @@ const NAME: Record<string, string> = {
   collect_v2: "collecting GitHub results (v2)",
   rebuild: "rebuilding the row index",
   rebuild_v2: "rebuilding the v2 row index",
-  indexing: "indexing",
+  // WHICH store: this chip is Backtest v1's re-file, never v2's — "indexing"
+  // alone read as the v2 run the operator had just been told was finished
+  // (Sep 24, 2026: "why is it still indexing on upper right")
+  indexing: "indexing Backtest v1",
   github: "GitHub measuring",
   github_v2: "GitHub measuring (v2)",
 };

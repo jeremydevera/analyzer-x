@@ -1364,6 +1364,41 @@ def jobs_all() -> dict:
     return {"jobs": out, "running": running, "any_running": bool(running)}
 
 
+_PACE_CACHE: dict = {"at": 0.0, "per": None}
+PACE_SAMPLE = 5          # the last N filing passes the pace is taken from
+
+
+def _index_pace_s() -> float | None:
+    """Seconds the v1 indexer is taking per coin-timeframe, measured.
+
+    From its OWN log — the only record of how long each pass took ("+1 pairs
+    (24,800 rows) in 3490.16s, 83 left") — over the last PACE_SAMPLE passes.
+    A file read of the tail, cached a minute: this runs on a route polled
+    every 4 s. None when there is nothing to measure yet.
+    """
+    import re as _re
+
+    now = _time.time()
+    if now - _PACE_CACHE["at"] < 60:
+        return _PACE_CACHE["per"]
+    per = None
+    try:
+        from tradingagents import rows_index as _ri
+
+        with open(_ri.LOGFILE, "rb") as fh:
+            fh.seek(0, 2)
+            fh.seek(max(0, fh.tell() - 65536))
+            tail = fh.read().decode("utf-8", "replace")
+        got = _re.findall(r"\+(\d+) pairs \([\d,]+ rows\) in ([\d.]+)s", tail)
+        got = [(int(n), float(s)) for n, s in got if int(n) > 0][-PACE_SAMPLE:]
+        if got:
+            per = sum(s for _, s in got) / sum(n for n, _ in got)
+    except (OSError, ValueError):
+        per = None
+    _PACE_CACHE.update(at=now, per=per)
+    return per
+
+
 def _background_activity() -> list:
     """What is working that is NOT a disk job, in the running-chip shape —
     so the header's spinner turns for every kind of waiting the operator can
@@ -1409,9 +1444,28 @@ def _background_activity() -> list:
         idx = index_status()
         behind = int(idx.get("behind") or 0) + int(idx.get("stale") or 0)
         if behind > 0 and idx.get("indexer_running"):
-            out.append({"kind": "indexing",
-                        "now": f"indexing {behind:,} pair(s) into the row index",
-                        "done": 0, "total": behind, "pct": None})
+            # NAME THE STORE AND THE REAL TIME LEFT. Operator, Sep 24, 2026,
+            # after being told Backtest v2 was finished: "why is it still
+            # indexing on upper right. fix this ui bug its confusing". This
+            # chip is the V1 store's re-file — never v2, whose rows are filed
+            # by the job that measures them — and it said only "indexing".
+            # Measured that morning: 5,341 coin-timeframes to re-file at 18-73
+            # minutes EACH (one pair at a time, eight sort lists maintained
+            # per insert), so about seven months; a spinner with no store and
+            # no end reads as "the thing I just finished is still going".
+            per = _index_pace_s()
+            eta = per * behind if per else None
+            out.append({
+                "kind": "indexing",
+                "now": (f"Backtest (v1): re-filing {behind:,} coin-timeframe(s) "
+                        f"into the search table"
+                        + (f" · about {per / 60:.0f} min each at the current "
+                           f"pace" if per else "")),
+                "done": 0, "total": behind, "pct": None,
+                "eta_s": eta,
+                "eta_at": (_time.time() + eta) if eta else None,
+                "eta_why": ("" if per else
+                            "no filing pass has finished yet to measure")})
     except Exception:                                          # noqa: BLE001
         pass
     # a GitHub run still measuring

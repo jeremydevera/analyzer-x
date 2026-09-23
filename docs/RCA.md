@@ -172,6 +172,78 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-24-C — the "indexing" spinner was Backtest v1's seven-month re-file, and it looked like Backtest v2 still running
+
+**CEO**
+
+* After being told Backtest v2 was finished, you still saw "indexing" in the
+  top-right corner, twice, and asked why. The first time you were told it was
+  a leftover and to refresh — that was wrong: the check behind that answer
+  asked the app a question it does not understand and read the error as "no
+  jobs".
+* Why: the spinner was never about v2. It is the OLD Backtest (v1) store
+  re-filing 5,341 coin-timeframes into its search table, one at a time, at
+  about 50 minutes each — roughly 194 days — and it said only "indexing".
+* What stops it now: the spinner says "indexing Backtest v1" and how long is
+  left at the real pace, e.g. "~194d". Ending it for real is a separate
+  choice: a one-pass rebuild of the v1 table measured at about 6 hours.
+
+**DEV**
+
+* `api._background_activity` built the chip from `index_status()` (the V1
+  store) as `{"kind": "indexing", "now": "indexing N pair(s) into the row
+  index"}` — no store, no pace, no end; `RunningJobs.NAME["indexing"]` was
+  the bare word. `_index_pace_s()` now reads the indexer's own "+N pairs
+  (… rows) in Xs" lines (last 5, cached 60 s) and the chip carries `eta_s`,
+  `eta_at`, a store-named sentence and `eta_why` when there is no pace yet.
+  `fmtLeft` prints days past 24 h ("5341h 0m" was the alternative).
+* Invariant broken: **label-must-match-data** — a label names WHAT it counts;
+  "indexing" beside the notification bell counted a different store's work.
+  Found beside it: `test_webapp.py::test_the_two_date_formatters_agree`, the
+  guard of the MANDATORY date format, had been red since `fmtLeft` landed
+  between `MONTHS` and `fmtWhen` with a type spelling its lifter did not strip.
+* Guard: `tests/test_the_indexing_chip_names_its_store_and_its_end.py` (6),
+  four of which fail on the pre-fix files.
+
+**SAW** — the header chip "indexing", `Sep 24, 2026 12:2xam` and again at
+`5:0xam`, after "Backtest v2 is finished".
+
+**TIMELINE**
+
+1. `Sep 21, 2026 8:52pm` — the v1 indexer (pid 17896) starts; the v1 store
+   holds ~5,300 coin-timeframes whose files are newer than their index entry.
+2. `Sep 24, 2026 12:2xam` — "is it still indexing". `curl /api/jobs/all`
+   answers `404 unknown job kind: all`; its body has no `running` key, which
+   the check read as an empty list, and the operator was told to refresh. The
+   header polls `/api/jobs`.
+3. `5:02am` — polling `/api/jobs` every 4 s for 60 s like the header: 15 of 15
+   answers carry `indexing 5,341 pair(s) into the row index`. py-spy: the
+   indexer's loop is inside `index_pair`'s INSERT; 14.7 MB read and 7.2 MB
+   written in 30 s; the log's last passes took 1,090-4,411 s per pair.
+4. `5:30am` — the chip names the store and the measured time left.
+
+**ROOT CAUSE** — a status chip with no subject, over a job whose pace makes
+it effectively endless.
+
+**WHY IT WAS NOT CAUGHT** — `test_the_indexer_working_off_a_backlog_is_a_chip`
+asserted the COUNT ("846 pair(s)") and nothing about WHOSE count it was;
+with one store that was enough, and the second store arrived without anyone
+re-reading the chip. And the verification that produced the wrong "refresh"
+answer checked a URL instead of the endpoint the screen polls — **verify
+against the exact request the screen makes, and treat a response with no
+expected key as an error, never as empty.**
+
+**COST** — none in money or rows; two wrong reassurances and a confusing
+screen. The v1 search table is behind on 5,341 coin-timeframes, which is
+real and is not changed by this fix.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_indexing_chip_names_its_store_and_its_end.py::test_it_names_the_v1_store`
+and `::test_the_time_left_is_the_measured_pace_times_the_backlog`.
+
+---
+
 ## RCA-2026-09-24-B — the win % filter on Backtest v2 spun for ever, claiming a build that was not happening
 
 **CEO**

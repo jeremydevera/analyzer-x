@@ -3282,11 +3282,31 @@ def build_running(name: str | None = None) -> str:
             age = time.time() - lock.stat().st_mtime
         except OSError:
             continue
-        if age <= BUILD_LOCK_TTL_S:
+        # THE PID IS CHECKED, NOT ONLY THE CLOCK. The lock holds the builder's
+        # pid and nothing ever read it, so a build that DIED was reported as
+        # running for the whole six-hour TTL — and every search needing that
+        # order answered "it is being built NOW" with nothing building.
+        # Measured Sep 24, 2026 12:11am: `.build-rows_id.pid` in the v2 store
+        # held pid 17152, dead since `Sep 23, 2026 11:24pm`, and Backtest v2
+        # could not look a row up. A RECYCLED pid can only make a dead build
+        # look alive, which is exactly the old behaviour, so this check can
+        # only ever help.
+        gone = False
+        try:
+            pid = int((lock.read_text(encoding="utf-8") or "0").strip() or 0)
+            gone = bool(pid) and not portable.pid_alive(pid)
+        except (OSError, ValueError):
+            gone = False
+        if not gone and age <= BUILD_LOCK_TTL_S:
             return lock.name[len(".build-"):-len(".pid")]
-        # older than any real build: the child died without cleaning up
+        # the child died without cleaning up — by its pid, or by being older
+        # than any real build
         with contextlib.suppress(OSError):
             lock.unlink()
+            print(f"[rows-index] {lock.name[len('.build-'):-len('.pid')]}: the "
+                  f"build that started {age / 60:.0f} min ago is "
+                  f"{'gone' if gone else 'older than any real build'} — "
+                  f"cleared, the next search starts a new one", flush=True)
     return ""
 
 

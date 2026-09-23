@@ -172,6 +172,71 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-24-A — a finished index build still said "building NOW", so Backtest v2 could not look a strategy up
+
+**CEO**
+
+* You asked whether it was still indexing. It was not — and the app still
+  believed it was, so any search for a strategy by its code on Backtest v2
+  answered "the list is being built now, wait".
+* Why: while the app builds a sorted list it leaves a small marker file
+  naming the process doing the work. That process was gone, and nothing ever
+  checked — the marker was simply believed for six hours. It also blocked a
+  new build from starting, so the wait could never end by itself.
+* What stops it now: the app checks whether the process in the marker is
+  still alive. A dead one is cleared at once and the next search starts a new
+  build. Checked after the fix: strategy #XLV6V5HJ (XPIN, 1 hour, mom6) is
+  found in 0.3 seconds.
+
+**DEV**
+
+* `rows_index.build_running` compared only `lock.stat().st_mtime` against
+  `BUILD_LOCK_TTL_S` (6 h) and never read the pid the lock has always
+  carried. `.build-rows_id.pid` in the v2 store held **17152**, written
+  `Sep 23, 2026 11:24pm`; that process was gone by `Sep 24, 2026 12:11am`
+  and `build_running()` still answered `rows_id`.
+* Knock-on: `_build_index` refuses while `build_running()` names anything, so
+  the dead build also prevented a live one — and `query()` raises
+  `SortNotReady` meanwhile, which is what the screen printed.
+* Invariant broken: **something must notice when it dies** (the Sep 14 rule
+  for the indexer), applied to a BUILD. A recycled pid can only make a dead
+  build look alive, which is the old behaviour, so the check cannot regress.
+* Guard: `tests/test_a_dead_build_stops_saying_it_is_building.py` (3),
+  verified red on the pre-fix file.
+
+**SAW** — `Sep 24, 2026 12:11am`: `ri.build_running()` → `'rows_id'` on the v2
+store, `.build-rows_id.pid` = 17152 dated `Sep 23, 2026 11:24pm`, and no such
+process in the task list.
+
+**TIMELINE**
+
+1. `Sep 23, 2026 11:24pm` — a build of v2's id list starts (the store had
+   grown to 98,986,982 rows over 5,004 coin-timeframes).
+2. `~11:30pm` — that process ends. The index itself exists
+   (`has_index("rows_id")` is True), but the marker is left behind.
+3. `Sep 24, 2026 12:11am` — the operator asks whether it is still indexing.
+   `build_running()` says yes; the task list says the pid is gone.
+4. `12:20am` — with the pid check, `build_running()` answers `""`, the marker
+   is cleared with a line saying why, and `#XLV6V5HJ` is found in **0.297 s**.
+
+**ROOT CAUSE** — a liveness marker whose liveness was never checked.
+
+**WHY IT WAS NOT CAUGHT** — the comment above `BUILD_LOCK_TTL_S` says a TTL
+was chosen *instead of* a liveness check because liveness "is not portable
+across Windows and POSIX" — but `portable.pid_alive` was written for exactly
+that and is already used twice in the same file. The tests all drive a build
+that finishes; none kills one. **When a module writes a pid and then only
+reads a timestamp, the pid is a comment, not a check.**
+
+**COST** — none in rows or money: the index existed and nothing was lost. An
+hour of a screen that told the operator to wait for work that had finished.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_a_dead_build_stops_saying_it_is_building.py::test_a_build_whose_process_is_gone_is_not_running`.
+
+---
+
 ## RCA-2026-09-23-K — the rebuild's final check read the 30 GB file at 0.54 MB/s: six hours, unfinished, against a two-hour estimate
 
 **CEO**

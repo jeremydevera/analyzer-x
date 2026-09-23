@@ -696,6 +696,39 @@ def test_the_estimate_matches_the_file_it_is_about():
     """
     est = lambda n: round(n / (ri.VERIFY_MB_PER_S * 1e6))       # noqa: E731
     assert est(42e9) > est(21e9) > est(1e9) > 0, "it must scale with the file"
-    # 41.94 GB at the measured 4.1 MB/s = 2.84 h, which is what it took
+    # 41.94 GB at the index-walk pace measured Sep 23, 2026 (the 98,986,982-row
+    # table counted in 301 s on the 30.5 GB v2 file, ~50 MB/s) = 0.23 h. The
+    # page-walk pace this pinned before (4.1 MB/s, 2.84 h) was quick_check's,
+    # which is no longer the default verify: it read 0.54 MB/s on Sep 23 and
+    # ran 6 h 14 min without finishing (RCA-2026-09-23-K).
     hours = est(41.94e9) / 3600
-    assert 2.5 < hours < 3.2, f"{hours:.2f} h — the measurement moved"
+    assert 0.15 < hours < 0.35, f"{hours:.2f} h — the measurement moved"
+
+
+
+def test_the_verify_walks_every_index_and_only_page_walks_on_request(tmp_path):
+    """RCA-2026-09-23-K: `PRAGMA quick_check` on the 30.5 GB v2 rebuild read
+    at 0.54 MB/s — 6 h 14 min and unfinished against a 2 h 4 min estimate —
+    so the default verify is one sequential walk of every index, which
+    finishes in minutes and still fails on a b-tree that cannot be read or
+    does not agree with the table. The page walk stays behind `full_check`."""
+    import sqlite3
+    import inspect
+    src = inspect.getsource(ri.rebuild)
+    assert "_walk_every_index(con, got_rows)" in src
+    assert 'con.execute("PRAGMA quick_check").fetchone()[0]\n                     if full_check' in src
+    assert "full_check: bool = False" in src
+    assert ri.VERIFY_MB_PER_S >= 20, "the estimate's pace is the index walk's, not the page walk's"
+    # the walk itself: every index agrees -> "ok"; a table-index mismatch is named
+    db = tmp_path / "t.db"
+    con = sqlite3.connect(db)
+    con.executescript(
+        "CREATE TABLE rows (id TEXT, pair TEXT, profit REAL, coin TEXT, winrate REAL, trades INT);"
+        "CREATE INDEX rows_pair ON rows (pair); CREATE INDEX rows_profit ON rows (profit DESC, id);"
+        "INSERT INTO rows VALUES ('a','X-1h',1.0,'X',50,3),('b','X-1h',2.0,'X',60,4);")
+    con.commit()
+    assert ri._walk_every_index(con, 2) == "ok"
+    assert ri._walk_every_index(con, 3).startswith("index rows_")
+    assert "2 rows against 3" in ri._walk_every_index(con, 3)
+    main_src = inspect.getsource(ri.main)
+    assert '"--full-check" in args' in main_src

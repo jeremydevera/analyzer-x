@@ -1519,7 +1519,11 @@ VERIFY_TICK_S = 5.0
 # there is no percentage to be had — the operator asked for one twice and the
 # honest answer was "none exists". This turns that into "32 min of about 170",
 # which is a CLOCK ESTIMATE and is published under a name that says so.
-VERIFY_MB_PER_S = 4.1
+# the verify's pace for its ESTIMATE: an index walk reads each b-tree in
+# order. Measured Sep 23, 2026 on the 30.5 GB v2 rebuild: the 98,986,982-row
+# table counted in 301 s (~50-60 MB/s of file); quick_check's page walk on the
+# same file and disk read 0.54 MB/s, which is why it is no longer the default
+VERIFY_MB_PER_S = 50.0
 
 
 def _resumable(dest: Path, stems: set) -> tuple | str:
@@ -1593,8 +1597,33 @@ def _resumable(dest: Path, stems: set) -> tuple | str:
             con.close()
 
 
+def _walk_every_index(con, expected_rows: int) -> str:
+    """Read every index on `rows` end to end and count what it holds — "ok"
+    when each one agrees with the table, else the first that does not.
+
+    This is the verify that FINISHES on a spinning disk. `PRAGMA quick_check`
+    visits pages in b-tree order through a small cache — measured Sep 23,
+    2026 on the 30.5 GB v2 rebuild: **0.54 MB/s**, 6 h 14 min and still not
+    done against a 2 h 4 min estimate, and a 3 GB page cache did not change
+    the rate (106 s of CPU in six hours: it was waiting on the disk). An index
+    walk is a sequential read of one b-tree; the 98,986,982-row table counted
+    in 301 s. A corrupt index page still fails here — the walk raises or the
+    count disagrees — and the table's own count and the pair count come first.
+    """
+    names = [r[0] for r in con.execute(
+        "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='rows' "
+        "AND name NOT LIKE 'sqlite_%' ORDER BY name")]
+    for name in names:
+        n = int(con.execute(
+            f"SELECT count(*) FROM rows INDEXED BY {name}").fetchone()[0])
+        if n != expected_rows:
+            return f"index {name} holds {n:,} rows against {expected_rows:,}"
+    return "ok"
+
+
 def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
-            resume: bool = True, force: bool = False) -> dict:
+            resume: bool = True, force: bool = False,
+            full_check: bool = False) -> dict:
     """Re-index EVERY pair file into a fresh rows.db, then swap it in.
 
     This is the technique CLAUDE.md has prescribed since 2026-08-26 —
@@ -1805,7 +1834,11 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
                 "SELECT count(*) FROM rows").fetchone()[0])
             got_pairs = int(con.execute(
                 "SELECT count(*) FROM pairs").fetchone()[0])
-            quick = con.execute("PRAGMA quick_check").fetchone()[0]
+            # every index walked end to end (minutes); the page-by-page
+            # `PRAGMA quick_check` only on request — it ran 6 h 14 min without
+            # finishing on this disk (RCA-2026-09-23-K)
+            quick = (con.execute("PRAGMA quick_check").fetchone()[0]
+                     if full_check else _walk_every_index(con, got_rows))
         finally:
             con.set_progress_handler(None, 0)
     except Exception as exc:                                    # noqa: BLE001
@@ -4913,7 +4946,8 @@ def main(argv: list | None = None) -> int:
     if args and args[0] == "--rebuild":
         with contextlib.suppress(OSError, AttributeError):
             os.nice(10)          # six hours of load must not outrank a click
-        got = rebuild(resume="--fresh" not in args)
+        got = rebuild(resume="--fresh" not in args,
+                      full_check="--full-check" in args)
         print(f"[rows-index] rebuild: {got}", flush=True)
         return 0 if got.get("rebuilt") else 1
     if args and args[0] == "--build":

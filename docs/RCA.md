@@ -172,6 +172,79 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-23-K — the rebuild's final check read the 30 GB file at 0.54 MB/s: six hours, unfinished, against a two-hour estimate
+
+**CEO**
+
+* The fresh Backtest v2 index (99 million rows, 30 GB) was complete by
+  1:57pm and then sat in a "checking" step that its own screen estimated at
+  2 hours; at 11:20pm it was still checking — the disk was handing it half a
+  megabyte a second — and a second check with a 3 GB memory cache did no
+  better. Your table kept showing Sep 17 dates for another nine hours.
+* Why: the check reads the file one small page at a time in an order the
+  spinning disk cannot serve quickly, and the estimate assumed a speed eight
+  times what it got.
+* What stops it now: the check reads each lookup list once, end to end,
+  which finishes in minutes and still catches a broken list; the estimate
+  uses the speed that check really gets; and tonight the fresh file was put
+  in place by hand on the strength of its exact row and pair counts
+  (98,986,982 and 5,003), with the old file kept as a backup.
+
+**DEV**
+
+* `rows_index.rebuild` ran `PRAGMA quick_check` as its verify;
+  `VERIFY_MB_PER_S = 4.1` sized the estimate. Measured on pid 24444,
+  `Sep 23, 2026 4:58pm`: `ReadTransferCount` +0.54 MB/s, 166 GB read in total
+  since 3:51am, 577 MB working set; a second reader with
+  `PRAGMA cache_size=-3000000` and `mmap_size` (pid 14412) counted the table
+  in 301 s and the pairs in 32 s, then sat in `quick_check` for 6 h 14 min
+  with 106 s of CPU. `_walk_every_index` now counts `rows INDEXED BY <each
+  index>` and is the default; `quick_check` runs only with
+  `rebuild(full_check=True)` / `--full-check`; `VERIFY_MB_PER_S = 50`.
+* Invariant broken: **a job's estimate is a measurement of the job it
+  describes** (label-must-match-data) — 4.1 MB/s was measured for a 42 GB
+  file on a different day and applied to a walk that never reached it; and
+  **a finishing step must be able to finish** in the time its screen names.
+* Guard: `tests/test_rebuild_from_the_pair_files.py::test_the_verify_walks_every_index_and_only_page_walks_on_request`;
+  `::test_the_estimate_matches_the_file_it_is_about` re-pinned to the
+  index-walk pace.
+
+**SAW** — Stored strategies: "REBUILDING a row index — verifying · 5,003 of
+5,003 pairs · 98,986,982 rows · running 10h 34m · about 1h 55m left (around
+Sep 23, 2026 4:30pm)"; at 4:58pm the same line, "about 2h 3m left (around
+7:02pm)".
+
+**TIMELINE**
+
+1. `Sep 23, 2026 3:51am` — rebuild starts under the v2 store.
+2. `1:57pm` — loading and four indexes done (36,377 s); `verifying` begins,
+   estimate 7,449 s.
+3. `4:58pm` — read rate 0.54 MB/s; 3 h into the 2 h estimate; killed. A
+   big-cache check started 5:00pm: counts in 301 s + 32 s, then
+   `quick_check` for 6 h 14 min without a result.
+4. `11:22pm` — the API stopped, `rows.db` (11.9 GB, 30.7 M rows) renamed to
+   `rows.db.before-rebuild-20260923-2322`, `rows.rebuild.db` (30.5 GB)
+   renamed in, the API restarted at `11:24pm`; the v2 table answers
+   `total 98,986,982`; the id list (`rows_id`) builds on demand.
+
+**ROOT CAUSE** — a page-order integrity walk as the verify of a 30 GB file
+on a mechanical disk, and an estimate constant measured for another walk.
+
+**WHY IT WAS NOT CAUGHT** — `test_the_estimate_matches_the_file_it_is_about`
+pinned the constant to the day it was measured; nothing measured the check's
+pace on THIS file, and no test bounds how long a verify may run against the
+estimate its screen prints.
+
+**COST** — none in money; the v2 table showed a third of its rows and
+week-old dates for nine hours longer than needed.
+
+**FIX** — this commit; the file swap was done by hand tonight (counts
+matched exactly; the old file is kept beside it).
+
+**GUARD** — `tests/test_rebuild_from_the_pair_files.py::test_the_verify_walks_every_index_and_only_page_walks_on_request`.
+
+---
+
 ## RCA-2026-09-23-J — the rebuild's "time left" jumped from 1h 39m back to 2h 2m every time the check's heartbeat wrote its file
 
 **CEO**

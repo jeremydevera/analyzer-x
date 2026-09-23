@@ -175,13 +175,29 @@ def test_the_rebuild_says_how_long_is_left_from_its_own_pace(tmp_path, monkeypat
     assert got["eta_s"] == round((5003 - 1000) / 30 * 60)
     assert got["eta_at"] and abs(got["eta_at"] - (time.time() + got["eta_s"])) < 5
     _write(p, db=str(v2), phase="verifying", pairs_done=5003, pairs_total=5003,
-           verify_estimate_s=7449, pid=1)
+           verify_estimate_s=7449, pid=1, phase_seconds=1200.0)
     import os
-    then = time.time() - 1500
+    then = time.time() - 300
     os.utime(p, (then, then))
     got = ri.rebuild_progress(v2)
-    assert abs(got["eta_s"] - (7449 - 1500)) <= 3
+    assert abs(got["eta_s"] - (7449 - 1200 - 300)) <= 3, "the phase's own clock plus the file's age"
     assert got["eta_why"] == "the file's size at this disk's read speed"
+    # THE HEARTBEAT MUST NOT RESET IT: the verify rewrites the file every few
+    # minutes; a fresh mtime with a larger phase_seconds reads LESS time left
+    _write(p, db=str(v2), phase="verifying", pairs_done=5003, pairs_total=5003,
+           verify_estimate_s=7449, pid=1, phase_seconds=1800.0)
+    assert ri.rebuild_progress(v2)["eta_s"] <= 7449 - 1800 + 3
+    # a record from a rebuild older than `phase_seconds`: the reader counts
+    # from the first time IT saw this phase, by the rebuild's own `seconds`
+    ri._PHASE_FIRST_SEEN.clear()
+    _write(p, db=str(v2), phase="verifying", pairs_done=5003, pairs_total=5003,
+           verify_estimate_s=7449, pid=7, seconds=36377.6)
+    first = ri.rebuild_progress(v2)["eta_s"]
+    _write(p, db=str(v2), phase="verifying", pairs_done=5003, pairs_total=5003,
+           verify_estimate_s=7449, pid=7, seconds=38069.9)
+    later = ri.rebuild_progress(v2)["eta_s"]
+    assert first - later >= 38069 - 36378 - 5, "a heartbeat 28 minutes later reads 28 minutes less"
+    assert "may finish sooner" in ri.rebuild_progress(v2)["eta_why"],         "a figure counted from first sight says so"
     _write(p, db=str(v2), phase="indexing 3 of 4: rows_coin", pairs_done=5003,
            pairs_total=5003, pid=1)
     got = ri.rebuild_progress(v2)

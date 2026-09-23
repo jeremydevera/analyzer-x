@@ -1639,6 +1639,8 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
     started = _t.time()
     done = rows = 0
 
+    phase_since: dict = {}          # phase -> the wall clock it began
+
     def _say(phase: str) -> None:
         # after EVERY pair: RCA-G was seven hours of not knowing
         with contextlib.suppress(OSError, TypeError, ValueError):
@@ -1648,6 +1650,12 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
                 "db": str(DB_PATH),
                 "phase": phase, "pairs_done": done, "pairs_total": len(files),
                 "rows": rows, "seconds": round(_t.time() - started, 1),
+                # how long THIS phase has run — the verify heartbeat rewrites
+                # this file every few minutes, so a reader that subtracted the
+                # file's age from the estimate saw the ETA jump back up at
+                # every heartbeat (2h 2m after 1h 39m, Sep 23, 2026 2:27pm)
+                "phase_seconds": round(_t.time() - phase_since.setdefault(
+                    phase, _t.time()), 1),
                 "pid": os.getpid(),
                 # THIS RUN's rate. Counting the resumed pairs in it would have
                 # read 450 pairs/min in the first minute after a resume and
@@ -1900,6 +1908,21 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
             "backup": str(backup) if keep_backup else ""}
 
 
+# when THIS reader first saw a (pid, phase) and what the rebuild's own
+# `seconds` read then — for a progress file written by a rebuild from before
+# `phase_seconds` existed, the closest thing to the phase's start
+_PHASE_FIRST_SEEN: dict = {}
+
+
+def _phase_elapsed(got: dict, age_s: float) -> float:
+    if got.get("phase_seconds") is not None:
+        return float(got["phase_seconds"]) + age_s
+    key = (got.get("pid"), str(got.get("phase") or ""))
+    now_s = float(got.get("seconds") or 0)
+    first = _PHASE_FIRST_SEEN.setdefault(key, now_s)
+    return max(now_s - first, 0.0) + age_s
+
+
 def _rebuild_eta(got: dict, age_s: float):
     """(seconds left, why) for one progress record; (None, why) when this
     phase has no measured rate to speak from."""
@@ -1914,7 +1937,14 @@ def _rebuild_eta(got: dict, age_s: float):
         if phase.startswith("verif"):
             est = float(got.get("verify_estimate_s") or 0)
             if est > 0:
-                return max(round(est - age_s), 0), "the file's size at this disk's read speed"
+                why = "the file's size at this disk's read speed"
+                if got.get("phase_seconds") is None:
+                    # a rebuild from before the phase clock existed: the
+                    # reader counts from when IT first saw this step, so the
+                    # true time left can only be shorter than printed
+                    why += (" — counted from when this screen first saw the "
+                            "check, so it may finish sooner")
+                return max(round(est - _phase_elapsed(got, age_s)), 0), why
             return None, "no size estimate written"
     except (TypeError, ValueError):
         pass

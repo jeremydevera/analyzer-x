@@ -172,6 +172,63 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-23-J — the rebuild's "time left" jumped from 1h 39m back to 2h 2m every time the check's heartbeat wrote its file
+
+**CEO**
+
+* Twenty minutes after the "about 1h 39m left" line appeared, it read "about
+  2h 2m left" — the wait had grown while the work went on.
+* Why: the time left was worked out as "estimate minus how old the progress
+  file is", and the checking step rewrites that file every few minutes to
+  show it is alive — so every heartbeat made the file young again and the
+  estimate started over.
+* What stops it now: the rebuild writes how long the current step has been
+  running, and the time left counts from that; a rebuild from before this fix
+  counts from the moment the screen first saw the step and says the figure
+  may finish sooner.
+
+**DEV**
+
+* `rows_index._rebuild_eta` (cf77df96fcad) computed `verify_estimate_s -
+  age_s`; `rebuild()`'s `_tick` progress handler calls `_say("verifying")`
+  every `VERIFY_TICK_OPS` steps, refreshing the mtime. Measured: 5,940 s left
+  at `2:21pm`, 7,320 s left at `2:27pm` after the `2:26pm` heartbeat. Now
+  `_say` writes `phase_seconds` (from `phase_since[phase]`), and the reader
+  uses `phase_seconds + age_s`; for a record without it, `_PHASE_FIRST_SEEN`
+  keeps the rebuild's own `seconds` at first sight and the `eta_why` says the
+  figure may finish sooner.
+* Invariant broken: **label-must-match-data** — a "time left" that grows
+  while the work advances is a false label; and **a heartbeat is a sign of
+  life, not a restart**.
+* Guard: `tests/test_the_screen_says_the_index_is_rebuilding.py::test_the_rebuild_says_how_long_is_left_from_its_own_pace`
+  (a fresher file with a larger `phase_seconds` must read LESS time left; a
+  legacy record's two heartbeats 28 minutes apart must read 28 minutes less).
+
+**SAW** — Stored strategies: "about 1h 39m left (around Sep 23, 2026
+4:02pm)" at `2:21pm`; "about 2h 2m left (around Sep 23, 2026 4:30pm)" at
+`2:27pm`.
+
+**TIMELINE**
+
+1. `Sep 23, 2026 1:57pm` — the v2 rebuild enters `verifying`;
+   `verify_estimate_s` 7,449.
+2. `2:21pm` — the ETA feature ships; reads 5,940 s left.
+3. `2:26pm` — the verify heartbeat rewrites the progress file.
+4. `2:27pm` — the screen reads 7,320 s left; the fix follows.
+
+**ROOT CAUSE** — the file's age used as the phase's elapsed time.
+
+**WHY IT WAS NOT CAUGHT** — the guard set the mtime once and read once; it
+never wrote a second heartbeat and asked whether the figure went down.
+
+**COST** — none.
+
+**FIX** — this commit.
+
+**GUARD** — as above; the test now writes two heartbeats.
+
+---
+
 ## RCA-2026-09-23-I — the run card said "Testing … → now" and "nothing has arrived yet" about a run that had finished and landed hours earlier
 
 **CEO**

@@ -3242,11 +3242,15 @@ def _slow_why(coin, tf, signal, min_winrate, min_trades, sort,
 
 
 _INDEX_SEEN: dict = {}
+# when each "missing" answer was read — see has_index
+_INDEX_MISSING_AT: dict = {}
+INDEX_MISSING_TTL_S = 60.0
 
 
 def forget_indexes() -> None:
     """After a drop or a build, the cache must not answer from memory."""
     _INDEX_SEEN.clear()
+    _INDEX_MISSING_AT.clear()
 
 
 def has_index(name: str):
@@ -3260,7 +3264,19 @@ def has_index(name: str):
     # set of indexes and must not inherit v1's answer
     key = (str(_db()), name)
     if key in _INDEX_SEEN:
-        return _INDEX_SEEN[key]
+        seen = _INDEX_SEEN[key]
+        # "IT EXISTS" IS FOREVER, "IT IS MISSING" IS ONE MINUTE. An index only
+        # disappears through a drop, which calls forget_indexes(); but it
+        # APPEARS when a build in ANOTHER process finishes, and that process
+        # cannot tell this one. Measured Sep 24, 2026 1:32am: rows_wr4 had
+        # finished on Backtest v2 ("built rows_wr4 in 3247s"), a fresh process
+        # answered the operator's filter in 14.6 s, and the API — which had
+        # cached False an hour earlier — kept refusing it, 30 s a time, saying
+        # the index was "still being built". An entry with no timestamp (set
+        # by hand) keeps the old behaviour.
+        if seen or (time.time() - _INDEX_MISSING_AT.get(key, float("inf"))
+                    < INDEX_MISSING_TTL_S):
+            return seen
 
     def _read():
         with _open(readonly=True) as con:
@@ -3271,6 +3287,10 @@ def has_index(name: str):
     got = _missing_ok(_read, None)
     if got is not None:
         _INDEX_SEEN[key] = bool(got)
+        if got:
+            _INDEX_MISSING_AT.pop(key, None)
+        else:
+            _INDEX_MISSING_AT[key] = time.time()
     return got
 
 

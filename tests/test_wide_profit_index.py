@@ -263,8 +263,16 @@ def test_the_reason_never_claims_a_finished_build_is_running(monkeypatch):
     why = ri._slow_why(None, None, None, 80, 0, "profit")
     assert "being built" not in why, why
     assert "rank by win %" in why, "and it still says what DOES work"
+    # MISSING IS NOT BUILDING (Sep 24, 2026, RCA-2026-09-24-B). This line
+    # used to assert that a missing index reads "being built" — the exact
+    # false sentence Backtest v2 printed for an hour while nothing was
+    # building it. It says so only while a build of it really runs.
     monkeypatch.setattr(ri, "has_index", lambda name: False)
+    monkeypatch.setattr(ri, "_rows_estimate", lambda: 98_986_982)
+    monkeypatch.setattr(ri, "build_running", lambda name=None: "rows_wr4")
     assert "being built" in ri._slow_why(None, None, None, 80, 0, "profit")
+    monkeypatch.setattr(ri, "build_running", lambda name=None: "")
+    assert "being built" not in ri._slow_why(None, None, None, 80, 0, "profit")
 
 
 def test_a_build_outlives_the_process_that_asked_for_it(monkeypatch, tmp_path):
@@ -398,6 +406,9 @@ def test_two_processes_cannot_build_the_same_index_twice(monkeypatch, tmp_path):
 
     monkeypatch.setattr(ri.subprocess, "Popen",
                         lambda cmd, **kw: spawned.append(cmd) or FakeProc())
+    # the fake child is ALIVE for this test: since RCA-2026-09-24-A the lock's
+    # pid is checked, and a real pid 99 is almost never ours
+    monkeypatch.setattr(ri.portable, "pid_alive", lambda pid: pid == 99)
     ri._BUILDING.discard("rows_id")
     assert ri._build_index("rows_id") is True
     # build_running returns the NAME it found, not a bool: the message can then

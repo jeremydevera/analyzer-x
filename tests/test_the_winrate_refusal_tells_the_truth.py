@@ -117,3 +117,45 @@ def test_the_query_refuses_fast_instead_of_walking_the_store(ri, monkeypatch, tm
         ri.query(min_winrate=85, tp_over_sl=True, limit=25)
 
     assert "being built now" in str(got.value)
+
+
+def test_a_list_finished_by_another_process_is_noticed(ri, monkeypatch, tmp_path):
+    """Sep 24, 2026 1:32am: rows_wr4 finished in a build child, a fresh process
+    answered the filter in 14.6 s, and the API — holding "missing" from an
+    hour before — refused it 30 s a time for as long as it ran."""
+    import sqlite3
+
+    db = tmp_path / "rows.db"
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE rows (id TEXT, winrate REAL)")
+    con.commit()
+    monkeypatch.setattr(ri, "_db", lambda: db)
+    monkeypatch.setattr(ri, "DB_PATH", db, raising=False)
+    ri.forget_indexes()
+
+    assert ri.has_index("rows_wr4") is False
+    # another process builds it
+    con.execute("CREATE INDEX rows_wr4 ON rows (winrate)")
+    con.commit()
+    con.close()
+    assert ri.has_index("rows_wr4") is False, "within the minute it may still say missing"
+
+    # a minute later the cache must look again
+    key = (str(db), "rows_wr4")
+    ri._INDEX_MISSING_AT[key] -= ri.INDEX_MISSING_TTL_S + 1
+    assert ri.has_index("rows_wr4") is True, \
+        "a finished index stayed 'missing' until the app was restarted"
+    ri.forget_indexes()
+
+
+def test_exists_is_remembered_forever(ri, monkeypatch, tmp_path):
+    """Only the MISSING answer expires — an existing index is never re-read,
+    which is what keeps a 4 s poll cheap."""
+    key = (str(tmp_path / "x.db"), "rows_wr4")
+    monkeypatch.setattr(ri, "_db", lambda: tmp_path / "x.db")
+    ri._INDEX_SEEN[key] = True
+    monkeypatch.setattr(ri, "_open", lambda *a, **k: pytest.fail("no re-read"))
+    try:
+        assert ri.has_index("rows_wr4") is True
+    finally:
+        ri._INDEX_SEEN.pop(key, None)

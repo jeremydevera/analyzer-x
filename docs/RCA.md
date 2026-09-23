@@ -240,6 +240,23 @@ neither "nothing is building" nor "the workaround fails too" could occur. The
 workarounds were measured once, on the v1 store, and written into the
 sentence as facts about every store.
 
+**AND THE APP NEVER NOTICED THE LIST HAD FINISHED** (found at 1:32am, fixed
+in the follow-up commit). `rows_wr4` finished at ~1:30am (`built rows_wr4 in
+3247s`) and a fresh process answered the filter in **14.6 s** — but the
+running API had cached `has_index("rows_wr4") = False` an hour earlier and
+`has_index` cached that answer for the life of the process, so the app kept
+refusing the filter, 30 s a time, still saying "being built". The Sep 06 fix
+for this shape cleared the cache only for builds the SAME process had
+started; this build was started from another one. "Exists" is still cached
+for ever (an index only vanishes through a drop, which calls
+`forget_indexes`); "missing" now expires after `INDEX_MISSING_TTL_S = 60`.
+Guard: `tests/test_the_winrate_refusal_tells_the_truth.py::test_a_list_finished_by_another_process_is_noticed`.
+The same pass found that RCA-2026-09-24-A's pid check had turned
+`test_wide_profit_index.py::test_two_processes_cannot_build_the_same_index_twice`
+red (its fake child's pid 99 is not alive) — fixed in the fixture, and a
+one-hour-old commit shipped with a red test because only the nearest suites
+were run: **after touching a shared helper, run every test that names it.**
+
 **COST** — none in money or rows; about an hour of a filter that could not
 answer, and a disk kept busy by retries while the fix was trying to build.
 

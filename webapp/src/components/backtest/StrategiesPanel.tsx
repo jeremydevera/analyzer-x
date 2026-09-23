@@ -1023,7 +1023,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
               + ` · ${(idx.rebuild.pairs_done ?? 0).toLocaleString()} of ${(idx.rebuild.pairs_total ?? 0).toLocaleString()} pairs`
               + ` · ${(idx.rebuild.rows ?? 0).toLocaleString()} rows · running ${Math.floor((idx.rebuild.seconds ?? 0) / 3600)}h ${Math.floor(((idx.rebuild.seconds ?? 0) % 3600) / 60)}m`
               + (idx.rebuild.eta_s != null
-                  ? ` · about ${fmtLeft(idx.rebuild.eta_s)} left${idx.rebuild.eta_at ? ` (around ${fmtWhen(idx.rebuild.eta_at)})` : ""}`
+                  ? ` · about ${fmtLeft(idx.rebuild.eta_s)} left${idx.rebuild.eta_at ? ` (around ${fmtWhen(idx.rebuild.eta_at)})` : ""}${idx.rebuild.eta_why?.includes("may finish sooner") ? " or less" : ""}`
                   : ` · no time estimate for this step${idx.rebuild.eta_why ? ` (${idx.rebuild.eta_why})` : ""}`)
               + ` — the dates and rows on this table catch up when it finishes`
               + (idx.rebuild.store === "unknown" ? " (started before this fix landed, so it does not say which store it is filing)" : "")}

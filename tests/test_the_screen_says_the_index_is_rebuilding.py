@@ -214,6 +214,7 @@ def test_the_eta_reaches_the_chip_and_the_table_line():
     panel = (ROOT / "webapp" / "src" / "components" / "backtest" / "StrategiesPanel.tsx").read_text(encoding="utf-8")
     assert "about ${fmtLeft(idx.rebuild.eta_s)} left" in panel
     assert "no time estimate for this step" in panel, "a step without a pace says so instead of a number"
+    assert panel.count('"may finish sooner") ? " or less"') == 1 and chip.count('"may finish sooner") ? " or less"') == 1,         "a figure counted from first sight is printed as an upper bound"
     ts = (ROOT / "webapp" / "src" / "lib" / "api.ts").read_text(encoding="utf-8")
     assert "export function fmtLeft(" in ts
     for js, want in (("59", "under a minute"), ("720", "12m"), ("6000", "1h 40m")):

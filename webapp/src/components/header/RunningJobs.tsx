@@ -94,7 +94,7 @@ export default function RunningJobs() {
           {/* HOW LONG IS LEFT, from the work's own pace (operator, Sep 23,
               2026: "when indexing i want to see the eta in the ui") */}
           {j.eta_s != null && (
-            <span className="font-mono tabular-nums">~{fmtLeft(j.eta_s)}</span>
+            <span className="font-mono tabular-nums">~{fmtLeft(j.eta_s)}{j.eta_why?.includes("may finish sooner") ? " or less" : ""}</span>
           )}
         </Link>
       ))}

@@ -63,6 +63,11 @@ const inputCls =
  *  blocks, UPDATE ALL and the hand-over are not shown; the same grid, the
  *  same window, the v2 job kind. The default is the screen the operator has
  *  always had. */
+/** The machines worth a tile: mid-work, not finished and not idle. */
+function activeShards<T extends { stage?: string }>(shards: T[]): T[] {
+  return shards.filter((sh) => !!sh.stage && sh.stage !== "done" && sh.stage !== "waiting");
+}
+
 export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
   const S = useMemo(() => storeApi(store), [store]);
   const [coins, setCoins] = useState<string[]>([]);
@@ -658,7 +663,11 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
           })()}
           {/* one bar for the RUN, so the answer to "how far along?" is not
               twenty tiles added up by eye */}
-          {(() => {
+          {/* A FINISHED RUN HAS NO BAR. A full blue bar under "success"
+              read as "still running" (operator, Sep 24, 2026: "why is the
+              blue bar? its confusing is it running? because if its done, it
+              should not be there"). The header already says 100% and 10/10. */}
+          {!cloud.conclusion && (() => {
             const { done, total } = runProgress(cloud.shards);
             const pct = total ? (100 * done) / total : 0;
             return (
@@ -682,8 +691,24 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
               stops the work.
             </p>
           )}
+          {/* ONLY MACHINES THAT ARE WORKING ARE DRAWN (same ask: "if nothing
+              is processed the machine should be not visible, its only visible
+              if its running"). A finished run draws none; a running one draws
+              the machines mid-coin and counts the rest in one line. */}
+          {(() => {
+            if (cloud.conclusion || !cloud.shards.length) return null;
+            const idle = cloud.shards.length - activeShards(cloud.shards).length;
+            const fin = cloud.shards.filter((sh) => sh.stage === "done").length;
+            return idle > 0 ? (
+              <p className="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
+                {`${activeShards(cloud.shards).length} machine(s) working`}
+                {fin ? ` · ${fin} finished` : ""}
+                {idle - fin > 0 ? ` · ${idle - fin} not started yet` : ""}
+              </p>
+            ) : null;
+          })()}
           <div className="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-4">
-            {cloud.shards.map((sh) => (
+            {(cloud.conclusion ? [] : activeShards(cloud.shards)).map((sh) => (
               /* KEYED BY ACCOUNT AND NUMBER. Both runs of a 40-machine press
                  number their machines 0..19, so keying on the number alone
                  drew 20 tiles for 40 machines and React re-used the wrong

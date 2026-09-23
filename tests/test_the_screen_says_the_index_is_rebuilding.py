@@ -221,3 +221,16 @@ def test_the_eta_reaches_the_chip_and_the_table_line():
         # the same arithmetic, read out of the source so a change here is seen
         pass
     assert 'return h ? `${h}h ${m}m` : `${m}m`;' in ts
+
+
+def test_a_finished_run_draws_no_bar_and_no_machine_tiles():
+    """Operator, Sep 24, 2026, under a 100% "success" card: "why is the blue
+    bar? its confusing is it running? because if its done, it should not be
+    there / also if nothing is processed the machine should be not visible,
+    its only visible if its running"."""
+    panel = (ROOT / "webapp" / "src" / "components" / "backtest" /
+             "JobsPanel.tsx").read_text(encoding="utf-8")
+    assert "{!cloud.conclusion && (() => {\n            const { done, total } = runProgress(cloud.shards);" in panel
+    assert "(cloud.conclusion ? [] : activeShards(cloud.shards)).map((sh) =>" in panel
+    assert 'sh.stage !== "done" && sh.stage !== "waiting"' in panel
+    assert "cloud.shards.map((sh) => (" not in panel, "no tile is drawn for every machine regardless"

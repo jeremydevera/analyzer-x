@@ -1035,6 +1035,13 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
               + `the v2 backtest files its rows when it finishes; if it was stopped, `
               + `press BACKTEST or UPDATE ALL BACKTESTS again`}
           </span>
+        ) : idx && indexTodo > 0 && idx.indexer_off ? (
+          /* SWITCHED OFF BY THE OPERATOR — not an alarm and not a button:
+             they turned it off on purpose, so the red "nothing is filling
+             this; press the button" would be telling them to undo it. */
+          <span className="max-w-md text-right text-theme-xs text-gray-500 dark:text-gray-400">
+            {`not updating — ${idx.indexer_off}. ${indexTodo.toLocaleString()} coin-timeframe(s) keep the numbers they had; nothing was deleted.`}
+          </span>
         ) : idx && indexTodo > 0 ? (
           <div className="flex flex-col items-end gap-1">
             <button onClick={catchUp} disabled={!!reindexing}

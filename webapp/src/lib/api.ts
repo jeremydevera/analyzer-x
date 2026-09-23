@@ -1781,6 +1781,10 @@ export type IndexStatus = {
    *  `Sep 13, 2026 4:05pm` on `database is locked`, nothing restarted it, and
    *  `stale` climbed to 5,344 overnight under a button and no explanation. */
   indexer_running?: boolean | null;
+  /** "" while the v1 indexer may run; otherwise who switched it off and when
+   *  (Sep 24, 2026: "stop the v1 i dont need it anymore"). Its own state —
+   *  never "dead", never "catching up". */
+  indexer_off?: string;
   /** "job" on Backtest v2: its rows are filed by the backtest job when it
    *  finishes — there is no indexer process to be "catching up" */
   filed_by?: "job" | "indexer";

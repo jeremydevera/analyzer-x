@@ -4683,6 +4683,9 @@ def status(db_path=None) -> dict:
             "indexer_running": (None if _DB_OVERRIDE.get()
                                 else _running_elsewhere()),
             "filed_by": "job" if _DB_OVERRIDE.get() else "indexer",
+            # SWITCHED OFF BY THE OPERATOR is its own state — not "dead", not
+            # "catching up" (see OFF_FILE)
+            "indexer_off": "" if _DB_OVERRIDE.get() else indexer_switched_off(),
             # A REBUILD IN FLIGHT IS SAID OUT LOUD. The table reads the old
             # file until the fresh one swaps in, so every date on it is stale
             # for hours; without this the screen showed Sep 17 dates while
@@ -4726,6 +4729,23 @@ _loop_thread: threading.Thread | None = None
 
 
 PIDFILE = DB_PATH.parent / "rows_index.pid"
+# THE OPERATOR'S OWN OFF SWITCH. Sep 24, 2026: "stop the v1 i dont need it
+# anymore", about the v1 indexer re-filing 5,340 coin-timeframes at ~52 min
+# each (~194 days). The supervisor restarts a DEAD indexer every 30 s (the
+# Sep 14 rule: something must notice when it dies), so killing it is not
+# stopping it — this file is. Its text says who switched it off and when; the
+# screen prints that instead of "nothing is filling this", because a worker
+# the operator turned off and a worker that died are different sentences.
+# Nothing is deleted: the table keeps every row it has, it just stops moving.
+OFF_FILE = DB_PATH.parent / "rows_index.OFF"
+
+
+def indexer_switched_off() -> str:
+    """"" while the v1 indexer is allowed to run, else what the OFF file says."""
+    try:
+        return OFF_FILE.read_text(encoding="utf-8-sig").strip() or "switched off"
+    except OSError:
+        return ""
 # Beside every other job's log (`db_backtest.log`, `db_collect.log`, ...), not
 # in DEVNULL. See `spawn_indexer` for the 13 hours that bought this line.
 LOGFILE = Path(os.path.expanduser("~/.tradingagents")) / "rows_index.log"
@@ -4836,6 +4856,8 @@ def spawn_indexer() -> int | None:
 
     if _running_elsewhere():
         return None
+    if indexer_switched_off():
+        return None                 # the operator turned it off — see OFF_FILE
     PIDFILE.parent.mkdir(parents=True, exist_ok=True)
     # ITS OUTPUT WENT TO DEVNULL, AND THAT COST 13 HOURS (2026-09-10).
     # This process is the ONLY thing that says "paused: a backtest is
@@ -4938,6 +4960,13 @@ def start_keeping_up(every_s: float = 10.0, budget_s: float = 60.0) -> bool:
         while first or not _loop_stop.wait(every_s):
             first = False
             try:
+                off = indexer_switched_off()
+                if off:
+                    print(f"[rows-index] switched off ({off}) — stopping; "
+                          f"nothing is deleted, the table keeps what it has",
+                          flush=True)
+                    _loop_stop.set()
+                    return
                 if _machine_is_busy():
                     job = busy_job() or "job"
                     # stand down entirely: on a slow disk the indexer and the
@@ -5098,6 +5127,14 @@ def main(argv: list | None = None) -> int:
               f"a signal since renamed. Nothing to search for.", flush=True)
         return 1
 
+    # SWITCHED OFF BY THE OPERATOR: out before ANY work. The check sat after
+    # ensure() and status() at first, and status() reads every pair's
+    # watermark — minutes of disk on a cold cache — so each watchdog respawn
+    # paid that before learning it was not wanted (Sep 24, 2026).
+    off = indexer_switched_off()
+    if off:
+        print(f"[rows-index] switched off ({off}) — not starting", flush=True)
+        return 0
     with contextlib.suppress(OSError, AttributeError):
         os.nice(5)
     # THE IDENTITY, taken before any work. Two indexers on one SQLite file is
@@ -5125,8 +5162,10 @@ def main(argv: list | None = None) -> int:
           f"{st.get('stale')} to re-file", flush=True)
     start_keeping_up()
     try:
-        while True:
-            _loop_stop.wait(3600)
+        # the loop sets the flag when the operator switches it off, and then
+        # there is nothing left for this process to do
+        while not _loop_stop.wait(3600):
+            pass
     except KeyboardInterrupt:
         stop_keeping_up()
     return 0

@@ -43,7 +43,7 @@ def quiet_csv(monkeypatch):
 
     def rows(**kw):
         for i in range(3):
-            yield {c: None for c in ri.COLS} | {"id": f"ID{i}", "winrate": 80.0,
+            yield dict.fromkeys(ri.COLS) | {"id": f"ID{i}", "winrate": 80.0,
                                                 "trades": 10, "profit": 1.0}
     monkeypatch.setattr(ri, "iter_rows", rows)
     monkeypatch.setattr(ri, "balanced_score", lambda r: (5.0, "why"))
@@ -145,8 +145,9 @@ def test_the_route_lists_the_download_the_instant_the_request_arrives(monkeypatc
     seconds into the operator's download the list was still empty — the route
     was planning the query — so a restart in those seconds would have cut it.
     Listed before the plan; unlisted if the route refuses."""
-    from tradingagents import rows_index as ri
     from fastapi import HTTPException
+
+    from tradingagents import rows_index as ri
     api._ACTIVE_DOWNLOADS.clear()
     seen = {}
 

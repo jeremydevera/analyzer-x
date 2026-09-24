@@ -712,8 +712,8 @@ def test_the_verify_walks_every_index_and_only_page_walks_on_request(tmp_path):
     so the default verify is one sequential walk of every index, which
     finishes in minutes and still fails on a b-tree that cannot be read or
     does not agree with the table. The page walk stays behind `full_check`."""
-    import sqlite3
     import inspect
+    import sqlite3
     src = inspect.getsource(ri.rebuild)
     assert "_walk_every_index(con, got_rows)" in src
     assert 'con.execute("PRAGMA quick_check").fetchone()[0]\n                     if full_check' in src

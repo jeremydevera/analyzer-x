@@ -18,8 +18,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 
 def test_replacing_a_door_for_the_other_store_does_not_raise(monkeypatch, tmp_path):
     """The v1 door is open and a Backtest v2 press needs a v2 one.

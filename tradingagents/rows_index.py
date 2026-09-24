@@ -4358,21 +4358,20 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     Yields dicts shaped exactly like `query()["rows"]`, so the CSV and the
     screen can never show different fields for the same row (kit item F).
     """
+    # EVERY ARGUMENT, captured before anything else is bound, so the hand-off
+    # below cannot drop one. It listed them by hand and lost `store` when that
+    # parameter was added on Sep 18, 2026: Backtest v2's "last 30 days" CSV
+    # then re-measured every row on the v1 candles (#5JWGQZPG read 23 trades
+    # and 100% to Sep 15 in the file, 28 trades and 96.43% to Sep 22 on
+    # screen — RCA-2026-09-24-E). A parameter added later is forwarded too.
+    _given = dict(locals())
     # ANOTHER STORE (Backtest v2): hand the whole walk to the stepping wrapper,
     # which sets the ContextVar around EACH `next()` in the thread that takes
     # it. Once the override is in place this same function is re-entered and
     # runs its body under it — no recursion, because the check below is then
     # false. A caller in the default store never enters this branch.
     if db_path and _DB_OVERRIDE.get() != str(db_path):
-        yield from iter_rows_in(db_path=db_path, coin=coin, tf=tf,
-                                signal=signal, profitable=profitable,
-                                sort=sort, min_trades=min_trades,
-                                min_winrate=min_winrate, max_tp=max_tp,
-                                sizing=sizing, row_id=row_id, group=group,
-                                max_sl=max_sl, days=days, desc=desc,
-                                batch=batch, min_tp=min_tp, min_sl=min_sl,
-                                tp_over_sl=tp_over_sl, asset=asset,
-                                stats=stats, measured_days=measured_days)
+        yield from iter_rows_in(**_given)
         return
     # A WINDOWED export stops after `DAYS_CSV_MAX` rows (`win_left` below),
     # and that ceiling has to reach the QUERY. Until Sep 15, 2026 it lived

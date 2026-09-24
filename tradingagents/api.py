@@ -3053,7 +3053,14 @@ def cloud_merge(body: dict) -> dict:
                 slug = str(one.get("repo") or "")
                 break
     if res == "1m":
-        pid = dj.start("collect_v2", {"run": run_id, "repo": slug})
+        try:
+            pid = dj.start("collect_v2", {"run": run_id, "repo": slug})
+        except dj.JobBusy as exc:
+            # 409 WITH THE HOLDER, never a 500: another job has the disk and
+            # the message names it (the rule every other job door follows —
+            # test_a_busy_machine_is_not_a_crash found this one, added Sep 22,
+            # 2026, before it ever fired)
+            raise HTTPException(409, str(exc)) from exc
         return {"started": True, "kind": "collect_v2", "pid": pid,
                 "run": run_id, "repo": slug, "fetched": 0,
                 "why": "Backtest v2 rows land in the v2 store, so the v2 "

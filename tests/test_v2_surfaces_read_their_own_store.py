@@ -225,7 +225,9 @@ def test_a_v2_job_does_not_pause_the_v1_index(monkeypatch, tmp_path):
     running = {"btupdate_v2"}
     monkeypatch.setattr(dj, "status",
                         lambda kind: {"running": kind in running, "pid": 7})
-    monkeypatch.setattr(ri, "rebuild_progress", lambda: {})
+    # takes the store it reports on since 723aecc46d6d (Sep 23, 2026);
+    # a zero-argument stub raised TypeError inside status()
+    monkeypatch.setattr(ri, "rebuild_progress", lambda *a, **k: {})
     assert ri.busy_job() == "", "v1 keeps indexing while Backtest v2 measures"
     assert ri._machine_is_busy() is False
 
@@ -256,7 +258,9 @@ def test_the_backlog_waits_for_the_other_store_but_a_pressed_row_does_not(monkey
 
     monkeypatch.setattr(dj, "status",
                         lambda kind: {"running": kind == "btupdate_v2", "pid": 7})
-    monkeypatch.setattr(ri, "rebuild_progress", lambda: {})
+    # takes the store it reports on since 723aecc46d6d (Sep 23, 2026);
+    # a zero-argument stub raised TypeError inside status()
+    monkeypatch.setattr(ri, "rebuild_progress", lambda *a, **k: {})
     assert ri.busy_job() == "", "not a pause"
     assert ri.other_store_job() == "btupdate_v2", "but the disk is shared"
     assert ri.status()["deferring_to"] == "btupdate_v2"

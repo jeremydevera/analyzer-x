@@ -168,3 +168,23 @@ def test_the_bar_counts_both_boards_not_one():
     assert "new Map" in fn and "s.run ?? s.repo" in fn, fn
     assert "shards.reduce((a, s) => Math.max(a, s.board ?? 0), 0)" not in fn, \
         "one account's board may not stand for a two-account press"
+
+
+def test_merging_a_v2_run_on_a_busy_machine_is_a_409_with_the_reason(monkeypatch):
+    """MERGE INTO THIS PC on a v2 run while another job holds the disk must
+    answer the holder's name, never "Internal Server Error"."""
+    from fastapi import HTTPException
+
+    from tradingagents import api, cloud_sweep as cs, db_jobs as dj
+
+    monkeypatch.setattr(cs, "run_res", lambda rid: "1m")
+    monkeypatch.setattr(cs, "remembered", lambda: {"id": 2, "repo": "b/x"})
+
+    def busy(kind, spec):
+        raise dj.JobBusy("btupdate_v2 is running and has the disk")
+
+    monkeypatch.setattr(dj, "start", busy)
+    with pytest.raises(HTTPException) as got:
+        api.cloud_merge({"run_id": 2})
+    assert got.value.status_code == 409
+    assert "btupdate_v2" in str(got.value.detail)

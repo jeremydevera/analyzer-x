@@ -172,6 +172,62 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-24-H — MERGE INTO THIS PC on a Backtest v2 run would have said "Internal Server Error" whenever another job had the disk
+
+**CEO**
+
+* NEVER HAPPENED YET. Pressing MERGE INTO THIS PC on a finished Backtest v2
+  run while another job (an update, a download) was using the disk would
+  have shown "Internal Server Error" instead of saying which job was busy.
+* Why: the button was taught on Sep 22 to hand v2 results to the v2 collect
+  job, and that hand-over did not catch the "another job has the disk"
+  refusal the way every other button does.
+* What stops it now: it answers with the busy job's name, and a test drives
+  exactly that case. It was found by the full test suite during the
+  RCA-2026-09-24-E fix, not by you.
+
+**DEV**
+
+* `api.cloud_merge` (`tradingagents/api.py`, the `res == "1m"` branch added
+  in 1af413fbd358) called `dj.start("collect_v2", …)` bare; `db_jobs.start`
+  raises `JobBusy` while any disk job runs, which became a 500.
+* Invariant broken: **a busy machine is a 409 with the holder's name, never a
+  500** — the rule `test_a_busy_machine_is_not_a_crash.py` has enforced over
+  every route since Sep 17, 2026. Fixed with `except dj.JobBusy` → 409.
+* Guard: `tests/test_a_busy_machine_is_not_a_crash.py::test_no_route_starts_a_job_without_catching_it`
+  (found it) and
+  `tests/test_the_panel_sees_every_accounts_machines.py::test_merging_a_v2_run_on_a_busy_machine_is_a_409_with_the_reason`.
+
+**SAW** — nothing on screen; the full suite, Sep 24, 2026 ~7:10pm:
+`these start a job outside any except JobBusy, so a busy machine answers
+500: line 3056: pid = dj.start("collect_v2", …)`.
+
+**TIMELINE**
+
+1. `Sep 22, 2026 ~11:55pm` — 1af413fbd358 routes a v2 MERGE to the
+   `collect_v2` job; only the nearest suites were run, and the route-wide
+   JobBusy guard was not among them.
+2. `Sep 22 → Sep 24` — the guard is red on `main` for two days; nobody runs
+   the full suite, and no v2 MERGE is pressed while a job is busy (0 times).
+3. `Sep 24, 2026 ~7:10pm` — the full suite run for RCA-2026-09-24-E stops on
+   it; fixed and guarded the same hour.
+
+**ROOT CAUSE** — a new job door written without the busy-machine catch every
+other door has.
+
+**WHY IT WAS NOT CAUGHT** — the guard that catches exactly this existed and
+was red; only the suites nearest the change were run, so a failing test two
+directories away went unseen for two days. **Before calling a change done,
+run the whole suite, not the neighbourhood.**
+
+**COST** — none: it never fired.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_panel_sees_every_accounts_machines.py::test_merging_a_v2_run_on_a_busy_machine_is_a_409_with_the_reason`.
+
+---
+
 ## RCA-2026-09-24-F — the portfolio forecast crashed on the way to reporting its own failure
 
 **CEO**
@@ -232,7 +288,7 @@ reading. **A lint run that is allowed to stay red stops being a signal.**
 
 ---
 
-## RCA-2026-09-24-E — Backtest v2's "last 30 days" CSV re-measured every row on the OLD v1 candles, so #5JWGQZPG read 100% in the file and 96% on screen
+## RCA-2026-09-24-E — Backtest v2's "last 30 days" CSV re-measured every row on the OLD v1 candles, so #5JWGQZPG read 100% in the file and 96% on screen (FIXED)
 
 **CEO**
 
@@ -247,9 +303,12 @@ reading. **A lint run that is allowed to stay red stops being a signal.**
   the old v1 prices instead — and those stop at Sep 15, 2026 5:30pm for this
   coin. The file's "last 30 days" was really 21.7 days, settled by the
   candle, not by the minute.
-* This has affected EVERY Backtest v2 CSV downloaded with a days window
-  since Sep 18, 2026. It is documented, not fixed yet — you asked for no code
-  change. The fix is one missing setting.
+* What stops it now: the setting can no longer be forgotten — the
+  hand-off passes on everything it was given, automatically — and every step
+  from the screen to the re-check is tested, so a filter or setting dropped
+  at any of the four hand-offs fails a test before it reaches you. Checked
+  after the fix: the CSV reads 28 trades, 27 won, 1 lost, 96.43%, exactly
+  the screen. Re-download any v2 CSV made with "last N days" since Sep 18.
 
 **DEV**
 
@@ -268,10 +327,13 @@ reading. **A lint run that is allowed to stay red stops being a signal.**
   names the ones it drops**. `store` was added to `iter_rows` in
   6e649d590da5 (Sep 18, 2026 3:39am) on top of the hand-off added in
   3f459fc847f1 (Sep 17, 2026 6:59pm), and the hand-off was never updated.
-* Guard: none yet. The test that should have caught it,
-  `tests/test_v2_routes.py::test_the_v2_csv_takes_a_days_window_and_names_the_months_gap`,
-  asserts HTTP 200 and a file name — its docstring says "re-measured from
-  the v2 store's 1-minute candles" and nothing checks it.
+* Guard: `tests/test_the_v2_csv_window_uses_the_v2_candles.py` (7) — the
+  hand-off forwards EVERY parameter (driven with a distinct value per
+  parameter, so next month's parameter is covered unedited), the real v2
+  route hands `window_rows` the v2 store, v1 keeps `None`, and each of the
+  three other hand-written pass-throughs (v2 table route -> `strategies`, v2
+  CSV route -> `strategies_csv_lines`, builder -> `iter_rows`) forwards every
+  filter. Each was proved RED in a scratch worktree by breaking its link.
 
 **SAW** — the operator, `Sep 24, 2026`: *"when i download csv 5JWGQZPG has
 100% winrate but but in ui its 96% winrate"*.
@@ -300,6 +362,30 @@ reading. **A lint run that is allowed to stay red stops being a signal.**
    `Sep 17, 2026 1:00pm` at 89.92, stop at 91.72 at `4:09pm`, -$2.23 — after
    the v1 candles end, so the CSV could never see it.
 
+7. `Sep 24, 2026 ~7:00pm` — fixed on the operator's "okay start now … i dont
+   want any bug in the future": the hand-off became
+   `iter_rows_in(**_given)` with `_given = dict(locals())` taken as the
+   generator's first statement, so it forwards whatever `iter_rows` is given.
+   Re-run through the real builder: **28 trades, 27W/1L, 96.43%, +$72.84,
+   Aug 25 12:30am -> Sep 22 12:30am** — the screen's figures exactly.
+8. The harddev loop, round by round: (1) the other five re-measure calls
+   (`api.py:391, 432, 955, 1021, 3681`) were read — each picks its store
+   correctly; (2) the three other hand-written pass-throughs between the
+   screen and the re-measure were found and given parameter-parity guards;
+   (3) the first draft of the builder guard read the parameters of its own
+   stand-in (`**kw`), so it compared nothing and passed with `store`
+   dropped — caught only because every guard was also run against a
+   deliberately broken scratch copy; (4) a concurrent session briefly swapped
+   `rows_index.py` back while testing its own work, so red-proofs were moved
+   to throwaway worktrees and never touch the shared folder.
+9. Two tests that were ALREADY red before this change were brought back
+   rather than left to hide the next fault:
+   `test_v2_surfaces_read_their_own_store.py::test_the_backlog_waits_for_the_other_store_but_a_pressed_row_does_not`
+   (a zero-argument `rebuild_progress` stub, stale since 723aecc46d6d) and
+   `test_v2_reads_from_its_own_store.py::test_the_v2_update_job_dispatches_the_fleet_and_continues`
+   (still expected `cs.dispatch(` after de4ed7a86771 moved the v2 update to
+   `dispatch_across`).
+
 **ROOT CAUSE** — a pass-through wrapper that lists its arguments by hand and
 was not updated when the function it wraps gained one.
 
@@ -320,17 +406,15 @@ applied to the file used those figures, so rows may be missing from or
 wrongly present in those files. Files downloaded WITHOUT a days window are
 correct.
 
-**FIX** — NOT YET COMMITTED: the operator asked for investigation and
-documentation only ("investigate first then document it, after this report
-it to me, dont make code changes"). The fix is to forward `store=store` in
-the hand-off at `rows_index.py:4366-4375`, and it needs a guard that drives
-`/api/v2/strategies.csv?days=` against v1 and v2 candles ending on different
-days.
+**FIX** — this commit: `rows_index.iter_rows` forwards `**_given` (every
+argument, captured before anything else is bound) instead of a hand-written
+list.
 
-**GUARD** — planned: `tests/test_the_v2_csv_window_uses_the_v2_candles.py`,
-asserting `window_last` comes from the v2 1-minute store (and failing on
-today's code); `tests/test_v2_routes.py::test_the_v2_csv_takes_a_days_window_and_names_the_months_gap`
-is the test that should have caught it.
+**GUARD** — `tests/test_the_v2_csv_window_uses_the_v2_candles.py::test_every_argument_survives_the_hand_off`,
+`::test_the_v2_csv_re_measures_with_the_v2_store`,
+`::test_the_csv_builder_forwards_every_filter_to_the_walker`,
+`::test_the_v2_table_route_forwards_every_filter` and
+`::test_the_v2_csv_route_forwards_every_filter_and_the_v2_store`.
 
 ---
 

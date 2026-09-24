@@ -158,7 +158,9 @@ def test_the_v2_update_job_dispatches_the_fleet_and_continues():
     src = inspect.getsource(dj._run_btupdate_v2)
     assert 'mode="update"' in src, "UPDATE continues, never from scratch"
     assert 'res="1m"' in src, "and it is a v2 run"
-    assert "cs.dispatch(" in src and "_run_backtest(" not in src
+    # EVERY ACCOUNT since de4ed7a86771 ("i want 40", Sep 21, 2026): the v2
+    # update deals its coins across the operator's and the partner's fleets
+    assert "cs.dispatch_across(" in src and "_run_backtest(" not in src
     assert "cap.plan" not in src, \
         "v2 keeps NO frames, so there is nothing to split and no plan to make"
     assert "btupdate_v2" in dj.FILES and "btupdate_v2" in dj._DISK_JOBS

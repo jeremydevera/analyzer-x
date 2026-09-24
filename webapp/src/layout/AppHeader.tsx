@@ -83,7 +83,7 @@ const AppHeader: React.FC = () => {
             {/* Cross Icon */}
           </button>
 
-          <Link href="/backtest" className="lg:hidden">
+          <Link href="/backtest-v2" className="lg:hidden">
             <span className="text-base font-semibold text-gray-800 dark:text-white/90">
               Trading Agents
             </span>

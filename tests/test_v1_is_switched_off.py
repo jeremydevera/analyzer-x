@@ -84,6 +84,17 @@ def test_the_nav_offers_no_v1_screen():
     assert '    path: "/backtest",' not in block, "v1 backtest is still on the nav"
 
 
+def test_the_LOGO_is_not_a_door_back_into_v1():
+    """The menu was switched to v2 and the app still served three links to
+    /backtest: the brand link at the top of the sidebar and its mobile twin.
+    A logo tap is the most-pressed control on the screen — taking v1 off the
+    menu while the logo still lands there is switching nothing off."""
+    for f in ("AppSidebar.tsx", "AppHeader.tsx"):
+        src = (REPO / "webapp" / "src" / "layout" / f).read_text(encoding="utf-8")
+        assert 'href="/backtest"' not in src, f"{f}: the brand link still opens v1"
+        assert 'href="/candles"' not in src, f
+
+
 def test_the_v1_pages_and_routes_still_ANSWER():
     """Switched off is not deleted. The pages exist and the API still serves
     v1, because 97 armed strategies point into that store."""

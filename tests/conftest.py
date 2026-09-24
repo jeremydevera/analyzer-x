@@ -193,7 +193,14 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
                            # how the supervisor is TOLD the live runner should
                            # be running, and LOCK is what the runner holds
                            ("LOCK_PATH", "auto_trade.lock"),
-                           ("WANT_PATH", "auto_trade.WANT")):
+                           ("WANT_PATH", "auto_trade.WANT"),
+                           # the order-book readings the account forecast
+                           # charges each signal with (Sep 23, 2026). Not
+                           # sandboxed, every test that ran a gate filed its
+                           # FAKE book here: 80 by Sep 24, 2026 (BTC, BDX, X,
+                           # ETH, KITE, FLAT, DASH, and 4 under GPNSTOCK
+                           # beside its real 1.7% book) (RCA-2026-09-24-I)
+                           ("BOOK_READINGS_PATH", "book_readings.jsonl")):
         if hasattr(at, name):
             monkeypatch.setattr(at, name, sandbox / filename)
     # The NOTIFICATION FEED is written from the same code paths, so it has to
@@ -206,6 +213,20 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
         from tradingagents import notifications as _nt
 
         monkeypatch.setattr(_nt, "DB_PATH", sandbox / "notifications.db")
+    except Exception:
+        pass
+    # The DEPLOY HISTORY. Every `at.save_settings` records its diff here, and
+    # three test files patched it themselves while the rest did not: the
+    # operator's own history held a fixture "XAUT mom6_1h_gx deployed, real
+    # money" for every suite run since Sep 16, 2026, and "KITE stoch14 /
+    # NGAS pivot" bursts at 7:09pm and 7:19pm on Sep 24 (RCA-2026-09-24-I).
+    # The settings BACKUPS it dates rows from are read here too, so a test
+    # never dates a fixture row from the operator's real copies.
+    try:
+        from tradingagents import local_history as _lh
+
+        monkeypatch.setattr(_lh, "DEPLOY_LOG", sandbox / "deployments.jsonl")
+        monkeypatch.setattr(_lh, "SETTINGS_SNAPSHOTS", sandbox)
     except Exception:
         pass
     # The DETACHED JOB FILES too. They were not sandboxed, and a test that
@@ -272,7 +293,11 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
                              # the pre-Sep 23, 2026 shared progress path: a
                              # real rebuild running on this PC must never be
                              # read by a test as "a rebuild is in flight"
-                             ("LEGACY_REBUILD_PROGRESS", "rows_rebuild.legacy.json")):
+                             ("LEGACY_REBUILD_PROGRESS", "rows_rebuild.legacy.json"),
+                             # the operator's "v1 indexer OFF" switch (Sep 24,
+                             # 2026): a test that wrote it would switch their
+                             # real indexer off, and it stays off by design
+                             ("OFF_FILE", "rows_index.OFF")):
             if hasattr(_ri, _name):
                 monkeypatch.setattr(_ri, _name, sandbox / _leaf)
     except Exception:

@@ -172,6 +172,87 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-24-I — test runs wrote fake order-book readings and fake deployments into the operator's own files
+
+**CEO**
+
+* Two of your own records were being written by test runs. The deploy
+  history held 106 fake "deployed" entries since Sep 16, 2026, and 42 of
+  them said XAUT was deployed with real money, which never happened. The
+  order-book readings the account forecast charges each signal with held
+  80 fake readings since Sep 23, 2026, including 4 under GPNSTOCK at
+  0.02-0.04% in the same minutes the real GPNSTOCK book read 1.71%.
+* Why: the fence that keeps tests inside their own sandbox listed five
+  parts of the app, and these two files belong to others. The one check
+  that did name the readings file had been failing since Sep 23 among about
+  22 other failing tests, so nobody read it.
+* What stops it now: both files, and the new "indexer off" switch, are
+  inside the sandbox. The check now walks the whole app, names the 28 gaps
+  still left (none of them the deploy or the forecast), and fails the day a
+  new one appears. The fake lines were removed from your files, and the
+  originals are kept beside them.
+
+**DEV**
+
+* `auto_trader._record_book_reading` wrote `BOOK_READINGS_PATH` —
+  `STATE_DIR / "book_readings.jsonl"` evaluated at IMPORT, so conftest's
+  `STATE_DIR` patch never reached it — and `at.save_settings` →
+  `local_history.record_deployment` wrote `DEPLOY_LOG`, which only three test
+  files patched themselves. `rows_index.OFF_FILE` (Sep 24) had the same
+  shape: a test writing it would switch the operator's real indexer off.
+* Invariant broken: **a test writes only under its own tmp_path**
+  (RCA-2026-09-18-C), and a path DERIVED from a patched directory at import
+  time is a new path. A guard is only as wide as its pattern: the sweep
+  walked a fixed list of five modules.
+* Guard: `tests/test_tests_cannot_write_the_real_home.py` —
+  `test_no_new_module_path_in_the_whole_package_points_at_the_real_home`
+  walks every module in the package, `NOT_YET_SANDBOXED` names the 28 left
+  and must only shrink, and `local_history` joins `GUARDED`. Red on the
+  pre-fix sandbox, naming exactly the four holes.
+
+**SAW** — not reported; found by the deploy's own tests: a test of the
+shared reads opened the readings file expecting 1 line and found 12,390.
+
+**TIMELINE**
+
+1. `Sep 16, 2026 3:16pm` onward — every suite run that saves settings
+   appends fixture deployments to `~/.tradingagents/deployments.jsonl`:
+   106 entries over 26 test runs — NGAS pivot_1h 33, KITE stoch14_1h 26,
+   XAUT mom6_1h_gx 22, XAUT mom6_1h_pv 20 and 5 more; 42 read "XAUT ...
+   deployed, real".
+2. `Sep 23, 2026 1:00am` — the readings file starts (the forecast work);
+   test runs file their fake books into it: BTC_USDT 41, BDX_USDT 10,
+   X_USDT 9, ETH_USDT 6, KITE_USDT 5, GPNSTOCK_USDT 4, FLAT_USDT 3 and
+   DASH_USDT 2 — one stamped `Sep 24, 2026 9:00pm`, in the future, by a
+   test's fake clock.
+3. `Sep 23 → Sep 24, 2026` — `test_the_sandbox_covers_every_path_constant_
+   it_can_find` fails naming `BOOK_READINGS_PATH`, among ~22 failing tests.
+4. `Sep 24, 2026 ~7:40pm` — the readings test finds 12,390 real lines;
+   the package-wide walk finds 30 holes in 16 modules, 4 of them written by
+   paths the deploy and the forecast read. Cleaned with the runner and the
+   API stopped: 80 of 12,440 readings and 106 of 1,225 deployments removed,
+   the originals kept as `*.before-clean-20260924`; the 46 real entries
+   after Sep 16 (the Sep 23, 12:15am delisted cleanup) stay.
+
+**ROOT CAUSE** — module-level paths outside the sandbox's list, one of them
+derived at import from a directory the sandbox patches later, were written
+by tests.
+
+**WHY IT WAS NOT CAUGHT** — the guard walked a fixed list of five modules
+and the deploy history lived in a sixth; and the guard that did name the
+readings file went red inside a suite with ~22 other red tests, where one
+more failure is invisible. A red guard nobody runs alone is not a guard.
+
+**COST** — none in money. Wrong records: 106 fake deployments on the
+history (42 of them "real money") and 80 fake book readings the forecast
+could charge a signal with.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_tests_cannot_write_the_real_home.py`.
+
+---
+
 ## RCA-2026-09-24-G — three deployed rows showed ids that are in no store: a signal name with an underscore was cut at its first `_`
 
 **CEO**

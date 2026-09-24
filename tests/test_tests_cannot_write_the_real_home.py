@@ -43,7 +43,47 @@ GUARDED = [
     # screen's RESOLVE button was 11 fixtures (RCA-2026-09-18-C). This entry
     # is what makes the sweep below look inside the module at all.
     ("tradingagents.pending_ledger", ("STATE_DIR",)),
+    # the DEPLOY HISTORY and the settings backups it dates rows from
+    # (RCA-2026-09-24-I): every save_settings in a test wrote a fixture
+    # "deployed" row into the operator's real history
+    ("tradingagents.local_history", ("DEPLOY_LOG", "SETTINGS_SNAPSHOTS")),
 ]
+
+# EVERY OTHER module-level path that still points inside the real home while
+# the suite runs, found by walking the whole package on Sep 24, 2026. Each is
+# named so nobody mistakes the list for clean; `test_no_new_module_...` fails
+# on any path NOT in it, so the list can only shrink. Sandbox one, delete its
+# line here.
+NOT_YET_SANDBOXED = {
+    "tradingagents.analysis_jobs.RUN_DIR",
+    "tradingagents.candle_autopilot.STATE",
+    "tradingagents.cloud_autopilot.STATE",
+    "tradingagents.cloud_sweep.STATE_RUNS_FILE",
+    "tradingagents.cloud_sweep.RUNFILE",
+    "tradingagents.cloud_sweep.RESFILE",
+    "tradingagents.daily_grid.HOME",
+    "tradingagents.daily_grid.STATE",
+    "tradingagents.daily_grid.PIDFILE",
+    "tradingagents.daily_grid.JOBFILE",
+    "tradingagents.dataflows.mexc_credentials.STORE_DIR",
+    "tradingagents.dataflows.mexc_credentials.STORE_PATH",
+    "tradingagents.db_jobs.RETRY_FILE",
+    "tradingagents.db_jobs.INDEX_RATE_FILE",
+    "tradingagents.live_ingest.HOME",
+    "tradingagents.live_ingest.TOKEN_FILE",
+    "tradingagents.live_ingest.URL_FILE",
+    "tradingagents.live_ingest.PROGRESS_FILE",
+    "tradingagents.live_ingest.CF_LOG",
+    "tradingagents.live_ingest.SERVE_LOG",
+    "tradingagents.live_price.STATUS_PATH",
+    "tradingagents.screen_log.LOG_PATH",
+    "tradingagents.stores._HOME",
+    "tradingagents.supervisor.LOG",
+    "tradingagents.sweep_orchestrator.HOME",
+    "tradingagents.sweep_orchestrator.STATE",
+    "tradingagents.sweep_orchestrator.LOG",
+    "tradingagents.sweep_orchestrator.STOP",
+}
 
 
 def _inside(p) -> bool:
@@ -97,3 +137,33 @@ def test_a_grid_written_now_lands_in_the_sandbox(tmp_path):
     assert path is not None
     assert not _inside(path), path
     assert Path(path).exists()
+
+
+def test_no_new_module_path_in_the_whole_package_points_at_the_real_home():
+    """A guard is only as wide as its pattern. The sweep above walked five
+    modules; the deploy history lived in a sixth, and the operator's history
+    filled with fixture deployments for eight days (RCA-2026-09-24-I). This
+    walks EVERY module in the package. A hole not already named in
+    NOT_YET_SANDBOXED fails here the day it is added."""
+    import importlib
+    import pkgutil
+
+    import tradingagents
+
+    holes = set()
+    for info in pkgutil.walk_packages(tradingagents.__path__, "tradingagents."):
+        try:
+            m = importlib.import_module(info.name)
+        except Exception:                                  # noqa: BLE001
+            continue
+        for name, val in list(vars(m).items()):
+            if isinstance(val, Path) and _inside(val):
+                holes.add(f"{info.name}.{name}")
+    new = sorted(holes - NOT_YET_SANDBOXED)
+    assert not new, ("these point into the operator's real ~/.tradingagents "
+                     "while tests run — sandbox them in tests/conftest.py:\n  "
+                     + "\n  ".join(new))
+    fixed = sorted(NOT_YET_SANDBOXED - holes)
+    assert not fixed, ("sandboxed now — delete these lines from "
+                       "NOT_YET_SANDBOXED so the list stays true:\n  "
+                       + "\n  ".join(fixed))

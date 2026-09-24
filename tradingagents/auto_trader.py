@@ -5923,16 +5923,18 @@ def reconcile_unconfigured(settings: dict, state: dict, *, fx) -> None:
         if not isinstance(st, dict):
             continue
         if is_paper_slot(key):
-            # A SWITCHED-OFF PRACTICE TRADE IS FINISHED, NOT ERASED
-            # (RCA-2026-09-24-J). This set the position to None with a log
-            # line and no ledger row, so the operator's Sep 24, 2026 7:45pm
-            # replace deploy wiped two open practice trades — PDDSTOCK long at
-            # 79.18 and CTC short at 0.10908 — whose outcome was then never
-            # booked. `run_cycle` now visits every coin a paper slot still
-            # holds, and `_process_slot`'s rescue tracks its EXIT only, under
-            # its own strategy. Only a position whose strategy no longer
-            # exists at all — nothing could ever book its exit — is cleared,
-            # and that is written down.
+            # A SWITCHED-OFF PRACTICE TRADE IS FINISHED, NOT DROPPED
+            # (RCA-2026-09-24-J). This set the position to None IN MEMORY —
+            # a log line, no ledger row — and `save_state` only writes the
+            # slots a cycle touched, so the file kept it while no cycle ever
+            # checked its target or stop: after the operator's Sep 24, 2026
+            # 7:45pm replace deploy, PDDSTOCK long at 79.18 and CTC short at
+            # 0.10908 sat open and unwatched, "cleared" twice a minute.
+            # `run_cycle` now visits every coin a paper slot still holds, and
+            # `_process_slot`'s rescue tracks its EXIT only, under its own
+            # strategy. Only a position whose strategy no longer exists at
+            # all — nothing could ever book its exit — is cleared, and that
+            # is written down.
             sym = coin_of_slot(key)
             pos = st.get("position")
             if (pos and sym not in configured
@@ -6114,10 +6116,9 @@ def run_cycle(*, fx=None) -> None:
                 symbols.append(sym)
     # ...AND, ON THE PRACTICE PASS ONLY, EVERY COIN A PAPER SLOT STILL HOLDS
     # (RCA-2026-09-24-J). Without it a switched-off practice trade had no
-    # cycle to book its exit, so `reconcile_unconfigured` erased it — two
-    # open trades, PDDSTOCK and CTC, at the Sep 24, 2026 7:45pm replace. The
-    # live pass never sees these coins: no venue call for a trade MEXC does
-    # not hold.
+    # cycle to book its exit — two open trades, PDDSTOCK and CTC, sat
+    # unwatched from the Sep 24, 2026 7:45pm replace. The live pass never
+    # sees these coins: no venue call for a trade MEXC does not hold.
     paper_held: list[str] = []
     for slot, v in (state or {}).items():
         if (isinstance(v, dict) and is_paper_slot(slot)

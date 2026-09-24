@@ -1,12 +1,13 @@
-"""A switched-off practice trade is finished, not erased (RCA-2026-09-24-J).
+"""A switched-off practice trade is finished, not dropped (RCA-2026-09-24-J).
 
 The operator's Sep 24, 2026 7:45pm replace deploy switched off every old row.
 Two of them held open practice trades — PDDSTOCK eqraid 1h, long at 79.18
-since 1:00pm, and CTC killzone 4h, short at 0.10908 since 12:00am — and the
-runner's first cycle ERASED both: `reconcile_unconfigured` set the position
-to None with a log line and no ledger row, because the cycle only kept
-visiting coins that held REAL money. The practice record was left with two
-entries and no exits.
+since 1:00pm, and CTC killzone 4h, short at 0.10908 since 12:00am. From then
+on no cycle checked their target or stop: `reconcile_unconfigured` set the
+position to None IN MEMORY every round (20 log lines in ten minutes, no
+ledger row), the file kept it because only touched slots are saved, and the
+cycle only visited coins that held REAL money. Left alone, both would have
+sat open on the screen for ever with nothing able to book their exits.
 
 Now the practice pass visits every coin a paper slot still holds, the
 slot's own strategy books the exit (exits only), and the only practice
@@ -24,7 +25,7 @@ import pytest
 from tests.test_auto_trader import FakeFx
 from tradingagents import auto_trader as at
 
-HELD, KEY = "PDDSTOCK_USDT", "eqraid_1h_sl25tp25"      # the erased trade
+HELD, KEY = "PDDSTOCK_USDT", "eqraid_1h_sl25tp25"      # the unwatched trade
 ARMED, ARMED_KEY = "GPNSTOCK_USDT", "keltner_30m_sl2tp2"
 ENTRY = 79.18
 

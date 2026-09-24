@@ -172,6 +172,90 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-24-K — UPDATE THIS BACKTEST shows no loading animation while it runs, and when it finishes it prints a code line that does not say "done"
+
+**CEO**
+
+* You pressed UPDATE THIS BACKTEST on #AJX2ZPQX (CAKE, 1 hour, zscore20) and
+  saw green text: "CAKE 1h · zscore20: 200 row(s), 220 indexed". You could
+  not tell whether it was still loading or finished. It was FINISHED — at
+  Sep 24, 2026 11:41pm, three minutes before you asked.
+* Why: while the update runs, the button only changes its word to
+  "UPDATING…" with a grey line beside it — no moving spinner, although you
+  asked on Sep 23 for an animation on everything that loads. When it ends,
+  the screen prints the job's own internal note word for word: it never says
+  "done", never says when, and "row(s)" and "indexed" are programmer words.
+* Documented, not fixed (you asked to document it). The fix: a spinner for
+  the whole time it runs, and a plain finished line such as "Done at 11:41pm
+  — re-tested 200 strategies for CAKE 1h zscore20; all 220 are now in the
+  search."
+
+**DEV**
+
+* `webapp/src/components/backtest/StrategiesPanel.tsx:2039-2059` — running:
+  the button label becomes the literal "UPDATING…" and `pairJob.now` prints
+  in grey, with no `animate-spin` element anywhere in the branch; finished:
+  `pairJob.note` is printed verbatim in success-green. The note is built at
+  `tradingagents/db_jobs.py:2685` as `f"{what}: {n_rows:,} row(s),
+  {indexed:,} indexed"` — a log line, never written to be read on screen.
+* Invariant broken: **label-must-match-data** (a status line must say WHICH
+  state it is in — the Sep 14 rule "THE SCREEN SAYS WHICH STATE IT IS IN")
+  and the operator's standing ask for a loading animation on everything that
+  loads (docs/OPERATOR-ASKS.md, Sep 23, 2026: *"can you make animation for
+  all that is loading? if its indexing i should be seeing a loading beside
+  the notification icon"*). The Sep 23 work added spinners to the header
+  and the Stored strategies badge; this button was not in it.
+* Guard: none yet. Planned `tests/test_the_row_update_says_running_or_done.py`
+  asserting a spinner in the running branch and a finished line that carries
+  the word "Done" and the finish time from `pairJob.finished`.
+
+**SAW** — the operator's screenshot, `Sep 24, 2026 ~11:44pm`: the trade log of
+#AJX2ZPQX (CAKE 1h zscore20 · SL 2.5% / TP 4% · flat · 28 trades · 20 WIN · 8
+LOSE · TOTAL +55.94 USDT), the UPDATE THIS BACKTEST button, and beside it in
+green "CAKE 1h · zscore20: 200 row(s), 220 indexed". Their words: *"is it
+loading or done because if its loading i already told you do a loading
+animation, document this"*.
+
+**TIMELINE**
+
+1. `Sep 23, 2026` — the operator asks for an animation on everything that
+   loads; spinners are added to the header chips and the table's badge.
+2. `Sep 24, 2026 11:41pm` — the `pairbt_v2` job for CAKE 1h finishes:
+   `running=False, rows=200, error=None, finished=Sep 24, 2026 11:41pm`,
+   note `CAKE 1h · zscore20: 200 row(s), 220 indexed`.
+3. `11:44pm` — the operator cannot tell done from loading.
+4. What the two numbers mean, read from the emitter and the file: **200** is
+   how many strategies this re-test produced (`n_rows`, from `run_pair`);
+   **220** is how many zscore20 rows for CAKE 1h are now in the searchable
+   table (`index_pair(signals=["zscore20"])`), which matches the v2 pair file
+   exactly — 110 flat + 110 martingale. The 20-row gap between them is NOT
+   yet explained and is noted here so it is not forgotten.
+
+**ROOT CAUSE** — a job's log line reused as a screen label, and a running
+state drawn without the animation the operator asked for everywhere.
+
+**WHY IT WAS NOT CAUGHT** — the tests over this button
+(`test_the_row_update_button_speaks_for_its_own_row.py`) assert that the
+line belongs to the right ROW (RCA-2026-09-18-M); none asserts what the line
+SAYS in each state, and the Sep 23 animation pass was checked on the header
+and the badge only. **When a standing ask covers "everything", list every
+place it applies before calling it done.**
+
+**COST** — none in money; a confusing screen after a successful update.
+
+**FIX** — NOT YET COMMITTED: the operator asked for documentation only
+("document this"). Proposed: an `animate-spin` spinner in the running
+branch (button and status line), and the finished branch printing a plain
+sentence built from `pairJob` fields — "Done at <finished> — re-tested
+<rows> strategies for <pair> <signal>; <indexed> are now in the search" —
+instead of the raw note.
+
+**GUARD** — planned: `tests/test_the_row_update_says_running_or_done.py`;
+the existing `tests/test_the_row_update_button_speaks_for_its_own_row.py`
+covers only which row the line belongs to.
+
+---
+
 ## RCA-2026-09-24-J — a practice trade on a switched-off coin was left open and unwatched: nothing could ever book its exit
 
 **CEO**

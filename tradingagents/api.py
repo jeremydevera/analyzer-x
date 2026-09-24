@@ -1852,14 +1852,23 @@ def trade_positions() -> dict:
 
     cred.load_into_env()
 
+    # ONE PRICE PER COIN PER REQUEST. build_rows asks twice for every open row
+    # (its unrealized figure and its "to TP" column), so a practice book with
+    # dozens of positions on a few coins asked MEXC the same question dozens
+    # of times every 15 seconds, from the runner's own address (Sep 24, 2026:
+    # 537 practice slots on 64 coins, up to 4 open per coin).
+    _prices: dict = {}
+
     def last_price(symbol: str):
         # fx.last_price is the mark-price reader. klines() returns a DataFrame,
         # so indexing it like a list silently yielded nothing and the "to TP"
         # progress column rendered empty on every row.
-        try:
-            return float(fx.last_price(symbol))
-        except Exception:
-            return None
+        if symbol not in _prices:
+            try:
+                _prices[symbol] = float(fx.last_price(symbol))
+            except Exception:
+                _prices[symbol] = None
+        return _prices[symbol]
 
     def contract_size(symbol: str) -> float:
         try:

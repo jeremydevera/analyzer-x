@@ -1207,6 +1207,345 @@ INVERTED_BRACKETS.update({
     },
 })
 
+# ---------------------------------------------------------------------------
+# THE OPERATOR'S BACKTEST v2 DEPLOY (Sep 24, 2026). They pasted 1,473 row ids
+# from Backtest v2 (Stored strategies · Past 30 days · Winrate 70% or better ·
+# TP at least as wide as SL) and said *"undeploy all deployed ids in
+# strategies deployed / then deploy these ids"*. presets/v2-sep24.json is the
+# arming, every row named with the numbers it was measured with.
+#
+# 1,473 ids -> 752 trades: 721 are a flat row AND its martingale twin, which
+# share one slot (a key carries no sizing; the practice book's Martingale
+# mode sets the stake), plus 31 singles. 752 -> 537: 215 carry a stop past
+# the venue's liquidation wall on their own contract — 172 at 4.00%, and 43
+# at 2.50-3.00% on contracts with a 2% maintenance rate, where 20x
+# liquidates at 3.00% — so `edge_check` would block them on every entry.
+# They are refused by id in the preset, never armed. The 537 run on 326
+# keys: 17 already existed with the identical spec, these 309 are new
+# (76 of them daily — the first Day1 keys this runner has held).
+#
+# GENERATED FROM THE MEASURED ROWS, never typed: tp/sl are the row's own
+# percents over 100, interval/bar_seconds come from its timeframe, and
+# `threshold` is the row's th for the three rules that read one (mom6, mom15,
+# fade15) — IN THE NAME TOO (`_t08_`), because 19 of these combinations
+# differ only there and a shared key would arm one of them twice. A percent
+# of 10 or more is written `12p0`, because `tp12` already means 1.2%.
+# Every key reaches its own rule in `signal_for` and hashes to the id the
+# operator pasted (tests/test_the_v2_sep24_deploy_is_what_was_asked.py).
+_OPERATORS_V2_SEP24 = {
+    "bb20_15m_sl12tp12": {"interval": "Min15", "bar_seconds": 900, "tp": 0.012, "sl": 0.012},
+    "bb20_15m_sl12tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.012},
+    "bb20_15m_sl15tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.015},
+    "bb20_15m_sl15tp2": {"interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.015},
+    "bb20_1h_sl2tp25": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.025, "sl": 0.02},
+    "bb20_1h_sl3tp3": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.03, "sl": 0.03},
+    "bb20_30m_sl12tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.012},
+    "bb20_30m_sl12tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.012},
+    "bb20_30m_sl12tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.012},
+    "bb20_30m_sl15tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.015},
+    "bb20_30m_sl15tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.015},
+    "bb20_30m_sl15tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.015},
+    "bb20_30m_sl1tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.01},
+    "bb20_30m_sl1tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.01},
+    "bb20_30m_sl2tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.02},
+    "bb20_30m_sl2tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.02},
+    "bos_4h_sl3tp8": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.08, "sl": 0.03},
+    "cci20_15m_sl15tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.015},
+    "cci20_30m_sl12tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.012},
+    "cci20_30m_sl15tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.015},
+    "cci20_30m_sl1tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.01},
+    "cci20_30m_sl2tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.02},
+    "cci20_4h_sl3tp6": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.06, "sl": 0.03},
+    "cci20_4h_sl3tp8": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.08, "sl": 0.03},
+    "cf_donch_1h_sl3tp4": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.04, "sl": 0.03},
+    "cf_donch_1h_sl3tp6": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.06, "sl": 0.03},
+    "cf_donch_l1_1h_sl25tp6": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.06, "sl": 0.025},
+    "cf_donch_l1_1h_sl3tp6": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.06, "sl": 0.03},
+    "cf_mom_4h_sl25tp25": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.025, "sl": 0.025},
+    "cf_mom_4h_sl3tp3": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.03, "sl": 0.03},
+    "cf_mom_4h_sl3tp4": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.04, "sl": 0.03},
+    "cf_mom_l1_1d_sl3tp12p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.12, "sl": 0.03},
+    "cf_mom_l1_1d_sl3tp15p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.15, "sl": 0.03},
+    "cf_mom_l1_4h_sl3tp8": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.08, "sl": 0.03},
+    "cf_obretest_1h_sl3tp8": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.08, "sl": 0.03},
+    "cf_soup1_30m_sl2tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.02},
+    "cf_soup1_4h_sl2tp8": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.08, "sl": 0.02},
+    "cf_soup_1d_sl25tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.025},
+    "cf_soup_1d_sl25tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.025},
+    "cf_soup_1d_sl2tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.02},
+    "cf_soup_1d_sl2tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.02},
+    "cf_soup_1d_sl3tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.03},
+    "cf_soup_1d_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03},
+    "cf_ttm_1h_sl25tp8": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.08, "sl": 0.025},
+    "cf_ttm_1h_sl3tp8": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.08, "sl": 0.03},
+    "choch_4h_sl25tp8": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.08, "sl": 0.025},
+    "choch_4h_sl2tp8": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.08, "sl": 0.02},
+    "choch_4h_sl3tp8": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.08, "sl": 0.03},
+    "cx_first_4h_sl3tp5": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.05, "sl": 0.03},
+    "cx_firstr_1d_sl25tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.025},
+    "cx_firstr_1d_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03},
+    "cx_firstr_4h_sl25tp25": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.025, "sl": 0.025},
+    "cx_firstr_4h_sl3tp3": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.03, "sl": 0.03},
+    "cx_firstr_4h_sl3tp4": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.04, "sl": 0.03},
+    "dbltop_1h_sl3tp8": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.08, "sl": 0.03},
+    "engulf_1d_sl25tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.025},
+    "engulf_1d_sl25tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.025},
+    "engulf_1d_sl3tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.03},
+    "engulf_1d_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03},
+    "fade15_4h_t06_sl3tp4": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.04, "sl": 0.03, "threshold": 0.006},
+    "fade15_4h_t08_sl3tp4": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.04, "sl": 0.03, "threshold": 0.008},
+    "fractal5_1h_sl3tp4": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.04, "sl": 0.03},
+    "fvg_1d_sl25tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.025},
+    "fvg_1d_sl25tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.025},
+    "fvg_1d_sl2tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.02},
+    "fvg_1d_sl2tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.02},
+    "fvg_1d_sl3tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.03},
+    "fvg_1d_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03},
+    "fvg_1h_sl3tp5": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.05, "sl": 0.03},
+    "fvg_1h_sl3tp6": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.06, "sl": 0.03},
+    "hammer_1h_sl2tp4": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.04, "sl": 0.02},
+    "hammer_1h_sl3tp4": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.04, "sl": 0.03},
+    "heikin_1d_sl25tp12p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.12, "sl": 0.025},
+    "heikin_1d_sl3tp12p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.12, "sl": 0.03},
+    "heikin_1d_sl3tp15p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.15, "sl": 0.03},
+    "heikin_1d_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03},
+    "heikin_4h_sl25tp4": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.04, "sl": 0.025},
+    "heikin_4h_sl3tp4": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.04, "sl": 0.03},
+    "ibs_15m_sl04tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.004},
+    "ibs_15m_sl05tp06": {"interval": "Min15", "bar_seconds": 900, "tp": 0.006, "sl": 0.005},
+    "ibs_15m_sl06tp06": {"interval": "Min15", "bar_seconds": 900, "tp": 0.006, "sl": 0.006},
+    "ibs_15m_sl08tp08": {"interval": "Min15", "bar_seconds": 900, "tp": 0.008, "sl": 0.008},
+    "ibs_15m_sl12tp12": {"interval": "Min15", "bar_seconds": 900, "tp": 0.012, "sl": 0.012},
+    "ibs_15m_sl15tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.015},
+    "ibs_15m_sl1tp1": {"interval": "Min15", "bar_seconds": 900, "tp": 0.01, "sl": 0.01},
+    "ibs_1d_sl25tp12p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.12, "sl": 0.025},
+    "ibs_1d_sl25tp15p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.15, "sl": 0.025},
+    "ibs_1d_sl25tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.025},
+    "ibs_1d_sl25tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.025},
+    "ibs_1d_sl2tp12p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.12, "sl": 0.02},
+    "ibs_1d_sl2tp15p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.15, "sl": 0.02},
+    "ibs_1d_sl2tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.02},
+    "ibs_1d_sl2tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.02},
+    "ibs_1d_sl3tp10p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.1, "sl": 0.03},
+    "ibs_1d_sl3tp12p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.12, "sl": 0.03},
+    "ibs_1d_sl3tp15p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.15, "sl": 0.03},
+    "ibs_1d_sl3tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.03},
+    "ibs_1d_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03},
+    "ibs_1h_sl2tp2": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.02, "sl": 0.02},
+    "ibs_30m_sl08tp08": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.008, "sl": 0.008},
+    "ibs_30m_sl1tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.01},
+    "keltner_15m_sl12tp12": {"interval": "Min15", "bar_seconds": 900, "tp": 0.012, "sl": 0.012},
+    "keltner_15m_sl12tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.012},
+    "keltner_15m_sl12tp2": {"interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.012},
+    "keltner_15m_sl15tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.015},
+    "keltner_15m_sl15tp2": {"interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.015},
+    "keltner_15m_sl15tp25": {"interval": "Min15", "bar_seconds": 900, "tp": 0.025, "sl": 0.015},
+    "keltner_15m_sl1tp1": {"interval": "Min15", "bar_seconds": 900, "tp": 0.01, "sl": 0.01},
+    "keltner_15m_sl1tp12": {"interval": "Min15", "bar_seconds": 900, "tp": 0.012, "sl": 0.01},
+    "keltner_15m_sl1tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.01},
+    "keltner_30m_sl12tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.012},
+    "keltner_30m_sl12tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.012},
+    "keltner_30m_sl15tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.015},
+    "keltner_30m_sl15tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.015},
+    "keltner_30m_sl15tp3": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.03, "sl": 0.015},
+    "keltner_30m_sl1tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.01},
+    "keltner_30m_sl1tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.01},
+    "keltner_30m_sl2tp3": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.03, "sl": 0.02},
+    "keltner_30m_sl2tp4": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.04, "sl": 0.02},
+    "lrslope_1h_sl3tp3": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.03, "sl": 0.03},
+    "macddiv_15m_sl08tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.008},
+    "macddiv_15m_sl12tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.012},
+    "macddiv_15m_sl12tp2": {"interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.012},
+    "macddiv_15m_sl15tp25": {"interval": "Min15", "bar_seconds": 900, "tp": 0.025, "sl": 0.015},
+    "macddiv_15m_sl15tp3": {"interval": "Min15", "bar_seconds": 900, "tp": 0.03, "sl": 0.015},
+    "macddiv_15m_sl1tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.01},
+    "macddiv_15m_sl1tp2": {"interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.01},
+    "macddiv_30m_sl2tp3": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.03, "sl": 0.02},
+    "macddiv_30m_sl2tp4": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.04, "sl": 0.02},
+    "mfi14_1h_sl3tp4": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.04, "sl": 0.03},
+    "mom15_1d_t08_sl3tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.03, "threshold": 0.008},
+    "mom15_1d_t08_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03, "threshold": 0.008},
+    "mom15_1d_t15_sl3tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.03, "threshold": 0.015},
+    "mom15_1d_t15_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03, "threshold": 0.015},
+    "mom15_1d_t1_sl3tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.03, "threshold": 0.01},
+    "mom15_1d_t1_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03, "threshold": 0.01},
+    "mom6_1d_t08_sl3tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.03, "threshold": 0.008},
+    "mom6_1d_t08_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03, "threshold": 0.008},
+    "mom6_1d_t15_sl3tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.03, "threshold": 0.015},
+    "mom6_1d_t15_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03, "threshold": 0.015},
+    "mom6_1d_t1_sl3tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.03, "threshold": 0.01},
+    "mom6_1d_t1_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03, "threshold": 0.01},
+    "mom6_4h_t04_sl3tp4": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.04, "sl": 0.03, "threshold": 0.004},
+    "mom6_4h_t06_sl3tp4": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.04, "sl": 0.03, "threshold": 0.006},
+    "mom6_4h_t08_sl3tp4": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.04, "sl": 0.03, "threshold": 0.008},
+    "nhigh50_1d_sl3tp10p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.1, "sl": 0.03},
+    "nhigh50_1d_sl3tp12p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.12, "sl": 0.03},
+    "nhigh50_1d_sl3tp8": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.08, "sl": 0.03},
+    "nhigh50_1h_sl3tp8": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.08, "sl": 0.03},
+    "obv20_4h_sl3tp8": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.08, "sl": 0.03},
+    "ote_1d_sl3tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.03},
+    "ote_1d_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03},
+    "pivot_1h_sl3tp5": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.05, "sl": 0.03},
+    "prank_15m_sl06tp06": {"interval": "Min15", "bar_seconds": 900, "tp": 0.006, "sl": 0.006},
+    "prank_15m_sl08tp08": {"interval": "Min15", "bar_seconds": 900, "tp": 0.008, "sl": 0.008},
+    "prank_15m_sl12tp12": {"interval": "Min15", "bar_seconds": 900, "tp": 0.012, "sl": 0.012},
+    "prank_15m_sl12tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.012},
+    "prank_15m_sl12tp2": {"interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.012},
+    "prank_15m_sl15tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.015},
+    "prank_15m_sl15tp2": {"interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.015},
+    "prank_15m_sl15tp25": {"interval": "Min15", "bar_seconds": 900, "tp": 0.025, "sl": 0.015},
+    "prank_15m_sl1tp1": {"interval": "Min15", "bar_seconds": 900, "tp": 0.01, "sl": 0.01},
+    "prank_15m_sl1tp12": {"interval": "Min15", "bar_seconds": 900, "tp": 0.012, "sl": 0.01},
+    "prank_15m_sl1tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.01},
+    "prank_1h_sl12tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.012},
+    "prank_1h_sl12tp2": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.02, "sl": 0.012},
+    "prank_1h_sl15tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.015},
+    "prank_1h_sl15tp2": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.02, "sl": 0.015},
+    "prank_1h_sl1tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.01},
+    "prank_1h_sl2tp2": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.02, "sl": 0.02},
+    "prank_1h_sl2tp25": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.025, "sl": 0.02},
+    "prank_1h_sl2tp3": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.03, "sl": 0.02},
+    "prank_30m_sl08tp08": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.008, "sl": 0.008},
+    "prank_30m_sl08tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.008},
+    "prank_30m_sl08tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.008},
+    "prank_30m_sl12tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.012},
+    "prank_30m_sl12tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.012},
+    "prank_30m_sl12tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.012},
+    "prank_30m_sl15tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.015},
+    "prank_30m_sl15tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.015},
+    "prank_30m_sl15tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.015},
+    "prank_30m_sl1tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.01},
+    "prank_30m_sl1tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.01},
+    "prank_30m_sl1tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.01},
+    "prank_30m_sl2tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.02},
+    "prank_30m_sl2tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.02},
+    "prank_30m_sl2tp3": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.03, "sl": 0.02},
+    "rsi2_1h_sl25tp3": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.03, "sl": 0.025},
+    "rsi2_1h_sl3tp3": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.03, "sl": 0.03},
+    "rsidiv_15m_sl12tp3": {"interval": "Min15", "bar_seconds": 900, "tp": 0.03, "sl": 0.012},
+    "rsidiv_15m_sl15tp3": {"interval": "Min15", "bar_seconds": 900, "tp": 0.03, "sl": 0.015},
+    "rsidiv_30m_sl12tp5": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.05, "sl": 0.012},
+    "rsidiv_30m_sl15tp5": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.05, "sl": 0.015},
+    "rsidiv_30m_sl1tp5": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.05, "sl": 0.01},
+    "rsidiv_30m_sl2tp5": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.05, "sl": 0.02},
+    "sr_bounce_15m_sl15tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.015},
+    "sr_bounce_4h_sl3tp6": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.06, "sl": 0.03},
+    "sr_break_1h_sl3tp8": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.08, "sl": 0.03},
+    "stoch14_15m_sl04tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.004},
+    "stoch14_15m_sl05tp06": {"interval": "Min15", "bar_seconds": 900, "tp": 0.006, "sl": 0.005},
+    "stoch14_15m_sl06tp06": {"interval": "Min15", "bar_seconds": 900, "tp": 0.006, "sl": 0.006},
+    "stoch14_15m_sl06tp08": {"interval": "Min15", "bar_seconds": 900, "tp": 0.008, "sl": 0.006},
+    "stoch14_15m_sl08tp08": {"interval": "Min15", "bar_seconds": 900, "tp": 0.008, "sl": 0.008},
+    "stoch14_15m_sl08tp1": {"interval": "Min15", "bar_seconds": 900, "tp": 0.01, "sl": 0.008},
+    "stoch14_15m_sl12tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.012},
+    "stoch14_15m_sl12tp2": {"interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.012},
+    "stoch14_15m_sl15tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.015},
+    "stoch14_15m_sl15tp2": {"interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.015},
+    "stoch14_15m_sl15tp25": {"interval": "Min15", "bar_seconds": 900, "tp": 0.025, "sl": 0.015},
+    "stoch14_15m_sl1tp1": {"interval": "Min15", "bar_seconds": 900, "tp": 0.01, "sl": 0.01},
+    "stoch14_1d_sl25tp10p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.1, "sl": 0.025},
+    "stoch14_1d_sl25tp15p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.15, "sl": 0.025},
+    "stoch14_1d_sl2tp10p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.1, "sl": 0.02},
+    "stoch14_1d_sl2tp15p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.15, "sl": 0.02},
+    "stoch14_1d_sl3tp10p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.1, "sl": 0.03},
+    "stoch14_1d_sl3tp12p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.12, "sl": 0.03},
+    "stoch14_1d_sl3tp15p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.15, "sl": 0.03},
+    "stoch14_1d_sl3tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.03},
+    "stoch14_1d_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03},
+    "stoch14_1h_sl12tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.012},
+    "stoch14_1h_sl15tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.015},
+    "stoch14_1h_sl1tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.01},
+    "stoch14_1h_sl1tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.01},
+    "stoch14_1h_sl2tp2": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.02, "sl": 0.02},
+    "stoch14_1h_sl2tp25": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.025, "sl": 0.02},
+    "stoch14_1h_sl2tp3": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.03, "sl": 0.02},
+    "stoch14_1h_sl2tp4": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.04, "sl": 0.02},
+    "stoch14_30m_sl08tp08": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.008, "sl": 0.008},
+    "stoch14_30m_sl12tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.012},
+    "stoch14_30m_sl12tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.012},
+    "stoch14_30m_sl15tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.015},
+    "stoch14_30m_sl15tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.015},
+    "stoch14_30m_sl1tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.01},
+    "stoch14_30m_sl1tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.01},
+    "stoch14_30m_sl2tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.02},
+    "stochrsi_4h_sl25tp25": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.025, "sl": 0.025},
+    "trend50_1d_sl25tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.025},
+    "trend50_1d_sl25tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.025},
+    "trend50_1d_sl3tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.03},
+    "trend50_1d_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03},
+    "trend50_4h_sl25tp25": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.025, "sl": 0.025},
+    "trend50_4h_sl3tp3": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.03, "sl": 0.03},
+    "trend50_4h_sl3tp4": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.04, "sl": 0.03},
+    "tsi_1h_sl3tp3": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.03, "sl": 0.03},
+    "vwaprev_15m_sl08tp1": {"interval": "Min15", "bar_seconds": 900, "tp": 0.01, "sl": 0.008},
+    "vwaprev_15m_sl12tp12": {"interval": "Min15", "bar_seconds": 900, "tp": 0.012, "sl": 0.012},
+    "vwaprev_15m_sl15tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.015},
+    "vwaprev_15m_sl1tp1": {"interval": "Min15", "bar_seconds": 900, "tp": 0.01, "sl": 0.01},
+    "vwaprev_15m_sl1tp12": {"interval": "Min15", "bar_seconds": 900, "tp": 0.012, "sl": 0.01},
+    "vwaprev_1h_sl15tp25": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.025, "sl": 0.015},
+    "vwaprev_1h_sl2tp25": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.025, "sl": 0.02},
+    "vwaprev_1h_sl2tp3": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.03, "sl": 0.02},
+    "vwaprev_30m_sl15tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.015},
+    "vwaprev_30m_sl15tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.015},
+    "vwaprev_30m_sl2tp3": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.03, "sl": 0.02},
+    "willr14_15m_sl04tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.004},
+    "willr14_15m_sl05tp06": {"interval": "Min15", "bar_seconds": 900, "tp": 0.006, "sl": 0.005},
+    "willr14_15m_sl06tp06": {"interval": "Min15", "bar_seconds": 900, "tp": 0.006, "sl": 0.006},
+    "willr14_15m_sl06tp08": {"interval": "Min15", "bar_seconds": 900, "tp": 0.008, "sl": 0.006},
+    "willr14_15m_sl08tp08": {"interval": "Min15", "bar_seconds": 900, "tp": 0.008, "sl": 0.008},
+    "willr14_15m_sl08tp1": {"interval": "Min15", "bar_seconds": 900, "tp": 0.01, "sl": 0.008},
+    "willr14_15m_sl12tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.012},
+    "willr14_15m_sl12tp2": {"interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.012},
+    "willr14_15m_sl15tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.015},
+    "willr14_15m_sl15tp2": {"interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.015},
+    "willr14_15m_sl15tp25": {"interval": "Min15", "bar_seconds": 900, "tp": 0.025, "sl": 0.015},
+    "willr14_15m_sl1tp1": {"interval": "Min15", "bar_seconds": 900, "tp": 0.01, "sl": 0.01},
+    "willr14_1d_sl25tp10p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.1, "sl": 0.025},
+    "willr14_1d_sl25tp15p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.15, "sl": 0.025},
+    "willr14_1d_sl2tp10p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.1, "sl": 0.02},
+    "willr14_1d_sl2tp15p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.15, "sl": 0.02},
+    "willr14_1d_sl3tp10p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.1, "sl": 0.03},
+    "willr14_1d_sl3tp12p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.12, "sl": 0.03},
+    "willr14_1d_sl3tp15p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.15, "sl": 0.03},
+    "willr14_1d_sl3tp18p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.18, "sl": 0.03},
+    "willr14_1d_sl3tp20p0": {"interval": "Day1", "bar_seconds": 86400, "tp": 0.2, "sl": 0.03},
+    "willr14_1h_sl12tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.012},
+    "willr14_1h_sl15tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.015},
+    "willr14_1h_sl1tp1": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.01},
+    "willr14_1h_sl1tp15": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.015, "sl": 0.01},
+    "willr14_1h_sl2tp2": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.02, "sl": 0.02},
+    "willr14_1h_sl2tp25": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.025, "sl": 0.02},
+    "willr14_1h_sl2tp3": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.03, "sl": 0.02},
+    "willr14_1h_sl2tp4": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.04, "sl": 0.02},
+    "willr14_30m_sl08tp08": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.008, "sl": 0.008},
+    "willr14_30m_sl12tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.012},
+    "willr14_30m_sl12tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.012},
+    "willr14_30m_sl15tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.015},
+    "willr14_30m_sl15tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.015},
+    "willr14_30m_sl1tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.01},
+    "willr14_30m_sl1tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.01},
+    "willr14_30m_sl2tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.02},
+    "zscore20_15m_sl12tp12": {"interval": "Min15", "bar_seconds": 900, "tp": 0.012, "sl": 0.012},
+    "zscore20_15m_sl12tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.012},
+    "zscore20_15m_sl15tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.015},
+    "zscore20_15m_sl15tp2": {"interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.015},
+    "zscore20_15m_sl1tp1": {"interval": "Min15", "bar_seconds": 900, "tp": 0.01, "sl": 0.01},
+    "zscore20_1h_sl25tp4": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.04, "sl": 0.025},
+    "zscore20_1h_sl3tp4": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.04, "sl": 0.03},
+    "zscore20_1h_sl3tp8": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.08, "sl": 0.03},
+    "zscore20_30m_sl08tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.008},
+    "zscore20_30m_sl12tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.012},
+    "zscore20_30m_sl12tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.012},
+    "zscore20_30m_sl15tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.015},
+    "zscore20_30m_sl15tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.015},
+    "zscore20_30m_sl15tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.015},
+    "zscore20_30m_sl1tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.01},
+    "zscore20_30m_sl2tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.02},
+    "zscore20_30m_sl2tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.02},
+}
+STRATEGY_SPECS.update(_OPERATORS_V2_SEP24)
+STRATEGY_ORDER = STRATEGY_ORDER + tuple(_OPERATORS_V2_SEP24)
+
 
 # ------------------------------------------------------------------ signals
 # Each takes plain OHLC lists of CLOSED bars and answers the direction the
@@ -2351,6 +2690,59 @@ def slippage_paid(expected: float, filled: float, side: int) -> float:
     return (filled / expected - 1.0) * (1 if side > 0 else -1)
 
 
+# ONE READ PER COIN PER CYCLE (Sep 24, 2026). Two venue reads were made once
+# per armed SLOT instead of once per COIN: the screening gate's order book
+# (`_edge_gate_cached`, every 5 minutes for every slot) and the practice
+# exit's last price (every cycle for every open practice slot). The
+# operator's Sep 24 deploy arms 537 slots on 64 coins — 135 of them on
+# GPNSTOCK — which is ~107 identical depth reads a minute on one thread,
+# against a venue that has refused this runner for going too fast at 10-26
+# coins (code 510, Sep 15-16, 2026). Inside `reads_once_per_cycle()` — the
+# runner's loop and nothing else — each is read once per coin and shared.
+# The FRESH read at a signal (`_entry_gate`) is never served from here; it
+# refreshes it. Outside the loop (tests, tools, the API) nothing is shared.
+_CYCLE_READS: dict | None = None
+# set only while `_edge_gate_cached` asks — the screen, never a signal
+_SCREENING = [False]
+
+
+@contextlib.contextmanager
+def reads_once_per_cycle():
+    """Share the per-coin reads of ONE cycle; always gone when it ends."""
+    global _CYCLE_READS
+    _CYCLE_READS = {}
+    try:
+        yield
+    finally:
+        _CYCLE_READS = None
+
+
+def _read_once(kind: str, symbol: str, read):
+    """`read()` once per (kind, coin) inside a cycle. A read that RAISES is
+    not remembered — a throttled call is retried by the next slot, exactly as
+    it would have been without the sharing."""
+    memo = _CYCLE_READS
+    if memo is None:
+        return read()
+    k = (kind, symbol)
+    if k not in memo:
+        memo[k] = read()
+    return memo[k]
+
+
+def _book_for(symbol: str, notional: float, *, fx, shared: bool):
+    """(book reading, fresh?) — shared only when asked AND inside a cycle.
+    A fresh read is always filed for the rest of the cycle to use."""
+    memo = _CYCLE_READS
+    k = ("book", symbol, round(float(notional), 6))
+    if shared and memo is not None and k in memo:
+        return memo[k], False
+    m = fx.book_cost(symbol, notional)
+    if memo is not None:
+        memo[k] = m
+    return m, True
+
+
 def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
                side: int = 0) -> dict:
     """Can this strategy's edge survive this contract's real trading cost?
@@ -2363,6 +2755,12 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
 
     `side` lets the entry path ask about the direction it is about to take;
     the screening pass leaves it 0 and gets the worse of the two.
+
+    Called by the SCREENING pass (`_edge_gate_cached`, inside `_screening`)
+    it may reuse the book this cycle already read for the same coin and size
+    (`reads_once_per_cycle`); the verdict is still this strategy's own — its
+    target, stop and hold. The fresh read at a signal (`_entry_gate`) never
+    does.
 
     verdict: "ok" | "warn" | "block" | "unknown"
     """
@@ -2383,7 +2781,7 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
     # the book really behaved as this said it would.
     deepest = margin * LEVERAGE
     try:
-        m = fx.book_cost(symbol, deepest)
+        m, fresh = _book_for(symbol, deepest, fx=fx, shared=_SCREENING[0])
     except Exception as exc:
         return {"verdict": "unknown", "reason": str(exc), "symbol": symbol,
                 "strategy": key}
@@ -2392,7 +2790,10 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
     fund = funding_cost(symbol, side, hold_s, fx=fx)
     round_trip = (2 * (m["slippage"] + taker_fee(symbol, fx=fx))
                   + fund["cost"])
-    _record_book_reading(symbol, round_trip, m)
+    # a reading is filed when it was TAKEN: a shared one re-filed later in the
+    # cycle would stamp an old book with a new time
+    if fresh:
+        _record_book_reading(symbol, round_trip, m)
     ratio = round_trip / tp if tp else float("inf")
     verdict = ("block" if ratio >= COST_RATIO_BLOCK
                else "warn" if ratio >= COST_RATIO_WARN else "ok")
@@ -2561,7 +2962,15 @@ def _edge_gate_cached(key: str, symbol: str, margin: float, *, fx,
     now = time.time()
     if hit and now - hit[0] < _GATE_TTL:
         return hit[1]
-    r = edge_check(key, symbol, margin, fx=fx, side=side)
+    # the screen may share this cycle's book for the coin: every armed slot
+    # on it asks the same question at the same size (`reads_once_per_cycle`).
+    # A FLAG, not an argument: callers and tests stand in their own
+    # `edge_check`, and a new keyword would break every one of them.
+    _SCREENING[0] = True
+    try:
+        r = edge_check(key, symbol, margin, fx=fx, side=side)
+    finally:
+        _SCREENING[0] = False
     # An UNKNOWN is not a measurement and must not be remembered as one. Cached
     # for the 300 s TTL, a single failed read opened a five-minute window in
     # which every signal on that pair traded ungated. Not cached, the next
@@ -4636,9 +5045,11 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
         if not outcome and pos_dry:
             # Real-time exit for simulated positions: closed bars lag, so
             # also test the live tick against the bracket. SL checked first,
-            # mirroring the worst-case bar rule.
+            # mirroring the worst-case bar rule. ONE price per coin per cycle,
+            # shared by that coin's open practice slots (`_read_once`).
             try:
-                px = float(fx.last_price(symbol))
+                px = float(_read_once("last", symbol,
+                                      lambda: fx.last_price(symbol)))
             except Exception as exc:
                 # Unreadable price = no exit decision this cycle. Booking one
                 # anyway is how the paper book invented take-profits.
@@ -6212,7 +6623,10 @@ def run_forever() -> None:
             if not active_modes(settings):
                 append_ledger({"action": "runner_stop", "why": "disabled"})
                 break
-            run_cycle()
+            # one order-book and one price read per COIN per cycle, shared
+            # by every slot on it (537 slots on 64 coins, Sep 24, 2026)
+            with reads_once_per_cycle():
+                run_cycle()
             if _stopping["flag"]:
                 append_ledger({"action": "runner_stop", "why": "signal"})
                 break
@@ -6446,6 +6860,7 @@ if __name__ == "__main__":
     _h.setFormatter(WhenFormatter("%(asctime)s %(levelname)s %(message)s"))
     logging.basicConfig(level=logging.INFO, handlers=[_h])
     if len(sys.argv) > 1 and sys.argv[1] == "once":
-        run_cycle()
+        with reads_once_per_cycle():
+            run_cycle()
     else:
         run_forever()

@@ -768,6 +768,139 @@ def _trim(x) -> str:
     return str(int(f)) if f == int(f) else str(f)
 
 
+# ---------------------------------------------------------------- exact count
+# THE EXACT NUMBER OF MATCHES, counted behind the page. Operator, Sep 25,
+# 2026, looking at "of 200+" pages: *"when i filter the table can you show how
+# many rows exacty is it"*. The page's own count stops at rows_index.COUNT_CAP
+# (5,000) because a filtered COUNT(*) over 49.5 million rows cannot fit in a
+# 20-second request — so this runs the SAME query in exact mode on a
+# background thread, and the panel polls it. Measured on Backtest v2 that
+# morning: win % >= 85 + TP >= SL = 1,369,665 in ~5 s; TP >= SL alone =
+# 39,403,722 in 261.6 s.
+#
+# ONE count at a time per process (a second heavy scan on the same spinning
+# disk halves both), results kept per (database path, WHICH FILE is there,
+# its size and mtime + the WAL's, filters) — so a rebuild swap or newly filed
+# rows mean a fresh count, never a stale number (RCA-2026-09-25-A's lesson).
+COUNT_FILTERS = ("coin", "tf", "signal", "profitable", "min_trades",
+                 "min_winrate", "max_tp", "max_sl", "min_tp", "min_sl",
+                 "tp_over_sl", "asset", "sizing", "row_id", "group",
+                 "measured_days")
+_EXACT: dict = {"results": {}, "running": None, "started": 0.0}
+_EXACT_LOCK = __import__("threading").Lock()
+EXACT_KEEP = 64
+
+
+def _store_sig(db) -> tuple:
+    """What the ROWS are right now: which file, how many pairs, how many rows
+    and the newest filing time — from the small `pairs` summary, not the file
+    size. An index BUILD grows the file every second without changing one
+    row (found on Sep 25, 2026 1:5xam: a rows_pr2 build made every poll look
+    like a new store, and the counter answered "waiting" on its own count)."""
+    import sqlite3 as _sq
+
+    from tradingagents import rows_index as ri
+
+    try:
+        con = _sq.connect(f"file:{db}?mode=ro", uri=True, timeout=5)
+        try:
+            got = con.execute("SELECT COUNT(*), COALESCE(SUM(n), 0), "
+                              "COALESCE(MAX(at), 0) FROM pairs").fetchone()
+        finally:
+            con.close()
+    except Exception:                                          # noqa: BLE001
+        got = (None, None, None)
+    return (ri._file_id(db), *got)
+
+
+def exact_count_state(db, filters: dict) -> dict:
+    """{"state": done|counting|waiting|failed, "total", "seconds", "why"}.
+
+    Never blocks: the first ask starts the count and answers "counting"; the
+    panel asks again until it is "done". A failure is kept one minute and
+    then retried, so a filter refused while an index was building recovers.
+    """
+    from tradingagents import rows_index as ri
+
+    clean = {k: v for k, v in filters.items() if k in COUNT_FILTERS and v}
+    # WHICH COUNT is the filters on this database; whether a finished one is
+    # still TRUE is the rows' signature, checked separately
+    key = (str(db), tuple(sorted(clean.items())))
+    sig = _store_sig(db)
+    now = _time.time()
+    with _EXACT_LOCK:
+        hit = _EXACT["results"].get(key)
+        if hit and hit.get("sig") == sig and (
+                hit["state"] == "done" or now - hit["at"] < 60):
+            return {k: v for k, v in hit.items() if k != "sig"}
+        running = _EXACT["running"]
+        if running is not None and running != key:
+            return {"state": "waiting", "total": None,
+                    "why": "another exact count is running on this disk — "
+                           "this one starts when it ends"}
+        if running == key:
+            return {"state": "counting", "total": None,
+                    "seconds": round(now - _EXACT["started"], 1)}
+        _EXACT["running"], _EXACT["started"] = key, now
+
+    def _work() -> None:
+        t0 = _time.time()
+        try:
+            with ri.using_db(db):
+                n = ri.count_exact(**clean)
+            out = {"state": "done", "total": n}
+        except ri.SortNotReady as exc:
+            # QueryTooSlow is a SortNotReady too; both are sentences
+            out = {"state": "failed", "total": None, "why": str(exc)}
+        except Exception as exc:                               # noqa: BLE001
+            out = {"state": "failed", "total": None,
+                   "why": f"{type(exc).__name__}: {str(exc)[:160]}"}
+        out.update(seconds=round(_time.time() - t0, 1), at=_time.time(),
+                   sig=sig)
+        with _EXACT_LOCK:
+            res = _EXACT["results"]
+            res[key] = out
+            while len(res) > EXACT_KEEP:
+                res.pop(next(iter(res)))
+            _EXACT["running"] = None
+
+    __import__("threading").Thread(target=_work, name="exact-count",
+                                   daemon=True).start()
+    return {"state": "counting", "total": None, "seconds": 0.0}
+
+
+@app.get("/api/strategies/count")
+def strategies_count(coin: str | None = None, tf: str | None = None,
+                     signal: str | None = None, profitable: bool = False,
+                     min_trades: int = 0, min_winrate: float = 0.0,
+                     max_tp: float = 0.0, max_sl: float = 0.0,
+                     min_tp: float = 0.0, min_sl: float = 0.0,
+                     tp_over_sl: bool = False, asset: str | None = None,
+                     sizing: str | None = None, row_id: str | None = None,
+                     group: str | None = None, measured_days: int = 0) -> dict:
+    """The exact number of Backtest rows these filters match (see above)."""
+    from tradingagents import rows_index as ri
+
+    return exact_count_state(ri.DB_PATH, dict(locals()))
+
+
+@app.get("/api/v2/strategies/count")
+def strategies_count_v2(coin: str | None = None, tf: str | None = None,
+                        signal: str | None = None, profitable: bool = False,
+                        min_trades: int = 0, min_winrate: float = 0.0,
+                        max_tp: float = 0.0, max_sl: float = 0.0,
+                        min_tp: float = 0.0, min_sl: float = 0.0,
+                        tp_over_sl: bool = False, asset: str | None = None,
+                        sizing: str | None = None, row_id: str | None = None,
+                        group: str | None = None, measured_days: int = 0) -> dict:
+    """The exact number of Backtest v2 rows these filters match."""
+    given = dict(locals())
+    db = _v2_rows_db()
+    if db is None:
+        return {"state": "done", "total": 0, "why": _V2_EMPTY_WHY}
+    return exact_count_state(db, given)
+
+
 @app.get("/api/strategies.csv")
 def strategies_csv(coin: str | None = None, tf: str | None = None,
                    signal: str | None = None, profitable: bool = False,

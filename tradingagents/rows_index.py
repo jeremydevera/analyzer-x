@@ -2920,6 +2920,12 @@ _BUILDING: set = set()
 UNINDEXED_LIMIT = 200_000
 # how far a FILTERED count will go before it answers "N+"
 COUNT_CAP = 5_000
+# How long the BACKGROUND exact count may run. Measured on Backtest v2
+# (49,503,932 rows, Sep 25, 2026): win % >= 85 with TP >= SL counted
+# 1,369,665 in 5.1 s, win % >= 70 5,697,751 in 10.6 s, and TP >= SL alone
+# 39,403,722 in 261.6 s. Ten minutes covers every one of them with room; a
+# filter that needs longer is said out loud, never guessed.
+EXACT_COUNT_BUDGET_S = 600.0
 # how many rows a WINDOWED csv re-measures before it stops and says so
 DAYS_CSV_MAX = 2_000
 # Seconds the WINDOWED export sleeps after each re-measured row, so the rest of
@@ -3790,6 +3796,21 @@ def _indexed_by(coin, winrate_seeks=False, profit_wide=False,
     return ""
 
 
+def count_exact(**filters) -> int:
+    """How many rows match these filters — exactly, however many there are.
+
+    The same WHERE the table's own query builds (it IS that query, with
+    `exact_count=True`), so the number can never describe a different filter
+    from the rows on screen. Slow by design for broad filters (see
+    EXACT_COUNT_BUDGET_S); call it from a background thread, never a request.
+    Raises QueryTooSlow past the budget and SortNotReady when an index the
+    filter needs is missing — the caller says which.
+    """
+    for k in ("limit", "offset", "months", "exact_count"):
+        filters.pop(k, None)
+    return int(query(limit=1, exact_count=True, **filters)["total"])
+
+
 def query_sql(coin=None, tf=None, signal=None, profitable=False,
               sort="profit", min_trades=0, min_winrate=0, max_tp=0,
               sizing=None, row_id=None, desc=None, db_path=None) -> str:
@@ -3861,8 +3882,15 @@ def query(coin=None, tf=None, signal=None, profitable=False,
           min_winrate=0, max_tp=0, sizing=None, row_id=None, group=None,
           max_sl=0, months=0, desc=None, min_tp=0, min_sl=0,
           tp_over_sl=False, asset=None, measured_days=0,
-          db_path=None) -> dict:
+          db_path=None, exact_count=False) -> dict:
     """Rows sorted by `sort` (SORTS), profit first by default.
+
+    `exact_count=True` answers ONLY the number of matching rows, exactly —
+    no 5,000 cap, no rows, and the long EXACT_COUNT_BUDGET_S instead of the
+    page's 20 s. It exists for the background counter behind the Stored
+    strategies caption (operator, Sep 25, 2026: "when i filter the table can
+    you show how many rows exacty is it"), never for a request a browser waits
+    on.
 
     `db_path` reads another store (Backtest v2's rows.db) for this one call;
     None is DB_PATH, unchanged.
@@ -3876,15 +3904,12 @@ def query(coin=None, tf=None, signal=None, profitable=False,
     index catches up on its own timer (`start_keeping_up`), and `status()`
     reports how far behind it is so the screen can say so.
     """
+    # EVERY ARGUMENT forwarded, never a hand-written list — a list dropped
+    # `store` from iter_rows's twin of this hand-off (RCA-2026-09-24-E)
+    _given = dict(locals())
     if db_path:
         with using_db(db_path):
-            return query(coin=coin, tf=tf, signal=signal, profitable=profitable,
-                         limit=limit, offset=offset, sort=sort,
-                         min_trades=min_trades, min_winrate=min_winrate,
-                         max_tp=max_tp, sizing=sizing, row_id=row_id,
-                         group=group, max_sl=max_sl, months=months, desc=desc,
-                         min_tp=min_tp, min_sl=min_sl, tp_over_sl=tp_over_sl,
-                         asset=asset, measured_days=measured_days)
+            return query(**{k: v for k, v in _given.items() if k != "db_path"})
     lim = max(0, min(int(limit), MAX_LIMIT))
     key = str(sort or "profit")
     if key not in SORTS:
@@ -4091,15 +4116,15 @@ def query(coin=None, tf=None, signal=None, profitable=False,
 
     def _read():
         with _open(readonly=True) as con:
-            _budgeted(con)
-            if where and from_winrate:
+            _budgeted(con, EXACT_COUNT_BUDGET_S if exact_count else None)
+            if where and from_winrate and not exact_count:
                 cap = _winrate_seek_cap()
                 got_total = _winrate_matches(min_winrate, min_trades, cap=cap)
                 # -1 means "over the cap": bound it, and the panel prints
                 # the + beside the count rather than a number it cannot stand
                 # behind
                 total = -1 if got_total is None or got_total > cap else got_total
-            elif where and group and not coin and not group_idx:
+            elif where and group and not coin and not group_idx and not exact_count:
                 # A GROUP has no index to seek: `signal` is not indexed, so
                 # even the bounded count is a table scan -- measured 26.2 s for
                 # 5,001 preset rows on this 35.9M-row store, which the 20 s
@@ -4135,7 +4160,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
                     f"SELECT COUNT(*) FROM (SELECT 1 FROM rows"
                     f"{_indexed_by(coin, winrate_seeks, group_idx=group_idx, signal_seeks=signal_seeks)}"
                     f"{where} "
-                    f"LIMIT {COUNT_CAP + 1})", args).fetchone()[0]
+                    + ("" if exact_count else f"LIMIT {COUNT_CAP + 1}")
+                    + ")", args).fetchone()[0]
             else:
                 # COUNT(*) over every row is a full scan (25ms at 27k rows,
                 # and this table is heading for tens of millions). The pair
@@ -4145,6 +4171,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             # id breaks ties: without it two rows on the same profit swap
             # places between 4-second polls and the row moves out from under
             # the operator's cursor mid-click.
+            if exact_count:
+                return total, []            # the number is the whole answer
             got = _page_rows(con, coin, row_where, row_args, order, lim,
                              max(0, int(offset)), winrate_seeks, profit_wide,
                              row_id, group_idx, signal_seeks)
@@ -4177,7 +4205,8 @@ def query(coin=None, tf=None, signal=None, profitable=False,
         total, capped_count = COUNT_CAP, True
     else:
         exact = from_pairs or from_winrate
-        capped_count = bool(where) and not exact and total > COUNT_CAP
+        capped_count = (bool(where) and not exact and not exact_count
+                        and total > COUNT_CAP)
         total = min(total, COUNT_CAP) if capped_count else total
     out = []
     for r in got:

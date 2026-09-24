@@ -172,6 +172,75 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-25-D — "+500 more" left out six filters, so with TP ≥ SL on it could add rows whose TP was smaller than their SL
+
+**CEO**
+
+* Found while adding the exact row count you asked for: the "+500 more"
+  button under Stored strategies did not send six of your filters — the
+  lowest TP, the lowest SL, "TP is equal to or greater than SL", crypto or
+  stocks, Preset or Classic, and "backtested within N days". With your usual
+  "TP ≥ SL" on, the extra 500 rows could include strategies whose TP was
+  SMALLER than their SL, under a heading that said they matched.
+* Why: the table, "+500 more" and the CSV each wrote their own list of
+  filters by hand. Each new filter was added to the table; the CSV was fixed
+  once when it fell behind; "+500 more" was never updated.
+* What stops it now: all four (the table, "+500 more", the CSV and the new
+  exact count) are built from ONE shared list of filters, so a filter added
+  to one is in all of them, and a test fails if "+500 more" ever names a
+  filter by hand again.
+
+**DEV**
+
+* `StrategiesPanel.tsx` `loadMore` built its `api.strategies({...})` by hand
+  with coin/tf/signal/profitable/minTrades/minWinrate/maxTp/maxSl/sizing/
+  rowId/months/days — missing `minTp`, `minSl` (added to the table Sep 03,
+  19c7308aadd2), `tpOverSl`, `asset`, `group`, and `measuredDays` (Sep 10,
+  a4fc5cdb96b0). The server applied only what it was sent.
+* Invariant broken: **the rows under one filter heading all pass that
+  filter** (kit item F; the CSV was bitten by the same shape on Sep 03 and
+  fixed alone). `filterQuery(applied)` is now the one builder the table,
+  load-more, the CSV and the count spread; `strategyParams(q)` is the one
+  URL builder in `lib/api.ts` for the table and the count.
+* Guard: `tests/test_the_table_counts_its_rows_exactly.py::test_load_more_sends_every_filter_the_table_sends`
+  (red on the pre-fix panel), and five older tests that counted literal
+  `applied.X` occurrences were moved to assert the shared builder instead.
+
+**SAW** — nothing on screen was reported; found reading the panel on
+`Sep 25, 2026` while the operator's "when i filter the table can you show how
+many rows exacty is it" was being built — their screenshot shows the "+500
+more" button beside "of 200+".
+
+**TIMELINE**
+
+1. `Aug 26, 2026` — 49cfd6a17257 adds LOAD MORE with the filters of the day,
+   listed by hand.
+2. `Sep 03` — the TP/SL ranges (`minTp`/`minSl`) and `group` join the table;
+   the CSV is found missing three and fixed; load-more is not.
+3. `Sep 04 → Sep 10` — `tpOverSl`, `asset` and `measuredDays` join the table
+   (and the CSV); load-more gets none of them.
+4. `Sep 25, 2026` — found and fixed by moving all four callers onto one
+   builder.
+
+**ROOT CAUSE** — the same filter list written out by hand in three places.
+
+**WHY IT WAS NOT CAUGHT** — every filter's test counted how many times
+`applied.<filter>` appeared in the panel ("table AND CSV == 2", "table,
+load-more and CSV >= 3"): a COUNT of the text, satisfied by other lines, never
+a check that each CALL carried it. `test_sizing_filter` even named load-more
+in its message while counting sizing's mentions, which load-more happened to
+have. **A count is not a location** — the rule this log already carries,
+bought again.
+
+**COST** — no money moved. Any "+500 more" page opened under one of those six
+filters since the filter existed may have shown rows that did not pass it.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_table_counts_its_rows_exactly.py::test_load_more_sends_every_filter_the_table_sends`.
+
+---
+
 ## RCA-2026-09-25-C — Backtest v2's list was flat only, but a re-measured coin's file kept its old martingale twins
 
 **CEO**

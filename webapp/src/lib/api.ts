@@ -697,6 +697,108 @@ export type Staleness = {
   summary: string;
 };
 
+/** A Stored strategies request's filters — the table and its exact count
+ *  are built from the same `strategyParams`, so the number beside the table
+ *  can never describe a different filter from the rows in it. */
+export interface StrategyQuery {
+  coin?: string;
+  tf?: string;
+  signal?: string;
+  profitable?: boolean;
+  limit?: number;
+  offset?: number;
+  /** what to rank by — the server whitelists it (rows_index.SORTS) */
+  sort?: StrategySort;
+  /** a win rate with no denominator is not a result: 100% over 1 trade
+   *  sat at the top of the live store until this existed */
+  minTrades?: number;
+  /** the win-rate floor, in the unit the "win %" column PRINTS: 50 means
+   *  50.00% or better, inclusive — not 0.5 (operator, 2026-08-27) */
+  minWinrate?: number;
+  /** the take-profit floor, in the unit the TP% column PRINTS: 4 means TP
+   *  4% or wider, not 0.04 (operator, 2026-08-27) */
+  maxTp?: number;
+  /** the stop's CEILING, in the unit the SL% column prints: 1 means SL 1%
+   *  or TIGHTER. The opposite direction from maxTp on purpose (operator,
+   *  2026-09-02: "for sl if i input 1 then show below 1 or equal 1") — the
+   *  useful end of a target is up, the useful end of a stop is down. */
+  maxSl?: number;
+  /** The LOW ends. TP and SL are each a RANGE — "create filter to tp using
+   *  between / EXAMPLE BETWEEN .5 - 2.5" (operator, 2026-09-03) — and both
+   *  ends are INCLUSIVE, in the unit the column prints: minTp 0.5 with
+   *  maxTp 2.5 keeps a row measured at exactly 0.5% and one at exactly
+   *  2.5%. A ceiling alone also kept every 0.05% scalp whose target is
+   *  smaller than the round-trip cost. */
+  minTp?: number;
+  minSl?: number;
+  /** TP WIDER THAN SL — a checkbox, because there is no number to type and
+   *  nothing to compare against but the row's own other column (operator,
+   *  2026-09-04). It supersedes the two ranges: while it is on, they are
+   *  greyed out and NOT sent. */
+  tpOverSl?: boolean;
+  /** "crypto" keeps real coins; "stocks" keeps the tokenized stocks (the
+   *  STOCK-suffix contracts that go quiet outside US market hours) */
+  asset?: "crypto" | "stocks";
+  /** "flat" or "martingale" — the ladder is a sizing CHOICE, not a
+   *  measurement (rule 19), so it has to be possible to see one alone */
+  sizing?: string;
+  /** HOW FRESH THE MEASUREMENT IS, in days. Operator, Sep 10, 2026: *"my
+   *  goal is to filter on when was the last backtest for each strategy,
+   *  because even i filter last 30 days some of them was last backtested 3
+   *  weeks ago which is obsolete"*. Measured on their store that minute:
+   *  EPIK-30m last measured `Aug 26, 2026 3:30am`, BICO-15m `Sep 10, 2026
+   *  9:45am` — 15.8 days apart, so a 30-day window on the first ENDS 15.8
+   *  days ago. 7 keeps only coins backtested within the last week. */
+  measuredDays?: number;
+  /** ONE row by the code in its first column (#6YACZSXX). It overrides every
+   *  other filter — kit item H, and how a row is quoted without ambiguity */
+  rowId?: string;
+  /** "preset" = the ten researched confluence setups at three levels each
+   *  (every rule named cf_...); "classic" = the 75 signals that existed
+   *  before them. The operator's own names: Preset Confluence / Classic */
+  group?: "preset" | "classic";
+  /** LAST N MONTHS: every row also reports what it did INSIDE that window —
+   *  profit and green months, the two the store keeps per month */
+  months?: number;
+  /** LAST N DAYS — a RE-MEASUREMENT from the stored candles, because the
+   *  store keeps profit per month and no trade counts at all. Months wins
+   *  when both are set (operator, 2026-09-02: "if months is 0 then follow
+   *  the days"), and the server caps how many rows one request may restate. */
+  days?: number;
+  /** false = lowest first; omit for the column's useful end */
+  desc?: boolean;
+}
+
+/** The filter half of a Stored strategies request, in ONE place: the
+ *  table, its exact count and anything else that must describe the same
+ *  rows build their query string here. */
+export function strategyParams(q: StrategyQuery): URLSearchParams {
+  const p = new URLSearchParams();
+  if (q.coin) p.set("coin", q.coin);
+  if (q.sort) p.set("sort", q.sort);
+  if (q.minTrades) p.set("min_trades", String(q.minTrades));
+  if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
+  if (q.maxTp) p.set("max_tp", String(q.maxTp));
+  if (q.maxSl) p.set("max_sl", String(q.maxSl));
+  if (q.minTp) p.set("min_tp", String(q.minTp));
+  if (q.minSl) p.set("min_sl", String(q.minSl));
+  if (q.tpOverSl) p.set("tp_over_sl", "true");
+  if (q.asset) p.set("asset", q.asset);
+  if (q.months) p.set("months", String(q.months));
+  if (q.days) p.set("days", String(q.days));
+  if (q.measuredDays) p.set("measured_days", String(q.measuredDays));
+  if (q.sizing) p.set("sizing", q.sizing);
+  if (q.group) p.set("group", q.group);
+  if (q.rowId) p.set("row_id", q.rowId);
+  if (q.desc !== undefined) p.set("desc", String(q.desc));
+  if (q.tf) p.set("tf", q.tf);
+  if (q.signal) p.set("signal", q.signal);
+  if (q.profitable) p.set("profitable", "true");
+  if (q.limit) p.set("limit", String(q.limit));
+  if (q.offset) p.set("offset", String(q.offset));
+  return p;
+}
+
 export const api = {
   system: () => get<SysLoad>("/api/system"),
   contracts: () => get<{ rows: string[]; why: string }>("/api/contracts"),
@@ -854,97 +956,22 @@ export const api = {
     if (q.desc !== undefined) p.set("desc", String(q.desc));
     return `${API_BASE}/api/strategies.csv?${p.toString()}`;
   },
-  strategies: (q: {
-    coin?: string;
-    tf?: string;
-    signal?: string;
-    profitable?: boolean;
-    limit?: number;
-    offset?: number;
-    /** what to rank by — the server whitelists it (rows_index.SORTS) */
-    sort?: StrategySort;
-    /** a win rate with no denominator is not a result: 100% over 1 trade
-     *  sat at the top of the live store until this existed */
-    minTrades?: number;
-    /** the win-rate floor, in the unit the "win %" column PRINTS: 50 means
-     *  50.00% or better, inclusive — not 0.5 (operator, 2026-08-27) */
-    minWinrate?: number;
-    /** the take-profit floor, in the unit the TP% column PRINTS: 4 means TP
-     *  4% or wider, not 0.04 (operator, 2026-08-27) */
-    maxTp?: number;
-    /** the stop's CEILING, in the unit the SL% column prints: 1 means SL 1%
-     *  or TIGHTER. The opposite direction from maxTp on purpose (operator,
-     *  2026-09-02: "for sl if i input 1 then show below 1 or equal 1") — the
-     *  useful end of a target is up, the useful end of a stop is down. */
-    maxSl?: number;
-    /** The LOW ends. TP and SL are each a RANGE — "create filter to tp using
-     *  between / EXAMPLE BETWEEN .5 - 2.5" (operator, 2026-09-03) — and both
-     *  ends are INCLUSIVE, in the unit the column prints: minTp 0.5 with
-     *  maxTp 2.5 keeps a row measured at exactly 0.5% and one at exactly
-     *  2.5%. A ceiling alone also kept every 0.05% scalp whose target is
-     *  smaller than the round-trip cost. */
-    minTp?: number;
-    minSl?: number;
-    /** TP WIDER THAN SL — a checkbox, because there is no number to type and
-     *  nothing to compare against but the row's own other column (operator,
-     *  2026-09-04). It supersedes the two ranges: while it is on, they are
-     *  greyed out and NOT sent. */
-    tpOverSl?: boolean;
-    /** "crypto" keeps real coins; "stocks" keeps the tokenized stocks (the
-     *  STOCK-suffix contracts that go quiet outside US market hours) */
-    asset?: "crypto" | "stocks";
-    /** "flat" or "martingale" — the ladder is a sizing CHOICE, not a
-     *  measurement (rule 19), so it has to be possible to see one alone */
-    sizing?: string;
-    /** HOW FRESH THE MEASUREMENT IS, in days. Operator, Sep 10, 2026: *"my
-     *  goal is to filter on when was the last backtest for each strategy,
-     *  because even i filter last 30 days some of them was last backtested 3
-     *  weeks ago which is obsolete"*. Measured on their store that minute:
-     *  EPIK-30m last measured `Aug 26, 2026 3:30am`, BICO-15m `Sep 10, 2026
-     *  9:45am` — 15.8 days apart, so a 30-day window on the first ENDS 15.8
-     *  days ago. 7 keeps only coins backtested within the last week. */
-    measuredDays?: number;
-    /** ONE row by the code in its first column (#6YACZSXX). It overrides every
-     *  other filter — kit item H, and how a row is quoted without ambiguity */
-    rowId?: string;
-    /** "preset" = the ten researched confluence setups at three levels each
-     *  (every rule named cf_...); "classic" = the 75 signals that existed
-     *  before them. The operator's own names: Preset Confluence / Classic */
-    group?: "preset" | "classic";
-    /** LAST N MONTHS: every row also reports what it did INSIDE that window —
-     *  profit and green months, the two the store keeps per month */
-    months?: number;
-    /** LAST N DAYS — a RE-MEASUREMENT from the stored candles, because the
-     *  store keeps profit per month and no trade counts at all. Months wins
-     *  when both are set (operator, 2026-09-02: "if months is 0 then follow
-     *  the days"), and the server caps how many rows one request may restate. */
-    days?: number;
-    /** false = lowest first; omit for the column's useful end */
-    desc?: boolean;
-  }) => {
-    const p = new URLSearchParams();
-    if (q.coin) p.set("coin", q.coin);
-    if (q.sort) p.set("sort", q.sort);
-    if (q.minTrades) p.set("min_trades", String(q.minTrades));
-    if (q.minWinrate) p.set("min_winrate", String(q.minWinrate));
-    if (q.maxTp) p.set("max_tp", String(q.maxTp));
-    if (q.maxSl) p.set("max_sl", String(q.maxSl));
-    if (q.minTp) p.set("min_tp", String(q.minTp));
-    if (q.minSl) p.set("min_sl", String(q.minSl));
-    if (q.tpOverSl) p.set("tp_over_sl", "true");
-    if (q.asset) p.set("asset", q.asset);
-    if (q.months) p.set("months", String(q.months));
-    if (q.days) p.set("days", String(q.days));
-    if (q.measuredDays) p.set("measured_days", String(q.measuredDays));
-    if (q.sizing) p.set("sizing", q.sizing);
-    if (q.group) p.set("group", q.group);
-    if (q.rowId) p.set("row_id", q.rowId);
-    if (q.desc !== undefined) p.set("desc", String(q.desc));
-    if (q.tf) p.set("tf", q.tf);
-    if (q.signal) p.set("signal", q.signal);
-    if (q.profitable) p.set("profitable", "true");
-    if (q.limit) p.set("limit", String(q.limit));
-    if (q.offset) p.set("offset", String(q.offset));
+  /** THE EXACT NUMBER of rows a filter matches, counted in the background
+   *  (operator, Sep 25, 2026: "when i filter the table can you show how many
+   *  rows exacty is it"). Same filter fields as `strategies` — built by the
+   *  same code below, minus paging, ordering and the months/days window,
+   *  which change what a row PRINTS, not whether it matches. First asks
+   *  answer "counting"; ask again until "done". */
+  strategiesCount: (q: StrategyQuery) => {
+    const full = strategyParams({ ...q, limit: undefined, offset: undefined,
+                                       sort: undefined, desc: undefined,
+                                       months: undefined, days: undefined });
+    return get<{ state: "done" | "counting" | "waiting" | "failed";
+                 total: number | null; seconds?: number; why?: string }>(
+      `/api/strategies/count?${full.toString()}`);
+  },
+  strategies: (q: StrategyQuery) => {
+    const p = strategyParams(q);
     return get<{ rows: StrategyRow[]; total: number; index?: IndexStatus;
       /** the order the server actually used, so the caption is derived */
       sort?: StrategySort; min_trades?: number; min_winrate?: number;
@@ -1700,6 +1727,8 @@ export function storeApi(store: StoreName) {
     // the v1 builders, byte for byte, under this store's prefix
     strategies: (q: Parameters<typeof api.strategies>[0]) =>
       withApiPrefix(P, () => api.strategies(q)),
+    strategiesCount: (q: Parameters<typeof api.strategies>[0]) =>
+      withApiPrefix(P, () => api.strategiesCount(q)),
     strategiesCsvUrl: (q: Parameters<typeof api.strategiesCsvUrl>[0]) =>
       api.strategiesCsvUrl(q).replace(`${API_BASE}/api/`, `${API_BASE}${P}/`),
     facets: () =>

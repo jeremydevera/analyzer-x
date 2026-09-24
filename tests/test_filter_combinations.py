@@ -116,6 +116,9 @@ SPEC = {
 # days windows (they restate figures, they do not cut rows) and the id lookup
 # (it OVERRIDES the filters — pinned separately below).
 NOT_FILTERS = {"limit", "offset", "sort", "months", "days", "desc", "row_id",
+               # the NUMBER instead of rows, for the background exact count
+               # (Sep 25, 2026) — the same rows are counted, none are cut
+               "exact_count",
                # WHICH STORE is read (Backtest v2's rows.db), not which rows —
                # every filter above cuts the same way in either store
                "db_path"}

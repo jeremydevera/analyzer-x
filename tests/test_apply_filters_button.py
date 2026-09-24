@@ -41,8 +41,13 @@ def test_typing_alone_does_not_ask_the_store():
     every keystroke is another 30-second read."""
     p = _panel()
     load = p[p.index("const load = useCallback("):p.index("useEffect(load,")]
+    # the filter half comes from ONE builder handed `applied` (Sep 25, 2026 —
+    # the table, "+500 more", the CSV and the exact count all share it)
+    assert "filterQuery(applied)" in load, "the request must be built from applied"
+    fq = p[p.index("const filterQuery = (f: typeof applied)"):]
+    fq = fq[:fq.index("});") + 3]
     for f in ("coin", "tf", "signal", "minTrades", "minWinrate", "maxTp"):
-        assert f"applied.{f}" in load, f"the request must read applied.{f}"
+        assert f"f.{f}" in fq, f"the shared builder must carry {f}"
     # and nothing in the request reads a raw box
     assert not re.search(r"minWinrate: minWinrate\b", load)
     assert not re.search(r"maxTp: maxTp\b", load)
@@ -57,10 +62,17 @@ def test_the_csv_downloads_what_the_table_shows_not_the_boxes():
     csv = csv[:csv.index("})}")]
     # every filter the TABLE sends. TP and SL are ranges since 2026-09-03, so
     # both ends have to travel or the file holds more rows than the table
-    for f in ("coin", "tf", "signal", "minTrades", "minWinrate", "maxTp",
-              "maxSl", "minTp", "minSl", "group", "sizing", "months", "days",
-              "profitable"):
+    # the filter half from the SAME builder the table uses, handed `applied`
+    # (Sep 25, 2026); the window from `applied` beside it
+    assert "...filterQuery(applied)" in csv, "the CSV must be built from applied"
+    for f in ("months", "days"):
         assert f"applied.{f}" in csv, f"the CSV link ignores applied.{f}"
+    fq = p[p.index("const filterQuery = (f: typeof applied)"):]
+    fq = fq[:fq.index("});") + 3]
+    for f in ("coin", "tf", "signal", "minTrades", "minWinrate", "maxTp",
+              "maxSl", "minTp", "minSl", "group", "sizing", "profitable",
+              "tpOverSl", "asset", "measuredDays", "rowId"):
+        assert f"f.{f}" in fq, f"the shared builder drops {f}"
 
 
 def test_the_button_says_when_the_boxes_are_not_applied_yet():

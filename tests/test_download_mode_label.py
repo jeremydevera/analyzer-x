@@ -32,8 +32,10 @@ def test_every_live_progress_tick_carries_the_mode():
 
 def test_the_stub_written_at_start_carries_it_too():
     """The seconds right after the click are when the operator is looking."""
-    src = inspect.getsource(dj.start)
-    assert '"mode"' in src
+    # start() hands the spec to _first_progress since a7e7a132080a, which
+    # also names the pair; the mode must survive that move
+    assert "_first_progress(spec)" in inspect.getsource(dj.start)
+    assert dj._first_progress({"mode": "update"})["mode"] == "update"
 
 
 def test_every_mode_the_job_accepts_has_a_badge():

@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StoreBadge from "@/components/StoreBadge";
-import { api as coreApi, ApiError, fmtMoney, fmtWhenMs, JobStatus, STRATEGY_SORTS, StrategyRow, storeApi, StoreName, TradesResult, type IndexStatus, type StrategySort, fmtLeft, fmtWhen } from "@/lib/api";
+import { api as coreApi, ApiError, fmtMoney, fmtWhenMs, JobStatus, STRATEGY_SORTS, StrategyRow, storeApi, StoreName, TradesResult, type IndexStatus, type StrategySort, type StrategyQuery, fmtLeft, fmtWhen } from "@/lib/api";
 import { pageWindow } from "@/lib/pager";
 import { rowUpdateSentence } from "@/lib/rowUpdate";
 import Badge from "@/components/ui/badge/Badge";
@@ -128,6 +128,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
   // its `api.` spelling, so the guards that read this file still hold.
   const api = useMemo(() => ({
     ...coreApi, strategies: S.strategies, strategiesCsvUrl: S.strategiesCsvUrl,
+    strategiesCount: S.strategiesCount,
     facets: S.facets, trades: S.trades,
   }), [S]);
   // the route's own reason for an empty v2 store ("download 1m candles on
@@ -404,31 +405,52 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
   // at over 25 s for tp >= 10 (which lives only in the 1d grid).
   const tpCeiling = facets.tps?.length ? Math.max(...facets.tps) : 100;
 
+  /** THE FILTER HALF of the request, built in ONE place so the table and its
+   *  exact count can never ask about different rows (operator, Sep 25, 2026: "when i
+   *  filter the table can you show how many rows exacty is it"). */
+  const filterQuery = (f: typeof applied): StrategyQuery => ({
+    coin: f.coin || undefined, tf: f.tf || undefined,
+    signal: f.signal || undefined, profitable: f.profitable,
+    minTrades: f.minTrades, minWinrate: f.minWinrate,
+    maxTp: f.maxTp, maxSl: f.maxSl, minTp: f.minTp, minSl: f.minSl,
+    tpOverSl: f.tpOverSl,
+    asset: (f.asset || undefined) as "crypto" | "stocks" | undefined,
+    sizing: f.sizing || undefined, rowId: f.rowId || undefined,
+    measuredDays: f.measuredDays || undefined,
+    group: (f.group || undefined) as "preset" | "classic" | undefined,
+  });
+  // the exact count for the filters it was counted for — never another set's
+  // for five minutes: rows are filed while the page stays open, and the
+  // server recounts when they are, so an old number is re-asked, not trusted
+  const exactRef = useRef<{ key: string; total: number; at: number } | null>(null);
+  const EXACT_REUSE_MS = 5 * 60 * 1000;
+  const [counting, setCounting] = useState<{ state: string; why?: string; seconds?: number } | null>(null);
+
   /** `background` = a timer asked, not the operator. Same request, same rows,
    *  no spinner: the button belongs to the click. */
   const load = useCallback((background = false) => {
     const mine = ++reqRef.current;
     inFlight.current = true;
     if (!background) setLoading(true);
-    api.strategies({ coin: applied.coin || undefined, tf: applied.tf || undefined,
-                     signal: applied.signal || undefined,
-                     profitable: applied.profitable, sort,
-                     minTrades: applied.minTrades, minWinrate: applied.minWinrate,
-                     maxTp: applied.maxTp, maxSl: applied.maxSl,
-                     minTp: applied.minTp, minSl: applied.minSl,
-                     tpOverSl: applied.tpOverSl,
-                     asset: (applied.asset || undefined) as
-                       "crypto" | "stocks" | undefined,
-                     sizing: applied.sizing || undefined,
-                     rowId: applied.rowId || undefined,
+    api.strategies({ ...filterQuery(applied), sort,
                      months: applied.months || undefined,
         days: applied.months ? undefined : (applied.days || undefined),
-                     measuredDays: applied.measuredDays || undefined,
-                     group: (applied.group || undefined) as "preset" | "classic" | undefined,
                      desc, limit: askPage, offset: (page - 1) * askPage })
       .then((d) => {
         if (mine !== reqRef.current) return;   // a newer request owns the screen
-        setRows(d.rows); setTotal(d.total); setCapped(!!d.total_capped);
+        setRows(d.rows);
+        // THE EXACT COUNT, once known, outlives the page's own capped one:
+        // every page and every background refresh answers "5,000+", and the
+        // exact number must not flicker back to it (see the counter below)
+        {
+          const ex = exactRef.current;
+          if (d.total_capped && ex && ex.key === JSON.stringify(filterQuery(applied))
+              && Date.now() - ex.at < EXACT_REUSE_MS) {
+            setTotal(ex.total); setCapped(false);
+          } else {
+            setTotal(d.total); setCapped(!!d.total_capped);
+          }
+        }
         setStoreWhy(d.why ?? "");
         setIdx(d.index ?? null); setErr(""); setWaiting("");
         // what the rows are really in, straight from the payload
@@ -475,6 +497,36 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
   }, [applied, sort, desc, page, perPage]);
 
   useEffect(load, [load]);
+  // COUNT THE EXACT NUMBER when the page's own count stopped at its cap.
+  // Operator, Sep 25, 2026, on "of 200+" pages: "when i filter the table can
+  // you show how many rows exacty is it". The page answers in its 20 s with
+  // "5,000+"; the server counts the same filter exactly behind it (seconds
+  // for a win-rate floor, minutes for a filter as broad as TP >= SL alone),
+  // and this asks every 3 s until it lands, then replaces the "+" for good.
+  useEffect(() => {
+    if (!capped) { setCounting(null); return; }
+    const q = filterQuery(servedFilters);
+    const key = JSON.stringify(q);
+    let live = true;
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const ask = () => {
+      api.strategiesCount(q).then((c) => {
+        if (!live) return;
+        if (c.state === "done" && c.total != null) {
+          exactRef.current = { key, total: c.total, at: Date.now() };
+          setTotal(c.total); setCapped(false); setCounting(null);
+          return;
+        }
+        setCounting(c);
+        // a failure is usually an index still being built: ask again in a
+        // minute, when the server has also forgotten it
+        t = setTimeout(ask, c.state === "failed" ? 60000 : 3000);
+      }).catch(() => { if (live) t = setTimeout(ask, 6000); });
+    };
+    ask();
+    return () => { live = false; if (t) clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [capped, servedFilters, api]);
   // the elapsed seconds, so a 30-second answer visibly PROGRESSES instead of
   // looking like a dead screen. Reset when the request ends.
   useEffect(() => {
@@ -841,13 +893,12 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
   const loadMore = async () => {
     setLoadingMore(true);
     try {
+      // THE SAME FILTERS AS THE TABLE, from the one builder. This listed
+      // them by hand and had lost six — minTp, minSl, tpOverSl, asset, group
+      // and measuredDays — so "+500 more" under TP >= SL appended rows whose
+      // TP was SMALLER than their SL (RCA-2026-09-25-D).
       const d = await api.strategies({
-        coin: applied.coin || undefined, tf: applied.tf || undefined,
-        signal: applied.signal || undefined, profitable: applied.profitable,
-        sort, minTrades: applied.minTrades, minWinrate: applied.minWinrate,
-        maxTp: applied.maxTp, maxSl: applied.maxSl,
-                     sizing: applied.sizing || undefined,
-        rowId: applied.rowId || undefined,
+        ...filterQuery(applied), sort,
         months: applied.months || undefined,
         days: applied.months ? undefined : (applied.days || undefined), desc,
         limit: askPage, offset: (page - 1) * askPage + shown.length,
@@ -923,6 +974,27 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
           </div>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
             {total.toLocaleString()}{capped ? "+" : ""} {chips.length ? "match" : "stored strategies"}
+            {/* SAY WHICH IT IS: a bound being counted, a bound that could not
+                be counted, or an exact number */}
+            {capped && counting && counting.state !== "failed" && (
+              <span role="status" className="ml-1 inline-flex items-center gap-1 text-brand-600 dark:text-brand-400">
+                <span aria-hidden="true"
+                      className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+                {counting.state === "waiting"
+                  ? "the exact count starts after the one ahead of it"
+                  : `counting all matches…${counting.seconds ? ` ${Math.round(counting.seconds)}s` : ""}`}
+              </span>
+            )}
+            {capped && counting?.state === "failed" && (
+              <span className="ml-1 text-warning-600 dark:text-warning-400">
+                {` · the exact count could not finish: ${counting.why ?? "unknown reason"}`}
+              </span>
+            )}
+            {/* a days window re-measures 25 rows a page; the count is of rows
+                whose WHOLE history passes the filters, and says so */}
+            {!capped && servedFilters.days > 0 && !servedFilters.months && chips.length > 0 && (
+              <span>{" (by their whole history — the last-days figures are re-checked page by page)"}</span>
+            )}
             {` · rows ${shown.length ? (page - 1) * askPage + 1 : 0}–${(page - 1) * askPage + shown.length} on screen`}
             {` · ${servedDesc ? "highest" : "lowest"} ${STRATEGY_SORTS[servedSort]} first`}
             {/* A partial index must NOT be captioned as the whole store: the
@@ -1898,32 +1970,17 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
              /* the APPLIED set, not the boxes: the link's own label is the
                 applied count ("download all (5,000+) CSV"), so a draft-based
                 href would hand over a different slice than it names */
-             href={api.strategiesCsvUrl({ coin: applied.coin || undefined,
-               tf: applied.tf || undefined, signal: applied.signal || undefined,
-               profitable: applied.profitable, sort,
-               minTrades: applied.minTrades, minWinrate: applied.minWinrate,
-               maxTp: applied.maxTp, maxSl: applied.maxSl,
-               // BOTH ends of each range, and the GROUP. These three were
-               // missing here while the table sent them, so a file downloaded
-               // under "TP 0.5-2.5%, Preset Confluence" quietly held every
-               // TP below 2.5 from both groups — more rows than the table
-               // showed, which is the file-does-not-match-the-table failure
-               // this panel keeps paying for (kit item F).
-               minTp: applied.minTp, minSl: applied.minSl,
-               tpOverSl: applied.tpOverSl,
-               asset: (applied.asset || undefined) as
-                 "crypto" | "stocks" | undefined,
-               group: (applied.group || undefined) as "preset" | "classic" | undefined,
-               sizing: applied.sizing || undefined,
+             href={api.strategiesCsvUrl({
+               // THE SAME FILTERS AS THE TABLE, from the one builder — the
+               // download listed them by hand and had already lost three once
+               // (minTp, minSl, group), holding more rows than the screen
+               // showed (kit item F); by hand is how "+500 more" lost six
+               ...filterQuery(applied), sort,
                // the WINDOW too, or the file holds every row's whole history
                // under a filter that says "last 30 days" (operator, 2026-09-03)
                months: applied.months || undefined,
                days: applied.months ? undefined : (applied.days || undefined),
-               // and the FRESHNESS filter, for the same reason: a file that
-               // held rows the table had already cut as stale would answer a
-               // different question than the screen it came from
-               measuredDays: applied.measuredDays || undefined,
-               rowId: applied.rowId || undefined, desc })}>
+               desc })}>
             {/* WHAT THE FILE WILL ACTUALLY HOLD. With a days window on, the
                 download re-measures at most `days_csv_max` rows from the
                 candles and then drops the ones the window's own figures fail,

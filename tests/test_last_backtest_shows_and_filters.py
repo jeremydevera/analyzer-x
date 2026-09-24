@@ -218,9 +218,13 @@ def test_the_panel_has_the_box_the_chip_and_the_column():
 
 def test_the_panel_sends_it_and_names_it():
     src = PANEL.read_text(encoding="utf-8")
-    assert "measuredDays: applied.measuredDays || undefined," in src
-    assert src.count("measuredDays: applied.measuredDays || undefined,") == 2, \
-        "the table AND the download, or the file disagrees with the screen"
+    # the table, "+500 more", the download and the exact count share ONE
+    # builder since Sep 25, 2026 ("+500 more" had lost this filter)
+    assert "measuredDays: f.measuredDays || undefined," in src
+    for call in ("api.strategies({ ...filterQuery(applied)",
+                 "api.strategiesCsvUrl({"):
+        at = src.index(call)
+        assert "filterQuery(applied)" in src[at:at + 500], call
     assert "backtested within ${f.measuredDays} day" in src, \
         "the AND sentence must name it, like every other filter"
     assert "measuredDays: setMeasuredDays," in src, "clear-all must reach it"

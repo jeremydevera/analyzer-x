@@ -182,7 +182,9 @@ def test_the_browser_sends_it_and_offers_the_grid_values():
     assert "flat and martingale" in panel, "the do-not-filter option, in words"
     assert "(facets.sizings ?? []).map" in panel, (
         "the options come from the grid, not from two literals here")
-    assert panel.count("applied.sizing") >= 3, "table, load-more and CSV"
+    # table, load-more and CSV all take the shared builder, which carries it
+    assert "sizing: f.sizing || undefined" in panel
+    assert panel.count("...filterQuery(applied)") >= 3, "table, load-more and CSV"
     # it is one of the Apply filters, and it is in the ANDed sentence. Matched
     # over the draft set, not its last field: the next filter added there must
     # not break this test (the row-id box did).

@@ -248,7 +248,9 @@ def test_a_group_count_is_bounded_until_its_index_exists():
     import inspect
 
     src = inspect.getsource(ri.query)
-    i = src.index("elif where and group and not coin and not group_idx:")
+    # the exact background count (Sep 25, 2026) must NOT take this shortcut,
+    # so the condition carries `not exact_count`; the page still does
+    i = src.index("elif where and group and not coin and not group_idx and not exact_count:")
     branch = src[i:i + 900]
     assert "total = -1" in branch
     # and with the index there, the generic bounded count must NAME it

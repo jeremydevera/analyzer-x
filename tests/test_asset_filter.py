@@ -126,8 +126,10 @@ def test_the_route_and_the_csv_carry_asset():
     a = open("tradingagents/api.py", encoding="utf-8").read()
     # rows route AND csv route — for v1 AND for Backtest v2 (Sep 17, 2026),
     # which doubled both routes under /api/v2 with the same parameters
-    assert a.count("asset: str | None = None") == 4, \
-        "rows route AND csv route, v1 and v2"
+    # ...and the exact-count routes, v1 and v2 (Sep 25, 2026): the number
+    # beside the table must filter exactly like the table
+    assert a.count("asset: str | None = None") == 6, \
+        "rows, csv and count routes, v1 and v2"
     for fn in (api.strategies, api.strategies_csv_lines):
         src = inspect.getsource(fn)
         i = src.index("ri.query(" if fn is api.strategies else "ri.iter_rows(")
@@ -156,7 +158,10 @@ def test_the_panel_has_the_dropdown_and_its_chip():
     # cleared with the rest, sent with the rest, kept for the CSV
     assert p.count('asset: ""') >= 3, "NO_FILTERS + applied + servedFilters"
     assert "asset: setAsset" in p
-    assert p.count('"crypto" | "stocks" | undefined') == 2, "load call + CSV"
+    # ONE place builds the filter half now (the table, "+500 more", the CSV
+    # and the exact count all spread filterQuery(applied), Sep 25, 2026)
+    assert p.count('"crypto" | "stocks" | undefined') == 1, "the shared builder"
+    assert p.count("...filterQuery(applied)") >= 3, "table, load-more and CSV"
 
 
 def test_the_browser_api_sends_the_param():

@@ -21,10 +21,11 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import { pageWindow } from "@/lib/pager";
 
 /** TEN ROWS A PAGE (operator, Sep 25, 2026: "paginate Forecast for the
- *  account 10rows"). The Sep 24 deploy switched on 537 rows, one line each.
- *  The sort runs over EVERY row and the page is cut after it, so page 2 of
- *  "profit, highest first" is rows 11-20 of the whole account, not of the
- *  first page. Same pager as the open-positions book. */
+ *  account 10rows"), for BOTH lists: the rows that traded (79 of the 537
+ *  switched on at 2:05am) and the rows that did not (458). The sort runs over
+ *  EVERY row and the page is cut after it, so page 2 of "profit, highest
+ *  first" is rows 11-20 of the whole account, not of the first page. Same
+ *  pager as the open-positions book. */
 const PER_PAGE = 10;
 const pageNum = "h-8 min-w-8 rounded-lg border px-2 text-theme-xs tabular-nums";
 const pageBtn =
@@ -65,6 +66,7 @@ export default function PortfolioForecast() {
   const [asc, setAsc] = useState(false);
   const [showLog, setShowLog] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [idlePage, setIdlePage] = useState(1);
 
   const load = useCallback((fresh = false) => {
     setBusy(true);
@@ -129,6 +131,11 @@ export default function PortfolioForecast() {
   const from = (cur - 1) * PER_PAGE;
   const shown = rows.slice(from, from + PER_PAGE);
   const goto = (n: number) => setPage(Math.min(Math.max(1, n), pages));
+  const idle = Object.entries(a.rows_refused);
+  const idlePages = Math.max(1, Math.ceil(idle.length / PER_PAGE));
+  const idleCur = Math.min(Math.max(1, idlePage), idlePages);
+  const idleFrom = (idleCur - 1) * PER_PAGE;
+  const idleShown = idle.slice(idleFrom, idleFrom + PER_PAGE);
   const logTotal = logRows.reduce((s, t) => s + (t.pnl ?? 0), 0);
 
   return (
@@ -281,25 +288,7 @@ export default function PortfolioForecast() {
           </TableBody>
         </Table>
       </div>
-      {pages > 1 && (
-        <div className="flex flex-wrap items-center gap-1 border-t border-gray-100 px-5 py-2 dark:border-white/[0.05]">
-          <button onClick={() => goto(cur - 1)} disabled={cur === 1} className={pageBtn}>prev</button>
-          {pageWindow(cur, pages).map((n, i) => n == null ? (
-            <span key={`gap${i}`} aria-hidden className="px-1 text-theme-xs text-gray-400">…</span>
-          ) : (
-            <button key={n} onClick={() => goto(n)}
-                    aria-label={`forecast page ${n}`}
-                    aria-current={n === cur ? "page" : undefined}
-                    className={`${pageNum} ${n === cur
-                      ? "border-brand-500 bg-brand-500 font-semibold text-white"
-                      : "border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300"}`}>
-              {n}
-            </button>
-          ))}
-          <button onClick={() => goto(cur + 1)} disabled={cur === pages} className={pageBtn}>next</button>
-          <span className="text-theme-xs text-gray-500 dark:text-gray-400">of {pages}</span>
-        </div>
-      )}
+      <Pager cur={cur} pages={pages} goto={goto} label="forecast page" />
 
       {/* the trade-by-trade log of the clicked row, with its own total */}
       {showLog && (
@@ -336,15 +325,20 @@ export default function PortfolioForecast() {
         </div>
       )}
 
-      {/* rows that never traded, and why */}
-      {Object.keys(a.rows_refused).length > 0 && (
+      {/* rows that never traded, and why — ten a page too */}
+      {idle.length > 0 && (
         <details className="mx-5 mt-3 text-theme-xs text-gray-600 dark:text-gray-400">
-          <summary className="cursor-pointer font-medium">{Object.keys(a.rows_refused).length} rows did not trade — why</summary>
+          <summary className="cursor-pointer font-medium">
+            {idle.length} rows did not trade — why
+            {idlePages > 1 ? ` · showing ${idleFrom + 1}–${idleFrom + idleShown.length} of ${idle.length}` : ""}
+          </summary>
           <ul className="mt-1 list-disc pl-5">
-            {Object.entries(a.rows_refused).map(([row, why]) => (
+            {idleShown.map(([row, why]) => (
               <li key={row}>{row.replace("_USDT", "").replace("|", " on ")}: {why}</li>
             ))}
           </ul>
+          <Pager cur={idleCur} pages={idlePages} label="did-not-trade page"
+                 goto={(n) => setIdlePage(Math.min(Math.max(1, n), idlePages))} />
         </details>
       )}
 
@@ -355,6 +349,32 @@ export default function PortfolioForecast() {
           {a.assumptions.map((s, i) => <li key={i}>{s}</li>)}
         </ul>
       </details>
+    </div>
+  );
+}
+
+/** prev · 1 2 … 7 8 · next · of N — nothing at all when one page holds it */
+function Pager({ cur, pages, goto, label }: {
+  cur: number; pages: number; goto: (n: number) => void; label: string;
+}) {
+  if (pages <= 1) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1 border-t border-gray-100 px-5 py-2 dark:border-white/[0.05]">
+      <button onClick={() => goto(cur - 1)} disabled={cur === 1} className={pageBtn}>prev</button>
+      {pageWindow(cur, pages).map((n, i) => n == null ? (
+        <span key={`gap${i}`} aria-hidden className="px-1 text-theme-xs text-gray-400">…</span>
+      ) : (
+        <button key={n} onClick={() => goto(n)}
+                aria-label={`${label} ${n}`}
+                aria-current={n === cur ? "page" : undefined}
+                className={`${pageNum} ${n === cur
+                  ? "border-brand-500 bg-brand-500 font-semibold text-white"
+                  : "border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300"}`}>
+          {n}
+        </button>
+      ))}
+      <button onClick={() => goto(cur + 1)} disabled={cur === pages} className={pageBtn}>next</button>
+      <span className="text-theme-xs text-gray-500 dark:text-gray-400">of {pages}</span>
     </div>
   );
 }

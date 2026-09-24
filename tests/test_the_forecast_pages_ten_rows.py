@@ -2,8 +2,9 @@
 page (operator, Sep 25, 2026: "put stored strategies section before Forecast
 for the account / then paginate Forecast for the account 10rows").
 
-The Sep 24 deploy switched on 537 rows and the forecast printed one line
-each, in one table. The sort must run over every row BEFORE the page is cut,
+537 rows are switched on since the Sep 24 deploy: at 2:05am the replay
+listed the 79 that traded in one table and the 458 that did not in one list.
+Both page at ten. The sort must run over every row BEFORE the page is cut,
 or "profit, highest first" would sort ten rows at a time.
 """
 from pathlib import Path
@@ -30,3 +31,11 @@ def test_the_forecast_table_shows_ten_rows_a_page_of_the_sorted_whole():
     assert "pageWindow(cur, pages)" in src
     assert "showing ${from + 1}–${from + shown.length} of ${rows.length}" in src, \
         "the count names the page and the whole, never the page alone"
+
+
+def test_the_rows_that_did_not_trade_page_at_ten_too():
+    src = PANEL.read_text(encoding="utf-8")
+    assert "const idleShown = idle.slice(idleFrom, idleFrom + PER_PAGE);" in src
+    assert "{idleShown.map(([row, why]) => (" in src
+    assert "Object.entries(a.rows_refused).map(" not in src, "no unpaged list left"
+    assert src.count("<Pager ") == 2, "one pager per list, one implementation"

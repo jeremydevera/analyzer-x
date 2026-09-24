@@ -1095,7 +1095,8 @@ was what "more accurate" meant.
   the exit. `docs/RCA.md` RCA-2026-09-22-A.
 * **The shard uses `backtest_strategy(fine=)`, not `fast_grid`.** The fused
   walk has no minute-exact settlement and teaching it one would be a SECOND
-  implementation of the exit rules. Six engine runs instead of two walks, paid
+  implementation of the exit rules. Six engine runs instead of two walks (three
+  since Sep 24, 2026, when v2 went flat only — rule 19), paid
   for by v2's ~30-day window against v1's year — ~12x fewer bars per pair.
   Measured on ARKM 1h mom6 th0.2 sl0.3 tp0.4 flat, the same 771 rebuilt bars
   and the same 359 trades: **113W/246L −$78.83 by the bar rule against
@@ -1219,7 +1220,8 @@ files its own rows; a v2 report defaulted to v1's file name.
     All coins × timeframes **15m, 30m, 1h, 4h, 1d** × **every signal in
     `backtest_report.SIGNALS`** (75 as of 2026-08-19 — read the registry, never hardcode
     the count; it grows via the research rule in the analyze skills) × **≥3 TP/SL pairs per
-    timeframe** × **both sizings (flat AND martingale)**. One combination =
+    timeframe** × **both sizings (flat AND martingale)** — except Backtest v2,
+    which keeps flat only since Sep 24, 2026 (rule 19). One combination =
     coin + timeframe + signal + TP + SL + sizing, and every one of those six
     fields varies.
 19. **Flat sizing is always tested.** The martingale ladder is a sizing choice,
@@ -1252,5 +1254,20 @@ files its own rows; a v2 report defaulted to v1's file name.
     is the same trades and the same wins as its flat twin, different profit.
     `tests/test_runner_stakes_flat.py` holds all three halves; do not "fix" a
     martingale setting back into a real stake.
+    **BACKTEST v2 KEEPS FLAT ONLY (operator directive, Sep 24, 2026):**
+    *"okay remove the martinangale in backtest v2 since they are dup"* — said
+    after seeing that 721 of the 1,473 v2 ids they deployed were a flat row and
+    its martingale twin (#5JWGQZPG and #L2KBERYD: GPNSTOCK 30m keltner, the
+    same 28 trades, 27 wins and +$73.53, one switch between them — the runner
+    stakes by the book's Martingale mode box, never by a row's label). The one
+    rule is `backtest_report.sizings_for(res)`: `"1m"` (v2) → `("flat",)`,
+    anything else → `SIZINGS`. The GitHub shard (`RES`), the local sweep
+    (`FINE_TF`) and the v2 index (`rows_index._kept` at filing time,
+    `_sizings` for the filter) all read it, so a re-filed pair cannot bring a
+    twin back; the screen hides the sizing filter and says "flat only" where a
+    store keeps one. **v1 keeps both.** The v2 pair files still hold the old
+    twins on disk: reversing this is deleting the `"1m"` entry of
+    `SIZINGS_BY_RES` and rebuilding the v2 index — no re-measure.
+    `tests/test_backtest_v2_keeps_flat_only.py` holds it.
 20. **Never drop a dimension silently.** Pre-filter coins by the liquidity gate per
     timeframe and state how many were excluded and why. A capped grid says what it capped.

@@ -1135,8 +1135,10 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                 at.STRATEGY_SPECS.pop(key, None)
                 continue
             thp = 0.0 if th is None else round(th * 100, 3)
+            # THIS STORE's sizings: Backtest v2 measures flat only (Sep 24,
+            # 2026, backtest_report.sizings_for)
             for (sl, tp), sz in itertools.product(br.pairs_for(tf),
-                                                  br.SIZINGS):
+                                                  br.sizings_for(FINE_TF)):
                 if liq is not None and sl * 100 >= liq:
                     continue
                 # THE COST GATE, WITH ONE EXEMPTION: a combination the

@@ -630,6 +630,18 @@ def _values(r: dict, pair: str) -> tuple:
     return tuple(out)
 
 
+def _kept(r: dict) -> bool:
+    """Does this store keep the row? Backtest v2 keeps FLAT only since
+    Sep 24, 2026 (`backtest_report.sizings_for`: "remove the martinangale in
+    backtest v2 since they are dup"). Its pair files may still hold the
+    martingale twins measured before that — they stay on disk, so the choice
+    is reversible — but they never reach the list, the CSV or an id lookup,
+    and a re-filed pair cannot bring them back."""
+    from tradingagents import backtest_report as br
+
+    return str(r.get("sizing") or "flat") in br.sizings_for(r.get("res"))
+
+
 def index_pair(path: Path, con: sqlite3.Connection | None = None, *,
                fresh: bool = False, signals=None) -> int:
     """(Re)index one pair file. Returns how many rows landed.
@@ -683,7 +695,7 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None, *,
         elif not fresh:
             con.execute("DELETE FROM rows WHERE pair = ?", (pair,))
         t1 = _t()
-        vals = [_values(r, pair) for r in rows if r.get("coin")
+        vals = [_values(r, pair) for r in rows if r.get("coin") and _kept(r)
                 and (want is None or str(r.get("signal")) in want)]
         t2 = _t()
         con.executemany(
@@ -4531,10 +4543,16 @@ def take_profits(tfs) -> list:
 
 
 def _sizings() -> tuple:
-    """The sizings the grid measures (backtest_report.SIZINGS)."""
-    from tradingagents import backtest_report as br
+    """The sizings THIS store holds (backtest_report.sizings_for): both for
+    v1, flat only for Backtest v2 since Sep 24, 2026 — so the dropdown can
+    never offer a martingale filter over a store that keeps none."""
+    from tradingagents import backtest_report as br, stores
 
-    return tuple(br.SIZINGS)
+    try:
+        v2 = Path(_db()).resolve() == stores.V2.rows_db.resolve()
+    except OSError:
+        v2 = False
+    return tuple(br.sizings_for(stores.V2.fine_tf if v2 else ""))
 
 
 def stop_losses(tfs) -> list:

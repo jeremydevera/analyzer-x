@@ -133,6 +133,11 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
   // Candles v2 first") — printed above the table when there is nothing on it
   const [storeWhy, setStoreWhy] = useState("");
   const [facets, setFacets] = useState<{ coins: string[]; tfs: string[]; signals: string[]; tps?: number[]; sls?: number[]; sizings?: string[] }>({ coins: [], tfs: [], signals: [], tps: [], sls: [], sizings: [] });
+  // A STORE THAT KEEPS ONE SIZING says so, and offers no choice: Backtest v2
+  // keeps flat only since Sep 24, 2026 ("remove the martinangale in backtest
+  // v2 since they are dup"), so "flat and martingale" would be a false label
+  // over a list with no martingale row in it (label-must-match-data).
+  const oneSizing = (facets.sizings ?? []).length === 1 ? (facets.sizings ?? [])[0] : "";
   const [coin, setCoin] = useState("");
   const [tf, setTf] = useState("");
   const [signal, setSignal] = useState("");
@@ -196,6 +201,12 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
   // strategies came from the ladder, not the signal (flat: 7/12–11/12,
   // CLAUDE.md rule 19) — so the two have to be visible apart.
   const [sizing, setSizing] = useState("");
+  // a sizing the store no longer holds is dropped, never left applied under a
+  // hidden control (the list would read empty with no filter on screen)
+  useEffect(() => {
+    const held = facets.sizings ?? [];
+    if (sizing && held.length && !held.includes(sizing)) setSizing("");
+  }, [facets.sizings, sizing]);
   // GROUP: the ten researched confluence setups (every rule named cf_..., three
   // levels each) against the 75 signals that existed before them. The
   // operator's own names, 2026-08-27: "Preset Confluence" / "Classic".
@@ -731,7 +742,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
       : f.minSl > 0 && f.maxSl > 0 ? `SL ${f.minSl}-${f.maxSl}%`
       : f.maxSl > 0 ? `max SL % = ${f.maxSl}`
       : f.minSl > 0 ? `SL ${f.minSl}% or wider` : "any SL",
-    f.sizing ? `sizing = ${f.sizing}` : "flat and martingale",
+    f.sizing ? `sizing = ${f.sizing}` : oneSizing ? `${oneSizing} only` : "flat and martingale",
     f.profitable ? "profit > 0" : "losers included",
     f.months > 0 ? `last ${f.months} month${f.months > 1 ? "s" : ""}`
       : f.days > 0 ? `last ${f.days} day${f.days > 1 ? "s" : ""} of each row's own`
@@ -1238,6 +1249,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
               {/* "i want filter to see flat / martingale". The options come
                   from the grid that measured the rows (facets.sizings), so the
                   dropdown cannot offer a sizing the store does not hold. */}
+              {(facets.sizings ?? []).length > 1 && (
               <Field label="sizing">
                 <select className={sel} value={sizing}
                         onChange={(e) => setSizing(e.target.value)}
@@ -1248,6 +1260,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                   ))}
                 </select>
               </Field>
+              )}
             </FilterSection>
             <FilterSection label="how good" hint="blank = any">
               <Field label="min trades">
@@ -1520,6 +1533,9 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
           names the coin, so you can re-measure that pair), or an id from an
           older grid that nothing can find. Meanwhile, filter by the coin and
           timeframe you copied it from.
+          {oneSizing && <>{" "}This store keeps <b>{oneSizing}</b> rows only
+            (since Sep 24, 2026), so a martingale id finds nothing here; its{" "}
+            {oneSizing} twin is the same trades, with a different id.</>}
         </p>
       )}
       {/* AN EMPTY PAGE IS NOT AN EMPTY STORE (Sep 12, 2026). This read "no

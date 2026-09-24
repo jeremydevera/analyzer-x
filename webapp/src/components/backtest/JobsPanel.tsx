@@ -150,10 +150,10 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
 
   useEffect(() => {
     if (!coins.length || !tfs.length) { setPlan(null); setDeployed([]); return; }
-    api.plan(coins, tfs).then(setPlan).catch(() => setPlan(null));
+    api.plan(coins, tfs, store).then(setPlan).catch(() => setPlan(null));
     api.deployedRows(coins, tfs).then((d) => setDeployed(d.rows)).catch(() => setDeployed([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coins.join(","), tfs.join(",")]);
+  }, [coins.join(","), tfs.join(","), store]);
 
   const startCloud = async () => {
     setErr("");
@@ -218,7 +218,8 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
       </h3>
       <p className="mb-4 text-theme-xs text-gray-500 dark:text-gray-400">
         {store === "v2"
-          ? <>Every signal × barrier pair × both sizings, deciding on the same 15m/30m/1h/4h/1d candles —
+          ? <>Every signal × barrier pair, flat sizing only ($5 every trade — the martingale twins were
+              the same trades, removed Sep 24, 2026), deciding on the same 15m/30m/1h/4h/1d candles —
               rebuilt from the 1-minute ones — with every win/lose exit settled minute by minute.
               Measured on GitHub Actions, which downloads the 1-minute candles it needs. Runs detached —
               leaving this screen does not stop it. The 1-minute candles are downloaded on the{" "}
@@ -294,7 +295,7 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
 
       {plan && (
         <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
-          {plan.signals} signals × {plan.barrier_pairs} barrier pairs × {plan.sizings} sizings ×{" "}
+          {plan.signals} signals × {plan.barrier_pairs} barrier pairs × {plan.sizings} sizing{plan.sizings === 1 ? "" : "s"} ×{" "}
           {plan.tfs} timeframe(s) × {plan.coins} coin(s) ={" "}
           <b>~{plan.combinations.toLocaleString()} combinations</b>, about {plan.eta_minutes} min with warm
           candles (up to 3× on the first run of the day). {plan.note}.

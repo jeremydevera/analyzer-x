@@ -606,7 +606,8 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
                     continue
                 if rt / tp >= GATE_BLOCK:
                     continue
-                for sz in br.SIZINGS:
+                # this store's sizings: Backtest v2 (RES "1m") is flat only
+                for sz in br.sizings_for(RES):
                     ck = combo_key(sig, thp, sl * 100, tp * 100, sz)
                     prev = new_states.get(ck)
                     if prev is None:
@@ -875,8 +876,11 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                 # "i only want flat so you will need to delete marigingalte for
                 # my backtest as well" — and a hardcoded pair here would keep
                 # twenty machines measuring the ladder for weeks after the grid
-                # stopped asking for it (CLAUDE.md rules 18-19).
-                for sz in br.SIZINGS:
+                # stopped asking for it (CLAUDE.md rules 18-19). PER STORE since
+                # Sep 24, 2026: Backtest v2 (RES "1m") measures flat only —
+                # "remove the martinangale in backtest v2 since they are dup" —
+                # which halves its engine runs (six become three per combo).
+                for sz in br.sizings_for(RES):
                     if six is not None:
                         r = six[sz]["full"]
                         # THE SAVED POSITION, from the same walk: what the next

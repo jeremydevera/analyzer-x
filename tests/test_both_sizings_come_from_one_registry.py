@@ -91,11 +91,16 @@ def test_no_measuring_path_carries_its_own_copy():
         assert both not in src,             f"{mod.__name__} names both sizings inline instead of reading SIZINGS"
     shard = Path(".github/scripts/sweep_shard.py").read_text(encoding="utf-8")
     assert f'for sz in ({both})' not in shard,         "what GitHub's machines run must read the registry too"
-    assert "for sz in br.SIZINGS" in shard
+    # PER STORE since Sep 24, 2026 — Backtest v2 keeps flat only ("remove the
+    # martinangale in backtest v2 since they are dup") — and still the ONE
+    # registry: sizings_for reads SIZINGS, it never names a sizing itself
+    assert "for sz in br.sizings_for(RES)" in shard
+    assert br.sizings_for("") == br.SIZINGS
+    assert set(br.sizings_for("1m")) <= set(br.SIZINGS)
 
 
 def test_the_pair_loop_and_the_cloud_measurer_read_the_registry():
-    assert "br.SIZINGS" in inspect.getsource(msw.run_pair)
+    assert "br.sizings_for(FINE_TF)" in inspect.getsource(msw.run_pair)
     from tradingagents import fast_grid as fg
     assert "sizings or br.SIZINGS" in inspect.getsource(fg.combo_six),         "combo_six takes an explicit list for the parity tests, else the grid's"
 

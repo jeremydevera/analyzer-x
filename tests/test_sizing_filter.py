@@ -136,7 +136,9 @@ def test_the_two_values_come_from_the_grid_that_measured_the_rows(store):
     # and the sweep builds its combinations from that same tuple, so the
     # dropdown cannot drift from what was measured
     src = open("tradingagents/market_sweep.py", encoding="utf-8").read()
-    assert "br.SIZINGS" in src
+    # per store since Sep 24, 2026 (Backtest v2 keeps flat only), still read
+    # from the one registry
+    assert "br.sizings_for(FINE_TF)" in src
     assert '("flat", "martingale")' not in src, (
         "the sweep must not carry its own copy of the list")
 

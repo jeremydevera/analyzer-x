@@ -190,6 +190,24 @@ def _grid(sls, tps):
 # them used to carry `("flat", "martingale")` inline).
 SIZINGS: tuple[str, ...] = ("flat", "martingale")
 
+# BACKTEST v2 KEEPS FLAT ONLY (Sep 24, 2026). The operator, shown that 721 of
+# the 1,473 ids they deployed were a flat row and its martingale twin — the
+# same trades, the same wins, one switch between them: *"okay remove the
+# martinangale in backtest v2 since they are dup"*. The runner stakes by the
+# practice/live book's Martingale mode box, never by a row's label, so a v2
+# martingale row is a second copy of a measurement the store already holds.
+# v1 keeps both (rule 19's Sep 11 restore was about v1, and v1 is switched
+# off). Every v2 measuring path — the GitHub shard (`RES`), the local sweep
+# (`FINE_TF`) — and the v2 index read this, so the ladder cannot come back
+# through one door while it is closed at another.
+SIZINGS_BY_RES: dict[str, tuple[str, ...]] = {"1m": ("flat",)}
+
+
+def sizings_for(res: str | None) -> tuple[str, ...]:
+    """The sizings a store measures and keeps: its `res` ("1m" = Backtest v2,
+    "" = v1) decides. One definition, as SIZINGS is."""
+    return SIZINGS_BY_RES.get(str(res or "").strip().lower(), SIZINGS)
+
 
 BARRIERS: dict[str, list[tuple[float, float]]] = {
     "15m": _grid([.001, .002, .003, .004, .005, .006, .008, .010, .012, .015],

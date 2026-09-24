@@ -2503,20 +2503,23 @@ def crypto_upcoming() -> dict:
 
 # --------------------------------------------------------------- grid math
 @app.get("/api/backtest/plan")
-def backtest_plan(coins: str = "", tfs: str = "") -> dict:
+def backtest_plan(coins: str = "", tfs: str = "", store: str = "") -> dict:
     """Say the cost BEFORE spending it: how many combinations this selection
     is, and roughly how long, from the real signal registry."""
-    from tradingagents import backtest_report as br
+    from tradingagents import backtest_report as br, stores
 
     cl = [c for c in coins.split(",") if c]
     tl = [t for t in tfs.split(",") if t]
     n_sig = len(br.SIGNALS)
-    per_tf = ((n_sig - len(br.THRESH_SIGNALS)) * 110 * 2
-              + len(br.THRESH_SIGNALS) * 3 * 110 * 2)
+    # THIS STORE's sizings: Backtest v2 measures flat only (Sep 24, 2026),
+    # so "x 2 sizings" over a v2 run would be a false label
+    n_sz = len(br.sizings_for(stores.V2.fine_tf if store == "v2" else ""))
+    per_tf = ((n_sig - len(br.THRESH_SIGNALS)) * 110 * n_sz
+              + len(br.THRESH_SIGNALS) * 3 * 110 * n_sz)
     combos = per_tf * max(len(tl), 1) * max(len(cl), 1)
     # measured 2026-08-20: ~92s per coin for four timeframes, cache warm
     eta_s = 92 * max(len(cl), 1) * max(len(tl), 1) / 4
-    return {"signals": n_sig, "barrier_pairs": 110, "sizings": 2,
+    return {"signals": n_sig, "barrier_pairs": 110, "sizings": n_sz,
             "coins": len(cl), "tfs": len(tl), "combinations": combos,
             "eta_minutes": round(eta_s / 60, 1),
             "note": "all three costs charged; liquidation modelled; every "

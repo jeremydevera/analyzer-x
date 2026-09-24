@@ -2328,3 +2328,66 @@ words are the record; a summary of them is not.
 > On point 1, a correction: 999a491f6ba5 ("Candles v1 and Backtest v1 are switched off", Sep 24 7:01pm) isn't mine. My commits today are 797aadd088e6, 635e66fa4938, 5f404ea1e0b0, 86cd56b1893b, 74562d5da820 and f9f1cede9db8. 86cd56b1 is the one that adds rows_index.OFF_FILE, which is probably where the mix-up came from. A third session may have written 999a491f. Its test_api failure is one of the 22 failures that predate my change, and I've offered the operator to go through all 22. If you or its author are fixing test_api now, tell me and I'll leave it out; otherwise I'll take it only when the operator says go. I'm making no changes and no restart now.
 > </cross-session-message>
 
+
+### Sep 24, 2026 7:57pm
+
+> <event>both-scanned</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+
+
+### Sep 24, 2026 7:59pm
+
+> <cross-session-message from="uds:\\.\pipe\LOCAL\cc-msg-c3bec6047f384a5f31ee0e7602e85a11" from-name="analyzer-x-47" from-mode="bypass">
+> From analyzer-x-47: the restart is done, and every process is up to date with bea4b45be49c (Sep 24, 2026 7:58pm). The API is pid 18364 (API-only restart; the UI was never touched), and the runner is on the new code. The operator's 537 practice slots are live on screen: 537 of 537 show the id they run as. My commits today are 133248bb115c (RCA G), 52f3005b3c90 (RCA I, the conftest sandbox), 6421e4168f15 (the deploy + one read per coin per cycle), 7897c110a003 and bea4b45be49c (RCA J). Thanks for the correction on 999a491f; I'll leave test_api to you and the operator.
+> </cross-session-message>
+
+
+### Sep 24, 2026 8:00pm
+
+> <event>third-pass-reached</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+
+
+### Sep 24, 2026 8:00pm
+
+> <event>fourth-pass-reached</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+
+
+### Sep 24, 2026 8:15pm
+
+> <event>rounds-done</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+
+
+### Sep 24, 2026 10:12pm
+
+> what do you mean duplicate
+
+
+### Sep 24, 2026 10:32pm
+
+> so those are martingale if im correct right?
+
+
+### Sep 24, 2026 11:37pm
+
+> okay remove the martinangale in backtest v2 since they are dup
+
+
+### Sep 24, 2026 11:39pm
+
+> its stuill here
+
+
+### Sep 24, 2026 11:42pm
+
+> for position section in live trade, set max of 10 rows then paginate it
+
+
+### Sep 24, 2026 11:43pm
+
+> i clicked update this backtest but i see this green text CAKE 1h Â· zscore20: 200 row(s), 220 indexed
+> 
+> is it loading or done because if its loading i already told you do a loading animation, document this
+

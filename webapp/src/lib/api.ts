@@ -741,8 +741,10 @@ export const api = {
      *  the screen never prints "x 5 timeframes" over a one-frame store */
     timeframes?: string[];
   }>("/api/candles/completeness"),
-  plan: (coins: string[], tfs: string[]) =>
-    get<GridPlan>(`/api/backtest/plan?coins=${coins.join(",")}&tfs=${tfs.join(",")}`),
+  /** the combination count for THIS store: Backtest v2 measures one sizing */
+  plan: (coins: string[], tfs: string[], store?: StoreName) =>
+    get<GridPlan>(`/api/backtest/plan?coins=${coins.join(",")}&tfs=${tfs.join(",")}`
+      + (store ? `&store=${store}` : "")),
   deployedRows: (coins: string[], tfs: string[]) =>
     get<{ rows: { coin: string; tf: string; signal: string; sl: number; tp: number; sizing: string; key: string }[] }>(
       `/api/backtest/deployed?coins=${coins.join(",")}&tfs=${tfs.join(",")}`),

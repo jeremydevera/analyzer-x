@@ -1265,9 +1265,14 @@ files its own rows; a v2 report defaulted to v1's file name.
     (`FINE_TF`) and the v2 index (`rows_index._kept` at filing time,
     `_sizings` for the filter) all read it, so a re-filed pair cannot bring a
     twin back; the screen hides the sizing filter and says "flat only" where a
-    store keeps one. **v1 keeps both.** The v2 pair files still hold the old
-    twins on disk: reversing this is deleting the `"1m"` entry of
-    `SIZINGS_BY_RES` and rebuilding the v2 index — no re-measure.
+    store keeps one. **v1 keeps both.** Every WRITE of a pair file keeps
+    only what its store keeps (`backtest_report.store_keeps`, in
+    `market_sweep.save_pair_rows`, RCA-2026-09-25-C): a v2 pair measured or
+    merged again comes back flat only, instead of carrying martingale twins
+    nothing updates any more. Pair files never written since Sep 24, 2026
+    still hold their old twins, so reversing this is deleting the `"1m"`
+    entry of `SIZINGS_BY_RES`, rebuilding the v2 index, and RE-MEASURING the
+    pairs written since — their twins are gone, never stale.
     `tests/test_backtest_v2_keeps_flat_only.py` holds it.
 20. **Never drop a dimension silently.** Pre-filter coins by the liquidity gate per
     timeframe and state how many were excluded and why. A capped grid says what it capped.

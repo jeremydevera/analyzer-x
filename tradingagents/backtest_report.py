@@ -209,6 +209,15 @@ def sizings_for(res: str | None) -> tuple[str, ...]:
     return SIZINGS_BY_RES.get(str(res or "").strip().lower(), SIZINGS)
 
 
+def store_keeps(row: dict) -> bool:
+    """Does the store this row belongs to keep it? The row's own `res` names
+    the store. The index files by this (`rows_index._kept`) and so does every
+    write of a pair file (`market_sweep.save_pair_rows`): a v2 file that is
+    written again comes back flat only, instead of carrying martingale twins
+    that no measure updates any more (RCA-2026-09-25-C)."""
+    return str(row.get("sizing") or "flat") in sizings_for(row.get("res"))
+
+
 BARRIERS: dict[str, list[tuple[float, float]]] = {
     "15m": _grid([.001, .002, .003, .004, .005, .006, .008, .010, .012, .015],
                  [.002, .003, .004, .006, .008, .010, .012, .015, .020, .025,

@@ -639,7 +639,7 @@ def _kept(r: dict) -> bool:
     and a re-filed pair cannot bring them back."""
     from tradingagents import backtest_report as br
 
-    return str(r.get("sizing") or "flat") in br.sizings_for(r.get("res"))
+    return br.store_keeps(r)
 
 
 def index_pair(path: Path, con: sqlite3.Connection | None = None, *,

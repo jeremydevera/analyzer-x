@@ -172,6 +172,75 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-25-C — Backtest v2's list was flat only, but a re-measured coin's file kept its old martingale twins
+
+**CEO**
+
+* After Backtest v2 went flat only, re-measuring a strategy saved new
+  plain $5 results but left the old doubling copies in that coin's file:
+  CAKE 1h (#AJX2ZPQX) held 13,420 plain rows beside 13,420 doubling ones, 110
+  of them for the rule just re-measured. You never saw them — the list reads
+  only the plain ones — but they were no longer being updated.
+* Why: saving a coin's results kept every old row the new results did not
+  replace, and the new results no longer contain doubling rows to replace
+  them with.
+* What stops it now: every save of a Backtest v2 file keeps only the plain
+  rows, so a coin that is measured again comes back clean. Files nobody has
+  touched since the change still hold their old copies, untouched, which is
+  what keeps the change reversible.
+
+**DEV**
+
+* `market_sweep.merge_pair_rows` does `have.update(new)` over the stored
+  rows and `save_pair_rows` wrote the result as-is; with
+  `sizings_for("1m") == ("flat",)` the new rows carry no martingale keys, so
+  every stored v2 martingale row survived every merge — the pairbt UPDATE
+  and the GitHub collect (`cloud_sweep.land_rows` → `merge_pair_rows`) alike.
+* Invariant broken: **what a store keeps is decided in ONE place and every
+  writer reads it** — 1b88873b5498 put the rule at the measure and the index
+  but not at the file write. `backtest_report.store_keeps(row)` is now that
+  place, read by `rows_index._kept` and `market_sweep.save_pair_rows`.
+* Guard: `tests/test_backtest_v2_keeps_flat_only.py` —
+  `test_a_v2_pair_file_written_again_keeps_no_martingale_twin`,
+  `test_a_v1_pair_file_keeps_both_sizings_when_written`,
+  `test_the_index_and_the_files_read_one_rule`.
+
+**SAW** — not reported; found by another session checking the change after
+two presses of UPDATE on #AJX2ZPQX: `v2/rows.db` CAKE-1h `{'flat': 13420}`,
+`v2/rows/CAKE-1h.json` `{'flat': 13420, 'martingale': 13420}`.
+
+**TIMELINE**
+
+1. `Sep 24, 2026 11:48pm` — 1b88873b5498: v2 measures flat only, the index
+   files flat only; the pair files are left alone on purpose (reversible).
+2. `Sep 25, 2026 1:21am` — UPDATE on #AJX2ZPQX re-tests 110 combinations,
+   flat only; `merge_pair_rows` keeps the 110 old martingale rows of the same
+   rule. `1:27am` — pressed again: "already up to date".
+3. `~1:35am` — measured: the table holds 13,420 flat rows for CAKE-1h, the
+   file 26,840 (half twins). #AJX2ZPQX itself is correct on screen: flat, 28
+   trades, 71.43%, +$55.40.
+4. Fixed: `save_pair_rows` keeps only `store_keeps` rows, so the next write
+   of any v2 pair drops its twins. CLAUDE.md rule 19's "no re-measure" claim
+   is corrected: pairs written since need a re-measure to reverse.
+
+**ROOT CAUSE** — the keep rule was applied where rows are measured and where
+they are indexed, but not where they are written to the file.
+
+**WHY IT WAS NOT CAUGHT** — the change's tests asserted what the MEASURE
+produces and what the INDEX files; none wrote a v2 pair file through the
+merge a real UPDATE uses, so the third door was never tried. And "the pair
+files keep the old twins, so it is reversible" was true only for files
+nobody writes again — the merge made the twins stale, not preserved.
+
+**COST** — none in money. 110 stale rows in one file; left alone they would
+have doubled every v2 file a measure touches.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_backtest_v2_keeps_flat_only.py`.
+
+---
+
 ## RCA-2026-09-25-B — the first seconds of UPDATE THIS BACKTEST read "undefined is being re-measured first" on the row that was pressed
 
 **CEO**

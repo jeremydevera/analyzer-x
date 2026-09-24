@@ -128,3 +128,33 @@ def test_the_screen_says_one_sizing_where_the_store_keeps_one():
     assert "both sizings" not in v2_text and "flat sizing only" in v2_text
     assert "api.plan(coins, tfs, store)" in jobs
     assert 'sizing{plan.sizings === 1 ? "" : "s"}' in jobs
+
+
+def test_a_v2_pair_file_written_again_keeps_no_martingale_twin(index):
+    """RCA-2026-09-25-C. The index was flat, the FILE was not: an UPDATE of
+    #AJX2ZPQX (CAKE 1h zscore20) re-measured 110 flat rows and merge_pair_rows
+    kept the 110 old martingale twins it did not replace — rows no measure
+    updates any more. Every write of a pair file keeps only what the store
+    keeps."""
+    old = [_row("flat"), _row("martingale"), _row("martingale", signal="ibs")]
+    msw.save_pair_rows("GPNSTOCK", "30m", old)
+    on_disk = json.loads((index / "rows" / "GPNSTOCK-30m.json").read_text())
+    assert {r["sizing"] for r in on_disk} == {"flat"}, "a full write drops them"
+    new = [{**_row("flat"), "profit": 80.0}]
+    msw.merge_pair_rows("GPNSTOCK", "30m", new)
+    on_disk = json.loads((index / "rows" / "GPNSTOCK-30m.json").read_text())
+    assert [(r["sizing"], r["profit"]) for r in on_disk] == [("flat", 80.0)]
+
+
+def test_a_v1_pair_file_keeps_both_sizings_when_written(index):
+    old = [_row("flat", res=None), _row("martingale", res=None)]
+    msw.merge_pair_rows("GPNSTOCK", "30m", old)
+    on_disk = json.loads((index / "rows" / "GPNSTOCK-30m.json").read_text())
+    assert sorted(r["sizing"] for r in on_disk) == ["flat", "martingale"]
+
+
+def test_the_index_and_the_files_read_one_rule():
+    import inspect
+
+    assert "br.store_keeps(r)" in inspect.getsource(ri._kept)
+    assert "br.store_keeps(r)" in inspect.getsource(msw.save_pair_rows)

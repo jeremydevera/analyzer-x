@@ -823,6 +823,15 @@ def pair_rows(coin: str, tf: str, root=None) -> list:
 
 
 def save_pair_rows(coin: str, tf: str, rows: list) -> None:
+    # ONLY WHAT THE STORE KEEPS (RCA-2026-09-25-C). Backtest v2 keeps flat
+    # rows only since Sep 24, 2026, and `merge_pair_rows` keeps every stored
+    # row a new measure did not replace — so an UPDATE of #AJX2ZPQX (CAKE 1h
+    # zscore20) re-measured 110 flat rows and left the 110 old martingale
+    # twins in CAKE-1h.json, no longer measured by anything. Every writer
+    # passes here, the local sweep and the GitHub collect alike.
+    import tradingagents.backtest_report as br
+
+    rows = [r for r in rows if br.store_keeps(r)]
     ROWDIR.mkdir(parents=True, exist_ok=True)
     with _pair_lock(coin, tf):
         tmp = ROWDIR / f"{coin}-{tf}.json.tmp"

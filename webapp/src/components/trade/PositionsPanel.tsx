@@ -18,6 +18,7 @@ import PanelStatus from "./PanelStatus";
 import { Live, FeedBadge } from "./LivePrice";
 import CopyableId from "./CopyableId";
 import { fmtMoney, PositionRow, PositionsPayload, tradeApi } from "@/lib/api";
+import { pageWindow } from "@/lib/pager";
 import Badge from "@/components/ui/badge/Badge";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -27,6 +28,19 @@ const HEADS: [string, string][] = [
   ["opened", "8%"], ["held", "5%"], ["entry", "8%"], ["live", "8%"],
   ["margin", "6%"], ["bracket", "8%"],
 ];
+
+/** TEN ROWS A PAGE (operator, Sep 24, 2026: "for position section in live
+ *  trade, set max of 10 rows then paginate it"). 537 paper slots are armed
+ *  from the Sep 24 preset, so the demo book can hold more open positions
+ *  than fit on one screen. Each book pages on its own. */
+const PER_PAGE = 10;
+
+const pageNum =
+  "h-8 min-w-8 rounded-lg border px-2 text-theme-xs tabular-nums";
+
+const pageBtn =
+  "h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 " +
+  "disabled:opacity-40 dark:border-gray-700 dark:text-gray-300";
 
 function Progress({ r }: { r: PositionRow }) {
   if (r.progress_pct == null) return <span className="text-gray-400">—</span>;
@@ -58,6 +72,13 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
   const [busy, setBusy] = useState("");
 
   const [feed, setFeed] = useState<FeedStatus | null>(null);
+
+  // The page number lives HERE, not inside `Book`. `Book` is redefined on
+  // every render of this component, so React sees a NEW component type each
+  // time and remounts it — and the price feed above re-renders this panel
+  // once a second. A useState inside `Book` would reset the operator's page
+  // to 1 every second, which is not a page control, it is a flicker.
+  const [page, setPage] = useState<{ REAL: number; paper: number }>({ REAL: 1, paper: 1 });
 
   const load = () => tradeApi.positions().then((d) => { setData(d); setErr(""); markReady("positions"); }).catch((e) => setErr(String(e)));
   // The PRICE has its own cadence, because it has its own source: MEXC pushes
@@ -152,13 +173,31 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
   const Book = ({ label, tone, rows, empty, book }: {
     label: string; tone: "real" | "paper"; rows: PositionRow[]; empty: string;
     book: "REAL" | "paper";
-  }) => (
+  }) => {
+    const pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
+    // Clamped at RENDER, never written back into state: a position closing
+    // while the operator sits on the last page must not leave them staring at
+    // an empty box, and re-clamping in an effect would fight the 15s reload.
+    const cur = Math.min(Math.max(1, page[book]), pages);
+    const from = (cur - 1) * PER_PAGE;
+    // ONE slice feeds both the phone cards and the desktop table, so the two
+    // layouts can never disagree about what page 2 is.
+    const shown = rows.slice(from, from + PER_PAGE);
+    const goto = (n: number) =>
+      setPage((p) => ({ ...p, [book]: Math.min(Math.max(1, n), pages) }));
+    return (
     <div className={`overflow-hidden rounded-xl border ${tone === "real"
       ? "border-error-200 dark:border-error-500/30" : "border-gray-200 dark:border-white/[0.08]"}`}>
       <div className={`flex items-center gap-2 px-4 py-2 text-theme-xs font-semibold tracking-wide ${
         tone === "real" ? "bg-error-50 text-error-600 dark:bg-error-500/10"
                         : "bg-gray-50 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400"}`}>
-        {label}<span className="font-normal">· {rows.length} open</span>
+        {label}
+        <span className="font-normal">
+          {/* the count is every OPEN position in this book, not the page —
+              and when they differ the row range says so out loud */}
+          · {rows.length} open
+          {pages > 1 ? ` · showing ${from + 1}–${from + shown.length}` : ""}
+        </span>
       </div>
       {/* PHONE: CARDS, NOT FIFTEEN COLUMNS (operator, Sep 23, 2026, reading
           this on their phone over Tailscale: "the live trade table is not
@@ -171,7 +210,7 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
           device in your hand is the one thing this panel must never be. */}
       {rows.length ? (
         <div className="flex flex-col gap-2 p-3 md:hidden">
-          {rows.map((r) => (
+          {shown.map((r) => (
             <div key={`m-${book}-${r.symbol}`}
               className="rounded-xl border border-gray-200 p-3 dark:border-white/[0.08]">
               <div className="flex items-start justify-between gap-2">
@@ -231,15 +270,40 @@ export default function PositionsPanel({ onChanged }: { onChanged?: () => void }
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {rows.map((r) => row(r, book))}
+              {shown.map((r) => row(r, book))}
             </TableBody>
           </Table>
         </div>
       ) : (
         <p className="px-4 py-3 text-theme-sm text-gray-500 dark:text-gray-400">{empty}</p>
       )}
+      {pages > 1 && (
+        <div className="flex flex-wrap items-center gap-1 border-t border-gray-100 px-3 py-2 dark:border-white/[0.05]">
+          <button onClick={() => goto(cur - 1)} disabled={cur === 1}
+                  className={pageBtn}>prev</button>
+          {pageWindow(cur, pages).map((n, i) => n == null ? (
+            <span key={`gap${i}`} aria-hidden
+                  className="px-1 text-theme-xs text-gray-400">…</span>
+          ) : (
+            <button key={n} onClick={() => goto(n)}
+                    aria-label={`${book} page ${n}`}
+                    aria-current={n === cur ? "page" : undefined}
+                    className={`${pageNum} ${n === cur
+                      ? "border-brand-500 bg-brand-500 font-semibold text-white"
+                      : "border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300"}`}>
+              {n}
+            </button>
+          ))}
+          <button onClick={() => goto(cur + 1)} disabled={cur === pages}
+                  className={pageBtn}>next</button>
+          <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+            of {pages}
+          </span>
+        </div>
+      )}
     </div>
-  );
+    );
+  };
 
   const real = data?.real ?? [];
   const paper = data?.paper ?? [];

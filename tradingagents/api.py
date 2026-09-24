@@ -11,6 +11,7 @@ Run:  .venv/bin/uvicorn tradingagents.api:app --port 8787
 """
 from __future__ import annotations
 
+import logging
 import re
 import time as _time
 from pathlib import Path
@@ -21,6 +22,13 @@ from pydantic import BaseModel
 
 from tradingagents import stores as _stores
 from tradingagents.slow_cache import BackgroundValue
+
+# `logger.exception(...)` was called at line 3693 with no `logger` anywhere in
+# this module (commit aa29e8f6571c, Sep 22, 2026). It sits INSIDE the portfolio
+# forecast's exception handler, so a failing forecast raised NameError instead
+# of returning the "the replay raised ..." sentence written right beneath it —
+# the error path breaking on the way to reporting the error.
+logger = logging.getLogger(__name__)
 
 
 def _sweep_days() -> int:
@@ -1208,7 +1216,7 @@ def strategy_row_update(row_id: str, store: str = "v1") -> dict:
                                   # flat 365 made the trade floor demand a
                                   # year's evidence from 103 days of candles
                                   "days": 0})
-    except (dj.JobBusy, dj.LocalSweepsOff) as exc:
+    except (dj.JobBusy, dj.LocalSweepsOff, dj.V1Off) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"started": True, "pid": pid, "row": rid, "store": store,
             "kind": kind,
@@ -1599,12 +1607,20 @@ def job_start(kind: str, spec: dict) -> dict:
     _check_kind(kind)
     from tradingagents import db_jobs
 
+    # v1 IS SWITCHED OFF (Sep 24, 2026) — refused HERE, at the door the screen
+    # knocks on, never inside `db_jobs.start`. The v1 job bodies are shared
+    # machinery (the one-disk rule, `resume_if_died`, and the v1 job several
+    # v2 tests need to contend with), so the library must still be able to
+    # start one; what the operator switched off is being able to ASK for it.
+    why = db_jobs.v1_off_why(kind)
+    if why:
+        raise HTTPException(status_code=409, detail=why)
     # a run the operator starts by hand is a fresh budget of retries, so an
     # earlier bad patch cannot leave the supervisor refusing to restart this one
     db_jobs.clear_retries(kind)
     try:
         return {"pid": db_jobs.start(kind, spec)}
-    except db_jobs.LocalSweepsOff as exc:
+    except (db_jobs.LocalSweepsOff, db_jobs.V1Off) as exc:
         # 409, not 500: nothing is broken — this machine no longer measures.
         # A 500 would read as a crash and send the operator to the logs.
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -2199,7 +2215,7 @@ def strategy_backtest(body: dict) -> dict:
             "key": key, "label": body.get("label") or key, "coins": coins,
             "base_margin": margin,
             "days": int(body.get("days") or _sweep_days())})}
-    except (db_jobs.JobBusy, db_jobs.LocalSweepsOff) as exc:
+    except (db_jobs.JobBusy, db_jobs.LocalSweepsOff, db_jobs.V1Off) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 

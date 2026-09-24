@@ -722,6 +722,46 @@ def disk_holder(kind: str) -> str:
     return ""
 
 
+# v1 IS SWITCHED OFF (2026-09-24). The operator, three times in three days:
+# *"fuck you, stop the v1 now and start the v2 who said to start v1?"*
+# (Sep 22), *"stop the v1 i dont need it anymore"* (Sep 24), then *"disable
+# candles v1 and backtest v1 since i already have backtestv2 and candles v2"*.
+#
+# Only the three market-wide v1 jobs are refused — the ones behind the two
+# screens they named. NOT `collect` (a v1 run already in flight must still be
+# able to land) and NOT `pairbt`/`stratbt`, which re-measure ONE row a person
+# is watching: all 97 armed strategy/coin pairs were chosen from v1 rows, so
+# the ability to re-check one of them by hand is the last thing to take away.
+#
+# Nothing is deleted. v1 holds a year of history against v2's thirty days,
+# and every v1 read path still answers so a live trade's `#id` stays findable.
+V1_OFF = ("download", "backtest", "btupdate")
+
+
+class V1Off(RuntimeError):
+    """A v1 market job was asked for after the operator switched v1 off."""
+
+
+def v1_off_why(kind: str) -> str:
+    """Why this kind is refused, or "" when it is not one of the switched-off
+    three. The API raises it; `start()` deliberately does NOT.
+
+    THE REFUSAL BELONGS AT THE DOOR, NOT IN THE LIBRARY. Putting it here broke
+    thirteen tests, and they were right to break: `start("download")` is how
+    the ONE-DISK rule is exercised (a v2 job must wait for a v1 job and the
+    other way round), how `resume_if_died` is driven, and how several v2 tests
+    set up the v1 job they need to contend with. That machinery is shared and
+    still exists — what the operator switched off is being able to ASK for v1
+    work from their screen.
+    """
+    if kind not in V1_OFF:
+        return ""
+    return (f"{kind} is the OLD (v1) job and v1 is switched off — use "
+            f"Candles v2 and Backtest v2, which measure the same coins with "
+            f"every exit settled minute by minute. Your v1 results are not "
+            f"deleted and are still searchable by id.")
+
+
 def start(kind: str, spec: dict) -> int:
     """Write the job's spec and launch it detached. Refuses to double-start."""
     if kind in LOCAL_SWEEP_KINDS and not cap.LOCAL_SWEEPS:

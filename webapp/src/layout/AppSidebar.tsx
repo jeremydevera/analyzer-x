@@ -37,28 +37,26 @@ const navItems: NavItem[] = [
     name: "Auto Trade",
     path: "/trade",
   },
-  {
-    icon: <TableIcon />,
-    name: "Backtest",
-    path: "/backtest",
-  },
+  // v1 IS OFF THE NAV (Sep 24, 2026). The operator, three times:
+  // *"fuck you, stop the v1 now and start the v2 who said to start v1?"*
+  // (Sep 22), *"stop the v1 i dont need it anymore"* (Sep 24), then
+  // *"disable candles v1 and backtest v1 since i already have backtestv2 and
+  // candles v2"*.
+  //
+  // The PAGES still exist at /backtest and /candles and every v1 API route
+  // still answers, deliberately: all 97 of their armed strategy/coin pairs
+  // were chosen from v1 rows (`strategy_res` marks none as v2), so a live
+  // trade's `#id` still has to be findable. What is switched off is STARTING
+  // v1 work — the jobs refuse by name — and offering it as somewhere to go.
+  // Nothing is deleted: v1 holds a year of history against v2's thirty days.
   {
     icon: <DownloadIcon />,
     name: "Candles",
-    path: "/candles",
-  },
-  // Backtest v2 (Sep 17, 2026): a 1-minute candle store and a grid whose
-  // exits are settled minute by minute, beside the v1 pair — never in place
-  // of it. Same icons on purpose: they are the same screens, over another
-  // store, and the badge on each page says which.
-  {
-    icon: <DownloadIcon />,
-    name: "Candles v2",
     path: "/candles-v2",
   },
   {
     icon: <TableIcon />,
-    name: "Backtest v2",
+    name: "Backtest",
     path: "/backtest-v2",
   },
   {

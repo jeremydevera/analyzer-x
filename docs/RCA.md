@@ -172,6 +172,66 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-24-F — the portfolio forecast crashed on the way to reporting its own failure
+
+**CEO**
+
+* If your portfolio forecast ever failed, instead of the plain sentence it was
+  written to show you — *"the replay raised ..."* — the page would have
+  crashed outright.
+* Why: the line that writes the failure into the log used a name that does not
+  exist anywhere in that file, so the error handler broke while handling the
+  error.
+* What stops it now: the name is defined, and the whole project is checked for
+  undefined names again — which found a second one, in a test that could never
+  have run the check it was written for.
+
+**DEV**
+
+* `api.py:3693` called `logger.exception("portfolio forecast failed")` inside
+  the `except` of `portfolio_forecast`, and `api.py` has no `logger`, no
+  `logging` import and no other reference — so the handler raised `NameError`
+  instead of returning the `{"why": ...}` dict written on the next line.
+  Added `Sep 22, 2026` in commit `aa29e8f6571c`.
+* Invariant broken: **the error path is code too.** A handler that has never
+  been executed is not a handler, and this one could only run on the day it
+  was needed.
+* Guard: `ruff` F821 across the whole repo is green again, and it also caught
+  `tests/test_the_panel_sees_every_accounts_machines.py:148` using `pytest`
+  with no import — that test's `pytest.fail("a v2 run may not land here")`
+  would itself have raised `NameError`, so the assertion it exists to make
+  could never have fired.
+
+**SAW** — nothing. Found `Sep 24, 2026` by a repo-wide lint run while
+switching v1 off, not by anything failing.
+
+**TIMELINE**
+
+1. `Sep 22, 2026` — `aa29e8f6571c` adds the `logger.exception` call.
+2. It sits in an exception handler, so it runs only when the forecast fails.
+3. `Sep 24, 2026` — `ruff check .` reports `F821 Undefined name logger` at
+   `api.py:3693`, and a second F821 in a test.
+4. Fixed: `logging` imported, `logger = logging.getLogger(__name__)` defined
+   beside the other module-level setup; `import pytest` added to the test.
+
+**ROOT CAUSE** — a name used only on a failure path, in a module that never
+defined it.
+
+**WHY IT WAS NOT CAUGHT** — nothing exercises the forecast's failure branch,
+and a `NameError` on a path nobody takes is invisible to every test that takes
+the other path. Lint is the only thing that reads code it does not run, and
+the repo's lint had been red for days with 34 unrelated errors — so the ONE
+error that was a real crash was buried among import-sort complaints nobody was
+reading. **A lint run that is allowed to stay red stops being a signal.**
+
+**COST** — none. The forecast did not fail in that window.
+
+**FIX** — this commit, alongside switching v1 off.
+
+**GUARD** — `ruff check .` clean repo-wide (F821 is what surfaced both), plus `tests/test_v1_is_switched_off.py::test_a_refused_v1_job_is_409_and_not_a_crash`, which is in this same commit and asserts the OTHER half of the same rule: a refusal must reach the operator as a sentence, never as a 500 they have to read the logs to understand.
+
+---
+
 ## RCA-2026-09-24-E — Backtest v2's "last 30 days" CSV re-measured every row on the OLD v1 candles, so #5JWGQZPG read 100% in the file and 96% on screen
 
 **CEO**

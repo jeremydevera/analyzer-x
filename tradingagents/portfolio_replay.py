@@ -140,7 +140,7 @@ def _funding_per_day(funding: list) -> float:
         return 0.0
     tail = fs[-30:]
     rates = [r for _, r in tail]
-    gaps = [b[0] - a[0] for a, b in zip(tail, tail[1:]) if b[0] > a[0]]
+    gaps = [b[0] - a[0] for a, b in zip(tail, tail[1:], strict=False) if b[0] > a[0]]
     if not gaps:
         return 0.0
     cycle_s = sorted(gaps)[len(gaps) // 2] / 1000.0

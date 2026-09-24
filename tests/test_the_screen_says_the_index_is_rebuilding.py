@@ -27,7 +27,7 @@ def _write(path: Path, **fields) -> None:
 
 
 def test_the_rebuild_progress_file_lives_beside_the_store_it_rebuilds():
-    assert ri.REBUILD_PROGRESS == ri.DB_PATH.parent / "rows_rebuild.json"
+    assert ri.DB_PATH.parent / "rows_rebuild.json" == ri.REBUILD_PROGRESS
     assert ri.LEGACY_REBUILD_PROGRESS != ri.REBUILD_PROGRESS
     src = (ROOT / "tradingagents" / "rows_index.py").read_text(encoding="utf-8")
     assert '"db": str(DB_PATH),' in src, "the progress names the store it is about"
@@ -136,6 +136,7 @@ def test_the_finish_time_is_the_last_machines_completion():
     completion once the run has a conclusion and every job has a stamp; None
     while it runs. Called, not re-typed — a copied formula tests nothing."""
     import datetime as dt
+
     from tradingagents import cloud_sweep as cs
     jobs = [{"name": "sweep (0)", "status": "completed", "conclusion": "success",
              "completedAt": "2026-09-22T19:58:28Z"},
@@ -217,9 +218,11 @@ def test_the_eta_reaches_the_chip_and_the_table_line():
     assert panel.count('"may finish sooner") ? " or less"') == 1 and chip.count('"may finish sooner") ? " or less"') == 1,         "a figure counted from first sight is printed as an upper bound"
     ts = (ROOT / "webapp" / "src" / "lib" / "api.ts").read_text(encoding="utf-8")
     assert "export function fmtLeft(" in ts
-    for js, want in (("59", "under a minute"), ("720", "12m"), ("6000", "1h 40m")):
-        # the same arithmetic, read out of the source so a change here is seen
-        pass
+    # NOT ASSERTED HERE. fmtLeft's arithmetic (59 -> "under a minute",
+    # 720 -> "12m", 6000 -> "1h 40m") is TypeScript and this is a Python
+    # suite; the loop that used to stand here had `pass` for a body and
+    # checked nothing at all. Its existence is asserted above; the values
+    # belong in a browser test.
     assert 'return h ? `${h}h ${m}m` : `${m}m`;' in ts
 
 

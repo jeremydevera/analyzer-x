@@ -130,7 +130,6 @@ def test_the_paper_book_never_pays_the_fee_twice():
     assert old == pytest.approx(2 * at.FEE_FALLBACK + 2 * at.PAPER_SLIPPAGE)
     # and the exit path reads that function, not its own arithmetic
     import inspect
-    src = inspect.getsource(at.run_cycle) if hasattr(at, "run_cycle") else ""
     whole = inspect.getsource(at)
     i = whole.index("cost = (paper_round_trip(pos, symbol, fx=fx) if pos_dry")
     frag = whole[i:i + 200]

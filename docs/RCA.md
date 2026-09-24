@@ -172,6 +172,78 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-24-J — switching the old rows off erased two practice trades that were still open
+
+**CEO**
+
+* At 7:45pm, when your new list replaced the old one, the runner erased
+  the two practice trades that were still open: PDDSTOCK (long at 79.18
+  since 1:00pm, the doubled $10 stake) and CTC (short at 0.10908 since
+  12:00am). No exit was written, so your practice record held two trades
+  that never finished.
+* Why: switching a coin off told the runner to forget any practice trade
+  on it, because it only kept watching coins that held real money.
+* What stops it now: a switched-off practice trade is watched until it
+  reaches its own target or stop, like a real one. Both trades were put back
+  from their own entry records, and the runner is closing them normally.
+
+**DEV**
+
+* `auto_trader.reconcile_unconfigured`'s paper branch set
+  `st["position"] = None` for any paper slot whose coin left
+  `strategy_coins` — a log line, no ledger row — and `run_cycle` added only
+  REAL positions' coins to `symbols` (`not pos.get("dry")`), so the
+  exits-only rescue in `_process_slot` never ran for a paper slot.
+* Invariant broken: **an open position is never erased, only EXITED**
+  (rule 15, "never assume an exit happened"). The Aug 12, 2026 stranded-
+  position fix did this for real money and was never extended to practice.
+* Guard: `tests/test_a_switched_off_practice_trade_is_finished.py` (4) — the
+  cleanup keeps it; only a position whose strategy no longer exists is
+  cleared, with a `paper_cleared` row; `run_cycle` with the real
+  `process_symbol` books the TP exit on an unarmed coin and opens nothing
+  there; the live pass never visits those coins. 4 of 4 red on the pre-fix
+  tree.
+
+**SAW** — not reported; the runner's own log, 7:45pm: "cleared a stranded
+PAPER position on PDDSTOCK_USDT (coin no longer configured)", and the same
+for CTC_USDT.
+
+**TIMELINE**
+
+1. `Sep 24, 2026 12:00am` — CTC killzone_4h_sl3tp15 enters SHORT at 0.10908
+   (trade CXYSWK42, $5, target 0.107444, stop 0.112352).
+2. `1:00pm` — PDDSTOCK eqraid_1h_sl25tp25 enters LONG at 79.18 (trade
+   38FF8258, $10 — Martingale mode's doubled stake after a loss; target
+   81.1595, stop 77.2005).
+3. `7:44pm` — the runner stops for the deploy; neither trade has an exit.
+4. `7:45pm` — the replace arms 537 new slots; the new runner's first cycle
+   logs "cleared a stranded PAPER position" for both. No ledger row.
+5. `~8:10pm` — fixed; both positions restored from their `enter` rows, with
+   the book readings taken at their entry second (PDDSTOCK round trip
+   0.6792%, slippage 0.2596%; CTC 0.3294% / 0.0847%); the runner tracks
+   them exits-only.
+
+**ROOT CAUSE** — the paper branch of `reconcile_unconfigured` erased instead
+of exiting, because the cycle never visited an unarmed coin that held only a
+practice trade.
+
+**WHY IT WAS NOT CAUGHT** — the Aug 12 stranded-position tests drive REAL
+slots only; the paper clear had no test at all, and
+`test_a_coin_no_strategy_names_is_still_in_the_cycle` pinned "only REAL
+positions earn this" — the guard asserted the gap. And the deploy's own plan
+said the two trades would be watched until they closed, from
+`process_symbol`'s docstring, without reading `reconcile_unconfigured`: read
+the emitter, not the label.
+
+**COST** — none in money (practice account). Two practice trades' outcomes
+would have been lost from the record.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_a_switched_off_practice_trade_is_finished.py`.
+
+---
+
 ## RCA-2026-09-24-I — test runs wrote fake order-book readings and fake deployments into the operator's own files
 
 **CEO**

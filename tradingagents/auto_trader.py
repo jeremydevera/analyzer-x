@@ -5923,13 +5923,29 @@ def reconcile_unconfigured(settings: dict, state: dict, *, fx) -> None:
         if not isinstance(st, dict):
             continue
         if is_paper_slot(key):
-            # Paper books have no exchange position; a de-configured paper
-            # trade would otherwise sit in the UI forever.
+            # A SWITCHED-OFF PRACTICE TRADE IS FINISHED, NOT ERASED
+            # (RCA-2026-09-24-J). This set the position to None with a log
+            # line and no ledger row, so the operator's Sep 24, 2026 7:45pm
+            # replace deploy wiped two open practice trades — PDDSTOCK long at
+            # 79.18 and CTC short at 0.10908 — whose outcome was then never
+            # booked. `run_cycle` now visits every coin a paper slot still
+            # holds, and `_process_slot`'s rescue tracks its EXIT only, under
+            # its own strategy. Only a position whose strategy no longer
+            # exists at all — nothing could ever book its exit — is cleared,
+            # and that is written down.
             sym = coin_of_slot(key)
-            if st.get("position") and sym not in configured:
+            pos = st.get("position")
+            if (pos and sym not in configured
+                    and pos.get("strategy") not in STRATEGY_SPECS):
                 st["position"] = None
-                logger.info("cleared a stranded PAPER position on %s "
-                            "(coin no longer configured).", sym)
+                append_ledger({"symbol": sym, "action": "paper_cleared",
+                               "strategy": pos.get("strategy"),
+                               "trade_id": pos.get("trade_id"),
+                               "entry": pos.get("entry"), "dry_run": True,
+                               "why": "its strategy no longer exists, so "
+                                      "nothing can book its exit"})
+                logger.warning("cleared a PAPER position on %s: its strategy "
+                               "%s no longer exists.", sym, pos.get("strategy"))
             continue
         # THE CONTRACT, not the slot key. Real slices are `SYM#live#KEY`
         # (partial TP/SL, Sep 09, 2026), and `symbol = key` would have asked
@@ -6096,6 +6112,20 @@ def run_cycle(*, fx=None) -> None:
             sym = str(slot).split("#", 1)[0]
             if sym and sym not in symbols:
                 symbols.append(sym)
+    # ...AND, ON THE PRACTICE PASS ONLY, EVERY COIN A PAPER SLOT STILL HOLDS
+    # (RCA-2026-09-24-J). Without it a switched-off practice trade had no
+    # cycle to book its exit, so `reconcile_unconfigured` erased it — two
+    # open trades, PDDSTOCK and CTC, at the Sep 24, 2026 7:45pm replace. The
+    # live pass never sees these coins: no venue call for a trade MEXC does
+    # not hold.
+    paper_held: list[str] = []
+    for slot, v in (state or {}).items():
+        if (isinstance(v, dict) and is_paper_slot(slot)
+                and (v.get("position") or {}).get("dry", True)
+                and v.get("position")):
+            sym = coin_of_slot(slot)
+            if sym and sym not in symbols and sym not in paper_held:
+                paper_held.append(sym)
     modes = active_modes(settings)
     # A REAL POSITION IS NEVER LEFT UNWATCHED (Sep 16, 2026).
     #
@@ -6129,12 +6159,16 @@ def run_cycle(*, fx=None) -> None:
     # walked for EXITS only while nothing is armed live.
     if False not in modes and _has_real_position(state):
         modes = [*modes, False]
+    # ...and the practice pass for a practice trade still open when nothing
+    # else is armed on that book, for the same reason (RCA-2026-09-24-J)
+    if True not in modes and paper_held:
+        modes = [*modes, True]
     # Only the slots this cycle visited get written back. Anything else on
     # disk belongs to another writer — the app's CLOSE button — and is left
     # exactly as found.
     touched: list = ["_tripped_logged"]
     for dry in modes:
-      for symbol in symbols:
+      for symbol in (symbols + paper_held if dry else symbols):
         try:
             process_symbol(symbol, settings, state, fx=fx, dry=dry,
                            tripped=tripped_by_book.get(dry, frozenset()))

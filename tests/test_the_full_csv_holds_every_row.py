@@ -217,3 +217,48 @@ def test_the_pool_grows_one_at_a_time_and_shrinks_at_once():
     src = inspect.getsource(fx.run)
     assert "allowed = target if target < allowed else min(target, allowed + 1)" in src
     assert "dj.RAM_FLOOR_GB" in src, "and it waits while memory is under the floor"
+
+
+def test_a_finished_recheck_survives_a_crash_while_writing(store, monkeypatch):
+    """The re-check is the slow part (70 min on the first real run). A write
+    that dies must not throw it away: the next build of the SAME filter only
+    writes."""
+    from tradingagents import api, full_export as fx
+
+    db, _ = store
+    real_lines = api.strategies_csv_lines
+
+    def crash(*a, **k):
+        raise RuntimeError("the machine restarted while writing")
+
+    monkeypatch.setattr(api, "strategies_csv_lines", crash)
+    with pytest.raises(RuntimeError):
+        _run(db, {"min_winrate": 85, "days": 30})
+    monkeypatch.setattr(api, "strategies_csv_lines", real_lines)
+
+    rechecked: list = []
+    real_retest = fx._retest_pair
+    monkeypatch.setattr(fx, "_retest_pair",
+                        lambda job: rechecked.append(job) or real_retest(job))
+    facts, seen = _run(db, {"min_winrate": 85, "days": 30})
+    assert rechecked == [], "the finished re-check must be reused, not redone"
+    assert any("already done" in str(s.get("now")) for s in seen)
+    quick = "".join(api.strategies_csv_lines(min_winrate=85, days=30, _dl={}))
+    assert Path(facts["file"]).read_text(encoding="utf-8") == quick
+
+
+def test_a_different_filter_never_reuses_another_recheck(store, monkeypatch):
+    from tradingagents import api, full_export as fx
+
+    db, _ = store
+    monkeypatch.setattr(api, "strategies_csv_lines",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("x")))
+    with pytest.raises(RuntimeError):
+        _run(db, {"min_winrate": 85, "days": 30})
+    monkeypatch.undo()
+    rechecked: list = []
+    real_retest = fx._retest_pair
+    monkeypatch.setattr(fx, "_retest_pair",
+                        lambda job: rechecked.append(job) or real_retest(job))
+    _run(db, {"min_winrate": 90, "days": 30})
+    assert rechecked, "another filter's re-check must never be borrowed"

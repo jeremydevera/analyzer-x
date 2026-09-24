@@ -2040,9 +2040,15 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                 </a>
               );
             }
-            // an estimate, from the measured 14 ms a row on one core
-            // (tradingagents/full_export.py) over the ~10 cores it uses
-            const mins = Math.max(1, Math.ceil(total * 0.014 / 10 / 60));
+            // HOW LONG, from THIS PC's own last full build when there is one:
+            // its rows over its minutes. The first estimate assumed 10 cores
+            // at 14 ms a row and said "about 32 min"; free memory allowed 6
+            // workers and the first real build (1,369,665 rows, Sep 25, 2026)
+            // re-checked at ~330 rows a second — so that is the fallback.
+            const lastRate = exportJob?.finished && exportJob.started && exportJob.total
+              && exportJob.finished > exportJob.started
+              ? exportJob.total / (exportJob.finished - exportJob.started) : 0;
+            const mins = Math.max(1, Math.ceil(total / (lastRate || 330) / 60));
             return (
               <>
                 <button type="button" onClick={startExport}

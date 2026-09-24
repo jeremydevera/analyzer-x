@@ -375,6 +375,9 @@ export interface JobStatus {
   eta_s?: number | null;
   pairs_total?: number;
   pairs_done?: number;
+  /** when the job began (epoch seconds) — with `finished` and `total`, the
+   *  speed this PC really achieved, which the next estimate is built from */
+  started?: number;
   /** `pairbt` only — the ONE pair a row's UPDATE button is re-measuring, and
    *  what came of it. `index_error` is separate from `error` on purpose: a
    *  pair can measure perfectly and fail to reindex, which leaves a current

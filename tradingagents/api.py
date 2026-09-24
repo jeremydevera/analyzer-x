@@ -563,7 +563,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          desc=None, batch=5_000, min_tp=0, min_sl=0,
                          tp_over_sl=False, asset=None, measured_days=0,
                          db_path=None, store=None, _dl: dict | None = None,
-                         window_lookup=None, window_cap=None):
+                         window_lookup=None, window_cap=None, breathe=True):
     """The CSV, one chunk at a time — a module-level generator on purpose.
 
     Inside the route it was only reachable through StreamingResponse's ASYNC
@@ -695,7 +695,9 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                 # "internal server error" while the file itself was fine.
                 # A 2 ms sleep every `_CSV_BREATHE` rows hands the lock over and
                 # costs well under a second on a run this long.
-                if sent % _CSV_BREATHE == 0:
+                # (the FULL export runs in its own process, where there is no
+                # screen to hand the lock to: breathe=False)
+                if breathe and sent % _CSV_BREATHE == 0:
                     _time.sleep(0.002)
             # CAPPED IS WHAT WAS RE-MEASURED, not what survived the window
             # floor: 2,000 re-measured with 133 cut wrote 1,867 rows, and the

@@ -154,7 +154,7 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
     """
     from concurrent.futures import ProcessPoolExecutor, as_completed
 
-    from tradingagents import api, rows_index as ri, stores
+    from tradingagents import api, rows_index as ri
 
     filters = clean_spec(spec)
     days = int(filters.get("days") or 0)
@@ -175,14 +175,33 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
         tp_over_sl=bool(filters.get("tp_over_sl")), asset=filters.get("asset"),
         days=days).removesuffix(".csv")
     win_db = out_dir / f"{stem}.window.sqlite"
+    win_done = out_dir / f"{stem}.window.done"
     part = out_dir / f"{stem}.csv.part"
     final = out_dir / f"{stem}.csv"
-    for f in (win_db, part):
-        f.unlink(missing_ok=True)
+    # A FINISHED RE-CHECK IS KEPT until its file is written. It is the slow
+    # part — 70 minutes for 1,369,665 rows on the first real run — and a
+    # write that was stopped, or killed by a restart, must not throw it away.
+    # Reused only for the SAME filter over the SAME number of matching rows;
+    # anything else is re-checked from scratch.
+    reuse = False
+    try:
+        marker = json.loads(win_done.read_text(encoding="utf-8"))
+        reuse = (win_db.exists() and marker.get("key") == key_of(spec)
+                 and int(marker.get("total", -1)) == int(total))
+    except (OSError, ValueError):
+        reuse = False
+    part.unlink(missing_ok=True)
+    if not reuse:
+        win_db.unlink(missing_ok=True)
+        win_done.unlink(missing_ok=True)
 
     lookup = None
     lcon = None
-    if days > 0:
+    if days > 0 and reuse:
+        publish(running=True, phase="writing the file", total=total, done=0,
+                now=f"the re-check of all {total:,} row(s) is already done — "
+                    f"writing the file")
+    if days > 0 and not reuse:
         # PHASE 1 — re-check every matching row, a coin at a time
         wcon = sqlite3.connect(win_db)
         wcon.execute(f"CREATE TABLE win (id TEXT PRIMARY KEY, {', '.join(W_COLS)})")
@@ -265,7 +284,7 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
                     left = (total - done_rows) / rate if rate > 0 else None
                     publish(running=True, phase="re-checking", total=total,
                             done=done_rows, pairs_total=len(pairs),
-                            pairs_done=done_pairs, workers=publish_workers[0],
+                            pairs_done=done_pairs, at_once=publish_workers[0],
                             eta_s=int(left) if left is not None else None,
                             now=f"re-checked {done_rows:,} of {total:,} row(s) "
                                 f"({done_pairs:,} of {len(pairs):,} coins, "
@@ -277,6 +296,9 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
                     return {"stopped": True}
         wcon.commit()
         wcon.close()
+        win_done.write_text(json.dumps({"key": key_of(spec), "total": int(total),
+                                        "at": int(time.time())}), encoding="utf-8")
+    if days > 0:
         lcon = sqlite3.connect(win_db, check_same_thread=False)
 
         def lookup(batch: list) -> None:
@@ -302,6 +324,25 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
     # PHASE 2 — the file, through the quick download's own writer
     publish(running=True, phase="writing the file", total=total, done=0,
             now=f"writing the file ({total:,} row(s) matched)…")
+    try:
+        return _write_phase(part=part, final=final, win_db=win_db,
+                            win_done=win_done, filters=filters, days=days,
+                            db=db, store_name=store_name, lookup=lookup,
+                            lcon=lcon, total=total, publish=publish, stop=stop,
+                            t0=t0, spec=spec, out_dir=out_dir, stem=stem)
+    finally:
+        # ALWAYS let go of the lookup file: a write that raises must not leave
+        # it open, or Windows refuses to delete it on the next build
+        if lcon is not None:
+            lcon.close()
+
+
+def _write_phase(*, part, final, win_db, win_done, filters, days, db,
+                 store_name, lookup, lcon, total, publish, stop, t0, spec,
+                 out_dir, stem) -> dict:
+    """Phase 2: the file, through the quick download's own writer."""
+    from tradingagents import api, stores
+
     written = 0
     stats_line = ""
     with open(part, "w", encoding="utf-8", newline="") as fh:
@@ -309,7 +350,8 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
             **{k: v for k, v in filters.items() if k in FILTER_KEYS},
             sort=filters["sort"], desc=filters.get("desc"), days=days,
             db_path=db, store=stores.V2 if store_name == "v2" else None,
-            _dl={}, window_lookup=lookup, window_cap=0)
+            _dl={}, window_lookup=lookup, window_cap=0, breathe=False)
+        last_pub = 0.0
         for i, chunk in enumerate(gen):
             fh.write(chunk)
             if i == 0:
@@ -323,7 +365,24 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
                     stats_line = bare.rstrip('"')
                 elif line and not bare.startswith("#"):
                     written += 1
-            if i % 50 == 0:
+            # AT MOST EVERY 2 SECONDS. The builder hands back one ROW per
+            # chunk, so "every 50 chunks" was a progress file written ~270
+            # times a minute while the screen polled it — each save waiting on
+            # Windows to let go of the file. Measured on the first real run
+            # (Sep 25, 2026): 14,000 rows a minute written, against 151,000 a
+            # minute for the same writer with no progress saves.
+            now_t = time.time()
+            if now_t - last_pub >= 2.0:
+                last_pub = now_t
+                if stop and stop():
+                    fh.close()
+                    if lcon is not None:
+                        lcon.close()
+                    part.unlink(missing_ok=True)
+                    publish(running=False, stopped=True, finished=int(time.time()),
+                            note=f"stopped while writing, after {written:,} rows; "
+                                 f"the re-check is kept, so the next build only writes")
+                    return {"stopped": True}
                 publish(running=True, phase="writing the file", total=total,
                         done=written, now=f"writing the file: {written:,} row(s) so far")
     if lcon is not None:
@@ -331,6 +390,7 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
     final.unlink(missing_ok=True)
     part.rename(final)
     win_db.unlink(missing_ok=True)
+    win_done.unlink(missing_ok=True)
     facts = {"file": str(final), "name": final.name, "rows": written,
              "matched": total, "bytes": final.stat().st_size,
              "seconds": round(time.time() - t0, 1), "key": key_of(spec),

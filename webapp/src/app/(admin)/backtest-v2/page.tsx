@@ -14,8 +14,10 @@ export default function BacktestV2Page() {
   return (
     <div className="flex flex-col gap-5">
       <JobsPanel store="v2" />
-      <PortfolioForecast />
+      {/* Stored strategies BEFORE the forecast (operator, Sep 25, 2026: "put
+          stored strategies section before Forecast for the account") */}
       <StrategiesPanel store="v2" />
+      <PortfolioForecast />
       <BacktestStorage store="v2" />
     </div>
   );

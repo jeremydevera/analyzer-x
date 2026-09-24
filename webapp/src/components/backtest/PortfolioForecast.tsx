@@ -18,6 +18,18 @@ import {
 } from "@/lib/api";
 import StoreBadge from "@/components/StoreBadge";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import { pageWindow } from "@/lib/pager";
+
+/** TEN ROWS A PAGE (operator, Sep 25, 2026: "paginate Forecast for the
+ *  account 10rows"). The Sep 24 deploy switched on 537 rows, one line each.
+ *  The sort runs over EVERY row and the page is cut after it, so page 2 of
+ *  "profit, highest first" is rows 11-20 of the whole account, not of the
+ *  first page. Same pager as the open-positions book. */
+const PER_PAGE = 10;
+const pageNum = "h-8 min-w-8 rounded-lg border px-2 text-theme-xs tabular-nums";
+const pageBtn =
+  "h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 " +
+  "disabled:opacity-40 dark:border-gray-700 dark:text-gray-300";
 
 /** what each refusal means, in the words the operator uses */
 const REFUSAL_WORDS: Record<string, string> = {
@@ -52,6 +64,7 @@ export default function PortfolioForecast() {
   const [sort, setSort] = useState<SortKey>("pnl");
   const [asc, setAsc] = useState(false);
   const [showLog, setShowLog] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const load = useCallback((fresh = false) => {
     setBusy(true);
@@ -69,7 +82,11 @@ export default function PortfolioForecast() {
   const head = (label: string, key?: SortKey) => (
     <TableCell key={label} isHeader
       className={`px-3 py-2 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400 ${key ? "cursor-pointer select-none" : ""}`}>
-      <span onClick={() => { if (!key) return; if (sort === key) setAsc(!asc); else { setSort(key); setAsc(false); } }}>
+      <span onClick={() => {
+        if (!key) return;
+        if (sort === key) setAsc(!asc); else { setSort(key); setAsc(false); }
+        setPage(1);          // a new order starts at its top
+      }}>
         {label}{key && sort === key ? (asc ? " ▲" : " ▼") : ""}
       </span>
     </TableCell>
@@ -105,6 +122,13 @@ export default function PortfolioForecast() {
   const refusedTotal = Object.values(a.refused).reduce((s, n) => s + n, 0);
   const readings = Object.values(d.readings ?? {}).reduce((s, n) => s + n, 0);
   const logRows = (d.log ?? []).filter((t) => showLog ? `${t.key}|${t.symbol}` === showLog : false);
+  // clamped at RENDER, never written back: a replay that returns fewer rows
+  // while page 9 is open shows its last page instead of an empty table
+  const pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
+  const cur = Math.min(Math.max(1, page), pages);
+  const from = (cur - 1) * PER_PAGE;
+  const shown = rows.slice(from, from + PER_PAGE);
+  const goto = (n: number) => setPage(Math.min(Math.max(1, n), pages));
   const logTotal = logRows.reduce((s, t) => s + (t.pnl ?? 0), 0);
 
   return (
@@ -214,6 +238,7 @@ export default function PortfolioForecast() {
       {/* every row, every column */}
       <div className="mt-4 px-5 text-theme-xs text-gray-500 dark:text-gray-400">
         {a.rows_deployed} rows switched on · {a.rows_traded} traded in the replay · click a row for its trades
+        {pages > 1 ? ` · showing ${from + 1}–${from + shown.length} of ${rows.length}` : ""}
       </div>
       <div className="mt-2 w-full overflow-x-auto">
         <Table>
@@ -226,7 +251,7 @@ export default function PortfolioForecast() {
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-            {rows.map((r) => (
+            {shown.map((r) => (
               <TableRow key={r.row} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03]"
                         onClick={() => setShowLog(showLog === r.row ? null : r.row)}>
                 <TableCell className="px-3 py-2 text-theme-xs font-mono text-gray-700 dark:text-gray-300">
@@ -256,6 +281,25 @@ export default function PortfolioForecast() {
           </TableBody>
         </Table>
       </div>
+      {pages > 1 && (
+        <div className="flex flex-wrap items-center gap-1 border-t border-gray-100 px-5 py-2 dark:border-white/[0.05]">
+          <button onClick={() => goto(cur - 1)} disabled={cur === 1} className={pageBtn}>prev</button>
+          {pageWindow(cur, pages).map((n, i) => n == null ? (
+            <span key={`gap${i}`} aria-hidden className="px-1 text-theme-xs text-gray-400">…</span>
+          ) : (
+            <button key={n} onClick={() => goto(n)}
+                    aria-label={`forecast page ${n}`}
+                    aria-current={n === cur ? "page" : undefined}
+                    className={`${pageNum} ${n === cur
+                      ? "border-brand-500 bg-brand-500 font-semibold text-white"
+                      : "border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300"}`}>
+              {n}
+            </button>
+          ))}
+          <button onClick={() => goto(cur + 1)} disabled={cur === pages} className={pageBtn}>next</button>
+          <span className="text-theme-xs text-gray-500 dark:text-gray-400">of {pages}</span>
+        </div>
+      )}
 
       {/* the trade-by-trade log of the clicked row, with its own total */}
       {showLog && (

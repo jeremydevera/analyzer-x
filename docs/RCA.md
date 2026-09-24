@@ -172,6 +172,77 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-25-A — after the Backtest v2 list was rebuilt, an id search answered "Internal Server Error"
+
+**CEO**
+
+* At about 1:01am the rebuilt Backtest v2 list (flat rows only, 49,503,932
+  of the old 98,986,982) replaced the old one while the site was running.
+  Searching an id minutes later answered "Internal Server Error" for
+  #5JWGQZPG, and #L2KBERYD waited 20 seconds for a wrong reason. Found in
+  the checks after the swap; no search of yours hit it.
+* Why: the site remembered which search shortcuts the OLD list had, and the
+  new list had not built the id shortcut yet. It trusted its memory over the
+  file.
+* What stops it now: the site's memory is tied to the exact file it read,
+  so a replaced list is always looked at fresh; and if a shortcut is still
+  missing it asks once more instead of failing — an honest "being built"
+  while it builds, the row itself once it exists.
+
+**DEV**
+
+* `rows_index.has_index` cached `(db path, name) -> True` for ever ("an
+  index only disappears through a drop, which calls forget_indexes()");
+  `rebuild()` swapped a new rows.db in from ANOTHER process and called
+  `forget_indexes()` only there. So `_row_id_index()` in the API emitted
+  `INDEXED BY rows_id` against a file without it; `_missing_ok` forgot the
+  cache and RE-RAISED, and `query()` re-raised it as HTTP 500.
+* Invariant broken: **a cache of the database's shape is keyed by the FILE,
+  not the path** — a path is a name another process can give to a different
+  file; and a stale-cache error is a reason to plan again, never a 500.
+* Guard: `tests/test_a_swapped_index_file_is_not_judged_by_the_old_one.py`
+  (3) — a file swapped in under the same name is asked again, a stale
+  "exists" is retried into the row instead of raising, and both read doors
+  (`query`, `export_plan`) carry the retry. 3 of 3 red on the pre-fix tree.
+
+**SAW** — not reported; the post-swap check: `/api/v2/strategies?row_id=
+5JWGQZPG` → `500 Internal Server Error`, `sqlite3.OperationalError: no such
+index: rows_id`.
+
+**TIMELINE**
+
+1. `Sep 25, 2026 ~12:00am` — the API restarts (another session's deploy); an
+   id search for #AJX2ZPQX answers 200 through rows_id on the OLD 44.4 GB
+   file, and the API caches "rows_id exists".
+2. `~1:01am` — `rebuild()` swaps in the new 15.1 GB file: 49,503,932 rows,
+   indexes rows_pair / rows_profit / rows_coin / rows_winrate; rows_wr2 is
+   queued, rows_id waits behind it. `forget_indexes()` runs in the rebuild
+   process only.
+3. `~1:05am` — #L2KBERYD: 503 after 20.0 s, "ranking the store by profit ran
+   past 20s" (the real reason was the missing id index); #5JWGQZPG: HTTP 500.
+   The only 500 in the log.
+4. Fixed: `has_index` keys by `(path, (st_dev, st_ino), name)`, and `query` /
+   `export_plan` retry once on "no such index".
+
+**ROOT CAUSE** — the index-existence cache was keyed by path while another
+process could replace the file at that path.
+
+**WHY IT WAS NOT CAUGHT** — RCA-2026-09-24-A taught the cache that an index
+can APPEAR in another process (a one-minute TTL on "missing"); the opposite
+direction was written into its own docstring as impossible. Every test of the
+cache builds indexes; none replaces the file under it. And `_missing_ok`'s
+"forget and re-raise" was tested for its forgetting, not for what the caller
+did with the raise.
+
+**COST** — none in money. About four minutes in which an id search could
+fail; the only request that did was the check itself.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_a_swapped_index_file_is_not_judged_by_the_old_one.py`.
+
+---
+
 ## RCA-2026-09-24-K — UPDATE THIS BACKTEST shows no loading animation while it runs, and when it finishes it prints a code line that does not say "done" (FIXED)
 
 **CEO**

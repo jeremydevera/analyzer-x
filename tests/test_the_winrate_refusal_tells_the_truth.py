@@ -141,7 +141,7 @@ def test_a_list_finished_by_another_process_is_noticed(ri, monkeypatch, tmp_path
     assert ri.has_index("rows_wr4") is False, "within the minute it may still say missing"
 
     # a minute later the cache must look again
-    key = (str(db), "rows_wr4")
+    key = ri.index_cache_key("rows_wr4")      # path + WHICH file (RCA-2026-09-25-A)
     ri._INDEX_MISSING_AT[key] -= ri.INDEX_MISSING_TTL_S + 1
     assert ri.has_index("rows_wr4") is True, \
         "a finished index stayed 'missing' until the app was restarted"
@@ -151,8 +151,8 @@ def test_a_list_finished_by_another_process_is_noticed(ri, monkeypatch, tmp_path
 def test_exists_is_remembered_forever(ri, monkeypatch, tmp_path):
     """Only the MISSING answer expires — an existing index is never re-read,
     which is what keeps a 4 s poll cheap."""
-    key = (str(tmp_path / "x.db"), "rows_wr4")
     monkeypatch.setattr(ri, "_db", lambda: tmp_path / "x.db")
+    key = ri.index_cache_key("rows_wr4")      # path + WHICH file (RCA-2026-09-25-A)
     ri._INDEX_SEEN[key] = True
     monkeypatch.setattr(ri, "_open", lambda *a, **k: pytest.fail("no re-read"))
     try:

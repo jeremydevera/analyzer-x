@@ -3265,6 +3265,45 @@ def forget_indexes() -> None:
     _INDEX_MISSING_AT.clear()
 
 
+def _file_id(path) -> tuple | None:
+    """Which FILE is at this path right now: (device, file id — the NTFS
+    file index on Windows). `rebuild()` swaps a new rows.db in under the SAME
+    name from another process; nothing in this one is told."""
+    try:
+        st = os.stat(path)
+        return (st.st_dev, st.st_ino)
+    except (OSError, TypeError, ValueError):
+        return None
+
+
+def index_cache_key(name: str) -> tuple:
+    """The one key `has_index` caches under: the path, WHICH FILE is there,
+    and the index name. Tests plant entries through this, never by hand."""
+    db = _db()
+    return (str(db), _file_id(db), name)
+
+
+def _retry_on_stale_index(fn):
+    """Ask once more when the database says an index the cache named is not
+    there. `_missing_ok` has already forgotten the cache, so the second
+    attempt plans from the file as it is NOW — an honest answer or an honest
+    503 "being built", never the HTTP 500 the operator's id search got at
+    Sep 25, 2026 1:05am, minutes after the v2 index was swapped
+    (RCA-2026-09-25-A)."""
+    import functools
+
+    @functools.wraps(fn)
+    def wrapper(*a, **k):
+        try:
+            return fn(*a, **k)
+        except sqlite3.OperationalError as exc:
+            if "no such index" not in str(exc).lower():
+                raise
+            forget_indexes()
+            return fn(*a, **k)
+    return wrapper
+
+
 def has_index(name: str):
     """True, False, or None when the database could not be read.
 
@@ -3273,8 +3312,11 @@ def has_index(name: str):
     (2026-08-26). A caller must not treat "I could not look" as "it is gone".
     """
     # keyed by the database actually being read: the v2 store has its own
-    # set of indexes and must not inherit v1's answer
-    key = (str(_db()), name)
+    # set of indexes and must not inherit v1's answer — and by WHICH FILE is
+    # at that path (RCA-2026-09-25-A): a rebuild in another process swaps a
+    # different file in under the same name, and "it exists" cached for the
+    # old one sent `INDEXED BY rows_id` to a file that had no rows_id
+    key = index_cache_key(name)
     if key in _INDEX_SEEN:
         seen = _INDEX_SEEN[key]
         # "IT EXISTS" IS FOREVER, "IT IS MISSING" IS ONE MINUTE. An index only
@@ -3813,6 +3855,7 @@ def _page_rows(con, coin, row_where, row_args, order, lim, off,
         f"ORDER BY {order}, id ASC", ids).fetchall()
 
 
+@_retry_on_stale_index
 def query(coin=None, tf=None, signal=None, profitable=False,
           limit=500, offset=0, sort="profit", min_trades=0,
           min_winrate=0, max_tp=0, sizing=None, row_id=None, group=None,
@@ -4203,6 +4246,7 @@ def query(coin=None, tf=None, signal=None, profitable=False,
             "months_window": int(months or 0)}
 
 
+@_retry_on_stale_index
 def export_plan(coin=None, signal=None, sort="profit", row_id=None,
                 group=None, min_winrate=0, min_trades=0, desc=None,
                 limit=0, db_path=None):

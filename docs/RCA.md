@@ -172,6 +172,83 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-24-G — three deployed rows showed ids that are in no store: a signal name with an underscore was cut at its first `_`
+
+**CEO**
+
+* Since Sep 16, 2026 1:54am the deployed-strategies table showed three of
+  your FASTSTOCK rows as #GYWZS995, #T724QASK and #3FBZAH3B. Those ids
+  exist nowhere, so searching them found nothing. Their real ids are
+  #KDY5M3LQ, #46SGBAHD and #HQH72A8L. None of the three ever traded (534
+  refusals, 0 trades), so no trade carried a wrong id.
+* Why: the app read a strategy's signal out of its name by cutting at the
+  first underscore, so cf_soup1 became cf. 57 signal types have an
+  underscore in their name.
+* What stops it now: one reader that knows every signal name, used by every
+  screen. A test checks every strategy's id against the rule the runner
+  really trades, and another fails if any part of the app cuts a name by
+  itself again. It was found while deploying your 1,473 Backtest v2 ids,
+  before it could mislabel the 30 new slots (58 of your ids) whose signal
+  has an underscore — #R88RRLU4 (SOL 4h cx_first) would have shown as
+  #TBRL24VM.
+
+**DEV**
+
+* `api.py:row_id_for` → `local_history._sig_of(key)` returned
+  `key.split("_")[0]`; the same split was copied into `api.backtest_deployed`,
+  `strategy_report.build` and `market_sweep.deployed_combos`, which also took
+  the TIMEFRAME from `bits[1]` — `soup1`, `veto`, `rt`, `sp`, `fvg`, or
+  skipped `mom6`/`trend50` outright (8 keys read wrong in all, so the sweep's
+  "a deployed combination is never skipped" rule could not match them).
+* Invariant broken: **a row id is hashed from the combination's own fields**
+  (`deploy-by-id`), and the id's signal must be the rule `signal_for`
+  dispatches (the longest registered name the key starts with). One parser,
+  never four copies; the id is a LABEL (`label-must-match-data`).
+* Guard: `tests/test_an_underscored_signal_keeps_its_id.py` (62) — fixed
+  points #KDY5M3LQ / #46SGBAHD / #HQH72A8L, all 57 underscored names, the
+  real dispatcher spied for every `STRATEGY_SPECS` key, `deployed_combos`,
+  and an AST check that no module calls `.split("_")` outside `_sig_of`.
+  61 of the 62 are red on the pre-fix tree.
+
+**SAW** — not reported; found by the deploy of the operator's 1,473 ids
+(*"undeploy all deployed ids in strategies deployed / then deploy these
+ids"*), whose read-back checks that every armed slot prints the id it runs
+as.
+
+**TIMELINE**
+
+1. `Sep 16, 2026 1:54am` — the 127-row deploy arms `cf_soup1_1h_sl25tp1`,
+   `cf_soup1_1h_sl3tp1` and `cx_veto_1h_sl3tp1` on FASTSTOCK, practice
+   account.
+2. From then on the table hashes them with signal `cf` / `cx`:
+   #GYWZS995, #T724QASK, #3FBZAH3B. The v1 store holds none of those; it
+   holds #KDY5M3LQ (44 trades, 97.73%, +$30.82), #46SGBAHD (44 trades,
+   100%, +$34.32) and #HQH72A8L (39 trades, 100%, +$30.42).
+3. `Sep 16 → Sep 24, 2026` — 534 `gate_blocked`, 0 entries on the three
+   keys.
+4. `Sep 24, 2026 ~7:00pm` — resolving the 1,473 ids: 15 of their 67 signal
+   types carry an underscore; after the refusals 30 armed slots (58 ids) use
+   one. The fixed parser changes the reading of exactly the three broken
+   keys among the 180 that existed, and no other.
+
+**ROOT CAUSE** — a signal name was parsed out of a strategy key by splitting
+on `_`, while 57 registered signal names contain `_`.
+
+**WHY IT WAS NOT CAUGHT** — every id test hashes a one-word signal
+(`willr14`, `ote`, `keltner`, `mom15`), and the Sep 16 deploy proved each key
+reached a real rule in `signal_for` — the RUNNER's reading — without ever
+comparing it with the ID's reading of the same key. Two readers of one name,
+each tested alone; the list of names was never run through either.
+
+**COST** — none in money: the three rows never traded. Three ids on screen
+that led nowhere for eight days.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_an_underscored_signal_keeps_its_id.py`.
+
+---
+
 ## RCA-2026-09-24-H — MERGE INTO THIS PC on a Backtest v2 run would have said "Internal Server Error" whenever another job had the disk
 
 **CEO**

@@ -2541,7 +2541,11 @@ def backtest_deployed(coins: str = "", tfs: str = "") -> dict:
         tf = sr.TF_NAME.get(spec.get("interval"))
         if want_t and tf not in want_t:
             continue
-        signal = key.split("_")[1] if key.startswith("ict_") else key.split("_")[0]
+        # the one parser: `cf_soup1_...` is signal cf_soup1, never `cf`
+        # (RCA-2026-09-24-G)
+        from tradingagents.local_history import _sig_of
+
+        signal = _sig_of(key)
         for c in scoins.get(key) or []:
             if want_c and c not in want_c:
                 continue

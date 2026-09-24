@@ -46,7 +46,9 @@ def build(key: str, *, label: str, coins: list[str], base_margin: float,
     spec = at.STRATEGY_SPECS.get(key) or {}
     own = TF_NAME.get(spec.get("interval"), "1h")
     tfs = [own] + [t for t in ("1h", "4h") if t != own]
-    signal = key.split("_")[1] if key.startswith("ict_") else key.split("_")[0]
+    from tradingagents.local_history import _sig_of
+
+    signal = _sig_of(key)      # `cf_soup1_...` is cf_soup1 (RCA-2026-09-24-G)
     sizing = at.sizing_for(at.load_settings())
     deployed = [{"coin": c.replace("_USDT", ""), "tf": own, "signal": signal,
                  "th": round(float(spec.get("threshold") or 0) * 100, 3),

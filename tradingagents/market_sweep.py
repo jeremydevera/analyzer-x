@@ -155,10 +155,15 @@ def deployed_combos() -> set:
         spec = at.STRATEGY_SPECS.get(key) or {}
         if not spec:
             continue
-        bits = str(key).split("_")
-        if len(bits) < 2:
+        # The signal from the one parser and the timeframe from the SPEC, never
+        # from splitting the key: `cf_soup1_1h_sl25tp1` split on `_` gave
+        # signal `cf` and timeframe `soup1`, so three deployed rows matched no
+        # measured combination (RCA-2026-09-24-G).
+        from tradingagents.local_history import _TF_NAME, _sig_of
+
+        signal, tf = _sig_of(str(key)), _TF_NAME.get(spec.get("interval"))
+        if not tf:
             continue
-        signal, tf = bits[0], bits[1]
         try:
             slp = round(float(spec.get("sl") or 0) * 100, 6)
             tpp = round(float(spec.get("tp") or 0) * 100, 6)

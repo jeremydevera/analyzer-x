@@ -116,8 +116,32 @@ _TF_NAME = {"Min1": "1m", "Min15": "15m", "Min30": "30m", "Min60": "1h",
             "Hour4": "4h", "Day1": "1d"}
 
 
+_UNDERSCORED_SIGNALS: tuple = ()
+
+
 def _sig_of(key: str) -> str:
-    """The signal name inside a strategy key ('mom15_4h_w' -> 'mom15')."""
+    """The signal name inside a strategy key ('mom15_4h_w' -> 'mom15').
+
+    THE ONE PARSER — every module that needs a key's signal calls this.
+
+    A SIGNAL NAME MAY CONTAIN AN UNDERSCORE (RCA-2026-09-24-G): `cf_soup1`,
+    `cx_veto`, `sr_break` and 54 more in `backtest_report.SIGNALS`. Splitting
+    on the first `_` read `cf_soup1_1h_sl25tp1` as signal `cf`, so from
+    Sep 16, 2026 1:54am the screen hashed FASTSTOCK's deployed row as
+    #GYWZS995 — an id no store holds — instead of #KDY5M3LQ. The longest
+    registered name that prefixes the key wins, which is how
+    `auto_trader.signal_for` dispatches; a key naming no underscored signal
+    reads exactly as it always did.
+    """
+    global _UNDERSCORED_SIGNALS
+    if not _UNDERSCORED_SIGNALS:
+        from tradingagents.backtest_report import SIGNALS
+
+        _UNDERSCORED_SIGNALS = tuple(sorted((s for s in SIGNALS if "_" in s),
+                                            key=len, reverse=True))
+    for name in _UNDERSCORED_SIGNALS:
+        if key == name or key.startswith(name + "_"):
+            return name
     parts = key.split("_")
     return parts[1] if parts and parts[0] == "ict" and len(parts) > 1 else parts[0]
 

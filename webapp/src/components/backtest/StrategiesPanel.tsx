@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StoreBadge from "@/components/StoreBadge";
 import { api as coreApi, ApiError, fmtMoney, fmtWhenMs, JobStatus, STRATEGY_SORTS, StrategyRow, storeApi, StoreName, TradesResult, type IndexStatus, type StrategySort, fmtLeft, fmtWhen } from "@/lib/api";
 import { pageWindow } from "@/lib/pager";
+import { rowUpdateSentence } from "@/lib/rowUpdate";
 import Badge from "@/components/ui/badge/Badge";
 import { Modal } from "@/components/ui/modal";
 import {
@@ -2036,7 +2037,17 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                           disabled={!!pairJob?.running || updating}
                           onClick={() => updateRow(open.id)}
                           className="h-8 rounded-lg border border-brand-300 px-3 text-theme-xs font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-40 dark:border-brand-500/40 dark:text-brand-300 dark:hover:bg-brand-500/10">
-                    {pairJob?.running && jobIsThisRow ? "UPDATING…" : "UPDATE THIS BACKTEST"}
+                    {/* A MOVING SPINNER WHILE IT RUNS (operator, Sep 23, 2026:
+                        "can you make animation for all that is loading?").
+                        The word alone read the same as a finished job's line
+                        (RCA-2026-09-24-K). */}
+                    {pairJob?.running && jobIsThisRow ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span aria-hidden="true"
+                              className="h-3 w-3 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+                        UPDATING…
+                      </span>
+                    ) : "UPDATE THIS BACKTEST"}
                   </button>
                   {/* what it is doing, from the JOB, never a literal — AND
                       only when the job is THIS ROW'S PAIR. One `pairbt` job
@@ -2045,19 +2056,32 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                       about a pair nobody had pressed here (the operator's
                       screenshot, Sep 18, 2026; RCA-2026-09-18-M). */}
                   {pairJob?.running && !jobIsThisRow ? (
-                    <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+                    <span role="status" className="inline-flex items-center gap-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
+                      <span aria-hidden="true"
+                            className="h-3 w-3 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
                       {`${pairJob.pair} is being re-measured first — one row at a time`}
                     </span>
                   ) : pairJob?.running ? (
-                    <span className="text-theme-xs text-gray-500 dark:text-gray-400">
+                    <span role="status" className="inline-flex items-center gap-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
+                      <span aria-hidden="true"
+                            className="h-3 w-3 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
                       {pairJob.now ?? `${pairJob.pair ?? ""} measuring`}
                     </span>
-                  ) : pairJob?.note && jobIsThisRow ? (
-                    <span className={`text-theme-xs ${pairJob.error || pairJob.index_error
-                      ? "text-error-500" : "text-success-600 dark:text-success-400"}`}>
-                      {pairJob.error ?? pairJob.note}
-                    </span>
-                  ) : (
+                  ) : pairJob?.note && jobIsThisRow ? (() => {
+                    /* FINISHED, IN WORDS: "Done at <time> — re-tested N
+                       strategies for <pair> <rule>; K are in the search now".
+                       It printed the job's log line ("CAKE 1h · zscore20: 200
+                       row(s), 220 indexed"), which never said done or when
+                       (RCA-2026-09-24-K). */
+                    const said = rowUpdateSentence(pairJob,
+                      pairJob.finished ? fmtWhen(pairJob.finished) : "");
+                    return (
+                      <span role="status" className={`text-theme-xs ${said.bad
+                        ? "text-error-500" : "text-success-600 dark:text-success-400"}`}>
+                        {said.text}
+                      </span>
+                    );
+                  })() : (
                     <span className="text-theme-xs text-gray-400 dark:text-gray-500">
                       measures this pair from its last measured bar to now
                     </span>

@@ -2692,6 +2692,11 @@ def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
     print(f"[{kind}] {note}", flush=True)
     _pub(running=False, rows=n_rows, indexed=indexed, after_ms=after,
          index_error=index_error, index_queued=queued,
+         # WHAT THE SCREEN'S "Done at …" LINE IS BUILT FROM (RCA-2026-09-24-K).
+         # The first write carried the signal and every later one overwrote
+         # the file without it, so the finished state could not name its own
+         # rule; and "no new bars" lived only inside the free-text note.
+         signal=signal, already_current=bool(after and after == before),
          # WHAT MOVED, in the operator's own date format — the whole point of
          # the button is that "last backtest Aug 24" becomes today
          measured_through=fmt_when(after / 1000) if after else "",

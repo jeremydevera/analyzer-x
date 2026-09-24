@@ -1,0 +1,122 @@
+"""UPDATE THIS BACKTEST says RUNNING (with a spinner) or DONE (with the time).
+
+RCA-2026-09-24-K. The operator pressed it on #AJX2ZPQX (CAKE 1h zscore20) and
+read, in green, "CAKE 1h · zscore20: 200 row(s), 220 indexed" — the finished
+job's log line, word for word — and asked *"is it loading or done because if
+its loading i already told you do a loading animation"*. It had finished at
+Sep 24, 2026 11:41pm. While a job ran, the button only changed its word to
+"UPDATING…", against the Sep 23 ask for an animation on everything loading.
+
+The finished sentence is built in `webapp/src/lib/rowUpdate.ts`, which has no
+imports so this test runs THAT file under node (type stripping) — the words
+checked here are the words the screen prints.
+"""
+from __future__ import annotations
+
+import json
+import re
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+REPO = Path(__file__).resolve().parent.parent
+PANEL = REPO / "webapp/src/components/backtest/StrategiesPanel.tsx"
+SENTENCE = REPO / "webapp/src/lib/rowUpdate.ts"
+WHEN = "Sep 24, 2026 11:41pm"
+
+CASES = {
+    "done": {"pair": "CAKE 1h", "signal": "zscore20", "rows": 200, "indexed": 220},
+    "current": {"pair": "CAKE 1h", "signal": "zscore20", "rows": 0,
+                "indexed": 220, "already_current": True},
+    "queued": {"pair": "CAKE 1h", "rows": 200, "index_error": "database is locked",
+               "index_queued": True},
+    "unfiled": {"pair": "CAKE 1h", "rows": 200, "index_error": "disk I/O error"},
+    "failed": {"pair": "CAKE 1h", "error": "RuntimeError: no Min60 candles"},
+}
+
+
+@pytest.fixture(scope="module")
+def said(tmp_path_factory):
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    probe = tmp_path_factory.mktemp("ru") / "probe.mjs"
+    probe.write_text(
+        f'import {{ rowUpdateSentence }} from "{SENTENCE.as_uri()}";\n'
+        f"const cases = {json.dumps(CASES)};\n"
+        "const out = {};\n"
+        f'for (const [k, j] of Object.entries(cases)) out[k] = rowUpdateSentence(j, "{WHEN}");\n'
+        "console.log(JSON.stringify(out));\n", encoding="utf-8")
+    got = subprocess.run([node, str(probe)], capture_output=True, text=True)
+    assert got.returncode == 0, got.stderr
+    return json.loads(got.stdout.strip().splitlines()[-1])
+
+
+def test_a_finished_update_says_done_and_when(said):
+    t = said["done"]["text"]
+    assert t.startswith(f"Done at {WHEN}"), t
+    assert "200 strategies" in t and "CAKE 1h zscore20" in t and "220" in t, t
+    assert said["done"]["bad"] is False
+
+
+def test_no_programmer_words_on_screen(said):
+    """"row(s)" and "indexed" are the log line's words, not the operator's."""
+    for k, v in said.items():
+        assert "row(s)" not in v["text"] and "indexed" not in v["text"], (k, v)
+
+
+def test_nothing_new_is_said_as_nothing_new(said):
+    t = said["current"]["text"]
+    assert t.startswith(f"Done at {WHEN}") and "already up to date" in t, t
+
+
+def test_every_ending_carries_the_time(said):
+    for k, v in said.items():
+        assert WHEN in v["text"], (k, v)
+
+
+def test_a_failure_is_red_and_a_queue_is_not(said):
+    assert said["failed"]["bad"] and said["unfiled"]["bad"]
+    assert not said["queued"]["bad"], "queued is a wait, not a failure"
+    assert "next in line" in said["queued"]["text"]
+
+
+def _running_branch(src: str) -> str:
+    i = src.index("pairJob?.running && !jobIsThisRow ? (")
+    return src[i:src.index("pairJob?.note && jobIsThisRow", i)]
+
+
+def test_the_running_state_has_a_moving_spinner():
+    src = PANEL.read_text(encoding="utf-8")
+    btn = src[src.index("onClick={() => updateRow(open.id)}"):]
+    btn = btn[:btn.index("</button>")]
+    assert "animate-spin" in btn and "UPDATING…" in btn, \
+        "the button must spin while THIS row's update runs"
+    branch = _running_branch(src)
+    assert branch.count("animate-spin") >= 2, \
+        "both running lines (this row, another row first) spin"
+
+
+def test_the_finished_state_is_the_sentence_never_the_raw_note():
+    src = PANEL.read_text(encoding="utf-8")
+    i = src.index("pairJob?.note && jobIsThisRow")
+    tail = src[i:i + 1400]
+    assert "rowUpdateSentence(" in tail and "fmtWhen(pairJob.finished)" in tail
+    assert not re.search(r"\{\s*pairJob\.error\s*\?\?\s*pairJob\.note\s*\}", tail), \
+        "the raw log line must not be printed as the finished label"
+
+
+def test_the_job_publishes_what_the_sentence_needs():
+    """The final write overwrote the file without the signal, and "no new
+    bars" existed only inside the free-text note."""
+    import inspect
+
+    from tradingagents import db_jobs as dj
+
+    src = inspect.getsource(dj._run_pairbt)
+    # the SUCCESS write (it carries `indexed`); the error path writes its own earlier
+    final = src[src.index("_pub(running=False, rows=n_rows, indexed=indexed"):]
+    final = final[:final.index(")\n")]
+    assert "signal=signal" in final and "already_current=" in final, final

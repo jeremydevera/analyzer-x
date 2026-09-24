@@ -18,15 +18,22 @@ def _button_block() -> str:
     # The block stopped being v1-only on Sep 18, 2026 — Backtest v2 has the
     # same button now, driving `pairbt_v2`. The anchor is the row id, which is
     # what actually gates it.
+    # ...up to the idle line that closes the block — a fixed 2,600-character
+    # window stopped short of the finished branch as soon as the running
+    # branch gained its spinner (RCA-2026-09-24-K)
     i = PANEL.index("{open?.id && (")
-    return PANEL[i:i + 2600]
+    j = PANEL.index("measures this pair from its last measured bar to now", i)
+    return PANEL[i:j]
 
 
 def test_the_word_updating_needs_the_job_to_be_this_rows_pair():
     assert "const jobIsThisRow" in PANEL, "the row compares itself with the job's pair"
     assert 'pairJob.pair === `${open.coin} ${open.tf}`' in PANEL
     block = _button_block()
-    assert 'pairJob?.running && jobIsThisRow ? "UPDATING…"' in block, block[:400]
+    # the word now sits beside a spinner (RCA-2026-09-24-K); what matters is
+    # still that it is gated on THIS row's job (RCA-2026-09-18-M)
+    at = block.index("pairJob?.running && jobIsThisRow ? (")
+    assert "UPDATING…" in block[at:at + 600], block[at:at + 600]
 
 
 def test_another_pairs_job_is_named_as_another_pairs_job():

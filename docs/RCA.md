@@ -172,7 +172,7 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
-## RCA-2026-09-24-K — UPDATE THIS BACKTEST shows no loading animation while it runs, and when it finishes it prints a code line that does not say "done"
+## RCA-2026-09-24-K — UPDATE THIS BACKTEST shows no loading animation while it runs, and when it finishes it prints a code line that does not say "done" (FIXED)
 
 **CEO**
 
@@ -185,10 +185,11 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
   asked on Sep 23 for an animation on everything that loads. When it ends,
   the screen prints the job's own internal note word for word: it never says
   "done", never says when, and "row(s)" and "indexed" are programmer words.
-* Documented, not fixed (you asked to document it). The fix: a spinner for
-  the whole time it runs, and a plain finished line such as "Done at 11:41pm
-  — re-tested 200 strategies for CAKE 1h zscore20; all 220 are now in the
-  search."
+* What stops it now (fixed on your "fix it"): the button and the line
+  beside it spin for the whole time the update runs, and when it ends the
+  line reads "Done at Sep 24, 2026 11:41pm — re-tested 200 strategies for
+  CAKE 1h zscore20; 220 are in the search now" — or "already up to date",
+  "not in the search yet — it is next in line", or "Failed at …" in red.
 
 **DEV**
 
@@ -205,9 +206,13 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
   all that is loading? if its indexing i should be seeing a loading beside
   the notification icon"*). The Sep 23 work added spinners to the header
   and the Stored strategies badge; this button was not in it.
-* Guard: none yet. Planned `tests/test_the_row_update_says_running_or_done.py`
-  asserting a spinner in the running branch and a finished line that carries
-  the word "Done" and the finish time from `pairJob.finished`.
+* Guard: `tests/test_the_row_update_says_running_or_done.py` (8) — runs
+  the real `webapp/src/lib/rowUpdate.ts` under node for five endings and
+  asserts "Done at <time>", no "row(s)"/"indexed", red only for a failure;
+  asserts `animate-spin` in the button and both running lines, the finished
+  branch built from `rowUpdateSentence(...)` and never the raw note, and the
+  job's success write carrying `signal` and `already_current`. Three of them
+  fail on the pre-fix files.
 
 **SAW** — the operator's screenshot, `Sep 24, 2026 ~11:44pm`: the trade log of
 #AJX2ZPQX (CAKE 1h zscore20 · SL 2.5% / TP 4% · flat · 28 trades · 20 WIN · 8
@@ -231,6 +236,18 @@ animation, document this"*.
    exactly — 110 flat + 110 martingale. The 20-row gap between them is NOT
    yet explained and is noted here so it is not forgotten.
 
+5. `Sep 25, 2026 ~12:30am` — fixed: `animate-spin` spinners in the button
+   and both running lines; the finished line from
+   `lib/rowUpdate.ts::rowUpdateSentence(job, fmtWhen(job.finished))`; the
+   job's final write in `db_jobs._run_pairbt` now carries `signal` (the first
+   write had it, every later one overwrote the file without it) and
+   `already_current` (it lived only in the free-text note). Three older tests
+   pinned the exact old strings (`"UPDATING…"` as a bare literal, a fixed
+   2,600-character window over the panel, and `pairJob.index_error` in the
+   panel) and were moved to the new shape without changing what they
+   protect: the words come from THIS row's job, and an unfiled update still
+   reaches the screen (now through the sentence, red).
+
 **ROOT CAUSE** — a job's log line reused as a screen label, and a running
 state drawn without the animation the operator asked for everywhere.
 
@@ -243,16 +260,13 @@ place it applies before calling it done.**
 
 **COST** — none in money; a confusing screen after a successful update.
 
-**FIX** — NOT YET COMMITTED: the operator asked for documentation only
-("document this"). Proposed: an `animate-spin` spinner in the running
-branch (button and status line), and the finished branch printing a plain
-sentence built from `pairJob` fields — "Done at <finished> — re-tested
-<rows> strategies for <pair> <signal>; <indexed> are now in the search" —
-instead of the raw note.
+**FIX** — this commit.
 
-**GUARD** — planned: `tests/test_the_row_update_says_running_or_done.py`;
-the existing `tests/test_the_row_update_button_speaks_for_its_own_row.py`
-covers only which row the line belongs to.
+**GUARD** — `tests/test_the_row_update_says_running_or_done.py::test_the_running_state_has_a_moving_spinner`,
+`::test_the_finished_state_is_the_sentence_never_the_raw_note` and
+`::test_a_finished_update_says_done_and_when`. Still open, not part of this
+fix: the 20-row gap between the 200 strategies re-tested and the 220 now
+searchable.
 
 ---
 

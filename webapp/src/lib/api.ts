@@ -370,6 +370,12 @@ export interface JobStatus {
   pair?: string;
   indexed?: number;
   index_error?: string;
+  /** the rule the row's UPDATE re-tested, whether the searchable table was
+   *  busy and the pair is next in line, and whether there were no new candles
+   *  at all — what "Done at …" is built from (RCA-2026-09-24-K) */
+  signal?: string;
+  index_queued?: boolean;
+  already_current?: boolean;
   /** THE SLOW HALF, measured. Writing a pair back into the 63 GB table is one
    *  SQLite DELETE + INSERT with no percentage to report, so the job publishes
    *  how long it has been going (`index_seconds`), how many rows it is

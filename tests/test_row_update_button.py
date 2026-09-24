@@ -250,9 +250,14 @@ def test_the_button_is_on_the_row_and_reads_from_the_job():
     # the label comes from the JOB, so "UPDATING…" cannot outlive the work —
     # and since RCA-2026-09-18-M only when the job is THIS row's pair, so a
     # job on AMP 15m can never print "UPDATING…" on an XPIN 1h row
-    assert 'pairJob?.running && jobIsThisRow ? "UPDATING…"' in body
-    # and an index that could not be written must reach the screen
-    assert "pairJob.index_error" in body
+    at = body.index("pairJob?.running && jobIsThisRow ? (")
+    assert "UPDATING…" in body[at:at + 600]     # beside its spinner (RCA-2026-09-24-K)
+    # and an index that could not be written must reach the screen — through
+    # the finished sentence, whose index_error wording
+    # tests/test_the_row_update_says_running_or_done.py drives under node
+    assert "rowUpdateSentence(pairJob" in body
+    ru = open("webapp/src/lib/rowUpdate.ts", encoding="utf-8").read()
+    assert "j.index_error" in ru
 
 
 def test_every_job_kind_can_be_watched():

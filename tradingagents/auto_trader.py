@@ -4950,10 +4950,16 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             # XAUT's stopped-out short and opened a fresh real long one second
             # later, on a strategy the operator had set to demo.
             tripped = frozenset(tripped) | {_rescue}
-            logger.warning(
-                "%s: no strategy armed in this book but a position is open — "
-                "tracking its EXIT only under %s; no entries.",
-                symbol, _rescue)
+            # ONCE AN HOUR PER SLOT on the practice book: since
+            # RCA-2026-09-24-J every switched-off practice trade takes this
+            # path, and every round printed it twice into the Runner feed
+            # (PDDSTOCK and CTC, Sep 24, 2026 8:00pm — 8 lines in one minute).
+            # Real money still says it every round.
+            if not dry or _say_once(f"rescue:{slot_key}", 3600):
+                logger.warning(
+                    "%s: no strategy armed in this book but a position is open "
+                    "— tracking its EXIT only under %s; no entries.",
+                    symbol, _rescue)
     if not strategies:
         return
     float(settings.get("margin", 10.0))

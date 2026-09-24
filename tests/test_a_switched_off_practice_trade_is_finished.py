@@ -40,6 +40,15 @@ def _hours(last_high):
                          "Volume": [1.0] * 60}), opens
 
 
+@pytest.fixture(autouse=True)
+def _fresh_bars():
+    """One candle per coin and bar is cached for the whole bar, so the
+    target-crossing candles of one test would be served to the next."""
+    at._BAR_CACHE.clear()
+    yield
+    at._BAR_CACHE.clear()
+
+
 def _position(opened_at, strategy=KEY):
     return {"side": 1, "vol": 5, "entry": ENTRY, "tp": ENTRY * 1.025,
             "sl": ENTRY * 0.975, "margin": 5.0, "strategy": strategy,
@@ -97,3 +106,30 @@ def test_the_live_pass_never_visits_a_coin_only_the_practice_book_holds():
     src = inspect.getsource(at.run_cycle)
     assert "for symbol in (symbols + paper_held if dry else symbols):" in src
     assert "if True not in modes and paper_held:" in src
+
+
+def test_the_practice_rescue_says_so_once_an_hour_not_every_round(monkeypatch):
+    """Every switched-off practice trade takes the exits-only path now, and
+    each round printed its warning into the Runner feed: PDDSTOCK and CTC,
+    Sep 24, 2026 8:00pm, 8 lines in one minute. Once an hour per slot.
+
+    Counted at the logger itself, not through caplog: another test in the
+    suite runs the module as __main__ and re-plumbs logging, so capture
+    depends on test order."""
+    said: list = []
+    real = at.logger.warning
+
+    def warning(msg, *a, **k):
+        if "tracking its EXIT only" in str(msg):
+            said.append(msg % a)
+        return real(msg, *a, **k)
+
+    monkeypatch.setattr(at, "_SAID", {})
+    monkeypatch.setattr(at.logger, "warning", warning)
+    df, opens = _hours(ENTRY + 0.3)                    # nothing is crossed
+    slot = at.state_key(HELD, True, KEY)
+    state = {slot: {"step": 0, "last_ts": {}, "position": _position(opens[-3])}}
+    for _ in range(3):
+        at.process_symbol(HELD, _settings(), state, fx=FakeFx(df), dry=True)
+    assert state[slot]["position"], "still open, still watched"
+    assert len(said) == 1, f"{len(said)} lines for one trade in three rounds"

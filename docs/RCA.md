@@ -244,8 +244,11 @@ the emitter, not the label.
 **COST** — none in money (practice account). Eleven minutes in which two
 practice trades were not watched; without the fix, for ever.
 
-**FIX** — 7897c110a003; this entry corrected in the commit after it, which
-first described the two trades as erased — they never were.
+**FIX** — 7897c110a003; this entry corrected in bea4b45be49c, which first
+described the two trades as erased — they never were. The exits-only
+warning then printed twice a round into the Runner feed for every
+switched-off practice trade (8 lines in the 8:00pm minute); it says so once
+an hour per slot on the practice book since the commit after that.
 
 **GUARD** — `tests/test_a_switched_off_practice_trade_is_finished.py`.
 

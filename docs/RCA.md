@@ -172,6 +172,77 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-25-B — the first seconds of UPDATE THIS BACKTEST read "undefined is being re-measured first" on the row that was pressed
+
+**CEO**
+
+* Found by pressing the button for real right after the RCA-2026-09-24-K
+  fix, before you saw it: on #AJX2ZPQX the line beside the button read
+  "undefined is being re-measured first — one row at a time", and the button
+  did not spin — on the very row that had just been pressed.
+* Why: when an update starts, its first status note did not say which coin
+  it was for; the job only adds that a few seconds later, once it has loaded.
+  In those seconds the screen could not tell the job was this row's, so it
+  used the "another row is busy" sentence with an empty name.
+* What stops it now: the first status names the coin from the very first
+  second, and if a status ever arrives without one the screen says
+  "starting…" with a spinner instead of printing "undefined".
+
+**DEV**
+
+* `db_jobs.start` wrote `{"running": True, "started", "done": 0, "total": 0,
+  "now": "starting"}` — no `pair` — and `_run_pairbt`'s first `_pub` (which
+  does carry `pair`) runs only after the detached process imports. The panel's
+  `jobIsThisRow` (`pairJob.pair === "${open.coin} ${open.tf}"`) was false in
+  that gap, so `StrategiesPanel.tsx` took the `running && !jobIsThisRow`
+  branch and rendered `${pairJob.pair}` = "undefined".
+* Invariant broken: **label-must-match-data** — a label may not interpolate
+  a field that can be absent. `db_jobs._first_progress(spec)` now builds the
+  first status and adds `coin`/`tf`/`pair`/`signal` whenever the spec is
+  about ONE pair (a market-wide spec gets none); the panel catches
+  `running && !pairJob.pair` first, as "starting…".
+* Guard: `tests/test_the_row_update_says_running_or_done.py::test_the_first_status_names_the_pair_it_is_for`,
+  `::test_a_job_about_no_single_pair_gets_no_pair`,
+  `::test_start_writes_that_first_status`,
+  `::test_the_screen_never_prints_an_unnamed_pair` — all four red on the
+  pre-fix files.
+
+**SAW** — a real browser on `/backtest-v2`, `Sep 25, 2026 1:21am`, #AJX2ZPQX
+opened and UPDATE THIS BACKTEST pressed: at +2 s the status line read
+`undefined is being re-measured first — one row at a time` (spinner on the
+line, none on the button); at +26 s `Done at Sep 25, 2026 1:21am — re-tested
+110 strategies for CAKE 1h zscore20; 110 are in the search now`.
+
+**TIMELINE**
+
+1. `Sep 18, 2026` — RCA-2026-09-18-M adds `jobIsThisRow` and the "another
+   pair is being re-measured first" sentence; it assumed a running job always
+   carries `pair`.
+2. `Sep 25, 2026 ~12:30am` — RCA-2026-09-24-K ships; the "another row" line
+   gains a spinner, which is what made the empty-name state visible at all.
+3. `1:21am` — press-and-watch on the real screen finds it within 2 seconds;
+   the job itself was healthy (26 s, 110 re-tested, 110 in the search).
+4. `~1:40am` — fixed at both ends, 33 row-update tests green.
+
+**ROOT CAUSE** — two writers of one status file, and the first one did not
+carry the field every reader keys on.
+
+**WHY IT WAS NOT CAUGHT** — every test of this button builds its job status
+by hand, and every hand-built status includes `pair`; the real first status,
+written by `db_jobs.start`, was never shown to the panel's logic. And the
+RCA-2026-09-24-K check read a FINISHED job only, because a running one could
+not be pressed while the v2 rebuild held the table. **Watch the first seconds
+of a real press, not only the end state.**
+
+**COST** — none; seen by this session before the operator pressed it.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_row_update_says_running_or_done.py::test_the_screen_never_prints_an_unnamed_pair`
+and `::test_the_first_status_names_the_pair_it_is_for`.
+
+---
+
 ## RCA-2026-09-25-A — after the Backtest v2 list was rebuilt, an id search answered "Internal Server Error"
 
 **CEO**

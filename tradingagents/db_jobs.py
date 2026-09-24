@@ -813,10 +813,34 @@ def start(kind: str, spec: dict) -> int:
     # `mode` from the very first tick. Without it the seconds between START
     # and the first measured pair published no mode at all, so the badge fell
     # through to "downloading" at the start of every RESOLVE and UPDATE.
-    _write_progress(f["progress"], {"running": True, "started": int(time.time()),
-                           "done": 0, "total": 0, "now": "starting",
-                           **({"mode": spec["mode"]} if spec.get("mode") else {})})
+    _write_progress(f["progress"], _first_progress(spec))
     return proc.pid
+
+
+def _first_progress(spec: dict) -> dict:
+    """The status a job has in the seconds before its own process writes one.
+
+    `mode` from the very first tick: without it the seconds between START and
+    the first measured pair published no mode at all, so the badge fell
+    through to "downloading" at the start of every RESOLVE and UPDATE.
+
+    AND WHICH PAIR, when the job is about one. Pressed on #AJX2ZPQX
+    (Sep 25, 2026 1:21am), the row's line read "undefined is being
+    re-measured first — one row at a time" and the button did not spin: the
+    job process needs a few seconds to start and publish `pair`, and until
+    then the screen could not tell the job was this row's (RCA-2026-09-25-B).
+    """
+    out = {"running": True, "started": int(time.time()),
+           "done": 0, "total": 0, "now": "starting"}
+    if spec.get("mode"):
+        out["mode"] = spec["mode"]
+    coin, tf = str(spec.get("coin") or "").strip(), str(spec.get("tf") or "").strip()
+    if coin and tf:
+        coin = coin.replace("_USDT", "")
+        out.update(coin=coin, tf=tf, pair=f"{coin} {tf}")
+        if spec.get("signal"):
+            out["signal"] = str(spec["signal"])
+    return out
 
 
 # --------------------------------------------------------------- job bodies

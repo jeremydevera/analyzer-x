@@ -2055,7 +2055,18 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                       "UPDATING… AMP 15m · ibs: index busy, retrying (2/3)"
                       about a pair nobody had pressed here (the operator's
                       screenshot, Sep 18, 2026; RCA-2026-09-18-M). */}
-                  {pairJob?.running && !jobIsThisRow ? (
+                  {/* A JOB THAT HAS NOT NAMED ITS PAIR YET is starting, not
+                      "another row": it printed "undefined is being
+                      re-measured first" on the row that had just been pressed
+                      (RCA-2026-09-25-B). The job's first status names its
+                      pair now; this is the fallback for one that does not. */}
+                  {pairJob?.running && !pairJob.pair ? (
+                    <span role="status" className="inline-flex items-center gap-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
+                      <span aria-hidden="true"
+                            className="h-3 w-3 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+                      starting…
+                    </span>
+                  ) : pairJob?.running && !jobIsThisRow ? (
                     <span role="status" className="inline-flex items-center gap-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
                       <span aria-hidden="true"
                             className="h-3 w-3 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />

@@ -120,3 +120,43 @@ def test_the_job_publishes_what_the_sentence_needs():
     final = src[src.index("_pub(running=False, rows=n_rows, indexed=indexed"):]
     final = final[:final.index(")\n")]
     assert "signal=signal" in final and "already_current=" in final, final
+
+
+# --- RCA-2026-09-25-B: found by pressing it for real after the fix above ----
+# The first seconds of a pressed update read "undefined is being re-measured
+# first — one row at a time" on the very row that was pressed, and the button
+# did not spin: `db_jobs.start` wrote {"running": True, "now": "starting"}
+# with no `pair`, and the job process takes a few seconds to publish one.
+
+def test_the_first_status_names_the_pair_it_is_for():
+    from tradingagents import db_jobs as dj
+
+    got = dj._first_progress({"coin": "CAKE", "tf": "1h", "signal": "zscore20",
+                              "days": 30})
+    assert got["running"] is True and got["now"] == "starting"
+    assert got["pair"] == "CAKE 1h" and got["signal"] == "zscore20", got
+    assert dj._first_progress({"coin": "CAKE_USDT", "tf": "1h"})["pair"] == "CAKE 1h"
+
+
+def test_a_job_about_no_single_pair_gets_no_pair():
+    """A market-wide job must not claim to be about one coin."""
+    from tradingagents import db_jobs as dj
+
+    got = dj._first_progress({"coins": ["CAKE", "XPIN"], "mode": "update"})
+    assert "pair" not in got and got["mode"] == "update"
+
+
+def test_start_writes_that_first_status():
+    import inspect
+
+    from tradingagents import db_jobs as dj
+
+    assert "_write_progress(f[\"progress\"], _first_progress(spec))" in inspect.getsource(dj.start)
+
+
+def test_the_screen_never_prints_an_unnamed_pair():
+    src = PANEL.read_text(encoding="utf-8")
+    unnamed = src.index("pairJob?.running && !pairJob.pair ? (")
+    other = src.index("pairJob?.running && !jobIsThisRow ? (")
+    assert unnamed < other, "the 'not named yet' case must be caught first"
+    assert "starting…" in src[unnamed:other]

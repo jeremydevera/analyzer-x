@@ -53,7 +53,9 @@ def test_the_server_sends_the_cap_it_enforces():
 
 
 def test_the_label_names_the_cap_when_a_days_window_is_on(panel):
-    i = panel.index("download the window's top")
+    # under a days window the quick link is the SECONDARY "or just the top N
+    # now", beside "build the full CSV" (Sep 25, 2026)
+    i = panel.index("or just the top ${csvMax.toLocaleString()} now")
     around = panel[i - 400:i + 200]
     assert "servedFilters.days > 0 && !servedFilters.months && csvMax" in around
     assert "csvMax.toLocaleString()" in around, "the server's number, not a literal"
@@ -62,7 +64,9 @@ def test_the_label_names_the_cap_when_a_days_window_is_on(panel):
 def test_the_label_still_says_the_match_count_without_a_window(panel):
     """An UNWINDOWED export re-measures nothing and is not capped, so `total`
     is what it really delivers."""
-    i = panel.index("download the window's top")
+    # under a days window the quick link is the SECONDARY "or just the top N
+    # now", beside "build the full CSV" (Sep 25, 2026)
+    i = panel.index("or just the top ${csvMax.toLocaleString()} now")
     around = panel[i:i + 320]
     assert "download all (${total.toLocaleString()}" in around
 

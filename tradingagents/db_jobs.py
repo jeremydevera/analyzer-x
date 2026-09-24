@@ -96,6 +96,19 @@ FILES = {
                   "spec": STATE_DIR / "db_pairbt_v2.spec.json",
                   "pid": STATE_DIR / "db_pairbt_v2.pid",
                   "stop": STATE_DIR / "db_pairbt_v2.STOP"},
+    # THE FULL CSV of a Stored strategies filter over a days window — every
+    # matching row re-checked, however many (operator, Sep 25, 2026: "if the
+    # result is bilion i want to see billion in csv"). Detached: 1,369,665
+    # rows is ~30 minutes on 10 cores. NOT a disk job — it reads the store,
+    # and blocking every other button for half an hour would be worse.
+    "export": {"progress": STATE_DIR / "db_export.json",
+               "spec": STATE_DIR / "db_export.spec.json",
+               "pid": STATE_DIR / "db_export.pid",
+               "stop": STATE_DIR / "db_export.STOP"},
+    "export_v2": {"progress": STATE_DIR / "db_export_v2.json",
+                  "spec": STATE_DIR / "db_export_v2.spec.json",
+                  "pid": STATE_DIR / "db_export_v2.pid",
+                  "stop": STATE_DIR / "db_export_v2.STOP"},
     "stratbt": {"progress": STATE_DIR / "db_stratbt.json",
                 "spec": STATE_DIR / "db_stratbt.spec.json",
                 "pid": STATE_DIR / "db_stratbt.pid",
@@ -2736,6 +2749,38 @@ def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
         pass
 
 
+def _run_export(spec: dict, kind: str) -> None:
+    """The full CSV (see tradingagents/full_export.py)."""
+    from tradingagents import full_export as fx, stores
+    from tradingagents.positions_view import fmt_when
+
+    f = FILES[kind]
+    store_name = "v2" if kind.endswith("_v2") else "v1"
+    db = stores.V2.rows_db if store_name == "v2" else stores.V1.rows_db
+    started = int(time.time())
+    base = {"started": started, "key": fx.key_of(spec), "spec": fx.clean_spec(spec)}
+
+    def publish(**kw) -> None:
+        _write_progress(f["progress"], {**base, **kw})
+
+    try:
+        facts = fx.run(spec, db, store_name, publish,
+                       stop=lambda: f["stop"].exists())
+    except Exception as exc:                                   # noqa: BLE001
+        _write(f["progress"], {**base, "running": False, "finished": int(time.time()),
+                               "error": f"{type(exc).__name__}: {str(exc)[:300]}"})
+        raise
+    if facts.get("stopped"):
+        return
+    _write(f["progress"], {
+        **base, "running": False, "finished": int(time.time()),
+        "done": facts["rows"], "total": facts["matched"], "file": facts["name"],
+        "bytes": facts["bytes"], "floor_note": facts["floor_note"],
+        "note": (f"{facts['rows']:,} row(s) in the file, of {facts['matched']:,} "
+                 f"that matched — built {fmt_when(time.time())} in "
+                 f"{facts['seconds'] / 60:.0f} min")})
+
+
 def main(argv: list[str]) -> int:
     kind = argv[0]
     spec = _read(FILES[kind]["spec"])
@@ -2759,6 +2804,8 @@ def main(argv: list[str]) -> int:
         _run_collect(spec, kind=kind)
     elif kind in ("pairbt", "pairbt_v2"):
         _run_pairbt(spec, kind)
+    elif kind in ("export", "export_v2"):
+        _run_export(spec, kind)
     else:
         print(f"unknown job: {kind}", file=sys.stderr)
         return 2

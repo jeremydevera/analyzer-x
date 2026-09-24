@@ -156,7 +156,8 @@ def test_the_modal_has_a_low_and_a_high_box_for_each():
                  "Minimum stop loss percent", "Maximum stop loss percent"):
         assert f'aria-label="{name}"' in p, name
     # and the request carries both ends
-    assert "minTp: applied.minTp, minSl: applied.minSl," in p
+    # through the ONE filter builder the table, load-more and CSV spread
+    assert "minTp: f.minTp, minSl: f.minSl" in p and "...filterQuery(applied)" in p
     assert "min_tp?: number; min_sl?: number;" in open(
         "webapp/src/lib/api.ts", encoding="utf-8").read()
 
@@ -270,7 +271,7 @@ def test_the_box_greys_the_two_ranges_OUT_and_they_stop_filtering():
     assert "ignored while TP is equal to or greater than SL" in p
     # the chip, and the download
     assert 'text: "TP at least as wide as SL"' in p
-    assert "tpOverSl: applied.tpOverSl," in p
+    assert "tpOverSl: f.tpOverSl," in p and "...filterQuery(applied)" in p
 
 
 def test_the_COUNT_knows_about_every_row_level_filter(store):

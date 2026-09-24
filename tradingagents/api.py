@@ -562,7 +562,8 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          max_sl=0, days=0,
                          desc=None, batch=5_000, min_tp=0, min_sl=0,
                          tp_over_sl=False, asset=None, measured_days=0,
-                         db_path=None, store=None, _dl: dict | None = None):
+                         db_path=None, store=None, _dl: dict | None = None,
+                         window_lookup=None, window_cap=None):
     """The CSV, one chunk at a time — a module-level generator on purpose.
 
     Inside the route it was only reachable through StreamingResponse's ASYNC
@@ -663,6 +664,10 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                                   # Backtest v2's rows.db when the v2 CSV asks,
                                   # and its store for the window's re-measure
                                   db_path=db_path, store=store,
+                                  # the FULL export's precomputed window and
+                                  # no ceiling (full_export); None = unchanged
+                                  window_lookup=window_lookup,
+                                  window_cap=window_cap,
                                   stats=stats):
                 score, why = ri.balanced_score(r)
                 # THE PROJECT'S ONE DATE FORMAT (`Aug 03, 2026 8:03pm`), never a
@@ -692,7 +697,13 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                 # costs well under a second on a run this long.
                 if sent % _CSV_BREATHE == 0:
                     _time.sleep(0.002)
-            if days and sent >= ri.DAYS_CSV_MAX:
+            # CAPPED IS WHAT WAS RE-MEASURED, not what survived the window
+            # floor: 2,000 re-measured with 133 cut wrote 1,867 rows, and the
+            # old `sent >= 2,000` test left that file silent about its cap
+            # (found Sep 25, 2026 while building the full export)
+            _capped_at = ri.DAYS_CSV_MAX if window_cap is None else int(window_cap)
+            if (days and _capped_at > 0
+                    and sent + int(stats.get("window_hidden") or 0) >= _capped_at):
                 # a capped file SAYS it is capped, IN the file (kit rule: a capped
                 # grid says what it capped)
                 w.writerow([f"WINDOW CAPPED: this download re-measured the first "
@@ -899,6 +910,72 @@ def strategies_count_v2(coin: str | None = None, tf: str | None = None,
     if db is None:
         return {"state": "done", "total": 0, "why": _V2_EMPTY_WHY}
     return exact_count_state(db, given)
+
+
+# --------------------------------------------------------------- the full CSV
+# EVERY matching row, re-checked over the days window, however many. Operator,
+# Sep 25, 2026: "when i download csv you are only downloading top 2000, if the
+# result is bilion i want to see billion in csv". A detached job
+# (db_jobs "export" / "export_v2", tradingagents/full_export.py) re-checks the
+# rows a coin at a time on every core but two and writes the file through the
+# quick download's own writer; the panel follows the job and then links here.
+def _start_export(kind: str, body: dict) -> dict:
+    from tradingagents import db_jobs as dj, full_export as fx
+
+    spec = fx.clean_spec(body or {})
+    st = dj.status(kind)
+    if st.get("running"):
+        if st.get("key") == fx.key_of(spec):
+            return {"started": False, "running": True,
+                    "why": "this file is already being built"}
+        raise HTTPException(409, "a full CSV for another filter is being built "
+                                 "— stop it first, or wait for it to finish")
+    try:
+        pid = dj.start(kind, spec)
+    except dj.JobBusy as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return {"started": True, "pid": pid, "key": fx.key_of(spec)}
+
+
+def _export_file(kind: str, store: str):
+    from fastapi.responses import FileResponse
+
+    from tradingagents import db_jobs as dj, full_export as fx
+
+    st = dj.status(kind)
+    name = str(st.get("file") or "")
+    if st.get("running") or not name:
+        raise HTTPException(404, "no finished full CSV yet — build it first")
+    folder = fx.export_dir(store).resolve()
+    path = (folder / name).resolve()
+    # only a file this job wrote, in its own folder — never a path from a request
+    if path.parent != folder or not path.exists():
+        raise HTTPException(404, f"the finished file {name} is not there any more")
+    return FileResponse(path, media_type="text/csv", filename=name)
+
+
+@app.post("/api/strategies/export")
+def strategies_export(body: dict) -> dict:
+    """Start building the full CSV of a Backtest filter."""
+    return _start_export("export", body)
+
+
+@app.post("/api/v2/strategies/export")
+def strategies_export_v2(body: dict) -> dict:
+    """Start building the full CSV of a Backtest v2 filter."""
+    return _start_export("export_v2", body)
+
+
+@app.get("/api/strategies/export/file")
+def strategies_export_file():
+    """The finished full CSV of Backtest."""
+    return _export_file("export", "v1")
+
+
+@app.get("/api/v2/strategies/export/file")
+def strategies_export_file_v2():
+    """The finished full CSV of Backtest v2."""
+    return _export_file("export_v2", "v2")
 
 
 @app.get("/api/strategies.csv")

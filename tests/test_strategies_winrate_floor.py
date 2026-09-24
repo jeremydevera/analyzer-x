@@ -177,7 +177,8 @@ def test_the_browser_sends_the_floor_and_the_box_prints_percent():
     assert 'aria-label="Minimum win rate percent"' in panel
     # the request, LOAD MORE and the CSV all read the APPLIED floor — the
     # boxes are a draft until the operator clicks Apply filters (2026-08-27)
-    assert panel.count("applied.minWinrate") >= 3, "table, load-more and CSV"
+    assert "minWinrate: f.minWinrate" in panel
+    assert panel.count("...filterQuery(applied)") >= 3, "table, load-more and CSV"
     # a floor typed and then not re-requested from page 1 shows page 40 of a
     # list the operator has not seen the top of. Matched as a REGEX over the
     # reset effect's dependency array, not as a fixed string: the next filter

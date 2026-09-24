@@ -205,7 +205,9 @@ def test_the_browser_sends_the_ceiling_and_caps_the_box_at_the_grid():
     # the accessible name says MAXIMUM: a ceiling read out as "minimum take
     # profit" is the same label-must-match-data failure in the screen reader
     assert 'aria-label="Maximum take profit percent"' in panel
-    assert panel.count("applied.maxTp") >= 3, "table, load-more and CSV"
+    # table, load-more and CSV all spread the one builder, which carries it
+    assert "maxTp: f.maxTp" in panel
+    assert panel.count("...filterQuery(applied)") >= 3, "table, load-more and CSV"
     # the boxes are a DRAFT: the store is asked when Apply filters is clicked,
     # and `draft` must carry the TP ceiling or the button cannot send it. Matched
     # over the draft set rather than its last field, so the next filter added

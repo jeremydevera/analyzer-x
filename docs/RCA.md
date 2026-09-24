@@ -172,6 +172,70 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-25-E — a "last 30 days" CSV that stopped at 2,000 rows did not say so whenever the window had cut some of them
+
+**CEO**
+
+* The quick "last N days" CSV re-checks at most 2,000 strategies and is
+  supposed to say so on its last line ("WINDOW CAPPED …"). It only said so
+  when all 2,000 survived the 30-day check. Your filter's file on Sep 25 held
+  1,867 rows — 2,000 re-checked, 133 cut — and carried no word that it had
+  stopped at 2,000 while 1,369,665 matched.
+* Why: the note was written when the number of rows WRITTEN reached 2,000,
+  but the limit is on rows RE-CHECKED; any cut made the written count fall
+  short and the note vanished.
+* What stops it now: the note counts what was re-checked; and the file you
+  asked for — every matching row, however many — now exists as "build the
+  full CSV", which has no limit at all.
+
+**DEV**
+
+* `api.strategies_csv_lines` wrote `WINDOW CAPPED` on `if days and sent >=
+  ri.DAYS_CSV_MAX`, where `sent` counts rows AFTER `rows_index.window_floors`
+  removed the window failures; the ceiling applies before them. Now
+  `sent + stats["window_hidden"] >= cap`, with `cap` the same `window_cap`
+  the walker uses (0 for the full export, which writes no cap note).
+* Invariant broken: **a capped file says what it capped** (rule 20; the
+  fold streams / the page is capped and says so). The measured figure behind
+  the label was the survivors, not the thing that was limited.
+* Guard: `tests/test_the_full_csv_holds_every_row.py::test_a_quick_file_cut_by_the_floor_still_says_it_was_capped`,
+  red on the pre-fix file.
+
+**SAW** — the operator's own download, Sep 25, 2026 (win % >= 85, TP >= SL,
+last 30 days): 1,867 rows, last line `WINDOW FLOOR: 133 row(s) passed the
+floors over their whole history but not inside the last 30 days …`, and no
+`WINDOW CAPPED` line; the operator: *"when i download csv you are only
+downloading top 2000, if the result is bilion i want to see billion in
+csv"*.
+
+**TIMELINE**
+
+1. `Sep 09, 2026` — the windowed CSV gains its 2,000-row ceiling and the
+   `WINDOW CAPPED` note, tested on files where nothing was cut.
+2. `Sep 25, 2026 ~3:30am` — the operator's 1,867-row file: capped, cut by
+   133, silent about the cap.
+3. `Sep 25, 2026` — found while building the full CSV (every matching row,
+   re-checked a coin at a time on 10 cores, then written by this same
+   builder); fixed in the same change.
+
+**ROOT CAUSE** — the cap tested against the rows that survived a later
+filter instead of the rows it limited.
+
+**WHY IT WAS NOT CAUGHT** — `test_csv_carries_the_window.py` checks the note
+on a store where every re-measured row passes the window floor, so "written"
+and "re-measured" were the same number in every test. **A limit is tested
+with the downstream filter cutting something**, or the two counts can never
+disagree.
+
+**COST** — none in money; a file that looked complete and was 0.14% of what
+matched.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_full_csv_holds_every_row.py::test_a_quick_file_cut_by_the_floor_still_says_it_was_capped`.
+
+---
+
 ## RCA-2026-09-25-D — "+500 more" left out six filters, so with TP ≥ SL on it could add rows whose TP was smaller than their SL
 
 **CEO**

@@ -69,7 +69,8 @@ def test_the_windowed_export_writes_the_windows_figures():
 def test_the_windowed_export_is_capped_and_says_so_in_the_file():
     assert ri.DAYS_CSV_MAX >= 500
     src = inspect.getsource(ri.iter_rows)
-    assert "win_left = DAYS_CSV_MAX if win_days else -1" in src
+    # the same `_cap` as the SQL ceiling; 0 only for the full export
+    assert "win_left = (_cap if _cap > 0 else -1) if win_days else -1" in src
     assert "batch_rows = batch_rows[:win_left]" in src
     note = inspect.getsource(api.strategies_csv_lines)
     assert "WINDOW CAPPED" in note, \

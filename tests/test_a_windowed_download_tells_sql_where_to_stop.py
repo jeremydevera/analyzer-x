@@ -50,7 +50,10 @@ from tradingagents import rows_index as ri
 
 def test_a_windowed_export_puts_its_ceiling_in_the_sql():
     src = inspect.getsource(ri.iter_rows)
-    assert "_sql_limit = DAYS_CSV_MAX if (days and int(days) > 0) else 0" in src, \
+    # ONE number, `_cap`: DAYS_CSV_MAX unless the FULL export (Sep 25, 2026)
+    # passes window_cap=0 - both the SQL and the loop read it
+    assert "_cap = DAYS_CSV_MAX if window_cap is None else int(window_cap)" in src
+    assert "_sql_limit = _cap if (days and int(days) > 0) else 0" in src, \
         "the windowed ceiling must be computed from the same constant that " \
         "stops the loop, never a second number that can drift from it"
     assert 'f" LIMIT {int(_sql_limit)}" if _sql_limit else ""' in src, \
@@ -65,14 +68,14 @@ def test_an_unwindowed_export_still_streams_everything():
     assert "if _sql_limit else \"\"" in src, \
         "no window means no LIMIT clause at all"
     # and the ceiling is only ever set when a window is asked for
-    assert "DAYS_CSV_MAX if (days and int(days) > 0)" in src
+    assert "_sql_limit = _cap if (days and int(days) > 0) else 0" in src
 
 
 def test_the_ceiling_is_the_same_number_the_loop_stops_at():
     """Two numbers for one cap is how a file ends up shorter than the rows it
     re-measured."""
     src = inspect.getsource(ri.iter_rows)
-    assert "win_left = DAYS_CSV_MAX if win_days else -1" in src
+    assert "win_left = (_cap if _cap > 0 else -1) if win_days else -1" in src
     assert ri.DAYS_CSV_MAX == 2_000
 
 

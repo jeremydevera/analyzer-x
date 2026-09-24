@@ -119,7 +119,8 @@ def test_the_panel_has_the_box_and_says_so():
         "a filtered table under a caption that does not name it is the 2026-08-14 failure"
     assert '"any SL"' in builder, "and the neutral case needs a name too"
     # and it reaches the API
-    assert "maxSl: applied.maxSl" in panel
+    # sent through the ONE filter builder (Sep 25, 2026)
+    assert "maxSl: f.maxSl" in panel and "...filterQuery(applied)" in panel
     api_ts = open("webapp/src/lib/api.ts", encoding="utf-8").read()
     assert api_ts.count('p.set("max_sl"') == 2, \
         "the table AND the CSV download must both carry it"

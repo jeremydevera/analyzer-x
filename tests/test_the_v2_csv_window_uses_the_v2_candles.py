@@ -200,6 +200,10 @@ def test_the_csv_builder_forwards_every_filter_to_the_walker(monkeypatch):
     given = _markers(api.strategies_csv_lines, skip=("_dl",))
     given["desc"] = True
     given["store"] = object()
+    # the full export's two (Sep 25, 2026): a lookup is any callable, a cap
+    # is a number the builder does arithmetic with
+    given["window_lookup"] = object()
+    given["window_cap"] = 12345
     list(api.strategies_csv_lines(**given))
     lost = sorted(k for k in shared if k in given and seen.get(k) != given[k]
                   and seen.get(k) is not given[k])

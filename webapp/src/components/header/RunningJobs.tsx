@@ -27,6 +27,8 @@ const HREF: Record<string, string> = {
   btupdate_v2: "/backtest-v2",
   pairbt_v2: "/backtest-v2",
   collect_v2: "/backtest-v2",
+  export: "/backtest",
+  export_v2: "/backtest-v2",
   // not disk jobs, but work the operator is waiting on all the same
   // (Sep 23, 2026: a three-hour index rebuild with no spinner anywhere)
   rebuild: "/backtest",
@@ -48,6 +50,9 @@ const NAME: Record<string, string> = {
   btupdate_v2: "updating backtests (v2)",
   pairbt_v2: "re-measuring a row (v2)",
   collect_v2: "collecting GitHub results (v2)",
+  // the FULL CSV of a filter — every matching row re-checked (Sep 25, 2026)
+  export: "building the full CSV",
+  export_v2: "building the full CSV (v2)",
   rebuild: "rebuilding the row index",
   rebuild_v2: "rebuilding the v2 row index",
   // WHICH store: this chip is Backtest v1's re-file, never v2's — "indexing"

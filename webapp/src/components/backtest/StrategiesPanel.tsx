@@ -426,6 +426,51 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
   const EXACT_REUSE_MS = 5 * 60 * 1000;
   const [counting, setCounting] = useState<{ state: string; why?: string; seconds?: number } | null>(null);
 
+  // THE FULL CSV (operator, Sep 25, 2026: "when i download csv you are only
+  // downloading top 2000, if the result is bilion i want to see billion in
+  // csv"). A days window re-checks every row it exports; the quick link stops
+  // at 2,000, so the full file is a detached job (db_jobs "export"), followed
+  // here: its filter, its progress, and the finished file.
+  const EXPORT_JOB = store === "v2" ? "export_v2" : "export";
+  const [exportJob, setExportJob] = useState<JobStatus | null>(null);
+  const [exportErr, setExportErr] = useState("");
+  /** the job's own spec shape (full_export.clean_spec), from the SAME builder
+   *  as the rows on screen, so "this file is for this filter" is exact */
+  const exportBody = (f: typeof applied): Record<string, unknown> => {
+    const q = filterQuery(f);
+    const b: Record<string, unknown> = {
+      coin: q.coin, tf: q.tf, signal: q.signal, profitable: q.profitable,
+      min_trades: q.minTrades, min_winrate: q.minWinrate, max_tp: q.maxTp,
+      max_sl: q.maxSl, min_tp: q.minTp, min_sl: q.minSl, tp_over_sl: q.tpOverSl,
+      asset: q.asset, sizing: q.sizing, row_id: q.rowId, group: q.group,
+      measured_days: q.measuredDays,
+    };
+    for (const k of Object.keys(b)) if (!b[k]) delete b[k];
+    b.days = f.months ? 0 : (f.days || 0);
+    b.sort = servedSort;
+    if (servedDesc !== undefined) b.desc = servedDesc;
+    return b;
+  };
+  const sameSpec = (a?: Record<string, unknown>, b?: Record<string, unknown>) =>
+    !!a && !!b && JSON.stringify(Object.keys(a).sort().map((k) => [k, a[k]]))
+      === JSON.stringify(Object.keys(b).sort().map((k) => [k, b[k]]));
+  useEffect(() => {
+    let live = true;
+    const tick = () => coreApi.jobStatus(EXPORT_JOB)
+      .then((j) => { if (live) setExportJob(j); }).catch(() => {});
+    tick();
+    const t = setInterval(tick, exportJob?.running ? 3000 : 20000);
+    return () => { live = false; clearInterval(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [EXPORT_JOB, exportJob?.running]);
+  const startExport = async () => {
+    setExportErr("");
+    try {
+      await S.strategiesExport(exportBody(servedFilters));
+      setExportJob(await coreApi.jobStatus(EXPORT_JOB));
+    } catch (e) { setExportErr(String(e).replace(/^Error: /, "")); }
+  };
+
   /** `background` = a timer asked, not the operator. Same request, same rows,
    *  no spinner: the button belongs to the click. */
   const load = useCallback((background = false) => {
@@ -994,6 +1039,15 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                 whose WHOLE history passes the filters, and says so */}
             {!capped && servedFilters.days > 0 && !servedFilters.months && chips.length > 0 && (
               <span>{" (by their whole history — the last-days figures are re-checked page by page)"}</span>
+            )}
+            {/* THE EXACT NUMBER THAT PASS THE WINDOW, once a full re-check of
+                THIS filter exists — the one figure only re-checking every
+                row can give */}
+            {servedFilters.days > 0 && !servedFilters.months && exportJob?.file && !exportJob.running
+              && sameSpec(exportJob.spec, exportBody(servedFilters)) && (
+              <span className="text-success-600 dark:text-success-400">
+                {` · ${(exportJob.done ?? 0).toLocaleString()} pass the last ${servedFilters.days} days (full re-check${exportJob.finished ? `, ${fmtWhen(exportJob.finished)}` : ""})`}
+              </span>
             )}
             {` · rows ${shown.length ? (page - 1) * askPage + 1 : 0}–${(page - 1) * askPage + shown.length} on screen`}
             {` · ${servedDesc ? "highest" : "lowest"} ${STRATEGY_SORTS[servedSort]} first`}
@@ -1952,6 +2006,60 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
               a months window has no CSV on Backtest v2 yet — use a days window for the file
             </span>
           ) : (
+          <>
+          {servedFilters.days > 0 && !servedFilters.months ? (() => {
+            /* THE FULL CSV — every matching row, re-checked over the window
+               (operator, Sep 25, 2026: "if the result is bilion i want to see
+               billion in csv"). One job per store; it names the filter it is
+               for, so a file is only offered under the filter that built it. */
+            const body = exportBody(servedFilters);
+            const mine = !!exportJob && sameSpec(exportJob.spec, body);
+            if (mine && exportJob?.running) {
+              const pct = exportJob.total ? Math.floor(100 * (exportJob.done ?? 0) / exportJob.total) : null;
+              return (
+                <span role="status" className="ml-1 inline-flex flex-wrap items-center gap-2 text-theme-xs text-brand-600 dark:text-brand-400">
+                  <span aria-hidden="true" className="h-3 w-3 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+                  {`building the full CSV: ${exportJob.now ?? exportJob.phase ?? "starting"}`}
+                  {pct != null && exportJob.phase === "re-checking" ? ` · ${pct}%` : ""}
+                  {exportJob.eta_s ? ` · about ${fmtLeft(exportJob.eta_s)} left` : ""}
+                  <button type="button" className={pageBtn}
+                          onClick={() => coreApi.jobStop(EXPORT_JOB).then(() => coreApi.jobStatus(EXPORT_JOB).then(setExportJob))}>
+                    stop
+                  </button>
+                </span>
+              );
+            }
+            if (mine && exportJob?.file && !exportJob.error) {
+              return (
+                <a className={`${pageBtn} ml-1 inline-flex items-center border-success-500 text-success-700 dark:text-success-400`}
+                   href={S.strategiesExportFileUrl()}
+                   title={exportJob.note ?? ""}>
+                  {`download ALL ${(exportJob.done ?? 0).toLocaleString()} rows — the full CSV`
+                    + `${exportJob.bytes ? ` (${(exportJob.bytes / 1e6).toFixed(0)} MB)` : ""}`
+                    + `${exportJob.finished ? `, built ${fmtWhen(exportJob.finished)}` : ""}`}
+                </a>
+              );
+            }
+            // an estimate, from the measured 14 ms a row on one core
+            // (tradingagents/full_export.py) over the ~10 cores it uses
+            const mins = Math.max(1, Math.ceil(total * 0.014 / 10 / 60));
+            return (
+              <>
+                <button type="button" onClick={startExport}
+                        className={`${pageBtn} ml-1 border-brand-500 text-brand-700 dark:text-brand-300`}
+                        title={"Re-checks every matching row over the last "
+                          + `${servedFilters.days} days, a coin at a time on every core but two, `
+                          + "then writes one file with all of them. It runs in the background — "
+                          + "leaving this page does not stop it."}>
+                  {`build the full CSV — all ${total.toLocaleString()}${capped ? "+" : ""} rows (about ${mins} min${capped ? "+" : ""})`}
+                </button>
+                {mine && exportJob?.error && (
+                  <span className="text-theme-xs text-error-500">{`the last build failed: ${exportJob.error}`}</span>
+                )}
+                {exportErr && <span className="text-theme-xs text-error-500">{exportErr}</span>}
+              </>
+            );
+          })() : null}
           <a className={`${pageBtn} ml-1 inline-flex items-center`}
              /* AND SAY HOW LONG IT TAKES. A windowed download re-measures
                 every row it writes from this PC's candles, and the browser
@@ -1990,9 +2098,10 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                 the window floor — after 671 s. A count nobody can deliver is
                 a false label on a true number (label-must-match-data). */}
             {servedFilters.days > 0 && !servedFilters.months && csvMax
-              ? `download the window's top ${csvMax.toLocaleString()} CSV`
+              ? `or just the top ${csvMax.toLocaleString()} now`
               : `download all (${total.toLocaleString()}${capped ? "+" : ""}) CSV`}
           </a>
+          </>
           )}
         </div>
       </div>

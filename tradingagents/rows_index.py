@@ -4421,8 +4421,15 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
               sizing=None, row_id=None, group=None, max_sl=0, days=0,
               desc=None, batch=5_000, min_tp=0, min_sl=0,
               tp_over_sl=False, asset=None, stats=None, measured_days=0,
-              db_path=None, store=None):
+              db_path=None, store=None, window_lookup=None, window_cap=None):
     """Every matching row, in the asked order, a batch at a time.
+
+    `window_lookup` / `window_cap` are for the FULL windowed export
+    (`full_export`, operator Sep 25, 2026: "if the result is bilion i want to
+    see billion in csv"): `window_lookup(rows)` fills each row's window
+    figures from a re-check done beforehand, instead of re-measuring here,
+    and `window_cap=0` removes the DAYS_CSV_MAX ceiling. None keeps both as
+    they were, so the quick download is unchanged.
 
     `db_path` is EXPLICIT here, not `using_db`: this generator is drained by
     Starlette's threadpool, and a ContextVar set in the route's thread is not
@@ -4465,7 +4472,8 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     # operator waited more than twenty minutes on a download whose real work
     # is 2.3 seconds of query. The docstring's "an export has no LIMIT" was
     # true for a plain export and false for this one.
-    _sql_limit = DAYS_CSV_MAX if (days and int(days) > 0) else 0
+    _cap = DAYS_CSV_MAX if window_cap is None else int(window_cap)
+    _sql_limit = _cap if (days and int(days) > 0) else 0
     key, order, seeks, signal_seeks, group_idx = export_plan(
         coin=coin, signal=signal, sort=sort, row_id=row_id, group=group,
         min_winrate=min_winrate, min_trades=min_trades, desc=desc,
@@ -4498,7 +4506,7 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     # store, so all 58,212 matches of one real filter would be 87 minutes. The
     # cap is stated in the file's last line and in its name (see
     # api.strategies_csv_lines / strategies_csv_name).
-    win_left = DAYS_CSV_MAX if win_days else -1
+    win_left = (_cap if _cap > 0 else -1) if win_days else -1
     # same_thread=False: this generator is drained by Starlette's threadpool
     # (see _connect). Nothing else touches this connection.
     with _open(readonly=True, same_thread=False, db_path=db_path) as con:
@@ -4538,10 +4546,11 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
             if win_days:
                 from tradingagents import market_sweep as _msw
 
-                if win_left <= 0:
+                if win_left == 0:
                     return
-                batch_rows = batch_rows[:win_left]
-                win_left -= len(batch_rows)
+                if win_left > 0:
+                    batch_rows = batch_rows[:win_left]
+                    win_left -= len(batch_rows)
                 # one batch at a time, and the signal cache makes the second
                 # row of a pair free. group_max is the batch itself: a batch
                 # can never span more pairs than it has rows, so this never
@@ -4552,12 +4561,17 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
                 # interpreter lock, and everything else the operator's screen
                 # asks for waits behind it (`/api/health` 18.3 s, Sep 09,
                 # 2026). The page's own window call passes nothing.
-                _msw.window_rows(batch_rows, win_days,
-                                 group_max=len(batch_rows) + 1,
-                                 breathe=EXPORT_BREATHE_S,
-                                 # Backtest v2's CSV: bars from the 1m store,
-                                 # exits by the minute — never v1's candles
-                                 store=store)
+                if window_lookup is not None:
+                    # the full export re-checked every row beforehand, a
+                    # coin at a time on every core — look the figures up
+                    window_lookup(batch_rows)
+                else:
+                    _msw.window_rows(batch_rows, win_days,
+                                     group_max=len(batch_rows) + 1,
+                                     breathe=EXPORT_BREATHE_S,
+                                     # Backtest v2's CSV: bars from the 1m
+                                     # store, exits by the minute — never v1's
+                                     store=store)
                 for d in batch_rows:
                     if not d.get("restated"):
                         continue

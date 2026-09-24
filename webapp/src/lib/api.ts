@@ -363,6 +363,18 @@ export interface WorkerSlot {
 
 export interface JobStatus {
   running: boolean;
+  /** THE FULL CSV job (db_jobs "export"/"export_v2"): the filter it was built
+   *  for, the finished file, its size, which phase it is in and the time left
+   *  (operator, Sep 25, 2026: "if the result is bilion i want to see billion
+   *  in csv") */
+  spec?: Record<string, unknown>;
+  file?: string;
+  bytes?: number;
+  phase?: string;
+  floor_note?: string;
+  eta_s?: number | null;
+  pairs_total?: number;
+  pairs_done?: number;
   /** `pairbt` only — the ONE pair a row's UPDATE button is re-measuring, and
    *  what came of it. `index_error` is separate from `error` on purpose: a
    *  pair can measure perfectly and fail to reindex, which leaves a current
@@ -1071,7 +1083,7 @@ export const api = {
    *  from this PC and from the GitHub shards. */
   backtestLogs: () => get<BacktestLogs>("/api/backtest/logs"),
 
-  jobStatus: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "pairbt_v2" | "collect" | "download_v2" | "backtest_v2" | "btupdate_v2") =>
+  jobStatus: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "pairbt_v2" | "collect" | "download_v2" | "backtest_v2" | "btupdate_v2" | "export" | "export_v2") =>
     get<JobStatus>(`/api/jobs/${kind}`),
   jobStart: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "pairbt_v2" | "collect" | "download_v2" | "backtest_v2" | "btupdate_v2", spec: unknown) =>
     post<{ pid: number }>(`/api/jobs/${kind}/start`, spec),
@@ -1085,7 +1097,7 @@ export const api = {
           handed_off: boolean; running: boolean;
           stalled: boolean; stalled_why: string }>(`/api/jobs/${kind}/handoff`),
 
-  jobStop: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "pairbt_v2" | "collect" | "download_v2" | "backtest_v2" | "btupdate_v2") =>
+  jobStop: (kind: "download" | "backtest" | "btupdate" | "stratbt" | "pairbt" | "pairbt_v2" | "collect" | "download_v2" | "backtest_v2" | "btupdate_v2" | "export" | "export_v2") =>
     post<{ ok: boolean }>(`/api/jobs/${kind}/stop`, {}),
 
   /** The ledger, newest first. `actions` names the rows wanted — "enter,exit"
@@ -1729,6 +1741,12 @@ export function storeApi(store: StoreName) {
       withApiPrefix(P, () => api.strategies(q)),
     strategiesCount: (q: Parameters<typeof api.strategies>[0]) =>
       withApiPrefix(P, () => api.strategiesCount(q)),
+    /** start building the FULL CSV of this filter (every matching row) */
+    strategiesExport: (body: Record<string, unknown>) =>
+      postDetail<{ started: boolean; running?: boolean; why?: string; pid?: number }>(
+        `${P}/strategies/export`, body),
+    /** the finished full CSV */
+    strategiesExportFileUrl: () => `${API_BASE}${P}/strategies/export/file`,
     strategiesCsvUrl: (q: Parameters<typeof api.strategiesCsvUrl>[0]) =>
       api.strategiesCsvUrl(q).replace(`${API_BASE}/api/`, `${API_BASE}${P}/`),
     facets: () =>

@@ -172,6 +172,108 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-24-E — Backtest v2's "last 30 days" CSV re-measured every row on the OLD v1 candles, so #5JWGQZPG read 100% in the file and 96% on screen
+
+**CEO**
+
+* You downloaded Backtest v2's CSV with "last 30 days" and strategy
+  #5JWGQZPG (GPNSTOCK, 30 minutes, keltner) said 100% wins; the screen said
+  96%. The screen is right: 28 trades, 27 won, 1 lost. The file missed the
+  one loss — a short on Sep 17, 2026 at 1:00pm, stopped out at 4:09pm for
+  -$2.23.
+* Why: when the download re-checks each strategy over the last 30 days, it
+  is supposed to use Backtest v2's own 1-minute prices. One hand-off inside
+  the download forgot to say which price store to use, so it quietly used
+  the old v1 prices instead — and those stop at Sep 15, 2026 5:30pm for this
+  coin. The file's "last 30 days" was really 21.7 days, settled by the
+  candle, not by the minute.
+* This has affected EVERY Backtest v2 CSV downloaded with a days window
+  since Sep 18, 2026. It is documented, not fixed yet — you asked for no code
+  change. The fix is one missing setting.
+
+**DEV**
+
+* `rows_index.py:4366-4375` — `iter_rows(db_path=…, store=…)`, called for
+  another store, re-enters itself through
+  `iter_rows_in(db_path=db_path, coin=…, …, stats=stats,
+  measured_days=measured_days)` and forwards every argument EXCEPT `store`.
+  The re-entered call runs with `store=None`, so `rows_index.py:4471`
+  `_msw.window_rows(batch_rows, win_days, …, store=store)` gets None and
+  `market_sweep.py:1986` reads `cached_candles(sym, tf)` — the v1 cache — and
+  settles exits by the bar. The screen's path (`api.py:424`,
+  `msw.window_rows(rows, days, store=_st)`) never goes through `iter_rows`,
+  which is why the two disagree.
+* Invariant broken: **a request for store X reads store X, on every path it
+  takes** (the Sep 18 rule), and **a wrapper forwards every argument or
+  names the ones it drops**. `store` was added to `iter_rows` in
+  6e649d590da5 (Sep 18, 2026 3:39am) on top of the hand-off added in
+  3f459fc847f1 (Sep 17, 2026 6:59pm), and the hand-off was never updated.
+* Guard: none yet. The test that should have caught it,
+  `tests/test_v2_routes.py::test_the_v2_csv_takes_a_days_window_and_names_the_months_gap`,
+  asserts HTTP 200 and a file name — its docstring says "re-measured from
+  the v2 store's 1-minute candles" and nothing checks it.
+
+**SAW** — the operator, `Sep 24, 2026`: *"when i download csv 5JWGQZPG has
+100% winrate but but in ui its 96% winrate"*.
+
+**TIMELINE** (all measured on this PC, Sep 24, 2026)
+
+1. The stored v2 row: 28 trades, 27W/1L, **96.43%**, +$73.53 over 29 days
+   (1,439 bars), measured through `Sep 23, 2026 3:00am`.
+2. `GET /api/v2/strategies?row_id=5JWGQZPG&days=30` (the screen): window
+   `Aug 25, 2026 12:30am → Sep 22, 2026 12:30am`, 28.0 days, **28 trades,
+   27W/1L, 96.43%**, +$72.84.
+3. `GET /api/v2/strategies.csv?row_id=5JWGQZPG&days=30` (the download):
+   window `Aug 25, 2026 12:30am → Sep 15, 2026 5:30pm`, 21.7 days, **23
+   trades, 23W/0L, 100.0%**, +$63.94. Without `days` the CSV prints the
+   stored 96.43% — only the window path is wrong.
+4. Reproduced in a fresh process through `api.strategies_csv_lines(...,
+   store=stores.V2)`: same 23 / 100%. A spy on `market_sweep.window_rows`
+   shows ONE call, and `store=None` in it. Replaying that exact row with
+   `store=stores.V2` gives 28 / 96.43% / Sep 22.
+5. The candles: v1's `GPNSTOCK_USDT-30m` holds 1,529 bars ending
+   **Sep 15, 2026 5:30pm**; v2's 1-minute file holds 49,885 bars ending
+   **Sep 22, 2026 1:10am**. All 5,278 v1 candle files were last written
+   between Aug 26 and Sep 19, 2026 — so every v2 CSV window since Sep 18
+   ended days before the v2 data does, per coin.
+6. The missed trade, from `trades_for(store=V2)`: SHORT, entry
+   `Sep 17, 2026 1:00pm` at 89.92, stop at 91.72 at `4:09pm`, -$2.23 — after
+   the v1 candles end, so the CSV could never see it.
+
+**ROOT CAUSE** — a pass-through wrapper that lists its arguments by hand and
+was not updated when the function it wraps gained one.
+
+**WHY IT WAS NOT CAUGHT** — the v2 CSV test asserts that a file comes back,
+not what is in it; and every CSV-window test runs in the DEFAULT store with
+`db_path=None`, where the hand-off branch (`db_path and _DB_OVERRIDE.get() !=
+str(db_path)`) never runs — so `store` being dropped there was invisible to
+all of them. The Sep 18 review that added `store=` checked the route passed
+it; nobody followed it to the call that uses it. **Follow an argument to the
+line that consumes it, and test the store you mean with data only that store
+has.**
+
+**COST** — no money moved. Every Backtest v2 CSV downloaded with "last N
+days" since Sep 18, 2026 carries window figures from v1 candles that end
+between Aug 26 and Sep 19, bar-settled — win rates, trade counts and profits
+are a different, shorter measurement than the screen's, and the win-% floor
+applied to the file used those figures, so rows may be missing from or
+wrongly present in those files. Files downloaded WITHOUT a days window are
+correct.
+
+**FIX** — NOT YET COMMITTED: the operator asked for investigation and
+documentation only ("investigate first then document it, after this report
+it to me, dont make code changes"). The fix is to forward `store=store` in
+the hand-off at `rows_index.py:4366-4375`, and it needs a guard that drives
+`/api/v2/strategies.csv?days=` against v1 and v2 candles ending on different
+days.
+
+**GUARD** — planned: `tests/test_the_v2_csv_window_uses_the_v2_candles.py`,
+asserting `window_last` comes from the v2 1-minute store (and failing on
+today's code); `tests/test_v2_routes.py::test_the_v2_csv_takes_a_days_window_and_names_the_months_gap`
+is the test that should have caught it.
+
+---
+
 ## RCA-2026-09-24-D — restarting the app cut the operator's CSV download half-way, and the site called it "Internal Server Error"
 
 **CEO**

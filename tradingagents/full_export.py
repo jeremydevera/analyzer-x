@@ -122,8 +122,25 @@ def _retest_pair(job: tuple) -> tuple:
 
 
 def workers() -> int:
-    """Every core but two: the runner and the screen still have to answer."""
+    """The most workers ever: every core but two, so the runner and the
+    screen still answer. How many actually run is decided by MEMORY, below."""
     return max(1, (os.cpu_count() or 4) - 2)
+
+
+# ONE WORKER'S MEMORY, measured: 100-120 MB working set re-checking the
+# heaviest 15m coins of Backtest v2 (AVA, HIVE, AIA, AXL, CVC, IOST;
+# Sep 25, 2026). 0.2 GB is that with room. The other session running the
+# practice book measured 2.3 GB free of 16 that morning, with the page file
+# on the spinning G: — ten workers would have paged the live runner.
+EXPORT_GB_PER_WORKER = 0.2
+
+
+def workers_now(cap: int) -> int:
+    """How many may run at once RIGHT NOW: db_jobs.workers_for_ram keeps
+    RAM_RESERVE_GB (2 GB) for Windows, the API and the live runner."""
+    from tradingagents import db_jobs as dj
+
+    return dj.workers_for_ram(cap, ["1h"], per_worker_gb=EXPORT_GB_PER_WORKER)
 
 
 def run(spec: dict, db, store_name: str, publish, stop=None,
@@ -199,10 +216,41 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
             pool_cm = contextlib.nullcontext()
         else:
             pool_cm = ProcessPoolExecutor(max_workers=processes or workers())
+
+        def _results(pool):
+            """In-process: already done. With a pool: SUBMITTED AS MEMORY
+            ALLOWS — grow one worker per finished coin, shrink at once (the
+            sweep's own rule, tests/test_worker_window_follows_memory.py),
+            and wait while free memory is under RAM_FLOOR_GB."""
+            if pool is None:
+                yield from as_completed(futs)
+                return
+            from concurrent.futures import FIRST_COMPLETED, wait
+
+            from tradingagents import db_jobs as dj
+
+            cap = processes or workers()
+            todo = list(jobs)
+            running: set = set()
+            allowed = 1
+            while todo or running:
+                target = workers_now(cap)
+                allowed = target if target < allowed else min(target, allowed + 1)
+                while todo and len(running) < allowed:
+                    if dj.free_ram_gb() and dj.free_ram_gb() < dj.RAM_FLOOR_GB and running:
+                        break          # tight: let a coin finish first
+                    running.add(pool.submit(_retest_pair, todo.pop(0)))
+                if not running:
+                    time.sleep(2)      # nothing may start yet: memory is short
+                    continue
+                done, running = wait(running, return_when=FIRST_COMPLETED)
+                running = set(running)
+                publish_workers[0] = len(running) + len(done)
+                yield from done
+
+        publish_workers = [0]
         with pool_cm as pool:
-            if pool is not None:
-                futs = [pool.submit(_retest_pair, j) for j in jobs]
-            for fut in as_completed(futs):
+            for fut in _results(pool):
                 _, n, got = fut.result()
                 if got:
                     wcon.executemany(
@@ -217,13 +265,12 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
                     left = (total - done_rows) / rate if rate > 0 else None
                     publish(running=True, phase="re-checking", total=total,
                             done=done_rows, pairs_total=len(pairs),
-                            pairs_done=done_pairs,
+                            pairs_done=done_pairs, workers=publish_workers[0],
                             eta_s=int(left) if left is not None else None,
                             now=f"re-checked {done_rows:,} of {total:,} row(s) "
-                                f"({done_pairs:,} of {len(pairs):,} coins)")
+                                f"({done_pairs:,} of {len(pairs):,} coins, "
+                                f"{publish_workers[0] or 1} at a time)")
                 if stop and stop():
-                    for f in futs:
-                        f.cancel()
                     wcon.close()
                     publish(running=False, stopped=True, finished=int(time.time()),
                             note=f"stopped after {done_rows:,} of {total:,} rows")

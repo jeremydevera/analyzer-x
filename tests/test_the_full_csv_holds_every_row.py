@@ -193,3 +193,27 @@ def test_the_panel_offers_the_full_file_under_a_days_window():
     body = body[:body.index("return b;")]
     for k in fx.FILTER_KEYS:
         assert f"{k}:" in body, f"the full CSV would ignore {k}"
+
+
+@pytest.mark.parametrize("free_gb,want", [(2.3, 1), (4.0, 9), (1.0, 1), (16.0, 10)])
+def test_the_pool_follows_free_memory(monkeypatch, free_gb, want):
+    """The practice runner was live (537 slots, 74 open trades) with 2.3 GB
+    free of 16 and the page file on the spinning G: when this was written.
+    2 GB stays for Windows, the API and the runner; each worker is budgeted
+    0.2 GB (measured 100-120 MB on the heaviest 15m coins). 4.0 GB gives 9,
+    not 10: (4.0 - 2.0) // 0.2 floors a hair under 10 in floating point —
+    the sweep's own shared rule, db_jobs.workers_for_ram."""
+    from tradingagents import db_jobs as dj, full_export as fx
+
+    monkeypatch.setattr(dj, "free_ram_gb", lambda: free_gb)
+    assert fx.workers_now(10) == want
+
+
+def test_the_pool_grows_one_at_a_time_and_shrinks_at_once():
+    import inspect
+
+    from tradingagents import full_export as fx
+
+    src = inspect.getsource(fx.run)
+    assert "allowed = target if target < allowed else min(target, allowed + 1)" in src
+    assert "dj.RAM_FLOOR_GB" in src, "and it waits while memory is under the floor"

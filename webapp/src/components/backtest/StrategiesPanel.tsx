@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StoreBadge from "@/components/StoreBadge";
+import CopyableId from "@/components/trade/CopyableId";
 import { api as coreApi, ApiError, fmtMoney, fmtWhenMs, JobStatus, STRATEGY_SORTS, StrategyRow, storeApi, StoreName, TradesResult, type IndexStatus, type StrategySort, type StrategyQuery, fmtLeft, fmtWhen } from "@/lib/api";
 import { pageWindow } from "@/lib/pager";
 import { rowUpdateSentence } from "@/lib/rowUpdate";
@@ -434,6 +435,11 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
   const EXPORT_JOB = store === "v2" ? "export_v2" : "export";
   const [exportJob, setExportJob] = useState<JobStatus | null>(null);
   const [exportErr, setExportErr] = useState("");
+  // THE SAME BUILD FROM A COMMAND WINDOW (operator, Sep 25, 2026: "can i see
+  // progress via cmd then wright it in my g drive/download folder"). The line
+  // is made by the server's csv_download.command_for — the module that reads
+  // it back — so what is pasted is exactly the filter on screen.
+  const [exportCmd, setExportCmd] = useState<{ command: string; folder: string } | null>(null);
   /** the job's own spec shape (full_export.clean_spec), from the SAME builder
    *  as the rows on screen, so "this file is for this filter" is exact */
   const exportBody = (f: typeof applied): Record<string, unknown> => {
@@ -463,6 +469,17 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
     return () => { live = false; clearInterval(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [EXPORT_JOB, exportJob?.running]);
+  const exportKey = servedFilters.days > 0 && !servedFilters.months
+    ? JSON.stringify(exportBody(servedFilters)) : "";
+  useEffect(() => {
+    if (!exportKey) { setExportCmd(null); return; }
+    let live = true;
+    S.strategiesExportCommand(JSON.parse(exportKey))
+      .then((c) => { if (live) setExportCmd(c); })
+      .catch(() => { if (live) setExportCmd(null); });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exportKey, store]);
   const startExport = async () => {
     setExportErr("");
     try {
@@ -2066,6 +2083,15 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
               </>
             );
           })() : null}
+          {exportCmd && servedFilters.days > 0 && !servedFilters.months && (
+            <span className="ml-1 inline-flex w-full flex-wrap items-center gap-1 text-theme-xs text-gray-500 dark:text-gray-400"
+                  title={"Paste this into a command window (cmd). It builds the same full CSV, "
+                    + "shows its progress there, and saves the file in "
+                    + `${exportCmd.folder}\<date>\<time> <name>.csv. Ctrl+C stops it.`}>
+              {`or build it from a command window — progress shown there, file saved in ${exportCmd.folder}\<date>\:`}
+              <CopyableId id={exportCmd.command} prefix="" dim />
+            </span>
+          )}
           <a className={`${pageBtn} ml-1 inline-flex items-center`}
              /* AND SAY HOW LONG IT TAKES. A windowed download re-measures
                 every row it writes from this PC's candles, and the browser

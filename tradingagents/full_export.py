@@ -23,6 +23,16 @@ download uses — same columns, same order, same window floors, same notes —
 looking each row's window figures up instead of re-measuring them. A file that
 could not be told apart from the screen's own rows is the whole point (kit
 item F).
+
+THE ROWS ARE KEPT BESIDE THEIR RESULTS. The re-check already reads every
+matching row, a coin at a time, straight down the pair index. The first real
+run then threw them away and let the writer fetch all 1,369,665 again in
+PROFIT order from the 15 GB store — each one somewhere else on the spinning
+G:, measured at ~370 rows a second (the disk's random-read ceiling: ~22,000
+rows a minute, ~75 minutes). Now each coin's rows are copied into the
+re-check's own small file (`rows`, the store's own columns) and the writer
+sorts THAT file — on G:, never the system drive — and reads it straight
+through (`rows_index.iter_rows(source_db=...)`).
 """
 from __future__ import annotations
 
@@ -36,6 +46,9 @@ from pathlib import Path
 W_COLS = ("restated", "w_trades", "w_wins", "w_losses", "w_winrate",
           "w_profit", "w_dd", "w_worst", "w_funding", "w_first", "w_last",
           "w_days", "w_straddle")
+# the re-check file's layout; a marker from another layout is never reused
+# (1 = window figures only, before the rows were kept beside them)
+WIN_LAYOUT = 2
 # the filters the table's own query takes (api.COUNT_FILTERS), the window and
 # the order the table shows
 FILTER_KEYS = ("coin", "tf", "signal", "profitable", "min_trades",
@@ -60,6 +73,13 @@ def clean_spec(spec: dict) -> dict:
     """The filters, the window and the order — nothing else — with the empty
     ones dropped, so the same filter always names the same file."""
     out = {k: spec[k] for k in FILTER_KEYS if spec.get(k)}
+    # ONE SPELLING PER NUMBER: the browser sends 85, the command window
+    # parses 85.0, and the key is compared as text — so the same filter read
+    # as "another filter is being built" (found by
+    # tests/test_download_csv_from_cmd.py, Sep 25, 2026)
+    for k, v in out.items():
+        if isinstance(v, float) and v.is_integer():
+            out[k] = int(v)
     out["days"] = int(spec.get("days") or 0)
     out["sort"] = str(spec.get("sort") or "profit")
     if spec.get("desc") is not None:
@@ -95,7 +115,9 @@ def _retest_pair(job: tuple) -> tuple:
     """ONE COIN: its matching rows, re-measured over the window in one call.
 
     Top-level so a worker process can run it. Returns the pair, how many rows
-    it re-checked, and (id, *W_COLS) for each.
+    it re-checked, (id, *W_COLS) for each, and each row EXACTLY as the store
+    holds it (every column, in the table's own order) so the writer never has
+    to fetch it again.
     """
     db, pair, where, args, days, store_name = job
     from tradingagents import market_sweep as msw, stores
@@ -107,6 +129,7 @@ def _retest_pair(job: tuple) -> tuple:
                           [*args, pair]).fetchall()
     finally:
         con.close()
+    raw = [tuple(r) for r in got]
     rows = []
     for r in got:
         d = {k: r[k] for k in r.keys() if k != "pair"}          # noqa: SIM118
@@ -118,7 +141,8 @@ def _retest_pair(job: tuple) -> tuple:
     if rows:
         store = stores.by_name(store_name) if store_name == "v2" else None
         msw.window_rows(rows, int(days), group_max=len(rows) + 1, store=store)
-    return pair, len(rows), [(r["id"], *[r.get(c) for c in W_COLS]) for r in rows]
+    return (pair, len(rows), [(r["id"], *[r.get(c) for c in W_COLS]) for r in rows],
+            raw)
 
 
 def workers() -> int:
@@ -187,7 +211,8 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
     try:
         marker = json.loads(win_done.read_text(encoding="utf-8"))
         reuse = (win_db.exists() and marker.get("key") == key_of(spec)
-                 and int(marker.get("total", -1)) == int(total))
+                 and int(marker.get("total", -1)) == int(total)
+                 and marker.get("layout") == WIN_LAYOUT)
     except (OSError, ValueError):
         reuse = False
     part.unlink(missing_ok=True)
@@ -206,6 +231,13 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
         wcon = sqlite3.connect(win_db)
         wcon.execute(f"CREATE TABLE win (id TEXT PRIMARY KEY, {', '.join(W_COLS)})")
         rcon = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=60)
+        # THE STORE'S OWN COLUMNS, in its own order — what `SELECT *` hands
+        # the worker — so a kept row is the stored row, byte for byte
+        cols = [(r[1], r[2]) for r in rcon.execute("PRAGMA table_info(rows)")]
+        wcon.execute("CREATE TABLE rows ("
+                     + ", ".join(f'"{n}" {t}'.rstrip() for n, t in cols) + ")")
+        put_rows = (f"INSERT INTO rows VALUES "
+                    f"({', '.join('?' * len(cols))})")
         q = "SELECT pair FROM pairs"
         qa: list = []
         if filters.get("coin") or filters.get("tf"):
@@ -270,11 +302,13 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
         publish_workers = [0]
         with pool_cm as pool:
             for fut in _results(pool):
-                _, n, got = fut.result()
+                _, n, got, raw = fut.result()
                 if got:
                     wcon.executemany(
                         f"INSERT OR REPLACE INTO win VALUES "
                         f"({', '.join('?' * (len(W_COLS) + 1))})", got)
+                if raw:
+                    wcon.executemany(put_rows, raw)
                 done_rows += n
                 done_pairs += 1
                 if done_pairs % 20 == 0 or done_pairs == len(pairs):
@@ -297,6 +331,7 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
         wcon.commit()
         wcon.close()
         win_done.write_text(json.dumps({"key": key_of(spec), "total": int(total),
+                                        "layout": WIN_LAYOUT,
                                         "at": int(time.time())}), encoding="utf-8")
     if days > 0:
         lcon = sqlite3.connect(win_db, check_same_thread=False)
@@ -350,7 +385,10 @@ def _write_phase(*, part, final, win_db, win_done, filters, days, db,
             **{k: v for k, v in filters.items() if k in FILTER_KEYS},
             sort=filters["sort"], desc=filters.get("desc"), days=days,
             db_path=db, store=stores.V2 if store_name == "v2" else None,
-            _dl={}, window_lookup=lookup, window_cap=0, breathe=False)
+            _dl={}, window_lookup=lookup, window_cap=0, breathe=False,
+            # the rows the re-check kept, sorted on G: and read straight
+            # through — never fetched again one by one from the store
+            source_db=win_db if days > 0 else None)
         last_pub = 0.0
         for i, chunk in enumerate(gen):
             fh.write(chunk)

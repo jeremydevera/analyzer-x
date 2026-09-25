@@ -1750,6 +1750,11 @@ export function storeApi(store: StoreName) {
         `${P}/strategies/export`, body),
     /** the finished full CSV */
     strategiesExportFileUrl: () => `${API_BASE}${P}/strategies/export/file`,
+    /** the command-window line that builds this filter's full CSV and saves
+     *  it to G:\Download\yyyy-mm-dd\ (tradingagents/csv_download.py) */
+    strategiesExportCommand: (body: Record<string, unknown>) =>
+      postDetail<{ command: string; key: string; folder: string }>(
+        `${P}/strategies/export/command`, body),
     strategiesCsvUrl: (q: Parameters<typeof api.strategiesCsvUrl>[0]) =>
       api.strategiesCsvUrl(q).replace(`${API_BASE}/api/`, `${API_BASE}${P}/`),
     facets: () =>

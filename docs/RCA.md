@@ -172,6 +172,69 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-25-G — a test of the full CSV wrote a practice file into the real v1 exports folder
+
+**CEO**
+
+* A test about the full CSV put a small practice file (60 made-up rows for
+  coins AAA, BBB, CCC) into your real Backtest v1 downloads folder at
+  Sep 25, 2026 7:30am. Nothing linked it, nothing read it, no strategy or
+  trade was touched, and it has been removed.
+* Why: the test switched off its own safety fence halfway through, so its
+  second run wrote where your real files live.
+* What stops it now: every test in that file checks, as it ends, that the
+  fence was still up — and fails loudly if not.
+
+**DEV**
+
+* `tests/test_the_full_csv_holds_every_row.py::test_a_different_filter_never_reuses_another_recheck`
+  called `monkeypatch.undo()` to drop ONE patch; `undo()` reverts EVERY patch
+  on that `monkeypatch`, including the `store` fixture's `stores.V1` /
+  `stores._BY_NAME["v1"]` sandbox, so `full_export.export_dir("v1")` resolved
+  to `~/.tradingagents/backtest/exports` and `_run` wrote
+  `v1-full-strategies-wr90-last30d-profit.csv` (17,439 bytes) and its `.json`
+  there.
+* Invariant broken: **a test writes only under its own tmp_path** (the same
+  rule RCA-2026-09-18 bought with the pending list). A fixture's sandbox is
+  part of the test's state; a test may not tear it down early.
+* Guard: the `store` fixture now asserts on teardown that `stores.by_name("v1")`
+  is still the sandbox, and both tests restore only their own patch
+  (`monkeypatch.setattr(api, "strategies_csv_lines", real_lines)`). Proved
+  red: a throwaway test calling `monkeypatch.undo()` ERRORS with "the
+  sandbox was undone mid-test".
+
+**SAW** — nothing on screen; found while writing the next test, when
+`fx.export_dir("v1").glob("*.window.done")` came back empty because it was
+looking in the real folder, which held the leaked file.
+
+**TIMELINE**
+
+1. `Sep 25, 2026 ~7:05am` — the reuse tests are added with
+   `monkeypatch.undo()`.
+2. `Sep 25, 2026 7:30am` — a run of that file writes the 60-row practice CSV
+   into `~/.tradingagents/backtest/exports`.
+3. `Sep 25, 2026 ~7:40am` — found, both files removed, both tests fixed, the
+   teardown check added.
+
+**ROOT CAUSE** — `monkeypatch.undo()` used as "undo my last patch" when it
+means "undo every patch, the fixture's included".
+
+**WHY IT WAS NOT CAUGHT** — the test PASSED: it only asserted that the
+second run re-checked, which it did, wherever it wrote. And
+`tests/test_tests_cannot_write_the_real_home.py` walks MODULE-LEVEL paths;
+a path built inside a function after the sandbox was dropped is invisible
+to it. **A sandbox that can be undone needs a check at teardown, not only at
+import.**
+
+**COST** — none; two small files in a folder nothing reads, removed.
+
+**FIX** — this commit.
+
+**GUARD** — the `store` fixture's teardown assertion in
+`tests/test_the_full_csv_holds_every_row.py`.
+
+---
+
 ## RCA-2026-09-25-E — a "last 30 days" CSV that stopped at 2,000 rows did not say so whenever the window had cut some of them
 
 **CEO**

@@ -4416,12 +4416,37 @@ def iter_rows_in(*, db_path, **kw):
         yield item
 
 
+@contextlib.contextmanager
+def _source(source_db):
+    """The full export's kept rows, read-only — or None for the store.
+
+    Its sort spills beside the file (G:), never into %TEMP% on the system
+    drive (CLAUDE.md: big files go where the store is). The pragma is
+    process-wide, and only the export's own process ever passes a source."""
+    if not source_db:
+        yield None
+        return
+    src = sqlite3.connect(f"file:{Path(source_db).as_posix()}?mode=ro",
+                          uri=True, check_same_thread=False)
+    try:
+        src.row_factory = sqlite3.Row
+        spill = Path(source_db).parent.as_posix().replace("'", "''")
+        src.execute(f"PRAGMA temp_store_directory = '{spill}'")
+        # 64 MB of sort memory: the default 2 MB cuts ~420 MB of kept rows
+        # into ~200 runs to merge; this is ~7, still small beside the runner
+        src.execute("PRAGMA cache_size = -65536")
+        yield src
+    finally:
+        src.close()
+
+
 def iter_rows(coin=None, tf=None, signal=None, profitable=False,
               sort="profit", min_trades=0, min_winrate=0, max_tp=0,
               sizing=None, row_id=None, group=None, max_sl=0, days=0,
               desc=None, batch=5_000, min_tp=0, min_sl=0,
               tp_over_sl=False, asset=None, stats=None, measured_days=0,
-              db_path=None, store=None, window_lookup=None, window_cap=None):
+              db_path=None, store=None, window_lookup=None, window_cap=None,
+              source_db=None):
     """Every matching row, in the asked order, a batch at a time.
 
     `window_lookup` / `window_cap` are for the FULL windowed export
@@ -4430,6 +4455,13 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     figures from a re-check done beforehand, instead of re-measuring here,
     and `window_cap=0` removes the DAYS_CSV_MAX ceiling. None keeps both as
     they were, so the quick download is unchanged.
+
+    `source_db` is the full export's own file of the rows its re-check
+    already read (a `rows` table with the store's columns, filtered by the
+    same WHERE). The rows then come from THAT file, in the same `ORDER BY`,
+    sorted on its own drive: fetching 1,369,665 rows in profit order from the
+    15 GB store is one random read each on the spinning G:, ~370 a second
+    (measured Sep 25, 2026). None reads the store, as before.
 
     `db_path` is EXPLICIT here, not `using_db`: this generator is drained by
     Starlette's threadpool, and a ContextVar set in the route's thread is not
@@ -4509,8 +4541,11 @@ def iter_rows(coin=None, tf=None, signal=None, profitable=False,
     win_left = (_cap if _cap > 0 else -1) if win_days else -1
     # same_thread=False: this generator is drained by Starlette's threadpool
     # (see _connect). Nothing else touches this connection.
-    with _open(readonly=True, same_thread=False, db_path=db_path) as con:
-        cur = con.execute(
+    with _open(readonly=True, same_thread=False, db_path=db_path) as con,             _source(source_db) as src:
+        cur = src.execute(
+            # already filtered by the export's re-check; only the order is
+            # asked for, and it is the SAME order as the store query below
+            f"SELECT * FROM rows ORDER BY {order}, id ASC") if src else con.execute(
             f"SELECT * FROM rows"
             # THE SAME CHOICE THE PAGE MAKES. This used to hand
             # `_wide_profit_helps(...)` in unconditionally, so a win-rate floor

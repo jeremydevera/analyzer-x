@@ -72,7 +72,10 @@ def store(tmp_path, monkeypatch):
                       download_kind="download", backtest_kind="backtest")
     monkeypatch.setitem(stores._BY_NAME, "v1", v1)
     monkeypatch.setattr(stores, "V1", v1)
-    return db, rows
+    yield db, rows
+    # nothing a test here runs may leave the sandbox
+    real = Path.home() / ".tradingagents"
+    assert not str(stores.by_name("v1").home).startswith(str(real)),         "the sandbox was undone mid-test; files would land in the real store"
 
 
 def _run(db, spec):
@@ -251,14 +254,104 @@ def test_a_different_filter_never_reuses_another_recheck(store, monkeypatch):
     from tradingagents import api, full_export as fx
 
     db, _ = store
+    real_lines = api.strategies_csv_lines
     monkeypatch.setattr(api, "strategies_csv_lines",
                         lambda *a, **k: (_ for _ in ()).throw(RuntimeError("x")))
     with pytest.raises(RuntimeError):
         _run(db, {"min_winrate": 85, "days": 30})
-    monkeypatch.undo()
+    # ONLY this patch: `monkeypatch.undo()` also undid the fixture's sandbox,
+    # and the next run wrote its file into the operator's REAL v1 exports
+    # folder (v1-full-strategies-wr90-last30d-profit.csv, Sep 25, 2026)
+    monkeypatch.setattr(api, "strategies_csv_lines", real_lines)
     rechecked: list = []
     real_retest = fx._retest_pair
     monkeypatch.setattr(fx, "_retest_pair",
                         lambda job: rechecked.append(job) or real_retest(job))
     _run(db, {"min_winrate": 90, "days": 30})
     assert rechecked, "another filter's re-check must never be borrowed"
+
+
+def test_the_writer_reads_the_kept_rows_not_the_store(store, monkeypatch):
+    """The first real run wrote ~22,000 rows a minute because the writer
+    fetched every row AGAIN, in profit order, from the store — one random
+    read each on the spinning G: (Sep 25, 2026). The re-check now keeps the
+    rows it read, and the writer sorts and reads THAT file."""
+    from tradingagents import api
+
+    db, _ = store
+    seen: list = []
+    real_iter = ri.iter_rows
+
+    def spy(*a, **k):
+        seen.append(k.get("source_db"))
+        yield from real_iter(*a, **k)
+
+    monkeypatch.setattr(ri, "iter_rows", spy)
+    facts, _ = _run(db, {"min_winrate": 85, "days": 30})
+    assert seen and seen[0] is not None, "the writer went back to the store"
+    assert str(seen[0]).endswith(".window.sqlite")
+    monkeypatch.setattr(ri, "iter_rows", real_iter)
+    quick = "".join(api.strategies_csv_lines(min_winrate=85, days=30, _dl={}))
+    # ties on profit included (the fixture repeats values across coins):
+    # the kept file's ORDER BY must give the store's exact order
+    assert Path(facts["file"]).read_text(encoding="utf-8") == quick
+
+
+def test_the_kept_rows_are_the_stored_rows_column_for_column(store):
+    """Every column the store holds, in its own order, unchanged — the
+    writer cannot print a field the kept copy dropped (kit item F)."""
+    import sqlite3
+
+    from tradingagents import full_export as fx
+
+    db, _ = store
+    where, args = fx._pair_where({"min_winrate": 85})
+    pair = sqlite3.connect(db).execute("SELECT pair FROM pairs LIMIT 1").fetchone()[0]
+    _p, n, _w, raw = fx._retest_pair((str(db), pair, where, args, 30, "v1"))
+    con = sqlite3.connect(db)
+    want = con.execute(f"SELECT * FROM rows INDEXED BY rows_pair{where}",
+                       [*args, pair]).fetchall()
+    assert n == len(raw) == len(want) > 0
+    assert raw == want
+
+
+def test_a_recheck_from_the_old_layout_is_never_reused(store, monkeypatch):
+    """A marker written before the rows were kept (no `layout`) points at a
+    file with no `rows` table — reusing it would write an empty file."""
+    from tradingagents import api, full_export as fx
+
+    db, _ = store
+    real_lines = api.strategies_csv_lines
+    monkeypatch.setattr(api, "strategies_csv_lines",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("x")))
+    with pytest.raises(RuntimeError):
+        _run(db, {"min_winrate": 85, "days": 30})
+    # ONLY this patch: `monkeypatch.undo()` also undid the fixture's sandbox,
+    # and the next run wrote its file into the operator's REAL v1 exports
+    # folder (v1-full-strategies-wr90-last30d-profit.csv, Sep 25, 2026)
+    monkeypatch.setattr(api, "strategies_csv_lines", real_lines)
+    done = next(fx.export_dir("v1").glob("*.window.done"))
+    marker = json.loads(done.read_text(encoding="utf-8"))
+    marker.pop("layout")
+    done.write_text(json.dumps(marker), encoding="utf-8")
+    rechecked: list = []
+    real_retest = fx._retest_pair
+    monkeypatch.setattr(fx, "_retest_pair",
+                        lambda job: rechecked.append(job) or real_retest(job))
+    _run(db, {"min_winrate": 85, "days": 30})
+    assert rechecked, "an old-layout re-check was borrowed"
+
+
+def test_the_sort_spills_beside_the_file_never_on_the_system_drive(tmp_path):
+    """CLAUDE.md: big files go where the store is. The kept rows of one
+    real filter are ~420 MB, and SQLite's sort spills to %TEMP% on C: unless
+    told otherwise."""
+    import sqlite3
+
+    f = tmp_path / "kept.window.sqlite"
+    sqlite3.connect(f).execute("CREATE TABLE rows (id TEXT)").connection.close()
+    with ri._source(f) as src:
+        where = src.execute("PRAGMA temp_store_directory").fetchone()[0]
+    assert Path(where) == tmp_path
+    with ri._source(None) as none:
+        assert none is None

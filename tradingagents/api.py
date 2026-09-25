@@ -563,7 +563,8 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                          desc=None, batch=5_000, min_tp=0, min_sl=0,
                          tp_over_sl=False, asset=None, measured_days=0,
                          db_path=None, store=None, _dl: dict | None = None,
-                         window_lookup=None, window_cap=None, breathe=True):
+                         window_lookup=None, window_cap=None, breathe=True,
+                         source_db=None):
     """The CSV, one chunk at a time — a module-level generator on purpose.
 
     Inside the route it was only reachable through StreamingResponse's ASYNC
@@ -668,6 +669,7 @@ def strategies_csv_lines(coin=None, tf=None, signal=None, profitable=False,
                                   # no ceiling (full_export); None = unchanged
                                   window_lookup=window_lookup,
                                   window_cap=window_cap,
+                                  source_db=source_db,
                                   stats=stats):
                 score, why = ri.balanced_score(r)
                 # THE PROJECT'S ONE DATE FORMAT (`Aug 03, 2026 8:03pm`), never a
@@ -966,6 +968,28 @@ def strategies_export(body: dict) -> dict:
 def strategies_export_v2(body: dict) -> dict:
     """Start building the full CSV of a Backtest v2 filter."""
     return _start_export("export_v2", body)
+
+
+def _export_command(body: dict, store: str) -> dict:
+    """The line to paste into a command window for THIS filter's full CSV
+    (operator, Sep 25, 2026: "can i see progress via cmd then wright it in
+    my g drive/download folder"). Built by `csv_download.command_for`, the
+    same module that reads it back, so the two can never disagree."""
+    from tradingagents import csv_download as cd, full_export as fx
+
+    spec = fx.clean_spec(body or {})
+    return {"command": cd.command_for(spec, store), "key": fx.key_of(spec),
+            "folder": str(cd.DOWNLOAD_DIR)}
+
+
+@app.post("/api/strategies/export/command")
+def strategies_export_command(body: dict) -> dict:
+    return _export_command(body, "v1")
+
+
+@app.post("/api/v2/strategies/export/command")
+def strategies_export_command_v2(body: dict) -> dict:
+    return _export_command(body, "v2")
 
 
 @app.get("/api/strategies/export/file")

@@ -827,6 +827,15 @@ def start(kind: str, spec: dict) -> int:
     # and the first measured pair published no mode at all, so the badge fell
     # through to "downloading" at the start of every RESOLVE and UPDATE.
     _write_progress(f["progress"], _first_progress(spec))
+    if kind in ("export", "export_v2"):
+        # WHICH FILTER, from the first tick too: until the job's own process
+        # published it, a second press of the SAME filter (the browser, or
+        # download_csv.bat) read "another filter is being built" and refused
+        from tradingagents import full_export as _fx
+
+        _write_progress(f["progress"], {**_first_progress(spec),
+                                        "key": _fx.key_of(spec),
+                                        "spec": _fx.clean_spec(spec)})
     return proc.pid
 
 

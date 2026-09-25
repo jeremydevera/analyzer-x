@@ -274,6 +274,14 @@ A month LABEL (`Aug 2026`) is a different thing and keeps its own form, and
 PARSING someone else's format (`strptime` on an X/Twitter stamp) is fine — the
 rule is about what this project PRINTS.
 
+**A FOLDER NAME is the one exception, and the operator chose it** (Sep 25,
+2026: *"wright it in my g drive/download folder? The format should br
+yyyy-mm-dd/time"*). `download_csv.bat` saves the full CSV as
+`G:\Download\2026-09-25\8-03pm <name>.csv` — a day folder that sorts, and the
+time from `fmt_when` with its colon (illegal in a Windows name) swapped for a
+dash. Do not "fix" the folder back to `Sep 25, 2026`; everything the tool
+PRINTS still uses `fmt_when` (`csv_download.dated_target`).
+
 **A GUARD IS ONLY AS WIDE AS ITS PATTERN (Sep 09, 2026).** The banned stamp came
 back on every row of the trade-history table — `2026-09-07 17:01`, from a Date
 built out of the seconds with its ISO string sliced — and

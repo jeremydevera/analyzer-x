@@ -2087,8 +2087,10 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
             <span className="ml-1 inline-flex w-full flex-wrap items-center gap-1 text-theme-xs text-gray-500 dark:text-gray-400"
                   title={"Paste this into a command window (cmd). It builds the same full CSV, "
                     + "shows its progress there, and saves the file in "
-                    + `${exportCmd.folder}\<date>\<time> <name>.csv. Ctrl+C stops it.`}>
-              {`or build it from a command window — progress shown there, file saved in ${exportCmd.folder}\<date>\:`}
+                    + `${exportCmd.folder}\\yyyy-mm-dd\\<time> <name>.csv. Ctrl+C stops it.`}>
+              {/* "\\" is ONE backslash on screen; "\<" printed none at all
+                  ("G:\Download<date>", seen in the browser Sep 25, 2026) */}
+              {`or build it from a command window — progress shown there, file saved in ${exportCmd.folder}\\yyyy-mm-dd\\:`}
               <CopyableId id={exportCmd.command} prefix="" dim />
             </span>
           )}

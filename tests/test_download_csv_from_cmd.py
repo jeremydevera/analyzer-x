@@ -284,6 +284,11 @@ def test_the_panel_shows_the_line_with_a_copy_button():
     assert "strategiesExportCommand(" in src
     assert "<CopyableId id={exportCmd.command}" in src
     assert "or build it from a command window" in src
+    # ONE backslash on screen needs "\\" in the template: "\<" printed none,
+    # and the line read "G:\Download<date>" (seen in the browser, Sep 25, 2026)
+    line = next(ln for ln in src.splitlines()
+                if "or build it from a command window" in ln and "${exportCmd.folder}" in ln)
+    assert r"${exportCmd.folder}\\yyyy-mm-dd\\" in line, line
 
 
 def test_the_launcher_runs_the_module_with_every_option():

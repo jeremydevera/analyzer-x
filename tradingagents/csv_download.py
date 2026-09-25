@@ -285,10 +285,13 @@ def run(spec: dict, store: str, out_dir: Path, *, poll_s: float = 1.0,
             f"{src.stat().st_size / 1e6:,.0f} MB.")
     scr.say(f"Saved to {target}")
     if st.get("floor_note"):
-        scr.say(str(st["floor_note"]))
+        # the job's own sentence, with the dash cmd's code page cannot show
+        scr.say(str(st["floor_note"]).replace(" — ", " - "))
     if rows + 1 > EXCEL_ROWS:
         scr.say(f"Note: Excel opens only the first {EXCEL_ROWS:,} lines of a "
-                f"sheet; this file has {rows + 1:,}. Every row is in the file.")
+                f"sheet, and this file has {rows:,} rows plus its header - the "
+                f"last {rows + 1 - EXCEL_ROWS:,} will not show there. Every row "
+                f"is in the file.")
     return 0
 
 

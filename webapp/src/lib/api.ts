@@ -391,6 +391,9 @@ export interface JobStatus {
   signal?: string;
   index_queued?: boolean;
   already_current?: boolean;
+  /** the exchange's cost at the press was NOT charged, and why
+   *  (backtest_report.cost_note) */
+  cost_note?: string;
   /** THE SLOW HALF, measured. Writing a pair back into the 63 GB table is one
    *  SQLite DELETE + INSERT with no percentage to report, so the job publishes
    *  how long it has been going (`index_seconds`), how many rows it is

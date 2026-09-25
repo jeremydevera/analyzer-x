@@ -330,7 +330,10 @@ def test_every_simulated_trade_charges_the_books_slippage():
     for c in calls:
         kws = {k.arg for k in c.keywords}
         assert "slippage" in kws, f"line {c.lineno}: the engine call has no slippage= — it would charge the flat default"
-    assert 'save_costs(symbol, fee=fee, liq=liq, funding=fund, slippage=slip)' in ms
+    # the CHARGED slippage and the readings it was chosen from
+    # (RCA-2026-09-25-H), still the value every replay reads back
+    assert ("save_costs(symbol, fee=fee, liq=liq, funding=fund, slippage=slip,\n"
+            "               readings=readings)") in ms
     assert '"slippage": slippage,' in ms, "the cost file keeps the book's slippage"
     shard = (ROOT / ".github" / "scripts" / "sweep_shard.py").read_text(encoding="utf-8")
     assert "0.0003, ladder" not in shard, "the cloud shard no longer hard-codes the flat slippage"

@@ -937,6 +937,51 @@ def write_report(path: str, payload: dict, *, title: str, headline: str = "",
     return path
 
 
+# HOW MANY OF A CONTRACT'S OWN BOOK READINGS DECIDE WHAT IT IS CHARGED.
+# Sep 25, 2026 5:19pm (5:19am in New York, the US market shut): UPDATE THIS
+# BACKTEST on #9GNPMXFF (KKRSTOCK 15m macddiv, TP 1.2% / SL 1.2%) read the
+# book at 1.22% a side and charged it to all 71 trades of the last 38 days —
+# $2.60 a $100 trade against the $0.18 the coin's other 11,785 rows were
+# charged — so every +$1.20 win booked -$1.40 and the row went from 94% to 0
+# wins. #7X9R59U8 (GPNSTOCK 30m prank) the same minute: $3.59 against $0.20,
+# 0 wins of 75. One reading is one minute of one day; a backtest spans weeks.
+COST_READINGS = 5
+
+
+def charged_slippage(readings) -> float | None:
+    """The slippage a backtest CHARGES: the LOWER MIDDLE of the contract's
+    last `COST_READINGS` book readings (fractions per side).
+
+    One quiet-hour spike cannot move it — [0.0001, 0.0122] charges 0.0001 —
+    but a book that really went thin is believed once it repeats: three
+    readings of 0.0122 after one of 0.0001 charge 0.0122. Lower rather than
+    plain median because a real trade is only placed when the book is not at
+    its widest: the runner re-reads the book before every entry and refuses
+    a cost that eats the target (`edge_check`, `gate_blocked`), so the cost a
+    filled trade pays is the ordinary one, not the 5am one. None when there
+    is no reading at all.
+    """
+    vals = sorted(float(x) for x in list(readings or [])[-COST_READINGS:]
+                  if x is not None and float(x) >= 0)
+    if not vals:
+        return None
+    return vals[(len(vals) - 1) // 2]
+
+
+def cost_note(fee: float, fresh: float, charged: float) -> str:
+    """The sentence the screen shows when the fresh reading was NOT charged
+    ("" when it was, or when the two are close). Dollars on a $100 trade —
+    the operator's own size, $5 at 20x — never a ratio."""
+    fresh_rt = round_trip_cost(fee, {"slippage": fresh}) * 100
+    usual_rt = round_trip_cost(fee, {"slippage": charged}) * 100
+    if fresh <= charged * 1.5 or fresh_rt - usual_rt < 0.05:
+        return ""
+    return (f"the exchange's cost right now is ${fresh_rt:.2f} a $100 trade — "
+            f"far above this coin's usual ${usual_rt:.2f}, likely a quiet hour "
+            f"(a stock coin outside US market hours), so it was not charged; "
+            f"it is kept, and if it repeats it will be")
+
+
 def round_trip_cost(fee: float, book: dict) -> float:
     """What one full trade costs, in and out, as a FRACTION.
 

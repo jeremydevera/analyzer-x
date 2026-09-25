@@ -20,9 +20,23 @@ export interface RowUpdateJob {
   indexed?: number;
   pair?: string;
   signal?: string;
+  /** the exchange's cost right now was NOT charged, and why (Sep 25, 2026:
+   *  a 5:19am New York press turned #9GNPMXFF from 94% to 0 wins) */
+  cost_note?: string;
 }
 
 export function rowUpdateSentence(
+  j: RowUpdateJob, when: string,
+): { text: string; bad: boolean } {
+  const said = endingSentence(j, when);
+  // WHY THE ROW DID NOT MOVE WITH TODAY'S COST: said on every ending that
+  // measured something, never on a failure (there is no cost to speak of)
+  return j.cost_note && !said.bad
+    ? { ...said, text: `${said.text} — ${j.cost_note}` }
+    : said;
+}
+
+function endingSentence(
   j: RowUpdateJob, when: string,
 ): { text: string; bad: boolean } {
   const what = `${j.pair || "this pair"}${j.signal ? ` ${j.signal}` : ""}`;

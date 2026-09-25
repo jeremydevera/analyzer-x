@@ -2629,6 +2629,10 @@ def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
         _pub(running=False, error=note, finished=int(time.time()), note=note)
         return
     n_rows = len(res.get("rows") or []) if isinstance(res, dict) else 0
+    # A COST READING THAT WAS NOT CHARGED, in words (br.cost_note): pressed at
+    # 5:19am New York the book is 14-18x its usual width, and the screen must
+    # say why the row did not move with it
+    cost_said = str(res.get("cost_note") or "") if isinstance(res, dict) else ""
     _pub(running=True, now=f"{coin} {tf}: indexing {n_rows:,} row(s)",
          rows=n_rows)
     # INDEX IT, and keep trying. `_connect` already waits 60 s for the write
@@ -2734,7 +2738,8 @@ def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
                 f" · measured, but NOT indexed: {index_error}")
                if index_error else "")
             + (" · no new bars — it was already current"
-               if after and after == before else ""))
+               if after and after == before else "")
+            + (f" · {cost_said}" if cost_said else ""))
     print(f"[{kind}] {note}", flush=True)
     _pub(running=False, rows=n_rows, indexed=indexed, after_ms=after,
          index_error=index_error, index_queued=queued,
@@ -2743,6 +2748,7 @@ def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
          # the file without it, so the finished state could not name its own
          # rule; and "no new bars" lived only inside the free-text note.
          signal=signal, already_current=bool(after and after == before),
+         cost_note=cost_said,
          # WHAT MOVED, in the operator's own date format — the whole point of
          # the button is that "last backtest Aug 24" becomes today
          measured_through=fmt_when(after / 1000) if after else "",

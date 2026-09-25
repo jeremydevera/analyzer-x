@@ -777,7 +777,8 @@ COSTS = HOME / "costs"
 
 
 def save_costs(symbol: str, *, fee: float, liq, funding: list,
-               root=None, slippage: float | None = None) -> None:
+               root=None, slippage: float | None = None,
+               readings: list | None = None) -> None:
     """Keep what the replay of this contract needs. Never raises: telemetry
     for a click, not part of the measurement.
 
@@ -790,7 +791,10 @@ def save_costs(symbol: str, *, fee: float, liq, funding: list,
         tmp = cdir / f"{symbol}.tmp"
         tmp.write_text(json.dumps({
             "symbol": symbol, "fee": fee, "liq": liq,
+            # what replays CHARGE (backtest_report.charged_slippage), and the
+            # readings it was chosen from — never just the latest minute
             "slippage": slippage,
+            "readings": list(readings or []),
             "at": time.time(),
             "funding": [{"settle_ms": int(f["settle_ms"]),
                          "rate": float(f["rate"])}
@@ -800,6 +804,47 @@ def save_costs(symbol: str, *, fee: float, liq, funding: list,
         tmp.replace(cdir / f"{symbol}.json")
     except (OSError, TypeError, ValueError):
         pass
+
+
+def _rows_slippage(coin: str, tf: str, fee: float, root=None) -> float | None:
+    """The slippage this pair's STORED rows were charged — their most common
+    round trip, less the fee — or None. The seed for a contract with no
+    readings yet: the cost GitHub charged the coin's other rows is a reading
+    too, and the first local press must be compared with it, not alone."""
+    from collections import Counter
+
+    rts = Counter()
+    for r in pair_rows(coin, tf, root):
+        if r.get("rt") is not None:
+            rts[(round(float(r["rt"]), 4), float(r.get("fee") or fee))] += 1
+    if not rts:
+        return None
+    (rt_pct, row_fee), _n = rts.most_common(1)[0]
+    return max(0.0, rt_pct / 100.0 / 2.0 - row_fee)
+
+
+def charge_cost(symbol: str, fresh: float, *, fee: float, coin: str | None = None,
+                tf: str | None = None, root=None) -> tuple[float, list]:
+    """The slippage to CHARGE for a fresh book reading, and the readings kept.
+
+    The readings are this contract's own, oldest first. With none saved yet
+    they are seeded from the cost the pair's stored rows were charged — NOT
+    from a lone `slippage` already in the file: that is one earlier minute of
+    unknown hour, and on Sep 25, 2026 it was exactly the 5:19am spike this
+    rule exists to stop."""
+    import tradingagents.backtest_report as br
+
+    got = load_costs(symbol, root) or {}
+    readings = [r for r in (got.get("readings") or [])
+                if isinstance(r, dict) and r.get("slippage") is not None]
+    if not readings and coin and tf:
+        seed = _rows_slippage(coin, tf, fee, root)
+        if seed is not None:
+            readings = [{"at": None, "slippage": seed, "from": "stored rows"}]
+    readings = [*readings, {"at": time.time(), "slippage": float(fresh),
+                            "from": "the exchange"}][-br.COST_READINGS:]
+    charged = br.charged_slippage([r["slippage"] for r in readings])
+    return (float(fresh) if charged is None else charged), readings
 
 
 def load_costs(symbol: str, root=None) -> dict | None:
@@ -1013,7 +1058,6 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
         fee = at.taker_fee(symbol, fx=fx)
         liq = fx.liquidation_move_pct(symbol, at.LEVERAGE)
         book = fx.book_cost(symbol, base_margin * at.LEVERAGE)
-        rt = br.round_trip_cost(fee, book)
     except Exception as exc:
         return {"coin": coin, "tf": tf, "rows": [], "added": added,
                 "source": source, "why": f"venue: {str(exc)[:60]}"}
@@ -1025,8 +1069,14 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     # the backtest was charging 0.22% — so the same row read 97.3% in the
     # backtest and 72.0% on the demo beside it, part of that gap being nothing
     # but this number. One trade, one cost, wherever it is simulated.
-    slip = float(book.get("slippage") or 0.0) or at.PAPER_SLIPPAGE
-    save_costs(symbol, fee=fee, liq=liq, funding=fund, slippage=slip)
+    fresh_slip = float(book.get("slippage") or 0.0) or at.PAPER_SLIPPAGE
+    # ONE READING NEVER RE-PRICES THE WHOLE HISTORY (br.charged_slippage):
+    # the 5:19am press that turned #9GNPMXFF from 94% to 0 wins
+    slip, readings = charge_cost(symbol, fresh_slip, fee=fee, coin=coin, tf=tf)
+    rt = br.round_trip_cost(fee, {"slippage": slip})
+    cost_said = br.cost_note(fee, fresh_slip, slip)
+    save_costs(symbol, fee=fee, liq=liq, funding=fund, slippage=slip,
+               readings=readings)
     thin = 0               # rows the trade floor dropped, for the report
     gated = 0              # barriers the cost gate skipped, ditto (rule 20)
     # what the operator is RUNNING, so the gate can never hide it from them
@@ -1089,7 +1139,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
         return {"coin": coin, "tf": tf, "rows": pair_rows(coin, tf), "thin": thin,
                 "added": added, "source": source, "why": "no new bars",
                 "incremental": True, "new_bars": 0, "fee": fee,
-                "liq": liq, "rt": rt, "bars": len(df),
+                "liq": liq, "rt": rt, "cost_note": cost_said, "bars": len(df),
                 "days": int((df["Date"].iloc[-1] - df["Date"].iloc[0]).days)}
 
     # An incremental pass only needs the new bars plus enough lookback for the
@@ -1294,7 +1344,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                  state="done")
     return {"coin": coin, "tf": tf, "rows": out_rows, "thin": thin, "added": added,
             "source": source, "incremental": incremental,
-            "fee": fee, "liq": liq, "rt": rt,
+            "fee": fee, "liq": liq, "rt": rt, "cost_note": cost_said,
             "new_bars": max(0, len(df) - start_at) if incremental else len(df),
             "bars": len(df), "days": days_have}
 
@@ -1580,8 +1630,12 @@ def compute_combos(symbol: str, tf: str, combos: list, *,
     slip = at.PAPER_SLIPPAGE
     try:
         book = fx.book_cost(symbol, base_margin * at.LEVERAGE)
-        rt = br.round_trip_cost(fee, book)
-        slip = float(book.get("slippage") or 0.0) or slip
+        # the same rule as run_pair: charge the contract's usual cost, never
+        # one minute's (br.charged_slippage)
+        slip, _kept = charge_cost(
+            symbol, float(book.get("slippage") or 0.0) or slip, fee=fee,
+            coin=coin, tf=tf)
+        rt = br.round_trip_cost(fee, {"slippage": slip})
     except Exception:
         rt = None
     hi = [float(x) for x in df["High"]]

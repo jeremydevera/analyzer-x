@@ -470,13 +470,17 @@ def state_usable(prior: dict) -> str:
     return ""
 
 
-def write_state(coin, tf, states: dict, *, last_ms, first_ms, bars, fee) -> None:
+def write_state(coin, tf, states: dict, *, last_ms, first_ms, bars, fee,
+                slips=None) -> None:
     """One gzip'd JSON per pair, the PC's own layout plus meta (see
     resume_state). Written when the pair COMPLETES, beside its rows."""
     states = dict(states)
     states.update({"__last_ms__": int(last_ms), "__first_ms__": int(first_ms),
                    "__bars__": int(bars), "__signals__": sorted(br.SIGNALS),
-                   "__version__": VERSION, "__fee__": float(fee)})
+                   "__version__": VERSION, "__fee__": float(fee),
+                   # the book readings the next run charges from
+                   # (br.charged_slippage) — one run's minute is not the cost
+                   "__slips__": [float(x) for x in (slips or [])]})
     path = os.path.join(STATE_OUT, f"{coin}-{tf}.json.gz")
     tmp = path + ".tmp"
     with open(tmp, "wb") as fh:
@@ -542,12 +546,16 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
         liq = fx.liquidation_move_pct(sym, at.LEVERAGE)
         fund = fx.funding_history(sym)
         book = fx.book_cost(sym, BASE_MARGIN * at.LEVERAGE)
-        rt = br.round_trip_cost(fee, book)
         # THE BOOK'S SLIPPAGE, charged in the P&L — not only in the gate.
         # The engine's flat 0.03%/side under-charged the operator's coins by
         # ~0.13% a trade against the demo book (Sep 23, 2026), and a shard
         # measuring on GitHub must score a coin exactly as this PC does.
-        slip = float(book.get("slippage") or 0.0) or 0.0003
+        # And the coin's USUAL cost, never one minute's: the readings travel
+        # in the saved position (br.charged_slippage, Sep 25, 2026).
+        slips = [*(prior.get("__slips__") or []),
+                 float(book.get("slippage") or 0.0) or 0.0003][-br.COST_READINGS:]
+        slip = br.charged_slippage(slips)
+        rt = br.round_trip_cost(fee, {"slippage": slip})
         df = at._closed_bars(fx.klines(sym, iv, min(cap, need)), bs)
     except Exception as exc:
         raise PairFailed(f"{sym} {tf}: {str(exc)[:60]}") from exc
@@ -558,7 +566,8 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
         write_state(coin, tf, {k: v for k, v in prior.items()
                                if not str(k).startswith("__")},
                     last_ms=last_ms, first_ms=prior.get("__first_ms__") or last_ms,
-                    bars=prior.get("__bars__") or 0, fee=fee)
+                    bars=prior.get("__bars__") or 0, fee=fee,
+                    slips=prior.get("__slips__"))
         _bump("continued")
         span, span_ms = _span(last_ms, last_ms)
         report("testing", i, n, rows=rows_so_far, span=span, span_ms=span_ms,
@@ -653,7 +662,7 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
     out.flush()
     post_pair(coin, tf, lines)
     write_state(coin, tf, new_states, last_ms=ts[-1], first_ms=first_ms,
-                bars=bars_total, fee=fee)
+                bars=bars_total, fee=fee, slips=slips)
     _bump("continued")
     if no_state:
         log(f"{coin} {tf}: {no_state} combination(s) had no saved position and "
@@ -671,6 +680,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
     every pair leaves a saved position behind for the next run."""
     iv, bs, cap = br.TFS[tf]
     coin = sym.replace("_USDT", "")
+    prior = None
     if MODE == "update":
         path = PRIOR.get(f"{coin}-{tf}")
         prior = None
@@ -706,14 +716,18 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
         liq = fx.liquidation_move_pct(sym, at.LEVERAGE)
         fund = fx.funding_history(sym)
         book = fx.book_cost(sym, BASE_MARGIN * at.LEVERAGE)
-        # ONE definition, shared with the local sweep — see
-        # backtest_report.round_trip_cost for why spread/2 must not be added.
-        rt = br.round_trip_cost(fee, book)
         # THE BOOK'S SLIPPAGE, charged in the P&L — not only in the gate.
         # The engine's flat 0.03%/side under-charged the operator's coins by
         # ~0.13% a trade against the demo book (Sep 23, 2026), and a shard
         # measuring on GitHub must score a coin exactly as this PC does.
-        slip = float(book.get("slippage") or 0.0) or 0.0003
+        # The coin's USUAL cost from its saved readings, never one minute's
+        # (br.charged_slippage, Sep 25, 2026).
+        slips = [*((prior or {}).get("__slips__") or []),
+                 float(book.get("slippage") or 0.0) or 0.0003][-br.COST_READINGS:]
+        slip = br.charged_slippage(slips)
+        # ONE definition, shared with the local sweep — see
+        # backtest_report.round_trip_cost for why spread/2 must not be added.
+        rt = br.round_trip_cost(fee, {"slippage": slip})
         fine = None
         # THE FRAME'S OWN CANDLES, ALWAYS. v2 adds the minutes; it does not
         # replace the bars with them.
@@ -1001,7 +1015,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
     # and the position to continue from next time, beside the rows
     if len(ts):
         write_state(coin, tf, pair_states, last_ms=int(ts[-1]),
-                    first_ms=int(ts[0]), bars=nbars, fee=fee)
+                    first_ms=int(ts[0]), bars=nbars, fee=fee, slips=slips)
     return kept
 
 

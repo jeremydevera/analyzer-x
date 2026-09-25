@@ -172,6 +172,94 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-25-H — UPDATE THIS BACKTEST charged a 5am trading cost to every past trade, and two 94% strategies read 0 wins
+
+**CEO**
+
+* You pressed UPDATE THIS BACKTEST on #9GNPMXFF (KKRSTOCK 15m) and #7X9R59U8
+  (GPNSTOCK 30m) at 5:19pm and both came back 0 wins: 71 losses and 75
+  losses, where the table and your CSV had said 94% and +$102.80.
+* Why: the update asked the exchange "what does a $100 trade cost?" once, at
+  5:19am New York time with the US stock market shut, got $2.60 and $3.59
+  instead of the usual $0.18 and $0.20, and charged that to every trade of
+  the last 38 days — so every win turned into a loss. The same number was
+  saved as the coin's cost, which every "last 30 days" check of those coins
+  reads.
+* What stops it now: each coin keeps its last five cost readings and is
+  charged the ordinary one; one quiet-hour spike is kept but not charged
+  (three in a row are believed), and the finished line says so in dollars.
+
+**DEV**
+
+* `db_jobs._run_pairbt` → `market_sweep.run_pair` took
+  `fx.book_cost(...)` once and passed its slippage straight to
+  `backtest_strategy` for the whole history and to `save_costs`, which
+  `trades_for` / `window_rows` read back. `sweep_shard.py` (fresh path and
+  `continue_pair`) and `market_sweep.compute_combos` did the same.
+* Invariant broken: **a backtest charges the cost a trade would really pay,
+  and one minute's order book is not that.** A filled trade only happens when
+  the runner's gate passes, i.e. when the book is not at its widest.
+* Guard: `tests/test_one_book_reading_cannot_reprice_history.py` (10 tests,
+  all red on the code before this fix), including an AST
+  check that every function reading `book_cost` in `market_sweep.py` and
+  `sweep_shard.py` charges through `charge_cost` / `charged_slippage` and
+  never scores rows with `round_trip_cost(fee, book)`.
+
+**SAW** — the operator, Sep 25, 2026: *"when i filtered the table using
+9GNPMXFF and clicked update this backtest, i see 0% winrate with 71 trade ...
+im using real money here why is your work not accurate?"*, then a screenshot
+of #7X9R59U8: "75 trades · 0 WIN · 75 LOSE · TOTAL -140.43 USDT", every row
+closed by TP and marked LOSE (-1.59), under "the stored row says +102.80".
+
+**TIMELINE**
+
+1. Before the press: KKRSTOCK-15m held 11,790 rows, 11,785 of them charged a
+   round trip of 0.1803% ($0.18 a $100 trade); GPNSTOCK-30m 12,700, all at
+   0.1953%. The CSV had #9GNPMXFF at 94.34% over the last 30 days.
+2. `Sep 25, 2026 5:19pm` (5:19am New York) — UPDATE on #9GNPMXFF re-measured
+   5 macddiv rows. `book_cost` read 1.219% a side (spread 1.866%): round trip
+   2.5988%. Result: 71 trades, 0 wins, -$111.28; first trade SHORT 110.40,
+   closed at its TP 109.0752 (+$1.20) and booked -$1.40.
+3. `Sep 25, 2026 5:20pm` — UPDATE on #7X9R59U8 re-measured 15 prank rows at
+   a round trip of 3.5931% (book 1.717% a side, spread 3.419%): 0 of 75.
+4. Both presses wrote the spike into `v2/costs/KKRSTOCK_USDT.json` (0.01219)
+   and `GPNSTOCK_USDT.json` (0.01717), the file every 30-day re-check and
+   trade log of those coins reads.
+5. `Sep 25, 2026 5:21pm` — measured live: KKRSTOCK spread 1.866%, GPNSTOCK
+   3.419%, BTC 0.000%. The cost is the hour, not the coin.
+6. After the fix, the same inputs charge 0.0101% a side (round trip 0.1803%,
+   the rows' own figure), and the finished line reads "the exchange's cost
+   right now is $2.60 a $100 trade — far above this coin's usual $0.18 …".
+
+**ROOT CAUSE** — one reading of a live order book, taken at whatever minute a
+button was pressed, was treated as the cost of every trade in weeks of
+history.
+
+**WHY IT WAS NOT CAUGHT** — every cost test asserts that the book's cost IS
+charged (the Sep 23 fix that replaced the flat 0.03% with the book's own
+number) — none asked WHEN the book was read. A test of anything that depends
+on the time of day must run in the hour it fails in; this one fails at 5am
+New York, and every test ran against a single fixed book. Also, the
+per-coin rows of one pair could now carry two different costs (11,785 at
+0.18%, 5 at 2.60%) and nothing compared them.
+
+**COST** — no money: the real-money runner re-reads the book before every
+trade and refuses one this wide. Trust in two rows the operator trades from,
+and every 30-day figure for KKRSTOCK and GPNSTOCK until the repair.
+
+**FIX** — this commit. The two rows are re-measured after it ships, which
+rewrites both cost files with the charged value.
+
+**GUARD** — `tests/test_one_book_reading_cannot_reprice_history.py`.
+
+**Still open, so it is not forgotten:** many Backtest v2 coins were charged
+a round trip above 1% by GitHub runs that also read the book once (GPNSTOCK
+1d 2.99%, ADMSTOCK 1.9%, BTX 1d 5.45%). From now on each GitHub run keeps
+its readings in the saved position, so a coin's second run already follows
+this rule; those existing rows change the next time their coin is measured.
+
+---
+
 ## RCA-2026-09-25-G — a test of the full CSV wrote a practice file into the real v1 exports folder
 
 **CEO**

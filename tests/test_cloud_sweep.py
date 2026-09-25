@@ -41,8 +41,12 @@ def test_one_definition_of_round_trip_cost():
     # and nobody computes it privately any more
     local = inspect.getsource(msw)
     assert 'spread") or 0) / 2' not in local, "market_sweep still adds spread/2"
-    assert local.count("br.round_trip_cost(fee, book)") == 2
-    assert "br.round_trip_cost(fee, book)" in _shard_src(), \
+    # ONE definition, fed the CHARGED slippage (br.charged_slippage) rather
+    # than the raw book since RCA-2026-09-25-H: one 5:19am reading turned
+    # #9GNPMXFF from 94% to 0 wins
+    charged = 'br.round_trip_cost(fee, {"slippage": slip})'
+    assert local.count(charged) == 2
+    assert charged in _shard_src(), \
         "the shard must share the definition, not mirror it"
 
 

@@ -1,0 +1,3495 @@
+{
+ "name": "v2-sep25",
+ "why": "The operator's 86 Backtest v2 row ids, Sep 25, 2026: \"undeploy my current live ttrade then deploy these\". Applied with replace, so the 537 slots of v2-sep24 are switched off (open practice trades finish exits-only). 5 of the 86 are refused by id below (a stop past the liquidation wall, which edge_check blocks on every entry), so 81 slots are armed on the practice account.",
+ "measured": {
+  "store": "Backtest v2 (1-minute exits)",
+  "base_margin": 5.0,
+  "notional": 100.0,
+  "leverage": 20,
+  "sizing": "flat rows shown; the practice book's Martingale mode sets the stake",
+  "gate_checked": "Sep 25, 2026 8:03pm, read-only (US market closed: tokenized-stock spreads were wide at that hour)"
+ },
+ "base_margin": 5.0,
+ "sizing": "flat",
+ "book": [
+  "paper"
+ ],
+ "res": "1m",
+ "replace": true,
+ "strategies": {
+  "cf_obretest_30m_sl05tp05": {
+   "coins": [
+    "APHSTOCK_USDT"
+   ],
+   "rows": [
+    "E2J3AJ6Z"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "APHSTOCK": {
+     "tf": "30m",
+     "signal": "cf_obretest",
+     "th": 0.0,
+     "tp_pct": 0.5,
+     "sl_pct": 0.5,
+     "given": [
+      "E2J3AJ6Z"
+     ],
+     "runs_as": "E2J3AJ6Z",
+     "flat": {
+      "trades": 24,
+      "wins": 22,
+      "losses": 2,
+      "winrate": 91.67,
+      "profit": 4.68,
+      "worst": -0.72,
+      "dd": 0.72,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 39.3,
+      "rt": 0.1967,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.675% vs take-profit 0.50% = 335% of the target (includes 0.034% funding for a 30m hold at 1.625% a day) · funding alone costs 1.625% a DAY against a 0.50% target — a trade that does not resolve quickly cannot win · the gap between buy and sell (1.481%) is wider than the 0.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "cf_obretest_30m_sl12tp12": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "N5KD72ND"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "cf_obretest",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 1.2,
+     "given": [
+      "N5KD72ND"
+     ],
+     "runs_as": "N5KD72ND",
+     "flat": {
+      "trades": 27,
+      "wins": 25,
+      "losses": 2,
+      "winrate": 92.59,
+      "profit": 22.34,
+      "worst": -1.4,
+      "dd": 1.4,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 16.3,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.20% = 299% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.20% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "cf_obretest_30m_sl12tp15": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "H3W5DWLM"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "cf_obretest",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.2,
+     "given": [
+      "H3W5DWLM"
+     ],
+     "runs_as": "H3W5DWLM",
+     "flat": {
+      "trades": 26,
+      "wins": 25,
+      "losses": 1,
+      "winrate": 96.15,
+      "profit": 31.28,
+      "worst": -1.4,
+      "dd": 1.4,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 13.0,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.50% = 240% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.20% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "cf_obretest_30m_sl15tp15": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "QH4APHWM"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "cf_obretest",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.5,
+     "given": [
+      "QH4APHWM"
+     ],
+     "runs_as": "QH4APHWM",
+     "flat": {
+      "trades": 26,
+      "wins": 25,
+      "losses": 1,
+      "winrate": 96.15,
+      "profit": 30.98,
+      "worst": -1.7,
+      "dd": 1.7,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 13.0,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.50% = 240% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "cf_obretest_30m_sl2tp2": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "W98AWWPS"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "cf_obretest",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 2.0,
+     "given": [
+      "W98AWWPS"
+     ],
+     "runs_as": "W98AWWPS",
+     "flat": {
+      "trades": 25,
+      "wins": 24,
+      "losses": 1,
+      "winrate": 96.0,
+      "profit": 39.76,
+      "worst": -2.22,
+      "dd": 2.22,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 9.8,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 2.00% = 180% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 2.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "crsi_15m_sl12tp12": {
+   "coins": [
+    "ELSTOCK_USDT"
+   ],
+   "rows": [
+    "K83VPZ4F"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "ELSTOCK": {
+     "tf": "15m",
+     "signal": "crsi",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 1.2,
+     "given": [
+      "K83VPZ4F"
+     ],
+     "runs_as": "K83VPZ4F",
+     "flat": {
+      "trades": 41,
+      "wins": 37,
+      "losses": 4,
+      "winrate": 90.24,
+      "profit": 30.31,
+      "worst": -1.46,
+      "dd": 2.85,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 26.0,
+      "rt": 0.3119,
+      "unclear": 1
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 0.848% vs take-profit 1.20% = 71% of the target (includes 0.001% funding for a 15m hold at 0.060% a day)"
+     }
+    }
+   }
+  },
+  "doji_1h_sl2tp2": {
+   "coins": [
+    "FASTSTOCK_USDT"
+   ],
+   "rows": [
+    "9UFSTATD"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "1h",
+     "signal": "doji",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 2.0,
+     "given": [
+      "9UFSTATD"
+     ],
+     "runs_as": "9UFSTATD",
+     "flat": {
+      "trades": 21,
+      "wins": 20,
+      "losses": 1,
+      "winrate": 95.24,
+      "profit": 34.11,
+      "worst": -2.18,
+      "dd": 2.18,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 9.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.718% vs take-profit 2.00% = 86% of the target (includes 0.003% funding for a 1h hold at 0.060% a day)"
+     }
+    }
+   }
+  },
+  "ibs_4h_sl03tp04": {
+   "coins": [
+    "AUDIO_USDT"
+   ],
+   "rows": [
+    "HGQ7GRUL"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "AUDIO": {
+     "tf": "4h",
+     "signal": "ibs",
+     "th": 0.0,
+     "tp_pct": 0.4,
+     "sl_pct": 0.3,
+     "given": [
+      "HGQ7GRUL"
+     ],
+     "runs_as": "HGQ7GRUL",
+     "flat": {
+      "trades": 23,
+      "wins": 22,
+      "losses": 1,
+      "winrate": 95.65,
+      "profit": 6.2,
+      "worst": -0.4,
+      "dd": 0.4,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 27.3,
+      "rt": 0.1092,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 0.460% vs take-profit 0.40% = 115% of the target (includes 0.020% funding for a 4h hold at 0.120% a day)"
+     }
+    }
+   }
+  },
+  "ibs_4h_sl05tp06": {
+   "coins": [
+    "ENPHSTOCK_USDT"
+   ],
+   "rows": [
+    "EENHN7PP"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "ENPHSTOCK": {
+     "tf": "4h",
+     "signal": "ibs",
+     "th": 0.0,
+     "tp_pct": 0.6,
+     "sl_pct": 0.5,
+     "given": [
+      "EENHN7PP"
+     ],
+     "runs_as": "EENHN7PP",
+     "flat": {
+      "trades": 29,
+      "wins": 29,
+      "losses": 0,
+      "winrate": 100.0,
+      "profit": 11.09,
+      "worst": 0.0,
+      "dd": 0.0,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 41.0,
+      "rt": 0.2461,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 0.922% vs take-profit 0.60% = 154% of the target (includes 0.010% funding for a 4h hold at 0.060% a day) · the gap between buy and sell (0.752%) is wider than the 0.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "ibs_4h_sl1tp1": {
+   "coins": [
+    "BNTXSTOCK_USDT"
+   ],
+   "rows": [
+    "4YCPC86U"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "BNTXSTOCK": {
+     "tf": "4h",
+     "signal": "ibs",
+     "th": 0.0,
+     "tp_pct": 1.0,
+     "sl_pct": 1.0,
+     "given": [
+      "4YCPC86U"
+     ],
+     "runs_as": "4YCPC86U",
+     "flat": {
+      "trades": 33,
+      "wins": 30,
+      "losses": 3,
+      "winrate": 90.91,
+      "profit": 19.82,
+      "worst": -1.22,
+      "dd": 1.65,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 37.6,
+      "rt": 0.3761,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 0.550% vs take-profit 1.00% = 55% of the target (includes 0.006% funding for a 4h hold at 0.039% a day)"
+     }
+    }
+   }
+  },
+  "keltner_15m_sl12tp12": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "LLC76MPD"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "keltner",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 1.2,
+     "given": [
+      "LLC76MPD"
+     ],
+     "runs_as": "LLC76MPD",
+     "flat": {
+      "trades": 83,
+      "wins": 76,
+      "losses": 7,
+      "winrate": 91.57,
+      "profit": 63.6,
+      "worst": -1.43,
+      "dd": 2.84,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 19.2,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.20% = 299% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.20% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "keltner_30m_sl12tp12": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "YNYSEW9P"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "keltner",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 1.2,
+     "given": [
+      "YNYSEW9P"
+     ],
+     "runs_as": "YNYSEW9P",
+     "flat": {
+      "trades": 41,
+      "wins": 38,
+      "losses": 3,
+      "winrate": 92.68,
+      "profit": 33.99,
+      "worst": -1.4,
+      "dd": 2.79,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 16.3,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.20% = 299% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.20% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "keltner_30m_sl12tp15": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "JS4M9ZLD"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "keltner",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.2,
+     "given": [
+      "JS4M9ZLD"
+     ],
+     "runs_as": "JS4M9ZLD",
+     "flat": {
+      "trades": 40,
+      "wins": 37,
+      "losses": 3,
+      "winrate": 92.5,
+      "profit": 44.05,
+      "worst": -1.4,
+      "dd": 2.79,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 13.0,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.50% = 240% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.20% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "keltner_30m_sl15tp15": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "NYRW7J3M"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "keltner",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.5,
+     "given": [
+      "NYRW7J3M"
+     ],
+     "runs_as": "NYRW7J3M",
+     "flat": {
+      "trades": 39,
+      "wins": 37,
+      "losses": 2,
+      "winrate": 94.87,
+      "profit": 44.84,
+      "worst": -1.7,
+      "dd": 1.7,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 13.0,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.50% = 240% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "keltner_30m_sl15tp2": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "LXQ8J6AU"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "keltner",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 1.5,
+     "given": [
+      "LXQ8J6AU"
+     ],
+     "runs_as": "LXQ8J6AU",
+     "flat": {
+      "trades": 36,
+      "wins": 33,
+      "losses": 3,
+      "winrate": 91.67,
+      "profit": 54.27,
+      "worst": -1.71,
+      "dd": 1.71,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 9.8,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 2.00% = 180% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "keltner_30m_sl1tp1": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "BV2AGG8E"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "keltner",
+     "th": 0.0,
+     "tp_pct": 1.0,
+     "sl_pct": 1.0,
+     "given": [
+      "BV2AGG8E"
+     ],
+     "runs_as": "BV2AGG8E",
+     "flat": {
+      "trades": 43,
+      "wins": 40,
+      "losses": 3,
+      "winrate": 93.02,
+      "profit": 28.59,
+      "worst": -1.2,
+      "dd": 2.39,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 19.5,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.00% = 359% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "keltner_30m_sl1tp12": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "74EZRBQQ"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "keltner",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 1.0,
+     "given": [
+      "74EZRBQQ"
+     ],
+     "runs_as": "74EZRBQQ",
+     "flat": {
+      "trades": 41,
+      "wins": 38,
+      "losses": 3,
+      "winrate": 92.68,
+      "profit": 34.59,
+      "worst": -1.2,
+      "dd": 2.39,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 16.3,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.20% = 299% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "keltner_30m_sl1tp15": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "226QCCP7"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "keltner",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.0,
+     "given": [
+      "226QCCP7"
+     ],
+     "runs_as": "226QCCP7",
+     "flat": {
+      "trades": 40,
+      "wins": 37,
+      "losses": 3,
+      "winrate": 92.5,
+      "profit": 44.65,
+      "worst": -1.2,
+      "dd": 2.39,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 13.0,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.50% = 240% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "keltner_30m_sl2tp2": {
+   "coins": [
+    "GPNSTOCK_USDT",
+    "KKRSTOCK_USDT"
+   ],
+   "rows": [
+    "DGHBUURC",
+    "H72EG8AA"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "keltner",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 2.0,
+     "given": [
+      "DGHBUURC"
+     ],
+     "runs_as": "DGHBUURC",
+     "flat": {
+      "trades": 33,
+      "wins": 32,
+      "losses": 1,
+      "winrate": 96.97,
+      "profit": 55.35,
+      "worst": -2.21,
+      "dd": 2.21,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 9.8,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 2.00% = 180% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 2.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "KKRSTOCK": {
+     "tf": "30m",
+     "signal": "keltner",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 2.0,
+     "given": [
+      "H72EG8AA"
+     ],
+     "runs_as": "H72EG8AA",
+     "flat": {
+      "trades": 32,
+      "wins": 29,
+      "losses": 3,
+      "winrate": 90.62,
+      "profit": 45.69,
+      "worst": -2.2,
+      "dd": 2.6,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 10.0,
+      "rt": 0.2006,
+      "unclear": 1
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 2.600% vs take-profit 2.00% = 130% of the target (includes 0.001% funding for a 30m hold at 0.060% a day)"
+     }
+    }
+   }
+  },
+  "keltner_30m_sl2tp25": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "H6Q486BR"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "keltner",
+     "th": 0.0,
+     "tp_pct": 2.5,
+     "sl_pct": 2.0,
+     "given": [
+      "H6Q486BR"
+     ],
+     "runs_as": "H6Q486BR",
+     "flat": {
+      "trades": 32,
+      "wins": 31,
+      "losses": 1,
+      "winrate": 96.88,
+      "profit": 69.24,
+      "worst": -2.21,
+      "dd": 2.21,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 7.8,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 2.50% = 144% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 2.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "keltner_30m_sl2tp3": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "L2KBERYD"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "keltner",
+     "th": 0.0,
+     "tp_pct": 3.0,
+     "sl_pct": 2.0,
+     "given": [
+      "L2KBERYD"
+     ],
+     "runs_as": "L2KBERYD",
+     "flat": {
+      "trades": 28,
+      "wins": 27,
+      "losses": 1,
+      "winrate": 96.43,
+      "profit": 73.53,
+      "worst": -2.21,
+      "dd": 2.21,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 6.5,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 3.00% = 120% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 2.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "macddiv_15m_sl12tp12": {
+   "coins": [
+    "GPNSTOCK_USDT",
+    "KKRSTOCK_USDT"
+   ],
+   "rows": [
+    "AXGBRHZ5",
+    "9GNPMXFF"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "macddiv",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 1.2,
+     "given": [
+      "AXGBRHZ5"
+     ],
+     "runs_as": "AXGBRHZ5",
+     "flat": {
+      "trades": 62,
+      "wins": 58,
+      "losses": 4,
+      "winrate": 93.55,
+      "profit": 50.52,
+      "worst": -1.43,
+      "dd": 1.43,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 19.2,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.20% = 299% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.20% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "KKRSTOCK": {
+     "tf": "15m",
+     "signal": "macddiv",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 1.2,
+     "given": [
+      "9GNPMXFF"
+     ],
+     "runs_as": "9GNPMXFF",
+     "flat": {
+      "trades": 71,
+      "wins": 66,
+      "losses": 5,
+      "winrate": 92.96,
+      "profit": 60.43,
+      "worst": -1.4,
+      "dd": 2.76,
+      "days": 38,
+      "gate": "ok",
+      "cost_of_tp": 15.0,
+      "rt": 0.1803,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 2.599% vs take-profit 1.20% = 217% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.866%) is wider than the 1.20% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "macddiv_15m_sl15tp15": {
+   "coins": [
+    "HTZSTOCK_USDT"
+   ],
+   "rows": [
+    "AJZBXC5Q"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "HTZSTOCK": {
+     "tf": "15m",
+     "signal": "macddiv",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.5,
+     "given": [
+      "AJZBXC5Q"
+     ],
+     "runs_as": "AJZBXC5Q",
+     "flat": {
+      "trades": 36,
+      "wins": 33,
+      "losses": 3,
+      "winrate": 91.67,
+      "profit": 37.12,
+      "worst": -1.72,
+      "dd": 1.72,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 46.4,
+      "rt": 0.6962,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "warn",
+      "reason": "round-trip cost 0.730% vs take-profit 1.50% = 49% of the target (includes 0.000% funding for a 15m hold at 0.016% a day)"
+     }
+    }
+   }
+  },
+  "macddiv_15m_sl1tp1": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "DYGX5SK4"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "macddiv",
+     "th": 0.0,
+     "tp_pct": 1.0,
+     "sl_pct": 1.0,
+     "given": [
+      "DYGX5SK4"
+     ],
+     "runs_as": "DYGX5SK4",
+     "flat": {
+      "trades": 64,
+      "wins": 58,
+      "losses": 6,
+      "winrate": 90.62,
+      "profit": 37.2,
+      "worst": -1.23,
+      "dd": 1.23,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 23.0,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.00% = 359% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "macddiv_15m_sl1tp12": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "C4YMP4GW"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "macddiv",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 1.0,
+     "given": [
+      "C4YMP4GW"
+     ],
+     "runs_as": "C4YMP4GW",
+     "flat": {
+      "trades": 63,
+      "wins": 57,
+      "losses": 6,
+      "winrate": 90.48,
+      "profit": 47.88,
+      "worst": -1.23,
+      "dd": 1.23,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 19.2,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.20% = 299% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "macddiv_30m_sl04tp05": {
+   "coins": [
+    "FASTSTOCK_USDT"
+   ],
+   "rows": [
+    "AQDZWSZT"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "30m",
+     "signal": "macddiv",
+     "th": 0.0,
+     "tp_pct": 0.5,
+     "sl_pct": 0.4,
+     "given": [
+      "AQDZWSZT"
+     ],
+     "runs_as": "AQDZWSZT",
+     "flat": {
+      "trades": 37,
+      "wins": 34,
+      "losses": 3,
+      "winrate": 91.89,
+      "profit": 6.93,
+      "worst": -0.64,
+      "dd": 1.02,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 48.0,
+      "rt": 0.2398,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.717% vs take-profit 0.50% = 343% of the target (includes 0.001% funding for a 30m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 0.40% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "macddiv_30m_sl05tp05": {
+   "coins": [
+    "FASTSTOCK_USDT"
+   ],
+   "rows": [
+    "CZKUFNZV"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "30m",
+     "signal": "macddiv",
+     "th": 0.0,
+     "tp_pct": 0.5,
+     "sl_pct": 0.5,
+     "given": [
+      "CZKUFNZV"
+     ],
+     "runs_as": "CZKUFNZV",
+     "flat": {
+      "trades": 37,
+      "wins": 34,
+      "losses": 3,
+      "winrate": 91.89,
+      "profit": 6.63,
+      "worst": -0.74,
+      "dd": 1.22,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 48.0,
+      "rt": 0.2398,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.717% vs take-profit 0.50% = 343% of the target (includes 0.001% funding for a 30m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 0.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "macddiv_30m_sl08tp08": {
+   "coins": [
+    "VUG_USDT"
+   ],
+   "rows": [
+    "4LJSZJB5"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "VUG": {
+     "tf": "30m",
+     "signal": "macddiv",
+     "th": 0.0,
+     "tp_pct": 0.8,
+     "sl_pct": 0.8,
+     "given": [
+      "4LJSZJB5"
+     ],
+     "runs_as": "4LJSZJB5",
+     "flat": {
+      "trades": 30,
+      "wins": 28,
+      "losses": 2,
+      "winrate": 93.33,
+      "profit": 15.73,
+      "worst": -0.97,
+      "dd": 0.97,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 21.4,
+      "rt": 0.171,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 2.023% vs take-profit 0.80% = 253% of the target (includes 0.001% funding for a 30m hold at 0.060% a day)"
+     }
+    }
+   }
+  },
+  "macddiv_30m_sl15tp15": {
+   "coins": [
+    "FASTSTOCK_USDT"
+   ],
+   "rows": [
+    "NU8FGYPH"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "30m",
+     "signal": "macddiv",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.5,
+     "given": [
+      "NU8FGYPH"
+     ],
+     "runs_as": "NU8FGYPH",
+     "flat": {
+      "trades": 25,
+      "wins": 23,
+      "losses": 2,
+      "winrate": 92.0,
+      "profit": 25.42,
+      "worst": -1.75,
+      "dd": 1.75,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 16.0,
+      "rt": 0.2398,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.717% vs take-profit 1.50% = 114% of the target (includes 0.001% funding for a 30m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 1.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "macddiv_30m_sl2tp2": {
+   "coins": [
+    "FASTSTOCK_USDT",
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "4JV8B6GB",
+    "8QERC5T4"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "30m",
+     "signal": "macddiv",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 2.0,
+     "given": [
+      "4JV8B6GB"
+     ],
+     "runs_as": "4JV8B6GB",
+     "flat": {
+      "trades": 22,
+      "wins": 21,
+      "losses": 1,
+      "winrate": 95.45,
+      "profit": 34.62,
+      "worst": -2.24,
+      "dd": 2.24,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 12.0,
+      "rt": 0.2398,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.717% vs take-profit 2.00% = 86% of the target (includes 0.001% funding for a 30m hold at 0.060% a day)"
+     }
+    },
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "macddiv",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 2.0,
+     "given": [
+      "8QERC5T4"
+     ],
+     "runs_as": "8QERC5T4",
+     "flat": {
+      "trades": 25,
+      "wins": 23,
+      "losses": 2,
+      "winrate": 92.0,
+      "profit": 36.7,
+      "worst": -2.23,
+      "dd": 2.23,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 9.8,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 2.00% = 180% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 2.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "macddiv_30m_sl2tp25": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "K77TJ93Y"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "macddiv",
+     "th": 0.0,
+     "tp_pct": 2.5,
+     "sl_pct": 2.0,
+     "given": [
+      "K77TJ93Y"
+     ],
+     "runs_as": "K77TJ93Y",
+     "flat": {
+      "trades": 23,
+      "wins": 21,
+      "losses": 2,
+      "winrate": 91.3,
+      "profit": 43.74,
+      "worst": -2.23,
+      "dd": 2.23,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 7.8,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 2.50% = 144% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 2.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "macddiv_30m_sl2tp3": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "BHNBB9JK"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "macddiv",
+     "th": 0.0,
+     "tp_pct": 3.0,
+     "sl_pct": 2.0,
+     "given": [
+      "BHNBB9JK"
+     ],
+     "runs_as": "BHNBB9JK",
+     "flat": {
+      "trades": 22,
+      "wins": 20,
+      "losses": 2,
+      "winrate": 90.91,
+      "profit": 51.41,
+      "worst": -2.23,
+      "dd": 2.23,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 6.5,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 3.00% = 120% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 2.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "prank_15m_sl15tp15": {
+   "coins": [
+    "FASTSTOCK_USDT"
+   ],
+   "rows": [
+    "YZABLRQR"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "prank",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.5,
+     "given": [
+      "YZABLRQR"
+     ],
+     "runs_as": "YZABLRQR",
+     "flat": {
+      "trades": 134,
+      "wins": 126,
+      "losses": 8,
+      "winrate": 94.03,
+      "profit": 153.15,
+      "worst": -1.69,
+      "dd": 3.36,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 12.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 1.50% = 114% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 1.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "prank_15m_sl15tp2": {
+   "coins": [
+    "FASTSTOCK_USDT"
+   ],
+   "rows": [
+    "7BNLXU62"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "prank",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 1.5,
+     "given": [
+      "7BNLXU62"
+     ],
+     "runs_as": "7BNLXU62",
+     "flat": {
+      "trades": 113,
+      "wins": 105,
+      "losses": 8,
+      "winrate": 92.92,
+      "profit": 176.75,
+      "worst": -1.69,
+      "dd": 3.36,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 9.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 2.00% = 86% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 1.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "prank_30m_sl15tp15": {
+   "coins": [
+    "FASTSTOCK_USDT"
+   ],
+   "rows": [
+    "HVBFFP6G"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "30m",
+     "signal": "prank",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.5,
+     "given": [
+      "HVBFFP6G"
+     ],
+     "runs_as": "HVBFFP6G",
+     "flat": {
+      "trades": 95,
+      "wins": 88,
+      "losses": 7,
+      "winrate": 92.63,
+      "profit": 98.5,
+      "worst": -1.76,
+      "dd": 1.76,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 16.0,
+      "rt": 0.2398,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.717% vs take-profit 1.50% = 114% of the target (includes 0.001% funding for a 30m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 1.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "prank_30m_sl15tp2": {
+   "coins": [
+    "FASTSTOCK_USDT"
+   ],
+   "rows": [
+    "NF8SUV2A"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "30m",
+     "signal": "prank",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 1.5,
+     "given": [
+      "NF8SUV2A"
+     ],
+     "runs_as": "NF8SUV2A",
+     "flat": {
+      "trades": 78,
+      "wins": 71,
+      "losses": 7,
+      "winrate": 91.03,
+      "profit": 111.97,
+      "worst": -1.76,
+      "dd": 1.76,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 12.0,
+      "rt": 0.2398,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.717% vs take-profit 2.00% = 86% of the target (includes 0.001% funding for a 30m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 1.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "prank_30m_sl2tp2": {
+   "coins": [
+    "FASTSTOCK_USDT",
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "9R8333LY",
+    "7X9R59U8"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "30m",
+     "signal": "prank",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 2.0,
+     "given": [
+      "9R8333LY"
+     ],
+     "runs_as": "9R8333LY",
+     "flat": {
+      "trades": 76,
+      "wins": 73,
+      "losses": 3,
+      "winrate": 96.05,
+      "profit": 120.93,
+      "worst": -2.24,
+      "dd": 2.24,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 12.0,
+      "rt": 0.2398,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.717% vs take-profit 2.00% = 86% of the target (includes 0.001% funding for a 30m hold at 0.060% a day)"
+     }
+    },
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "prank",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 2.0,
+     "given": [
+      "7X9R59U8"
+     ],
+     "runs_as": "7X9R59U8",
+     "flat": {
+      "trades": 75,
+      "wins": 70,
+      "losses": 5,
+      "winrate": 93.33,
+      "profit": 114.78,
+      "worst": -2.38,
+      "dd": 2.55,
+      "days": 38,
+      "gate": "ok",
+      "cost_of_tp": 9.8,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 2.00% = 180% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 2.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsi14_15m_sl06tp06": {
+   "coins": [
+    "ALUMINUM_USDT"
+   ],
+   "rows": [
+    "M3S87TK3"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "ALUMINUM": {
+     "tf": "15m",
+     "signal": "rsi14",
+     "th": 0.0,
+     "tp_pct": 0.6,
+     "sl_pct": 0.6,
+     "given": [
+      "M3S87TK3"
+     ],
+     "runs_as": "M3S87TK3",
+     "flat": {
+      "trades": 23,
+      "wins": 21,
+      "losses": 2,
+      "winrate": 91.3,
+      "profit": 6.27,
+      "worst": -0.85,
+      "dd": 0.85,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 26.7,
+      "rt": 0.1603,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "warn",
+      "reason": "round-trip cost 0.161% vs take-profit 0.60% = 27% of the target (includes 0.000% funding for a 15m hold at 0.028% a day)"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl03tp04": {
+   "coins": [
+    "DVNSTOCK_USDT"
+   ],
+   "rows": [
+    "ER7GBKSH"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "DVNSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 0.4,
+     "sl_pct": 0.3,
+     "given": [
+      "ER7GBKSH"
+     ],
+     "runs_as": "ER7GBKSH",
+     "flat": {
+      "trades": 24,
+      "wins": 22,
+      "losses": 2,
+      "winrate": 91.67,
+      "profit": 3.85,
+      "worst": -0.48,
+      "dd": 0.74,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 45.3,
+      "rt": 0.1813,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 0.659% vs take-profit 0.40% = 165% of the target (includes 0.000% funding for a 15m hold at 0.040% a day) · the gap between buy and sell (0.499%) is wider than the 0.30% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl04tp04": {
+   "coins": [
+    "DVNSTOCK_USDT",
+    "FASTSTOCK_USDT"
+   ],
+   "rows": [
+    "W6C8RMVB",
+    "QHYGA7AS"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "DVNSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 0.4,
+     "sl_pct": 0.4,
+     "given": [
+      "W6C8RMVB"
+     ],
+     "runs_as": "W6C8RMVB",
+     "flat": {
+      "trades": 24,
+      "wins": 22,
+      "losses": 2,
+      "winrate": 91.67,
+      "profit": 3.65,
+      "worst": -0.58,
+      "dd": 0.94,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 45.3,
+      "rt": 0.1813,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 0.659% vs take-profit 0.40% = 165% of the target (includes 0.000% funding for a 15m hold at 0.040% a day) · the gap between buy and sell (0.499%) is wider than the 0.40% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 0.4,
+     "sl_pct": 0.4,
+     "given": [
+      "QHYGA7AS"
+     ],
+     "runs_as": "QHYGA7AS",
+     "flat": {
+      "trades": 27,
+      "wins": 26,
+      "losses": 1,
+      "winrate": 96.3,
+      "profit": 5.14,
+      "worst": -0.58,
+      "dd": 0.58,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 45.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 0.40% = 429% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 0.40% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl05tp06": {
+   "coins": [
+    "FASTSTOCK_USDT"
+   ],
+   "rows": [
+    "KE6N2A54"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 0.6,
+     "sl_pct": 0.5,
+     "given": [
+      "KE6N2A54"
+     ],
+     "runs_as": "KE6N2A54",
+     "flat": {
+      "trades": 27,
+      "wins": 25,
+      "losses": 2,
+      "winrate": 92.59,
+      "profit": 9.14,
+      "worst": -0.68,
+      "dd": 0.68,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 30.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 0.60% = 286% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 0.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl06tp06": {
+   "coins": [
+    "FASTSTOCK_USDT"
+   ],
+   "rows": [
+    "VWQ2L6KF"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 0.6,
+     "sl_pct": 0.6,
+     "given": [
+      "VWQ2L6KF"
+     ],
+     "runs_as": "VWQ2L6KF",
+     "flat": {
+      "trades": 27,
+      "wins": 25,
+      "losses": 2,
+      "winrate": 92.59,
+      "profit": 8.94,
+      "worst": -0.78,
+      "dd": 0.78,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 30.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 0.60% = 286% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 0.60% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl08tp08": {
+   "coins": [
+    "FASTSTOCK_USDT",
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "7NPPD32F",
+    "3XAQKY9L"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 0.8,
+     "sl_pct": 0.8,
+     "given": [
+      "7NPPD32F"
+     ],
+     "runs_as": "7NPPD32F",
+     "flat": {
+      "trades": 27,
+      "wins": 25,
+      "losses": 2,
+      "winrate": 92.59,
+      "profit": 13.52,
+      "worst": -0.98,
+      "dd": 0.98,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 22.5,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 0.80% = 215% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 0.80% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 0.8,
+     "sl_pct": 0.8,
+     "given": [
+      "3XAQKY9L"
+     ],
+     "runs_as": "3XAQKY9L",
+     "flat": {
+      "trades": 29,
+      "wins": 27,
+      "losses": 2,
+      "winrate": 93.1,
+      "profit": 13.3,
+      "worst": -1.05,
+      "dd": 1.05,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 28.8,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 0.80% = 449% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 0.80% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl08tp1": {
+   "coins": [
+    "FASTSTOCK_USDT",
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "ENHKN8ZB",
+    "A7ZAMAZ8"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.0,
+     "sl_pct": 0.8,
+     "given": [
+      "ENHKN8ZB"
+     ],
+     "runs_as": "ENHKN8ZB",
+     "flat": {
+      "trades": 27,
+      "wins": 25,
+      "losses": 2,
+      "winrate": 92.59,
+      "profit": 18.59,
+      "worst": -0.98,
+      "dd": 0.98,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 18.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 1.00% = 172% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 0.80% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.0,
+     "sl_pct": 0.8,
+     "given": [
+      "A7ZAMAZ8"
+     ],
+     "runs_as": "A7ZAMAZ8",
+     "flat": {
+      "trades": 29,
+      "wins": 27,
+      "losses": 2,
+      "winrate": 93.1,
+      "profit": 18.7,
+      "worst": -1.05,
+      "dd": 1.05,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 23.0,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.00% = 359% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 0.80% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl08tp12": {
+   "coins": [
+    "FASTSTOCK_USDT",
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "EBJ3YBDA",
+    "2FY5BQRK"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 0.8,
+     "given": [
+      "EBJ3YBDA"
+     ],
+     "runs_as": "EBJ3YBDA",
+     "flat": {
+      "trades": 27,
+      "wins": 25,
+      "losses": 2,
+      "winrate": 92.59,
+      "profit": 23.59,
+      "worst": -0.98,
+      "dd": 0.98,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 15.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 1.20% = 143% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 0.80% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 0.8,
+     "given": [
+      "2FY5BQRK"
+     ],
+     "runs_as": "2FY5BQRK",
+     "flat": {
+      "trades": 29,
+      "wins": 27,
+      "losses": 2,
+      "winrate": 93.1,
+      "profit": 24.07,
+      "worst": -1.05,
+      "dd": 1.05,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 19.2,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.20% = 299% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 0.80% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl08tp15": {
+   "coins": [
+    "FASTSTOCK_USDT",
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "7J8Z82B3",
+    "ALHT7QE8"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 0.8,
+     "given": [
+      "7J8Z82B3"
+     ],
+     "runs_as": "7J8Z82B3",
+     "flat": {
+      "trades": 27,
+      "wins": 25,
+      "losses": 2,
+      "winrate": 92.59,
+      "profit": 31.12,
+      "worst": -0.98,
+      "dd": 0.98,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 12.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 1.50% = 114% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 0.80% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 0.8,
+     "given": [
+      "ALHT7QE8"
+     ],
+     "runs_as": "ALHT7QE8",
+     "flat": {
+      "trades": 29,
+      "wins": 27,
+      "losses": 2,
+      "winrate": 93.1,
+      "profit": 32.15,
+      "worst": -1.05,
+      "dd": 1.05,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 15.4,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.50% = 240% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 0.80% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl12tp12": {
+   "coins": [
+    "FASTSTOCK_USDT",
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "V8NM2ERJ",
+    "J6R6MRXY"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 1.2,
+     "given": [
+      "V8NM2ERJ"
+     ],
+     "runs_as": "V8NM2ERJ",
+     "flat": {
+      "trades": 27,
+      "wins": 26,
+      "losses": 1,
+      "winrate": 96.3,
+      "profit": 25.19,
+      "worst": -1.38,
+      "dd": 1.38,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 15.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 1.20% = 143% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 1.20% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 1.2,
+     "given": [
+      "J6R6MRXY"
+     ],
+     "runs_as": "J6R6MRXY",
+     "flat": {
+      "trades": 29,
+      "wins": 28,
+      "losses": 1,
+      "winrate": 96.55,
+      "profit": 25.67,
+      "worst": -1.45,
+      "dd": 1.45,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 19.2,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.20% = 299% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.20% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl12tp15": {
+   "coins": [
+    "FASTSTOCK_USDT",
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "ZRBM937C",
+    "ZLB2QSYF"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.2,
+     "given": [
+      "ZRBM937C"
+     ],
+     "runs_as": "ZRBM937C",
+     "flat": {
+      "trades": 27,
+      "wins": 26,
+      "losses": 1,
+      "winrate": 96.3,
+      "profit": 33.02,
+      "worst": -1.38,
+      "dd": 1.38,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 12.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 1.50% = 114% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 1.20% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.2,
+     "given": [
+      "ZLB2QSYF"
+     ],
+     "runs_as": "ZLB2QSYF",
+     "flat": {
+      "trades": 29,
+      "wins": 28,
+      "losses": 1,
+      "winrate": 96.55,
+      "profit": 34.05,
+      "worst": -1.45,
+      "dd": 1.45,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 15.4,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.50% = 240% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.20% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl12tp2": {
+   "coins": [
+    "FASTSTOCK_USDT"
+   ],
+   "rows": [
+    "RCQNGK75"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 1.2,
+     "given": [
+      "RCQNGK75"
+     ],
+     "runs_as": "RCQNGK75",
+     "flat": {
+      "trades": 24,
+      "wins": 22,
+      "losses": 2,
+      "winrate": 91.67,
+      "profit": 37.38,
+      "worst": -1.37,
+      "dd": 1.37,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 9.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 2.00% = 86% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 1.20% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl15tp15": {
+   "coins": [
+    "FASTSTOCK_USDT",
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "JSQNGVSU",
+    "PU5C4TCA"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.5,
+     "given": [
+      "JSQNGVSU"
+     ],
+     "runs_as": "JSQNGVSU",
+     "flat": {
+      "trades": 27,
+      "wins": 27,
+      "losses": 0,
+      "winrate": 100.0,
+      "profit": 35.72,
+      "worst": 0.0,
+      "dd": 0.0,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 12.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 1.50% = 114% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 1.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.5,
+     "given": [
+      "PU5C4TCA"
+     ],
+     "runs_as": "PU5C4TCA",
+     "flat": {
+      "trades": 29,
+      "wins": 29,
+      "losses": 0,
+      "winrate": 100.0,
+      "profit": 36.75,
+      "worst": 0.0,
+      "dd": 0.0,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 15.4,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.50% = 240% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl15tp2": {
+   "coins": [
+    "FASTSTOCK_USDT",
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "8PXYEK4W",
+    "56P9UBUJ"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 1.5,
+     "given": [
+      "8PXYEK4W"
+     ],
+     "runs_as": "8PXYEK4W",
+     "flat": {
+      "trades": 24,
+      "wins": 23,
+      "losses": 1,
+      "winrate": 95.83,
+      "profit": 40.28,
+      "worst": -1.67,
+      "dd": 1.67,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 9.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 2.00% = 86% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 1.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 1.5,
+     "given": [
+      "56P9UBUJ"
+     ],
+     "runs_as": "56P9UBUJ",
+     "flat": {
+      "trades": 27,
+      "wins": 25,
+      "losses": 2,
+      "winrate": 92.59,
+      "profit": 40.67,
+      "worst": -1.74,
+      "dd": 1.74,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 11.5,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 2.00% = 180% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl15tp25": {
+   "coins": [
+    "FASTSTOCK_USDT"
+   ],
+   "rows": [
+    "9K2GMD6R"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 2.5,
+     "sl_pct": 1.5,
+     "given": [
+      "9K2GMD6R"
+     ],
+     "runs_as": "9K2GMD6R",
+     "flat": {
+      "trades": 22,
+      "wins": 20,
+      "losses": 2,
+      "winrate": 90.91,
+      "profit": 43.15,
+      "worst": -1.67,
+      "dd": 1.67,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 7.2,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 2.50% = 69% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 1.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl1tp1": {
+   "coins": [
+    "FASTSTOCK_USDT",
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "4VDH3KMU",
+    "7CS5CNG6"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.0,
+     "sl_pct": 1.0,
+     "given": [
+      "4VDH3KMU"
+     ],
+     "runs_as": "4VDH3KMU",
+     "flat": {
+      "trades": 27,
+      "wins": 25,
+      "losses": 2,
+      "winrate": 92.59,
+      "profit": 18.19,
+      "worst": -1.18,
+      "dd": 1.18,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 18.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 1.00% = 172% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 1.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.0,
+     "sl_pct": 1.0,
+     "given": [
+      "7CS5CNG6"
+     ],
+     "runs_as": "7CS5CNG6",
+     "flat": {
+      "trades": 29,
+      "wins": 27,
+      "losses": 2,
+      "winrate": 93.1,
+      "profit": 18.3,
+      "worst": -1.25,
+      "dd": 1.25,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 23.0,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.00% = 359% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl1tp12": {
+   "coins": [
+    "FASTSTOCK_USDT",
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "R9CNEMJW",
+    "GSHXNFUD"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 1.0,
+     "given": [
+      "R9CNEMJW"
+     ],
+     "runs_as": "R9CNEMJW",
+     "flat": {
+      "trades": 27,
+      "wins": 25,
+      "losses": 2,
+      "winrate": 92.59,
+      "profit": 23.19,
+      "worst": -1.18,
+      "dd": 1.18,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 15.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 1.20% = 143% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 1.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 1.0,
+     "given": [
+      "GSHXNFUD"
+     ],
+     "runs_as": "GSHXNFUD",
+     "flat": {
+      "trades": 29,
+      "wins": 27,
+      "losses": 2,
+      "winrate": 93.1,
+      "profit": 23.67,
+      "worst": -1.25,
+      "dd": 1.25,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 19.2,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.20% = 299% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "rsidiv_15m_sl1tp15": {
+   "coins": [
+    "FASTSTOCK_USDT",
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "6ZDYPVE8",
+    "GYP3SSYX"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "FASTSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.0,
+     "given": [
+      "6ZDYPVE8"
+     ],
+     "runs_as": "6ZDYPVE8",
+     "flat": {
+      "trades": 27,
+      "wins": 25,
+      "losses": 2,
+      "winrate": 92.59,
+      "profit": 30.72,
+      "worst": -1.18,
+      "dd": 1.18,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 12.0,
+      "rt": 0.18,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 1.716% vs take-profit 1.50% = 114% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (1.556%) is wider than the 1.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "GPNSTOCK": {
+     "tf": "15m",
+     "signal": "rsidiv",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 1.0,
+     "given": [
+      "GYP3SSYX"
+     ],
+     "runs_as": "GYP3SSYX",
+     "flat": {
+      "trades": 29,
+      "wins": 27,
+      "losses": 2,
+      "winrate": 93.1,
+      "profit": 31.75,
+      "worst": -1.25,
+      "dd": 1.25,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 15.4,
+      "rt": 0.2303,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.50% = 240% of the target (includes 0.000% funding for a 15m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "stoch14_1h_sl2tp2": {
+   "coins": [
+    "VUG_USDT"
+   ],
+   "rows": [
+    "8R6USJKK"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "VUG": {
+     "tf": "1h",
+     "signal": "stoch14",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 2.0,
+     "given": [
+      "8R6USJKK"
+     ],
+     "runs_as": "8R6USJKK",
+     "flat": {
+      "trades": 21,
+      "wins": 19,
+      "losses": 2,
+      "winrate": 90.48,
+      "profit": 30.09,
+      "worst": -2.17,
+      "dd": 2.17,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 8.5,
+      "rt": 0.171,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 2.025% vs take-profit 2.00% = 101% of the target (includes 0.003% funding for a 1h hold at 0.060% a day)"
+     }
+    }
+   }
+  },
+  "stochrsi_4h_sl25tp25": {
+   "coins": [
+    "HYPE_USDT"
+   ],
+   "rows": [
+    "KLAHCTDU"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "HYPE": {
+     "tf": "4h",
+     "signal": "stochrsi",
+     "th": 0.0,
+     "tp_pct": 2.5,
+     "sl_pct": 2.5,
+     "given": [
+      "KLAHCTDU"
+     ],
+     "runs_as": "KLAHCTDU",
+     "flat": {
+      "trades": 23,
+      "wins": 21,
+      "losses": 2,
+      "winrate": 91.3,
+      "profit": 44.04,
+      "worst": -2.6,
+      "dd": 5.2,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 1.6,
+      "rt": 0.0411,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "ok",
+      "reason": "round-trip cost 0.166% vs take-profit 2.50% = 7% of the target (includes 0.005% funding for a 4h hold at 0.030% a day)"
+     }
+    }
+   }
+  },
+  "ultosc_30m_sl2tp2": {
+   "coins": [
+    "KKRSTOCK_USDT"
+   ],
+   "rows": [
+    "F9484TWH"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "KKRSTOCK": {
+     "tf": "30m",
+     "signal": "ultosc",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 2.0,
+     "given": [
+      "F9484TWH"
+     ],
+     "runs_as": "F9484TWH",
+     "flat": {
+      "trades": 26,
+      "wins": 24,
+      "losses": 2,
+      "winrate": 92.31,
+      "profit": 37.75,
+      "worst": -2.2,
+      "dd": 2.2,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 10.0,
+      "rt": 0.2006,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 2.600% vs take-profit 2.00% = 130% of the target (includes 0.001% funding for a 30m hold at 0.060% a day)"
+     }
+    }
+   }
+  },
+  "vwaprev_30m_sl08tp08": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "NR6JTGY6"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "vwaprev",
+     "th": 0.0,
+     "tp_pct": 0.8,
+     "sl_pct": 0.8,
+     "given": [
+      "NR6JTGY6"
+     ],
+     "runs_as": "NR6JTGY6",
+     "flat": {
+      "trades": 50,
+      "wins": 45,
+      "losses": 5,
+      "winrate": 90.0,
+      "profit": 22.27,
+      "worst": -1.0,
+      "dd": 1.0,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 24.4,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 0.80% = 449% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 0.80% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "vwaprev_30m_sl08tp15": {
+   "coins": [
+    "VGT_USDT"
+   ],
+   "rows": [
+    "TTADSVPC"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "VGT": {
+     "tf": "30m",
+     "signal": "vwaprev",
+     "th": 0.0,
+     "tp_pct": 1.5,
+     "sl_pct": 0.8,
+     "given": [
+      "TTADSVPC"
+     ],
+     "runs_as": "TTADSVPC",
+     "flat": {
+      "trades": 21,
+      "wins": 19,
+      "losses": 2,
+      "winrate": 90.48,
+      "profit": 22.32,
+      "worst": -1.02,
+      "dd": 1.02,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 11.7,
+      "rt": 0.1759,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "warn",
+      "reason": "round-trip cost 0.732% vs take-profit 1.50% = 49% of the target (includes 0.001% funding for a 30m hold at 0.060% a day)"
+     }
+    }
+   }
+  },
+  "vwaprev_30m_sl12tp12": {
+   "coins": [
+    "GPNSTOCK_USDT"
+   ],
+   "rows": [
+    "LURXVW6E"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "vwaprev",
+     "th": 0.0,
+     "tp_pct": 1.2,
+     "sl_pct": 1.2,
+     "given": [
+      "LURXVW6E"
+     ],
+     "runs_as": "LURXVW6E",
+     "flat": {
+      "trades": 45,
+      "wins": 41,
+      "losses": 4,
+      "winrate": 91.11,
+      "profit": 35.63,
+      "worst": -1.4,
+      "dd": 1.4,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 16.3,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.20% = 299% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.20% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "vwaprev_30m_sl1tp1": {
+   "coins": [
+    "GPNSTOCK_USDT",
+    "VGT_USDT"
+   ],
+   "rows": [
+    "MCQMNLF5",
+    "VEP8YSP5"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "GPNSTOCK": {
+     "tf": "30m",
+     "signal": "vwaprev",
+     "th": 0.0,
+     "tp_pct": 1.0,
+     "sl_pct": 1.0,
+     "given": [
+      "MCQMNLF5"
+     ],
+     "runs_as": "MCQMNLF5",
+     "flat": {
+      "trades": 48,
+      "wins": 44,
+      "losses": 4,
+      "winrate": 91.67,
+      "profit": 30.64,
+      "worst": -1.2,
+      "dd": 1.2,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 19.5,
+      "rt": 0.1953,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.594% vs take-profit 1.00% = 359% of the target (includes 0.001% funding for a 30m hold at 0.037% a day) · the gap between buy and sell (3.419%) is wider than the 1.00% stop — a stop inside the gap is already passed when it is placed"
+     }
+    },
+    "VGT": {
+     "tf": "30m",
+     "signal": "vwaprev",
+     "th": 0.0,
+     "tp_pct": 1.0,
+     "sl_pct": 1.0,
+     "given": [
+      "VEP8YSP5"
+     ],
+     "runs_as": "VEP8YSP5",
+     "flat": {
+      "trades": 25,
+      "wins": 24,
+      "losses": 1,
+      "winrate": 96.0,
+      "profit": 17.54,
+      "worst": -1.21,
+      "dd": 1.21,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 17.6,
+      "rt": 0.1759,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 0.732% vs take-profit 1.00% = 73% of the target (includes 0.001% funding for a 30m hold at 0.060% a day)"
+     }
+    }
+   }
+  },
+  "willr14_1h_sl2tp2": {
+   "coins": [
+    "VUG_USDT"
+   ],
+   "rows": [
+    "KJACR5LX"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "VUG": {
+     "tf": "1h",
+     "signal": "willr14",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 2.0,
+     "given": [
+      "KJACR5LX"
+     ],
+     "runs_as": "KJACR5LX",
+     "flat": {
+      "trades": 21,
+      "wins": 19,
+      "losses": 2,
+      "winrate": 90.48,
+      "profit": 30.09,
+      "worst": -2.17,
+      "dd": 2.17,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 8.5,
+      "rt": 0.171,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 2.025% vs take-profit 2.00% = 101% of the target (includes 0.003% funding for a 1h hold at 0.060% a day)"
+     }
+    }
+   }
+  },
+  "zscore20_30m_sl1tp1": {
+   "coins": [
+    "SHINETSUSTOCK_USDT"
+   ],
+   "rows": [
+    "DEYXNKPH"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "SHINETSUSTOCK": {
+     "tf": "30m",
+     "signal": "zscore20",
+     "th": 0.0,
+     "tp_pct": 1.0,
+     "sl_pct": 1.0,
+     "given": [
+      "DEYXNKPH"
+     ],
+     "runs_as": "DEYXNKPH",
+     "flat": {
+      "trades": 23,
+      "wins": 21,
+      "losses": 2,
+      "winrate": 91.3,
+      "profit": 15.07,
+      "worst": -1.23,
+      "dd": 1.23,
+      "days": 20,
+      "gate": "warn",
+      "cost_of_tp": 42.8,
+      "rt": 0.428,
+      "unclear": 0
+     },
+     "gate_now": {
+      "verdict": "warn",
+      "reason": "round-trip cost 0.434% vs take-profit 1.00% = 43% of the target (includes 0.001% funding for a 30m hold at 0.037% a day)"
+     }
+    }
+   }
+  }
+ },
+ "refused": [
+  {
+   "coin": "GPNSTOCK",
+   "tf": "1h",
+   "signal": "bb20",
+   "th": 0.0,
+   "tp_pct": 2.5,
+   "sl_pct": 2.5,
+   "given": [
+    "P69QEVEQ"
+   ],
+   "runs_as": "P69QEVEQ",
+   "why": "2.50% stop sits 83% of the way to liquidation (3.00% at 20x) — the venue would take the whole margin before the stop could fire"
+  },
+  {
+   "coin": "GPNSTOCK",
+   "tf": "1h",
+   "signal": "bb20",
+   "th": 0.0,
+   "tp_pct": 3.0,
+   "sl_pct": 2.5,
+   "given": [
+    "5VENHXK5"
+   ],
+   "runs_as": "5VENHXK5",
+   "why": "2.50% stop sits 83% of the way to liquidation (3.00% at 20x) — the venue would take the whole margin before the stop could fire"
+  },
+  {
+   "coin": "GPNSTOCK",
+   "tf": "1h",
+   "signal": "bb20",
+   "th": 0.0,
+   "tp_pct": 3.0,
+   "sl_pct": 3.0,
+   "given": [
+    "Z2379MA9"
+   ],
+   "runs_as": "Z2379MA9",
+   "why": "3.00% stop sits 100% of the way to liquidation (3.00% at 20x) — the venue would take the whole margin before the stop could fire"
+  },
+  {
+   "coin": "GPNSTOCK",
+   "tf": "4h",
+   "signal": "cci20",
+   "th": 0.0,
+   "tp_pct": 2.5,
+   "sl_pct": 2.5,
+   "given": [
+    "DBTHR9G7"
+   ],
+   "runs_as": "DBTHR9G7",
+   "why": "2.50% stop sits 83% of the way to liquidation (3.00% at 20x) — the venue would take the whole margin before the stop could fire"
+  },
+  {
+   "coin": "GPNSTOCK",
+   "tf": "1h",
+   "signal": "zscore20",
+   "th": 0.0,
+   "tp_pct": 2.5,
+   "sl_pct": 2.5,
+   "given": [
+    "HD5J9NJ4"
+   ],
+   "runs_as": "HD5J9NJ4",
+   "why": "2.50% stop sits 83% of the way to liquidation (3.00% at 20x) — the venue would take the whole margin before the stop could fire"
+  }
+ ]
+}

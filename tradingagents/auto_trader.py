@@ -1546,6 +1546,58 @@ _OPERATORS_V2_SEP24 = {
 STRATEGY_SPECS.update(_OPERATORS_V2_SEP24)
 STRATEGY_ORDER = STRATEGY_ORDER + tuple(_OPERATORS_V2_SEP24)
 
+# ---------------------------------------------------------------------------
+# THE OPERATOR'S 86 (Sep 25, 2026): *"undeploy my current live ttrade then
+# deploy these"* — 86 Backtest v2 ids, all flat (v2 keeps flat only since
+# Sep 24), replacing the 537 slots of v2-sep24. presets/v2-sep25.json is the
+# arming. 5 are refused by id there — GPNSTOCK 1h/4h stops of 2.50-3.00%
+# against its 3.00% liquidation wall at 20x — so 81 slots run on 64 keys:
+# 26 already existed with the identical spec, these 38 are new.
+# Generated from the measured rows, never typed, the same way as the Sep 24
+# block above (tests/test_the_v2_sep25_deploy_is_what_was_asked.py).
+_OPERATORS_V2_SEP25 = {
+    "cf_obretest_30m_sl05tp05": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.005, "sl": 0.005},
+    "cf_obretest_30m_sl12tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.012},
+    "cf_obretest_30m_sl12tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.012},
+    "cf_obretest_30m_sl15tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.015},
+    "cf_obretest_30m_sl2tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.02},
+    "crsi_15m_sl12tp12": {"interval": "Min15", "bar_seconds": 900, "tp": 0.012, "sl": 0.012},
+    "doji_1h_sl2tp2": {"interval": "Min60", "bar_seconds": 3600, "tp": 0.02, "sl": 0.02},
+    "ibs_4h_sl03tp04": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.004, "sl": 0.003},
+    "ibs_4h_sl05tp06": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.006, "sl": 0.005},
+    "ibs_4h_sl1tp1": {"interval": "Hour4", "bar_seconds": 14400, "tp": 0.01, "sl": 0.01},
+    "macddiv_30m_sl04tp05": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.005, "sl": 0.004},
+    "macddiv_30m_sl05tp05": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.005, "sl": 0.005},
+    "macddiv_30m_sl08tp08": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.008, "sl": 0.008},
+    "macddiv_30m_sl15tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.015},
+    "macddiv_30m_sl2tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.02},
+    "macddiv_30m_sl2tp25": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.025, "sl": 0.02},
+    "rsi14_15m_sl06tp06": {"interval": "Min15", "bar_seconds": 900, "tp": 0.006, "sl": 0.006},
+    "rsidiv_15m_sl03tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.003},
+    "rsidiv_15m_sl05tp06": {"interval": "Min15", "bar_seconds": 900, "tp": 0.006, "sl": 0.005},
+    "rsidiv_15m_sl08tp08": {"interval": "Min15", "bar_seconds": 900, "tp": 0.008, "sl": 0.008},
+    "rsidiv_15m_sl08tp1": {"interval": "Min15", "bar_seconds": 900, "tp": 0.01, "sl": 0.008},
+    "rsidiv_15m_sl08tp12": {"interval": "Min15", "bar_seconds": 900, "tp": 0.012, "sl": 0.008},
+    "rsidiv_15m_sl08tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.008},
+    "rsidiv_15m_sl12tp12": {"interval": "Min15", "bar_seconds": 900, "tp": 0.012, "sl": 0.012},
+    "rsidiv_15m_sl12tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.012},
+    "rsidiv_15m_sl12tp2": {"interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.012},
+    "rsidiv_15m_sl15tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.015},
+    "rsidiv_15m_sl15tp2": {"interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.015},
+    "rsidiv_15m_sl15tp25": {"interval": "Min15", "bar_seconds": 900, "tp": 0.025, "sl": 0.015},
+    "rsidiv_15m_sl1tp1": {"interval": "Min15", "bar_seconds": 900, "tp": 0.01, "sl": 0.01},
+    "rsidiv_15m_sl1tp12": {"interval": "Min15", "bar_seconds": 900, "tp": 0.012, "sl": 0.01},
+    "rsidiv_15m_sl1tp15": {"interval": "Min15", "bar_seconds": 900, "tp": 0.015, "sl": 0.01},
+    "ultosc_30m_sl2tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.02},
+    "vwaprev_30m_sl08tp08": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.008, "sl": 0.008},
+    "vwaprev_30m_sl08tp15": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.015, "sl": 0.008},
+    "vwaprev_30m_sl12tp12": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.012, "sl": 0.012},
+    "vwaprev_30m_sl1tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.01},
+    "zscore20_30m_sl1tp1": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.01, "sl": 0.01},
+}
+STRATEGY_SPECS.update(_OPERATORS_V2_SEP25)
+STRATEGY_ORDER = STRATEGY_ORDER + tuple(_OPERATORS_V2_SEP25)
+
 
 # ------------------------------------------------------------------ signals
 # Each takes plain OHLC lists of CLOSED bars and answers the direction the

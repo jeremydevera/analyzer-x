@@ -132,7 +132,21 @@ def land(formulas: dict, report: list, rows: dict, *, run_id=None) -> dict:
     if bad:
         raise ValueError(f"rows measured at res={bad[0]!r} cannot land in the "
                          f"v2 store (res={msw.FINE_TF!r})")
-    stray = sorted({k for k in rows if k not in attempted})
+    # THE KEEP RULE, AGAIN, where the rows land: a formula the run kept at a
+    # loss over its unseen period is not kept here (runs started before the
+    # learner enforced profit > 0 could hand one over), and its rows go with it
+    def _unseen_profit(f):
+        return ((f.get("learned") or {}).get("unseen") or {}).get("profit")
+
+    # only a RECORDED loss: a formula whose file carries no grade is not
+    # judged by a default that reads as data
+    losing = {n for n, f in formulas.items()
+              if _unseen_profit(f) is not None and float(_unseen_profit(f)) <= 0}
+    if losing:
+        formulas = {n: f for n, f in formulas.items() if n not in losing}
+        rows = {k: [r for r in rs if str(r.get("signal")) not in losing]
+                for k, rs in rows.items()}
+    stray = sorted({k for k in rows if k not in attempted and rows[k]})
     if stray:
         raise ValueError(f"rows for pairs the report does not account for: "
                          f"{stray[:5]}")

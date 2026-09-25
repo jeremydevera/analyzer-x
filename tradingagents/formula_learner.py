@@ -558,6 +558,11 @@ class Learner:
         for v, sp, sc, g in ranked:
             if v == float("-inf") or len(kept) >= KEEP:
                 break
+            if v <= 0:
+                # PROFITABLE on the unseen period, not only above break-even:
+                # funding can take a row with a good win rate below zero, and
+                # the keep rule is "made money where it was never learned"
+                continue
             # THE SAME TRADES WHERE IT IS STORED is the same formula. Two
             # specs that differed only in the learn period and signal alike in
             # the unseen window are one row set twice (GitHub run 36140580272:

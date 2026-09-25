@@ -517,3 +517,27 @@ def test_the_trade_log_says_which_way_the_candles_differ():
     assert "this PC's candles end ${trades.candles_last}" in block
     # the old sentence survives only as the OTHER branch, never unconditional
     assert block.index("trades?.candles_short") < block.rindex("the candle store has grown")
+
+
+def test_a_formula_that_lost_money_where_it_was_unseen_is_never_kept():
+    from tradingagents import formula_learner as fl
+
+    lr = _learner()
+    combo = {"join": "cascade", "legs": [{"trigger": "rsi14"}, {"trigger": "bb20"}]}
+    g = {"profit": -0.40, "trades": 30, "wins": 20, "losses": 10, "streak": -1.0,
+         "streak_len": 1}
+    sc = {"pnl": 10.0, "trades": 40, "wins": 30, "sl": 0.01, "tp": 0.02}
+    lr._nested_ok = lambda *a, **k: (True, {})
+    assert fl.is_confluence(combo)
+    assert lr._keep({"c": (-0.40, combo, sc, g)}) == []
+
+
+def test_the_collect_drops_a_losing_formula_and_its_rows(v2store):
+    msw, _ri, sl_, lc = v2store
+    f = {"lx_BTC_1h_1": {"coin": "BTC", "tf": "1h", "learned": {"unseen": {"profit": -1.2}}},
+         "lx_BTC_1h_2": {"coin": "BTC", "tf": "1h", "learned": {"unseen": {"profit": 3.4}}}}
+    rows = {("BTC", "1h"): [_row("BTC", "1h", "lx_BTC_1h_1"), _row("BTC", "1h", "lx_BTC_1h_2")]}
+    lc.land(f, [{"coin": "BTC", "tf": "1h"}], rows)
+    kept = json.loads(sl_.LEARNED_FILE.read_text(encoding="utf-8"))["formulas"]
+    assert set(kept) == {"lx_BTC_1h_2"}
+    assert {r["signal"] for r in msw.pair_rows("BTC", "1h")} == {"lx_BTC_1h_2"}

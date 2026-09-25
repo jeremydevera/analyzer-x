@@ -2520,6 +2520,11 @@ def resolve_row_code(code: str, *, pairs=None) -> dict:
 GROUPS = {
     "preset": {"label": "Preset Confluence"},
     "classic": {"label": "Classic", "negate": True},
+    # THE LEARNED FORMULAS, one set per coin and timeframe (signals_learned,
+    # formula_learner). Operator, Sep 25, 2026: *"when you complete the
+    # formula, create group 'Sep 25 Strat' when I filter thr group in
+    # backtest store so that I can filter it"*.
+    "sep25": {"label": "Sep 25 Strat"},
 }
 # The group as a RANGE on the signal name, not a LIKE.
 #
@@ -2547,12 +2552,30 @@ GROUPS = {
 # so a third family added later is one tuple entry, not four edits.
 PRESET_PREFIXES = ("cf_", "cx_")
 PRESET_LO, PRESET_HI = "cf_", "cf`"        # kept: the first range, by name
-_RANGES = [(p, p[:-1] + chr(ord(p[-1]) + 1)) for p in PRESET_PREFIXES]
+# the learned set ("Sep 25 Strat"): every name starts lx_ (signals_learned)
+LEARNED_PREFIXES = ("lx_",)
+# EVERY named family, by group. Classic is what belongs to NONE of them — so a
+# family added here leaves Classic by the same line that creates its group.
+# "Classic" answering with an lx_ row would be the false label RCA-2026-09-12
+# paid for with cx_ (see above).
+GROUP_PREFIXES = {"preset": PRESET_PREFIXES, "sep25": LEARNED_PREFIXES}
+
+
+def _ranges(prefixes) -> list:
+    return [(p, p[:-1] + chr(ord(p[-1]) + 1)) for p in prefixes]
+
+
+_RANGES = _ranges(PRESET_PREFIXES)
 PRESET_TERMS = "(" + " OR ".join(
     f"(signal >= '{lo}' AND signal < '{hi}')" for lo, hi in _RANGES) + ")"
+LEARNED_TERMS = "(" + " OR ".join(
+    f"(signal >= '{lo}' AND signal < '{hi}')"
+    for lo, hi in _ranges(LEARNED_PREFIXES)) + ")"
 CLASSIC_TERMS = "(" + " AND ".join(
-    f"(signal < '{lo}' OR signal >= '{hi}')" for lo, hi in _RANGES) + ")"
-GROUP_TERMS = {"preset": PRESET_TERMS, "classic": CLASSIC_TERMS}
+    f"(signal < '{lo}' OR signal >= '{hi}')"
+    for ps in GROUP_PREFIXES.values() for lo, hi in _ranges(ps)) + ")"
+GROUP_TERMS = {"preset": PRESET_TERMS, "classic": CLASSIC_TERMS,
+               "sep25": LEARNED_TERMS}
 
 # ONE PARTIAL INDEX PER (GROUP, ORDER) -- and only for `preset`.
 #
@@ -2590,6 +2613,14 @@ GROUP_INDEXES = {
                     f"({cols}) WHERE {PRESET_TERMS}")
     for k, cols in GROUP_SORT_COLS.items()
 }
+# the learned set is a few thousand rows among tens of millions: the same
+# partial-index shape, so "Sep 25 Strat" ranked by profit is a seek, not a
+# walk of the whole profit order testing every signal name
+GROUP_INDEXES.update({
+    ("sep25", k): (f"CREATE INDEX IF NOT EXISTS rows_lx_{k} ON rows "
+                   f"({cols}) WHERE {LEARNED_TERMS}")
+    for k, cols in GROUP_SORT_COLS.items()
+})
 # the superseded ones, dropped on sight so the file does not carry a stale
 # partial index of the same rows for ever
 GROUP_INDEXES_RETIRED = tuple(f"rows_cf_{k}" for k in GROUP_SORT_COLS)
@@ -2613,8 +2644,11 @@ def in_group(signal: str, group: str | None) -> bool:
     if group not in GROUPS:
         raise ValueError(f"unknown group {group!r}; use one of "
                          f"{', '.join(sorted(GROUPS))}")
-    is_preset = str(signal or "").startswith(PRESET_PREFIXES)
-    return (not is_preset) if GROUPS[group].get("negate") else is_preset
+    s = str(signal or "")
+    if GROUPS[group].get("negate"):
+        # Classic: in no named family at all
+        return not any(s.startswith(ps) for ps in GROUP_PREFIXES.values())
+    return s.startswith(GROUP_PREFIXES[group])
 
 
 def stamp_measured(con, rows: list) -> list:

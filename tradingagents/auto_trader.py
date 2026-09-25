@@ -1696,6 +1696,18 @@ def signal_for(key: str, high: list, low: list, close: list,
     from tradingagents.signals_ext import EXTRA_SIGNALS
     from tradingagents.signals_ext2 import EXTRA_SIGNALS2
 
+    # A LEARNED formula ("Sep 25 Strat", signals_learned): the same
+    # `dirs_for` the grid measured it with, last bar only. An unknown lx_
+    # name abstains — never falls through to a rule it only resembles.
+    if str(key).startswith("lx_"):
+        from tradingagents import signals_learned as _sl
+
+        _spec = _sl.spec_for(key)
+        if _spec is None:
+            return 0
+        dirs = _sl.dirs_for(_spec, opens or [], high, low, close, volume or [],
+                            ts or [], funding or [])
+        return dirs[-1] if dirs else 0
     # Same order as the backtest path. A rule the grid can pick and the runner
     # cannot emit is a strategy that trades zero times once deployed.
     for _name in sorted(CONF_SIGNALS, key=len, reverse=True):
@@ -3082,6 +3094,17 @@ def _dirs_for_backtest(key: str, high: list, low: list,
     """
     n = len(close)
     out = [0] * n
+    # A LEARNED formula ("Sep 25 Strat"): its spec, composed from the same
+    # ingredients this function computes (signals_learned.dirs_for). Checked
+    # first; an unknown lx_ name abstains rather than guessing.
+    if str(key).startswith("lx_"):
+        from tradingagents import signals_learned as _sl
+
+        _spec = _sl.spec_for(key)
+        if _spec is None:
+            return out
+        return _sl.dirs_for(_spec, opens or [], high, low, close, volume or [],
+                            ts or [], funding or [])
     # The expansion rules live in their own modules and are matched FIRST, by
     # the longest name, so `sr_break_x` cannot be swallowed by a shorter key.
     # The second registry (volume/session rules, 2026-08-19) outranks the

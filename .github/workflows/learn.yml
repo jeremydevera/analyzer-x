@@ -1,0 +1,106 @@
+name: Learned formulas (Sep 25 Strat)
+
+# The operator, Sep 25, 2026: a NEW set of formulas for every coin and each of
+# its timeframes, found by a research loop on that coin's own candle history
+# (tradingagents/formula_learner.py), TP strictly greater than SL, measured
+# like Backtest v2 (every exit settled minute by minute) and filterable as the
+# group "Sep 25 Strat". Public MEXC data only — no credentials are read.
+#
+# A SEPARATE workflow from sweep.yml on purpose: that file is at the ten-input
+# limit, its progress and claims are namespaced by run id so the two never
+# share a board, and a learned run must never write the market grid's
+# pair-done markers or saved positions (sweep_shard.run_pair(learned=...)).
+# The rows it produces are collected on the PC by
+# tradingagents/learn_collect.py, which MERGES them into the v2 store without
+# moving any pair's watermark.
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "How many runners to split the work across"
+        default: "20"
+      timeframes:
+        description: "Comma-separated timeframes to learn"
+        default: "15m,30m,1h,4h,1d"
+      coin_list:
+        description: "Comma-separated symbols (BTC_USDT,ETH_USDT); empty = the whole market"
+        default: ""
+      days:
+        description: "The unseen window in days (Backtest v2's window)"
+        default: "30"
+      base:
+        description: "Base margin $ per trade"
+        default: "5"
+
+permissions:
+  contents: write        # claims and progress on the sweep-progress branch
+  actions: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.mk.outputs.shards }}
+    steps:
+      - id: mk
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          n = int(os.environ["N"])
+          print("shards=" + json.dumps(list(range(n))))
+          PY
+        env:
+          N: ${{ github.event.inputs.shards }}
+
+  learn:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 350          # runners are killed at 6h; stop before that
+    strategy:
+      fail-fast: false            # one bad machine must not bin the others
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests numpy
+
+      - name: Learn shard ${{ matrix.shard }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ github.event.inputs.shards }}
+          TFS: ${{ github.event.inputs.timeframes }}
+          COIN_LIST: ${{ github.event.inputs.coin_list }}
+          DAYS: ${{ github.event.inputs.days }}
+          BASE_MARGIN: ${{ github.event.inputs.base }}
+        run: python .github/scripts/learn_shard.py
+
+      # always(): a machine stopped at the time limit still hands over every
+      # coin it finished — the files are rewritten after each coin
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: learn-rows-${{ matrix.shard }}
+          path: out/rows-*.jsonl
+          if-no-files-found: warn
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: learn-formulas-${{ matrix.shard }}
+          path: |
+            out/formulas-*.json
+            out/report-*.json
+          if-no-files-found: warn
+          retention-days: 30

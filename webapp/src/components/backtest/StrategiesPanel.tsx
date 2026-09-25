@@ -86,6 +86,9 @@ function Field({ label, hint, children }: {
  *  both the <select> and the chip that names it, so they cannot drift. */
 const GROUP_LABEL: Record<string, string> = {
   preset: "Preset Confluence", classic: "Classic",
+  // the learned formulas, one set per coin and timeframe (operator,
+  // Sep 25, 2026: "create group 'Sep 25 Strat'")
+  sep25: "Sep 25 Strat",
 };
 
 /** Which order a clicked header stands for. Built FROM STRATEGY_SORTS, so
@@ -418,7 +421,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
     asset: (f.asset || undefined) as "crypto" | "stocks" | undefined,
     sizing: f.sizing || undefined, rowId: f.rowId || undefined,
     measuredDays: f.measuredDays || undefined,
-    group: (f.group || undefined) as "preset" | "classic" | undefined,
+    group: (f.group || undefined) as "preset" | "classic" | "sep25" | undefined,
   });
   // the exact count for the filters it was counted for — never another set's
   // for five minutes: rows are filed while the page stays open, and the
@@ -842,8 +845,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
     f.coin || "all coins",
     f.tf || "all timeframes",
     f.signal || "all signals",
-    f.group === "preset" ? "group = Preset Confluence"
-      : f.group === "classic" ? "group = Classic" : "all groups",
+    f.group && GROUP_LABEL[f.group] ? `group = ${GROUP_LABEL[f.group]}` : "all groups",
     f.minTrades > 0 ? `min trades = ${f.minTrades}` : "any trades",
     f.minWinrate > 0 ? `min win % = ${f.minWinrate}` : "any win %",
     // the RANGES and the checkbox, in the same words their chips use — with
@@ -1382,6 +1384,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                   <option value="">all groups</option>
                   <option value="preset">{GROUP_LABEL.preset}</option>
                   <option value="classic">{GROUP_LABEL.classic}</option>
+                  <option value="sep25">{GROUP_LABEL.sep25}</option>
                 </select>
               </Field>
               <Field label="signal">

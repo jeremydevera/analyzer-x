@@ -71,7 +71,10 @@ def test_the_sql_and_the_python_agree_on_every_signal():
 def test_the_group_names_are_the_operators_words():
     assert ri.GROUPS["preset"]["label"] == "Preset Confluence"
     assert ri.GROUPS["classic"]["label"] == "Classic"
-    assert set(ri.GROUPS) == {"preset", "classic"}
+    # "Sep 25 Strat" — the learned formulas (operator, Sep 25, 2026: "create
+    # group 'Sep 25 Strat' when I filter thr group in backtest store")
+    assert ri.GROUPS["sep25"]["label"] == "Sep 25 Strat"
+    assert set(ri.GROUPS) == {"preset", "classic", "sep25"}
 
 
 @pytest.mark.parametrize("group,terms,sample_in,sample_out", [
@@ -199,9 +202,14 @@ def test_the_caption_names_the_active_group():
     i = src.index("const andLine")
     j = src.index("].join(\" AND \")", i)
     builder = src[i:j]
-    assert "group = Preset Confluence" in builder, \
+    # the group's name comes from GROUP_LABEL — the same map the <select>
+    # reads — so a third group (Sep 25 Strat) cannot be missing from the
+    # caption while it is in the dropdown
+    assert "group = ${GROUP_LABEL[f.group]}" in builder, \
         "the group must be a term in the caption's sentence"
-    assert "group = Classic" in builder
+    labels = src[src.index("const GROUP_LABEL"):src.index("};", src.index("const GROUP_LABEL"))]
+    for name in ("Preset Confluence", "Classic", "Sep 25 Strat"):
+        assert name in labels, name
     assert "all groups" in builder, "and the neutral case has to be named too"
     # the line is labelled "Filter:" since 2026-09-03 ("show the text
     # description on this part"), and the group is one of its chips

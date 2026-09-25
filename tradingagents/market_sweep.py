@@ -940,6 +940,26 @@ def _row_key(r: dict) -> str:
                      str(r.get("sizing")))
 
 
+def rewrite_pair_rows(coin: str, tf: str, change) -> list:
+    """Read, change and write one pair's rows under ONE hold of its lock.
+
+    `change(rows) -> rows`. For a caller that must replace part of a pair —
+    the learned-formula collect swaps a pair's `lx_` rows — where reading
+    before the lock would let a writer in between (the live door merging the
+    same pair) and lose its rows. `_pair_lock` is not re-entrant, so this
+    writes the file itself rather than calling save_pair_rows under the lock;
+    the store rule (`backtest_report.store_keeps`) is the same one."""
+    import tradingagents.backtest_report as br
+
+    ROWDIR.mkdir(parents=True, exist_ok=True)
+    with _pair_lock(coin, tf):
+        rows = [r for r in change(pair_rows(coin, tf)) if br.store_keeps(r)]
+        tmp = ROWDIR / f"{coin}-{tf}.json.tmp"
+        tmp.write_text(json.dumps(rows, separators=(",", ":")))
+        tmp.replace(ROWDIR / f"{coin}-{tf}.json")
+    return rows
+
+
 def merge_pair_rows(coin: str, tf: str, rows: list) -> int:
     """Write `rows` OVER whatever is stored for this pair, keeping the rest.
 
@@ -1192,7 +1212,12 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     for _sig in sigs:
         _ths = ((br.THRESHOLDS[tf][:thresholds] if thresholds < 3
                  else br.THRESHOLDS[tf]) if _sig in br.THRESH_SIGNALS else [None])
-        total_combos += len(_ths) * len(br.pairs_for(tf)) * 2
+        # a learned formula measures only TP > SL inside 80% of liquidation
+        # (below), so its total counts only those — a bar that stops short of
+        # 100% until the job snaps it there is a label disagreeing with its run
+        _pairs = [p for p in br.pairs_for(tf) if not str(_sig).startswith("lx_")
+                  or (p[1] > p[0] and (liq is None or p[0] * 100 < 0.8 * abs(liq)))]
+        total_combos += len(_ths) * len(_pairs) * 2
     worker_write(pair=f"{coin} {tf}", done=0, total=total_combos,
                  pct=0.0, state="starting")
     for sig in sigs:
@@ -1217,6 +1242,14 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
             for (sl, tp), sz in itertools.product(br.pairs_for(tf),
                                                   br.sizings_for(FINE_TF)):
                 if liq is not None and sl * 100 >= liq:
+                    continue
+                # A LEARNED formula ("Sep 25 Strat") keeps its own rule on
+                # every door — the GitHub run and a row's UPDATE button alike:
+                # TP strictly above SL, and the stop inside 80% of the
+                # liquidation distance (sweep_shard.run_pair(learned=...))
+                if str(sig).startswith("lx_") and (
+                        tp <= sl or (liq is not None
+                                     and sl * 100 >= 0.8 * abs(liq))):
                     continue
                 # THE COST GATE, WITH ONE EXEMPTION: a combination the
                 # operator is already running is ALWAYS measured. See

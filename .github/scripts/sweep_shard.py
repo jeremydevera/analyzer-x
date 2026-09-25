@@ -670,19 +670,35 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
     return kept
 
 
-def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
+class _Prefetched(Exception):
+    """Internal: the caller handed run_pair its candles and costs."""
+
+
+def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
+             learned=None):
     """Measure one pair. Rows are BUFFERED and written only when the pair
     completes, so a pair that raises leaves nothing behind to mix with its
     redo. A venue failure raises PairFailed for main() to requeue.
 
     In UPDATE mode a pair with a usable saved position is CONTINUED over its
     new bars only (continue_pair); anything else is measured in full, and
-    every pair leaves a saved position behind for the next run."""
+    every pair leaves a saved position behind for the next run.
+
+    `signals` / `learned` are for the LEARNED formulas ("Sep 25 Strat",
+    .github/scripts/learn_shard.py): measure only those names, from the
+    candles and costs the learner already fetched (`learned` = fee, liq,
+    fund, slip, df, fine), keep only TP strictly greater than SL with the
+    stop inside 80% of liquidation, and write rows only — no pair-done
+    marker, no saved position, no live post: those belong to the market
+    grid, and a learned run must never tell the store a pair was measured.
+    Both None is the market grid, byte for byte as before."""
     iv, bs, cap = br.TFS[tf]
     coin = sym.replace("_USDT", "")
     prior = None
     if MODE == "update":
-        path = PRIOR.get(f"{coin}-{tf}")
+        # a LEARNED measurement is always in full: it has no saved position,
+        # and continuing the market grid's would measure the wrong thing
+        path = PRIOR.get(f"{coin}-{tf}") if learned is None else None
         prior = None
         if path:
             try:
@@ -712,6 +728,8 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
     report("testing", i, n, rows=rows_so_far, span="",
            note=f"{sym.replace('_USDT', '')} {tf}: downloading candles")
     try:
+        if learned is not None:
+            raise _Prefetched
         fee = at.taker_fee(sym, fx=fx)
         liq = fx.liquidation_move_pct(sym, at.LEVERAGE)
         fund = fx.funding_history(sym)
@@ -761,6 +779,12 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                     .astype("int64"),
                     _np.asarray(m1["High"], dtype="float64"),
                     _np.asarray(m1["Low"], dtype="float64"))
+    except _Prefetched:
+        # the learner's own candles and costs — the ones it graded on
+        fee, liq, fund = learned["fee"], learned["liq"], learned["fund"]
+        slip, df, fine = learned["slip"], learned["df"], learned["fine"]
+        slips = [slip]
+        rt = br.round_trip_cost(fee, {"slippage": slip})
     except Exception as exc:
         raise PairFailed(f"{sym} {tf}: {str(exc)[:60]}") from exc
     df, warm = window(df)
@@ -822,9 +846,10 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
     # long". The bar count rides in the note; the span answers one question.
     span, span_ms = _span(df["Date"].iloc[0].timestamp() * 1000,
                           df["Date"].iloc[-1].timestamp() * 1000)
+    sigs = list(signals) if signals is not None else br.SIGNALS
     report("testing", i, n, rows=rows_so_far, span=span, span_ms=span_ms,
-           note=f"{coin} {tf}: {nbars:,} bars · {len(br.SIGNALS)} rules")
-    for si, sig in enumerate(br.SIGNALS, 1):
+           note=f"{coin} {tf}: {nbars:,} bars · {len(sigs)} rules")
+    for si, sig in enumerate(sigs, 1):
         key = f"{sig}_gh_{tf}"
         # EVERY threshold, exactly as market_sweep.run_pair does with
         # thresholds=3. Taking only the middle one made the cloud grid a third
@@ -857,6 +882,13 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                 if liq is not None and sl * 100 >= liq:
                     continue
                 if rt / tp >= GATE_BLOCK:
+                    continue
+                # a LEARNED formula: TP strictly above SL, and a stop inside
+                # 80% of the liquidation distance (the operator's own rule
+                # for this set, and STOP_LIQ_CEILING's)
+                if learned is not None and (
+                        tp <= sl or (liq is not None
+                                     and sl * 100 >= 0.8 * abs(liq))):
                     continue
                 # WHICH ENGINE, and why there are two.
                 #
@@ -996,7 +1028,12 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0):
                     kept += 1
         at.STRATEGY_SPECS.pop(key, None)
         report("testing", i, n, rows=rows_so_far + kept, span=span, span_ms=span_ms,
-               note=f"{coin} {tf}: rule {si}/{len(br.SIGNALS)} ({sig})")
+               note=f"{coin} {tf}: rule {si}/{len(sigs)} ({sig})")
+    if learned is not None:
+        # rows only: no marker, no saved position, no live post (docstring)
+        out.writelines(lines)
+        out.flush()
+        return kept
     # ONE MARKER PER MEASURED PAIR, rows or no rows. A thin coin whose every
     # combination fell under the trade floor wrote NOTHING, so the collect
     # could never know it was measured: ROAM_USDT 15m (35,764 bars) survived

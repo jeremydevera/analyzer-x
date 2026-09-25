@@ -475,3 +475,27 @@ def test_two_formulas_with_the_same_stored_trades_are_one(monkeypatch):
     lr._nested_ok = lambda *x, **k: (True, {})
     kept = lr._keep({"a": (43.41, a, sc, g), "b": (43.41, b, sc, dict(g))})
     assert len(kept) == 1
+
+
+def test_a_learned_key_reads_as_its_own_formula_everywhere(monkeypatch):
+    """local_history._sig_of is the one parser of a key's signal; an lx_ name
+    has three underscores and is not in backtest_report.SIGNALS, so the old
+    rule read it as `lx` and would have hashed an id no store holds. The
+    runner dispatches the same name (signal_for → signals_learned)."""
+    import tradingagents.auto_trader as at
+    from tradingagents import signals_learned as sl_
+    from tradingagents.local_history import _sig_of
+
+    spec = {**EVERY_KIND, "name": "lx_TEST_1h_1"}
+    sl_.register({"lx_TEST_1h_1": spec})
+    for key in ("lx_TEST_1h_1", "lx_TEST_1h_1_1h_sl10tp20", "lx_TEST_1h_1_gh_1h"):
+        assert _sig_of(key) == "lx_TEST_1h_1", key
+        assert sl_.spec_for(key)["name"] == "lx_TEST_1h_1"
+    # a name the file does not hold yet still reads by its fixed shape
+    assert _sig_of("lx_NEWCOIN_4h_2_4h_sl10tp30") == "lx_NEWCOIN_4h_2"
+    # and the runner fires exactly that formula for the key
+    fired = []
+    monkeypatch.setattr(sl_, "dirs_for", lambda s, *a, **k: fired.append(s["name"]) or [0])
+    bars = [1.0] * 50
+    at.signal_for("lx_TEST_1h_1_1h_sl10tp20", bars, bars, bars, bars, bars, list(range(50)))
+    assert fired == [_sig_of("lx_TEST_1h_1_1h_sl10tp20")]

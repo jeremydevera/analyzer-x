@@ -134,6 +134,22 @@ def _sig_of(key: str) -> str:
     reads exactly as it always did.
     """
     global _UNDERSCORED_SIGNALS
+    # A LEARNED formula ("Sep 25 Strat"): `lx_<COIN>_<tf>_<n>`, three
+    # underscores and never in backtest_report.SIGNALS, so the rule below
+    # would read it as `lx` and hash an id no store holds. Its own registry
+    # names it (the same one auto_trader.signal_for dispatches through); a
+    # name not in the file yet still reads by the fixed shape of the name.
+    if str(key).startswith("lx_"):
+        from tradingagents import signals_learned as _sl
+
+        spec = _sl.spec_for(key)
+        if spec and spec.get("name"):
+            return str(spec["name"])
+        import re as _re
+
+        m = _re.match(r"lx_[^_]+_[^_]+_\d+", str(key))
+        if m:
+            return m.group(0)
     if not _UNDERSCORED_SIGNALS:
         from tradingagents.backtest_report import SIGNALS
 

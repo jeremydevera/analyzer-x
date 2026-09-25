@@ -643,7 +643,7 @@ def _kept(r: dict) -> bool:
 
 
 def index_pair(path: Path, con: sqlite3.Connection | None = None, *,
-               fresh: bool = False, signals=None) -> int:
+               fresh: bool = False, signals=None, commit: bool = True) -> int:
     """(Re)index one pair file. Returns how many rows landed.
 
     `signals` re-files ONLY those rules of the pair and leaves the rest of the
@@ -685,11 +685,13 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None, *,
         _t = time.time
         t0 = _t()
         want = {str(s) for s in signals} if signals else None
-        if want:
+        if want and not fresh:
             # ONLY THESE RULES. `rows_pair` finds the pair; the filter picks
-            # its rules out. Never `fresh` with `signals`: the point is to
-            # replace what is there for those rules, including combinations
-            # the new measure no longer produces.
+            # its rules out. `fresh` with `signals` is for a caller that has
+            # PROVED none of these rules is in the table for this pair
+            # (learn_collect.file_learned): each delete walks the coin's whole
+            # block through rows_pair — ~13,000 rows read at random per rule —
+            # which on the operator's spinning G: was most of a pair's time.
             con.executemany("DELETE FROM rows WHERE pair = ? AND signal = ?",
                             [(pair, s) for s in sorted(want)])
         elif not fresh:
@@ -767,7 +769,15 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None, *,
                                         if r.get("signal")})),
                      combos, version, last_ms, st.st_mtime,
                      st.st_size + state_bytes))
-        con.commit()
+        # `commit=False` is for a caller that files MANY pairs on its own
+        # connection and commits in batches (learn_collect: ~1,300 pairs of a
+        # few hundred rows each). One transaction per pair on a 15 GB table
+        # with nine indexes measured ~20 s a pair on the spinning G: — the
+        # same "1.5 pairs a minute with the indexes in place" the bulk-load
+        # rule records — because every commit forces the scattered index
+        # pages out; a batch writes each page once.
+        if commit:
+            con.commit()
         if DEBUG:
             print(f"[rows-index]      delete {t1-t0:.2f}s  build {t2-t1:.2f}s  "
                   f"insert {t3-t2:.2f}s  commit {_t()-t3:.2f}s", flush=True)

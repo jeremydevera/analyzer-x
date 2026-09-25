@@ -84,6 +84,14 @@ def download(run_id: int, slug: str | None = None) -> Path:
     from tradingagents import cloud_sweep as cs
 
     root = Path(cs._scratch()) / f"learn-{run_id}"
+    # THIS RUN'S OWN SCRATCH, emptied first: `gh run download` refuses to
+    # write over files a previous attempt left ("file exists"), which is how
+    # the re-run of a stopped collect failed on Sep 25, 2026. Nothing but
+    # this run's unpacked artifacts lives here.
+    if root.exists():
+        import shutil
+
+        shutil.rmtree(root)
     root.mkdir(parents=True, exist_ok=True)
     cmd = ["gh", "run", "download", str(run_id), "-D", str(root),
            "-p", "learn-rows-*", "-p", "learn-formulas-*"]
@@ -117,7 +125,7 @@ def read_run(root: Path) -> tuple[dict, list, dict]:
 
 def land(formulas: dict, report: list, rows: dict, *, run_id=None) -> dict:
     """Write one run into the v2 store and the formula file. See module doc."""
-    from tradingagents import market_sweep as msw, rows_index as ri, signals_learned as sl_
+    from tradingagents import market_sweep as msw, signals_learned as sl_
     from tradingagents.positions_view import fmt_when
 
     if not _in_v2():
@@ -176,8 +184,10 @@ def land(formulas: dict, report: list, rows: dict, *, run_id=None) -> dict:
         encoding="utf-8")
     tmp.replace(sl_.LEARNED_FILE)
     sl_.reload()
-    # the rows, pair by pair
+    # the rows, pair by pair: FILES first (each under its lock), then ONE
+    # index pass in batches (see file_learned)
     landed = refiled = 0
+    to_file: list = []
     for coin, tf in sorted(attempted):
         new = rows.get((coin, tf), [])
         old_lx: set = set()
@@ -197,13 +207,70 @@ def land(formulas: dict, report: list, rows: dict, *, run_id=None) -> dict:
             continue
         landed += len(new)
         names = old_lx | {str(r["signal"]) for r in new}
-        refiled += ri.index_pair(msw.ROWDIR / f"{coin}-{tf}.json", signals=sorted(names))
+        to_file.append((msw.ROWDIR / f"{coin}-{tf}.json", sorted(names)))
+    refiled = file_learned(to_file)
     # the report, without the round-by-round detail
     slim = [{k: v for k, v in e.items() if k != "rounds_detail"} for e in report]
     REPORT_FILE.write_text(json.dumps({"run": run_id, "collected": fmt_when(time.time()),
                                        "report": slim}, indent=0), encoding="utf-8")
     return {"pairs": len(attempted), "formulas": len(formulas), "rows": landed,
             "indexed": refiled}
+
+
+# pairs per index transaction, and the page cache that lets a batch write each
+# scattered index page once instead of once per pair
+FILE_BATCH = 100
+FILE_CACHE_MB = 1024
+
+
+def file_learned(entries: list, log=print) -> int:
+    """Re-file the learned rules of many pairs in the v2 index, FILE_BATCH
+    pairs per transaction on one connection with a large page cache.
+
+    Pair by pair (index_pair's own commit) measured ~20 s a pair on the
+    operator's 15 GB table on a spinning disk — about seven hours for one
+    account's ~1,300 pairs — because each commit flushes pages of nine
+    indexes scattered across the file. Same rows, same deletes by pair and
+    signal, same `pairs` bookkeeping: only the commits are grouped. A crash
+    mid-way loses at most the open batch, and a re-run re-files it (the
+    files already hold the new rows; the delete-by-signal is idempotent)."""
+    import time as _t
+
+    from tradingagents import rows_index as ri
+
+    if not entries:
+        return 0
+    con = ri._connect()
+    n = 0
+    t0 = _t.time()
+    try:
+        con.execute(f"PRAGMA cache_size = -{FILE_CACHE_MB * 1024}")
+        # WHICH PAIRS ALREADY HAVE LEARNED ROWS FILED — one read of the small
+        # learned-rows slice (the rows_lx_* partial index serves it), instead
+        # of a delete per rule that walks each coin's ~13,000 rows to find
+        # nothing. A pair not in this set is filed `fresh` (no delete).
+        # INDEXED BY the partial index: left to itself the planner walked
+        # rows_pair — every row's key, 244.6 s on the operator's store — to
+        # find 68 pairs. Without that index (a new store) the plain query.
+        import sqlite3 as _sq
+
+        try:
+            filed_before = {r[0] for r in con.execute(
+                f"SELECT DISTINCT pair FROM rows INDEXED BY rows_lx_profit "
+                f"WHERE {ri.LEARNED_TERMS}")}
+        except _sq.OperationalError:
+            filed_before = {r[0] for r in con.execute(
+                f"SELECT DISTINCT pair FROM rows WHERE {ri.LEARNED_TERMS}")}
+        for i, (path, names) in enumerate(entries, 1):
+            n += ri.index_pair(path, con, signals=names, commit=False,
+                               fresh=path.stem not in filed_before)
+            if i % FILE_BATCH == 0 or i == len(entries):
+                con.commit()
+                log(f"filed {i:,} of {len(entries):,} pair(s), {n:,} row(s), "
+                    f"{_t.time() - t0:.0f}s")
+    finally:
+        con.close()
+    return n
 
 
 def collect(run_id: int, slug: str | None = None) -> dict:

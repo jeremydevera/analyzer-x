@@ -250,6 +250,11 @@ export interface TradesResult {
    *  "pair watermark" = an older row that predates `last_ms`, so the replay
    *  can be a trade or two out and the panel says so. */
   window_from?: string;
+  /** the row's own last bar, this PC's last candle, and whether the candles
+   *  stop short of the row (then the replay cannot match it) */
+  row_last?: string | null;
+  candles_last?: string;
+  candles_short?: boolean;
   bars?: number;
   first?: string;
   last?: string;

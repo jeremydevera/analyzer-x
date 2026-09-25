@@ -499,3 +499,21 @@ def test_a_learned_key_reads_as_its_own_formula_everywhere(monkeypatch):
     bars = [1.0] * 50
     at.signal_for("lx_TEST_1h_1_1h_sl10tp20", bars, bars, bars, bars, bars, list(range(50)))
     assert fired == [_sig_of("lx_TEST_1h_1_1h_sl10tp20")]
+
+
+def test_the_trade_log_says_which_way_the_candles_differ():
+    """RCA-2026-09-25-I: the drift warning said "the candle store has grown"
+    when this PC's candles were BEHIND the row (ETH 30m: candles to Sep 21
+    4:37pm, rows measured on GitHub to Sep 22 and Sep 25). The replay now
+    reports both ends and the warning is worded from them."""
+    ms = (REPO / "tradingagents/market_sweep.py").read_text(encoding="utf-8")
+    assert '"candles_short": bool(row_end and stored_end < row_end)' in ms
+    assert '"row_last": fmt_stamp(row_end / 1000) if row_end else None' in ms
+    src = (REPO / "webapp/src/components/backtest/StrategiesPanel.tsx").read_text(
+        encoding="utf-8")
+    i = src.index("These trades total")
+    block = src[i:i + 900]
+    assert "trades?.candles_short" in block
+    assert "this PC's candles end ${trades.candles_last}" in block
+    # the old sentence survives only as the OTHER branch, never unconditional
+    assert block.index("trades?.candles_short") < block.rindex("the candle store has grown")

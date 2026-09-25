@@ -1877,6 +1877,13 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     # Rows measured before `last_ms` existed fall back and can be a trade or
     # two out; the answer says which basis it used so a caller can say so.
     wm = row_end or int(load_states(coin, tf, root).get("__last_ms__") or 0)
+    # WHERE THIS PC'S CANDLES END, before the cut: a row measured on GitHub's
+    # fresher candles cannot be replayed past them, and the screen must say
+    # THAT rather than "the candle store has grown" (the reverse of what
+    # happened — found on Sep 25, 2026, ETH 30m: candles to Sep 21 4:37pm,
+    # rows measured to Sep 22 and Sep 25)
+    stored_end = int(df["Date"].to_numpy().astype("datetime64[ms]")
+                     .astype("int64")[-1])
     if wm:
         # A MASK, not a prefix slice, so the cut holds even if a cache ever
         # comes back out of order -- and the conversion goes through
@@ -1971,6 +1978,11 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
             "source": ("stored 1-minute candles, exits settled by the minute"
                        if fine is not None else "stored candles"),
             "window_from": "row" if row_end else "pair watermark",
+            # the row's own last bar and this PC's last candle: when the
+            # candles stop short of the row, the replay CANNOT match it
+            "row_last": fmt_stamp(row_end / 1000) if row_end else None,
+            "candles_last": fmt_stamp(stored_end / 1000),
+            "candles_short": bool(row_end and stored_end < row_end),
             "fee": fee, "fee_from": "row" if row_fee > 0 else "the venue today",
             # THE ONE DATE FORMAT (CLAUDE.md): this printed `2026-08-20 16:00`
             # — the banned compact stamp — in every trade log's source line

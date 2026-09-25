@@ -2176,8 +2176,14 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
           </div>
           {drift && (
             <p className="mb-2 text-theme-sm text-warning-600">
-              These trades total {fmtMoney(trades?.profit ?? logSum)} but the stored row says {fmtMoney(open.profit)} —
-              the candle store has grown since the row was measured. Run BACKTEST to refresh it.
+              These trades total {fmtMoney(trades?.profit ?? logSum)} but the stored row says {fmtMoney(open.profit)} —{" "}
+              {/* WHICH WAY the candles differ, from the replay's own facts:
+                  "the candle store has grown" was printed when this PC's
+                  candles were BEHIND the row (ETH 30m, Sep 25, 2026: candles
+                  to Sep 21 4:37pm, row measured to Sep 25) */}
+              {trades?.candles_short
+                ? `this PC's candles end ${trades.candles_last}, and the row was measured through ${trades.row_last}. Update the candles to replay every trade.`
+                : "the candle store has grown since the row was measured. Run BACKTEST to refresh it."}
             </p>
           )}
           {trades && trades.why && !trades.log.length && (

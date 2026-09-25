@@ -172,6 +172,74 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-25-I — the trade list blamed "the candle store has grown" when this PC's candles were behind the row
+
+**CEO**
+
+* Opening a Backtest v2 row could show a different result from the row itself
+  — #4YLMLU2J (ETH 30m) is stored at 28 trades and +$43.41, its trade list
+  showed 30 trades and +$28.04 — under a warning that said this PC's candles
+  had grown since the row was measured.
+* Why: the opposite had happened. GitHub measured the row on fresh candles;
+  this PC's own 1-minute candles stopped at Sep 21, 4:37pm, so the replay
+  could not reach the row's last days. The warning always gave the same
+  reason, whatever the real one was.
+* What stops it now: the trade list reports where this PC's candles end and
+  where the row was measured to, and the warning says which: "this PC's
+  candles end Sep 22, 2026 12:00am, and the row was measured through Sep 25,
+  2026 8:30pm. Update the candles to replay every trade."
+
+**DEV**
+
+* `webapp/src/components/backtest/StrategiesPanel.tsx` printed one fixed
+  sentence whenever the replayed total drifted from the stored one;
+  `market_sweep.trades_for` never said where the stored candles ended, only
+  where the replay window ended.
+* Invariant broken: **label-must-match-data** — an explanation is a label, and
+  it has to be derived from the facts it explains, not written once for the
+  case someone first imagined (a v1 row measured on this PC, whose candles
+  can only have grown since).
+* Guard: `tests/test_sep25_learned_formulas.py::test_the_trade_log_says_which_way_the_candles_differ`
+  (the replay's `row_last` / `candles_last` / `candles_short`, and the
+  warning's branch on them).
+
+**SAW** — while browser-testing the new "Sep 25 Strat" group, Sep 25, 2026:
+the first row, #4YLMLU2J lx_ETH_30m_1, opened to "30 trades 18 WIN 12 LOSE
+TOTAL +28.04 USDT" under "These trades total +28.04 but the stored row says
++43.41 — the candle store has grown since the row was measured."
+
+**TIMELINE**
+
+1. Sep 21, 2026 4:37pm — the last 1-minute ETH candle in this PC's v2 store.
+2. Sep 22, 2026 10:30pm — GitHub measures ETH 30m for the market grid
+   (#TC42BUFD bb20 SL1/TP3: 35 trades, +$35.76).
+3. Sep 25, 2026 8:30pm — the learned run measures lx_ETH_30m_1 (28 trades,
+   +$43.41).
+4. Sep 25, 2026 ~10:10pm — replayed here: bb20 35 trades +$33.30 (window
+   ends Sep 22 12:00am), lx_ETH_30m_1 30 trades +$28.04 — both drift, both
+   told "the candle store has grown".
+5. Fixed the same evening; the same replay now reports `candles_short: True`
+   with both dates, and the warning says the candles are behind.
+
+**ROOT CAUSE** — the warning's reason was a constant, written for one
+direction of drift, and nothing told the screen which direction it was.
+
+**WHY IT WAS NOT CAUGHT** — Backtest v1 rows are measured ON this PC, so its
+candles can only be at or past the row: the one sentence was always true for
+the case it was written for. Backtest v2 moved measuring to GitHub
+(Sep 21, 2026) and nobody re-read the warnings that assumed a local
+measurement. **When the thing that produces a number moves, re-read every
+sentence that explains the number.**
+
+**COST** — none in money; a wrong instruction ("Run BACKTEST") for a row
+whose fix is updating candles.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_sep25_learned_formulas.py::test_the_trade_log_says_which_way_the_candles_differ`.
+
+---
+
 ## RCA-2026-09-25-H — UPDATE THIS BACKTEST charged a 5am trading cost to every past trade, and two 94% strategies read 0 wins
 
 **CEO**

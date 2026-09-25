@@ -49,15 +49,20 @@ def said(tmp_path_factory):
         "const out = {};\n"
         f'for (const [k, j] of Object.entries(cases)) out[k] = rowUpdateSentence(j, "{WHEN}");\n'
         "console.log(JSON.stringify(out));\n", encoding="utf-8")
-    got = subprocess.run([node, str(probe)], capture_output=True, text=True)
+    got = subprocess.run([node, str(probe)], capture_output=True, text=True,
+                         encoding="utf-8")  # node prints UTF-8; the "—" must survive
     assert got.returncode == 0, got.stderr
     return json.loads(got.stdout.strip().splitlines()[-1])
 
 
 def test_a_finished_update_says_done_and_when(said):
+    """SHORT (operator, Sep 25, 2026: "i just want short if its done then
+    show 100% done finished at (speficic date and time)"); the counts are
+    still derived from the job, on hover (`detail`)."""
     t = said["done"]["text"]
-    assert t.startswith(f"Done at {WHEN}"), t
-    assert "200 strategies" in t and "CAKE 1h zscore20" in t and "220" in t, t
+    assert t == f"100% done — finished at {WHEN}", t
+    d = said["done"]["detail"]
+    assert "200 strategies" in d and "CAKE 1h zscore20" in d, d
     assert said["done"]["bad"] is False
 
 
@@ -69,7 +74,8 @@ def test_no_programmer_words_on_screen(said):
 
 def test_nothing_new_is_said_as_nothing_new(said):
     t = said["current"]["text"]
-    assert t.startswith(f"Done at {WHEN}") and "already up to date" in t, t
+    assert t == f"100% done — finished at {WHEN} · no new candles", t
+    assert "already up to date" in said["current"]["detail"].lower()
 
 
 def test_every_ending_carries_the_time(said):
@@ -80,7 +86,19 @@ def test_every_ending_carries_the_time(said):
 def test_a_failure_is_red_and_a_queue_is_not(said):
     assert said["failed"]["bad"] and said["unfiled"]["bad"]
     assert not said["queued"]["bad"], "queued is a wait, not a failure"
-    assert "next in line" in said["queued"]["text"]
+    assert "shows in the table shortly" in said["queued"]["text"]
+    assert "next in line" in said["queued"]["detail"]
+
+
+def test_a_finished_line_stays_short(said):
+    """No ending that worked runs past one short line — the cost note and the
+    counts are on hover. The failures keep their reason: a broken job may
+    not read "100% done"."""
+    for k in ("done", "current", "queued"):
+        assert said[k]["text"].startswith("100% done — finished at"), (k, said[k])
+        assert len(said[k]["text"]) <= 80, (k, said[k]["text"])
+    for k in ("failed", "unfiled"):
+        assert "100% done" not in said[k]["text"], (k, said[k])
 
 
 def _running_branch(src: str) -> str:

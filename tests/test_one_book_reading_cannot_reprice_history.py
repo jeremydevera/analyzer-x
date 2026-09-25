@@ -205,10 +205,13 @@ def test_the_finished_line_says_why_the_row_did_not_move(tmp_path):
         f"const cases = {json.dumps(cases)};\nconst out = {{}};\n"
         'for (const [k, j] of Object.entries(cases)) out[k] = rowUpdateSentence(j, "Sep 25, 2026 5:19pm");\n'
         "console.log(JSON.stringify(out));\n", encoding="utf-8")
-    got = subprocess.run([node, str(probe)], capture_output=True, text=True)
+    got = subprocess.run([node, str(probe)], capture_output=True, text=True,
+                         encoding="utf-8")  # node prints UTF-8; the "—" must survive
     assert got.returncode == 0, got.stderr
     said = json.loads(got.stdout.strip().splitlines()[-1])
-    assert said["note"]["text"].startswith("Done at Sep 25, 2026 5:19pm")
-    assert "$2.60" in said["note"]["text"]
-    assert "should not show" not in said["failed"]["text"]
-    assert "cost" not in said["plain"]["text"]
+    # the line stays SHORT (operator: "i just want short"); the cost that was
+    # not charged is said on hover
+    assert said["note"]["text"] == "100% done — finished at Sep 25, 2026 5:19pm"
+    assert "$2.60" in said["note"]["detail"]
+    assert "should not show" not in said["failed"]["text"] + said["failed"]["detail"]
+    assert "cost" not in said["plain"]["detail"]

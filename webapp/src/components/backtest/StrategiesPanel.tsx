@@ -2287,7 +2287,8 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                     const said = rowUpdateSentence(pairJob,
                       pairJob.finished ? fmtWhen(pairJob.finished) : "");
                     return (
-                      <span role="status" className={`text-theme-xs ${said.bad
+                      <span role="status" title={said.detail}
+                            className={`text-theme-xs ${said.bad
                         ? "text-error-500" : "text-success-600 dark:text-success-400"}`}>
                         {said.text}
                       </span>

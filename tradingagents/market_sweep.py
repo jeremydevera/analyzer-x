@@ -806,21 +806,29 @@ def save_costs(symbol: str, *, fee: float, liq, funding: list,
         pass
 
 
-def _rows_slippage(coin: str, tf: str, fee: float, root=None) -> float | None:
+def _rows_slippage(coin: str, tf: str, fee: float,
+                   root=None) -> tuple[float, float | None] | None:
     """The slippage this pair's STORED rows were charged — their most common
-    round trip, less the fee — or None. The seed for a contract with no
-    readings yet: the cost GitHub charged the coin's other rows is a reading
-    too, and the first local press must be compared with it, not alone."""
+    round trip, less the fee — and WHEN (the newest bar those rows measured,
+    in seconds; None if they do not say), or None. The seed for a contract
+    with no readings in the window: the cost GitHub charged the coin's other
+    rows is a reading too, and a press must be compared with it, not alone —
+    but only while it is recent, or a year-old cost would outvote today's."""
     from collections import Counter
 
-    rts = Counter()
+    rts: Counter = Counter()
+    last: dict = {}
     for r in pair_rows(coin, tf, root):
         if r.get("rt") is not None:
-            rts[(round(float(r["rt"]), 4), float(r.get("fee") or fee))] += 1
+            k = (round(float(r["rt"]), 4), float(r.get("fee") or fee))
+            rts[k] += 1
+            if r.get("last_ms"):
+                last[k] = max(last.get(k, 0), int(r["last_ms"]))
     if not rts:
         return None
     (rt_pct, row_fee), _n = rts.most_common(1)[0]
-    return max(0.0, rt_pct / 100.0 / 2.0 - row_fee)
+    at = last.get((rt_pct, row_fee))
+    return max(0.0, rt_pct / 100.0 / 2.0 - row_fee), (at / 1000 if at else None)
 
 
 def charge_cost(symbol: str, fresh: float, *, fee: float, coin: str | None = None,
@@ -835,14 +843,24 @@ def charge_cost(symbol: str, fresh: float, *, fee: float, coin: str | None = Non
     import tradingagents.backtest_report as br
 
     got = load_costs(symbol, root) or {}
-    readings = [r for r in (got.get("readings") or [])
+    now = time.time()
+    # THE LAST COST_WINDOW_S OF READINGS, by the clock — never "the last N":
+    # two presses in one quiet hour are one piece of evidence, not two
+    # (the browser test's second press, Sep 25, 2026 6:36pm). A reading
+    # saved without a time is stamped now and ages out like the rest.
+    readings = [{**r, "at": r.get("at") or now}
+                for r in (got.get("readings") or [])
                 if isinstance(r, dict) and r.get("slippage") is not None]
+    readings = [r for r in readings if now - float(r["at"]) <= br.COST_WINDOW_S]
     if not readings and coin and tf:
         seed = _rows_slippage(coin, tf, fee, root)
-        if seed is not None:
-            readings = [{"at": None, "slippage": seed, "from": "stored rows"}]
-    readings = [*readings, {"at": time.time(), "slippage": float(fresh),
-                            "from": "the exchange"}][-br.COST_READINGS:]
+        # dated by the rows' own newest bar: rows older than the window are
+        # not today's evidence (rows that do not say when count as now)
+        if seed is not None and now - (seed[1] or now) <= br.COST_WINDOW_S:
+            readings = [{"at": seed[1] or now, "slippage": seed[0],
+                         "from": "stored rows"}]
+    readings = [*readings, {"at": now, "slippage": float(fresh),
+                            "from": "the exchange"}][-200:]
     charged = br.charged_slippage([r["slippage"] for r in readings])
     return (float(fresh) if charged is None else charged), readings
 

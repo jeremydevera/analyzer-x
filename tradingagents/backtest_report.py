@@ -945,27 +945,44 @@ def write_report(path: str, payload: dict, *, title: str, headline: str = "",
 # charged — so every +$1.20 win booked -$1.40 and the row went from 94% to 0
 # wins. #7X9R59U8 (GPNSTOCK 30m prank) the same minute: $3.59 against $0.20,
 # 0 wins of 75. One reading is one minute of one day; a backtest spans weeks.
-COST_READINGS = 5
+#
+# THE FIRST VERSION OF THIS RULE COUNTED PRESSES, and that was wrong. It took
+# the lower middle of the last five readings, so "three in a row" meant the
+# stored rows' cost plus TWO presses — and the browser test pressed UPDATE on
+# #9GNPMXFF again at 6:36pm, still 6:36am in New York, and the row went back
+# to 0 wins of 71. Two readings in one quiet stretch are not two pieces of
+# evidence. The rule is now about the BOOK'S USUAL STATE over a span of days:
+# a reading far above the cheapest one in that span is a quiet-hour spike and
+# is never charged, however many times it is read.
+COST_READINGS = 10                 # GitHub: the last runs' readings kept
+COST_WINDOW_S = 14 * 86_400        # this PC: the readings of the last 14 days
+SPIKE_X = 3.0                      # "far above" = 3x the cheapest reading...
+SPIKE_ABS = 0.0005                 # ...and at least 0.05% a side more
 
 
 def charged_slippage(readings) -> float | None:
-    """The slippage a backtest CHARGES: the LOWER MIDDLE of the contract's
-    last `COST_READINGS` book readings (fractions per side).
+    """The slippage a backtest CHARGES from a contract's own recent book
+    readings (fractions per side): the middle of the ordinary ones, with every
+    SPIKE left out — a reading more than `SPIKE_X` times the cheapest (and
+    `SPIKE_ABS` above it).
 
-    One quiet-hour spike cannot move it — [0.0001, 0.0122] charges 0.0001 —
-    but a book that really went thin is believed once it repeats: three
-    readings of 0.0122 after one of 0.0001 charge 0.0122. Lower rather than
-    plain median because a real trade is only placed when the book is not at
-    its widest: the runner re-reads the book before every entry and refuses
-    a cost that eats the target (`edge_check`, `gate_blocked`), so the cost a
-    filled trade pays is the ordinary one, not the 5am one. None when there
-    is no reading at all.
+    [0.0001, 0.0122, 0.0122, 0.0122] charges 0.0001 however many times the
+    closed-market book is read. A coin that really went thin shows it once its
+    cheap readings age out of the window (`COST_WINDOW_S`): then every
+    reading is high, none is a spike, and the high cost is charged.
+
+    Why spikes are not a cost a trade pays: the runner re-reads the book
+    before every entry and refuses one that eats the target (`edge_check`,
+    `gate_blocked`) — a trade only FILLS when the book is ordinary. None when
+    there is no reading at all.
     """
-    vals = sorted(float(x) for x in list(readings or [])[-COST_READINGS:]
+    vals = sorted(float(x) for x in list(readings or [])
                   if x is not None and float(x) >= 0)
     if not vals:
         return None
-    return vals[(len(vals) - 1) // 2]
+    ceiling = max(vals[0] * SPIKE_X, vals[0] + SPIKE_ABS)
+    usual = [v for v in vals if v <= ceiling]
+    return usual[(len(usual) - 1) // 2]
 
 
 def cost_note(fee: float, fresh: float, charged: float) -> str:
@@ -979,7 +996,8 @@ def cost_note(fee: float, fresh: float, charged: float) -> str:
     return (f"the exchange's cost right now is ${fresh_rt:.2f} a $100 trade — "
             f"far above this coin's usual ${usual_rt:.2f}, likely a quiet hour "
             f"(a stock coin outside US market hours), so it was not charged; "
-            f"it is kept, and if it repeats it will be")
+            f"it is kept, and if the coin stays this expensive for "
+            f"{COST_WINDOW_S // 86_400} days it will be")
 
 
 def round_trip_cost(fee: float, book: dict) -> float:

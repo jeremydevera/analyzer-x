@@ -30,11 +30,13 @@ def test_one_spike_is_not_charged_but_a_repeated_one_is():
     from tradingagents import backtest_report as br
 
     assert br.charged_slippage([USUAL, SPIKE]) == pytest.approx(USUAL)
-    assert br.charged_slippage([USUAL, SPIKE, SPIKE]) == pytest.approx(SPIKE), \
-        "a book that really went thin must be believed once it repeats"
-    # only the last COST_READINGS count: old cheap readings age out
-    old = [USUAL] * 10 + [SPIKE] * br.COST_READINGS
-    assert br.charged_slippage(old) == pytest.approx(SPIKE)
+    # HOWEVER MANY TIMES the closed-market book is read (the first version
+    # believed it on the second press — found by the browser test, 6:36pm)
+    assert br.charged_slippage([USUAL] + [SPIKE] * 9) == pytest.approx(USUAL)
+    # a coin that is expensive in EVERY reading pays it
+    assert br.charged_slippage([SPIKE, SPIKE * 1.1]) == pytest.approx(SPIKE)
+    # ordinary variation is not a spike: the middle of the ordinary readings
+    assert br.charged_slippage([0.0001, 0.0002, 0.00025]) == pytest.approx(0.0002)
     assert br.charged_slippage([]) is None
     assert br.charged_slippage([None, 0.0003]) == pytest.approx(0.0003)
 
@@ -81,17 +83,45 @@ def test_the_press_that_failed_now_charges_the_coins_usual_cost(kkr):
     assert br.round_trip_cost(FEE, {"slippage": charged}) * 100 == pytest.approx(0.1803)
 
 
-def test_the_readings_are_kept_so_a_real_change_is_believed(kkr):
+def _press(msw, fresh=SPIKE):
+    charged, readings = msw.charge_cost("KKRSTOCK_USDT", fresh, fee=FEE,
+                                        coin="KKRSTOCK", tf="15m")
+    msw.save_costs("KKRSTOCK_USDT", fee=FEE, liq=3.0, funding=[],
+                   slippage=charged, readings=readings)
+    return charged
+
+
+def test_pressing_again_in_the_same_quiet_hour_stays_right(kkr):
+    """The browser test's own sequence: UPDATE at 6:15pm, UPDATE again at
+    6:36pm, both while New York was shut. The first version of the rule
+    charged the spike on the second press and #9GNPMXFF read 0 wins of 71."""
     msw = kkr
-    for _ in range(3):
-        charged, readings = msw.charge_cost("KKRSTOCK_USDT", SPIKE, fee=FEE,
-                                            coin="KKRSTOCK", tf="15m")
-        msw.save_costs("KKRSTOCK_USDT", fee=FEE, liq=3.0, funding=[],
-                       slippage=charged, readings=readings)
+    for _ in range(6):
+        assert _press(msw) == pytest.approx(USUAL, abs=1e-9)
     saved = msw.load_costs("KKRSTOCK_USDT")
-    assert len(saved["readings"]) == 4
-    assert saved["slippage"] == pytest.approx(SPIKE), \
-        "three spikes in a row is the book, not the hour"
+    assert len(saved["readings"]) == 7, "every reading is kept, only not charged"
+    assert saved["slippage"] == pytest.approx(USUAL, abs=1e-9)
+
+
+def test_a_coin_that_really_went_thin_pays_once_its_cheap_readings_age_out(kkr):
+    import time
+
+    from tradingagents import backtest_report as br
+
+    msw = kkr
+    _press(msw)                                        # seeds USUAL + one spike
+    saved = msw.load_costs("KKRSTOCK_USDT")
+    old = time.time() - br.COST_WINDOW_S - 3600        # both past the window
+    # and the stored rows themselves measured before it: a year-old cost
+    # must not outvote today's book (the seed is dated by the rows' last bar)
+    rows = json.loads((msw.ROWDIR / "KKRSTOCK-15m.json").read_text(encoding="utf-8"))
+    (msw.ROWDIR / "KKRSTOCK-15m.json").write_text(
+        json.dumps([{**r, "last_ms": int(old * 1000)} for r in rows]), encoding="utf-8")
+    msw.save_costs("KKRSTOCK_USDT", fee=FEE, liq=3.0, funding=[],
+                   slippage=saved["slippage"],
+                   readings=[{**r, "at": old} for r in saved["readings"]])
+    assert _press(msw) == pytest.approx(SPIKE), \
+        "fourteen days of nothing but a thin book is the coin, not the hour"
 
 
 def test_the_cost_file_every_30_day_recheck_reads_holds_the_charged_cost(kkr):

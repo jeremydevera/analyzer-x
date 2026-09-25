@@ -185,9 +185,13 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
   the last 38 days — so every win turned into a loss. The same number was
   saved as the coin's cost, which every "last 30 days" check of those coins
   reads.
-* What stops it now: each coin keeps its last five cost readings and is
-  charged the ordinary one; one quiet-hour spike is kept but not charged
-  (three in a row are believed), and the finished line says so in dollars.
+* What stops it now: each coin keeps its cost readings of the last 14 days
+  and is charged the ordinary one; a reading far above the cheapest is a
+  quiet-hour spike and is never charged, however many times it is read — a
+  coin only pays a high cost once it has been high for 14 days straight. The
+  finished line says so in dollars. (The first version counted presses, and
+  a second press in the same quiet hour broke the row again — the browser
+  test caught it before this was reported as done.)
 
 **DEV**
 
@@ -230,6 +234,16 @@ closed by TP and marked LOSE (-1.59), under "the stored row says +102.80".
 6. After the fix, the same inputs charge 0.0101% a side (round trip 0.1803%,
    the rows' own figure), and the finished line reads "the exchange's cost
    right now is $2.60 a $100 trade — far above this coin's usual $0.18 …".
+   Re-pressed at 6:15pm and 6:21pm: #9GNPMXFF 71 trades, 66 wins, +$60.43;
+   #7X9R59U8 75 trades, 70 wins, +$114.78.
+7. `Sep 25, 2026 6:36pm` — the operator asked for a browser test. Playwright
+   pressed UPDATE on #9GNPMXFF again (still 6:36am in New York) and the row
+   went back to 71 trades, 0 wins, -$111.28. The first rule took "the lower
+   middle of the last five readings", so the rows' cost plus TWO presses was
+   "three in a row" and the spike was believed. Two readings in one quiet
+   stretch are one piece of evidence. Rule replaced: readings of the last
+   14 days (`COST_WINDOW_S`), spikes (over 3x the cheapest and 0.05% above
+   it) never charged; the rows' seed is dated by their own last bar.
 
 **ROOT CAUSE** — one reading of a live order book, taken at whatever minute a
 button was pressed, was treated as the cost of every trade in weeks of

@@ -1,0 +1,881 @@
+{
+ "about": "Sep 25 Strat \u2014 learned formulas, one set per coin and timeframe (tradingagents/formula_learner.py)",
+ "run": 36140580272,
+ "collected": "Sep 25, 2026 9:30pm",
+ "formulas": {
+  "lx_BTC_1h_1": {
+   "name": "lx_BTC_1h_1",
+   "coin": "BTC",
+   "tf": "1h",
+   "join": "cascade",
+   "legs": [
+    {
+     "trigger": "stoch14",
+     "confirm": []
+    },
+    {
+     "trigger": "vwaprev",
+     "confirm": []
+    }
+   ],
+   "tp": 0.04,
+   "sl": 0.015,
+   "learned": {
+    "unseen": {
+     "profit": 13.46,
+     "trades": 13,
+     "wins": 7,
+     "losses": 6,
+     "streak": -6.56,
+     "streak_len": 4,
+     "winrate": 53.85
+    },
+    "learn": {
+     "pnl": 45.07,
+     "trades": 108,
+     "wins": 41,
+     "sl": 0.015,
+     "tp": 0.04
+    },
+    "nested": {
+     "90d": {
+      "trades": 33,
+      "pnl": 29.73
+     },
+     "180d": {
+      "trades": 89,
+      "pnl": 57.77
+     },
+     "full": {
+      "trades": 118,
+      "pnl": 59.13
+     }
+    },
+    "breakeven_winrate": 30.18,
+    "cost_of_tp": 4.0,
+    "describe": "stoch14 \u00b7 else vwaprev"
+   }
+  },
+  "lx_BTC_1h_2": {
+   "name": "lx_BTC_1h_2",
+   "coin": "BTC",
+   "tf": "1h",
+   "join": "cascade",
+   "legs": [
+    {
+     "trigger": "cx_first",
+     "confirm": [
+      {
+       "k": "volx",
+       "x": 2.0
+      }
+     ]
+    },
+    {
+     "trigger": "vwaprev",
+     "confirm": []
+    }
+   ],
+   "tp": 0.04,
+   "sl": 0.015,
+   "learned": {
+    "unseen": {
+     "profit": 5.52,
+     "trades": 10,
+     "wins": 4,
+     "losses": 6,
+     "streak": -6.73,
+     "streak_len": 4,
+     "winrate": 40.0
+    },
+    "learn": {
+     "pnl": 58.71,
+     "trades": 85,
+     "wins": 37,
+     "sl": 0.015,
+     "tp": 0.04
+    },
+    "nested": {
+     "90d": {
+      "trades": 30,
+      "pnl": 10.7
+     },
+     "180d": {
+      "trades": 74,
+      "pnl": 58.66
+     },
+     "full": {
+      "trades": 94,
+      "pnl": 69.46
+     }
+    },
+    "breakeven_winrate": 30.18,
+    "cost_of_tp": 4.0,
+    "describe": "cx_first + volume 2.0x its average \u00b7 else vwaprev"
+   }
+  },
+  "lx_BTC_30m_1": {
+   "name": "lx_BTC_30m_1",
+   "coin": "BTC",
+   "tf": "30m",
+   "join": "and",
+   "legs": [
+    {
+     "trigger": "emacross",
+     "confirm": [
+      {
+       "k": "veto",
+       "sig": "crsi"
+      }
+     ]
+    }
+   ],
+   "tp": 0.03,
+   "sl": 0.015,
+   "learned": {
+    "unseen": {
+     "profit": 9.25,
+     "trades": 14,
+     "wins": 7,
+     "losses": 7,
+     "streak": -4.97,
+     "streak_len": 3,
+     "winrate": 50.0
+    },
+    "learn": {
+     "pnl": 45.27,
+     "trades": 83,
+     "wins": 41,
+     "sl": 0.015,
+     "tp": 0.03
+    },
+    "nested": {
+     "90d": {
+      "trades": 33,
+      "pnl": 27.33
+     },
+     "180d": {
+      "trades": 80,
+      "pnl": 34.81
+     },
+     "full": {
+      "trades": 96,
+      "pnl": 48.75
+     }
+    },
+    "breakeven_winrate": 36.89,
+    "cost_of_tp": 5.3,
+    "describe": "emacross + unless crsi disagrees"
+   }
+  },
+  "lx_BTC_30m_2": {
+   "name": "lx_BTC_30m_2",
+   "coin": "BTC",
+   "tf": "30m",
+   "join": "and",
+   "legs": [
+    {
+     "trigger": "nr7",
+     "confirm": [
+      {
+       "k": "veto",
+       "sig": "mfi14"
+      }
+     ]
+    }
+   ],
+   "tp": 0.03,
+   "sl": 0.02,
+   "learned": {
+    "unseen": {
+     "profit": 5.32,
+     "trades": 17,
+     "wins": 8,
+     "losses": 9,
+     "streak": -6.45,
+     "streak_len": 3,
+     "winrate": 47.06
+    },
+    "learn": {
+     "pnl": 45.46,
+     "trades": 102,
+     "wins": 53,
+     "sl": 0.02,
+     "tp": 0.03
+    },
+    "nested": {
+     "90d": {
+      "trades": 41,
+      "pnl": 8.25
+     },
+     "180d": {
+      "trades": 91,
+      "pnl": 40.25
+     },
+     "full": {
+      "trades": 118,
+      "pnl": 51.93
+     }
+    },
+    "breakeven_winrate": 43.2,
+    "cost_of_tp": 5.3,
+    "describe": "nr7 + unless mfi14 disagrees"
+   }
+  },
+  "lx_BTC_30m_3": {
+   "name": "lx_BTC_30m_3",
+   "coin": "BTC",
+   "tf": "30m",
+   "join": "and",
+   "legs": [
+    {
+     "trigger": "insidebrk",
+     "confirm": [
+      {
+       "k": "veto",
+       "sig": "vwaprev"
+      }
+     ]
+    }
+   ],
+   "tp": 0.03,
+   "sl": 0.02,
+   "learned": {
+    "unseen": {
+     "profit": 4.25,
+     "trades": 13,
+     "wins": 6,
+     "losses": 7,
+     "streak": -4.41,
+     "streak_len": 3,
+     "winrate": 46.15
+    },
+    "learn": {
+     "pnl": 48.57,
+     "trades": 90,
+     "wins": 49,
+     "sl": 0.02,
+     "tp": 0.03
+    },
+    "nested": {
+     "90d": {
+      "trades": 34,
+      "pnl": 18.6
+     },
+     "180d": {
+      "trades": 81,
+      "pnl": 37.08
+     },
+     "full": {
+      "trades": 102,
+      "pnl": 46.72
+     }
+    },
+    "breakeven_winrate": 43.2,
+    "cost_of_tp": 5.3,
+    "describe": "insidebrk + unless vwaprev disagrees"
+   }
+  },
+  "lx_ETH_15m_1": {
+   "name": "lx_ETH_15m_1",
+   "coin": "ETH",
+   "tf": "15m",
+   "join": "and",
+   "legs": [
+    {
+     "trigger": "crsi",
+     "confirm": [
+      {
+       "k": "session",
+       "h0": 12,
+       "len": 6
+      },
+      {
+       "k": "veto",
+       "sig": "cf_soup"
+      },
+      {
+       "k": "veto",
+       "sig": "cf_mom_l1"
+      }
+     ]
+    }
+   ],
+   "tp": 0.02,
+   "sl": 0.015,
+   "learned": {
+    "unseen": {
+     "profit": 3.67,
+     "trades": 21,
+     "wins": 11,
+     "losses": 10,
+     "streak": -6.61,
+     "streak_len": 4,
+     "winrate": 52.38
+    },
+    "learn": {
+     "pnl": 41.04,
+     "trades": 106,
+     "wins": 62,
+     "sl": 0.015,
+     "tp": 0.02
+    },
+    "nested": {
+     "90d": {
+      "trades": 56,
+      "pnl": 15.54
+     },
+     "180d": {
+      "trades": 108,
+      "pnl": 41.22
+     },
+     "full": {
+      "trades": 127,
+      "pnl": 44.68
+     }
+    },
+    "breakeven_winrate": 47.43,
+    "cost_of_tp": 8.0,
+    "describe": "crsi + only 12:00-18:00 UTC + unless cf_soup disagrees + unless cf_mom_l1 disagrees"
+   }
+  },
+  "lx_ETH_15m_2": {
+   "name": "lx_ETH_15m_2",
+   "coin": "ETH",
+   "tf": "15m",
+   "join": "and",
+   "legs": [
+    {
+     "trigger": "ultosc",
+     "confirm": [
+      {
+       "k": "stretch",
+       "x": 1.0
+      }
+     ]
+    }
+   ],
+   "tp": 0.025,
+   "sl": 0.01,
+   "learned": {
+    "unseen": {
+     "profit": 2.41,
+     "trades": 10,
+     "wins": 4,
+     "losses": 6,
+     "streak": -5.77,
+     "streak_len": 5,
+     "winrate": 40.0
+    },
+    "learn": {
+     "pnl": 19.18,
+     "trades": 77,
+     "wins": 31,
+     "sl": 0.01,
+     "tp": 0.025
+    },
+    "nested": {
+     "90d": {
+      "trades": 34,
+      "pnl": 6.06
+     },
+     "180d": {
+      "trades": 76,
+      "pnl": 20.34
+     },
+     "full": {
+      "trades": 87,
+      "pnl": 21.58
+     }
+    },
+    "breakeven_winrate": 33.14,
+    "cost_of_tp": 6.4,
+    "describe": "ultosc + price 1.0 ATR from its average"
+   }
+  },
+  "lx_ETH_1h_1": {
+   "name": "lx_ETH_1h_1",
+   "coin": "ETH",
+   "tf": "1h",
+   "join": "cascade",
+   "legs": [
+    {
+     "trigger": "cx_veto",
+     "confirm": [
+      {
+       "k": "trend",
+       "n": 200,
+       "side": "against"
+      }
+     ]
+    },
+    {
+     "trigger": "engulf",
+     "confirm": [
+      {
+       "k": "veto",
+       "sig": "fvg"
+      }
+     ]
+    }
+   ],
+   "tp": 0.05,
+   "sl": 0.025,
+   "learned": {
+    "unseen": {
+     "profit": 9.96,
+     "trades": 12,
+     "wins": 6,
+     "losses": 6,
+     "streak": -5.3,
+     "streak_len": 2,
+     "winrate": 50.0
+    },
+    "learn": {
+     "pnl": 91.91,
+     "trades": 91,
+     "wins": 45,
+     "sl": 0.025,
+     "tp": 0.05
+    },
+    "nested": {
+     "90d": {
+      "trades": 33,
+      "pnl": 44.07
+     },
+     "180d": {
+      "trades": 82,
+      "pnl": 71.23
+     },
+     "full": {
+      "trades": 101,
+      "pnl": 103.19
+     }
+    },
+    "breakeven_winrate": 35.47,
+    "cost_of_tp": 3.2,
+    "describe": "cx_veto + against the 200-bar trend \u00b7 else engulf + unless fvg disagrees"
+   }
+  },
+  "lx_ETH_1h_2": {
+   "name": "lx_ETH_1h_2",
+   "coin": "ETH",
+   "tf": "1h",
+   "join": "cascade",
+   "legs": [
+    {
+     "trigger": "engulf",
+     "confirm": [
+      {
+       "k": "veto",
+       "sig": "fvg"
+      }
+     ]
+    },
+    {
+     "trigger": "cx_veto",
+     "confirm": [
+      {
+       "k": "trend",
+       "n": 200,
+       "side": "against"
+      }
+     ]
+    }
+   ],
+   "tp": 0.05,
+   "sl": 0.025,
+   "learned": {
+    "unseen": {
+     "profit": 9.96,
+     "trades": 12,
+     "wins": 6,
+     "losses": 6,
+     "streak": -5.3,
+     "streak_len": 2,
+     "winrate": 50.0
+    },
+    "learn": {
+     "pnl": 87.07,
+     "trades": 90,
+     "wins": 44,
+     "sl": 0.025,
+     "tp": 0.05
+    },
+    "nested": {
+     "90d": {
+      "trades": 32,
+      "pnl": 39.23
+     },
+     "180d": {
+      "trades": 81,
+      "pnl": 66.39
+     },
+     "full": {
+      "trades": 100,
+      "pnl": 98.35
+     }
+    },
+    "breakeven_winrate": 35.47,
+    "cost_of_tp": 3.2,
+    "describe": "engulf + unless fvg disagrees \u00b7 else cx_veto + against the 200-bar trend"
+   }
+  },
+  "lx_ETH_30m_1": {
+   "name": "lx_ETH_30m_1",
+   "coin": "ETH",
+   "tf": "30m",
+   "join": "cascade",
+   "legs": [
+    {
+     "trigger": "sweep30",
+     "confirm": [
+      {
+       "k": "stretch",
+       "x": 2.0
+      }
+     ]
+    },
+    {
+     "trigger": "pivot",
+     "confirm": []
+    }
+   ],
+   "tp": 0.03,
+   "sl": 0.015,
+   "learned": {
+    "unseen": {
+     "profit": 43.41,
+     "trades": 28,
+     "wins": 20,
+     "losses": 8,
+     "streak": -3.33,
+     "streak_len": 2,
+     "winrate": 71.43
+    },
+    "learn": {
+     "pnl": 46.81,
+     "trades": 231,
+     "wins": 96,
+     "sl": 0.015,
+     "tp": 0.03
+    },
+    "nested": {
+     "90d": {
+      "trades": 83,
+      "pnl": 46.72
+     },
+     "180d": {
+      "trades": 196,
+      "pnl": 102.14
+     },
+     "full": {
+      "trades": 258,
+      "pnl": 80.22
+     }
+    },
+    "breakeven_winrate": 36.89,
+    "cost_of_tp": 5.3,
+    "describe": "sweep30 + price 2.0 ATR from its average \u00b7 else pivot"
+   }
+  },
+  "lx_ETH_30m_2": {
+   "name": "lx_ETH_30m_2",
+   "coin": "ETH",
+   "tf": "30m",
+   "join": "cascade",
+   "legs": [
+    {
+     "trigger": "turtle",
+     "confirm": [
+      {
+       "k": "stretch",
+       "x": 2.0
+      }
+     ]
+    },
+    {
+     "trigger": "pivot",
+     "confirm": []
+    }
+   ],
+   "tp": 0.03,
+   "sl": 0.015,
+   "learned": {
+    "unseen": {
+     "profit": 43.41,
+     "trades": 28,
+     "wins": 20,
+     "losses": 8,
+     "streak": -3.33,
+     "streak_len": 2,
+     "winrate": 71.43
+    },
+    "learn": {
+     "pnl": 46.81,
+     "trades": 231,
+     "wins": 96,
+     "sl": 0.015,
+     "tp": 0.03
+    },
+    "nested": {
+     "90d": {
+      "trades": 83,
+      "pnl": 46.72
+     },
+     "180d": {
+      "trades": 196,
+      "pnl": 102.14
+     },
+     "full": {
+      "trades": 258,
+      "pnl": 80.22
+     }
+    },
+    "breakeven_winrate": 36.89,
+    "cost_of_tp": 5.3,
+    "describe": "turtle + price 2.0 ATR from its average \u00b7 else pivot"
+   }
+  },
+  "lx_ETH_30m_3": {
+   "name": "lx_ETH_30m_3",
+   "coin": "ETH",
+   "tf": "30m",
+   "join": "cascade",
+   "legs": [
+    {
+     "trigger": "pivot",
+     "confirm": [
+      {
+       "k": "veto",
+       "sig": "rsi14"
+      }
+     ]
+    },
+    {
+     "trigger": "turtle",
+     "confirm": []
+    }
+   ],
+   "tp": 0.03,
+   "sl": 0.015,
+   "learned": {
+    "unseen": {
+     "profit": 43.0,
+     "trades": 31,
+     "wins": 21,
+     "losses": 10,
+     "streak": -3.33,
+     "streak_len": 2,
+     "winrate": 67.74
+    },
+    "learn": {
+     "pnl": 42.31,
+     "trades": 233,
+     "wins": 95,
+     "sl": 0.015,
+     "tp": 0.03
+    },
+    "nested": {
+     "90d": {
+      "trades": 91,
+      "pnl": 46.94
+     },
+     "180d": {
+      "trades": 210,
+      "pnl": 92.4
+     },
+     "full": {
+      "trades": 264,
+      "pnl": 79.26
+     }
+    },
+    "breakeven_winrate": 36.89,
+    "cost_of_tp": 5.3,
+    "describe": "pivot + unless rsi14 disagrees \u00b7 else turtle"
+   }
+  },
+  "lx_ETH_4h_1": {
+   "name": "lx_ETH_4h_1",
+   "coin": "ETH",
+   "tf": "4h",
+   "join": "cascade",
+   "legs": [
+    {
+     "trigger": "cf_mom",
+     "confirm": [
+      {
+       "k": "agree",
+       "sig": "cx_first",
+       "within": 3
+      }
+     ]
+    },
+    {
+     "trigger": "cx_first",
+     "confirm": []
+    }
+   ],
+   "tp": 0.05,
+   "sl": 0.03,
+   "learned": {
+    "unseen": {
+     "profit": 9.31,
+     "trades": 11,
+     "wins": 6,
+     "losses": 5,
+     "streak": -9.49,
+     "streak_len": 3,
+     "winrate": 54.55
+    },
+    "learn": {
+     "pnl": 81.81,
+     "trades": 64,
+     "wins": 36,
+     "sl": 0.03,
+     "tp": 0.05
+    },
+    "nested": {
+     "90d": {
+      "trades": 27,
+      "pnl": 30.89
+     },
+     "180d": {
+      "trades": 58,
+      "pnl": 76.93
+     },
+     "full": {
+      "trades": 74,
+      "pnl": 90.37
+     }
+    },
+    "breakeven_winrate": 39.5,
+    "cost_of_tp": 3.2,
+    "describe": "cf_mom + cx_first agrees \u00b7 else cx_first"
+   }
+  },
+  "lx_ETH_4h_2": {
+   "name": "lx_ETH_4h_2",
+   "coin": "ETH",
+   "tf": "4h",
+   "join": "cascade",
+   "legs": [
+    {
+     "trigger": "cx_firstr",
+     "confirm": [
+      {
+       "k": "agree",
+       "sig": "cx_first",
+       "within": 3
+      }
+     ]
+    },
+    {
+     "trigger": "cx_first",
+     "confirm": []
+    }
+   ],
+   "tp": 0.05,
+   "sl": 0.03,
+   "learned": {
+    "unseen": {
+     "profit": 9.31,
+     "trades": 11,
+     "wins": 6,
+     "losses": 5,
+     "streak": -9.49,
+     "streak_len": 3,
+     "winrate": 54.55
+    },
+    "learn": {
+     "pnl": 81.81,
+     "trades": 64,
+     "wins": 36,
+     "sl": 0.03,
+     "tp": 0.05
+    },
+    "nested": {
+     "90d": {
+      "trades": 27,
+      "pnl": 30.89
+     },
+     "180d": {
+      "trades": 58,
+      "pnl": 76.93
+     },
+     "full": {
+      "trades": 74,
+      "pnl": 90.37
+     }
+    },
+    "breakeven_winrate": 39.5,
+    "cost_of_tp": 3.2,
+    "describe": "cx_firstr + cx_first agrees \u00b7 else cx_first"
+   }
+  },
+  "lx_ETH_4h_3": {
+   "name": "lx_ETH_4h_3",
+   "coin": "ETH",
+   "tf": "4h",
+   "join": "cascade",
+   "legs": [
+    {
+     "trigger": "mom6",
+     "confirm": [
+      {
+       "k": "agree",
+       "sig": "cx_first",
+       "within": 3
+      },
+      {
+       "k": "agree",
+       "sig": "fractal5",
+       "within": 3
+      }
+     ]
+    },
+    {
+     "trigger": "cx_first",
+     "confirm": []
+    }
+   ],
+   "tp": 0.05,
+   "sl": 0.03,
+   "learned": {
+    "unseen": {
+     "profit": 9.31,
+     "trades": 11,
+     "wins": 6,
+     "losses": 5,
+     "streak": -9.49,
+     "streak_len": 3,
+     "winrate": 54.55
+    },
+    "learn": {
+     "pnl": 81.81,
+     "trades": 64,
+     "wins": 36,
+     "sl": 0.03,
+     "tp": 0.05
+    },
+    "nested": {
+     "90d": {
+      "trades": 27,
+      "pnl": 30.89
+     },
+     "180d": {
+      "trades": 59,
+      "pnl": 73.77
+     },
+     "full": {
+      "trades": 74,
+      "pnl": 90.37
+     }
+    },
+    "breakeven_winrate": 39.5,
+    "cost_of_tp": 3.2,
+    "describe": "mom6 + cx_first agrees + fractal5 agrees \u00b7 else cx_first"
+   }
+  }
+ }
+}

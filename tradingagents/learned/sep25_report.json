@@ -1,0 +1,347 @@
+{
+"run": 36140580272,
+"collected": "Sep 25, 2026 9:33pm",
+"report": [
+{
+"coin": "BTC",
+"tf": "15m",
+"fee": 0.0008,
+"slippage": 0.0,
+"readings": [
+0.0,
+5.934327176326804e-07
+],
+"liq": 4.9,
+"bars": 20459,
+"learn_days": 180.0,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 49,
+"pairs": 68,
+"rounds": 3,
+"tried": 769,
+"seconds": 38.6,
+"why": "nothing passed the unseen-period and nested-window checks",
+"kept": []
+},
+{
+"coin": "BTC",
+"tf": "30m",
+"fee": 0.0008,
+"slippage": 0.0,
+"readings": [
+0.0,
+5.934327176326804e-07
+],
+"liq": 4.9,
+"bars": 10379,
+"learn_days": 180.0,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 49,
+"pairs": 78,
+"rounds": 4,
+"tried": 1025,
+"seconds": 26.6,
+"kept": [
+"lx_BTC_30m_1",
+"lx_BTC_30m_2",
+"lx_BTC_30m_3"
+],
+"rows": 234
+},
+{
+"coin": "BTC",
+"tf": "1h",
+"fee": 0.0008,
+"slippage": 0.0,
+"readings": [
+0.0,
+5.934327176326804e-07
+],
+"liq": 4.9,
+"bars": 5339,
+"learn_days": 180.0,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 49,
+"pairs": 68,
+"rounds": 4,
+"tried": 1102,
+"seconds": 18.5,
+"kept": [
+"lx_BTC_1h_1",
+"lx_BTC_1h_2"
+],
+"rows": 136
+},
+{
+"coin": "BTC",
+"tf": "4h",
+"fee": 0.0008,
+"slippage": 0.0,
+"readings": [
+0.0,
+5.934327176326804e-07
+],
+"liq": 4.9,
+"bars": 1559,
+"learn_days": 179.8,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 20,
+"pairs": 68,
+"rounds": 3,
+"tried": 863,
+"seconds": 7.6,
+"why": "nothing passed the unseen-period and nested-window checks",
+"kept": []
+},
+{
+"coin": "BTC",
+"tf": "1d",
+"fee": 0.0008,
+"slippage": 0.0,
+"readings": [
+0.0,
+5.934327176326804e-07
+],
+"liq": 4.9,
+"bars": 509,
+"learn_days": 179.0,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 10,
+"pairs": 51,
+"rounds": 3,
+"tried": 618,
+"seconds": 2.1,
+"why": "nothing passed the unseen-period and nested-window checks",
+"kept": []
+},
+{
+"coin": "KKRSTOCK",
+"tf": "15m",
+"fee": 0.0008,
+"slippage": 0.00010149999999999992,
+"readings": [
+0.00010149999999999992,
+0.005702328014648428
+],
+"liq": 3.0000000000000004,
+"bars": 4218,
+"learn_days": 10.8,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 10,
+"pairs": 68,
+"why": "not enough history: 11 day(s) before the last 30, and learning needs 30",
+"kept": [],
+"seconds": 0.8
+},
+{
+"coin": "KKRSTOCK",
+"tf": "30m",
+"fee": 0.0008,
+"slippage": 0.00010149999999999992,
+"readings": [
+0.00010149999999999992,
+0.005702328014648428
+],
+"liq": 3.0000000000000004,
+"bars": 2109,
+"learn_days": 7.7,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 10,
+"pairs": 78,
+"why": "not enough history: 8 day(s) before the last 30, and learning needs 30",
+"kept": [],
+"seconds": 0.4
+},
+{
+"coin": "KKRSTOCK",
+"tf": "1h",
+"fee": 0.0008,
+"slippage": 0.00010149999999999992,
+"readings": [
+0.00010149999999999992,
+0.005702328014648428
+],
+"liq": 3.0000000000000004,
+"bars": 1055,
+"learn_days": 1.5,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 10,
+"pairs": 59,
+"why": "not enough history: 1 day(s) before the last 30, and learning needs 30",
+"kept": [],
+"seconds": 0.3
+},
+{
+"coin": "KKRSTOCK",
+"tf": "4h",
+"fee": 0.0008,
+"slippage": 0.00010149999999999992,
+"readings": [
+0.00010149999999999992,
+0.005702328014648428
+],
+"liq": 3.0000000000000004,
+"bars": 264,
+"learn_days": 0.0,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 1000000000,
+"pairs": 59,
+"why": "not enough history: 0 day(s) before the last 30, and learning needs 30",
+"kept": [],
+"seconds": 0.5
+},
+{
+"coin": "KKRSTOCK",
+"tf": "1d",
+"fee": 0.0008,
+"slippage": 0.00010149999999999992,
+"readings": [
+0.00010149999999999992,
+0.005702328014648428
+],
+"liq": 3.0000000000000004,
+"bars": 44,
+"learn_days": 0.0,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 1000000000,
+"pairs": 32,
+"why": "not enough history: 0 day(s) before the last 30, and learning needs 30",
+"kept": [],
+"seconds": 0.2
+},
+{
+"coin": "ETH",
+"tf": "15m",
+"fee": 0.0008,
+"slippage": 0.0,
+"readings": [
+0.0,
+1.8461731599028752e-06
+],
+"liq": 4.9,
+"bars": 20459,
+"learn_days": 180.0,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 49,
+"pairs": 68,
+"rounds": 6,
+"tried": 1146,
+"seconds": 70.4,
+"kept": [
+"lx_ETH_15m_1",
+"lx_ETH_15m_2"
+],
+"rows": 136
+},
+{
+"coin": "ETH",
+"tf": "30m",
+"fee": 0.0008,
+"slippage": 0.0,
+"readings": [
+0.0,
+1.8461731599028752e-06
+],
+"liq": 4.9,
+"bars": 10379,
+"learn_days": 180.0,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 49,
+"pairs": 78,
+"rounds": 5,
+"tried": 1353,
+"seconds": 86.1,
+"kept": [
+"lx_ETH_30m_1",
+"lx_ETH_30m_2",
+"lx_ETH_30m_3"
+],
+"rows": 234
+},
+{
+"coin": "ETH",
+"tf": "1h",
+"fee": 0.0008,
+"slippage": 0.0,
+"readings": [
+0.0,
+1.8461731599028752e-06
+],
+"liq": 4.9,
+"bars": 5339,
+"learn_days": 180.0,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 49,
+"pairs": 68,
+"rounds": 6,
+"tried": 1805,
+"seconds": 64.5,
+"kept": [
+"lx_ETH_1h_1",
+"lx_ETH_1h_2"
+],
+"rows": 136
+},
+{
+"coin": "ETH",
+"tf": "4h",
+"fee": 0.0008,
+"slippage": 0.0,
+"readings": [
+0.0,
+1.8461731599028752e-06
+],
+"liq": 4.9,
+"bars": 1559,
+"learn_days": 179.8,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 20,
+"pairs": 68,
+"rounds": 5,
+"tried": 1294,
+"seconds": 19.1,
+"kept": [
+"lx_ETH_4h_1",
+"lx_ETH_4h_2",
+"lx_ETH_4h_3"
+],
+"rows": 204
+},
+{
+"coin": "ETH",
+"tf": "1d",
+"fee": 0.0008,
+"slippage": 0.0,
+"readings": [
+0.0,
+1.8461731599028752e-06
+],
+"liq": 4.9,
+"bars": 509,
+"learn_days": 179.0,
+"unseen_days": 30,
+"min_unseen_trades": 10,
+"min_learn_trades": 10,
+"pairs": 51,
+"rounds": 3,
+"tried": 602,
+"seconds": 2.6,
+"why": "nothing passed the unseen-period and nested-window checks",
+"kept": []
+}
+]
+}

@@ -541,3 +541,16 @@ def test_the_collect_drops_a_losing_formula_and_its_rows(v2store):
     kept = json.loads(sl_.LEARNED_FILE.read_text(encoding="utf-8"))["formulas"]
     assert set(kept) == {"lx_BTC_1h_2"}
     assert {r["signal"] for r in msw.pair_rows("BTC", "1h")} == {"lx_BTC_1h_2"}
+
+
+def test_a_second_collect_keeps_the_first_accounts_report(v2store):
+    """Two accounts, two runs, one report: the second collect replaces only
+    the coins+timeframes it reported on."""
+    _msw, _ri, _sl, lc = v2store
+    lc.land({}, [{"coin": "AAA", "tf": "1h", "why": "nothing passed"}], {}, run_id=1)
+    lc.land({}, [{"coin": "BBB", "tf": "1h", "why": "not enough history"}], {}, run_id=2)
+    lc.land({}, [{"coin": "AAA", "tf": "1h", "why": "nothing passed again"}], {}, run_id=3)
+    rep = json.loads(lc.REPORT_FILE.read_text(encoding="utf-8"))["report"]
+    got = {(e["coin"], e["tf"]): (e["why"], e["run"]) for e in rep}
+    assert got == {("AAA", "1h"): ("nothing passed again", 3),
+                   ("BBB", "1h"): ("not enough history", 2)}

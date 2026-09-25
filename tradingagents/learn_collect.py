@@ -210,9 +210,23 @@ def land(formulas: dict, report: list, rows: dict, *, run_id=None) -> dict:
         to_file.append((msw.ROWDIR / f"{coin}-{tf}.json", sorted(names)))
     refiled = file_learned(to_file)
     # the report, without the round-by-round detail
-    slim = [{k: v for k, v in e.items() if k != "rounds_detail"} for e in report]
-    REPORT_FILE.write_text(json.dumps({"run": run_id, "collected": fmt_when(time.time()),
-                                       "report": slim}, indent=0), encoding="utf-8")
+    # MERGED, pair by pair, like the formula file: a run replaces the lines of
+    # the coins+timeframes it reported on and keeps everyone else's. Written
+    # whole each time, the second account's collect would have erased the
+    # first account's half of the market from the report (found before the
+    # second collect, Sep 26, 2026).
+    slim = [{k: v for k, v in e.items() if k != "rounds_detail"} | {"run": run_id}
+            for e in report]
+    mine = {(str(e["coin"]), str(e.get("tf"))) for e in slim}
+    old = []
+    try:
+        old = json.loads(REPORT_FILE.read_text(encoding="utf-8")).get("report") or []
+    except (OSError, ValueError):
+        old = []
+    kept_old = [e for e in old if (str(e.get("coin")), str(e.get("tf"))) not in mine]
+    REPORT_FILE.write_text(json.dumps({"collected": fmt_when(time.time()),
+                                       "report": kept_old + slim}, indent=0),
+                           encoding="utf-8")
     return {"pairs": len(attempted), "formulas": len(formulas), "rows": landed,
             "indexed": refiled}
 

@@ -4714,10 +4714,13 @@ def _sizings() -> tuple:
     never offer a martingale filter over a store that keeps none."""
     from tradingagents import backtest_report as br, stores
 
-    try:
-        v2 = Path(_db()).resolve() == stores.V2.rows_db.resolve()
-    except OSError:
-        v2 = False
+    # BY THE PATH'S TEXT, never `.resolve()`: resolving walks the junction
+    # under ~/.tradingagents on disk, and on the busy spinning G: that made
+    # every facets() call ~200 ms against a 20 ms budget (RCA-2026-09-25-J,
+    # test_facets_do_not_scan_every_measurement). Both sides are spelled from
+    # the same ~/.tradingagents, so normalised text is the whole question.
+    norm = lambda x: os.path.normcase(os.path.abspath(str(x)))  # noqa: E731
+    v2 = norm(_db()) == norm(stores.V2.rows_db)
     return tuple(br.sizings_for(stores.V2.fine_tf if v2 else ""))
 
 

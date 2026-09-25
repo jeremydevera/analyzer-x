@@ -172,6 +172,61 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-25-J — Backtest v2's filter options slowed to ~200 ms a call: the flat-only check asked the disk where its file lives
+
+**CEO**
+
+* The filter options on Stored strategies took about 200 ms each time
+  instead of under 20 ms while the hard drive was busy. The slowdown came
+  from the "flat only" change of Sep 24.
+* Why: to know which list it was reading, the app asked the disk where the
+  file really lives, every time, and on the busy hard drive that question
+  is slow.
+* What stops it now: it compares the two file names as text, which needs
+  no disk at all, and the speed test that caught it passes again.
+
+**DEV**
+
+* `rows_index._sizings()` (1b88873b5498) compared
+  `Path(_db()).resolve() == stores.V2.rows_db.resolve()` on every
+  `facets()` call; `.resolve()` walks the `~/.tradingagents` junction on
+  disk — ~200 ms on the busy spinning G:.
+* Invariant broken: **a per-request helper does no filesystem work it can
+  answer from text** — facets exists to read "85 short rows rather than
+  three DISTINCT scans"; both paths are spelled from the same
+  `~/.tradingagents`, so normalised text is the whole answer.
+* Guard: `tests/test_rows_index.py::test_facets_do_not_scan_every_measurement`
+  — red at 202 ms per call on the committed tree while the disk was busy,
+  green with the text comparison.
+
+**SAW** — not reported; found running the index suite before the restart
+the operator asked for: `AssertionError: 202ms per facet call`.
+
+**TIMELINE**
+
+1. `Sep 24, 2026 11:48pm` — 1b88873b5498 adds the store check, two
+   `.resolve()` calls per `_sizings()`.
+2. `Sep 25, 2026 ~1:10am` — the index suites pass: the disk was quiet and
+   the call ran under its 20 ms budget.
+3. `~9:55pm` — with GitHub learn runs landing and an index build on G:, the
+   same test measures 202 ms per call, on the committed tree too.
+4. Fixed: `os.path.normcase(os.path.abspath(...))` on both sides — no disk.
+
+**ROOT CAUSE** — a filesystem call inside a per-request helper.
+
+**WHY IT WAS NOT CAUGHT** — the budget test is timing-dependent: it passed
+while the disk was idle, which is when the change was tested, and failed only
+under load. A slow call hides on a quiet machine; the check that matters is
+"does this touch the disk at all", not "was it fast today".
+
+**COST** — none in money; ~180 ms extra per filter-options call.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_rows_index.py`.
+
+---
+
 ## RCA-2026-09-25-I — the trade list blamed "the candle store has grown" when this PC's candles were behind the row
 
 **CEO**

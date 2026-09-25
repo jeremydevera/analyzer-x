@@ -461,3 +461,17 @@ def test_a_running_process_sees_formulas_collected_after_it_started(tmp_path, mo
     os.utime(f, ns=(time.time_ns(), time.time_ns() + 10**9))
     assert sl_.spec_for("lx_BTC_1h_1") == {"coin": "BTC", "tf": "1h"}
     sl_.reload()
+
+
+def test_two_formulas_with_the_same_stored_trades_are_one(monkeypatch):
+    """GitHub run 36140580272 kept lx_ETH_30m_1 and _2 — different in the learn
+    period, identical in the stored window (28 trades, 71.43%, +$43.41)."""
+    lr = _learner()
+    a = {"join": "cascade", "legs": [{"trigger": "rsi14"}, {"trigger": "bb20"}]}
+    b = {"join": "cascade", "legs": [{"trigger": "bb20"}, {"trigger": "rsi14"}]}
+    g = {"profit": 43.41, "trades": 28, "wins": 20, "losses": 8, "streak": -1.0,
+         "streak_len": 1}
+    sc = {"pnl": 10.0, "trades": 40, "wins": 30, "sl": 0.015, "tp": 0.03}
+    lr._nested_ok = lambda *x, **k: (True, {})
+    kept = lr._keep({"a": (43.41, a, sc, g), "b": (43.41, b, sc, dict(g))})
+    assert len(kept) == 1

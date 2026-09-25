@@ -554,12 +554,19 @@ class Learner:
             return (-whole, size(x[1]), _key(x[1]))
 
         ranked = sorted((x for x in graded.values() if is_confluence(x[1])), key=rank)
-        kept, triggers, kept_b = [], set(), set()
+        kept, triggers, kept_b, kept_o = [], set(), set(), set()
         for v, sp, sc, g in ranked:
             if v == float("-inf") or len(kept) >= KEEP:
                 break
-            b = self.behaviour(sp)
-            if b in kept_b:
+            # THE SAME TRADES WHERE IT IS STORED is the same formula. Two
+            # specs that differed only in the learn period and signal alike in
+            # the unseen window are one row set twice (GitHub run 36140580272:
+            # lx_ETH_30m_1 and _2 were both 28 trades, 71.43%, +$43.41) — so
+            # identity is judged on the stored row's own cut, and on the grade
+            b = hashlib.md5(self._sub_dirs(sp, max(0, self.u0 - WARM_BARS))
+                            .tobytes()).hexdigest()
+            outcome = (g["trades"], g["wins"], round(g["profit"], 2))
+            if b in kept_b or outcome in kept_o:
                 continue                      # the same trades as one kept
             ok, nested = self._nested_ok(sp, sc["sl"], sc["tp"])
             if not ok:
@@ -569,6 +576,7 @@ class Learner:
                 continue                      # prefer different ideas
             triggers.add(lead)
             kept_b.add(b)
+            kept_o.add(outcome)
             n = len(kept) + 1
             name = f"{sl_.PREFIX}{self.f.coin}_{self.tf}_{n}"
             kept.append({

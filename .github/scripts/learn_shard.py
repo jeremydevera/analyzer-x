@@ -76,7 +76,8 @@ def charged(fee: float, fresh: float, usual_rt: float | None) -> tuple[float, li
     return br.charged_slippage(readings), readings
 
 
-def learn_coin(sym: str, out, formulas: dict, report: list, usual: dict) -> int:
+def learn_coin(sym: str, out, formulas: dict, report: list, usual: dict,
+               done: int = 0, total: int = 0, rows_so_far: int = 0) -> int:
     coin = sym.replace("_USDT", "")
     fee = at.taker_fee(sym, fx=fx)
     liq = fx.liquidation_move_pct(sym, at.LEVERAGE)
@@ -110,7 +111,12 @@ def learn_coin(sym: str, out, formulas: dict, report: list, usual: dict) -> int:
                          kept=[f["name"] for f in kept])
             if kept:
                 sl_.register({f["name"]: f for f in kept})
-                got = ss.run_pair(sym, tf, out, signals=[f["name"] for f in kept],
+                # the machine's REAL count, or run_pair's own progress
+                # write (i=0, n=0 by default) overwrites it with "0 done" —
+                # the full run's summed progress read 17 after reading 73
+                got = ss.run_pair(sym, tf, out, i=done, n=total,
+                                  rows_so_far=rows_so_far + rows,
+                                  signals=[f["name"] for f in kept],
                                   learned={"fee": fee, "liq": liq, "fund": fund,
                                            "slip": slip, "df": df, "fine": fine})
                 entry["rows"] = got
@@ -163,7 +169,8 @@ def main() -> int:
                     break
                 sym = queue.pop(0)
             try:
-                total += learn_coin(sym, out, formulas, report, usual)
+                total += learn_coin(sym, out, formulas, report, usual,
+                                    done=done, total=len(coins), rows_so_far=total)
                 done += 1
             except Exception as exc:                           # noqa: BLE001
                 n = failed.get(sym, 0) + 1

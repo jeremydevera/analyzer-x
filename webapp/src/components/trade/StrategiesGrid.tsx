@@ -179,6 +179,66 @@ export default function StrategiesGrid() {
     } finally { setBusy(false); }
   };
 
+  // ONE definition of the book switches and of a book's record, drawn by the
+  // desktop table AND the phone cards, so the two views can never disagree.
+  const switches = (r: StrategyDeployRow) => (
+    <div className="flex min-w-0 flex-row flex-wrap items-center gap-1">
+      {(["real", "paper"] as const).map((b) => {
+        // a coin already traded LIVE on another timeframe cannot
+        // take a second live strategy: MEXC nets them into one
+        // position. DEMO is never locked.
+        const locked = b === "real" && !!r.live_locked && !r.books.includes("real");
+        return (
+          <button key={b} onClick={() => !locked && toggleBook(r.key, b)}
+            disabled={locked}
+            title={locked
+              ? `${r.live_locked!.coin.replace("_USDT", "")} is already traded live by ${r.live_locked!.held_by} on another timeframe — MEXC nets them into one position`
+              : undefined}
+            role="switch"
+            aria-checked={r.books.includes(b)}
+            aria-label={b === "real" ? "trade real money" : "simulate only"}
+            className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition ${
+              r.books.includes(b)
+                ? b === "real" ? "bg-error-500 text-white" : "bg-success-500 text-white"
+                : locked
+                  ? "cursor-not-allowed bg-gray-100 text-gray-300 line-through dark:bg-white/[0.03] dark:text-gray-600"
+                  : "bg-gray-100 text-gray-500 dark:bg-white/[0.05] dark:text-gray-400"
+            }`}>
+            {/* the dot IS the switch state, so on/off does not
+                rest on colour alone */}
+            <span className={`h-1.5 w-1.5 rounded-full ${
+              r.books.includes(b) ? "bg-white" : "bg-gray-400 dark:bg-gray-600"}`} />
+            {b === "real" ? "live" : "demo"}
+          </button>
+        );
+      })}
+    </div>
+  );
+  const bookRecord = (w: number, l: number, pnl: number, n = w + l) => (
+    <>
+      {n === 0 ? <span className="text-gray-400">—</span> : (
+        // THREE THINGS, TWO DIFFERENT GAPS (operator,
+        // `Sep 17, 2026`: "can you fix this column its
+        // jumbled / can you make spacing between profit and
+        // the winrate"). The donut and its `1W`/`0L` counts
+        // are ONE object — the counts exist because a full
+        // green ring cannot say whether it is 1 trade or 20 —
+        // so they keep the tight gap INSIDE WinBadge. The
+        // money is a separate fact and takes a wider one, or
+        // all three read as one run of characters, which is
+        // what "jumbled" was.
+        <span className="flex items-center gap-3">
+          <WinBadge wins={w} losses={l} />
+          {/* the dollars the donut beside it was made of */}
+          <span className={`font-semibold tabular-nums ${
+            pnl >= 0 ? "text-success-600" : "text-error-500"}`}>
+            {fmtMoney(pnl)}
+          </span>
+        </span>
+      )}
+    </>
+  );
+
   return (
     <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="flex flex-wrap items-center gap-3 px-5 pt-4">
@@ -389,7 +449,91 @@ export default function StrategiesGrid() {
           Timeframe conflict: {conflicts.map((c) => `${c.symbol} on ${(c.keys || []).join(" + ")}`).join(" · ")} — two bots would fight over one MEXC position.
         </p>
       )}
-      <div className="w-full">
+      {/* THE PHONE VIEW (operator, Sep 26, 2026, from their phone: "why is it
+          like this i thought you already fixed it"). The Sep 23 phone fix
+          (RCA-2026-09-23-A) gave the positions and history tables cards and
+          left THIS one out: twelve columns in 390px is ~30px each, so "keltner"
+          and "LIVE W/L" broke letter by letter. Below `md` every deployed row
+          is one card; the table is untouched at `md` and up. RCA-2026-09-26-A. */}
+      <div className="flex flex-col gap-2 p-3 md:hidden">
+        {rows.map((r) => (
+          <div key={`m-${r.key}`}
+            className="rounded-xl border border-gray-200 p-3 dark:border-white/[0.08]">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                {r.id ? <CopyableId id={r.id} /> : null}
+                <span className="block break-all text-[11px] text-gray-500 dark:text-gray-400">{r.key}</span>
+              </div>
+              {switches(r)}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-theme-xs text-gray-600 dark:text-gray-300">
+              <span>{TF[r.interval ?? ""] ?? r.interval}</span>
+              <span>TP {r.tp != null ? (r.tp * 100).toFixed(2) : "—"}% / SL {r.sl != null ? (r.sl * 100).toFixed(2) : "—"}%</span>
+              {r.coins.map((c) => (
+                <span key={c} className="font-medium text-gray-800 dark:text-white/90">
+                  {c.replace("_USDT", "")} <span className="text-[11px] font-normal"><Live sym={c} feed={feed} /></span>
+                </span>
+              ))}
+            </div>
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-theme-xs text-gray-500 dark:text-gray-400">
+              <span>deployed {r.deployed_at ? fmtWhen(r.deployed_at) : "—"}</span>
+              <span>next ${r.next_stake ?? "—"}</span>
+              <span className={(r.today ?? 0) >= 0 ? "text-success-600" : "text-error-500"}>
+                today {fmtMoney(r.today)}{r.tripped ? " PAUSED" : ""}
+              </span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-theme-xs">
+              {([["real", r.real, "LIVE"], ["paper", r.paper, "DEMO"]] as const).map(([which, bk, label]) => {
+                const w = bk?.wins ?? 0, l = bk?.losses ?? 0;
+                return (
+                  <div key={which} className="flex items-center gap-2">
+                    <span className="text-gray-500 dark:text-gray-400">{label}</span>
+                    {bookRecord(w, l, bk?.pnl ?? 0)}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-theme-xs text-gray-500 dark:text-gray-400">
+              <label className="flex items-center gap-1">margin $
+                <input type="number" step="0.5" defaultValue={r.base_margin ?? ""}
+                  onBlur={(e) => setMargin(r.key, e.target.value)}
+                  className="w-full min-w-0 rounded-lg border border-gray-200 bg-transparent px-1 py-1 text-[11px] text-gray-700 dark:border-gray-700 dark:text-gray-300" />
+              </label>
+              <label className="flex items-center gap-1">loss cap $
+                <input type="number" step="0.5" defaultValue={r.loss_cap ?? ""}
+                  onBlur={(e) => mut((s) => {
+                    const m = ((s.strategy_loss_limits as Record<string, number | null>) ??= {});
+                    m[r.key] = e.target.value === "" ? null : Number(e.target.value);
+                  })}
+                  className="w-full min-w-0 rounded-lg border border-gray-200 bg-transparent px-1 py-1 text-[11px] text-gray-700 dark:border-gray-700 dark:text-gray-300" />
+              </label>
+            </div>
+          </div>
+        ))}
+        {/* the same TOTAL the table ends with: only rows with a closed trade
+            on that book count, and the books never add together */}
+        {rows.length > 0 && (
+          <div className="rounded-xl border-2 border-gray-300 bg-gray-50 p-3 text-theme-xs dark:border-gray-600 dark:bg-white/[0.03]">
+            <span className="font-semibold text-gray-600 dark:text-gray-300">TOTAL — every closed trade so far</span>
+            {([["LIVE", (r: StrategyDeployRow) => r.real], ["DEMO", (r: StrategyDeployRow) => r.paper]] as const).map(([label, pick]) => {
+              const had = rows.filter((r) => ((pick(r)?.wins ?? 0) + (pick(r)?.losses ?? 0)) > 0);
+              const sum = had.reduce((a2, r) => a2 + (pick(r)?.pnl ?? 0), 0);
+              return (
+                <div key={label} className="mt-1 flex items-baseline gap-2">
+                  <span className="w-10 text-gray-500 dark:text-gray-400">{label}</span>
+                  {had.length === 0 ? <span className="text-gray-400">—</span> : (
+                    <>
+                      <span className={`text-sm font-bold tabular-nums ${sum >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(sum)}</span>
+                      <span className="text-[10px] text-gray-400">{had.length} row{had.length === 1 ? "" : "s"}</span>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      <div className="hidden w-full md:block">
         <Table fixed>
           <TableHeader>
             <TableRow>
@@ -469,37 +613,7 @@ export default function StrategiesGrid() {
                 <TableCell className="px-2 py-1.5">
                   {/* Side by side, not stacked: two stacked pills made every
                       row twice as tall as it needed to be. */}
-                  <div className="flex min-w-0 flex-row flex-wrap items-center gap-1">
-                    {(["real", "paper"] as const).map((b) => {
-                      // a coin already traded LIVE on another timeframe cannot
-                      // take a second live strategy: MEXC nets them into one
-                      // position. DEMO is never locked.
-                      const locked = b === "real" && !!r.live_locked && !r.books.includes("real");
-                      return (
-                        <button key={b} onClick={() => !locked && toggleBook(r.key, b)}
-                          disabled={locked}
-                          title={locked
-                            ? `${r.live_locked!.coin.replace("_USDT", "")} is already traded live by ${r.live_locked!.held_by} on another timeframe — MEXC nets them into one position`
-                            : undefined}
-                          role="switch"
-                          aria-checked={r.books.includes(b)}
-                          aria-label={b === "real" ? "trade real money" : "simulate only"}
-                          className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition ${
-                            r.books.includes(b)
-                              ? b === "real" ? "bg-error-500 text-white" : "bg-success-500 text-white"
-                              : locked
-                                ? "cursor-not-allowed bg-gray-100 text-gray-300 line-through dark:bg-white/[0.03] dark:text-gray-600"
-                                : "bg-gray-100 text-gray-500 dark:bg-white/[0.05] dark:text-gray-400"
-                          }`}>
-                          {/* the dot IS the switch state, so on/off does not
-                              rest on colour alone */}
-                          <span className={`h-1.5 w-1.5 rounded-full ${
-                            r.books.includes(b) ? "bg-white" : "bg-gray-400 dark:bg-gray-600"}`} />
-                          {b === "real" ? "live" : "demo"}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {switches(r)}
                 </TableCell>
                 <TableCell className="px-2 py-2 text-theme-xs font-medium text-gray-700 dark:text-gray-300">
                   {/* read-only: the contract is PART of the strategy, not a
@@ -597,26 +711,7 @@ export default function StrategiesGrid() {
                           : `nothing closed yet on the ${book} book`)
                         : `not armed on the ${book} book`}
                       className={`px-2 py-1.5 text-theme-xs whitespace-nowrap${dim}`}>
-                      {n === 0 ? <span className="text-gray-400">—</span> : (
-                        // THREE THINGS, TWO DIFFERENT GAPS (operator,
-                        // `Sep 17, 2026`: "can you fix this column its
-                        // jumbled / can you make spacing between profit and
-                        // the winrate"). The donut and its `1W`/`0L` counts
-                        // are ONE object — the counts exist because a full
-                        // green ring cannot say whether it is 1 trade or 20 —
-                        // so they keep the tight gap INSIDE WinBadge. The
-                        // money is a separate fact and takes a wider one, or
-                        // all three read as one run of characters, which is
-                        // what "jumbled" was.
-                        <span className="flex items-center gap-3">
-                          <WinBadge wins={w} losses={l} />
-                          {/* the dollars the donut beside it was made of */}
-                          <span className={`font-semibold tabular-nums ${
-                            pnl >= 0 ? "text-success-600" : "text-error-500"}`}>
-                            {fmtMoney(pnl)}
-                          </span>
-                        </span>
-                      )}
+                      {bookRecord(w, l, pnl)}
                     </TableCell>
                   );
                 })}

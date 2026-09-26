@@ -3052,3 +3052,33 @@ words are the record; a summary of them is not.
 
 > start localhost again
 
+
+### Sep 26, 2026 7:24am
+
+> so all formulas are done now?
+
+
+### Sep 26, 2026 7:25am
+
+> how many total rows
+
+
+### Sep 26, 2026 5:23pm
+
+> What ids do you recommend that has has high tp than sl, with good winrate and many trades for past 30 days , provide the ids
+
+
+### Sep 26, 2026 5:25pm
+
+> Look at this screenshot in my mobile, why is it like this i thought you already fixed it
+
+
+### Sep 26, 2026 5:26pm
+
+> Could you review my new set of group of formula, do you think its good? How would you rate it
+
+
+### Sep 26, 2026 5:27pm
+
+> I want more where i have good chance to profit
+

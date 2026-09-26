@@ -172,6 +172,66 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-26-A — the deployed-strategies table was still unreadable on a phone after the Sep 23 phone fix
+
+**CEO**
+
+* On your phone, the list of deployed strategies squeezed 12 columns into
+  the screen, so words broke letter by letter ("keltner_30m", "LIVE W/L")
+  and dates ran into the next column. You had been told the phone view was
+  fixed.
+* Why: the Sep 23 fix gave phone cards to the open-positions and history
+  tables only; this third table was never included, and nothing checked it.
+* What stops it now: on a phone every deployed strategy is one card with the
+  same switches, prices, dates, results and total as the desktop table; a
+  check now fails if any wide table on the trade screen has no phone view.
+
+**DEV**
+
+* `webapp/src/components/trade/StrategiesGrid.tsx` rendered only
+  `<Table fixed>` (12 columns, widths summing to 100%) at every width;
+  RCA-2026-09-23-A (cb001f4404cf) added `md:hidden` cards to
+  `PositionsPanel` and `TradeHistory` and did not touch this file.
+* Invariant broken: **a fix for a CLASS covers every member of it** — "a
+  wide fixed table on a phone" had three members on this screen and two were
+  fixed. Grep for the concept (`<Table fixed`), not the file that was
+  reported.
+* Guard: `tests/test_the_deployed_table_reads_on_a_phone.py` (3) — the grid
+  has a phone view and hides the table below `md`, both views draw the
+  switches and records from one definition, and every `<Table fixed` on the
+  trade screen has `md:hidden` (PnlPanel exempt by name: 6 short columns fit).
+  3 of 3 red on the pre-fix tree.
+
+**SAW** — a phone screenshot (5:23): `#DGHBUURC keltner_30m_sl2tp2` with
+"TP/SL %" stacked one character per line, "LIVE W/L · $" as "LIV E W/L",
+and "Sep 04, 2026 1:33am" written over the next column.
+
+**TIMELINE**
+
+1. `Sep 23, 2026 12:23am` — cb001f4404cf: phone cards for the positions and
+   history tables; "Auto Trade tables are readable on a phone".
+2. `Sep 24 → 26, 2026` — the deployed table grows to 537, then 81 rows; on a
+   390px phone its 12 columns get ~30px each.
+3. `Sep 26, 2026 5:23` — the operator's screenshot: "why is it like this i
+   thought you already fixed it".
+4. Fixed: one card per deployed row below `md`, the TOTAL included; the
+   desktop table unchanged.
+
+**ROOT CAUSE** — the phone fix was applied to the two tables named in the
+first report instead of every wide table on the screen.
+
+**WHY IT WAS NOT CAUGHT** — the Sep 23 guard tests the two files it fixed;
+no check asked which OTHER components draw a fixed table, and every visual
+check here renders at desktop width.
+
+**COST** — none in money; the deployed list was unreadable from the phone.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_deployed_table_reads_on_a_phone.py`.
+
+---
+
 ## RCA-2026-09-25-J — Backtest v2's filter options slowed to ~200 ms a call: the flat-only check asked the disk where its file lives
 
 **CEO**

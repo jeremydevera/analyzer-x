@@ -3082,3 +3082,85 @@ words are the record; a summary of them is not.
 
 > I want more where i have good chance to profit
 
+
+### Sep 26, 2026 5:29pm
+
+> Im currently accessing localgost via tailscale in 100.103.148.78:8503
+> Id i filter a backtest and download csv, is there a way to see result in my phone because currently i think it will save in desktop
+
+
+### Sep 26, 2026 5:34pm
+
+> Yes do 2 and 3
+
+
+### Sep 26, 2026 5:38pm
+
+> In the every closed trade so far, does it reset everytime i deploy new set of ids?
+
+
+### Sep 26, 2026 5:51pm
+
+> What date range is every closed trade so far total?
+
+
+### Sep 26, 2026 5:53pm
+
+> <event>300 of 795 coins, 611s</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+
+
+### Sep 26, 2026 5:57pm
+
+> <event>400 of 795 coins, 829s</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+
+
+### Sep 26, 2026 6:00pm
+
+> <event>500 of 795 coins, 1047s</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+
+
+### Sep 26, 2026 6:04pm
+
+> <event>600 of 795 coins, 1264s</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+
+
+### Sep 26, 2026 6:07pm
+
+> <event>picked 903 of 26557 candidates
+> 25/903 replayed, 0 failed</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+
+
+### Sep 26, 2026 6:07pm
+
+> <event>50/903 replayed, 0 failed</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+
+
+### Sep 26, 2026 6:07pm
+
+> <event>75/903 replayed, 0 failed</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+
+
+### Sep 26, 2026 6:07pm
+
+> <event>100/903 replayed, 0 failed</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+
+
+### Sep 26, 2026 6:08pm
+
+> <event>700 of 795 coins, 1484s</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+
+
+### Sep 26, 2026 6:11pm
+
+> <event>done: {'failed': 2863, 'passed': 1257, 'too young to test': 598, 'no candles': 1166, 'funding unreadable': 62}</event>
+> If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
+

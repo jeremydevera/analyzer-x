@@ -141,15 +141,21 @@ def land(formulas: dict, report: list, rows: dict, *, run_id=None) -> dict:
         raise ValueError(f"rows measured at res={bad[0]!r} cannot land in the "
                          f"v2 store (res={msw.FINE_TF!r})")
     # THE KEEP RULE, AGAIN, where the rows land: a formula the run kept at a
-    # loss over its unseen period is not kept here (runs started before the
-    # learner enforced profit > 0 could hand one over), and its rows go with it
-    def _unseen_profit(f):
-        return ((f.get("learned") or {}).get("unseen") or {}).get("profit")
+    # loss over the period it was CHOSEN on is not kept here, and its rows go
+    # with it. That period is `validate` since Sep 26, 2026; a file from
+    # before then chose on `unseen`, so for those the old rule stands. A
+    # formula that carries `validate` is NEVER dropped for its unseen
+    # result: that number is the test, and dropping the losers would make
+    # the test a choice again (formula_learner's docstring, "WHY THREE").
+    def _chosen_profit(f):
+        lr = f.get("learned") or {}
+        chosen_on = lr.get("validate") if "validate" in lr else lr.get("unseen")
+        return (chosen_on or {}).get("profit")
 
     # only a RECORDED loss: a formula whose file carries no grade is not
     # judged by a default that reads as data
     losing = {n for n, f in formulas.items()
-              if _unseen_profit(f) is not None and float(_unseen_profit(f)) <= 0}
+              if _chosen_profit(f) is not None and float(_chosen_profit(f)) <= 0}
     if losing:
         formulas = {n: f for n, f in formulas.items() if n not in losing}
         rows = {k: [r for r in rs if str(r.get("signal")) not in losing]

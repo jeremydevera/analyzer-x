@@ -779,7 +779,7 @@ export interface StrategyQuery {
   /** "preset" = the ten researched confluence setups at three levels each
    *  (every rule named cf_...); "classic" = the 75 signals that existed
    *  before them. The operator's own names: Preset Confluence / Classic */
-  group?: "preset" | "classic" | "sep25";
+  group?: "preset" | "classic" | "sep25" | "sep25ok";
   /** LAST N MONTHS: every row also reports what it did INSIDE that window —
    *  profit and green months, the two the store keeps per month */
   months?: number;
@@ -945,7 +945,7 @@ export const api = {
     measuredDays?: number;
     sizing?: string; rowId?: string; desc?: boolean;
     /** the download has to carry the same group as the table it came from */
-    group?: "preset" | "classic" | "sep25";
+    group?: "preset" | "classic" | "sep25" | "sep25ok";
   }) => {
     const p = new URLSearchParams();
     if (q.coin) p.set("coin", q.coin);

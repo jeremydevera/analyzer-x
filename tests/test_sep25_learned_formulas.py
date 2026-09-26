@@ -190,6 +190,7 @@ def test_a_single_signal_is_never_a_learned_formula():
          "streak_len": 1}
     sc = {"pnl": 10.0, "trades": 40, "wins": 30, "sl": 0.01, "tp": 0.02}
     lr._nested_ok = lambda *a, **k: (True, {})
+    lr.grade = lambda *a, **k: g
     kept = lr._keep({"s": (99.0, single, sc, g), "c": (10.0, combo, sc, g)})
     assert [fl.is_confluence(k) for k in kept] == [True]
     assert all(k["tp"] > k["sl"] for k in kept)
@@ -208,11 +209,75 @@ def test_the_loop_runs_its_rounds_and_reports_them():
     rep = _learner().run()
     assert rep["rounds"] >= 2 and rep["tried"] > 3
     assert all(r["round"] == i + 1 for i, r in enumerate(rep["round_log"]))
+    assert all("best_validate" in r and "best_unseen" not in r
+               for r in rep["round_log"])
     for f in rep["formulas"]:
         assert f["tp"] > f["sl"] and f["name"].startswith("lx_TEST_1h_")
-        u = f["learned"]["unseen"]
-        assert u["trades"] >= rep["min_unseen_trades"]
-        assert u["winrate"] > f["learned"]["breakeven_winrate"]
+        # the floors are on the period it was CHOSEN on ...
+        v = f["learned"]["validate"]
+        assert v["trades"] >= rep["min_validate_trades"]
+        assert v["winrate"] > f["learned"]["breakeven_winrate"] and v["profit"] > 0
+        # ... and the unseen result is reported, never a condition
+        assert f["learned"]["unseen"]["chose"] is False
+
+
+def _scrambled_after(lr_a, seed=5):
+    """The same frame with every bar from the unseen period's first on
+    replaced by a different random walk: what the choosing code must not
+    be able to tell apart."""
+    import numpy as np
+
+    from tradingagents import formula_learner as fl
+
+    df = lr_a.f.df.copy()
+    u = lr_a.u0
+    rng = np.random.default_rng(seed)
+    base = float(df["Close"].iloc[u - 1])
+    c = base * np.exp(np.cumsum(rng.normal(0, 0.02, len(df) - u)))
+    df.loc[u:, "Close"] = c
+    df.loc[u:, "Open"] = np.r_[base, c[:-1]]
+    df.loc[u:, "High"] = np.maximum(df.loc[u:, "Open"], c) * 1.004
+    df.loc[u:, "Low"] = np.minimum(df.loc[u:, "Open"], c) * 0.996
+    frame = fl.Frame(**{**lr_a.f.__dict__, "df": df})
+    return frame
+
+
+def test_no_choice_can_see_the_unseen_period():
+    """Sep 26, 2026: the Sep 25 run CHOSE on its last 30 days (keep a round if
+    the unseen result improved, keep a formula only if it made money there),
+    so the "unseen" win rate on the screen was the best of eight peeks.
+    Measured on 300 of its formulas over 90 days it never met: 38.7% win
+    against the 50.0% shown, 85 of 300 above their own break-even.
+
+    The guard: rewrite every candle from the unseen period on, and nothing
+    the loop CHOSE may change — the same formulas, the same TP/SL, the same
+    validate numbers. Only the unseen grade may differ."""
+    from tradingagents import formula_learner as fl
+
+    a = _learner()
+    now = int(a.f.df["Date"].iloc[-1].timestamp() * 1000) + 3_600_000
+    b = fl.Learner(_scrambled_after(a), now_ms=now, signals=["rsi14", "bb20", "keltner"])
+    assert a.u0 == b.u0 and a.v0 == b.v0 < a.u0
+    ra, rb = a.run(), b.run()
+
+    def chosen(rep):
+        return [({k: f[k] for k in ("join", "legs", "vote") if k in f},
+                 f["tp"], f["sl"], f["learned"]["validate"], f["learned"]["nested"])
+                for f in rep["formulas"]]
+
+    assert ra["round_log"] == rb["round_log"]
+    assert chosen(ra) == chosen(rb)
+    assert ra["formulas"], "the fixture chose nothing, so this proved nothing"
+
+
+def test_the_nested_windows_end_where_the_unseen_period_starts():
+    lr = _learner()
+    spec = {"join": "cascade", "legs": [{"trigger": "rsi14"}, {"trigger": "bb20"}]}
+    seen = []
+    real = lr.sim.run
+    lr.sim.run = lambda d, a, b, t, s: (seen.append(b), real(d, a, b, t, s))[1]
+    lr._nested_ok(spec, 0.01, 0.02)
+    assert seen and set(seen) == {lr.u0}
 
 
 # --------------------------------------------------- the GitHub measurement
@@ -519,7 +584,7 @@ def test_the_trade_log_says_which_way_the_candles_differ():
     assert block.index("trades?.candles_short") < block.rindex("the candle store has grown")
 
 
-def test_a_formula_that_lost_money_where_it_was_unseen_is_never_kept():
+def test_a_formula_that_lost_money_where_it_was_chosen_is_never_kept():
     from tradingagents import formula_learner as fl
 
     lr = _learner()
@@ -530,6 +595,38 @@ def test_a_formula_that_lost_money_where_it_was_unseen_is_never_kept():
     lr._nested_ok = lambda *a, **k: (True, {})
     assert fl.is_confluence(combo)
     assert lr._keep({"c": (-0.40, combo, sc, g)}) == []
+
+
+def test_a_formula_that_lost_money_where_it_was_unseen_is_kept_and_says_so():
+    """The unseen period is the TEST. Dropping its losers is choosing on it,
+    which is exactly how the Sep 25 set showed 50% where 38.7% was true."""
+    lr = _learner()
+    combo = {"join": "cascade", "legs": [{"trigger": "rsi14"}, {"trigger": "bb20"}]}
+    val = {"profit": 12.0, "trades": 30, "wins": 20, "losses": 10, "streak": -1.0,
+           "streak_len": 1}
+    lost = {"profit": -4.1, "trades": 25, "wins": 6, "losses": 19, "streak": -3.0,
+            "streak_len": 5}
+    sc = {"pnl": 10.0, "trades": 40, "wins": 30, "sl": 0.01, "tp": 0.02}
+    lr._nested_ok = lambda *a, **k: (True, {})
+    lr.grade = lambda *a, **k: lost
+    kept = lr._keep({"c": (12.0, combo, sc, val)})
+    assert len(kept) == 1
+    u = kept[0]["learned"]["unseen"]
+    assert u["profit"] == -4.1 and u["winrate"] == 24.0 and u["chose"] is False
+    assert kept[0]["learned"]["validate"]["profit"] == 12.0
+
+
+def test_the_collect_keeps_a_new_formula_that_lost_where_it_was_unseen(v2store):
+    msw, _ri, sl_, lc = v2store
+    f = {"lx_BTC_1h_1": {"coin": "BTC", "tf": "1h", "learned": {
+            "validate": {"profit": 5.0}, "unseen": {"profit": -1.2}}},
+         "lx_BTC_1h_2": {"coin": "BTC", "tf": "1h", "learned": {
+            "validate": {"profit": -0.5}, "unseen": {"profit": 3.4}}}}
+    rows = {("BTC", "1h"): [_row("BTC", "1h", "lx_BTC_1h_1"), _row("BTC", "1h", "lx_BTC_1h_2")]}
+    lc.land(f, [{"coin": "BTC", "tf": "1h"}], rows)
+    kept = json.loads(sl_.LEARNED_FILE.read_text(encoding="utf-8"))["formulas"]
+    assert set(kept) == {"lx_BTC_1h_1"}
+    assert {r["signal"] for r in msw.pair_rows("BTC", "1h")} == {"lx_BTC_1h_1"}
 
 
 def test_the_collect_drops_a_losing_formula_and_its_rows(v2store):
@@ -554,3 +651,35 @@ def test_a_second_collect_keeps_the_first_accounts_report(v2store):
     got = {(e["coin"], e["tf"]): (e["why"], e["run"]) for e in rep}
     assert got == {("AAA", "1h"): ("nothing passed again", 3),
                    ("BBB", "1h"): ("not enough history", 2)}
+
+
+# ------------------------------------------------- the old-data test (Sep 26)
+def test_the_old_data_test_charges_the_cost_the_formula_was_learned_with():
+    """Break-even is (sl + rt) / (tp + sl), so the stored break-even gives
+    back the exact round trip — lx_0G_1d_1: TP 6%, SL 3%, break-even 35.11%."""
+    from tradingagents import learn_verify as lv
+
+    f = {"tp": 0.06, "sl": 0.03, "learned": {"breakeven_winrate": 35.11}}
+    assert lv._cost(f) == pytest.approx(0.3511 * 0.09 - 0.03)
+
+
+def test_the_shipped_verdicts_agree_with_their_own_counts():
+    """The group's label says "passed old-data test": the names it serves
+    must be exactly the rows the file marks passed, and every formula of
+    the set must carry a verdict — none silently left out."""
+    from tradingagents import learn_verify as lv, rows_index as ri
+
+    raw = json.loads(lv.VERIFIED_FILE.read_text(encoding="utf-8"))
+    rows = raw["formulas"]
+    learned = json.loads((REPO / "tradingagents/learned/sep25.json")
+                         .read_text(encoding="utf-8"))["formulas"]
+    assert set(rows) == set(learned)
+    counts = {}
+    for r in rows.values():
+        counts[r["status"]] = counts.get(r["status"], 0) + 1
+    assert counts == raw["counts"]
+    assert len(ri.passed_learned()) == counts["passed"]
+    for r in rows.values():
+        if r["status"] == "passed":
+            assert r["winrate"] > r["breakeven_winrate"] and r["profit"] > 0
+            assert r["trades"] >= r["min_trades"]

@@ -6,11 +6,31 @@ best confluence for each coin per timeframe"*.
 
 For ONE coin and timeframe:
 
-1. SPLIT the frame. The UNSEEN period is the last `UNSEEN_DAYS` (30 — the
-   Backtest v2 window, the only span with 1-minute candles under it, so the
-   grade settles every exit minute by minute). The LEARN period is the
-   `LEARN_DAYS` before it. Nothing is learned from the unseen period's
-   candles; a change is kept only if it improves the unseen result.
+1. SPLIT the frame into THREE, and the last one is never used to choose:
+
+       TRAIN     |  VALIDATE  |  UNSEEN
+       ~150 days |  30 days   |  30 days  (the Backtest v2 window)
+
+   TRAIN finds each candidate's best TP > SL pair. VALIDATE decides every
+   choice — which refinement survives a round, when to stop, and which
+   formulas are kept. UNSEEN is graded ONCE, after the choice is frozen,
+   with the real engine (minute-exact exits), and reported as it is. It
+   never filters anything.
+
+   WHY THREE, not two (Sep 26, 2026). The first version split in two and
+   then chose on the second part: "keep the round only if the unseen result
+   improved", and "keep a formula only if it was profitable on the unseen
+   period". So the unseen period was a SELECTION set, and its number was the
+   best of up to eight peeks. Measured on 300 of the 5,946 Sep 25 formulas,
+   on the 90 days before the whole 210-day window — candles that took no part
+   in learning OR choosing:
+
+       learn 50.0%  ->  "unseen" 50.0%  ->  never seen 38.7%
+       above its own break-even: 300/300 -> 300/300 -> 85/300
+
+   The screen showed the middle column. Only 85 of 300 made money on candles
+   they had truly never met. A number used to pick a winner cannot then be
+   the evidence that it won.
 2. INGREDIENTS: every signal in `backtest_report.SIGNALS`, plus the confirm
    filters in `signals_learned.FILTERS` (trend side, the slow average's
    direction, session hours, volatility band, volume spike, stretch).
@@ -20,19 +40,29 @@ For ONE coin and timeframe:
    first guess, never a limit.
 4. EVERY ROUND: refine the current best — add a confirm, drop one, swap the
    trigger, join two into a cascade, or let the leading signals vote —
-   score the refinements on the learn period, GRADE the best on the unseen
-   period with the real engine (minute-exact exits, fee + slippage +
-   funding), and keep the round only if the unseen result improved.
-5. STOP after `DRY_ROUNDS` rounds in a row with nothing better on the unseen
-   period (or `MAX_ROUNDS`).
+   score the refinements on TRAIN, run the best through the real engine on
+   VALIDATE (fee + slippage + funding, bar-rule exits: the minutes exist only
+   under the unseen period), and keep the round only if VALIDATE improved.
+5. STOP after `DRY_ROUNDS` rounds in a row with nothing better on VALIDATE
+   (or `MAX_ROUNDS`).
 6. KEEP up to `KEEP` formulas that pass: TP strictly above SL, SL under 80% of
-   the liquidation distance, profitable on the unseen period with at least
-   `market_sweep.min_trades(tf, 30)` trades, a win rate above the break-even
-   win rate of its own TP/SL and cost, and profitable in every nested window
-   the history covers (last 3 months, 6 months, full) with enough trades in
-   each. Nothing is forced through: a pair where nothing passes says so.
+   the liquidation distance, profitable on VALIDATE with at least
+   `market_sweep.min_trades(tf, 30)` trades, a win rate there above the
+   break-even win rate of its own TP/SL and cost, and profitable in every
+   nested window of TRAIN + VALIDATE (last 3 months, 6 months, full) with
+   enough trades in each. Nothing is forced through: a pair where nothing
+   passes says so.
+7. THEN, and only then, GRADE each kept formula on UNSEEN with the real
+   engine, minute-exact. That number is stored as `learned.unseen` and is
+   the honest one: a formula that loses there is still kept and still shows
+   its loss — dropping it would make the unseen period a choosing set again.
 
-The learn-period scoring uses a fast bar walk with the same entry and exit
+EVERYTHING THE CHOOSING CODE READS ENDS AT THE UNSEEN PERIOD'S FIRST BAR:
+the fast walk, the features and every ingredient's directions are built on
+the bars before it (`self.sel`), so no choice can be touched by a later
+candle even through an indicator that looks at the whole array.
+
+The TRAIN scoring uses a fast bar walk with the same entry and exit
 rules as the engine (signal at the close, entry at the next open, SL before
 TP inside one bar) and the round-trip cost, without funding; every number
 that is REPORTED comes from `auto_trader.backtest_strategy` itself.
@@ -50,9 +80,10 @@ import numpy as np
 from tradingagents import signals_learned as sl_
 
 UNSEEN_DAYS = 30
-LEARN_DAYS = 180
-# the least history the loop may learn from: as long as the unseen period,
-# or the unseen period ends up choosing everything (KKRSTOCK on this PC had
+LEARN_DAYS = 180              # TRAIN + VALIDATE, before the unseen period
+VALIDATE_DAYS = 30            # the last 30 of those: where every choice is made
+# the least TRAIN history the loop may learn from: as long as the validate
+# period, or validation ends up choosing everything (KKRSTOCK on this PC had
 # 1 day before its last 30 and still "learned" three formulas)
 MIN_LEARN_DAYS = 30
 WARM_BARS = 300               # market_sweep.CONTEXT_BARS: rules read this far back
@@ -61,8 +92,8 @@ DRY_ROUNDS = 2
 KEEP = 3
 TOP_TRIGGERS = 10             # signals the refinements may draw on
 BEAM = 6                      # candidates carried from round to round
-GRADE_PER_ROUND = 12          # refinements graded on the unseen period
-SEARCH_PAIRS = 12             # TP/SL pairs tried per candidate on the learn period
+GRADE_PER_ROUND = 12          # refinements run on the validate period
+SEARCH_PAIRS = 12             # TP/SL pairs tried per candidate on TRAIN
 STOP_LIQ_SHARE = 0.8          # SL under 80% of the liquidation distance
 NESTED_DAYS = (90, 180)       # plus the full span
 
@@ -251,7 +282,10 @@ class Learner:
             o, h, lo, c, v, ts = frame.arrays()
         self.o, self.h, self.lo, self.c, self.v, self.ts = o, h, lo, c, v, ts
         n = len(self.c)
+        # train [l0, v0) | validate [v0, u0) | unseen [u0, n)
         self.u0 = int(np.searchsorted(self.ts, cut_ms, side="left"))
+        self.v0 = min(self.u0, int(np.searchsorted(
+            self.ts, cut_ms - VALIDATE_DAYS * 86_400_000, side="left")))
         self.l0 = max(WARM_BARS, int(np.searchsorted(
             self.ts, cut_ms - LEARN_DAYS * 86_400_000, side="left")))
         self.n = n
@@ -259,12 +293,21 @@ class Learner:
         self.pairs = barrier_pairs(self.tf, frame.fee, frame.slip, frame.liq)
         self.search_pairs = _search_subset(self.pairs)
         self.min_unseen = msw.min_trades(self.tf, UNSEEN_DAYS)
-        learn_days = max(1.0, (self.ts[self.u0 - 1] - self.ts[self.l0]) / 86_400_000) \
-            if self.u0 - 1 > self.l0 else 0.0
+        self.min_validate = msw.min_trades(self.tf, VALIDATE_DAYS)
+        learn_days = max(1.0, (self.ts[self.v0 - 1] - self.ts[self.l0]) / 86_400_000) \
+            if self.v0 - 1 > self.l0 else 0.0
         self.learn_days = learn_days
         self.min_learn = msw.min_trades(self.tf, learn_days) if learn_days else 10**9
-        self.sim = Sim(self.o, self.h, self.lo, self.c)
-        self.feats = sl_.Features(self.o, self.h, self.lo, self.c, self.v, self.ts, self.tf)
+        # WHAT THE CHOOSING CODE MAY READ: the bars before the unseen period,
+        # and nothing else. The walk, the features and every ingredient are
+        # built on this cut, so no indicator that reads its whole array can
+        # carry a later candle into a choice.
+        u = self.u0
+        self.sel = (self.o[:u], self.h[:u], self.lo[:u], self.c[:u],
+                    self.v[:u], self.ts[:u])
+        self.sim = Sim(*self.sel[:4])
+        self.feats = sl_.Features(*self.sel, self.tf)
+        self.validate_cache: dict = {}
         self.signals = list(signals if signals is not None else br.SIGNALS)
         self.sig_dirs: dict = {}
         self.learn_cache: dict = {}
@@ -274,11 +317,12 @@ class Learner:
 
     # ------------------------------------------------------------- scoring
     def _dirs(self, spec: dict) -> np.ndarray:
+        """A spec's directions over the CHOOSING bars only (`self.sel`)."""
+        o, h, lo, c, v, ts = self.sel
         for s in sl_.ingredients(spec):
             if s not in self.sig_dirs:
                 self.sig_dirs[s] = sl_.ingredient_dirs(
-                    s, self.tf, self.o, self.h, self.lo, self.c, self.v,
-                    self.ts, self.f.funding)
+                    s, self.tf, o, h, lo, c, v, ts, self.f.funding)
         return sl_.compose(spec, self.sig_dirs, self.feats)
 
     def behaviour(self, spec: dict) -> str:
@@ -302,7 +346,7 @@ class Learner:
         return sl_.compose(spec, self._sub_sig, self._sub_feats)
 
     def learn_score(self, spec: dict, pairs=None) -> dict | None:
-        """Best TP > SL pair on the LEARN period: total $ after costs."""
+        """Best TP > SL pair on TRAIN: total $ after costs."""
         # BY BEHAVIOUR, not by wording: two specs that take the same trades
         # are one formula (willr14 and stoch14 are the same line upside down,
         # so "willr14 + stoch14 agrees" changed nothing — found on BTC 1h)
@@ -314,7 +358,7 @@ class Learner:
         notional = self.f.base * 20
         best = None
         for (s, t) in (pairs or self.search_pairs):
-            outs = self.sim.run(d, self.l0, self.u0, t, s)
+            outs = self.sim.run(d, self.l0, self.v0, t, s)
             if len(outs) < self.min_learn:
                 continue
             pnl = float(notional * (outs.sum() - self.rt * len(outs)))
@@ -324,24 +368,12 @@ class Learner:
         self.learn_cache[k] = best
         return best
 
-    def grade(self, spec: dict, s: float, t: float) -> dict | None:
-        """The UNSEEN period through the real engine: minute-exact exits,
-        fee + slippage + funding. What is reported is this."""
+    def _engine(self, sub, d: list, s: float, t: float, start_at: int,
+                fine) -> dict | None:
+        """One run of the real engine: fee + slippage + funding."""
         import tradingagents.auto_trader as at
-
-        k = f"{_key(spec)}|{s}|{t}"
-        if k in self.grade_cache:
-            return self.grade_cache[k]
         from tradingagents import backtest_report as br
 
-        # THE SAME CUT THE STORED ROW WILL BE MEASURED ON: the unseen window
-        # plus WARM_BARS of lead-in (sweep_shard.window), directions computed
-        # on that cut alone. Averages computed over the whole history drift
-        # from the same averages over 300 bars, so grading on the full frame
-        # would report a number the saved row does not repeat.
-        w0 = max(0, self.u0 - WARM_BARS)
-        sub = self.f.df.iloc[w0:].reset_index(drop=True)
-        d = [int(x) for x in self._sub_dirs(spec, w0)]
         iv, bs, _ = br.TFS[self.tf]
         key = f"lx_grade_{self.tf}"
         at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs, "tp": t,
@@ -351,30 +383,57 @@ class Learner:
                                      sizing="flat", slippage=self.f.slip, dirs=d,
                                      tp=t, sl=s, liq_move_pct=self.f.liq,
                                      funding=self.f.funding, keep_log=False,
-                                     start_at=self.u0 - w0, fine=self.f.fine)
+                                     start_at=start_at, fine=fine)
         except Exception as exc:                               # noqa: BLE001
             self.log(f"grade failed ({type(exc).__name__}: {exc})")
-            r = None
+            return None
         finally:
             at.STRATEGY_SPECS.pop(key, None)
-        out = None
-        if r is not None:
-            out = {"profit": float(r["profit"]), "trades": int(r["trades"]),
-                   "wins": int(r["wins"]), "losses": int(r["losses"]),
-                   "streak": float(r.get("worst_streak", 0.0)),
-                   "streak_len": int(r.get("worst_streak_len", 0))}
-        self.grade_cache[k] = out
-        return out
+        return {"profit": float(r["profit"]), "trades": int(r["trades"]),
+                "wins": int(r["wins"]), "losses": int(r["losses"]),
+                "streak": float(r.get("worst_streak", 0.0)),
+                "streak_len": int(r.get("worst_streak_len", 0))}
 
-    def unseen_value(self, g: dict | None, s: float, t: float) -> float:
-        """How good an unseen grade is: its profit, or minus infinity if it
-        does not clear the floors (enough trades, above break-even)."""
-        if not g or g["trades"] < self.min_unseen:
+    def validate(self, spec: dict, s: float, t: float) -> dict | None:
+        """The VALIDATE period through the real engine, bar-rule exits (the
+        1-minute candles exist only under the unseen period). Every choice
+        the loop makes reads this, and it never sees a bar past u0."""
+        k = f"{_key(spec)}|{s}|{t}"
+        if k not in self.validate_cache:
+            w0 = max(0, self.v0 - WARM_BARS)
+            sub = self.f.df.iloc[w0:self.u0].reset_index(drop=True)
+            d = [int(x) for x in self._dirs(spec)[w0:self.u0]]
+            self.validate_cache[k] = self._engine(sub, d, s, t, self.v0 - w0, None)
+        return self.validate_cache[k]
+
+    def validate_value(self, g: dict | None, s: float, t: float) -> float:
+        """How good a validate result is: its profit, or minus infinity if
+        it does not clear the floors (enough trades, above break-even)."""
+        if not g or g["trades"] < self.min_validate:
             return float("-inf")
         wr = 100.0 * g["wins"] / g["trades"]
         if wr <= breakeven_winrate(t, s, self.rt):
             return float("-inf")
         return g["profit"]
+
+    def grade(self, spec: dict, s: float, t: float) -> dict | None:
+        """The UNSEEN period through the real engine: minute-exact exits,
+        fee + slippage + funding. Run ONLY on formulas already chosen, and
+        what it says is reported as it is: it never chooses."""
+        k = f"{_key(spec)}|{s}|{t}"
+        if k in self.grade_cache:
+            return self.grade_cache[k]
+        # THE SAME CUT THE STORED ROW WILL BE MEASURED ON: the unseen window
+        # plus WARM_BARS of lead-in (sweep_shard.window), directions computed
+        # on that cut alone. Averages computed over the whole history drift
+        # from the same averages over 300 bars, so grading on the full frame
+        # would report a number the saved row does not repeat.
+        w0 = max(0, self.u0 - WARM_BARS)
+        sub = self.f.df.iloc[w0:].reset_index(drop=True)
+        d = [int(x) for x in self._sub_dirs(spec, w0)]
+        out = self._engine(sub, d, s, t, self.u0 - w0, self.f.fine)
+        self.grade_cache[k] = out
+        return out
 
     # ---------------------------------------------------------- neighbours
     def _neighbours(self, spec: dict, top: list) -> list:
@@ -428,16 +487,19 @@ class Learner:
     def run(self) -> dict:
         t0 = time.time()
         rep = {"coin": self.f.coin, "tf": self.tf, "bars": self.n,
-               "learn_days": round(self.learn_days, 1), "unseen_days": UNSEEN_DAYS,
+               "learn_days": round(self.learn_days, 1),
+               "validate_days": VALIDATE_DAYS, "unseen_days": UNSEEN_DAYS,
+               "min_validate_trades": self.min_validate,
                "min_unseen_trades": self.min_unseen, "min_learn_trades": self.min_learn,
                "pairs": len(self.pairs)}
         if not self.pairs:
             return {**rep, "formulas": [], "why": "no TP > SL pair clears the cost gate"}
-        if self.u0 >= self.n - 2 or self.learn_days < MIN_LEARN_DAYS:
+        if (self.u0 >= self.n - 2 or self.v0 >= self.u0 - 2
+                or self.learn_days < MIN_LEARN_DAYS):
             return {**rep, "formulas": [],
                     "why": (f"not enough history: {self.learn_days:.0f} day(s) before "
-                            f"the last {UNSEEN_DAYS}, and learning needs "
-                            f"{MIN_LEARN_DAYS}")}
+                            f"the last {VALIDATE_DAYS + UNSEEN_DAYS}, and learning "
+                            f"needs {MIN_LEARN_DAYS}")}
         # ROUND 1 — every signal alone, plus the seed menu
         singles = []
         for s in self.signals:
@@ -458,8 +520,8 @@ class Learner:
                 sc = self.learn_score(sp)
                 if not sc:
                     continue
-                g = self.grade(sp, sc["sl"], sc["tp"])
-                graded[_key(sp)] = (self.unseen_value(g, sc["sl"], sc["tp"]), sp, sc, g)
+                g = self.validate(sp, sc["sl"], sc["tp"])
+                graded[_key(sp)] = (self.validate_value(g, sc["sl"], sc["tp"]), sp, sc, g)
 
         grade_all(beam)
 
@@ -470,7 +532,7 @@ class Learner:
                        or [float("-inf")])
 
         best = best_value()
-        self.rounds.append({"round": 1, "tried": self.tried, "best_unseen": _num(best),
+        self.rounds.append({"round": 1, "tried": self.tried, "best_validate": _num(best),
                             "leaders": top[:TOP_TRIGGERS]})
         dry = 0
         rnd = 1
@@ -513,27 +575,31 @@ class Learner:
                     nxt.append(sp)
             beam = nxt or beam
             self.rounds.append({"round": rnd, "tried": self.tried,
-                                "best_unseen": _num(best), "improved": improved})
+                                "best_validate": _num(best), "improved": improved})
         kept = self._keep(graded)
         rep.update(rounds=len(self.rounds), tried=self.tried, round_log=self.rounds,
                    seconds=round(time.time() - t0, 1), formulas=kept)
         if not kept:
-            rep["why"] = "nothing passed the unseen-period and nested-window checks"
+            rep["why"] = "nothing passed the validate-period and nested-window checks"
         return rep
 
     def _nested_ok(self, spec: dict, s: float, t: float) -> tuple[bool, dict]:
         from tradingagents import market_sweep as msw
 
+        # TRAIN + VALIDATE only: the windows end where the unseen period
+        # starts. They ended at the frame's last bar before Sep 26, 2026, so
+        # "profitable in the last 3 months" quietly included the unseen 30.
         d = self._dirs(spec)
         notional = self.f.base * 20
         out = {}
-        end = self.n
-        spans = [(f"{nd}d", int(np.searchsorted(self.ts, int(self.ts[-1]) - nd * 86_400_000)), nd)
+        end = self.u0
+        ref = int(self.ts[end - 1])
+        spans = [(f"{nd}d", int(np.searchsorted(self.ts, ref - nd * 86_400_000)), nd)
                  for nd in NESTED_DAYS]
-        spans.append(("full", WARM_BARS, (self.ts[-1] - self.ts[WARM_BARS]) / 86_400_000))
+        spans.append(("full", WARM_BARS, (ref - self.ts[WARM_BARS]) / 86_400_000))
         for name, a, days in spans:
             a = max(a, WARM_BARS)
-            covered = (self.ts[-1] - self.ts[a]) / 86_400_000 >= 0.9 * days
+            covered = (ref - self.ts[a]) / 86_400_000 >= 0.9 * days
             if name != "full" and not covered:
                 out[name] = "not enough history"
                 continue
@@ -546,8 +612,8 @@ class Learner:
         return True, out
 
     def _keep(self, graded: dict) -> list:
-        # WHEN TWO ARE CLOSE, THE SIMPLER ONE: unseen profits within the same
-        # whole dollar rank by how many conditions the formula reads
+        # WHEN TWO ARE CLOSE, THE SIMPLER ONE: validate profits within the
+        # same whole dollar rank by how many conditions the formula reads
         def rank(x):
             v = x[0]
             whole = math.floor(v) if v != float("-inf") else -10**12
@@ -555,21 +621,29 @@ class Learner:
 
         ranked = sorted((x for x in graded.values() if is_confluence(x[1])), key=rank)
         kept, triggers, kept_b, kept_o = [], set(), set(), set()
-        for v, sp, sc, g in ranked:
+        for v, sp, sc, val in ranked:
             if v == float("-inf") or len(kept) >= KEEP:
                 break
             if v <= 0:
-                # PROFITABLE on the unseen period, not only above break-even:
-                # funding can take a row with a good win rate below zero, and
-                # the keep rule is "made money where it was never learned"
+                # PROFITABLE on the validate period, not only above
+                # break-even: funding can take a row with a good win rate
+                # below zero
                 continue
             # THE SAME TRADES WHERE IT IS STORED is the same formula. Two
             # specs that differed only in the learn period and signal alike in
             # the unseen window are one row set twice (GitHub run 36140580272:
             # lx_ETH_30m_1 and _2 were both 28 trades, 71.43%, +$43.41) — so
             # identity is judged on the stored row's own cut, and on the grade
+            # (the unseen grade is read here as an IDENTITY, the same trades,
+            # never as a score: nothing is kept or dropped for how well it
+            # did there)
             b = hashlib.md5(self._sub_dirs(sp, max(0, self.u0 - WARM_BARS))
                             .tobytes()).hexdigest()
+            if b in kept_b:
+                continue
+            g = self.grade(sp, sc["sl"], sc["tp"])
+            if g is None:
+                continue                      # the engine failed: no row to store
             outcome = (g["trades"], g["wins"], round(g["profit"], 2))
             if b in kept_b or outcome in kept_o:
                 continue                      # the same trades as one kept
@@ -589,7 +663,13 @@ class Learner:
                 **{k: sp[k] for k in ("join", "legs", "vote") if k in sp},
                 "tp": sc["tp"], "sl": sc["sl"],
                 "learned": {
-                    "unseen": {**g, "winrate": round(100.0 * g["wins"] / g["trades"], 2)},
+                    # measured AFTER the choice and kept whatever it says:
+                    # the one number on the screen nothing chose on
+                    "unseen": {**g, "winrate": (round(100.0 * g["wins"] / g["trades"], 2)
+                                                if g["trades"] else None),
+                               "min_trades": self.min_unseen, "chose": False},
+                    "validate": {**val, "winrate": round(100.0 * val["wins"]
+                                                         / val["trades"], 2)},
                     # money rounded, the barriers NOT: round(0.025, 2) is
                     # 0.03, which printed a 2.5% stop as the 3% target
                     "learn": {k: (round(x, 2) if k == "pnl" else x)

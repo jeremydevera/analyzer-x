@@ -172,6 +172,84 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-26-B — the Sep 25 Strat "unseen" win rate was the period the formulas were chosen on
+
+**CEO**
+
+* The 5,946 new formulas showed a win rate "on days they never saw", and
+  it was flattering: on 90 older days they had truly never met they won
+  38.7% where the screen said 50.0%, and only 85 of the first 300 made
+  money.
+* Why: the learner used those last 30 days to decide which formulas to
+  keep, so they were picked because they looked good there — a number used
+  to choose a winner cannot then prove it won.
+* What stops it now: the learner chooses on an earlier 30 days and only
+  THEN measures the last 30, once, keeping whatever it says; and the Sep 25
+  set has a new group, "Sep 25 Strat · passed old-data test", holding the
+  1,257 formulas that also won on the 90 old days.
+
+**DEV**
+
+* `formula_learner.Learner.run` → `grade_all` scored every candidate with
+  `grade()` on `[u0, n)` and `unseen_value` ranked, stopped
+  (`best_value`/`improved`) and kept (`_keep`: `v <= 0` skipped) on it;
+  `_nested_ok` spanned to `self.n`, and `learn_collect.land` dropped
+  formulas whose `learned.unseen.profit <= 0` — five decisions reading the
+  set that was reported as out-of-sample.
+* Invariant broken: **a number that chooses cannot be the number that
+  proves.** Now three periods: TRAIN `[l0, v0)` picks TP/SL, VALIDATE
+  `[v0, u0)` (real engine, bar exits) makes every choice, UNSEEN `[u0, n)`
+  is graded only in `_keep` after the choice, stored with `chose: False`,
+  and never filters — and the choosing code is built on `self.sel` (bars
+  before `u0`), so no indicator can carry a later candle into a choice.
+* Guards: `tests/test_sep25_learned_formulas.py::test_no_choice_can_see_the_unseen_period`
+  (rewrites every candle after `u0`; the old learner kept 2 formulas on the
+  original and 1 on the rewrite, the new one keeps the same 3 on both),
+  `::test_the_nested_windows_end_where_the_unseen_period_starts`,
+  `::test_a_formula_that_lost_money_where_it_was_unseen_is_kept_and_says_so`,
+  `::test_the_collect_keeps_a_new_formula_that_lost_where_it_was_unseen`,
+  and `tests/test_strategy_group_filter.py::test_the_passed_group_is_exactly_the_formulas_that_passed`.
+
+**SAW** — *"Could you review my new set of group of formula, do you think
+its good? How would you rate it"*; the review rated it 3/10, and the
+operator answered *"Yes do 2 and 3"*.
+
+**TIMELINE**
+
+1. `Sep 25, 2026` — GitHub run 36159200767 learns 5,946 formulas across 795
+   coins; each round is kept only if its last-30-day result improved, and a
+   formula is kept only if it made money there.
+2. `Sep 25, 2026 9:09pm` onwards — collected into Backtest v2 as the group
+   "Sep 25 Strat"; the screen shows the chosen-on 30 days as "unseen".
+3. `Sep 26, 2026 5:31pm` — the review measures 300 of them on the 90 days
+   before the learner's 210-day window: learn 50.0% → "unseen" 50.0% →
+   never seen **38.7%**; above their own break-even 300/300 → 300/300 →
+   **85/300**; median −11.1 points.
+4. `Sep 26, 2026 6:11pm` — all 5,946 measured the same way (`learn_verify.py`,
+   fee + slippage + funding): 4,120 could be tested (1,764 were listed too late to have 90 older days, 62 had an unreadable funding history); **1,257 passed** (30.5%) and 2,863 failed; the median formula won 2.5 points under its own break-even, and the 4,120 together lost $53,245 at $5 a trade while the 1,257 made $26,280 — by timeframe 1h 393/1,108, 4h 372/1,001, 1d 70/155, 30m 267/984, 15m 155/872.
+5. Fixed: the three-period learner, the collect's keep rule, and the
+   "passed old-data test" group. None of the Sep 25 formulas was switched
+   on, in either account.
+
+**ROOT CAUSE** — `Learner.run` graded candidates on the unseen period and
+chose on that grade, so the unseen period was a selection set.
+
+**WHY IT WAS NOT CAUGHT** — every test asserted the kept formulas CLEARED
+the unseen floors (`u["winrate"] > breakeven`), which is the bug written as
+a requirement: a test of "the result looks good where we checked" passes
+best when the code picks where it checks. No test asked whether changing
+the unseen candles could change what was chosen — the one question that
+separates a test period from a choosing period.
+
+**COST** — none in money: no `lx_` formula was ever switched on. The cost
+was trust in a win rate that was 11 points too high on the median formula.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_sep25_learned_formulas.py::test_no_choice_can_see_the_unseen_period`.
+
+---
+
 ## RCA-2026-09-26-A — the deployed-strategies table was still unreadable on a phone after the Sep 23 phone fix
 
 **CEO**

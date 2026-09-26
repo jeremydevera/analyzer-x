@@ -256,7 +256,9 @@ export default function StrategiesGrid() {
             {catalog ? ` · showing all ${counts.catalog_count} the runner can run` : ""}
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        {/* flex-wrap: on a phone nine controls on one line gave each ~40px,
+            and "show all 527 to arm a new one" read one word per line. */}
+        <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 md:ml-auto md:w-auto">
           {/* "IF I CLICK IT FORGET THE PREVIOUS LOSS, YOU WILL ASSUME I
               HAVE 0 LOSS AGAIN" (operator, 2026-09-05). A baseline, not a
               deletion: the breaker restarts at zero, the history and the

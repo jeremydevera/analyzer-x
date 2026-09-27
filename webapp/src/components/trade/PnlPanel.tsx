@@ -18,6 +18,14 @@ export default function PnlPanel() {
   // an empty profit book is real data — "has it EVER loaded" is its own flag,
   // because days starts as {} and `!== null` would call it loaded at birth
   const got = useRef(false);
+  // OPEN ON THE BOOK THAT HAS TRADES (operator, Sep 27, 2026: *"i cannot
+  // see day by day pnl"*). The page opened on the real-money account, which
+  // has 0 closed trades while every strategy is practice-only, so every box
+  // of the new calendar was blank. Until the operator picks a book, an empty
+  // real-money answer moves the panel to the practice account — and the
+  // caption says which one it is showing.
+  const picked = useRef(false);
+  const pick = (v: boolean) => { picked.current = true; setDry(v); };
 
   // EVERY 5 SECONDS, and again the moment the tab is looked at. This loaded
   // ONCE and re-fetched only after a failure, so today's profit stopped
@@ -35,6 +43,7 @@ export default function PnlPanel() {
     Promise.all([tradeApi.pnlByCoin(dry), tradeApi.pnlDaily(dry)])
       .then(([c, d]) => {
         if (asked !== dryNow.current) return;
+        if (!asked && !picked.current && !Object.keys(d.days).length) { setDry(true); return; }
         setCoins(c.coins); setDays(d.days); setErr("");
         got.current = true; markReady("profit");
       })
@@ -58,7 +67,7 @@ export default function PnlPanel() {
             </p>
           </div>
           <label className="ml-auto flex items-center gap-2 text-theme-xs text-gray-600 dark:text-gray-300">
-            <input type="checkbox" checked={dry} onChange={(e) => setDry(e.target.checked)} className="h-4 w-4 accent-brand-500" />
+            <input type="checkbox" checked={dry} onChange={(e) => pick(e.target.checked)} className="h-4 w-4 accent-brand-500" />
             paper book
           </label>
         </div>
@@ -89,7 +98,7 @@ export default function PnlPanel() {
         </div>
       </div>
 
-      <DayCalendar days={days} book={dry ? "practice account" : "real-money account"} />
+      <DayCalendar days={days} book={dry ? "practice account" : "real-money account"} dry={dry} onBook={pick} />
     </div>
   );
 }
@@ -106,7 +115,9 @@ const dayKey = (y: number, m: number, d: number) => `${y}-${pad2(m + 1)}-${pad2(
  * month's total summed from the same boxes, so the caption cannot disagree
  * with the grid. A day with no closed trade stays blank rather than +0.00:
  * "nothing closed" and "closed at break-even" are different days. */
-export function DayCalendar({ days, book }: { days: Record<string, DayStat>; book: string }) {
+export function DayCalendar({ days, book, dry, onBook }: {
+  days: Record<string, DayStat>; book: string; dry?: boolean; onBook?: (dry: boolean) => void;
+}) {
   const now = new Date();
   const [month, setMonth] = useState({ y: now.getFullYear(), m: now.getMonth() });
   const [picked, setPicked] = useState<string | null>(null);
@@ -150,6 +161,16 @@ export function DayCalendar({ days, book }: { days: Record<string, DayStat>; boo
             className="h-8 w-8 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-30 dark:border-gray-700 dark:text-gray-300">›</button>
         </div>
       </div>
+      {onBook && (
+        <div className="flex gap-1 px-5 pb-1 pt-2">
+          {([[false, "Real money"], [true, "Practice"]] as const).map(([v, label]) => (
+            <button key={label} type="button" onClick={() => onBook(v)}
+              className={`rounded-lg border px-3 py-1 text-theme-xs font-medium ${dry === v
+                ? "border-brand-500 bg-brand-500 text-white"
+                : "border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300"}`}>{label}</button>
+          ))}
+        </div>
+      )}
       <p className="px-5 text-theme-xs text-gray-500 dark:text-gray-400">
         {book} · {MONTHS[month.m]} {month.y}:{" "}
         <span className={`font-semibold ${total >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(total)}</span>
@@ -194,7 +215,7 @@ export function DayCalendar({ days, book }: { days: Record<string, DayStat>; boo
             {" · "}{sel.trades} trade{sel.trades === 1 ? "" : "s"}, {sel.wins}W / {sel.losses}L · {sel.coins.join(", ")}
           </p>
         )}
-        {!keys.length && <p className="mt-2 text-theme-sm text-gray-500 dark:text-gray-400">No closed days on this book yet.</p>}
+        {!keys.length && <p className="mt-2 text-theme-sm text-gray-500 dark:text-gray-400">No closed trades on the {book} yet{dry ? "" : " — tap Practice to see the practice trades"}.</p>}
       </div>
     </div>
   );

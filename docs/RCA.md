@@ -172,6 +172,57 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-27-A — the new day-by-day calendar was blank on the operator's phone: it opened on the account with no trades
+
+**CEO**
+
+* You opened the new calendar and saw no profit on any day, minutes after
+  being told it was live.
+* Why: the page always opens on your real-money account, which has no closed
+  trades because every strategy is practice-only; your practice results were
+  one switch away, in a different box, labelled "paper book".
+* What stops it now: until you choose, the calendar opens on whichever
+  account actually has trades, it has its own Real money / Practice switch,
+  and an empty account says which one it is and where the trades are.
+
+**DEV**
+
+* `webapp/src/components/trade/PnlPanel.tsx` started at `useState(false)`
+  (real book) and the only book switch was the by-coin panel's `paper book`
+  checkbox; `daily_pnl(dry=False)` returns `{}` on this machine.
+* Invariant broken: **a panel's default view is the one that has data** —
+  and an empty state names what it examined (the Sep 12 rule), not "this
+  book".
+* Guard: `tests/test_day_by_day_is_a_calendar.py::test_it_opens_on_the_book_that_has_trades`.
+
+**SAW** — `Sep 27, 2026 1:19pm`: *"attaching screenshot i cannot see day by
+day pnl"* (the image did not reach this session).
+
+**TIMELINE**
+
+1. `Sep 27, 2026 12:39pm` — asked for the calendar.
+2. `~1:10pm` — 1b015d6a9db0 ships it; verified on screen only after ticking
+   `paper book` first, because the real-money calendar is empty.
+3. `1:19pm` — the operator, who never ticks that box, sees 30 blank days.
+4. Fixed: opens on the practice account (Sep 2026 -121.68, 263W / 157L,
+   12 trading days) with nothing touched; checked at 390px and 1440px.
+
+**ROOT CAUSE** — the verification script ticked the practice switch before
+looking, so it tested a state the operator does not start in.
+
+**WHY IT WAS NOT CAUGHT** — the screenshot scripts did what a tester does,
+not what the operator does: they chose the book with data. "Test in the state
+it will run in" (Sep 05 rule) applies to a screen's DEFAULT, not only to the
+runner.
+
+**COST** — none in money; the calendar looked broken for one look.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_day_by_day_is_a_calendar.py`.
+
+---
+
 ## RCA-2026-09-26-B — the Sep 25 Strat "unseen" win rate was the period the formulas were chosen on
 
 **CEO**

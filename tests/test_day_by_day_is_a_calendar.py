@@ -64,3 +64,13 @@ def test_a_day_without_trades_is_blank_not_zero():
     cal = _calendar()
     assert "disabled={!v}" in cal
     assert "{v && <>" in cal
+
+
+def test_it_opens_on_the_book_that_has_trades():
+    """Sep 27, 2026: 'i cannot see day by day pnl' — the page opened on the
+    real-money account, 0 closed trades, every box blank."""
+    assert "if (!asked && !picked.current && !Object.keys(d.days).length) { setDry(true); return; }" in PANEL
+    # the operator's own choice is never overridden
+    assert "const pick = (v: boolean) => { picked.current = true; setDry(v); };" in PANEL
+    assert "onChange={(e) => pick(e.target.checked)}" in PANEL
+    assert '"Real money"' in _calendar() and '"Practice"' in _calendar()

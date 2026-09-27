@@ -14,6 +14,12 @@ export default function PnlPanel() {
   const [coins, setCoins] = useState<Record<string, CoinStat>>({});
   const [days, setDays] = useState<Record<string, DayStat>>({});
   const [dry, setDry] = useState(false);
+  // WHICH BOOK THE NUMBERS ON SCREEN BELONG TO (null = none yet). Both reads
+  // walk the whole ledger, 1.2-1.8 s measured, and the operator: *"when i
+  // switch to real money its loading lag, can you make loading animation
+  // before showing result"* (Sep 27, 2026). While `shown !== dry` the panel
+  // shows a spinner, never the other book's figures under this book's name.
+  const [shown, setShown] = useState<boolean | null>(null);
   const [err, setErr] = useState("");
   // an empty profit book is real data — "has it EVER loaded" is its own flag,
   // because days starts as {} and `!== null` would call it loaded at birth
@@ -44,13 +50,14 @@ export default function PnlPanel() {
       .then(([c, d]) => {
         if (asked !== dryNow.current) return;
         if (!asked && !picked.current && !Object.keys(d.days).length) { setDry(true); return; }
-        setCoins(c.coins); setDays(d.days); setErr("");
+        setCoins(c.coins); setDays(d.days); setShown(asked); setErr("");
         got.current = true; markReady("profit");
       })
       .catch((e) => setErr(String(e)));
   }, 5_000, [dry]);
 
-  const coinRows = Object.entries(coins).sort((a, b) => b[1].pnl - a[1].pnl);
+  const loading = shown !== dry;
+  const coinRows = Object.entries(loading ? {} : coins).sort((a, b) => b[1].pnl - a[1].pnl);
   const coinTotal = coinRows.reduce((a, [, v]) => a + v.pnl, 0);
   const trades = coinRows.reduce((a, [, v]) => a + v.trades, 0);
   const wins = coinRows.reduce((a, [, v]) => a + v.wins, 0);
@@ -63,7 +70,8 @@ export default function PnlPanel() {
           <div>
             <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Closed profit by coin</h3>
             <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-              {coinRows.length} coins · {fmtMoney(coinTotal)} total · {trades} closed trades · {wins}W / {losses}L
+              {loading ? <Loading what={dry ? "practice account" : "real-money account"} />
+                : <>{coinRows.length} coins · {fmtMoney(coinTotal)} total · {trades} closed trades · {wins}W / {losses}L</>}
             </p>
           </div>
           <label className="ml-auto flex items-center gap-2 text-theme-xs text-gray-600 dark:text-gray-300">
@@ -92,15 +100,24 @@ export default function PnlPanel() {
                   <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{v.trades ? ((v.wins / v.trades) * 100).toFixed(1) : "—"}</TableCell>
                 </TableRow>
               ))}
-              {!coinRows.length && <TableRow><TableCell className="px-3 py-4 text-theme-sm text-gray-500 dark:text-gray-400">No closed trades on this book yet.</TableCell></TableRow>}
+              {!coinRows.length && !loading && <TableRow><TableCell className="px-3 py-4 text-theme-sm text-gray-500 dark:text-gray-400">No closed trades on this book yet.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </div>
       </div>
 
-      <DayCalendar days={days} book={dry ? "practice account" : "real-money account"} dry={dry} onBook={pick} />
+      <DayCalendar days={loading ? {} : days} loading={loading}
+        book={dry ? "practice account" : "real-money account"} dry={dry} onBook={pick} />
     </div>
   );
+}
+
+function Spinner() {
+  return <span aria-hidden className="inline-block h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />;
+}
+
+function Loading({ what }: { what: string }) {
+  return <span className="inline-flex items-center gap-2" role="status"><Spinner />loading the {what}…</span>;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -115,8 +132,9 @@ const dayKey = (y: number, m: number, d: number) => `${y}-${pad2(m + 1)}-${pad2(
  * month's total summed from the same boxes, so the caption cannot disagree
  * with the grid. A day with no closed trade stays blank rather than +0.00:
  * "nothing closed" and "closed at break-even" are different days. */
-export function DayCalendar({ days, book, dry, onBook }: {
+export function DayCalendar({ days, book, dry, onBook, loading = false }: {
   days: Record<string, DayStat>; book: string; dry?: boolean; onBook?: (dry: boolean) => void;
+  loading?: boolean;
 }) {
   const now = new Date();
   const [month, setMonth] = useState({ y: now.getFullYear(), m: now.getMonth() });
@@ -172,12 +190,21 @@ export function DayCalendar({ days, book, dry, onBook }: {
         </div>
       )}
       <p className="px-5 text-theme-xs text-gray-500 dark:text-gray-400">
+        {loading ? <Loading what={book} /> : <>
         {book} · {MONTHS[month.m]} {month.y}:{" "}
         <span className={`font-semibold ${total >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(total)}</span>
         {" · "}{wins}W / {losses}L · {green} of {inMonth.length} trading days green
+        </>}
       </p>
-      <div className="p-3">
-        <div className="grid grid-cols-7 gap-1">
+      <div className="relative p-3">
+        {loading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center">
+            <span className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-theme-sm font-medium text-gray-700 shadow dark:bg-gray-900 dark:text-gray-200">
+              <Spinner />loading…
+            </span>
+          </div>
+        )}
+        <div className={`grid grid-cols-7 gap-1 transition-opacity ${loading ? "animate-pulse opacity-40" : ""}`}>
           {WEEKDAYS.map((w) => (
             <div key={w} className="py-1 text-center text-[10px] font-medium uppercase tracking-wide text-gray-400">{w}</div>
           ))}
@@ -215,7 +242,7 @@ export function DayCalendar({ days, book, dry, onBook }: {
             {" · "}{sel.trades} trade{sel.trades === 1 ? "" : "s"}, {sel.wins}W / {sel.losses}L · {sel.coins.join(", ")}
           </p>
         )}
-        {!keys.length && <p className="mt-2 text-theme-sm text-gray-500 dark:text-gray-400">No closed trades on the {book} yet{dry ? "" : " — tap Practice to see the practice trades"}.</p>}
+        {!keys.length && !loading && <p className="mt-2 text-theme-sm text-gray-500 dark:text-gray-400">No closed trades on the {book} yet{dry ? "" : " — tap Practice to see the practice trades"}.</p>}
       </div>
     </div>
   );

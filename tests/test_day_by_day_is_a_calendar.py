@@ -74,3 +74,16 @@ def test_it_opens_on_the_book_that_has_trades():
     assert "const pick = (v: boolean) => { picked.current = true; setDry(v); };" in PANEL
     assert "onChange={(e) => pick(e.target.checked)}" in PANEL
     assert '"Real money"' in _calendar() and '"Practice"' in _calendar()
+
+
+def test_switching_books_shows_a_spinner_not_the_other_books_numbers():
+    """Sep 27, 2026: 'when i switch to real money its loading lag, can you
+    make loading animation before showing result'."""
+    assert "const loading = shown !== dry;" in PANEL
+    assert "setShown(asked)" in PANEL
+    # while loading neither panel is handed the old book's figures
+    assert "Object.entries(loading ? {} : coins)" in PANEL
+    assert "<DayCalendar days={loading ? {} : days} loading={loading}" in PANEL
+    assert "animate-spin" in PANEL
+    # and the empty-account sentence waits for the answer
+    assert "{!keys.length && !loading && <p" in PANEL

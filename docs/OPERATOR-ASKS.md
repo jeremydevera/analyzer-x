@@ -3189,3 +3189,23 @@ words are the record; a summary of them is not.
 
 > in day by day section can you create calendar and show me the pnl for day insteead
 
+
+### Sep 27, 2026 1:19pm
+
+> attaching screenshot i cannot see day by day pnl
+
+
+### Sep 27, 2026 1:24pm
+
+> when i switch to real money its loading lag, can  you make loading animation before showing result
+
+
+### Sep 27, 2026 1:25pm
+
+> instead of ujsing confluence, can you review past 30 days and create best strategy for each coin and each timeframe use machine learning on what's best strategy i want tp higher than sl
+
+
+### Sep 27, 2026 1:32pm
+
+> go
+

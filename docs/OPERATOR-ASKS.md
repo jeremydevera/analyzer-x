@@ -3164,3 +3164,28 @@ words are the record; a summary of them is not.
 > <event>done: {'failed': 2863, 'passed': 1257, 'too young to test': 598, 'no candles': 1166, 'funding unreadable': 62}</event>
 > If this event is something the user would act on now, send a PushNotification. Routine or benign output doesn't need one.
 
+
+### Sep 26, 2026 6:20pm
+
+> <event>[Monitor expired after 30m with 6 events delivered. Re-arm it if you still need the watch.]</event>
+
+
+### Sep 27, 2026 12:34pm
+
+> if you will decide what will you pick
+
+
+### Sep 27, 2026 12:35pm
+
+> all of these are stock right
+
+
+### Sep 27, 2026 12:35pm
+
+> okay deploy them in demo trade only
+
+
+### Sep 27, 2026 12:39pm
+
+> in day by day section can you create calendar and show me the pnl for day insteead
+

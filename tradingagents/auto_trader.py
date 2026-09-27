@@ -1598,6 +1598,18 @@ _OPERATORS_V2_SEP25 = {
 STRATEGY_SPECS.update(_OPERATORS_V2_SEP25)
 STRATEGY_ORDER = STRATEGY_ORDER + tuple(_OPERATORS_V2_SEP25)
 
+# The operator's Sep 27, 2026 picks (presets/v2-sep27.json), added to the
+# practice account beside the Sep 25 set: "okay deploy them in demo trade
+# only". Two of the five rows needed a key nobody had armed before —
+# #C9MRXJSD KKRSTOCK 15m willr14 3%/1.5% and #8EZ3XPKE AONSTOCK 15m stoch14
+# 2.5%/1.2%; the other three reuse existing keys.
+_OPERATORS_V2_SEP27 = {
+    "willr14_15m_sl15tp3": {"interval": "Min15", "bar_seconds": 900, "tp": 0.03, "sl": 0.015},
+    "stoch14_15m_sl12tp25": {"interval": "Min15", "bar_seconds": 900, "tp": 0.025, "sl": 0.012},
+}
+STRATEGY_SPECS.update(_OPERATORS_V2_SEP27)
+STRATEGY_ORDER = STRATEGY_ORDER + tuple(_OPERATORS_V2_SEP27)
+
 
 # ------------------------------------------------------------------ signals
 # Each takes plain OHLC lists of CLOSED bars and answers the direction the

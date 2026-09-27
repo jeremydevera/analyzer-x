@@ -1,0 +1,192 @@
+{
+ "name": "v2-sep27",
+ "why": "The operator's Sep 27, 2026 pick of five Backtest v2 rows (\"okay deploy them in demo trade only\"), ADDED to the Sep 25 practice set, never replacing it. #7BNLXU62 FASTSTOCK 15m prank 2%/1.5% and #H6Q486BR GPNSTOCK 30m keltner 2.5%/2% were already switched on by v2-sep25, so this file arms the other three, all on the practice account.",
+ "already_armed": [
+  {
+   "id": "7BNLXU62",
+   "key": "prank_15m_sl15tp2",
+   "coin": "FASTSTOCK_USDT",
+   "by": "v2-sep25"
+  },
+  {
+   "id": "H6Q486BR",
+   "key": "keltner_30m_sl2tp25",
+   "coin": "GPNSTOCK_USDT",
+   "by": "v2-sep25"
+  }
+ ],
+ "measured": {
+  "store": "Backtest v2 (1-minute exits)",
+  "base_margin": 5.0,
+  "notional": 100.0,
+  "leverage": 20,
+  "sizing": "flat",
+  "gate_checked": "Sep 27, 2026 12:40pm, read-only (Sunday: US market closed, tokenized-stock spreads wide; the runner re-reads the book at every signal)"
+ },
+ "base_margin": 5.0,
+ "sizing": "flat",
+ "book": [
+  "paper"
+ ],
+ "res": "1m",
+ "replace": false,
+ "refused": [],
+ "strategies": {
+  "willr14_15m_sl15tp3": {
+   "coins": [
+    "KKRSTOCK_USDT"
+   ],
+   "rows": [
+    "C9MRXJSD"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "KKRSTOCK": {
+     "tf": "15m",
+     "signal": "willr14",
+     "th": 0.0,
+     "tp_pct": 3.0,
+     "sl_pct": 1.5,
+     "given": [
+      "C9MRXJSD"
+     ],
+     "runs_as": "C9MRXJSD",
+     "flat": {
+      "trades": 75,
+      "wins": 59,
+      "losses": 16,
+      "winrate": 78.67,
+      "profit": 136.43,
+      "dd": 3.39,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 6.0,
+      "rt": 0.1803,
+      "unclear": 2,
+      "breakeven_winrate": 37.34
+     },
+     "replayed_on_this_pc": {
+      "trades": 75,
+      "wins": 59,
+      "losses": 16,
+      "profit": 136.45,
+      "candles_last": "Sep 25, 2026 6:45am"
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.910% vs take-profit 3.00% = 130% of the target (includes 0.001% funding for a 15m hold at 0.060% a day) · the gap between buy and sell (3.589%) is wider than the 1.50% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  },
+  "stoch14_15m_sl12tp25": {
+   "coins": [
+    "AONSTOCK_USDT"
+   ],
+   "rows": [
+    "8EZ3XPKE"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "AONSTOCK": {
+     "tf": "15m",
+     "signal": "stoch14",
+     "th": 0.0,
+     "tp_pct": 2.5,
+     "sl_pct": 1.2,
+     "given": [
+      "8EZ3XPKE"
+     ],
+     "runs_as": "8EZ3XPKE",
+     "flat": {
+      "trades": 105,
+      "wins": 75,
+      "losses": 30,
+      "winrate": 71.43,
+      "profit": 128.39,
+      "dd": 7.71,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 8.6,
+      "rt": 0.2162,
+      "unclear": 4,
+      "breakeven_winrate": 38.28
+     },
+     "replayed_on_this_pc": {
+      "trades": 104,
+      "wins": 76,
+      "losses": 28,
+      "profit": 127.6,
+      "candles_last": "Sep 21, 2026 9:30am"
+     },
+     "gate_now": {
+      "verdict": "warn",
+      "reason": "round-trip cost 0.996% vs take-profit 2.50% = 40% of the target (includes 0.000% funding for a 15m hold at 0.040% a day)"
+     }
+    }
+   }
+  },
+  "willr14_15m_sl12tp2": {
+   "coins": [
+    "VUG_USDT"
+   ],
+   "rows": [
+    "NJUZZEC2"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "VUG": {
+     "tf": "15m",
+     "signal": "willr14",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 1.2,
+     "given": [
+      "NJUZZEC2"
+     ],
+     "runs_as": "NJUZZEC2",
+     "flat": {
+      "trades": 50,
+      "wins": 41,
+      "losses": 9,
+      "winrate": 82.0,
+      "profit": 63.38,
+      "dd": 2.78,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 8.5,
+      "rt": 0.171,
+      "unclear": 0,
+      "breakeven_winrate": 42.84
+     },
+     "replayed_on_this_pc": {
+      "trades": 50,
+      "wins": 42,
+      "losses": 8,
+      "profit": 65.41,
+      "candles_last": "Sep 22, 2026 1:00pm"
+     },
+     "gate_now": {
+      "verdict": "block",
+      "reason": "round-trip cost 3.999% vs take-profit 2.00% = 200% of the target (includes 0.000% funding for a 15m hold at 0.035% a day) · the gap between buy and sell (3.575%) is wider than the 1.20% stop — a stop inside the gap is already passed when it is placed"
+     }
+    }
+   }
+  }
+ }
+}

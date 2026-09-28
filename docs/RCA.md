@@ -172,6 +172,58 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-28-D — a run already merged kept offering MERGE INTO THIS PC for up to five minutes
+
+**CEO**
+
+* The GitHub card for the Sep 28 re-test runs offered "MERGE INTO THIS PC"
+  after the results had already been merged automatically, and you asked
+  whether merging was not automatic.
+* Why: the card asked the automatic collector, which only ticks a run off
+  on its next check every five minutes, instead of the merge itself.
+* What stops it now: the card also reads the merge job's own "finished"
+  record, so the button goes away the moment the merge ends.
+
+**DEV**
+
+* `api.cloud_status` set `collected` from `cloud_autopilot._read()["collected"]`
+  only; `cloud_autopilot` adds a run there on the look AFTER its collect
+  finishes (`CHECK_EVERY_S = 300`).
+* Invariant broken: **label-must-match-data** — the button's condition
+  must read the source that knows first.
+* Guard: `tests/test_a_collected_run_does_not_offer_a_merge.py` (5).
+
+**SAW** — the operator's screenshot, `Sep 28, 2026 ~2:27pm`: "GitHub run
+#36461959914 + #36461974699 · success · 100.0% · MERGE INTO THIS PC" —
+*"why do i see merge into this pc, does this mean you are not merging it
+autoamtically?"*
+
+**TIMELINE**
+
+1. `2:05pm` — both re-test runs finish; rows land live as each coin ends.
+2. `~2:19pm` — `collect_v2` of 36461974699 finishes; ticked off.
+3. `2:24:42pm` — `collect_v2` of 36461959914 finishes (db_collect_v2.json
+   `running: false`, no error).
+4. `2:29:29pm` — the autopilot's next look ticks it off; `2:30:10pm` the card
+   drops the button.
+5. Fixed: `_collect_finished(run_id)` also accepts the collect's own clean
+   finished record, for every run on the card.
+
+**ROOT CAUSE** — the button read a bookkeeping list that lags the job it
+describes.
+
+**WHY IT WAS NOT CAUGHT** — the Sep 15 fix for this button (run 34631292767)
+tested a run collected days earlier, when the list and the job agree; the
+five minutes between them was never a state any test stood in.
+
+**COST** — none; a misleading button for up to five minutes per run.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_a_collected_run_does_not_offer_a_merge.py`.
+
+---
+
 ## RCA-2026-09-28-C — Backtest v2's table did not show GitHub's results: nothing filed them, and the screen said to press UPDATE again
 
 **CEO**

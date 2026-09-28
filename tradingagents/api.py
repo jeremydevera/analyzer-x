@@ -2979,6 +2979,22 @@ def _working_run_cached() -> dict | None:
     return got
 
 
+def _collect_finished(run_id: int) -> bool:
+    """Is this run's rows already in the store? The autopilot's list, or the
+    collect job's own progress file naming this run as finished cleanly —
+    the job knows minutes before the autopilot's next look does."""
+    from tradingagents import cloud_autopilot as _ap, db_jobs as _dj
+
+    if int(run_id) in set(_ap._read().get("collected") or []):
+        return True
+    for kind in ("collect", "collect_v2"):
+        got = _dj._read(_dj.FILES[kind]["progress"]) or {}
+        if (got.get("run") == int(run_id) and not got.get("running")
+                and not got.get("error") and got.get("finished")):
+            return True
+    return False
+
+
 @app.get("/api/cloud/status")
 def cloud_status() -> dict:
     """Whether GitHub Actions can be used, and what the remembered run is
@@ -3041,6 +3057,20 @@ def _read_cloud_status() -> dict:
                 _ap._read().get("collected") or [])
         except Exception:                                      # noqa: BLE001
             out["collected"] = False
+        # ...OR THE COLLECT ITSELF SAYS IT FINISHED. The autopilot only ticks
+        # a run off on its NEXT look (every 5 min), so run 36461959914 —
+        # collected by itself at Sep 28, 2026 2:24pm — still offered MERGE
+        # INTO THIS PC until 2:30pm, and the operator asked "does this mean
+        # you are not merging it automatically?". Every run on the card must
+        # be in, so a two-account card asks about each id.
+        if not out.get("collected"):
+            try:
+                ids = {int(r["id"]) for r in (run.get("runs") or [run])
+                       if r.get("id")}
+                out["collected"] = bool(ids) and all(
+                    _collect_finished(i) for i in ids)
+            except Exception:                                  # noqa: BLE001
+                pass
         try:
             out["shards"] = cs.live_progress(int(run["id"]),
                                              run.get("repo") or None)

@@ -672,7 +672,7 @@ def test_the_shipped_verdicts_agree_with_their_own_counts():
     """The group's label says "passed old-data test": the names it serves
     must be exactly the rows the file marks passed, and every formula of
     the set must carry a verdict — none silently left out."""
-    from tradingagents import learn_verify as lv, rows_index as ri
+    from tradingagents import learn_verify as lv
 
     raw = json.loads(lv.VERIFIED_FILE.read_text(encoding="utf-8"))
     rows = raw["formulas"]
@@ -687,7 +687,9 @@ def test_the_shipped_verdicts_agree_with_their_own_counts():
     for r in rows.values():
         counts[r["status"]] = counts.get(r["status"], 0) + 1
     assert counts == raw["counts"]
-    assert len(ri.passed_learned()) == counts["passed"]
+    # the "passed old-data test" GROUP was removed (Sep 28, 2026); the file's
+    # own reader must still agree with its counts
+    assert len(set(lv.passed_names())) == counts.get("passed", 0)
     for r in rows.values():
         if r["status"] == "passed":
             assert r["winrate"] > r["breakeven_winrate"] and r["profit"] > 0

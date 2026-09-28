@@ -1,8 +1,20 @@
-"""Land a finished LEARNED-formula run ("Sep 25 Strat") on this PC.
+"""Land a finished LEARNED run on this PC — either of the two families.
 
-.github/workflows/learn.yml leaves three artifacts per machine: the rows it
-measured (Backtest v2 rows, res="1m"), the formulas it kept, and a report line
-for every coin+timeframe it attempted — kept or not, with the reason.
+* **Sep 25 Strat** (`LX`, `lx_` rows): .github/workflows/learn.yml; the
+  formulas go to `signals_learned.LEARNED_FILE`, the report to
+  `sep25_report.json`.
+* **Sep 27 ML** (`ML`, `ml_` rows): .github/workflows/ml.yml; the decision-tree
+  models go to `signals_ml.MODEL_FILE` (gzipped, capped at `ML.max_mb`), the
+  report to `sep27_ml_report.json`. One stored row per kept model.
+
+Both land through ONE body (`land`), so a fix to one is a fix to both. Each
+workflow leaves three artifacts per machine: the rows it measured (Backtest
+v2 rows, res="1m"), the formulas/models it kept, and a report line for every
+coin+timeframe it attempted — kept or not, with the reason.
+
+Rows for a pair the report does not account for: Sep 25 Strat REFUSES the
+collect; Sep 27 ML drops them and names them in the result's `stray` (a
+machine stopped mid-coin must not sink the rest).
 
 What this does, per coin+timeframe the run ATTEMPTED (and only those):
 
@@ -21,7 +33,10 @@ measured would make the next market-grid collect refuse its fresher rows as
 A pair the run did not attempt, or whose attempt raised, keeps everything it
 had. Run it in the v2 environment:
 
-    python -m tradingagents.learn_collect <run_id>      (re-execs itself in v2)
+    python -m tradingagents.learn_collect <run_id> [owner/repo]
+                                          (Sep 25 Strat; re-execs itself in v2)
+    python -m tradingagents.learn_collect --ml <run_id> [owner/repo]
+                                          (Sep 27 ML, the same way)
     python -m tradingagents.learn_collect --usual-costs (the seed file)
 """
 from __future__ import annotations
@@ -230,9 +245,18 @@ def land(formulas: dict, report: list, rows: dict, *, run_id=None,
         rows = {k: [r for r in rs if str(r.get("signal")) not in losing]
                 for k, rs in rows.items()}
     stray = sorted({k for k in rows if k not in attempted and rows[k]})
-    if stray:
+    dropped: list = []
+    if stray and family is LX:
         raise ValueError(f"rows for pairs the report does not account for: "
                          f"{stray[:5]}")
+    if stray:
+        # SEP 27 ML: a machine stopped mid-coin (a GitHub timeout, a cancel)
+        # can leave rows whose timeframe never reached the report. Those rows
+        # are DROPPED and NAMED — one unfinished timeframe must not sink the
+        # whole collect (Sep 27 ML final review, F3). Sep 25 Strat keeps its
+        # refusal above, as it always had.
+        dropped = [f"{c} {t}" for c, t in stray]
+        rows = {k: rs for k, rs in rows.items() if k not in set(stray)}
     # the formula/model file: that pair's old formulas out, the new ones in
     old_f = reg.read_file()
     # which pairs carry rows NOW: exactly the pairs with a formula/model in
@@ -292,8 +316,11 @@ def land(formulas: dict, report: list, rows: dict, *, run_id=None,
     report_file.write_text(json.dumps({"collected": fmt_when(time.time()),
                                        "report": kept_old + slim}, indent=0),
                            encoding="utf-8")
-    return {"pairs": len(attempted), "formulas": len(formulas), "rows": landed,
-            "indexed": refiled}
+    result = {"pairs": len(attempted), "formulas": len(formulas), "rows": landed,
+              "indexed": refiled}
+    if dropped:
+        result["stray"] = sorted(dropped)
+    return result
 
 
 # pairs per index transaction, and the page cache that lets a batch write each

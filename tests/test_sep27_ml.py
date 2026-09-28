@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import os
 import time
 from pathlib import Path
 
@@ -77,18 +78,18 @@ def test_a_contract_with_no_volume_abstains_on_the_volume_clue_only():
     assert np.isfinite(x[mf.MAX_WINDOW:, others]).all()
 
 
-def test_the_funding_clue_is_the_rate_in_force_at_the_close():
+def test_there_is_no_funding_clue_and_the_clue_set_is_version_2():
+    """F1 (Sep 28, 2026 review): the live runner calls signal_for without a
+    funding list, so a funding clue read the real rate in the grid and 0 live."""
     from tradingagents import ml_features as mf
 
-    df = _frame(300)
-    o, h, lo, c, v, ts = _arrays(df)
-    mid = int(ts[150])
+    assert "funding" not in mf.FEATURES
+    assert mf.VERSION == 2
+    o, h, lo, c, v, ts = _arrays(_frame(300))
     fund = [{"settle_ms": int(ts[0]) - 1, "rate": 0.0001},
-            {"settle_ms": mid, "rate": -0.0005}]
-    x = mf.features(o, h, lo, c, v, ts, fund, "1h")
-    j = mf.FEATURES.index("funding")
-    assert x[100, j] == pytest.approx(0.0001)
-    assert x[160, j] == pytest.approx(-0.0005)
+            {"settle_ms": int(ts[150]), "rate": -0.0005}]
+    assert np.array_equal(mf.features(o, h, lo, c, v, ts, fund, "1h"),
+                          mf.features(o, h, lo, c, v, ts, [], "1h"), equal_nan=True)
 
 
 # ------------------------------------------------------------- the trees
@@ -159,6 +160,34 @@ def test_a_model_reads_only_closed_candles_and_the_same_on_the_stored_cut():
     w0 = 400                      # the stored row's cut: 300 warm bars and more
     cut = sml.dirs_for(spec, o[w0:], h[w0:], lo[w0:], c[w0:], v[w0:], ts[w0:])
     assert cut[300:] == full[w0 + 300:]
+
+
+def test_a_model_reads_the_same_with_or_without_funding():
+    """F1: the grid passes the coin's funding, the live runner passes none —
+    the directions must not differ by a single bar."""
+    from tradingagents import signals_ml as sml
+
+    spec = _toy_spec()
+    o, h, lo, c, v, ts = _arrays(_frame(900))
+    fund = [{"settle_ms": int(ts[k]), "rate": r}
+            for k, r in ((0, 0.0001), (300, -0.0007), (600, 0.0012))]
+    with_f = sml.dirs_for(spec, o, h, lo, c, v, ts, fund)
+    assert any(with_f)
+    assert with_f == sml.dirs_for(spec, o, h, lo, c, v, ts, None)
+
+
+def test_a_model_saved_with_another_clue_set_abstains_everywhere():
+    """F7: a model fitted on clue version 1 (which had a funding column)
+    reads column j as a different clue on version 2 — it must trade nothing."""
+    from tradingagents import signals_ml as sml
+
+    o, h, lo, c, v, ts = _arrays(_frame(900))
+    old = {**_toy_spec(), "features": 1}
+    assert sml.dirs_for(old, o, h, lo, c, v, ts) == [0] * 900
+    wide = _toy_spec()
+    wide["models"] = {k: {**m, "nf": m["nf"] + 1} for k, m in wide["models"].items()}
+    assert sml.dirs_for(wide, o, h, lo, c, v, ts) == [0] * 900
+    assert any(sml.dirs_for(_toy_spec(), o, h, lo, c, v, ts))
 
 
 def test_one_side_models_trade_one_side():
@@ -366,6 +395,26 @@ def test_too_little_history_says_so_instead_of_guessing():
     assert rep["formulas"] == [] and "not enough history" in rep["why"]
 
 
+def test_a_contract_with_no_volume_names_the_missing_clue():
+    """F8: a contract whose volume is always zero has no vol_ratio_20 on any
+    candle. That used to read "not enough history: 0 labelled training
+    candles" — true and useless. The pair keeps nothing and says why."""
+    from tradingagents import formula_learner as fl, ml_learner as ml
+
+    fr = _ml_frame()
+    df = fr.df.copy()
+    df["Volume"] = 0.0
+    fr = fl.Frame(**{**fr.__dict__, "df": df})
+    rep = ml.MLLearner(fr, now_ms=_now(fr)).run()
+    assert rep["formulas"] == []
+    assert rep["missing_clues"] == ["vol_ratio_20"]
+    assert rep["why"] == ("the vol_ratio_20 clue is missing on every candle "
+                          "(no volume on this contract?)")
+    # a normal frame names nothing
+    ok = ml.MLLearner(_ml_frame(), now_ms=_now(_ml_frame()))
+    assert ok.missing_clues() == []
+
+
 def test_a_side_whose_target_never_comes_first_is_skipped_not_a_crash():
     from tradingagents import ml_learner as ml
 
@@ -528,6 +577,96 @@ def test_an_ml_collect_refuses_a_model_file_past_its_ceiling(v2ml, monkeypatch):
                 [{"coin": "BTC", "tf": "1h"}], {}, family=lc.ML)
 
 
+def test_an_ml_collect_drops_and_names_rows_no_report_accounts_for(v2ml):
+    """F3: a GitHub machine stopped mid-coin can leave rows for a timeframe
+    whose report line never landed. Sep 27 ML drops those rows and names the
+    pair; it does not refuse the whole collect (Sep 25 Strat still does —
+    test_landing_refuses_rows_it_cannot_account_for)."""
+    msw, ri, sml, lc = v2ml
+    new = {"ml_BTC_1h_1": {"name": "ml_BTC_1h_1", "coin": "BTC", "tf": "1h",
+                           "learned": {"validate": {"profit": 3.0}}}}
+    report = [{"coin": "BTC", "tf": "1h", "kept": ["ml_BTC_1h_1"]}]
+    rows = {("BTC", "1h"): [_mlrow("BTC", "1h", "ml_BTC_1h_1", 1.0, 3.0)],
+            ("BTC", "4h"): [_mlrow("BTC", "4h", "ml_BTC_4h_1", 1.0, 3.0)]}
+    got = lc.land(new, report, rows, run_id=8, family=lc.ML)
+    assert got["stray"] == ["BTC 4h"]
+    assert got["rows"] == 1
+    assert [r["signal"] for r in msw.pair_rows("BTC", "1h")] == ["ml_BTC_1h_1"]
+    assert msw.pair_rows("BTC", "4h") == []
+    assert set(sml.read_file()) == {"ml_BTC_1h_1"}
+    # and Sep 25 Strat still refuses the same shape
+    with pytest.raises(ValueError, match="does not account for"):
+        lc.land({}, [{"coin": "BTC", "tf": "1h"}],
+                {("BTC", "4h"): [_mlrow("BTC", "4h", "lx_BTC_4h_1", 1.0, 3.0)]},
+                family=lc.LX)
+
+
+# -------------------------------------------- a row this PC cannot rebuild
+def test_an_ml_row_without_200_bars_before_its_window_is_named():
+    from tradingagents import market_sweep as msw
+
+    assert msw.ml_history_short("keltner", "1h", 0) is None
+    assert msw.ml_history_short("lx_BTC_1h_1", "1h", 0) is None
+    assert msw.ml_history_short("ml_BTC_1h_1", "1h", 200) is None
+    assert msw.ml_history_short("ml_BTC_1h_1", "1h", 57) == (
+        "this PC holds only 57 1h bars before the window; an ml_ model needs "
+        "200 — the stored row came from GitHub's longer candles")
+
+
+def test_the_trade_log_refuses_an_ml_row_it_cannot_rebuild(monkeypatch):
+    """F5: the stored row is 100 bars; this PC holds 150, so only 50 bars of
+    clues come before the window. The log says so instead of replaying a
+    quieter strategy under the row's name."""
+    from tradingagents import market_sweep as msw
+
+    df = _frame(150, "1h")
+    row = {"signal": "ml_TEST_1h_1", "th": 0.0, "sl": 1.0, "tp": 2.0,
+           "sizing": "flat", "bars": 100, "last_ms": 0}
+    monkeypatch.setattr(msw, "cached_candles", lambda *a, **k: df)
+    monkeypatch.setattr(msw, "pair_rows", lambda *a, **k: [row])
+    monkeypatch.setattr(msw, "load_states", lambda *a, **k: {})
+    monkeypatch.setattr(msw, "load_costs", lambda *a, **k: pytest.fail(
+        "the refusal must come before any cost read"))
+    got = msw.trades_for("TEST", "1h", signal="ml_TEST_1h_1", th=0, sl=1.0,
+                         tp=2.0, sizing="flat")
+    assert got["log"] == []
+    assert got["why"].startswith("this PC holds only 50 1h bars before the window")
+
+
+def test_the_update_button_skips_an_ml_row_it_cannot_rebuild(monkeypatch, tmp_path):
+    """F5: UPDATE measures a named signal with merge=True over this PC's
+    frame from its first bar — no bars of clues before the window. The ml_
+    row is skipped and named, and nothing is written over the stored one."""
+    import tradingagents.auto_trader as at
+    from tradingagents import market_sweep as msw
+    from tradingagents.dataflows import mexc_futures as fx
+
+    df = _frame(700, "1h")
+    monkeypatch.setattr(msw, "FINE_TF", "")
+    monkeypatch.setattr(msw, "refresh_candles", lambda *a, **k: (df, 0, "cache"))
+    monkeypatch.setattr(fx, "funding_history", lambda *a, **k: [])
+    monkeypatch.setattr(fx, "liquidation_move_pct", lambda *a, **k: 4.5)
+    monkeypatch.setattr(fx, "book_cost", lambda *a, **k: {"slippage": 0.0001})
+    monkeypatch.setattr(at, "taker_fee", lambda *a, **k: 0.0004)
+    monkeypatch.setattr(msw, "charge_cost", lambda *a, **k: (0.0001, []))
+    monkeypatch.setattr(msw, "save_costs", lambda *a, **k: None)
+    monkeypatch.setattr(msw, "deployed_combos", lambda *a, **k: set())
+    monkeypatch.setattr(msw, "load_states", lambda *a, **k: {})
+    monkeypatch.setattr(msw, "worker_write", lambda *a, **k: None)
+    wrote = []
+    for name in ("save_states", "save_pair_rows", "merge_pair_rows"):
+        monkeypatch.setattr(msw, name, lambda *a, _n=name, **k: wrote.append(_n))
+    got = msw.run_pair("TEST_USDT", "1h", signals=["ml_TEST_1h_1"], merge=True)
+    assert got["rows"] == [] and got["skipped"] == ["ml_TEST_1h_1"]
+    assert got["why"].startswith("this PC holds only 0 1h bars before the window")
+    assert wrote == []
+
+
+def test_the_update_job_prints_why_an_ml_row_was_not_measured():
+    src = (REPO / "tradingagents/db_jobs.py").read_text(encoding="utf-8")
+    assert "not measured: {res.get('why')}" in src
+
+
 def test_the_ml_workflow_artifacts_are_the_ones_the_collect_downloads():
     from tradingagents import learn_collect as lc
 
@@ -580,3 +719,105 @@ def test_the_ml_machines_claim_one_coin_at_a_time_and_hand_over_what_they_finish
     assert "python .github/scripts/ml_shard.py" in wf
     assert wf.count("if: always()") >= 2
     assert "ml-rows-" in wf and "ml-models-" in wf
+
+
+@pytest.fixture
+def ml_shard(monkeypatch):
+    """.github/scripts/ml_shard.py loaded as a module, with the environment,
+    sys.path and sys.modules it touches restored afterwards."""
+    import importlib.util
+    import sys
+
+    for k in ("RES", "MODE", "DAYS"):
+        monkeypatch.setenv(k, os.environ.get(k, ""))
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    before = {k: sys.modules.pop(k, None) for k in ("sweep_shard", "learn_shard")}
+    spec = importlib.util.spec_from_file_location(
+        "ml_shard_test", REPO / ".github/scripts/ml_shard.py")
+    mod = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, "ml_shard_test", mod)
+    try:
+        spec.loader.exec_module(mod)
+        yield mod
+    finally:
+        for k, v in before.items():
+            if v is None:
+                sys.modules.pop(k, None)
+            else:
+                sys.modules[k] = v
+
+
+def _line(signal, tp, sl, **kw):
+    return json.dumps({"coin": "TEST", "tf": "1h", "signal": signal,
+                       "tp": tp, "sl": sl, "res": "1m", **kw})
+
+
+def test_an_ml_model_stores_one_row_at_its_own_tp_and_sl(ml_shard):
+    """F2: run_pair walks every TP > SL pair; only the row at the model's
+    own pair is the model the learner kept."""
+    kept = [{"name": "ml_TEST_1h_1", "tp": 0.02, "sl": 0.01},
+            {"name": "ml_TEST_1h_2", "tp": 0.012, "sl": 0.006}]
+    lines = [_line("ml_TEST_1h_1", 2.0, 1.0),          # its own pair: kept
+             _line("ml_TEST_1h_1", 3.0, 1.0),          # another TP: dropped
+             _line("ml_TEST_1h_1", 2.0, 1.5),          # another SL: dropped
+             _line("ml_TEST_1h_2", 2.0, 1.0),          # model 1's pair: dropped
+             _line("ml_TEST_1h_2", 1.2, 0.6),          # its own pair: kept
+             json.dumps({"coin": "TEST", "tf": "1h", "pair_done": True}), ""]
+    got = [json.loads(x) for x in ml_shard.own_rows(lines, kept)]
+    assert [(r["signal"], r["tp"], r["sl"]) for r in got] == [
+        ("ml_TEST_1h_1", 2.0, 1.0), ("ml_TEST_1h_2", 1.2, 0.6)]
+    assert all(x.endswith("\n") for x in ml_shard.own_rows(lines, kept))
+
+
+def test_the_ml_run_measures_exactly_the_learners_30_days(ml_shard):
+    """F4: DAYS is pinned before sweep_shard reads it at import."""
+    src = (REPO / ".github/scripts/ml_shard.py").read_text(encoding="utf-8")
+    assert src.index('os.environ["DAYS"] = "30"') < src.index("import sweep_shard")
+    assert ml_shard.ss.DAYS == 30
+    from tradingagents import ml_learner as ml
+
+    assert ml.UNSEEN_DAYS == 30
+
+
+def test_a_machine_stopped_mid_coin_has_handed_over_every_finished_timeframe(
+        ml_shard, monkeypatch):
+    """F3 + F2 through ml_coin itself: the models and report are saved after
+    EVERY timeframe, and only the model's own row reaches the output."""
+    import io
+
+    m = ml_shard
+    df = _frame(400, "1h")
+    monkeypatch.setattr(m, "TFS", ["1h", "4h"])
+    monkeypatch.setattr(m.at, "taker_fee", lambda *a, **k: 0.0004)
+    monkeypatch.setattr(m.fx, "liquidation_move_pct", lambda *a, **k: 4.5)
+    monkeypatch.setattr(m.fx, "funding_history", lambda *a, **k: [])
+    monkeypatch.setattr(m.fx, "book_cost", lambda *a, **k: {"slippage": 0.0001})
+    monkeypatch.setattr(m.fx, "klines", lambda *a, **k: df)
+    monkeypatch.setattr(m.at, "_closed_bars", lambda d, bs: d)
+    monkeypatch.setattr(m, "charged", lambda *a: (0.0001, []))
+    spec = {"name": "ml_TEST_1h_1", "coin": "TEST", "tf": "1h",
+            "tp": 0.02, "sl": 0.01}
+
+    def learn(frame, **kw):
+        if frame.tf == "4h":
+            raise KeyboardInterrupt           # the machine is stopped here
+        return {"coin": "TEST", "tf": frame.tf, "formulas": [dict(spec)]}
+
+    monkeypatch.setattr(m.ml, "learn_pair", learn)
+    monkeypatch.setattr(m.sml, "register", lambda *a, **k: None)
+
+    def run_pair(sym, tf, out, **kw):
+        out.write(_line("ml_TEST_1h_1", 2.0, 1.0) + "\n")
+        out.write(_line("ml_TEST_1h_1", 3.0, 1.0) + "\n")
+        return 2
+
+    monkeypatch.setattr(m.ss, "run_pair", run_pair)
+    saved = []
+    monkeypatch.setattr(m, "_save", lambda f, r: saved.append(
+        (sorted(f), [(e["tf"], e.get("rows")) for e in r])))
+    out = io.StringIO()
+    formulas, report = {}, []
+    with pytest.raises(KeyboardInterrupt):
+        m.ml_coin("TEST_USDT", out, formulas, report, {})
+    assert saved == [(["ml_TEST_1h_1"], [("1h", 1)])]
+    assert [json.loads(x)["tp"] for x in out.getvalue().splitlines()] == [2.0]

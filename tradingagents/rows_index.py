@@ -2649,8 +2649,9 @@ GROUP_INDEXES.update({
                    f"({cols}) WHERE {LEARNED_TERMS}")
     for k, cols in GROUP_SORT_COLS.items()
 })
-# the Sep 27 ML models: same shape again — a few thousand ml_ rows among tens
-# of millions, so "Sep 27 ML" ranked by profit is a seek, not a walk
+# the Sep 27 ML models: same shape again — ~3 ml_ rows per coin+timeframe
+# (one per kept model, at its own TP/SL) among tens of millions, so
+# "Sep 27 ML" ranked by profit is a seek, not a walk
 GROUP_INDEXES.update({
     ("sep27ml", k): (f"CREATE INDEX IF NOT EXISTS rows_ml_{k} ON rows "
                      f"({cols}) WHERE {ML_TERMS}")

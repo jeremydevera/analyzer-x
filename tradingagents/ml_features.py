@@ -9,12 +9,18 @@ learner), and the grid, the grade and the live runner agree by construction.
 The Sep 25 loop had to grade on the stored row's cut because its EMAs drift;
 this module removes the reason. NaN until a window is full, or where an input
 does not exist (a contract with no volume); the model abstains on any NaN row.
+
+NO FUNDING CLUE (VERSION 2, Sep 28, 2026 review). Version 1 carried the rate
+in force at the next open as a clue. The live runner calls `signal_for`
+without a funding list, so every live bar read 0 there while the grid read
+the real rate — a model measured one way and run another. Funding is charged
+by the engine on every trade; it is never read as a clue.
 """
 from __future__ import annotations
 
 import numpy as np
 
-VERSION = 1
+VERSION = 2
 MAX_WINDOW = 200
 RETURNS = (1, 3, 6, 12, 24, 48)
 FEATURES = tuple(
@@ -22,7 +28,7 @@ FEATURES = tuple(
     + ["rsi_14", "atrpct_14", "retstd_20", "range_20", "range_50",
        "dist_sma_20", "dist_sma_50", "dist_sma_200",
        "body", "upper_wick", "lower_wick", "vol_ratio_20",
-       "hour", "dow", "funding"])
+       "hour", "dow"])
 
 _BAR_MS = {"15m": 900_000, "30m": 1_800_000, "1h": 3_600_000,
            "4h": 14_400_000, "1d": 86_400_000}
@@ -44,6 +50,12 @@ def _div(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 def features(o, h, lo, c, v, ts, funding, tf) -> np.ndarray:
+    """One row of clues per bar, columns in FEATURES order.
+
+    `funding` is accepted and IGNORED: funding is charged by the engine,
+    never read as a clue — the live runner calls signal_for without it
+    (Sep 28, 2026 review). The parameter stays because every caller passes it."""
+    del funding
     o = np.asarray(o, dtype=float)
     h = np.asarray(h, dtype=float)
     lo = np.asarray(lo, dtype=float)
@@ -86,14 +98,5 @@ def features(o, h, lo, c, v, ts, funding, tf) -> np.ndarray:
     t_next = ts + _BAR_MS.get(tf, 3_600_000)          # the order goes in at the next open
     cols.append(((t_next // 3_600_000) % 24).astype(float))
     cols.append(((t_next // 86_400_000 + 3) % 7).astype(float))     # Monday = 0
-    rate = np.zeros(n)
-    if funding:
-        st = np.asarray([int(f["settle_ms"]) for f in funding], dtype=np.int64)
-        rt = np.asarray([float(f["rate"]) for f in funding], dtype=float)
-        order = np.argsort(st, kind="stable")
-        st, rt = st[order], rt[order]
-        k = np.searchsorted(st, t_next, side="right") - 1
-        rate = np.where(k >= 0, rt[np.clip(k, 0, None)], 0.0)
-    cols.append(rate)
     out = np.column_stack(cols) if n else np.zeros((0, len(FEATURES)))
     return out

@@ -147,6 +147,14 @@ class MLLearner:
         self.sim = fl.Sim(*self.sel[:4])
 
     # ----------------------------------------------------------- pieces
+    def missing_clues(self) -> list[str]:
+        """The clues that are NaN on every TRAIN row (none when TRAIN is empty)."""
+        train = self.X[self.l0:max(self.l0, self.v0 - 1)]
+        if not len(train):
+            return []
+        return [mf.FEATURES[j] for j in range(train.shape[1])
+                if np.isnan(train[:, j]).all()]
+
     def _fit_side(self, y: np.ndarray):
         """A model on the TRAIN rows with a clue set and a resolved label, or
         None when there are too few or only one kind of outcome."""
@@ -213,6 +221,18 @@ class MLLearner:
             return {**rep, "formulas": [],
                     "why": (f"not enough history: {self.train_days:.0f} day(s) to "
                             f"learn from, and the trees need {MIN_TRAIN_DAYS}")}
+        # A CLUE MISSING ON EVERY TRAINING CANDLE is named, never reported as
+        # "not enough history" (Sep 28, 2026 review). Dropping the column is
+        # not allowed — the model must read the same columns live — so the
+        # pair keeps nothing and says which clue was missing.
+        missing = self.missing_clues()
+        if missing:
+            return {**rep, "formulas": [], "missing_clues": missing,
+                    "why": "; ".join(
+                        f"the {name} clue is missing on every candle"
+                        + (" (no volume on this contract?)"
+                           if name == "vol_ratio_20" else "")
+                        for name in missing)}
         notional = self.f.base * 20
         cands = []
         fitted = 0

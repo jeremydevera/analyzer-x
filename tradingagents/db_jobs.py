@@ -2757,7 +2757,11 @@ def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
                if index_error else "")
             + (" · no new bars — it was already current"
                if after and after == before else "")
-            + (f" · {cost_said}" if cost_said else ""))
+            + (f" · {cost_said}" if cost_said else "")
+            # an ml_ row this PC cannot rebuild says so (market_sweep
+            # .ml_history_short), never "0 rows" alone
+            + (f" · not measured: {res.get('why')}"
+               if isinstance(res, dict) and res.get("skipped") else ""))
     print(f"[{kind}] {note}", flush=True)
     _pub(running=False, rows=n_rows, indexed=indexed, after_ms=after,
          index_error=index_error, index_queued=queued,

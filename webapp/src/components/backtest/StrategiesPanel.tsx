@@ -89,8 +89,6 @@ const GROUP_LABEL: Record<string, string> = {
   // the learned formulas, one set per coin and timeframe (operator,
   // Sep 25, 2026: "create group 'Sep 25 Strat'")
   sep25: "Sep 25 Strat",
-  // the part of it that also won on 90 days of candles it never saw
-  // (operator, Sep 26, 2026: "Yes do 2 and 3"; learn_verify.py)
   // the Sep 27 ML models, one decision tree per coin and timeframe (operator,
   // Sep 27, 2026: "use machine learning on what's best strategy")
   sep27ml: "Sep 27 ML",

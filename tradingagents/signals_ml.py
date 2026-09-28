@@ -135,11 +135,20 @@ def dirs_for(spec: dict, o, h, lo, c, v, ts, funding=None) -> list[int]:
     n = len(c)
     if not n:
         return []
+    # A MODEL AND ITS CLUES MUST MATCH (Sep 28, 2026 review): a model fitted
+    # on another clue set reads column j as a different clue, so it abstains
+    # everywhere rather than trade on numbers it never learned from
+    if spec.get("features") != mf.VERSION:
+        return [0] * n
     X = mf.features(o if len(o) else c, h, lo, c, v, ts if len(ts) else [0] * n,
                     funding or [], spec.get("tf") or "1h")
+    models = spec.get("models") or {}
+    if any(not isinstance(m, dict) or m.get("nf") != X.shape[1]
+           for m in models.values()):
+        return [0] * n
     ok = np.isfinite(X).all(axis=1)
     p = {}
-    for side, model in (spec.get("models") or {}).items():
+    for side, model in models.items():
         q = np.full(n, np.nan)
         if ok.any():
             q[ok] = mt.predict(model, X[ok])

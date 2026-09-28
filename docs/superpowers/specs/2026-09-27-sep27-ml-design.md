@@ -53,7 +53,12 @@ TRAIN (~150 days) | VALIDATE (30 days) | UNSEEN (last 30 days)
    clues: returns over 1/3/6/12/24/48 bars, RSI(14), ATR% (14), range
    position over 20/50 bars, distance from the 20/50/200-bar average, candle
    body/upper wick/lower wick as a share of range, volume ÷ its 20-bar
-   average, hour of day, day of week, the funding rate in force.
+   average, hour of day, day of week. **No funding clue** (dropped in the
+   Sep 28, 2026 review, `VERSION = 2`): the live runner calls `signal_for`
+   without a funding list, so a model that read the rate would have been
+   measured on the real rate and run on zero. Funding is still CHARGED by the
+   engine on every trade; `features` keeps the parameter and ignores it, and
+   a model saved with another clue version abstains everywhere.
    **Every clue is a finite window of at most 200 bars** (no running
    averages that remember the whole array). So a candle gets the same number
    whether the array starts 300 bars or a year earlier, and the stored row's
@@ -98,11 +103,16 @@ TRAIN (~150 days) | VALIDATE (30 days) | UNSEEN (last 30 days)
    the repo silently.
 6. **GitHub** — `.github/scripts/ml_shard.py` and `.github/workflows/ml.yml`,
    the learn shard's shape: claim one coin at a time, 1-minute candles
-   fetched once per coin, redo a failed coin alone (`COIN_RETRIES = 2`), save
-   models and report after every coin, rows written through
-   `sweep_shard.run_pair(signals=[names], learned=...)` so stored rows are
-   measured by the same engine as every v2 row, TP > SL and the stop inside
-   80% of liquidation. Both accounts via `cloud_sweep.sync_fleet`.
+   fetched once per coin and reused for every timeframe, redo a failed coin
+   alone (`COIN_RETRIES = 2`), save models and report after every TIMEFRAME
+   (a machine stopped mid-coin hands over what it finished), rows measured
+   through `sweep_shard.run_pair(signals=[names], learned=...)` so stored rows
+   are measured by the same engine as every v2 row, TP > SL and the stop
+   inside 80% of liquidation. **One stored row per model**, at the model's own
+   TP/SL (`ml_shard.own_rows`) — run_pair walks every TP > SL pair, and a
+   model measured at a pair it was not learned at is a strategy nobody
+   learned. `DAYS` is pinned to 30 so the row covers exactly UNSEEN. Both
+   accounts via `cloud_sweep.sync_fleet`.
 7. **Collect** — `learn_collect` takes a family (`lx` → `sep25.json`,
    `ml` → `sep27_ml.json.gz`) instead of a copy of the module: download,
    `land` (v2 store only, `res` must be 1m, merge pair by pair, report merged),

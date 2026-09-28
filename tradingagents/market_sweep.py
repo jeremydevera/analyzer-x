@@ -1203,6 +1203,24 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     n // 2
 
     sigs = list(signals or br.SIGNALS)
+    # AN ml_ MODEL WITHOUT ITS 200 BARS BEFORE THE WINDOW is not measured
+    # here: the row would be a quieter strategy than the one GitHub stored
+    # under that name, and merging it would overwrite the real one. Skipped
+    # and NAMED (ml_history_short) — the stored row stays as it was.
+    ml_short = {s: ml_history_short(s, tf, off) for s in sigs}
+    ml_short = {s: why for s, why in ml_short.items() if why}
+    skipped_why = ""
+    if ml_short:
+        sigs = [s for s in sigs if s not in ml_short]
+        sig_set -= set(ml_short)
+        skipped_why = next(iter(ml_short.values()))
+        if not sigs:
+            worker_write(pair=f"{coin} {tf}", done=0, total=0, pct=100.0,
+                         state="skipped")
+            return {"coin": coin, "tf": tf, "rows": [], "thin": 0,
+                    "added": added, "source": source, "why": skipped_why,
+                    "skipped": sorted(ml_short), "bars": len(df),
+                    "days": days_have}
     out_rows = []
     done_combos = 0
     last_ckpt = _clock()           # the time floor starts when the pair does
@@ -1397,7 +1415,9 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
             "source": source, "incremental": incremental,
             "fee": fee, "liq": liq, "rt": rt, "cost_note": cost_said,
             "new_bars": max(0, len(df) - start_at) if incremental else len(df),
-            "bars": len(df), "days": days_have}
+            "bars": len(df), "days": days_have,
+            **({"skipped": sorted(ml_short), "why": skipped_why}
+               if ml_short else {})}
 
 
 # --------------------------------------------------------------- background
@@ -1805,6 +1825,26 @@ def candle_coverage() -> list:
     return out
 
 
+def ml_history_short(signal: str, tf: str, before: int) -> str | None:
+    """Why an `ml_` row cannot be rebuilt here, or None when it can.
+
+    A Sep 27 ML model reads clues over up to `ml_features.MAX_WINDOW` bars,
+    so its first 200 bars abstain. GitHub measured the stored row on the
+    frame's own candles with 300 bars of lead-in; this PC's Backtest v2
+    rebuilds the frame from ~30 days of minutes, which may hold far fewer
+    before the window — and a replay on it would be a DIFFERENT, quieter
+    strategy shown under the stored row's name (Sep 27 ML final review, F5)."""
+    if not str(signal).startswith("ml_"):
+        return None
+    from tradingagents import ml_features as mf
+
+    if before >= mf.MAX_WINDOW:
+        return None
+    return (f"this PC holds only {max(0, int(before))} {tf} bars before the "
+            f"window; an ml_ model needs {mf.MAX_WINDOW} — the stored row came "
+            f"from GitHub's longer candles")
+
+
 def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                tp: float, sizing: str, base_margin: float = 5.0,
                days: int = 365, store=None) -> dict:
@@ -1905,6 +1945,12 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     full = df
     if not (60 <= want_bars < len(full)):
         want_bars = 0
+    # AN ml_ ROW NEEDS ITS 200 BARS OF CLUES BEFORE THE WINDOW: without them
+    # the replay is a quieter strategy under the stored row's name, so it is
+    # refused and says why (ml_history_short)
+    short = ml_history_short(signal, tf, len(full) - want_bars if want_bars else 0)
+    if short:
+        return {"log": [], "why": short}
     # The costs the replay needs come from the file the sweep wrote (see
     # save_costs): funding_history alone is 9.2 s per call on this contract and
     # has no cache of its own. A pair measured before the file existed pays for

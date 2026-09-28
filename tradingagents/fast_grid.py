@@ -96,6 +96,19 @@ def walk(dirs_idx: Sequence[int], dirs, opens, high, low, close, *,
     return out
 
 
+def trade_pnl(res_out: float, why: int, fund_frac: float, *,
+              margin: float, lev: int, fee: float) -> float:
+    """ONE trade's dollars: the exit's fraction of notional less the fee both
+    ways, plus the funding it paid or received — or the whole margin when the
+    venue liquidated it. The one formula `derive` folds and the watcher replay
+    (tradingagents/watcher_replay.py) prices trades with, so a replayed trade
+    and a stored row can never price the same trade two ways."""
+    if why == WHY_LIQ:
+        return -margin
+    notional = margin * lev
+    return (res_out - 2 * fee) * notional + fund_frac * notional
+
+
 def derive(trades: list[tuple], *, base: float, lev: int, fee: float,
            sizing: str, ladder, mo_idx, mo_labels) -> dict:
     """Fold a trade list into exactly what ``backtest_strategy`` returns
@@ -111,11 +124,8 @@ def derive(trades: list[tuple], *, base: float, lev: int, fee: float,
     for (_sig, _entry, exit_bar, _s, res_out, why, fund_frac) in trades:
         margin = base if sizing == "flat" else ladder(base, step)
         notional = margin * lev
-        pnl = (res_out - 2 * fee) * notional
         fund = fund_frac * notional
-        pnl += fund
-        if why == WHY_LIQ:
-            pnl = -margin
+        pnl = trade_pnl(res_out, why, fund_frac, margin=margin, lev=lev, fee=fee)
         trades_n += 1
         wins += pnl > 0
         profit += pnl

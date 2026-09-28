@@ -11,7 +11,12 @@ from __future__ import annotations
 DEFAULTS = {"on_winrate": 90.0, "off_winrate": 90.0, "min_trades": 20,
             "tp_rule": ">", "profit_floor": 0.0, "max_slots": 100,
             "max_per_coin": 3, "max_new_per_day": 20, "judge_after": 10,
-            "off_streak": 4, "cooldown_days": 7, "fresh_hours": 36}
+            "off_streak": 4, "cooldown_days": 7, "fresh_hours": 36,
+            # RESEARCH DIALS (Sep 28, 2026: "can you research whats the best
+            # criteria for promotion and demotion"). The defaults are the
+            # operator's rules exactly: judged on 30 days, ranked by win rate,
+            # the practice record never switches a row off.
+            "window_days": 30, "rank": "winrate", "off_streak_live": 0}
 
 
 def break_even(win_usd: float, loss_usd: float) -> float:
@@ -44,8 +49,15 @@ def pick(candidates, running, cooling, now, cfg) -> list:
     room = max(0, min(cfg["max_new_per_day"], cfg["max_slots"] - len(running)))
     wait = cfg["cooldown_days"] * 86400
     out = []
-    ranked = sorted(candidates, key=lambda r: (-float(r["winrate"]),
-                                               -int(r["trades"]), r["id"]))
+    # which candidate goes first when there is not room for all of them
+    by = cfg.get("rank", "winrate")
+    if by == "profit":
+        order = lambda r: (-float(r["profit"]), -float(r["winrate"]), r["id"])  # noqa: E731
+    elif by == "trades":
+        order = lambda r: (-int(r["trades"]), -float(r["winrate"]), r["id"])  # noqa: E731
+    else:
+        order = lambda r: (-float(r["winrate"]), -int(r["trades"]), r["id"])  # noqa: E731
+    ranked = sorted(candidates, key=order)
     for row in ranked:
         if len(out) >= room:
             break

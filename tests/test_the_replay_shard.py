@@ -255,3 +255,22 @@ def test_without_a_board_one_walk_is_the_whole_slice(rs, monkeypatch):
     monkeypatch.setattr(rs.ss, "coin_stream", _stream)
     monkeypatch.setattr(rs.ss.board, "enabled", False)
     assert list(rs.board_passes([], 0)) == ["A_USDT"] and len(calls) == 1
+
+
+def test_the_default_write_rule_is_the_watchers_own(rs):
+    assert rs.write_rule("") == {"wr": 90.0, "trades": 20, "tp": ">", "windows": [30]}
+
+
+def test_a_research_write_rule_is_read_field_by_field(rs):
+    got = rs.write_rule("wr=70,trades=10,tp=>=,windows=14|30")
+    assert got == {"wr": 70.0, "trades": 10, "tp": ">=", "windows": [14, 30]}
+
+
+def test_a_looser_write_rule_writes_equal_barriers_too(rs, world, monkeypatch):
+    """Research tries TP >= SL, so it has to be able to pick an equal pair."""
+    monkeypatch.setattr(rs, "WRITE", rs.write_rule("wr=70,trades=10,tp=>=,windows=14|30"))
+    monkeypatch.setattr(rs, "WRITE_CFG", {**rs.CFG, "on_winrate": 70.0,
+                                          "min_trades": 10, "tp_rule": ">="})
+    combos, stats = _run(rs, world)
+    assert stats["tested"] == 3, "(0.01, 0.01) joins the two wider targets"
+    assert (1.0, 1.0) in {(c["sl"], c["tp"]) for c in combos}

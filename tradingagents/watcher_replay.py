@@ -69,11 +69,11 @@ class _Book:
             self.w.append(self.w[-1] + (t[2] > 0))
             self.p.append(self.p[-1] + float(t[2]))
 
-    def row(self, at_ms: int) -> dict | None:
+    def row(self, at_ms: int, window_ms: int = WINDOW_MS) -> dict | None:
         """The row as the store would have held it at `at_ms`: the trades that
-        closed in the 30 days before. None when there were none — a
-        combination with no trade is not a row (sweep_shard's own rule)."""
-        a = bisect.bisect_left(self.exits, at_ms - WINDOW_MS)
+        closed in the `window_ms` (30 days) before. None when there were none —
+        a combination with no trade is not a row (sweep_shard's own rule)."""
+        a = bisect.bisect_left(self.exits, at_ms - window_ms)
         # a trade whose exit bar closed AT the check is known at the check
         b = bisect.bisect_right(self.exits, at_ms)
         n = self.n[b] - self.n[a]
@@ -90,26 +90,59 @@ class _Book:
                 "profit": round(self.p[b] - self.p[a], 2)}
 
 
+def rows_by_check(books: dict, checks: list[int], window_ms: int) -> dict:
+    """{check: every combination's row at that check} — the one expensive
+    part of a replay, and the only part that does not depend on the rules
+    beyond the window. The research sweep computes it ONCE per window and
+    hands it to thousands of `simulate` calls; `simulate` computes exactly
+    this itself when it is not given."""
+    return {at: [r for r in (b.row(at, window_ms) for b in books.values())
+                 if r is not None] for at in checks}
+
+
+def _live_streak(trades: list, on_ms: int, at_ms: int) -> int:
+    """The unbroken run of losses at the END of what a slot has closed in
+    practice by `at_ms` — the trades it entered since `on_ms`."""
+    closed = sorted((t for t in trades if t[3] and t[0] >= on_ms and t[1] <= at_ms),
+                    key=lambda t: t[1])
+    n = 0
+    for t in reversed(closed):
+        if t[2] > 0:
+            break
+        n += 1
+    return n
+
+
 def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
-             cfg: dict | None = None) -> dict:
+             cfg: dict | None = None, rows: dict | None = None,
+             books: dict | None = None) -> dict:
     """Replay the watcher from `start_ms`'s local midnight to `end_ms`.
 
     `combos`: each `{"id", "coin", "tf", "signal", "th", "sl", "tp", "gate",
     "trades": [[entry_ms, exit_ms, pnl, closed], ...]}`, one per combination
     that could ever pass. Returns `{"days", "slots", "events", "summary"}`.
     """
-    cfg = dict(wp.DEFAULTS if cfg is None else cfg)
-    books = {c["id"]: _Book(c) for c in combos}
+    cfg = {**wp.DEFAULTS, **(cfg or {})}
+    window_ms = int(cfg.get("window_days", 30)) * DAY_MS
+    books = books if books is not None else {c["id"]: _Book(c) for c in combos}
     running: dict[str, dict] = {}         # id -> the open slot
     slots: list[dict] = []
     events: list[dict] = []
     cooling: dict[str, float] = {}
     checks = local_midnights(start_ms, end_ms)
+    if rows is None:
+        rows = rows_by_check(books, checks, window_ms)
+    live_n = int(cfg.get("off_streak_live") or 0)
     for at in checks:
-        # 1. SWITCH OFF — judged on the row as it stood at this check
+        # 1. SWITCH OFF — judged on the row as it stood at this check, and
+        # (a research dial, off by default) on its own practice losing run
         for rid in sorted(running):
             slot = running[rid]
-            why = wp.judge({"id": rid}, books[rid].row(at), cfg)
+            why = wp.judge({"id": rid}, books[rid].row(at, window_ms), cfg)
+            if not why and live_n:
+                n = _live_streak(books[rid].c["trades"], slot["on_ms"], at)
+                if n >= live_n:
+                    why = f"{n} practice losses in a row"
             if why:
                 slot["off_ms"], slot["off_why"] = at, why
                 cooling[rid] = at / 1000
@@ -117,8 +150,7 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
                 events.append({"at": at, "action": "off", "id": rid,
                                "coin": slot["coin"], "why": why})
         # 2. SWITCH ON — every combination's row at this check, then the rules
-        cands = [r for r in (b.row(at) for b in books.values())
-                 if r is not None and not wp.passes_on(r, cfg)]
+        cands = [r for r in rows.get(at, []) if not wp.passes_on(r, cfg)]
         picks = wp.pick(cands, [{"id": k, "coin": v["coin"]}
                                 for k, v in running.items()],
                         cooling, at / 1000, cfg)

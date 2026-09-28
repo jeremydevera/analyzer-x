@@ -79,6 +79,35 @@ GATE_OK = 0.20          # a row's `gate` is "ok" under this (sweep_shard's line)
 CFG = dict(wp.DEFAULTS)
 
 
+def write_rule(text: str) -> dict:
+    """WHICH COMBINATIONS ARE WRITTEN: the watcher's own on-rule by default,
+    or a looser one for the criteria research (operator, Sep 28, 2026: "can
+    you research whats the best criteria for promotion and demotion"), e.g.
+    `wr=70,trades=10,tp=>=,windows=14|30`. A rule tried later can only
+    choose from combinations that were written, so the research writes
+    everything its loosest rule could ever pick, under every window it tries."""
+    rule = {"wr": float(CFG["on_winrate"]), "trades": int(CFG["min_trades"]),
+            "tp": str(CFG["tp_rule"]), "windows": [int(CFG["window_days"])]}
+    for part in (text or "").split(","):
+        if "=" not in part:
+            continue
+        k, v = (x.strip() for x in part.split("=", 1))
+        if k == "wr":
+            rule["wr"] = float(v)
+        elif k == "trades":
+            rule["trades"] = int(v)
+        elif k == "tp" and v in (">", ">="):
+            rule["tp"] = v
+        elif k == "windows":
+            rule["windows"] = sorted({int(x) for x in v.split("|") if x.strip()})
+    return rule
+
+
+WRITE = write_rule(os.environ.get("REPLAY_WRITE", ""))
+WRITE_CFG = {**CFG, "on_winrate": WRITE["wr"], "min_trades": WRITE["trades"],
+             "tp_rule": WRITE["tp"]}
+
+
 def start_ms() -> int:
     """The first daily check: local midnight of START on this machine, whose
     TZ the workflow sets to the operator's own (America/New_York)."""
@@ -94,7 +123,7 @@ def bars_needed(tf: str, now_ms: int) -> int:
     """Enough of the frame for 30 days before the first check, to now, plus
     the warm-up — never a year of 15m bars nobody reads."""
     _iv, bs, cap = br.TFS[tf]
-    span = (now_ms - (start_ms() - wr.WINDOW_MS)) / 1000
+    span = (now_ms - (start_ms() - max(WRITE["windows"]) * wr.DAY_MS)) / 1000
     return min(cap, int(span / bs) + WARMUP_BARS + 50)
 
 
@@ -130,7 +159,7 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
         return []                  # nothing of the asked groups on this pair
     now_ms = int(time.time() * 1000)
     df = at._closed_bars(fx.klines(sym, iv, bars_needed(tf, now_ms)), bs)
-    first = start_ms() - wr.WINDOW_MS
+    first = start_ms() - max(WRITE["windows"]) * wr.DAY_MS
     ts_all = df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
     measured = int((ts_all >= first).sum())
     if measured < br.min_bars(tf):
@@ -175,7 +204,7 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
             thp = 0.0 if th is None else round(th * 100, 3)
             dirs_idx = [k for k, v in enumerate(dirs) if v and k >= warm]
             for (sl, tp) in br.pairs_for(tf):
-                if not tp > sl:
+                if not (tp > sl if WRITE["tp"] == ">" else tp >= sl):
                     continue                      # the operator's TP > SL
                 if liq is not None and sl * 100 >= STOP_CEILING * abs(liq):
                     continue                      # a stop past the wall
@@ -187,7 +216,7 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
                 walked = fg.walk(dirs_idx, dirs, op, hi, lo, cl, tp=tp, sl=sl,
                                  liq=None if liq is None else abs(liq) / 100.0,
                                  f_ms=f_ms, f_cum=f_cum, bar_ms=ts)
-                if len(walked) < CFG["min_trades"]:
+                if len(walked) < WRITE["trades"]:
                     continue
                 trades = [[ts[e], ts[x] + bs * 1000,
                            round(fg.trade_pnl(o, w, ff, margin=ss.BASE_MARGIN,
@@ -202,8 +231,9 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
                          "group": group_of(sig),
                          "trades": trades}
                 book = wr._Book(combo)
-                if not any((r := book.row(c)) is not None
-                           and not wp.passes_on(r, CFG) for c in cks):
+                if not any((r := book.row(c, w * wr.DAY_MS)) is not None
+                           and not wp.passes_on(r, WRITE_CFG)
+                           for w in WRITE["windows"] for c in cks):
                     continue
                 stats["kept"] += 1
                 lines.append(json.dumps(combo, separators=(",", ":")) + "\n")
@@ -263,7 +293,7 @@ def main() -> int:
     coins = ss.eligible()
     usual = usual_costs()
     stats = {"start": START, "tz": os.environ.get("TZ", ""), "tfs": TFS,
-             "groups": list(GROUPS),
+             "groups": list(GROUPS), "write": WRITE,
              "cfg": CFG, "coins_board": len(coins), "coins_done": 0,
              "pairs": 0, "tested": 0, "kept": 0, "short": [], "failed": {},
              "spans": {}}

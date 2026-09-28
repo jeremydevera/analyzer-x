@@ -35,6 +35,9 @@ on:
       groups:
         description: "Strategy groups: all, or any of classic,preset,sep25,sep27ml"
         default: "all"
+      write_rule:
+        description: "Which combinations to write: empty = the watcher's on-rule; research e.g. wr=70,trades=10,tp=>=,windows=14|30"
+        default: ""
 
 permissions:
   contents: write        # claims and progress on the sweep-progress branch
@@ -87,6 +90,7 @@ jobs:
           START: ${{ github.event.inputs.start }}
           BASE_MARGIN: ${{ github.event.inputs.base }}
           REPLAY_GROUPS: ${{ github.event.inputs.groups }}
+          REPLAY_WRITE: ${{ github.event.inputs.write_rule }}
           # the daily checks are the OPERATOR's midnights, not the runner's UTC
           TZ: America/New_York
         run: python .github/scripts/replay_shard.py

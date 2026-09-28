@@ -259,6 +259,34 @@ def _filter_confirms() -> list:
     return out
 
 
+def engine_run(frame: "Frame", tf: str, sub, d: list, s: float, t: float,
+               start_at: int, fine, log=None, key_prefix: str = "lx") -> dict | None:
+    """One run of the real engine: fee + slippage + funding. Shared by the
+    Sep 25 loop and the Sep 27 ML learner, so both grade the same way."""
+    import tradingagents.auto_trader as at
+    from tradingagents import backtest_report as br
+
+    iv, bs, _ = br.TFS[tf]
+    key = f"{key_prefix}_grade_{tf}"
+    at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs, "tp": t,
+                              "sl": s, "threshold": .003}
+    try:
+        r = at.backtest_strategy(key, sub, frame.base, fee=frame.fee,
+                                 sizing="flat", slippage=frame.slip, dirs=d,
+                                 tp=t, sl=s, liq_move_pct=frame.liq,
+                                 funding=frame.funding, keep_log=False,
+                                 start_at=start_at, fine=fine)
+    except Exception as exc:                                   # noqa: BLE001
+        (log or (lambda m: None))(f"grade failed ({type(exc).__name__}: {exc})")
+        return None
+    finally:
+        at.STRATEGY_SPECS.pop(key, None)
+    return {"profit": float(r["profit"]), "trades": int(r["trades"]),
+            "wins": int(r["wins"]), "losses": int(r["losses"]),
+            "streak": float(r.get("worst_streak", 0.0)),
+            "streak_len": int(r.get("worst_streak_len", 0))}
+
+
 class Learner:
     def __init__(self, frame: Frame, *, now_ms: int | None = None, log=None,
                  signals=None, max_rounds: int = MAX_ROUNDS):
@@ -371,28 +399,7 @@ class Learner:
     def _engine(self, sub, d: list, s: float, t: float, start_at: int,
                 fine) -> dict | None:
         """One run of the real engine: fee + slippage + funding."""
-        import tradingagents.auto_trader as at
-        from tradingagents import backtest_report as br
-
-        iv, bs, _ = br.TFS[self.tf]
-        key = f"lx_grade_{self.tf}"
-        at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs, "tp": t,
-                                  "sl": s, "threshold": .003}
-        try:
-            r = at.backtest_strategy(key, sub, self.f.base, fee=self.f.fee,
-                                     sizing="flat", slippage=self.f.slip, dirs=d,
-                                     tp=t, sl=s, liq_move_pct=self.f.liq,
-                                     funding=self.f.funding, keep_log=False,
-                                     start_at=start_at, fine=fine)
-        except Exception as exc:                               # noqa: BLE001
-            self.log(f"grade failed ({type(exc).__name__}: {exc})")
-            return None
-        finally:
-            at.STRATEGY_SPECS.pop(key, None)
-        return {"profit": float(r["profit"]), "trades": int(r["trades"]),
-                "wins": int(r["wins"]), "losses": int(r["losses"]),
-                "streak": float(r.get("worst_streak", 0.0)),
-                "streak_len": int(r.get("worst_streak_len", 0))}
+        return engine_run(self.f, self.tf, sub, d, s, t, start_at, fine, self.log)
 
     def validate(self, spec: dict, s: float, t: float) -> dict | None:
         """The VALIDATE period through the real engine, bar-rule exits (the

@@ -238,3 +238,140 @@ def test_every_learned_family_keeps_tp_above_sl_on_the_update_button():
     src = (REPO / "tradingagents/market_sweep.py").read_text(encoding="utf-8")
     assert src.count("br.is_learned(") >= 2
     assert 'startswith("lx_")' not in src
+
+
+# ------------------------------------------------------------ the learner
+def _ml_frame(days=260, tf="1h", seed=11, planted=True):
+    """A walk with a PLANTED edge: after three down closes in a row the next
+    bars drift up, so a long has a real reason to reach its target first."""
+    from tradingagents import formula_learner as fl
+
+    step = {"15m": 900, "1h": 3600, "1d": 86400}[tf]
+    n = int(days * 86400 / step)
+    rng = np.random.default_rng(seed)
+    r = rng.normal(0, 0.004, n)
+    if planted:
+        for i in range(3, n - 6):
+            if r[i - 1] < 0 and r[i - 2] < 0 and r[i - 3] < 0:
+                r[i:i + 6] += 0.0025
+    c = 100 * np.exp(np.cumsum(r))
+    o = np.concatenate([[c[0]], c[:-1]])
+    h = np.maximum(o, c) * (1 + rng.uniform(0, 0.002, n))
+    lo = np.minimum(o, c) * (1 - rng.uniform(0, 0.002, n))
+    dates = pd.date_range(end=pd.Timestamp("2026-09-20"), periods=n, freq=f"{step}s")
+    df = pd.DataFrame({"Date": dates, "Open": o, "High": h, "Low": lo, "Close": c,
+                       "Volume": rng.uniform(50, 150, n)})
+    return fl.Frame(coin="TEST", tf=tf, df=df, fee=0.0002, slip=0.0001, liq=4.5)
+
+
+def _now(frame):
+    return int(frame.df["Date"].iloc[-1].timestamp() * 1000) + 3_600_000
+
+
+def test_labels_are_the_engines_first_touch_and_stop_at_the_segment_end():
+    from tradingagents import ml_learner as ml
+
+    o = np.array([100, 100, 100, 100, 100, 100.0])
+    h = np.array([100, 103, 100, 100, 101, 100.0])
+    lo = np.array([100, 100, 98, 97, 100, 100.0])
+    y = ml.labels(o, h, lo, 0, 6, tp=0.02, sl=0.01, side=1)
+    assert y[0] == 1.0                        # bar 1 reaches 102 first
+    assert y[1] == 0.0                        # bar 2 touches 99 first
+    both = ml.labels(o, np.array([100, 103, 100, 100, 100, 100.0]),
+                     np.array([100, 98, 100, 100, 100, 100.0]), 0, 6, 0.02, 0.01, 1)
+    assert both[0] == 0.0                     # both in one bar: the stop
+    y2 = ml.labels(o, h, lo, 0, 3, tp=0.02, sl=0.01, side=-1)
+    assert np.isnan(y2[2])                    # unresolved before b: purged
+
+
+def test_the_learner_finds_the_planted_edge_and_keeps_only_tp_above_sl():
+    from tradingagents import ml_learner as ml
+
+    fr = _ml_frame()
+    rep = ml.MLLearner(fr, now_ms=_now(fr)).run()
+    assert rep["formulas"], rep.get("why")
+    for f in rep["formulas"]:
+        assert f["name"].startswith("ml_TEST_1h_")
+        assert f["tp"] > f["sl"]
+        assert f["sl"] * 100 < 0.8 * 4.5
+        lr = f["learned"]
+        assert lr["validate"]["profit"] > 0
+        assert lr["validate"]["winrate"] > lr["breakeven_winrate"]
+        assert lr["unseen"]["chose"] is False
+        assert "decision trees" in lr["describe"]
+
+
+def test_no_choice_can_see_the_unseen_period():
+    """Rewrite every candle from the unseen period on: the same models, the
+    same TP/SL and the same validate numbers. Only the grade may differ."""
+    from tradingagents import formula_learner as fl, ml_learner as ml
+
+    fr = _ml_frame()
+    a = ml.MLLearner(fr, now_ms=_now(fr))
+    df = fr.df.copy()
+    rng = np.random.default_rng(99)
+    u = a.u0 + (len(df) - a.n)
+    c = df["Close"].to_numpy().copy()
+    c[u:] = c[u - 1] * np.exp(np.cumsum(rng.normal(0, 0.01, len(c) - u)))
+    df.loc[u:, "Close"] = c[u:]
+    df.loc[u:, "Open"] = np.concatenate([[c[u - 1]], c[u:-1]])
+    df.loc[u:, "High"] = np.maximum(df.loc[u:, "Open"], c[u:]) * 1.003
+    df.loc[u:, "Low"] = np.minimum(df.loc[u:, "Open"], c[u:]) * 0.997
+    b = ml.MLLearner(fl.Frame(**{**fr.__dict__, "df": df}), now_ms=_now(fr))
+
+    def chosen(rep):
+        return [(f["tp"], f["sl"], f["sides"], f["q"], f["thr"],
+                 json.dumps(f["models"]), f["learned"]["validate"])
+                for f in rep["formulas"]]
+
+    ra, rb = a.run(), b.run()
+    assert ra["formulas"], "the fixture chose nothing, so this proved nothing"
+    assert chosen(ra) == chosen(rb)
+
+
+def test_too_little_history_says_so_instead_of_guessing():
+    from tradingagents import ml_learner as ml
+
+    fr = _ml_frame(days=80)
+    rep = ml.MLLearner(fr, now_ms=_now(fr)).run()
+    assert rep["formulas"] == [] and "not enough history" in rep["why"]
+
+
+def test_a_side_whose_target_never_comes_first_is_skipped_not_a_crash():
+    from tradingagents import ml_learner as ml
+
+    fr = _ml_frame()
+    lr = ml.MLLearner(fr, now_ms=_now(fr))
+    y = np.zeros(lr.n)
+    assert lr._fit_side(y) is None
+
+
+def test_daily_candles_learn_from_two_years():
+    from tradingagents import ml_learner as ml
+
+    assert ml.LEARN_DAYS["1d"] == 720
+    assert all(ml.LEARN_DAYS[t] == 180 for t in ("15m", "30m", "1h", "4h"))
+
+
+def test_the_stored_cut_trades_what_the_grade_graded():
+    """The grade runs signals_ml.dirs_for on the stored row's own cut, the
+    same call the GitHub row measurement makes."""
+    from tradingagents import ml_learner as ml, signals_ml as sml
+
+    fr = _ml_frame()
+    lr = ml.MLLearner(fr, now_ms=_now(fr))
+    rep = lr.run()
+    f = rep["formulas"][0]
+    w0 = lr.u0 - lr.WARM
+    o, h, lo, c, v, ts = lr.f.arrays()
+    d = sml.dirs_for(f, o[w0:], h[w0:], lo[w0:], c[w0:], v[w0:], ts[w0:])
+    assert d == lr._cut_dirs(f)
+
+
+def test_it_is_fast_enough_to_learn_the_market():
+    from tradingagents import ml_learner as ml
+
+    fr = _ml_frame(days=260, tf="1h")
+    t0 = time.time()
+    ml.MLLearner(fr, now_ms=_now(fr)).run()
+    assert time.time() - t0 < 120

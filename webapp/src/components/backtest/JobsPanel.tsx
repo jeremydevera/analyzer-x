@@ -8,7 +8,7 @@
  * job's progress file on disk, not in this component.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, API_BASE, BacktestPlan, CloudShard, CloudStatus, DelistedReport, fmtBytes, fmtWhen, fmtWhenMs, GridPlan, JobStatus, MonthJob, storeApi, StoreName } from "@/lib/api";
+import { api, API_BASE, BacktestPlan, CloudShard, CloudStatus, DailyUpdate, DelistedReport, fmtBytes, fmtWhen, fmtWhenMs, GridPlan, JobStatus, MonthJob, storeApi, StoreName } from "@/lib/api";
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
 import StoreBadge from "@/components/StoreBadge";
@@ -88,6 +88,11 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
   const [plan, setPlan] = useState<GridPlan | null>(null);
   const [deployed, setDeployed] = useState<{ coin: string; tf: string; key: string }[]>([]);
   const [cloud, setCloud] = useState<CloudStatus | null>(null);
+  // THE DAILY RUN (operator, Sep 28, 2026: "yes i want github to start once a
+  // day ... if its greater than 24 hrs, you should automatically run it").
+  // v2 only; every word of its line below comes from this payload.
+  const [daily, setDaily] = useState<DailyUpdate | null>(null);
+  const [dailyBusy, setDailyBusy] = useState(false);
   // WHERE an update would run — asked of the API, not guessed here, so the
   // button can say it before it is clicked (operator: "detect if there is a
   // free both in github and machine").
@@ -129,6 +134,7 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
     // while 35 of them were measuring — the operator, Sep 22, 2026 11:14pm:
     // "why cant i see any loading on screen".
     api.cloudStatus().then(setCloud).catch(() => {});
+    if (store === "v2") api.dailyUpdate().then(setDaily).catch(() => setDaily(null));
     if (store !== "v1") return;             // the hand-over is still v1-only
     api.jobHandoffState("backtest").then(setHand).catch(() => {});
   }, [S, store]);
@@ -408,6 +414,49 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
               </span>
             )}
           </div>
+          {store === "v2" && daily && (
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-theme-xs text-gray-500 dark:text-gray-400">
+              {daily.enabled ? (
+                <>
+                  <span>
+                    <b className="text-gray-700 dark:text-gray-300">Runs by itself:</b>{" "}
+                    UPDATE ALL BACKTESTS every {daily.every_hours} hours, and when this PC is switched on
+                    if the last run is older than that — every coin, {daily.tfs.join(", ")}, last {daily.days} days
+                  </span>
+                  <span>
+                    · last run{" "}
+                    {daily.last_run
+                      ? (daily.last_run_url
+                          ? <a href={daily.last_run_url} target="_blank" rel="noreferrer"
+                               className="text-brand-500 hover:underline">{fmtWhen(daily.last_run)}</a>
+                          : fmtWhen(daily.last_run))
+                      : "none on record"}
+                  </span>
+                  <span>
+                    · {daily.due ? "due now" : daily.next_run ? `next ${fmtWhen(daily.next_run)}` : ""}
+                  </span>
+                  {daily.due && daily.why && (
+                    <span className="text-warning-600 dark:text-warning-400">· {daily.why}</span>
+                  )}
+                </>
+              ) : (
+                <span>
+                  <b className="text-gray-700 dark:text-gray-300">The daily run is switched off</b> —
+                  UPDATE ALL BACKTESTS runs only when you press it
+                </span>
+              )}
+              <button type="button" disabled={dailyBusy}
+                      onClick={() => {
+                        setDailyBusy(true);
+                        api.dailyUpdateSwitch(!daily.enabled).then(setDaily)
+                          .catch((e) => setErr(String(e)))
+                          .finally(() => setDailyBusy(false));
+                      }}
+                      className="rounded-lg border border-gray-300 px-2 py-0.5 text-theme-xs text-gray-600 hover:border-brand-400 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300">
+                {daily.enabled ? "switch off" : "switch on"}
+              </button>
+            </p>
+          )}
           {store === "v1" && armDead && dead && (
             <p className="mt-2 flex flex-wrap items-center gap-2 text-theme-xs text-warning-700 dark:text-warning-400">
               <span>

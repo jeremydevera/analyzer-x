@@ -1030,6 +1030,35 @@ otherwise "simplify" it back. Full account: `docs/RCA.md` RCA-2026-09-12-A;
 guard: `tests/test_demo_cannot_fill_before_it_opened.py`, verified red on the
 pre-fix file.
 
+## UPDATE ALL BACKTESTS presses itself once a day (MANDATORY — 2026-09-28)
+
+The operator: *"yes i want github to start once a day / also there are times
+where there is power outage when i turn on my pc, you should detect the last
+run of update all backtest, if its greater than 24 hrs, you should
+automatically run it"*.
+
+This REVERSES the Sep 09, 2026 correction (*"no no no, i want option to start
+the backtest"*) for ONE job only, on their own word. `cloud_autopilot` still
+never dispatches; `tradingagents/daily_update.py` is the only tick that may.
+
+* **One rule, both halves.** The supervisor's 30 s tick presses the Backtest
+  v2 UPDATE (`db_jobs.start("btupdate_v2", ...)`) when its last REAL run is
+  `EVERY_S` (24 h) old. The first tick after a power cut is that same check,
+  so there is no separate start-up path to drift.
+* **It is the button, not a second button.** The same job and the spec a
+  hand press sends with nothing picked: every coin, the panel's default
+  `tfs` (`DAILY_TFS`, held equal to JobsPanel by a test), 30 days, $5.
+* **The last run is a real dispatch.** `db_btupdate_v2.plan.json` with a
+  `cloud_run`, whether pressed by hand or by the timer. A press GitHub
+  refused measured nothing and never resets the clock.
+* **Waiting is spaced and named.** A busy disk job, a sweep still running on
+  ANY account, or GitHub that cannot be asked is retried every `RETRY_S`
+  (30 min), never every tick, and the reason is printed on Backtest v2.
+* **The operator can switch it off** on Backtest v2 (`POST
+  /api/v2/daily-update`). It never runs under pytest.
+
+Guard: `tests/test_the_update_runs_itself_once_a_day.py` (20).
+
 ## Backtest v2 is the v1 engine in its own folder (MANDATORY — 2026-09-17)
 
 The operator: *"lets do a v2 of candles tab, when i download candles ... it

@@ -549,6 +549,20 @@ export interface CloudShard {
   fresh?: number;
 }
 
+/** what the Backtest v2 screen prints about the daily run — every word of it */
+export interface DailyUpdate {
+  enabled: boolean;
+  last_run: number | null;
+  last_run_url?: string | null;
+  next_run: number | null;
+  due: boolean;
+  every_hours: number;
+  tfs: string[];
+  days: number;
+  why: string;
+  last_started?: number | null;
+}
+
 export interface CloudStatus {
   /** the run on screen is already in this PC's store, so there is
    *  nothing left to merge */
@@ -888,6 +902,11 @@ export const api = {
            why: string; run?: { id?: number; url?: string } }>(
       "/api/backtest/pending/resolve", {}),
   cloudStatus: () => get<CloudStatus>("/api/cloud/status"),
+  /** UPDATE ALL BACKTESTS on Backtest v2, pressed by itself once a day and on
+   *  start-up when the last run is 24 hours old (tradingagents/daily_update.py) */
+  dailyUpdate: () => get<DailyUpdate>("/api/v2/daily-update"),
+  dailyUpdateSwitch: (enabled: boolean) =>
+    post<DailyUpdate>("/api/v2/daily-update", { enabled }),
   /** `coin_list` is WHICH coins to measure, by name — `coins` is only the most
    *  coins one machine may claim. Sending the count alone is how BACKTEST with
    *  BTC picked measured 0G, ALPINE, AVAAI… and never BTC (Sep 10, 2026).

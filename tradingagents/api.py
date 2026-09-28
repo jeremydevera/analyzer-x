@@ -167,6 +167,21 @@ def _keep_the_row_index_current() -> None:
                     _ca.tick()
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[cloud-autopilot] failed: {exc!r}", flush=True)
+                # THE ONE THING A TICK MAY START (operator, Sep 28, 2026: "yes
+                # i want github to start once a day / ... when i turn on my
+                # pc, you should detect the last run of update all backtest,
+                # if its greater than 24 hrs, you should automatically run
+                # it"). UPDATE ALL BACKTESTS on Backtest v2, the same job the
+                # button starts, when the last real run is 24 hours old —
+                # which is also the first tick after a power cut. It has its
+                # own switch on the Backtest v2 screen; the collector above
+                # still never starts anything.
+                try:
+                    from tradingagents import daily_update as _du
+
+                    _du.tick()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[daily-update] failed: {exc!r}", flush=True)
                 # NO AUTOMATIC CANDLE TOP-UP. candle_autopilot.tick() ran here
                 # from 2026-09-06 to 2026-09-09 and started an UPDATE by itself
                 # whenever the store was 3h stale. The operator saw
@@ -968,6 +983,26 @@ def strategies_export(body: dict) -> dict:
 def strategies_export_v2(body: dict) -> dict:
     """Start building the full CSV of a Backtest v2 filter."""
     return _start_export("export_v2", body)
+
+
+@app.get("/api/v2/daily-update")
+def daily_update_status() -> dict:
+    """UPDATE ALL BACKTESTS once a day, by itself: when it last ran, when it
+    runs next, and why it is waiting (tradingagents/daily_update.py)."""
+    from tradingagents import daily_update as du
+
+    return du.status()
+
+
+@app.post("/api/v2/daily-update")
+def daily_update_switch(body: dict) -> dict:
+    """The operator's switch for it. `{"enabled": false}` stops the daily
+    press; nothing already sent to GitHub is touched."""
+    from tradingagents import daily_update as du
+
+    if not isinstance((body or {}).get("enabled"), bool):
+        raise HTTPException(422, 'send {"enabled": true} or {"enabled": false}')
+    return du.set_enabled(body["enabled"])
 
 
 def _export_command(body: dict, store: str) -> dict:

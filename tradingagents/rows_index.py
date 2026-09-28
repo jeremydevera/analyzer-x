@@ -2539,6 +2539,9 @@ GROUPS = {
     # REMOVED on Sep 28, 2026 — operator: *"just delete the Sep 25 Strat ·
     # passed old-data test i dont need it"*. It was a filter over the same
     # rows, never a copy of them; learn_verify and its file are untouched.
+    # THE SEP 27 ML MODELS (signals_ml, ml_learner). Operator, Sep 27, 2026:
+    # "use machine learning on what's best strategy i want tp higher than sl".
+    "sep27ml": {"label": "Sep 27 ML"},
 }
 # The group as a RANGE on the signal name, not a LIKE.
 #
@@ -2568,11 +2571,14 @@ PRESET_PREFIXES = ("cf_", "cx_")
 PRESET_LO, PRESET_HI = "cf_", "cf`"        # kept: the first range, by name
 # the learned set ("Sep 25 Strat"): every name starts lx_ (signals_learned)
 LEARNED_PREFIXES = ("lx_",)
+# the Sep 27 ML models: every name starts ml_ (signals_ml)
+ML_PREFIXES = ("ml_",)
 # EVERY named family, by group. Classic is what belongs to NONE of them — so a
 # family added here leaves Classic by the same line that creates its group.
 # "Classic" answering with an lx_ row would be the false label RCA-2026-09-12
 # paid for with cx_ (see above).
-GROUP_PREFIXES = {"preset": PRESET_PREFIXES, "sep25": LEARNED_PREFIXES}
+GROUP_PREFIXES = {"preset": PRESET_PREFIXES, "sep25": LEARNED_PREFIXES,
+                  "sep27ml": ML_PREFIXES}
 
 
 def _ranges(prefixes) -> list:
@@ -2585,11 +2591,14 @@ PRESET_TERMS = "(" + " OR ".join(
 LEARNED_TERMS = "(" + " OR ".join(
     f"(signal >= '{lo}' AND signal < '{hi}')"
     for lo, hi in _ranges(LEARNED_PREFIXES)) + ")"
+ML_TERMS = "(" + " OR ".join(
+    f"(signal >= '{lo}' AND signal < '{hi}')"
+    for lo, hi in _ranges(ML_PREFIXES)) + ")"
 CLASSIC_TERMS = "(" + " AND ".join(
     f"(signal < '{lo}' OR signal >= '{hi}')"
     for ps in GROUP_PREFIXES.values() for lo, hi in _ranges(ps)) + ")"
 GROUP_TERMS = {"preset": PRESET_TERMS, "classic": CLASSIC_TERMS,
-               "sep25": LEARNED_TERMS}
+               "sep25": LEARNED_TERMS, "sep27ml": ML_TERMS}
 
 
 def group_terms(group: str) -> str:
@@ -2638,6 +2647,13 @@ GROUP_INDEXES = {
 GROUP_INDEXES.update({
     ("sep25", k): (f"CREATE INDEX IF NOT EXISTS rows_lx_{k} ON rows "
                    f"({cols}) WHERE {LEARNED_TERMS}")
+    for k, cols in GROUP_SORT_COLS.items()
+})
+# the Sep 27 ML models: same shape again — a few thousand ml_ rows among tens
+# of millions, so "Sep 27 ML" ranked by profit is a seek, not a walk
+GROUP_INDEXES.update({
+    ("sep27ml", k): (f"CREATE INDEX IF NOT EXISTS rows_ml_{k} ON rows "
+                     f"({cols}) WHERE {ML_TERMS}")
     for k, cols in GROUP_SORT_COLS.items()
 })
 # the superseded ones, dropped on sight so the file does not carry a stale

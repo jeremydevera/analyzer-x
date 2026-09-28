@@ -76,7 +76,11 @@ def test_the_group_names_are_the_operators_words():
     assert ri.GROUPS["sep25"]["label"] == "Sep 25 Strat"
     # "Sep 25 Strat · passed old-data test" was removed on Sep 28, 2026:
     # "just delete the Sep 25 Strat · passed old-data test i dont need it"
-    assert set(ri.GROUPS) == {"preset", "classic", "sep25"}
+    # "Sep 27 ML" was added the same day for the decision-tree models
+    # (signals_ml, ml_ prefix) — operator: "use machine learning on what's
+    # best strategy"
+    assert ri.GROUPS["sep27ml"]["label"] == "Sep 27 ML"
+    assert set(ri.GROUPS) == {"preset", "classic", "sep25", "sep27ml"}
 
 
 def test_the_removed_old_data_group_is_gone_everywhere():

@@ -428,3 +428,31 @@ def test_it_is_fast_enough_to_learn_the_market():
     t0 = time.time()
     ml.MLLearner(fr, now_ms=_now(fr)).run()
     assert time.time() - t0 < 120
+
+
+# ------------------------------------------------------------- the group
+def test_each_learned_group_holds_only_its_own_family():
+    import sqlite3
+
+    from tradingagents import backtest_report as br, rows_index as ri
+
+    names = list(br.SIGNALS) + ["lx_BTC_1h_1", "ml_BTC_1h_1", "ml_KKRSTOCK_15m_2"]
+    con = sqlite3.connect(":memory:")
+    con.execute("CREATE TABLE rows (signal TEXT)")
+    con.executemany("INSERT INTO rows VALUES (?)", [(s,) for s in names])
+    for group, terms in ri.GROUP_TERMS.items():
+        sql = {r[0] for r in con.execute(f"SELECT signal FROM rows WHERE {terms}")}
+        assert sql == {s for s in names if ri.in_group(s, group)}, group
+    assert {s for s in names if ri.in_group(s, "sep27ml")} == {"ml_BTC_1h_1", "ml_KKRSTOCK_15m_2"}
+    assert {s for s in names if ri.in_group(s, "sep25")} == {"lx_BTC_1h_1"}
+    assert not [s for s in names if ri.in_group(s, "classic") and br.is_learned(s)]
+    assert ri.GROUPS["sep27ml"]["label"] == "Sep 27 ML"
+    assert ri.group_index("sep27ml", "profit") == "rows_ml_profit"
+
+
+def test_the_screen_offers_sep27_ml_by_its_name():
+    src = (REPO / "webapp/src/components/backtest/StrategiesPanel.tsx").read_text(encoding="utf-8")
+    assert 'sep27ml: "Sep 27 ML"' in src
+    assert '<option value="sep27ml">{GROUP_LABEL.sep27ml}</option>' in src
+    api = (REPO / "webapp/src/lib/api.ts").read_text(encoding="utf-8")
+    assert api.count('"sep25" | "sep27ml"') == 2

@@ -172,6 +172,65 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-28-E — a one-feature commit shipped another session's unfinished code to main on both accounts
+
+**CEO**
+
+* For about twenty minutes the code on GitHub held another session's
+  half-finished "Sep 27 ML" work, because my commit for your "delete the
+  passed old-data test group" swept it in.
+* Why: both sessions share one folder, and a plain commit takes everything
+  either of us had put in the queue, not just my files.
+* What stops it now: this session commits through its own private queue,
+  naming each file; the mistake was taken back out without rewriting any
+  history, and nothing ran on GitHub in between.
+
+**DEV**
+
+* `git commit` after `git add <my 4 files>` + `stage_hunks.py hunk` committed
+  the shared `.git/index`, which already held analyzer-x-11's staged
+  `tests/test_sep27_ml.py`, `signals_ml.py`, `auto_trader.py`,
+  `backtest_report.py`, `local_history.py`, `market_sweep.py` → 7cad08956a72.
+* Invariant broken: **stage only my own files and hunks** (the standing
+  two-session rule) — staging is not enough while the index is shared; the
+  COMMIT must be built from a tree that holds only mine
+  (`GIT_INDEX_FILE=<private> git read-tree HEAD; add; write-tree;
+  commit-tree`).
+* Guard: none automatic — a process rule; the check is reading
+  `git diff --cached --stat` before every commit and refusing any file
+  that is not mine.
+
+**SAW** — `git diff --cached --stat` printed 11 files for a 5-file change,
+`Sep 28, 2026 ~2:55pm`; the first push said "remote end hung up" but had
+landed on origin, and colleague took it too.
+
+**TIMELINE**
+
+1. `~2:50pm` — my uncommitted group-removal edits vanish from the working
+   tree (a `git stash` in the shared checkout: stash@{1}
+   "other-session-wip-sep28" held my test edits).
+2. `~2:55pm` — redone, committed as 7cad08956a72 with the other session's
+   staged files inside; pushed to jeremydevera and jeremydvera.
+3. `~3:05pm` — af1c66e74982 restores those seven paths to f4417d3544c4 on
+   top (tree identical to f4417 + the removal), pushed to both; no force.
+4. analyzer-x-11 told; its working tree and staged index were never touched.
+
+**ROOT CAUSE** — committing the shared index instead of a tree built from
+my own files.
+
+**WHY IT WAS NOT CAUGHT** — `git diff --cached --stat` was printed in the
+same command as the commit, so the 11-file list was read after it had
+already gone; and a "failed" push was believed without re-fetching.
+
+**COST** — none in money; ~20 minutes of unfinished code on both mains.
+
+**FIX** — af1c66e74982.
+
+**GUARD** — process: build every commit on a private index; re-fetch after
+any push that reports an error.
+
+---
+
 ## RCA-2026-09-28-D — a run already merged kept offering MERGE INTO THIS PC for up to five minutes
 
 **CEO**

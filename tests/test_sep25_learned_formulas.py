@@ -482,7 +482,7 @@ def test_landing_is_refused_outside_backtest_v2(v2store, monkeypatch):
 
 def test_the_update_button_keeps_the_same_rule_for_a_learned_row():
     src = (REPO / "tradingagents/market_sweep.py").read_text(encoding="utf-8")
-    assert 'if str(sig).startswith("lx_") and (' in src
+    assert "if br.is_learned(sig) and (" in src
     assert "tp <= sl or (liq is not None" in src
 
 
@@ -712,5 +712,5 @@ def test_a_re_learned_pair_loses_its_old_verdicts(v2store):
     raw = json.loads(lv.VERIFIED_FILE.read_text(encoding="utf-8"))
     assert set(raw["formulas"]) == {"lx_ETH_4h_1"}
     assert raw["counts"] == {"passed": 1}
-    assert not ri.in_group("lx_BTC_1h_1", "sep25ok")
-    assert ri.in_group("lx_ETH_4h_1", "sep25ok")
+    # (the "passed old-data test" group that read this file was removed on
+    # Sep 28, 2026 — "just delete the Sep 25 Strat · passed old-data test")

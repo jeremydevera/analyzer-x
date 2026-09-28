@@ -123,3 +123,118 @@ def test_fit_refuses_rows_it_cannot_split():
     X[0, 1] = np.inf
     with pytest.raises(ValueError, match="finite"):
         mt.fit(X, np.zeros(500))
+
+
+# ------------------------------------------------------------ the registry
+def _toy_spec(name="ml_TEST_1h_1", sides="both"):
+    from tradingagents import ml_features as mf, ml_trees as mt
+
+    df = _frame(900)
+    o, h, lo, c, v, ts = _arrays(df)
+    X = mf.features(o, h, lo, c, v, ts, [], "1h")
+    ok = np.isfinite(X).all(axis=1)
+    fwd = np.concatenate([c[3:] / c[:-3] - 1, [0, 0, 0]])
+    models, thr = {}, {}
+    for side, sgn in (("long", 1), ("short", -1)):
+        y = (sgn * fwd > 0.004).astype(float)
+        m = mt.fit(X[ok], y[ok])
+        models[side] = m
+        thr[side] = float(np.quantile(mt.predict(m, X[ok]), 0.9))
+    if sides != "both":
+        models, thr = {sides: models[sides]}, {sides: thr[sides]}
+    return {"name": name, "coin": "TEST", "tf": "1h", "tp": 0.02, "sl": 0.01,
+            "sides": sides, "q": 0.9, "thr": thr, "models": models,
+            "features": mf.VERSION}
+
+
+def test_a_model_reads_only_closed_candles_and_the_same_on_the_stored_cut():
+    from tradingagents import signals_ml as sml
+
+    spec = _toy_spec()
+    o, h, lo, c, v, ts = _arrays(_frame(900))
+    full = sml.dirs_for(spec, o, h, lo, c, v, ts)
+    assert any(full) and set(full) <= {-1, 0, 1}
+    part = sml.dirs_for(spec, o[:600], h[:600], lo[:600], c[:600], v[:600], ts[:600])
+    assert part == full[:600]
+    w0 = 400                      # the stored row's cut: 300 warm bars and more
+    cut = sml.dirs_for(spec, o[w0:], h[w0:], lo[w0:], c[w0:], v[w0:], ts[w0:])
+    assert cut[300:] == full[w0 + 300:]
+
+
+def test_one_side_models_trade_one_side():
+    from tradingagents import signals_ml as sml
+
+    o, h, lo, c, v, ts = _arrays(_frame(900))
+    assert set(sml.dirs_for(_toy_spec(sides="long"), o, h, lo, c, v, ts)) <= {0, 1}
+    assert set(sml.dirs_for(_toy_spec(sides="short"), o, h, lo, c, v, ts)) <= {-1, 0}
+
+
+def test_an_ml_key_reads_as_its_own_model_everywhere(monkeypatch):
+    import tradingagents.auto_trader as at
+    from tradingagents import signals_ml as sml
+    from tradingagents.local_history import _sig_of
+
+    sml.register({"ml_TEST_1h_1": _toy_spec()})
+    try:
+        for key in ("ml_TEST_1h_1", "ml_TEST_1h_1_1h_sl1tp2", "ml_TEST_1h_1_bt_1h"):
+            assert _sig_of(key) == "ml_TEST_1h_1", key
+            assert sml.spec_for(key)["name"] == "ml_TEST_1h_1"
+        assert _sig_of("ml_NEWCOIN_4h_2_4h_sl10tp30") == "ml_NEWCOIN_4h_2"
+        assert sml.spec_for("ml_NOPE_1h_9") is None
+        o, h, lo, c, v, ts = _arrays(_frame(900))
+        want = sml.dirs_for(_toy_spec(), o, h, lo, c, v, ts)
+        got = at._dirs_for_backtest("ml_TEST_1h_1_bt_1h", list(h), list(lo), list(c),
+                                    opens=list(o), volume=list(v), ts=list(ts), funding=[])
+        assert list(got) == want
+        assert at.signal_for("ml_TEST_1h_1_1h_sl1tp2", list(h), list(lo), list(c),
+                             opens=list(o), volume=list(v), ts=list(ts)) == want[-1]
+        assert at._dirs_for_backtest("ml_NOPE_1h_9_bt_1h", list(h), list(lo), list(c),
+                                     opens=list(o)) == [0] * len(c)
+    finally:
+        sml.reload()
+
+
+def test_a_running_process_sees_models_collected_after_it_started(tmp_path, monkeypatch):
+    import os
+
+    from tradingagents import signals_ml as sml
+
+    f = tmp_path / "sep27_ml.json.gz"
+    monkeypatch.setattr(sml, "MODEL_FILE", f)
+    sml.reload()
+    assert sml.spec_for("ml_TEST_1h_1") is None
+    n = sml.write_file({"ml_TEST_1h_1": _toy_spec()}, run_id=1)
+    assert n == f.stat().st_size > 0
+    os.utime(f, ns=(time.time_ns(), time.time_ns() + 10**9))
+    assert sml.spec_for("ml_TEST_1h_1")["tf"] == "1h"
+    with gzip.open(f, "rt", encoding="utf-8") as fh:
+        assert "ml_TEST_1h_1" in json.load(fh)["models"]
+    sml.reload()
+
+
+def test_the_model_file_refuses_to_grow_past_its_ceiling(tmp_path, monkeypatch):
+    from tradingagents import signals_ml as sml
+
+    f = tmp_path / "sep27_ml.json.gz"
+    monkeypatch.setattr(sml, "MODEL_FILE", f)
+    sml.reload()
+    sml.write_file({"ml_TEST_1h_1": _toy_spec()}, run_id=1)
+    first = f.read_bytes()
+    with pytest.raises(RuntimeError, match="MB"):
+        sml.write_file({"ml_TEST_1h_1": _toy_spec(), "ml_TEST_1h_2": _toy_spec("ml_TEST_1h_2")},
+                       run_id=2, max_bytes=10)
+    assert f.read_bytes() == first
+    assert not f.with_suffix(".tmp").exists()
+    assert sml.read_file()["ml_TEST_1h_1"]["name"] == "ml_TEST_1h_1"
+    sml.reload()
+
+
+def test_every_learned_family_keeps_tp_above_sl_on_the_update_button():
+    from tradingagents import backtest_report as br
+
+    assert br.LEARNED_FAMILIES == ("lx_", "ml_")
+    assert br.is_learned("ml_BTC_1h_1") and br.is_learned("lx_BTC_1h_1")
+    assert not br.is_learned("keltner")
+    src = (REPO / "tradingagents/market_sweep.py").read_text(encoding="utf-8")
+    assert src.count("br.is_learned(") >= 2
+    assert 'startswith("lx_")' not in src

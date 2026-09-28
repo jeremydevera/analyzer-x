@@ -91,7 +91,6 @@ const GROUP_LABEL: Record<string, string> = {
   sep25: "Sep 25 Strat",
   // the part of it that also won on 90 days of candles it never saw
   // (operator, Sep 26, 2026: "Yes do 2 and 3"; learn_verify.py)
-  sep25ok: "Sep 25 Strat · passed old-data test",
 };
 
 /** Which order a clicked header stands for. Built FROM STRATEGY_SORTS, so
@@ -434,7 +433,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
     asset: (f.asset || undefined) as "crypto" | "stocks" | undefined,
     sizing: f.sizing || undefined, rowId: f.rowId || undefined,
     measuredDays: f.measuredDays || undefined,
-    group: (f.group || undefined) as "preset" | "classic" | "sep25" | "sep25ok" | undefined,
+    group: (f.group || undefined) as "preset" | "classic" | "sep25" | undefined,
   });
   // the exact count for the filters it was counted for — never another set's
   // for five minutes: rows are filed while the page stays open, and the
@@ -1402,7 +1401,6 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                   <option value="preset">{GROUP_LABEL.preset}</option>
                   <option value="classic">{GROUP_LABEL.classic}</option>
                   <option value="sep25">{GROUP_LABEL.sep25}</option>
-                  <option value="sep25ok">{GROUP_LABEL.sep25ok}</option>
                 </select>
               </Field>
               <Field label="signal">

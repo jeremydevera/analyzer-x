@@ -74,68 +74,20 @@ def test_the_group_names_are_the_operators_words():
     # "Sep 25 Strat" — the learned formulas (operator, Sep 25, 2026: "create
     # group 'Sep 25 Strat' when I filter thr group in backtest store")
     assert ri.GROUPS["sep25"]["label"] == "Sep 25 Strat"
-    # and the part of it that passed the old-data test (Sep 26, 2026)
-    assert set(ri.GROUPS) == {"preset", "classic", "sep25", "sep25ok"}
+    # "Sep 25 Strat · passed old-data test" was removed on Sep 28, 2026:
+    # "just delete the Sep 25 Strat · passed old-data test i dont need it"
+    assert set(ri.GROUPS) == {"preset", "classic", "sep25"}
 
 
-def _verified(tmp_path, monkeypatch, statuses):
-    import json
+def test_the_removed_old_data_group_is_gone_everywhere():
+    from pathlib import Path
 
-    from tradingagents import learn_verify as lv
-
-    f = tmp_path / "sep25_verified.json"
-    f.write_text(json.dumps({"formulas": {n: {"status": st}
-                                          for n, st in statuses.items()}}),
-                 encoding="utf-8")
-    monkeypatch.setattr(lv, "VERIFIED_FILE", f)
-    return f
-
-
-def test_the_passed_group_is_exactly_the_formulas_that_passed(tmp_path, monkeypatch):
-    """Operator, Sep 26, 2026: *"Yes do 2 and 3"* — keep only the formulas
-    that won on candles they never met. The SQL and the Python must name the
-    same rows, and a formula that failed, was too young to test, or is not a
-    learned name at all is never in it."""
-    import sqlite3
-
-    _verified(tmp_path, monkeypatch, {
-        "lx_ETH_1h_1": "passed", "lx_ETH_4h_1": "passed",
-        "lx_ETH_15m_1": "failed", "lx_0G_1d_1": "too young to test",
-        "lx_X_1h_1'); DROP TABLE rows; --": "passed"})
-    names = ["lx_ETH_1h_1", "lx_ETH_4h_1", "lx_ETH_15m_1", "lx_0G_1d_1",
-             "trend50", "cf_ttm_l2"]
-    assert {n for n in names if ri.in_group(n, "sep25ok")} == {
-        "lx_ETH_1h_1", "lx_ETH_4h_1"}
-    con = sqlite3.connect(":memory:")
-    con.execute("CREATE TABLE rows (signal TEXT)")
-    con.executemany("INSERT INTO rows VALUES (?)", [(n,) for n in names])
-    sql, args = ri._where(group="sep25ok")
-    got = {r[0] for r in con.execute(f"SELECT signal FROM rows {sql}", args)}
-    assert got == {"lx_ETH_1h_1", "lx_ETH_4h_1"}
-    assert con.execute("SELECT count(*) FROM rows").fetchone()[0] == len(names)
-    # it keeps the Sep 25 range in front, so the rows_lx_* index still serves it
-    assert ri.LEARNED_TERMS in sql
-    assert ri.group_index("sep25ok", "profit") == ri.group_index("sep25", "profit")
-
-
-def test_a_passed_group_never_tested_matches_nothing(tmp_path, monkeypatch):
-    from tradingagents import learn_verify as lv
-
-    monkeypatch.setattr(lv, "VERIFIED_FILE", tmp_path / "missing.json")
-    assert not ri.in_group("lx_ETH_1h_1", "sep25ok")
-    sql, _ = ri._where(group="sep25ok")
-    assert "(0)" in sql
-
-
-def test_a_new_test_result_is_read_without_a_restart(tmp_path, monkeypatch):
-    import os
-
-    f = _verified(tmp_path, monkeypatch, {"lx_ETH_1h_1": "failed"})
-    assert not ri.in_group("lx_ETH_1h_1", "sep25ok")
-    _verified(tmp_path, monkeypatch, {"lx_ETH_1h_1": "passed"})
-    st = f.stat()
-    os.utime(f, ns=(st.st_atime_ns, st.st_mtime_ns + 10_000_000))
-    assert ri.in_group("lx_ETH_1h_1", "sep25ok")
+    root = Path(__file__).resolve().parents[1]
+    for rel in ("webapp/src/components/backtest/StrategiesPanel.tsx",
+                "webapp/src/lib/api.ts"):
+        assert "sep25ok" not in (root / rel).read_text(encoding="utf-8"), rel
+    with pytest.raises(ValueError, match="unknown group"):
+        ri.in_group("lx_ETH_1h_1", "sep25ok")
 
 
 @pytest.mark.parametrize("group,terms,sample_in,sample_out", [

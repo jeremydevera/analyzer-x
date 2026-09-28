@@ -29,7 +29,6 @@ import hashlib
 import json
 import logging
 import os
-import re
 import sqlite3
 import subprocess
 import sys
@@ -2536,11 +2535,10 @@ GROUPS = {
     # formula, create group 'Sep 25 Strat' when I filter thr group in
     # backtest store so that I can filter it"*.
     "sep25": {"label": "Sep 25 Strat"},
-    # THE SUBSET THAT PASSED THE OLD-DATA TEST (learn_verify). Operator,
-    # Sep 26, 2026: *"Yes do 2 and 3"* — 2 being "keep only the ones that
-    # pass the never-seen test". A NAME list, not a prefix: which formulas
-    # passed is a measurement, read from learned/sep25_verified.json.
-    "sep25ok": {"label": "Sep 25 Strat · passed old-data test"},
+    # "sep25ok" ("Sep 25 Strat · passed old-data test", Sep 26, 2026) was
+    # REMOVED on Sep 28, 2026 — operator: *"just delete the Sep 25 Strat ·
+    # passed old-data test i dont need it"*. It was a filter over the same
+    # rows, never a copy of them; learn_verify and its file are untouched.
 }
 # The group as a RANGE on the signal name, not a LIKE.
 #
@@ -2592,37 +2590,10 @@ CLASSIC_TERMS = "(" + " AND ".join(
     for ps in GROUP_PREFIXES.values() for lo, hi in _ranges(ps)) + ")"
 GROUP_TERMS = {"preset": PRESET_TERMS, "classic": CLASSIC_TERMS,
                "sep25": LEARNED_TERMS}
-# a learned name, exactly: `lx_<COIN>_<tf>_<n>` (signals_learned). Checked
-# before a name is inlined into SQL — the list is read from a file.
-_LEARNED_NAME = re.compile(r"^lx_[A-Za-z0-9]+_(15m|30m|1h|4h|1d)_\d+$")
-_PASSED = {"mtime": None, "names": frozenset()}
-
-
-def passed_learned() -> frozenset:
-    """The learned formulas that passed the old-data test, re-read whenever
-    the file changes (a new test must not wait for an API restart)."""
-    from tradingagents import learn_verify as lv
-
-    try:
-        mtime = lv.VERIFIED_FILE.stat().st_mtime_ns
-    except OSError:
-        mtime = None
-    if mtime != _PASSED["mtime"]:
-        _PASSED.update(mtime=mtime, names=frozenset(
-            n for n in lv.passed_names() if _LEARNED_NAME.match(n)))
-    return _PASSED["names"]
 
 
 def group_terms(group: str) -> str:
-    """The SQL term a group adds. `sep25ok` keeps LEARNED_TERMS in front so
-    the planner still matches the `rows_lx_*` partial index, then narrows to
-    the names that passed; none passed (or never tested) matches nothing."""
-    if group == "sep25ok":
-        names = sorted(passed_learned())
-        if not names:
-            return "(0)"
-        return (f"({LEARNED_TERMS} AND signal IN ("
-                + ",".join(f"'{n}'" for n in names) + "))")
+    """The SQL term a group adds."""
     return GROUP_TERMS[group]
 
 # ONE PARTIAL INDEX PER (GROUP, ORDER) -- and only for `preset`.
@@ -2681,8 +2652,7 @@ INDEX_DDL.update({ddl.split()[5]: ddl for ddl in GROUP_INDEXES.values()})
 
 def group_index(group=None, sort="profit") -> str:
     """The partial index this (group, order) wants, or "" when there is none."""
-    g = "sep25" if group == "sep25ok" else str(group or "")   # a subset of it
-    ddl = GROUP_INDEXES.get((g, str(sort or "")))
+    ddl = GROUP_INDEXES.get((str(group or ""), str(sort or "")))
     return ddl.split()[5] if ddl else ""
 
 
@@ -2694,8 +2664,6 @@ def in_group(signal: str, group: str | None) -> bool:
         raise ValueError(f"unknown group {group!r}; use one of "
                          f"{', '.join(sorted(GROUPS))}")
     s = str(signal or "")
-    if group == "sep25ok":
-        return s in passed_learned()
     if GROUPS[group].get("negate"):
         # Classic: in no named family at all
         return not any(s.startswith(ps) for ps in GROUP_PREFIXES.values())

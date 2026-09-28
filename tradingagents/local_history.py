@@ -150,6 +150,18 @@ def _sig_of(key: str) -> str:
         m = _re.match(r"lx_[^_]+_[^_]+_\d+", str(key))
         if m:
             return m.group(0)
+    # A SEP 27 ML model: `ml_<COIN>_<tf>_<n>`, the same shape as lx_.
+    if str(key).startswith("ml_"):
+        from tradingagents import signals_ml as _sm
+
+        spec = _sm.spec_for(key)
+        if spec and spec.get("name"):
+            return str(spec["name"])
+        import re as _re
+
+        m = _re.match(r"ml_[^_]+_[^_]+_\d+", str(key))
+        if m:
+            return m.group(0)
     if not _UNDERSCORED_SIGNALS:
         from tradingagents.backtest_report import SIGNALS
 

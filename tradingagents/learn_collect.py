@@ -123,6 +123,36 @@ def read_run(root: Path) -> tuple[dict, list, dict]:
     return formulas, report, rows
 
 
+def forget_verdicts(pairs: set) -> int:
+    """Drop the old-data verdicts (learn_verify) of every coin+timeframe this
+    run re-learned. A new run REUSES the names — lx_ETH_1h_1 is whatever the
+    newest run kept first — so a verdict left behind would put a formula that
+    was never tested into "Sep 25 Strat · passed old-data test" under the
+    old one's pass (operator, Sep 28, 2026: *"So re create the group sept 25
+    again"*). Returns how many verdicts went."""
+    from tradingagents import learn_verify as lv
+
+    try:
+        raw = json.loads(lv.VERIFIED_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return 0
+    rows = raw.get("formulas") or {}
+    gone = [n for n, r in rows.items()
+            if (str(r.get("coin")), str(r.get("tf"))) in pairs]
+    if not gone:
+        return 0
+    for n in gone:
+        rows.pop(n)
+    counts: dict = {}
+    for r in rows.values():
+        counts[r.get("status")] = counts.get(r.get("status"), 0) + 1
+    raw.update(formulas=rows, counts=counts)
+    tmp = lv.VERIFIED_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(raw, indent=0), encoding="utf-8")
+    tmp.replace(lv.VERIFIED_FILE)
+    return len(gone)
+
+
 def land(formulas: dict, report: list, rows: dict, *, run_id=None) -> dict:
     """Write one run into the v2 store and the formula file. See module doc."""
     from tradingagents import market_sweep as msw, signals_learned as sl_
@@ -190,6 +220,7 @@ def land(formulas: dict, report: list, rows: dict, *, run_id=None) -> dict:
         encoding="utf-8")
     tmp.replace(sl_.LEARNED_FILE)
     sl_.reload()
+    forget_verdicts(attempted)
     # the rows, pair by pair: FILES first (each under its lock), then ONE
     # index pass in batches (see file_learned)
     landed = refiled = 0

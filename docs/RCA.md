@@ -172,6 +172,56 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-28-A — a re-learned coin would have kept the old formula's "passed old-data test" mark
+
+NEVER HAPPENED YET — caught before the second learning run was started.
+
+**CEO**
+
+* Had the Sep 25 group been re-learned as it stood, a new formula could
+  have shown up under "passed old-data test" without ever being tested.
+* Why: a new run reuses the same names (lx_ETH_1h_1 is whatever that run
+  keeps first), and the pass marks were filed by name.
+* What stops it now: bringing a new run onto the PC wipes the pass marks
+  of every coin and timeframe it re-learned, so the group only shows
+  formulas that really took the test.
+
+**DEV**
+
+* `learn_collect.land` replaced a pair's formulas in `sep25.json` and left
+  `learned/sep25_verified.json` alone; `rows_index.group_terms("sep25ok")`
+  inlines every name marked `passed` there.
+* Invariant broken: **a verdict belongs to the formula it measured, not to
+  the name it was filed under** — reusable names need their verdicts
+  dropped when the thing behind the name changes.
+* Guard: `tests/test_sep25_learned_formulas.py::test_a_re_learned_pair_loses_its_old_verdicts`.
+
+**SAW** — nothing on screen; the operator asked *"So re create the group
+sept 25 again"*, and checking what a second collect would do found it.
+
+**TIMELINE**
+
+1. `Sep 26, 2026 6:11pm` — f607d5877f59 files 1,257 `passed` verdicts by
+   name.
+2. `Sep 28, 2026 2:05am` — the operator asks for the group to be learned
+   again with the fixed learner; the new run would reuse lx_SUPRA_15m_1
+   and the rest.
+3. Fixed before dispatch: `land()` calls `forget_verdicts(attempted)`.
+
+**ROOT CAUSE** — verdicts keyed by a name that the next run reassigns.
+
+**WHY IT WAS NOT CAUGHT** — the group tests built one verdict file and read
+it; none ran a SECOND collect over it, which is the only moment a name
+changes meaning.
+
+**COST** — none: no second run had been collected.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_sep25_learned_formulas.py::test_a_re_learned_pair_loses_its_old_verdicts`.
+
+---
+
 ## RCA-2026-09-27-A — the new day-by-day calendar was blank on the operator's phone: it opened on the account with no trades
 
 **CEO**

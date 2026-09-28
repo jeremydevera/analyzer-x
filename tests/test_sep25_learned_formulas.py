@@ -413,6 +413,11 @@ def v2store(tmp_path, monkeypatch):
     monkeypatch.setattr(msw, "STATES", tmp_path / "state")
     monkeypatch.setattr(sl_, "LEARNED_FILE", tmp_path / "sep25.json")
     monkeypatch.setattr(lc, "REPORT_FILE", tmp_path / "sep25_report.json")
+    from tradingagents import learn_verify as lv
+
+    # the old-data verdicts too: land() prunes them, and the real file is
+    # the operator's (a test writes only under its own tmp_path)
+    monkeypatch.setattr(lv, "VERIFIED_FILE", tmp_path / "sep25_verified.json")
     db = tmp_path / "rows.db"
     monkeypatch.setattr(ri, "DB_PATH", db)
     ri._ready.discard(str(db))
@@ -673,7 +678,11 @@ def test_the_shipped_verdicts_agree_with_their_own_counts():
     rows = raw["formulas"]
     learned = json.loads((REPO / "tradingagents/learned/sep25.json")
                          .read_text(encoding="utf-8"))["formulas"]
-    assert set(rows) == set(learned)
+    # every verdict names a formula of the set (a re-learned pair's verdicts
+    # are dropped by the collect, so the set may hold untested ones)
+    assert set(rows) <= set(learned)
+    assert all((learned[n]["coin"], learned[n]["tf"]) == (r["coin"], r["tf"])
+               for n, r in rows.items())
     counts = {}
     for r in rows.values():
         counts[r["status"]] = counts.get(r["status"], 0) + 1
@@ -683,3 +692,25 @@ def test_the_shipped_verdicts_agree_with_their_own_counts():
         if r["status"] == "passed":
             assert r["winrate"] > r["breakeven_winrate"] and r["profit"] > 0
             assert r["trades"] >= r["min_trades"]
+
+
+def test_a_re_learned_pair_loses_its_old_verdicts(v2store):
+    """A new run reuses the names, so lx_BTC_1h_1 may be a different formula
+    after the collect. Its old "passed" must go with the old formula, or the
+    passed group serves one that was never tested (Sep 28, 2026)."""
+    _msw, ri, _sl, lc = v2store
+    from tradingagents import learn_verify as lv
+
+    lv.VERIFIED_FILE.write_text(json.dumps({"counts": {"passed": 2}, "formulas": {
+        "lx_BTC_1h_1": {"coin": "BTC", "tf": "1h", "status": "passed"},
+        "lx_ETH_4h_1": {"coin": "ETH", "tf": "4h", "status": "passed"}}}),
+        encoding="utf-8")
+    new = {"lx_BTC_1h_1": {"coin": "BTC", "tf": "1h", "learned": {
+        "validate": {"profit": 5.0}, "unseen": {"profit": 1.0}}}}
+    lc.land(new, [{"coin": "BTC", "tf": "1h"}],
+            {("BTC", "1h"): [_row("BTC", "1h", "lx_BTC_1h_1")]})
+    raw = json.loads(lv.VERIFIED_FILE.read_text(encoding="utf-8"))
+    assert set(raw["formulas"]) == {"lx_ETH_4h_1"}
+    assert raw["counts"] == {"passed": 1}
+    assert not ri.in_group("lx_BTC_1h_1", "sep25ok")
+    assert ri.in_group("lx_ETH_4h_1", "sep25ok")

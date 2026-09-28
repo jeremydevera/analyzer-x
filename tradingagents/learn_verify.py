@@ -170,6 +170,7 @@ def _coin_job(coin: str, specs: list, run_end_ms: int) -> list:
 
 
 def verify(learned_file: Path | None = None, *, workers: int = 6,
+           run_end_ms: int = RUN_END_MS,
            log=print) -> dict:
     from tradingagents import signals_learned as sl
     from tradingagents.positions_view import fmt_when
@@ -179,7 +180,6 @@ def verify(learned_file: Path | None = None, *, workers: int = 6,
     formulas = raw.get("formulas") or {}
     # the run's own end: the newest learn/grade the file can vouch for is the
     # collect stamp's day; the learner measured back from its own "now"
-    run_end_ms = RUN_END_MS
     by_coin: dict = {}
     for f in formulas.values():
         by_coin.setdefault(f["coin"], []).append(f)
@@ -232,4 +232,11 @@ def passed_names() -> set:
 
 
 if __name__ == "__main__":
-    verify()
+    import calendar
+    import sys
+
+    # the day the learner measured back from, UTC: a later run passes its own
+    # (`python -m tradingagents.learn_verify 2026-09-28`)
+    end = (calendar.timegm(time.strptime(sys.argv[1], "%Y-%m-%d")) * 1000
+           if len(sys.argv) > 1 else RUN_END_MS)
+    verify(run_end_ms=end)

@@ -482,7 +482,7 @@ def test_landing_is_refused_outside_backtest_v2(v2store, monkeypatch):
 
 def test_the_update_button_keeps_the_same_rule_for_a_learned_row():
     src = (REPO / "tradingagents/market_sweep.py").read_text(encoding="utf-8")
-    assert 'if str(sig).startswith("lx_") and (' in src
+    assert "if br.is_learned(sig) and (" in src
     assert "tp <= sl or (liq is not None" in src
 
 

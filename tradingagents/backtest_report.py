@@ -95,6 +95,16 @@ SIGNALS = [
 ]
 THRESH_SIGNALS = {"mom6", "mom15", "fade15"}
 
+# THE LEARNED FAMILIES: rules whose names are not in SIGNALS but are found per
+# coin — "Sep 25 Strat" (lx_, signals_learned) and "Sep 27 ML" (ml_,
+# signals_ml). Every door that keeps their own rule (TP strictly above SL,
+# stop inside 80% of liquidation) reads THIS, so a third family is one entry.
+LEARNED_FAMILIES = ("lx_", "ml_")
+
+
+def is_learned(sig) -> bool:
+    return str(sig or "").startswith(LEARNED_FAMILIES)
+
 # Timeframes, with the bar limit MEASURED against what MEXC serves (rule 13).
 # The fewest bars a pair may have and still be measured. This was a flat 500
 # inside market_sweep.run_pair, sized for 15m, and it made 1d IMPOSSIBLE: a

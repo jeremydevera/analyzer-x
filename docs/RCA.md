@@ -212,9 +212,15 @@ autoamtically?"*
 **ROOT CAUSE** — the button read a bookkeeping list that lags the job it
 describes.
 
-**WHY IT WAS NOT CAUGHT** — the Sep 15 fix for this button (run 34631292767)
+**WHY IT WAS NOT CAUGHT** — the Sep 15 fix for this button (run 34631292767,
+commit 6efc3308d6ea, `tests/test_a_collected_run_has_nothing_to_merge.py`)
 tested a run collected days earlier, when the list and the job agree; the
-five minutes between them was never a state any test stood in.
+five minutes between them was never a state any test stood in. **And that
+fix was never written here** — the commit touched api.py, JobsPanel.tsx,
+api.ts and a test, and no RCA entry, against the rca-log rule. So when the
+operator saw the button again, the only record that this button had lied
+before was a code comment; a session reading this file first found nothing.
+This entry is that record now.
 
 **COST** — none; a misleading button for up to five minutes per run.
 

@@ -172,6 +172,68 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-28-G — Sep 27 ML: a re-collected model could be answered with the old model's trades, and the forecast walked ml_ rows on no history
+
+**CEO**
+
+* Nothing reached your screen yet: the second review round found that after
+  a new ML collect, the "past N days" figures for a Sep 27 ML row could keep
+  showing the OLD model's trades until the app was restarted, and the account
+  forecast would have replayed an ML row with none of the 200 candles it
+  needs, so it would look much quieter than it really is.
+* Why: a new collect reuses the same row names, and the forecast starts at the
+  first minute this PC holds.
+* What stops it now: the saved answers are keyed on the model itself, and the
+  forecast leaves such a row out and says why.
+
+**DEV**
+
+* `market_sweep.window_rows` cached directions under `(coin, tf, sig, th,
+  last bar, bars, store)`; `learn_collect.land` reuses `ml_<COIN>_<tf>_<n>`
+  names, so a running API served the replaced model's directions → the key
+  now carries `_rule_stamp(sig)` (the spec's md5 for lx_/ml_).
+  `portfolio_replay.replay` computed an ml_ row's directions from bar 0 →
+  refused with `ml_history_short` and popped from `rows_meta`; a
+  `formula_error` row was popped the same way (its reason had been
+  overwritten by "no signal in the window").
+* Invariants broken: **a cache key names everything the value was computed
+  from** and **one guard, every door** (`ml_history_short`).
+* Guards: `test_a_recollected_model_is_not_served_from_the_old_models_cache`,
+  `test_the_account_forecast_refuses_an_ml_row_it_cannot_rebuild`,
+  `test_the_account_forecast_keeps_a_formula_errors_reason`.
+
+**SAW** — NEVER HAPPENED YET: found by the Task 8 harddev loop, round 2, on
+`Sep 28, 2026`; no ml_ row is armed and none had been windowed.
+
+**TIMELINE** (each reproduced by its guard on 10b893682e38, then green)
+
+1. `window_rows` on `ml_TEST_1h_1` over 2,000 hours, a 20-day window, model A
+   → 34 trades, −$16.12. The file then holds model B under the same name.
+2. The same request in the same process → still 34 trades, −$16.12; a cold
+   cache gives model B's 18 trades, −$9.24.
+3. `replay` of `ml_AAA_15m_1_sl1tp2` over 120 minutes (8 bars of 15m): its
+   directions were computed and walked from bar 0 with 0 bars of clues.
+4. A row whose formula raised `RuntimeError("bad input")` was listed as "no
+   signal in the window".
+
+**ROOT CAUSE** — the direction cache was keyed on a NAME that a collect
+reassigns, and the forecast is a sixth door the ml_ guard had not reached.
+
+**WHY IT WAS NOT CAUGHT** — every window test built one model per process
+and never replaced it, so a cache keyed on the name was indistinguishable from
+one keyed on the model; the forecast tests fake `_dirs_for_backtest` for
+registry keys only and never armed an ml_ key, and no test read a refused
+row's reason after the end-of-run pass.
+
+**COST** — none: no ml_ row armed, no window read after a re-collect.
+
+**FIX** — this commit.
+
+**GUARD** — the three tests named in DEV, in `tests/test_sep27_ml.py`; all
+three fail on 10b893682e38.
+
+---
+
 ## RCA-2026-09-28-F — Sep 27 ML: an UPDATE that measured nothing said "already current", and four other false labels found in review
 
 **CEO**

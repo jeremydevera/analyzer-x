@@ -454,6 +454,23 @@ def replay(settings: dict | None = None, *, store=None, dry: bool = True,
             vol = ([float(x) for x in frame["Volume"]]
                    if "Volume" in frame.columns else None)
             ts = _frame_ms(frame)
+            # A SEP 27 ML ROW NEEDS ITS 200 BARS OF CLUES BEFORE THE WALK
+            # (Task 8 harddev, round 2 — the guard trades_for and window_rows
+            # apply): the runner fetches 300 bars every cycle, so live it
+            # always has them, while a replay from this store's first minute
+            # has none and would show a quieter strategy under the row's name
+            # (a 4h model: 180 bars in 30 days — it would never trade at all).
+            if str(key).startswith("ml_"):
+                first = next((i for i in range(len(ts) - 1)
+                              if ts[i + 1] >= start), len(ts))
+                short = msw.ml_history_short(key, tf, first)
+                if short:
+                    refused_rows[row] = short
+                    refused["ml_history_short"] += 1
+                    # out of rows_meta, or the end-of-run pass rewrites the
+                    # reason as "no signal in the window"
+                    rows_meta.pop((key, sym), None)
+                    continue
             try:
                 dirs = at._dirs_for_backtest(key, hi, lo, cl, opens=op,
                                              volume=vol, ts=ts,
@@ -461,6 +478,10 @@ def replay(settings: dict | None = None, *, store=None, dry: bool = True,
             except Exception as exc:                           # noqa: BLE001
                 refused_rows[row] = f"formula raised: {str(exc)[:60]}"
                 refused["formula_error"] += 1
+                # the same seam (found beside the ml_ guard): left in
+                # rows_meta, this reason was overwritten at the end of the
+                # run by "no signal in the window"
+                rows_meta.pop((key, sym), None)
                 continue
             rows_meta[(key, sym)].update({"ts": ts, "op": op})
             # A TWIN is a second row that can only ever place the same trade:

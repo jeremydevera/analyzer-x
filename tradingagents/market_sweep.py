@@ -2060,6 +2060,29 @@ WINDOW_GROUP_MAX = 25
 # instead of recomputing the rule over 2,000 bars every time.
 _DIRS_CACHE: dict = {}
 _DIRS_CACHE_MAX = 24
+
+
+def _rule_stamp(sig: str) -> str:
+    """What a cached direction array was computed FROM, beyond its name: ""
+    for a registry rule (its code is its identity), the spec's own hash for a
+    learned one (lx_ / ml_), whose name a later collect reuses for a
+    different formula or model. "missing" when no spec is known (the rule
+    abstains, and a spec that arrives later must not hit that entry)."""
+    from tradingagents import backtest_report as br
+
+    if not br.is_learned(sig):
+        return ""
+    import hashlib
+
+    if str(sig).startswith("ml_"):
+        from tradingagents import signals_ml as reg
+    else:
+        from tradingagents import signals_learned as reg
+    spec = reg.spec_for(sig)
+    if spec is None:
+        return "missing"
+    return hashlib.md5(json.dumps(spec, sort_keys=True, default=str)
+                       .encode("utf-8")).hexdigest()
 MS_PER_DAY = 86_400_000
 
 
@@ -2212,8 +2235,13 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                 slip = float(costs.get("slippage") or 0.0) or at.PAPER_SLIPPAGE
             # the store is part of the key: v1 and v2 bars for one coin are
             # different frames of the same name
+            # ...and so is a LEARNED rule's own model (Task 8 harddev, round
+            # 2): a collect REUSES the names (ml_BTC_1h_1 is whatever the
+            # newest run kept first), so a key of name + candles alone served
+            # the OLD model's directions for the same candles in a running
+            # API until the cache evicted them
             ck = (coin, tf, sig, th, int(ms[-1]), len(ms),
-                  store.name if store is not None else "")
+                  store.name if store is not None else "", _rule_stamp(sig))
             dirs = _DIRS_CACHE.get(ck)
             if dirs is None:
                 dirs = at._dirs_for_backtest(key, hi, lo, cl, opens=op,

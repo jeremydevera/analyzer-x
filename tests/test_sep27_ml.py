@@ -994,3 +994,98 @@ def test_an_old_model_with_a_longer_gain_vector_still_describes():
             "models": {"long": {"gain": gain}, "short": "not a model"}}
     said = sml.describe(spec)
     assert said.endswith("reads most: ret_1"), said
+
+
+# ------------------------------------------------ Task 8 harddev, round 2
+def test_a_recollected_model_is_not_served_from_the_old_models_cache(monkeypatch):
+    """Round 2: a collect REUSES the names — ml_TEST_1h_1 becomes whatever
+    the newest run kept first. The days window caches directions per pair
+    and candles; keyed on the name alone, a running API kept answering
+    with the OLD model for the same candles."""
+    from tradingagents import market_sweep as msw
+    from tradingagents import signals_ml as sml
+
+    try:
+        row = _window_setup(monkeypatch, 2000)      # model A: long and short
+        msw.window_rows([row], 20)
+        a = (row["w_trades"], row["w_profit"])
+        sml.reload()
+        sml.register({"ml_TEST_1h_1": _toy_spec(sides="long")})   # model B
+        msw._DIRS_CACHE.clear()
+        fresh = {k: v for k, v in row.items() if not k.startswith("w_")}
+        msw.window_rows([fresh], 20)
+        b = (fresh["w_trades"], fresh["w_profit"])
+        assert a != b, "the two models must trade differently for this test"
+        # the cache still holds B's entry; put A's back, then swap to B
+        sml.reload()
+        sml.register({"ml_TEST_1h_1": _toy_spec()})
+        msw._DIRS_CACHE.clear()
+        again = {k: v for k, v in row.items() if not k.startswith("w_")}
+        msw.window_rows([again], 20)                # caches model A
+        sml.reload()
+        sml.register({"ml_TEST_1h_1": _toy_spec(sides="long")})
+        after = {k: v for k, v in row.items() if not k.startswith("w_")}
+        msw.window_rows([after], 20)                # must read model B
+        assert (after["w_trades"], after["w_profit"]) == b
+    finally:
+        sml.reload()
+        msw._DIRS_CACHE.clear()
+
+
+def _replay_store(tmp_path, sym="AAA_USDT", n=120):
+    from tradingagents import stores
+
+    t0 = 1_790_000_100_000
+    bars = {"t": [t0 + i * 60_000 for i in range(n)], "o": [100.0] * n,
+            "h": [100.0] * n, "l": [100.0] * n, "c": [100.0] * n, "v": [1.0] * n}
+    home = tmp_path / "v2"
+    (home / "candles").mkdir(parents=True)
+    (home / "costs").mkdir(parents=True)
+    (home / "candles" / f"{sym}-1m.json").write_text(json.dumps(bars))
+    (home / "costs" / f"{sym}.json").write_text(json.dumps(
+        {"symbol": sym, "fee": 0.0008, "slippage": 0.0002, "liq": None,
+         "funding": []}))
+    return stores.Store(name="v2", home=home, candles=home / "candles",
+                        rows_db=home / "rows.db", parquet=home / "parquet",
+                        fine_tf="1m", download_kind="download_v2",
+                        backtest_kind="backtest_v2")
+
+
+def test_the_account_forecast_refuses_an_ml_row_it_cannot_rebuild(tmp_path,
+                                                                  monkeypatch):
+    """Round 2: the forecast replays from the store's first minute, so an
+    ml_ model has 0 bars of clues behind it (live, the runner fetches 300).
+    Refused and NAMED, and the name survives the end-of-run pass."""
+    import tradingagents.auto_trader as at
+    from tradingagents import portfolio_replay as pr
+
+    key = "ml_AAA_15m_1_sl1tp2"
+    monkeypatch.setitem(at.STRATEGY_SPECS, key, {
+        "interval": "Min15", "bar_seconds": 900, "tp": 0.02, "sl": 0.01})
+    monkeypatch.setattr(at, "_dirs_for_backtest", lambda *a, **k: pytest.fail(
+        "an ml_ row without its 200 bars must not be walked at all"))
+    r = pr.replay({"strategy_coins": {key: ["AAA_USDT"]}, "margin": 5},
+                  store=_replay_store(tmp_path), readings={})
+    why = r["rows_refused"][f"{key}|AAA_USDT"]
+    assert why.startswith("this PC holds only 0 15m bars before the window"), why
+    assert r["refused"]["ml_history_short"] == 1
+    panel = (REPO / "webapp/src/components/backtest/PortfolioForecast.tsx"
+             ).read_text(encoding="utf-8")
+    assert "  ml_history_short: " in panel
+
+
+def test_the_account_forecast_keeps_a_formula_errors_reason(tmp_path, monkeypatch):
+    """Found beside the ml_ guard: a row whose formula raised was left in the
+    per-row table and renamed "no signal in the window" at the end."""
+    import tradingagents.auto_trader as at
+    from tradingagents import portfolio_replay as pr
+
+    key = "stoch14_15m_sl12tp12"
+
+    def boom(*a, **k):
+        raise RuntimeError("bad input")
+
+    monkeypatch.setattr(at, "_dirs_for_backtest", boom)
+    r = pr.replay({"strategy_coins": {key: ["AAA_USDT"]}, "margin": 5},
+                  store=_replay_store(tmp_path), readings={})
+    assert r["rows_refused"][f"{key}|AAA_USDT"] == "formula raised: bad input"

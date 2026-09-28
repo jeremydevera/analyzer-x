@@ -41,6 +41,7 @@ const REFUSAL_WORDS: Record<string, string> = {
   no_candles: "no one-minute candles for that coin yet",
   bad_minutes: "a minute is missing from that coin's candles",
   formula_error: "the formula could not run",
+  ml_history_short: "a Sep 27 ML model needs 200 candles before the replay starts, and this PC holds fewer",
   no_price: "no price on the next bar",
   gate_blocked: "the fees and spread would have eaten half the target",
   blocked: "that coin was already being traded",

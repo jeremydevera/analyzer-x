@@ -89,3 +89,37 @@ def test_the_funding_clue_is_the_rate_in_force_at_the_close():
     j = mf.FEATURES.index("funding")
     assert x[100, j] == pytest.approx(0.0001)
     assert x[160, j] == pytest.approx(-0.0005)
+
+
+# ------------------------------------------------------------- the trees
+def test_the_trees_learn_a_planted_rule():
+    from tradingagents import ml_trees as mt
+
+    rng = np.random.default_rng(1)
+    X = rng.uniform(0, 1, (3000, 6))
+    y = (X[:, 3] > 0.5).astype(float)
+    m = mt.fit(X[:2000], y[:2000])
+    p = mt.predict(m, X[2000:])
+    assert ((p > 0.5) == (y[2000:] > 0.5)).mean() > 0.95
+    assert mt.importance(m, [f"f{i}" for i in range(6)])[0] == "f3"
+
+
+def test_the_same_data_makes_the_same_model_and_json_changes_nothing():
+    from tradingagents import ml_trees as mt
+
+    rng = np.random.default_rng(2)
+    X = rng.normal(size=(1500, 5))
+    y = ((X[:, 0] + X[:, 1] * X[:, 2]) > 0).astype(float)
+    a, b = mt.fit(X, y), mt.fit(X, y)
+    assert json.dumps(a) == json.dumps(b)
+    back = json.loads(json.dumps(a))
+    assert np.array_equal(mt.predict(a, X), mt.predict(back, X))
+
+
+def test_fit_refuses_rows_it_cannot_split():
+    from tradingagents import ml_trees as mt
+
+    X = np.ones((500, 3))
+    X[0, 1] = np.inf
+    with pytest.raises(ValueError, match="finite"):
+        mt.fit(X, np.zeros(500))

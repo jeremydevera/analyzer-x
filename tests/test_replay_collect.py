@@ -53,6 +53,17 @@ def test_the_common_end_is_the_earliest_last_bar():
     assert rc.common_end({}) is None
 
 
+def test_the_daily_frame_does_not_pull_the_end_back_a_day():
+    """Run 36478015729: every 1d pair ended Sep 27, 2026 8:00pm (its last
+    closed day) while the intraday ones reached Sep 28 afternoon."""
+    daily = _ms(2026, 9, 27, 20)
+    intraday = _ms(2026, 9, 28, 16)
+    spans = {"GPNSTOCK 1d": [0, daily], "GPNSTOCK 15m": [0, intraday],
+             "KKRSTOCK 1h": [0, intraday + 3_600_000]}
+    assert rc.common_end(spans) == intraday
+    assert rc.common_end({"GPNSTOCK 1d": [0, daily]}) == daily
+
+
 def test_after_the_common_end_a_close_becomes_open_and_a_new_entry_vanishes():
     end = _ms(2026, 9, 28, 12)
     c = {"id": "x", "trades": [[end - 3 * H, end - H, 0.8, 1],

@@ -63,9 +63,20 @@ def merge(folder: str) -> dict:
 
 
 def common_end(spans: dict) -> int | None:
-    """The earliest last bar across every pair: the one moment every coin's
-    candles reached. None when nothing was measured."""
-    ends = [int(v[1]) for v in spans.values() if v and len(v) == 2]
+    """The earliest last bar across every INTRADAY pair: the one moment every
+    coin's 15m-4h candles reached. None when nothing was measured.
+
+    NOT the daily frame. A 1d pair's last CLOSED bar ends at the last local
+    8:00pm (00:00 UTC), so counting it cut the first real run (36478015729,
+    measured Sep 28, 2026 4:16-4:55pm) to Sep 27, 2026 8:00pm and threw away
+    almost a day of every 15m/30m/1h/4h coin. A daily combination cannot
+    exit between its closes anyway, so leaving it out lets no coin see
+    further than it could have: a 1d trade still open at its last close is
+    already marked open by the machine."""
+    ends = [int(v[1]) for k, v in spans.items()
+            if v and len(v) == 2 and not str(k).endswith(" 1d")]
+    if not ends:
+        ends = [int(v[1]) for v in spans.values() if v and len(v) == 2]
     return min(ends) if ends else None
 
 

@@ -13,6 +13,7 @@
 - *"i have millions of strategy will the watcher be able to update each row of backtest?"*: answered by `daily_update` (shipped, a3dbfb239a0d). GitHub refreshes the rows daily; the watcher only reads them.
 - *"Okay did you created the logic where it will deploy ids that has good winrate for past 30 days and will undeploy those who has bad winrate over past 30 days"*
 - *"Don built it yet do a plan first"*
+- The operator's numbers, Sep 28, 2026, replacing the plan's first defaults: *"What i want is add it deployed if the trade is 90% above / Then undeploy if 90% below for past 30 days / I want tp is greater than sl / Then minimum trade for past 30 days should be 20"*
 
 ## Global Constraints
 
@@ -26,20 +27,20 @@
 - Commit and push after each task (CLAUDE.md). A commit stages only this plan's files; other sessions are editing the same tree.
 - Nothing is defined below an `if __name__ == "__main__":` in any module.
 
-Defaults the operator confirms before Task 8 flips PREVIEW to ACT (all in `watcher_policy.DEFAULTS`, all editable on screen):
+The operator's numbers (Sep 28, 2026) and the remaining defaults, all in `watcher_policy.DEFAULTS` and editable on screen:
 
 | setting | default | why |
 |---|---|---|
-| `on_winrate` | 80 | "good winrate", well above the 62.3% break-even of an equal 1.2/1.2 pair |
-| `off_winrate` | 70 | hysteresis: a row at 79% one day must not flip off and on |
-| `min_trades` | 20 | 30 days; a 5-trade 100% row is luck |
-| `tp_rule` | `">="` | the filter default they set on Sep 28 ("TP is equal or greater than sl"); `">"` is one switch |
+| `on_winrate` | **90** | operator: *"add it deployed if the trade is 90% above"*: 90.0% and up is switched on |
+| `off_winrate` | **90** | operator: *"undeploy if 90% below for past 30 days"*: under 90.0% is switched off. One line, no gap between on and off; `cooldown_days` is what stops a row at 89.9% / 90.1% flipping daily |
+| `min_trades` | **20** | operator: *"minimum trade for past 30 days should be 20"* |
+| `tp_rule` | **`">"`** | operator: *"I want tp is greater than sl"*: an equal 1.2%/1.2% pair is refused |
 | `profit_floor` | 0.0 | a row winning often and losing money is not "good" |
 | `max_slots` | 100 | watcher-run slots at once (the runner held 537 on Sep 24) |
 | `max_per_coin` | 3 | GPNSTOCK alone held 135 slots on Sep 24 |
 | `max_new_per_day` | 20 | a bad day of data cannot arm 100 rows at once |
-| `judge_after` | 10 | practice trades before the practice record may switch a row off |
-| `off_streak` | 4 | practice losses in a row that switch a row off at once |
+| `judge_after` | 10 | practice trades before the practice record is WARNED about on screen. It never switches a row off: the operator gave one off rule, the 30-day win rate |
+| `off_streak` | 4 | practice losses in a row that are WARNED about on screen (same reason) |
 | `cooldown_days` | 7 | a switched-off id may not come back for a week |
 | `fresh_hours` | 36 | a row whose pair file ends earlier is not "the last 30 days" |
 
@@ -364,7 +365,8 @@ Add `merge_runtime_specs()` as the first statement of `load_settings()`, wrapped
   - `DEFAULTS: dict` (the table in Global Constraints)
   - `passes_on(row: dict, cfg: dict) -> str`: `""` when the row may be switched on, else the reason
   - `pick(candidates: list[dict], running: list[dict], cooling: dict[str, float], now: float, cfg: dict) -> list[dict]`: rows to switch on, each `{"row": row, "why": str}`. `running` holds dicts with `coin, id`; `cooling` maps id → the time it was switched off.
-  - `judge(slot: dict, fresh_row: dict | None, practice: dict, cfg: dict) -> str`: `""` to keep, else the reason to switch off
+  - `judge(slot: dict, fresh_row: dict | None, cfg: dict) -> str`: `""` to keep, else the reason to switch off. ONLY the 30-day backtest decides (the operator's one off rule)
+  - `warn(practice: dict, cfg: dict) -> str`: `""`, or a sentence for the screen about the practice record. Never switches anything off
   - `break_even(win_usd: float, loss_usd: float) -> float`, as a percent (CLAUDE.md rule 11: loss / (win + loss))
 
 - [ ] **Step 1: Write the failing test,** with the operator's own rows and numbers.
@@ -377,26 +379,37 @@ from tradingagents import watcher_policy as wp
 
 CFG = dict(wp.DEFAULTS)
 NOW = 1_790_700_000.0
-# #R6FRS3KD FASTSTOCK 15m bb20 1.2/1.2 flat: 97 trades, 82W, 84.54%, +$63.11
-R6 = {"id": "R6FRS3KD", "coin": "FASTSTOCK", "tf": "15m", "signal": "bb20",
-      "th": 0.0, "sl": 1.2, "tp": 1.2, "trades": 97, "wins": 82,
-      "losses": 15, "winrate": 84.54, "profit": 63.11, "gate": "ok"}
+# #77Y3BPFG GPNSTOCK 1h macddiv SL 0.7% / TP 1.0% flat, as the v2 index held
+# it on Sep 28, 2026: 20 trades, 20W, 100%, +$15.84
+R6 = {"id": "77Y3BPFG", "coin": "GPNSTOCK", "tf": "1h", "signal": "macddiv",
+      "th": 0.0, "sl": 0.7, "tp": 1.0, "trades": 20, "wins": 20,
+      "losses": 0, "winrate": 100.0, "profit": 15.84, "gate": "ok"}
 
 
 def test_the_operators_row_passes():
     assert wp.passes_on(R6, CFG) == ""
 
 
+def test_the_operators_numbers_are_the_defaults():
+    assert (CFG["on_winrate"], CFG["off_winrate"], CFG["min_trades"],
+            CFG["tp_rule"]) == (90.0, 90.0, 20, ">")
+
+
 @pytest.mark.parametrize("change,word", [
-    ({"tp": 1.0, "sl": 1.2}, "TP"), ({"winrate": 79.9}, "win"),
+    ({"tp": 1.0, "sl": 1.2}, "TP"), ({"winrate": 89.9}, "win"),
     ({"trades": 19}, "trades"), ({"profit": -0.01}, "profit"),
     ({"gate": "block"}, "cost")])
 def test_each_floor_refuses_by_name(change, word):
     assert word in wp.passes_on({**R6, **change}, CFG)
 
 
-def test_tp_rule_strict_refuses_equal_barriers():
-    assert "TP" in wp.passes_on(R6, {**CFG, "tp_rule": ">"})
+def test_equal_barriers_are_refused_tp_must_be_wider():
+    """#R6FRS3KD FASTSTOCK 15m bb20 is TP 1.2% / SL 1.2%: refused by name."""
+    assert "TP" in wp.passes_on({**R6, "tp": 1.2, "sl": 1.2}, CFG)
+
+
+def test_exactly_ninety_percent_is_switched_on():
+    assert wp.passes_on({**R6, "winrate": 90.0}, CFG) == ""
 
 
 def test_break_even_is_the_operators_62_3():
@@ -414,15 +427,15 @@ def test_pick_keeps_three_per_coin_and_twenty_a_day():
 
 
 def test_pick_never_arms_an_id_already_running():
-    got = wp.pick([R6], running=[{"id": "R6FRS3KD", "coin": "FASTSTOCK"}],
+    got = wp.pick([R6], running=[{"id": "77Y3BPFG", "coin": "GPNSTOCK"}],
                   cooling={}, now=NOW, cfg=CFG)
     assert got == []
 
 
 def test_a_switched_off_id_waits_out_its_cooldown():
     off_at = NOW - 6 * 86400
-    assert wp.pick([R6], [], {"R6FRS3KD": off_at}, NOW, CFG) == []
-    assert len(wp.pick([R6], [], {"R6FRS3KD": off_at}, NOW + 86400, CFG)) == 1
+    assert wp.pick([R6], [], {"77Y3BPFG": off_at}, NOW, CFG) == []
+    assert len(wp.pick([R6], [], {"77Y3BPFG": off_at}, NOW + 86400, CFG)) == 1
 
 
 def test_pick_stops_at_max_slots_counting_what_runs():
@@ -432,7 +445,7 @@ def test_pick_stops_at_max_slots_counting_what_runs():
 
 
 def test_pick_takes_the_highest_win_rate_first_then_trades():
-    lo = {**R6, "id": "LO", "coin": "A", "winrate": 81.0}
+    lo = {**R6, "id": "LO", "coin": "A", "winrate": 91.0}
     hi = {**R6, "id": "HI", "coin": "B", "winrate": 95.0, "trades": 21}
     hi2 = {**R6, "id": "HI2", "coin": "C", "winrate": 95.0, "trades": 60}
     got = wp.pick([lo, hi, hi2], [], {}, NOW, {**CFG, "max_new_per_day": 2})
@@ -440,43 +453,33 @@ def test_pick_takes_the_highest_win_rate_first_then_trades():
 
 
 # ---- judge: switching OFF
-def test_backtest_slipping_under_off_winrate_switches_it_off():
-    why = wp.judge({"id": "R6FRS3KD"}, {**R6, "winrate": 69.9},
-                   {"trades": 3, "wins": 3, "losses": 0, "pnl": 2.9,
-                    "streak": 0, "win_usd": 0.98, "loss_usd": 0}, CFG)
-    assert "69.9" in why and "70" in why
+def test_under_ninety_percent_over_30_days_switches_it_off():
+    why = wp.judge({"id": "77Y3BPFG"}, {**R6, "winrate": 89.9}, CFG)
+    assert "89.9" in why and "90" in why
 
 
-def test_seventy_nine_percent_is_kept_hysteresis():
-    assert wp.judge({"id": "x"}, {**R6, "winrate": 79.0},
-                    {"trades": 0, "wins": 0, "losses": 0, "pnl": 0,
-                     "streak": 0, "win_usd": 0, "loss_usd": 0}, CFG) == ""
+def test_exactly_ninety_percent_is_kept():
+    assert wp.judge({"id": "x"}, {**R6, "winrate": 90.0}, CFG) == ""
 
 
-def test_practice_losing_money_after_ten_trades_switches_it_off():
-    p = {"trades": 10, "wins": 6, "losses": 4, "pnl": -0.60, "streak": 1,
+def test_the_practice_record_is_shown_never_switches_it_off():
+    """The operator gave ONE off rule, the 30-day win rate. A losing practice
+    record is printed beside the row; the row stays on."""
+    p = {"trades": 10, "wins": 6, "losses": 4, "pnl": -0.60, "streak": 4,
          "win_usd": 0.98, "loss_usd": 1.62}
-    why = wp.judge({"id": "x"}, R6, p, CFG)
-    assert "practice" in why and "-0.60" in why
+    assert wp.judge({"id": "x"}, R6, CFG) == ""
+    why = wp.warn(p, CFG)
+    assert "-0.60" in why and "4 losses in a row" in why
 
 
-def test_nine_practice_trades_are_not_enough_to_judge():
-    p = {"trades": 9, "wins": 3, "losses": 6, "pnl": -5.0, "streak": 2,
+def test_nine_practice_trades_are_not_enough_to_warn_about_money():
+    p = {"trades": 9, "wins": 3, "losses": 6, "pnl": -5.0, "streak": 0,
          "win_usd": 0.98, "loss_usd": 1.62}
-    assert wp.judge({"id": "x"}, R6, p, CFG) == ""
-
-
-def test_four_losses_in_a_row_switch_it_off_at_once():
-    p = {"trades": 5, "wins": 1, "losses": 4, "pnl": -5.5, "streak": 4,
-         "win_usd": 0.98, "loss_usd": 1.62}
-    assert "4 losses in a row" in wp.judge({"id": "x"}, R6, p, CFG)
+    assert wp.warn(p, CFG) == ""
 
 
 def test_a_row_the_store_no_longer_holds_is_switched_off():
-    assert "no longer" in wp.judge({"id": "x"}, None,
-                                   {"trades": 0, "wins": 0, "losses": 0,
-                                    "pnl": 0, "streak": 0, "win_usd": 0,
-                                    "loss_usd": 0}, CFG)
+    assert "no longer" in wp.judge({"id": "x"}, None, CFG)
 ```
 
 - [ ] **Step 2: Run, expect FAIL.**
@@ -489,8 +492,12 @@ Pure: no files, no network, no clock. Every number a decision uses arrives as
 an argument, so every decision is a test."""
 from __future__ import annotations
 
-DEFAULTS = {"on_winrate": 80.0, "off_winrate": 70.0, "min_trades": 20,
-            "tp_rule": ">=", "profit_floor": 0.0, "max_slots": 100,
+# on/off/min_trades/tp_rule are the operator's own numbers (Sep 28, 2026):
+# "add it deployed if the trade is 90% above / Then undeploy if 90% below for
+# past 30 days / I want tp is greater than sl / Then minimum trade for past 30
+# days should be 20"
+DEFAULTS = {"on_winrate": 90.0, "off_winrate": 90.0, "min_trades": 20,
+            "tp_rule": ">", "profit_floor": 0.0, "max_slots": 100,
             "max_per_coin": 3, "max_new_per_day": 20, "judge_after": 10,
             "off_streak": 4, "cooldown_days": 7, "fresh_hours": 36}
 
@@ -545,24 +552,32 @@ def pick(candidates, running, cooling, now, cfg) -> list:
     return out
 
 
-def judge(slot, fresh_row, practice, cfg) -> str:
+def judge(slot, fresh_row, cfg) -> str:
+    """Switch off? Only the last 30 days of the backtest decide."""
     if fresh_row is None:
         return "the backtest store no longer holds this row"
     if float(fresh_row["winrate"]) < cfg["off_winrate"]:
         return (f"its last-30-days win rate fell to {fresh_row['winrate']:g}%, "
                 f"under {cfg['off_winrate']:g}%")
+    return ""
+
+
+def warn(practice, cfg) -> str:
+    """What the practice record says, for the screen. Never an off switch."""
+    out = []
     if int(practice["streak"]) >= cfg["off_streak"]:
-        return f"{practice['streak']} losses in a row in practice"
+        out.append(f"{practice['streak']} losses in a row in practice")
     if int(practice["trades"]) >= cfg["judge_after"]:
         if float(practice["pnl"]) < 0:
-            return (f"practice lost {practice['pnl']:+.2f} over "
-                    f"{practice['trades']} trades")
-        be = break_even(practice["win_usd"], practice["loss_usd"])
-        rate = 100 * practice["wins"] / practice["trades"]
-        if rate < be:
-            return (f"practice won {rate:.1f}%, under its {be:.1f}% "
-                    f"break-even, over {practice['trades']} trades")
-    return ""
+            out.append(f"practice lost {practice['pnl']:+.2f} over "
+                       f"{practice['trades']} trades")
+        else:
+            be = break_even(practice["win_usd"], practice["loss_usd"])
+            rate = 100 * practice["wins"] / practice["trades"]
+            if rate < be:
+                out.append(f"practice won {rate:.1f}%, under its {be:.1f}% "
+                           f"break-even")
+    return "; ".join(out)
 ```
 
 - [ ] **Step 4: Run, expect PASS.**
@@ -787,11 +802,17 @@ import pytest
 from tradingagents import auto_trader as at, strategy_watcher as sw
 
 NOW = 1_790_700_000.0
-R6 = {"id": "R6FRS3KD", "coin": "FASTSTOCK", "tf": "15m", "signal": "bb20",
-      "th": 0.0, "sl": 1.2, "tp": 1.2, "sizing": "flat", "trades": 97,
-      "wins": 82, "losses": 15, "winrate": 84.54, "profit": 63.11,
+# #77Y3BPFG GPNSTOCK 1h macddiv SL 0.7% / TP 1.0%: 20 trades, 100%, +$15.84.
+# Its key `macddiv_1h_sl07tp1` is in NO committed block, so arming it goes
+# through the runtime registry (Task 2) exactly as a real new row would.
+R6 = {"id": "77Y3BPFG", "coin": "GPNSTOCK", "tf": "1h", "signal": "macddiv",
+      "th": 0.0, "sl": 0.7, "tp": 1.0, "sizing": "flat", "trades": 20,
+      "wins": 20, "losses": 0, "winrate": 100.0, "profit": 15.84,
       "gate": "ok", "measured_ms": NOW * 1000}
-SLOT = "bb20_15m_sl12tp12|FASTSTOCK_USDT"
+SLOT = "macddiv_1h_sl07tp1|GPNSTOCK_USDT"
+# #R6FRS3KD FASTSTOCK 15m bb20 1.2%/1.2%, 84.54%: one of the operator's OWN
+# rows (committed key), used where a hand-picked row is needed
+HAND = "bb20_15m_sl12tp12|FASTSTOCK_USDT"
 
 
 @pytest.fixture
@@ -842,37 +863,38 @@ def test_act_arms_practice_only_and_names_the_id(world):
     sw.set_mode("act")
     sw.consider(now=NOW)
     s = world["settings"]
-    assert s["strategy_coins"]["bb20_15m_sl12tp12"] == ["FASTSTOCK_USDT"]
-    assert at.book_names(s, "bb20_15m_sl12tp12", "FASTSTOCK_USDT") == ["paper"]
-    assert s["watcher_slots"][SLOT]["id"] == "R6FRS3KD"
+    assert s["strategy_coins"]["macddiv_1h_sl07tp1"] == ["GPNSTOCK_USDT"]
+    assert at.book_names(s, "macddiv_1h_sl07tp1", "GPNSTOCK_USDT") == ["paper"]
+    assert s["strategy_res"][SLOT] == "1m"
+    assert s["watcher_slots"][SLOT]["id"] == "77Y3BPFG"
     assert s["enabled"] is False, "the live switch is never turned on"
 
 
 def test_a_blocked_cost_check_refuses_by_id(world):
     sw.set_mode("act")
-    world["edge"]["FASTSTOCK_USDT"] = "block"
+    world["edge"]["GPNSTOCK_USDT"] = "block"
     got = sw.consider(now=NOW)
     assert world["saves"] == 0
     assert got["decisions"][0]["action"] == "refused"
-    assert "#R6FRS3KD" in got["decisions"][0]["why"]
+    assert "#77Y3BPFG" in got["decisions"][0]["why"]
 
 
 def test_an_unknown_cost_check_is_a_refusal_too(world):
     sw.set_mode("act")
-    world["edge"]["FASTSTOCK_USDT"] = "unknown"
+    world["edge"]["GPNSTOCK_USDT"] = "unknown"
     assert sw.consider(now=NOW)["decisions"][0]["action"] == "refused"
 
 
 def test_off_removes_only_its_own_slot(world):
     sw.set_mode("act")
     sw.consider(now=NOW)
-    world["fresh"]["R6FRS3KD"] = {**R6, "winrate": 60.0}
+    world["fresh"]["77Y3BPFG"] = {**R6, "winrate": 89.9}
     got = sw.consider(now=NOW + 3601)
     assert [d["action"] for d in got["decisions"]] == ["off"]
-    assert "FASTSTOCK_USDT" not in (world["settings"]["strategy_coins"]
-                                    .get("bb20_15m_sl12tp12") or [])
+    assert "GPNSTOCK_USDT" not in (world["settings"]["strategy_coins"]
+                                   .get("macddiv_1h_sl07tp1") or [])
     assert SLOT not in world["settings"]["watcher_slots"]
-    assert sw._read()["cooling"]["R6FRS3KD"] == NOW + 3601
+    assert sw._read()["cooling"]["77Y3BPFG"] == NOW + 3601
 
 
 def test_it_never_touches_real_money_or_a_hand_pick(world):
@@ -881,6 +903,7 @@ def test_it_never_touches_real_money_or_a_hand_pick(world):
     world["settings"]["strategy_books"] = {
         "bb20_15m_sl12tp12|FASTSTOCK_USDT": ["real"],
         "keltner_30m_sl2tp2|GPNSTOCK_USDT": ["paper"]}
+    world["cands"] = []
     world["fresh"] = {"R6FRS3KD": {**R6, "winrate": 10.0}}
     sw.set_mode("act")
     before = at.load_settings()
@@ -935,9 +958,11 @@ def test_the_on_pass_runs_once_a_day_and_the_off_pass_hourly(world):
 
 
 def test_hand_picked_rows_that_fail_are_reported_not_touched(world):
+    world["cands"] = []
     world["settings"]["strategy_coins"] = {"bb20_15m_sl12tp12": ["FASTSTOCK_USDT"]}
-    world["settings"]["strategy_books"] = {SLOT: ["paper"]}
-    world["fresh"] = {"R6FRS3KD": {**R6, "winrate": 50.0}}
+    world["settings"]["strategy_books"] = {HAND: ["paper"]}
+    world["settings"]["strategy_res"] = {HAND: "1m"}      # its id is the v2 one
+    world["fresh"] = {"R6FRS3KD": {**R6, "id": "R6FRS3KD", "winrate": 84.54}}
     sw.set_mode("act")
     got = sw.consider(now=NOW)
     assert any(d["action"] == "report" and "#R6FRS3KD" in d["why"]
@@ -968,9 +993,9 @@ def test_the_supervisor_ticks_it():
 - [ ] **Step 3: Implement `consider(now)`,** in this order. Each step appends decisions and never raises; a failure is a decision with `action: "refused"` naming the error type.
   1. `mode == "off"`: return with why `"switched off"`.
   2. **Off pass** (hourly, `last_off_pass`). For each slot in `settings["watcher_slots"]`:
-     - `fresh = _fresh_row(...)`, `p = _practice(...)`, `why = watcher_policy.judge(...)`.
+     - `fresh = _fresh_row(...)`, `why = watcher_policy.judge(slot, fresh, cfg)`. `p = _practice(...)` and `watcher_policy.warn(p, cfg)` go on the screen only, never into the decision.
      - If `why`, record `off` and, in act mode, remove the coin from `strategy_coins[key]`, `strategy_books[slot]` and `watcher_slots[slot]`, and set `cooling[id] = now`.
-     - Also judge every OTHER paper slot (hand-picked), and record `report` decisions, deduplicated per id per day.
+     - Also judge every OTHER paper slot (hand-picked; its id from `api.row_id_for(key, coin, settings)`), and record `report` decisions, deduplicated per id per day.
   3. **On pass** (daily, `last_on_pass`):
      - `c = _candidates(cfg, now)`, then `picks = watcher_policy.pick(c["rows"], running, cooling, now, cfg)`.
      - For each pick: `key = strategy_keys.key_for(row)` and `spec = spec_for(row)`. `_register(key, spec)`: a `ValueError` is a refusal naming both recipes.
@@ -1043,9 +1068,9 @@ def _write_settings(mutate) -> bool:
 - [ ] **Step 2: Run, expect FAIL.**
 - [ ] **Step 3: Implement.**
   - Header: *"Watcher — practice account only · PREVIEW: it decides and changes nothing"*, with the mode buttons.
-  - The settings table from `cfg`: on at 80% · off under 70% · at least 20 trades · TP ≥ SL · up to 100 rows, 3 per coin, 20 new a day.
+  - The settings table from `cfg`: on at 90% or more · off under 90% · at least 20 trades in the last 30 days · TP wider than SL · up to 100 rows, 3 per coin, 20 new a day. Each running row also shows its practice record and any `warn()` sentence.
   - `last pass Sep 28, 2026 3:21pm · next Sep 29, 2026 11:49am`.
-  - The last 50 decisions, newest first: `switched on #R6FRS3KD FASTSTOCK 15m bb20 TP 1.2% / SL 1.2% — 84.54% over 97 trades, +63.11`.
+  - The last 50 decisions, newest first: `switched on #77Y3BPFG GPNSTOCK 1h macddiv TP 1.0% / SL 0.7% — 100% over 20 trades, +15.84`.
   - Refusals in amber, "switched off" in red, "report" lines under their own heading: *"your own rows that would be switched off"*.
 - [ ] **Step 4: `tsc --noEmit`, run the tests, expect PASS.**
 - [ ] **Step 5: Warn the operator that the site goes dark for about 3 minutes, then `.venv/Scripts/python start.py start`.** Wait for 4 consecutive 200s on `/trade`. Walk it with playwright-core (`.claude/skills/press-and-watch/scripts`) at 1600px and 390px: the panel renders, PREVIEW is selected, switching to `off` and back to `preview` round-trips, and there are 0 page errors.
@@ -1062,7 +1087,7 @@ def _write_settings(mutate) -> bool:
 - [ ] **Step 2: Check its picks by hand against the store.**
   - For 3 ids it would switch on, run `/api/v2/strategies?row_id=<id>` and read the pair file. The figures must match the decision line.
   - For each, confirm `edge_check` said ok (rule 12) and the stop sits inside `STOP_LIQ_CEILING`.
-- [ ] **Step 3: Report to the operator** in one plain sentence plus the list of ids it would switch on and off, each with coin, timeframe, signal, TP, SL, 30-day win rate, trades and profit (rule 22). Ask them to confirm the defaults table and to switch it to ACT themselves.
+- [ ] **Step 3: Report to the operator** in one plain sentence plus the list of ids it would switch on and off, each with coin, timeframe, signal, TP, SL, 30-day win rate, trades and profit (rule 22). Ask them to switch it to ACT themselves.
 - [ ] **Step 4:** Only after the operator switches ACT on the screen: watch one real act pass.
   - Every armed slot appears in the deployed grid with its id and the deployed date.
   - Within the next runner cycle, the ledger shows the runner scanning each new key: its `stale_skip` / `gate_blocked` / `enter` rows carry the key, which proves Task 2 end to end.

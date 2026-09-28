@@ -79,7 +79,9 @@ TRAIN (~150 days) | VALIDATE (30 days) | UNSEEN (last 30 days)
    the model's own top 2 / 5 / 10 / 20% of TRAIN predictions. Every (pair, θ)
    is scored on VALIDATE by the real engine (fee + slippage + funding) with
    the Sep 25 floors: enough trades, win rate above the pair's own break-even,
-   profit > 0. The best 3 with different trades are kept, then graded on
+   profit > 0, and the win rate's lower confidence bound (Wilson, 90% shared
+   across the 12 validate tries) above that break-even, so the best of many
+   tries on one month cannot pass by luck. The best 3 with different trades are kept, then graded on
    UNSEEN minute-exact and stored as `learned.unseen` (never a filter).
    No nested-window check: TRAIN predictions are in-sample, so a window
    over them would praise the model for remembering.

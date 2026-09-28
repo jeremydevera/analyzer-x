@@ -20,15 +20,21 @@ number used to pick a winner cannot be the evidence it won):
    scores) x sides (both / long / short), pre-scored on VALIDATE by the fast
    walk; the best GRADE_TOP go through the real engine on VALIDATE with the
    Sep 25 floors: enough trades, win rate above the pair's own break-even,
-   profit > 0.
-5. KEEP up to KEEP with different trades, then GRADE each on UNSEEN, minute-
-   exact, on the stored row's own cut. That grade is stored and shown as it is
-   and never keeps or drops anything.
+   profit > 0 — and the win rate's lower confidence bound (Wilson, 90%
+   shared across the 12 validate tries) above that break-even too, so the
+   best of many tries on one month cannot pass by luck (on a pure random walk
+   the plain floors kept 3 formulas a seed).
+5. KEEP up to KEEP with different trades — judged on VALIDATE (the
+   directions over it and its outcome) — then GRADE each kept one on UNSEEN,
+   minute-exact, on the stored row's own cut. That grade is stored and shown
+   as it is and never keeps, drops or ranks anything.
 No nested-window check: TRAIN predictions are in-sample.
 """
 from __future__ import annotations
 
 import hashlib
+import math
+import statistics
 import time
 
 import numpy as np
@@ -47,6 +53,23 @@ QUANTILES = (0.98, 0.95, 0.90, 0.80)
 SIDES = ("both", "long", "short")
 GRADE_TOP = 12
 KEEP = 3
+# 90% confidence SHARED across the GRADE_TOP validate tries (one-sided,
+# 0.10 / 12 per try): the best of 12 on one month must clear break-even by
+# more than luck would give any one of them. 1.645 alone (90% for a single
+# try) still kept a 7-of-10 formula on two of three pure random walks.
+WILSON_Z = statistics.NormalDist().inv_cdf(1 - 0.10 / GRADE_TOP)   # ~2.394
+
+
+def wilson_lower(wins: int, n: int, z: float = WILSON_Z) -> float:
+    """The Wilson score lower bound of a win rate, in percent: how low the
+    true rate can plausibly be after `wins` of `n`. 0 when there are no trades."""
+    if n <= 0:
+        return 0.0
+    p = wins / n
+    z2 = z * z
+    centre = p + z2 / (2 * n)
+    margin = z * math.sqrt(p * (1 - p) / n + z2 / (4 * n * n))
+    return 100.0 * (centre - margin) / (1 + z2 / n)
 
 
 def labels(o, h, lo, a: int, b: int, tp: float, sl: float, side: int) -> np.ndarray:
@@ -103,15 +126,19 @@ class MLLearner:
         self.u0 = int(np.searchsorted(ts, cut_ms, side="left"))
         self.v0 = min(self.u0, int(np.searchsorted(
             ts, cut_ms - VALIDATE_DAYS * 86_400_000, side="left")))
-        self.l0 = max(self.WARM, int(np.searchsorted(
+        # training may start as soon as every clue has its window (the
+        # stored cut still carries WARM bars of lead-in)
+        self.l0 = max(mf.MAX_WINDOW, int(np.searchsorted(
             ts, cut_ms - (learn_days + VALIDATE_DAYS) * 86_400_000, side="left")))
         self.rt = br.round_trip_cost(frame.fee, {"slippage": frame.slip})
         self.pairs = fl.barrier_pairs(self.tf, frame.fee, frame.slip, frame.liq)
         self.search = fl._search_subset(self.pairs)
         self.min_validate = msw.min_trades(self.tf, VALIDATE_DAYS)
         self.min_unseen = msw.min_trades(self.tf, UNSEEN_DAYS)
-        self.train_days = ((ts[self.v0 - 1] - ts[self.l0]) / 86_400_000
+        self.train_days = (float(ts[self.v0 - 1] - ts[self.l0]) / 86_400_000
                            if self.v0 - 1 > self.l0 else 0.0)
+        self.skipped = {"too few rows": 0, "one outcome only": 0}
+        self.most_rows = 0
         u = self.u0
         # WHAT THE CHOOSING CODE MAY READ: the bars before UNSEEN, nothing else
         self.sel = (o[:u], h[:u], lo[:u], c[:u], v[:u], ts[:u])
@@ -126,7 +153,12 @@ class MLLearner:
         idx = np.arange(len(y))
         rows = idx[(idx >= self.l0) & (idx < self.v0 - 1)]
         rows = rows[self.ok[rows] & np.isfinite(y[rows])] if len(rows) else rows
-        if len(rows) < MIN_TRAIN_ROWS or len(np.unique(y[rows])) < 2:
+        self.most_rows = max(self.most_rows, int(len(rows)))
+        if len(rows) < MIN_TRAIN_ROWS:
+            self.skipped["too few rows"] += 1
+            return None
+        if len(np.unique(y[rows])) < 2:
+            self.skipped["one outcome only"] += 1
             return None
         m = mt.fit(self.X[rows], y[rows])
         p = np.full(len(self.X), np.nan)
@@ -142,7 +174,12 @@ class MLLearner:
     def _value(self, g: dict | None, s: float, t: float) -> float:
         if not g or g["trades"] < self.min_validate:
             return float("-inf")
-        if 100.0 * g["wins"] / g["trades"] <= fl.breakeven_winrate(t, s, self.rt):
+        be = fl.breakeven_winrate(t, s, self.rt)
+        if 100.0 * g["wins"] / g["trades"] <= be:
+            return float("-inf")
+        # NOT BY LUCK: the best of many tries on one month clears a plain
+        # "above break-even" on noise; its lower bound must clear it too
+        if wilson_lower(g["wins"], g["trades"]) <= be:
             return float("-inf")
         return g["profit"] if g["profit"] > 0 else float("-inf")
 
@@ -179,6 +216,8 @@ class MLLearner:
         notional = self.f.base * 20
         cands = []
         fitted = 0
+        self.skipped = {"too few rows": 0, "one outcome only": 0}
+        self.most_rows = 0
         for (s, t) in self.search:
             side_models = {}
             for side, sgn in (("long", 1), ("short", -1)):
@@ -210,41 +249,53 @@ class MLLearner:
             g = self._validate(d, s, t)
             v = self._value(g, s, t)
             if v > float("-inf"):
-                graded.append((v, s, t, q, sides, models, thr, g))
+                graded.append((v, s, t, q, sides, models, thr, g, d))
         graded.sort(key=lambda x: (-x[0], x[1], x[2], x[3], x[4]))
+        # DIFFERENT TRADES, JUDGED ON VALIDATE: the directions over it and its
+        # outcome. UNSEEN never keeps, drops or ranks anything — it is graded
+        # only after a formula is already kept.
         kept, seen_b, seen_o = [], set(), set()
-        for v, s, t, q, sides, models, thr, g in graded:
+        grade_failed = 0
+        for v, s, t, q, sides, models, thr, g, d in graded:
             if len(kept) >= KEEP:
                 break
+            b = hashlib.md5(np.asarray(d[self.v0:self.u0], np.int8).tobytes()).hexdigest()
+            outcome = (g["trades"], g["wins"], round(g["profit"], 2))
+            if b in seen_b or outcome in seen_o:
+                continue
+            seen_b.add(b)
+            seen_o.add(outcome)
             name = f"{sml.PREFIX}{self.f.coin}_{self.tf}_{len(kept) + 1}"
             spec = {"name": name, "coin": self.f.coin, "tf": self.tf, "tp": t, "sl": s,
                     "sides": sides, "q": q, "thr": thr, "models": models,
                     "features": mf.VERSION}
-            b = hashlib.md5(np.asarray(self._cut_dirs(spec), np.int8).tobytes()).hexdigest()
-            if b in seen_b:
-                continue
-            u = self._grade(spec)
-            if u is None:
-                continue
-            outcome = (u["trades"], u["wins"], round(u["profit"], 2))
-            if outcome in seen_o:
-                continue
-            seen_b.add(b)
-            seen_o.add(outcome)
-            spec["learned"] = {
-                "unseen": {**u, "winrate": (round(100.0 * u["wins"] / u["trades"], 2)
-                                            if u["trades"] else None),
-                           "min_trades": self.min_unseen, "chose": False},
-                "validate": {**g, "winrate": round(100.0 * g["wins"] / g["trades"], 2)},
+            learned = {
+                "validate": {**g, "winrate": round(100.0 * g["wins"] / g["trades"], 2),
+                             "wilson_lower": round(wilson_lower(g["wins"], g["trades"]), 2)},
                 "train": {"days": round(self.train_days, 1)},
                 "breakeven_winrate": round(fl.breakeven_winrate(t, s, self.rt), 2),
                 "cost_of_tp": round(self.rt / t * 100, 1),
                 "describe": sml.describe(spec),
             }
+            u = self._grade(spec)
+            if u is None:
+                grade_failed += 1
+                learned["unseen"] = None
+                learned["grade_error"] = "engine failed"
+            else:
+                learned["unseen"] = {
+                    **u, "winrate": (round(100.0 * u["wins"] / u["trades"], 2)
+                                     if u["trades"] else None),
+                    "min_trades": self.min_unseen, "chose": False}
+            spec["learned"] = learned
             kept.append(spec)
-        rep.update(candidates=len(cands), fitted=fitted,
+        rep.update(candidates=len(cands), fitted=fitted, skipped=dict(self.skipped),
+                   grade_failed=grade_failed,
                    seconds=round(time.time() - t0, 1), formulas=kept)
-        if not kept:
+        if not fitted:
+            rep["why"] = (f"not enough history: {self.most_rows} labelled training "
+                          f"candles, the trees need {MIN_TRAIN_ROWS}")
+        elif not kept:
             rep["why"] = "nothing passed the validate-period checks"
         return rep
 

@@ -242,8 +242,10 @@ def test_every_learned_family_keeps_tp_above_sl_on_the_update_button():
 
 # ------------------------------------------------------------ the learner
 def _ml_frame(days=260, tf="1h", seed=11, planted=True):
-    """A walk with a PLANTED edge: after three down closes in a row the next
-    bars drift up, so a long has a real reason to reach its target first."""
+    """A walk with a PLANTED EDGE and no net drift: after three down closes
+    in a row the next 6 bars drift up, after three up closes they drift down.
+    Mean-reverting, so "always long" is not the answer — a model has to read
+    the run to trade it."""
     from tradingagents import formula_learner as fl
 
     step = {"15m": 900, "1h": 3600, "1d": 86400}[tf]
@@ -254,6 +256,8 @@ def _ml_frame(days=260, tf="1h", seed=11, planted=True):
         for i in range(3, n - 6):
             if r[i - 1] < 0 and r[i - 2] < 0 and r[i - 3] < 0:
                 r[i:i + 6] += 0.0025
+            elif r[i - 1] > 0 and r[i - 2] > 0 and r[i - 3] > 0:
+                r[i:i + 6] -= 0.0025
     c = 100 * np.exp(np.cumsum(r))
     o = np.concatenate([[c[0]], c[:-1]])
     h = np.maximum(o, c) * (1 + rng.uniform(0, 0.002, n))
@@ -298,7 +302,32 @@ def test_the_learner_finds_the_planted_edge_and_keeps_only_tp_above_sl():
         assert lr["validate"]["profit"] > 0
         assert lr["validate"]["winrate"] > lr["breakeven_winrate"]
         assert lr["unseen"]["chose"] is False
+        assert lr["validate"]["wilson_lower"] > lr["breakeven_winrate"]
         assert "decision trees" in lr["describe"]
+    # the edge is structural, so it persists into the 30 days nobody chose on
+    assert sum(f["learned"]["unseen"]["profit"] for f in rep["formulas"]) > 0
+
+
+@pytest.mark.parametrize("seed", (11, 12, 13))
+def test_pure_noise_keeps_nothing(seed):
+    """A random walk has nothing to learn: the best of ~80 tries on one month
+    must not pass by luck (the plain floors kept 3 a seed here)."""
+    from tradingagents import ml_learner as ml
+
+    fr = _ml_frame(seed=seed, planted=False)
+    rep = ml.MLLearner(fr, now_ms=_now(fr)).run()
+    assert rep["formulas"] == [], [(f["tp"], f["sl"], f["learned"]["validate"])
+                                   for f in rep["formulas"]]
+
+
+def test_the_wilson_bound_is_the_textbook_one():
+    from tradingagents import ml_learner as ml
+
+    assert ml.wilson_lower(0, 0) == 0.0
+    assert ml.wilson_lower(7, 10, z=1.645) == pytest.approx(44.17, abs=0.01)
+    assert ml.wilson_lower(10, 10, z=1.645) == pytest.approx(78.70, abs=0.01)
+    # 90% shared across the GRADE_TOP validate tries, one-sided
+    assert ml.GRADE_TOP == 12 and ml.WILSON_Z == pytest.approx(2.394, abs=0.001)
 
 
 def test_no_choice_can_see_the_unseen_period():
@@ -354,18 +383,42 @@ def test_daily_candles_learn_from_two_years():
 
 
 def test_the_stored_cut_trades_what_the_grade_graded():
-    """The grade runs signals_ml.dirs_for on the stored row's own cut, the
-    same call the GitHub row measurement makes."""
-    from tradingagents import ml_learner as ml, signals_ml as sml
+    """The stored UNSEEN grade is what production repeats: the model looked up
+    by name through auto_trader._dirs_for_backtest (the call every backtest
+    and the GitHub row measurement makes) on the stored cut, then the real
+    engine on that cut, minute-exact."""
+    import tradingagents.auto_trader as at
+    from tradingagents import formula_learner as fl, ml_learner as ml, signals_ml as sml
 
     fr = _ml_frame()
     lr = ml.MLLearner(fr, now_ms=_now(fr))
     rep = lr.run()
+    assert rep["formulas"], rep.get("why")
     f = rep["formulas"][0]
     w0 = lr.u0 - lr.WARM
     o, h, lo, c, v, ts = lr.f.arrays()
-    d = sml.dirs_for(f, o[w0:], h[w0:], lo[w0:], c[w0:], v[w0:], ts[w0:])
-    assert d == lr._cut_dirs(f)
+    sml.register({f["name"]: f})
+    try:
+        d = at._dirs_for_backtest(f"{f['name']}_bt_{f['tf']}", list(h[w0:]),
+                                  list(lo[w0:]), list(c[w0:]), opens=list(o[w0:]),
+                                  volume=list(v[w0:]), ts=[int(x) for x in ts[w0:]],
+                                  funding=lr.f.funding)
+    finally:
+        sml.reload()
+    assert any(d), "the model traded nothing on the stored cut"
+    sub = lr.f.df.iloc[w0:].reset_index(drop=True)
+    g = fl.engine_run(lr.f, lr.tf, sub, d, f["sl"], f["tp"], lr.u0 - w0, lr.f.fine)
+    u = f["learned"]["unseen"]
+    assert (g["trades"], g["wins"], round(g["profit"], 2)) ==         (u["trades"], u["wins"], round(u["profit"], 2))
+
+
+def test_daily_candles_with_too_few_labelled_rows_say_so():
+    from tradingagents import ml_learner as ml
+
+    fr = _ml_frame(days=500, tf="1d")
+    rep = ml.MLLearner(fr, now_ms=_now(fr)).run()
+    assert rep["formulas"] == []
+    assert rep["why"].startswith("not enough history"), rep
 
 
 def test_it_is_fast_enough_to_learn_the_market():

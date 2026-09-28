@@ -92,7 +92,7 @@ h2{font-size:17px;margin:0;text-wrap:balance}
 .chip{border:1px solid var(--rule);border-radius:999px;padding:3px 10px;font-size:13px;color:var(--ink2);background:var(--panel)}
 .chip b{color:var(--ink);font-weight:600}
 .prov{font-size:13px;color:var(--ink2);max-width:95ch}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
 .tile{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
 .tile .k{font-size:12px;color:var(--ink3);letter-spacing:.02em}
 .tile .v{font:600 22px/1.2 var(--mono);font-variant-numeric:tabular-nums}
@@ -271,7 +271,7 @@ function render(){
   ["Days up / down",`${green} / ${red}`,`of ${ds.length} day(s)`],
   ["Worst day",worstDay.at?`<span class="neg">${money(worstDay.pnl)}</span>`:"—",worstDay.at?dayLabel(worstDay.at):"no losing day"],
   ["Best day",bestDay.at?`<span class="pos">${money(bestDay.pnl)}</span>`:"—",bestDay.at?dayLabel(bestDay.at):"no winning day"],
-  ["Worst losing run",st.wn?`<span class="neg">${money(st.worst)}</span>`:"—",st.wn?`${st.wn} losing trades in a row`:"never two losses in a row"],
+  ["Worst losing run",st.wn?`<span class="neg">${money(st.worst)}</span>`:"—",st.wn?`${st.wn} losing trades in a row, all strategies, in closing order`:"never two losses in a row"],
  ].map(([k,v,s])=>`<div class="tile"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join("");
  drawBars(ds);drawLine(ds);
  renderDays(ds,F);renderSlots(rows,F);renderEvents(rows);
@@ -282,7 +282,7 @@ let openedFor="";
 
 /* ---------- charts: one axis each, recessive grid, hover per mark ---------- */
 function niceTicks(lo,hi){const span=Math.max(1e-9,hi-lo),step0=span/4,p=Math.pow(10,Math.floor(Math.log10(step0)));
- const step=[1,2,2.5,5,10].map(m=>m*p).find(s=>s>=step0);const out=[];for(let v=Math.floor(lo/step)*step;v<=hi+1e-9;v+=step)out.push(+v.toFixed(6));return out}
+ const step=[1,2,2.5,5,10].map(m=>m*p).find(s=>s>=step0);const out=[];const top=Math.ceil(hi/step-1e-9)*step;for(let v=Math.floor(lo/step)*step;v<=top+1e-9;v+=step)out.push(+v.toFixed(6));return out}
 function frame(svg){const r=svg.getBoundingClientRect();return {W:Math.max(280,r.width),H:220,L:58,R:12,T:10,B:28}}
 function axis(svg,f,ticks,y){let g="";for(const v of ticks){const yy=y(v);g+=`<line x1="${f.L}" x2="${f.W-f.R}" y1="${yy}" y2="${yy}" stroke="var(--rule)" stroke-width="${v===0?1.5:1}"/><text x="${f.L-8}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--ink3)" font-family="var(--mono)">${money(v)}</text>`}return g}
 function xlabels(f,ds,x){if(!ds.length)return"";const every=Math.ceil(ds.length/(f.W<480?4:7));let g="";
@@ -382,3 +382,7 @@ $("notes").innerHTML=`How to read it: each midnight the replay looked only at tr
 render();
 </script>
 """
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -29,25 +29,42 @@ from tradingagents import watcher_replay as wr
 OUT_DIR = Path(os.path.expanduser("~/.tradingagents")) / "replay"
 
 
-def merge(folder: str) -> dict:
-    """Every machine's combinations and counts under `folder`, merged.
+def group_of(sig: str) -> str:
+    """The Stored strategies group of a signal (rows_index.GROUP_PREFIXES) —
+    for combinations written before the machine tagged them."""
+    from tradingagents import rows_index as ri
+
+    for g, prefixes in ri.GROUP_PREFIXES.items():
+        if str(sig).startswith(tuple(prefixes)):
+            return g
+    return "classic"
+
+
+def merge(folder) -> dict:
+    """Every machine's combinations and counts under `folder` (one path, or a
+    list of them — one per run), merged.
 
     A coin is claimed by exactly one machine, so an id seen twice is the same
     combination written twice (a retried coin) and is kept once."""
     combos: dict[str, dict] = {}
     totals = {"coins_board": 0, "coins_done": 0, "pairs": 0, "tested": 0,
               "kept": 0, "machines": 0, "failed": {}, "short": [],
-              "spans": {}, "start": "", "tz": "", "cfg": {}}
-    for f in sorted(glob.glob(os.path.join(folder, "**", "replay-*.jsonl"),
-                              recursive=True)):
+              "spans": {}, "start": "", "tz": "", "cfg": {}, "groups": []}
+    folders = [folder] if isinstance(folder, str) else list(folder)
+    files = [f for d in folders for f in sorted(glob.glob(
+        os.path.join(d, "**", "replay-*.jsonl"), recursive=True))]
+    reports = [f for d in folders for f in sorted(glob.glob(
+        os.path.join(d, "**", "replay-report-*.json"), recursive=True))]
+    for f in files:
         with open(f, encoding="utf-8") as fh:
             for line in fh:
                 line = line.strip()
                 if line:
                     c = json.loads(line)
+                    c.setdefault("group", group_of(c["signal"]))
                     combos.setdefault(c["id"], c)
-    for f in sorted(glob.glob(os.path.join(folder, "**", "replay-report-*.json"),
-                              recursive=True)):
+    starts = set()
+    for f in reports:
         with open(f, encoding="utf-8") as fh:
             r = json.load(fh)
         totals["machines"] += 1
@@ -59,6 +76,13 @@ def merge(folder: str) -> dict:
         totals["spans"].update(r.get("spans") or {})
         for k in ("start", "tz", "cfg"):
             totals[k] = totals[k] or r.get(k)
+        starts.add(r.get("start"))
+        # a report from before `groups` existed walked the shared rules only
+        for g in (r.get("groups") or ["classic", "preset"]):
+            if g not in totals["groups"]:
+                totals["groups"].append(g)
+    if len(starts) > 1:
+        raise RuntimeError(f"these runs start on different days: {sorted(starts)}")
     return {"combos": list(combos.values()), "totals": totals}
 
 
@@ -131,14 +155,18 @@ def fetch(run_id: str, repo: str) -> str:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("run_id")
+    ap.add_argument("run_ids", nargs="+", help="one or more replay runs, merged")
     ap.add_argument("--repo", default="jeremydevera/analyzer-x")
-    ap.add_argument("--folder", default="", help="already-downloaded artifacts")
+    ap.add_argument("--folder", action="append", default=[],
+                    help="already-downloaded artifacts (repeat per run, in order)")
     a = ap.parse_args(argv)
-    folder = a.folder or fetch(a.run_id, a.repo)
-    res = replay(folder, run_id=a.run_id, repo=a.repo)
+    folders = list(a.folder)
+    for rid in a.run_ids[len(folders):]:
+        folders.append(fetch(rid, a.repo))
+    name = "+".join(a.run_ids)
+    res = replay(folders, run_id=name, repo=a.repo)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    path = OUT_DIR / f"{a.run_id}.json"
+    path = OUT_DIR / f"{name}.json"
     path.write_text(json.dumps(res, separators=(",", ":")), encoding="utf-8")
     s = res["summary"]
     print(f"{res['totals']['tested']:,} combinations tested, "

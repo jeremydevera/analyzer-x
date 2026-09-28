@@ -35,7 +35,9 @@ def payload(res: dict) -> dict:
         "failed": tot["failed"], "short": len(tot["short"]),
         "tfs": sorted({s["tf"] for s in res["slots"]}),
         "cfg": res["cfg"], "base": 5.0, "lev": 20,
+        "groups": tot.get("groups") or ["classic", "preset"],
         "slots": [{"id": s["id"], "coin": s["coin"], "tf": s["tf"],
+                   "group": s.get("group", "classic"),
                    "signal": s["signal"], "th": s["th"], "sl": s["sl"],
                    "tp": s["tp"], "on": s["on_ms"], "off": s["off_ms"],
                    "on_why": s["on_why"], "off_why": s["off_why"],
@@ -107,6 +109,7 @@ h2{font-size:17px;margin:0;text-wrap:balance}
 .filters label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2)}
 .filters input{width:112px;padding:6px 8px;border:1px solid var(--rule);border-radius:7px;background:var(--bg);color:var(--ink);font:13px var(--mono)}
 .filters input#f-id{width:130px;text-transform:uppercase}
+.filters select{padding:6px 8px;border:1px solid var(--rule);border-radius:7px;background:var(--bg);color:var(--ink);font:13px var(--sans)}
 .btn{padding:7px 12px;border:1px solid var(--rule);border-radius:7px;background:var(--panel);color:var(--ink);font:500 13px var(--sans);cursor:pointer}
 .btn:hover{border-color:var(--accent)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -163,6 +166,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
   <label>Max worst dip $<input id="f-dd" type="number" min="0" step="0.5" placeholder="any"></label>
   <label>Max TP %<input id="f-tp" type="number" min="0" step="0.1" placeholder="any"></label>
   <label>Max SL %<input id="f-sl" type="number" min="0" step="0.1" placeholder="any"></label>
+  <label>Group<select id="f-grp"><option value="">every group</option><option value="classic">Classic</option><option value="preset">Preset Confluence</option><option value="sep25">Sep 25 Strat</option><option value="sep27ml">Sep 27 ML</option></select></label>
   <label>Find id<input id="f-id" type="text" placeholder="#77Y3BPFG"></label>
   <button class="btn" id="clear" type="button">Clear all</button>
  </section>
@@ -197,7 +201,8 @@ const pct=v=>v.toFixed(1)+"%";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-const state={base:5,days:0,wr:null,pf:null,mg:null,dd:null,tp:null,sl:null,id:"",sort:{k:"profit",dir:-1}};
+const state={base:5,days:0,wr:null,pf:null,mg:null,dd:null,tp:null,sl:null,grp:"",id:"",sort:{k:"profit",dir:-1}};
+const GROUP_LABEL={classic:"Classic",preset:"Preset Confluence",sep25:"Sep 25 Strat",sep27ml:"Sep 27 ML"};
 
 function scale(){return state.base/D.base}
 function windowStart(){return state.days>0?midnight(D.end_ms)-(state.days-1)*86400000:D.start_ms}
@@ -229,6 +234,7 @@ function filtered(){
  f(state.dd!=null,`worst dip ≤ ${money(state.dd,false)}`,r=>-r.st.worst<=state.dd);
  f(state.tp!=null,`TP ≤ ${state.tp}%`,r=>r.s.tp<=state.tp);
  f(state.sl!=null,`SL ≤ ${state.sl}%`,r=>r.s.sl<=state.sl);
+ f(!!state.grp,`group ${GROUP_LABEL[state.grp]}`,r=>r.s.group===state.grp);
  if(state.days>0) names.unshift(`last ${state.days} day(s)`);
  return {rows:out,names,byId:false};
 }
@@ -327,15 +333,15 @@ function renderDays(ds,F){
  const w0=windowStart();
  $("d-count").innerHTML=`<b>${ds.length}</b> day(s), ${dayLabel(Math.max(D.start_ms,w0))} to ${fmtWhen(D.end_ms)}${F.names.length?" · "+esc(F.names.join(" AND ")):""} · at <b>${money(state.base,false)}</b> margin × ${D.lev}x = <b>${money(state.base*D.lev,false)}</b> a trade`;
 }
-const COLS=[["id","id",1],["coin","coin",1],["tf","tf",1],["signal","signal",1],["tp","TP %"],["sl","SL %"],["lev","lev"],["closed","trades"],["perDay","trades/day"],["wins","wins"],["losses","losses"],["winrate","win %"],["worst","worst losing run"],["green","months green"],["profit","PROFIT $"],["on","switched on",1],["off","switched off",1],["open","open"]];
+const COLS=[["id","id",1],["coin","coin",1],["tf","tf",1],["signal","signal",1],["group","group",1],["tp","TP %"],["sl","SL %"],["lev","lev"],["closed","trades"],["perDay","trades/day"],["wins","wins"],["losses","losses"],["winrate","win %"],["worst","worst losing run"],["green","months green"],["profit","PROFIT $"],["on","switched on",1],["off","switched off",1],["open","open"]];
 function val(r,k){if(k in r.st)return r.st[k];if(k==="lev")return D.lev;if(k==="off")return r.s.off??Infinity;return r.s[k]}
 function renderSlots(rows,F){
  const th=$("t-slots").querySelector("thead");
  th.innerHTML="<tr>"+COLS.map(([k,l,left])=>`<th class="${left?"l":""}" data-k="${k}" aria-sort="${state.sort.k===k?(state.sort.dir>0?"ascending":"descending"):"none"}">${l}</th>`).join("")+"</tr>";
- th.querySelectorAll("th").forEach(h=>h.onclick=()=>{const k=h.dataset.k;state.sort=state.sort.k===k?{k,dir:-state.sort.dir}:{k,dir:["id","coin","tf","signal","on","off"].includes(k)?1:-1};render()});
+ th.querySelectorAll("th").forEach(h=>h.onclick=()=>{const k=h.dataset.k;state.sort=state.sort.k===k?{k,dir:-state.sort.dir}:{k,dir:["id","coin","tf","signal","group","on","off"].includes(k)?1:-1};render()});
  const sorted=[...rows].sort((a,b)=>{const x=val(a,state.sort.k),y=val(b,state.sort.k);return (x>y?1:x<y?-1:0)*state.sort.dir});
  $("t-slots").querySelector("tbody").innerHTML=sorted.map(r=>{const s=r.s,st=r.st;return `<tr class="click" data-i="${r.i}" tabindex="0">
-  <td class="l id">#${s.id}</td><td class="l">${s.coin}</td><td class="l">${s.tf}</td><td class="l">${esc(s.signal)}${s.th?` ${s.th}`:""}</td>
+  <td class="l id">#${s.id}</td><td class="l">${s.coin}</td><td class="l">${s.tf}</td><td class="l">${esc(s.signal)}${s.th?` ${s.th}`:""}</td><td class="l">${GROUP_LABEL[s.group]||s.group}</td>
   <td>${s.tp}</td><td>${s.sl}</td><td>${D.lev}x</td><td>${st.closed}</td><td>${st.perDay.toFixed(2)}</td><td>${st.wins}</td><td>${st.losses}</td><td>${st.closed?pct(st.winrate):"—"}</td>
   <td class="${st.worst<0?"neg":""}">${st.wn?`${money(st.worst)} (${st.wn})`:"—"}</td><td>${st.green}/${st.months}</td>
   <td class="${st.profit>0?"pos":st.profit<0?"neg":""}">${money(st.profit)}</td>
@@ -357,7 +363,7 @@ function renderEvents(rows){const ids=new Set(rows.map(r=>r.s.id));
 
 function openLog(r){if(!r)return;const s=r.s,st=r.st,k=scale();
  const rows=[...st.trades].sort((a,b)=>a[0]-b[0]);let run=0;
- $("dlg-body").innerHTML=`<h3 id="dlg-h"><span class="id">#${s.id}</span> ${s.coin} ${s.tf} ${esc(s.signal)} · TP ${s.tp}% / SL ${s.sl}% · ${D.lev}x · ${money(state.base,false)} margin (${money(state.base*D.lev,false)} a trade)</h3>
+ $("dlg-body").innerHTML=`<h3 id="dlg-h"><span class="id">#${s.id}</span> ${s.coin} ${s.tf} ${esc(s.signal)} (${GROUP_LABEL[s.group]||s.group}) · TP ${s.tp}% / SL ${s.sl}% · ${D.lev}x · ${money(state.base,false)} margin (${money(state.base*D.lev,false)} a trade)</h3>
   <div class="sum"><span>switched on <b>${fmtWhen(s.on)}</b></span><span>${s.off==null?"still on":`switched off <b>${fmtWhen(s.off)}</b>`}</span></div>
   <div class="sum"><span>why on: ${esc(s.on_why)}</span>${s.off_why?`<span>why off: ${esc(s.off_why)}</span>`:""}</div>
   <div class="scroll"><table><thead><tr><th class="l">#</th><th class="l">entered</th><th class="l">closed</th><th>profit</th><th>running</th></tr></thead><tbody>${
@@ -370,15 +376,16 @@ $("dlg-close").onclick=()=>$("dlg").close();
 /* ---------- controls ---------- */
 const num=v=>{const t=String(v).trim();if(t==="")return null;const n=Number(t);return Number.isFinite(n)?n:null};
 function bind(id,key,parse=num){$(id).addEventListener("input",e=>{state[key]=parse(e.target.value);if(key==="base"&&!(state.base>0))state.base=D.base;if(key==="days")state.days=state.days>0?Math.floor(state.days):0;render()})}
-bind("f-base","base");bind("f-days","days");bind("f-wr","wr");bind("f-pf","pf");bind("f-mg","mg");bind("f-dd","dd");bind("f-tp","tp");bind("f-sl","sl");bind("f-id","id",v=>String(v));
-$("clear").onclick=()=>{for(const id of ["f-days","f-wr","f-pf","f-mg","f-dd","f-tp","f-sl","f-id"])$(id).value="";Object.assign(state,{days:0,wr:null,pf:null,mg:null,dd:null,tp:null,sl:null,id:""});render()};
+bind("f-base","base");bind("f-days","days");bind("f-wr","wr");bind("f-pf","pf");bind("f-mg","mg");bind("f-dd","dd");bind("f-tp","tp");bind("f-sl","sl");bind("f-id","id",v=>String(v));$("f-grp").addEventListener("change",e=>{state.grp=e.target.value;render()});
+$("clear").onclick=()=>{for(const id of ["f-days","f-wr","f-pf","f-mg","f-dd","f-tp","f-sl","f-id","f-grp"])$(id).value="";Object.assign(state,{days:0,wr:null,pf:null,mg:null,dd:null,tp:null,sl:null,grp:"",id:""});render()};
 addEventListener("resize",()=>{clearTimeout(window.__rz);window.__rz=setTimeout(render,120)});
 
 /* ---------- static text ---------- */
 const c=D.cfg;
 $("rules").innerHTML=[`switch on at <b>${c.on_winrate}%+</b> over 30 days`,`switch off under <b>${c.off_winrate}%</b>`,`TP <b>wider than</b> SL`,`<b>${c.min_trades}+</b> trades in 30 days`,`made money over those 30 days`,`up to <b>${c.max_slots}</b> at once · <b>${c.max_per_coin}</b> per coin · <b>${c.max_new_per_day}</b> new a day`,`<b>${c.cooldown_days}</b>-day wait after a switch-off`,`practice account · flat <b>$${D.base}</b> × ${D.lev}x`].map(t=>`<span class="chip">${t}</span>`).join("");
-$("prov").innerHTML=`GitHub run <b>${esc(D.run)}</b> (${esc(D.repo)}): <b>${D.tested.toLocaleString()}</b> strategy combinations tested over <b>${D.coins.toLocaleString()}</b> of ${D.coins_board.toLocaleString()} coins on ${D.machines} machines, 15m/30m/1h/4h/1d, from 30 days before ${dayLabel(D.start_ms)} to <b>${fmtWhen(D.end_ms)}</b>. ${D.written.toLocaleString()} of them cleared the switch-on rules at some midnight. Every trade is charged the fee both ways, the coin's usual slippage and funding, at ${money(D.base,false)} margin × ${D.lev}x = ${money(D.base*D.lev,false)} a trade.${Object.keys(D.failed).length?` ${Object.keys(D.failed).length} coin(s) could not be measured: ${esc(Object.keys(D.failed).slice(0,8).join(", "))}${Object.keys(D.failed).length>8?"…":""}.`:""}`;
-$("notes").innerHTML=`How to read it: each midnight the replay looked only at trades that had already closed in the 30 days before it — nothing from later could switch a strategy on. A switched-on strategy earns the trades it opened while on; a trade still open when it was switched off finishes normally and counts. Exits are settled on the strategy's own candles (15 minutes to 1 day): MEXC keeps only about 30 days of 1-minute candles, so August cannot be settled minute by minute the way Backtest v2 is, and when one candle touched both the target and the stop it is counted as the stop. The live watcher also re-reads the order book before each switch-on and blocks a second position on the same coin going the other way; the replay uses each coin's usual cost instead and lets every strategy trade on its own. Coins that were delisted before today are not in it.`;
+const learned=D.slots.filter(s=>s.group==="sep25"||s.group==="sep27ml");
+$("prov").innerHTML=`Groups walked: <b>${D.groups.map(g=>GROUP_LABEL[g]||g).join(", ")}</b>${D.groups.includes("sep27ml")&&!D.slots.some(s=>s.group==="sep27ml")?" (Sep 27 ML had no finished models yet, so it added nothing)":""}. GitHub run(s) <b>${esc(D.run)}</b> (${esc(D.repo)}): <b>${D.tested.toLocaleString()}</b> strategy combinations tested over <b>${D.coins.toLocaleString()}</b> of ${D.coins_board.toLocaleString()} coins on ${D.machines} machines, 15m/30m/1h/4h/1d, from 30 days before ${dayLabel(D.start_ms)} to <b>${fmtWhen(D.end_ms)}</b>. ${D.written.toLocaleString()} of them cleared the switch-on rules at some midnight. Every trade is charged the fee both ways, the coin's usual slippage and funding, at ${money(D.base,false)} margin × ${D.lev}x = ${money(D.base*D.lev,false)} a trade.${Object.keys(D.failed).length?` ${Object.keys(D.failed).length} coin(s) could not be measured: ${esc(Object.keys(D.failed).slice(0,8).join(", "))}${Object.keys(D.failed).length>8?"…":""}.`:""}`;
+$("notes").innerHTML=`How to read it: each midnight the replay looked only at trades that had already closed in the 30 days before it — nothing from later could switch a strategy on. A switched-on strategy earns the trades it opened while on; a trade still open when it was switched off finishes normally and counts. Exits are settled on the strategy's own candles (15 minutes to 1 day): MEXC keeps only about 30 days of 1-minute candles, so August cannot be settled minute by minute the way Backtest v2 is, and when one candle touched both the target and the stop it is counted as the stop. The live watcher also re-reads the order book before each switch-on and blocks a second position on the same coin going the other way; the replay uses each coin's usual cost instead and lets every strategy trade on its own. Coins that were delisted before today are not in it.`+(learned.length?` <b>${learned.length} of these strategies are learned formulas (Sep 25 Strat / Sep 27 ML).</b> Those were built from candles that include August, so on Sep 01 they are judged on the same days they were learned from, and their results here look better than they would have been. Filter by group to see the rest on their own.`:"");
 render();
 </script>
 """

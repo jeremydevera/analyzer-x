@@ -93,3 +93,35 @@ def test_the_download_lands_beside_the_store_not_on_c():
 
     src = inspect.getsource(rc.fetch)
     assert "dir=cs._scratch()" in src and 'prefix=f"tmp' in src
+
+
+def test_two_runs_merge_and_every_combination_knows_its_group(tmp_path):
+    """Run 36478015729 walked the shared rules; a second run walked only the
+    learned formulas. Merged, the replay picks across all of them."""
+    a, b = tmp_path / "run1", tmp_path / "run2"
+    a.mkdir()
+    b.mkdir()
+    _machine(a, 0, [_combo("GOOD0001", "GPNSTOCK", 40, _ms(2026, 8, 3, 5))],
+             {"GPNSTOCK 1h": [0, _ms(2026, 9, 10, 12)]}, 7000)
+    lx = {**_combo("LEARN001", "FASTSTOCK", 40, _ms(2026, 8, 3, 6)),
+          "signal": "lx_FASTSTOCK_1h_2", "group": "sep25"}
+    _machine(b, 0, [lx], {"FASTSTOCK 1h": [0, _ms(2026, 9, 10, 13)]}, 300)
+    got = rc.merge([str(a), str(b)])
+    groups = {c["id"]: c["group"] for c in got["combos"]}
+    assert groups == {"GOOD0001": "classic", "LEARN001": "sep25"}
+    assert got["totals"]["tested"] == 7300
+    res = rc.replay([str(a), str(b)], run_id="1+2")
+    assert {s["group"] for s in res["slots"]} == {"classic", "sep25"}
+
+
+def test_runs_that_start_on_different_days_are_refused(tmp_path):
+    a, b = tmp_path / "run1", tmp_path / "run2"
+    a.mkdir()
+    b.mkdir()
+    _machine(a, 0, [], {"A 1h": [0, 1]}, 1)
+    _machine(b, 0, [], {"B 1h": [0, 1]}, 1)
+    rep = b / "replay-0" / "replay-report-0.json"
+    d = json.loads(rep.read_text())
+    rep.write_text(json.dumps({**d, "start": "2026-09-05"}))
+    with pytest.raises(RuntimeError, match="different days"):
+        rc.merge([str(a), str(b)])

@@ -83,6 +83,7 @@ class _Book:
         c = self.c
         return {"id": c["id"], "coin": c["coin"], "tf": c["tf"],
                 "signal": c["signal"], "th": c.get("th", 0.0),
+                "group": c.get("group", "classic"),
                 "sl": c["sl"], "tp": c["tp"], "gate": c.get("gate", "ok"),
                 "trades": n, "wins": wins, "losses": n - wins,
                 "winrate": round(100 * wins / n, 2),
@@ -124,7 +125,7 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
         for p in picks:
             r = p["row"]
             slot = {**{k: r[k] for k in ("id", "coin", "tf", "signal", "th",
-                                          "sl", "tp")},
+                                          "sl", "tp", "group")},
                     "on_ms": at, "on_why": p["why"], "on_row": r,
                     "off_ms": None, "off_why": ""}
             running[r["id"]] = slot

@@ -83,3 +83,15 @@ def test_the_pages_date_format_is_the_projects():
     out = subprocess.run(["node", "-e", js + f"\nfor (const m of {ms}) console.log(fmtWhen(m));"],
                          capture_output=True, text=True, timeout=60).stdout.split("\n")
     assert out[:4] == [fmt_when(m / 1000) for m in ms]
+
+
+def test_every_strategy_names_its_group_and_can_be_filtered_by_it():
+    res = _res()
+    res["slots"][0]["group"] = "sep25"
+    res["totals"]["groups"] = ["classic", "preset", "sep25", "sep27ml"]
+    html = rp.build(res)
+    data = json.loads(re.search(r"const D = (\{.*?\});\n", html).group(1))
+    assert data["slots"][0]["group"] == "sep25"
+    assert data["groups"] == ["classic", "preset", "sep25", "sep27ml"]
+    assert '["group","group",1]' in html and 'id="f-grp"' in html
+    assert "judged on the same days they were learned from" in html

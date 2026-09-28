@@ -99,6 +99,42 @@ def reload() -> None:
         _REGISTERED.clear()
 
 
+def read_file() -> dict:
+    """The saved formulas (the file only, nothing registered in-process)."""
+    return _load()
+
+
+def write_file(formulas: dict, run_id=None, max_bytes: int | None = None) -> int:
+    """Write the whole formula file atomically; returns its size in bytes.
+
+    `max_bytes`, when given, is a CEILING: the new file is written to a temp
+    path first, and if it would land bigger than the ceiling the temp file is
+    discarded and LEARNED_FILE is left untouched — same refuse-before-replace
+    shape as `signals_ml.write_file`, so one collect body can call either
+    registry through the same argument."""
+    import time as _t
+
+    from tradingagents.positions_view import fmt_when
+
+    LEARNED_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = LEARNED_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps({
+        "about": "Sep 25 Strat — learned formulas, one set per coin and "
+                 "timeframe (tradingagents/formula_learner.py)",
+        "run": run_id, "collected": fmt_when(_t.time()),
+        "formulas": dict(sorted(formulas.items()))}, indent=1, sort_keys=False),
+        encoding="utf-8")
+    size = tmp.stat().st_size
+    if max_bytes is not None and size > max_bytes:
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError(
+            f"the Sep 25 Strat formula file would be {size / 1e6:.1f} MB, "
+            f"past its {max_bytes / 1e6:g} MB ceiling — not replacing it")
+    tmp.replace(LEARNED_FILE)
+    reload()
+    return LEARNED_FILE.stat().st_size
+
+
 def spec_for(key: str) -> dict | None:
     """The spec a signal key names: the exact name, or the longest learned
     name the key extends with "_" (the grid calls `<name>_gh_<tf>`)."""

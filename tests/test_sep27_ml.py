@@ -456,3 +456,81 @@ def test_the_screen_offers_sep27_ml_by_its_name():
     assert '<option value="sep27ml">{GROUP_LABEL.sep27ml}</option>' in src
     api = (REPO / "webapp/src/lib/api.ts").read_text(encoding="utf-8")
     assert api.count('"sep25" | "sep27ml"') == 2
+
+
+# ------------------------------------------------------------ the collect
+@pytest.fixture
+def v2ml(tmp_path, monkeypatch):
+    from tradingagents import (
+        learn_collect as lc,
+        market_sweep as msw,
+        rows_index as ri,
+        signals_learned as sl_,
+        signals_ml as sml,
+    )
+
+    monkeypatch.setattr(msw, "FINE_TF", "1m")
+    monkeypatch.setattr(msw, "HOME", tmp_path)
+    monkeypatch.setattr(msw, "ROWDIR", tmp_path / "rows")
+    monkeypatch.setattr(msw, "STATES", tmp_path / "state")
+    monkeypatch.setattr(sl_, "LEARNED_FILE", tmp_path / "sep25.json")
+    monkeypatch.setattr(sml, "MODEL_FILE", tmp_path / "sep27_ml.json.gz")
+    monkeypatch.setattr(lc, "REPORT_FILE", tmp_path / "sep25_report.json")
+    monkeypatch.setattr(lc, "ML_REPORT_FILE", tmp_path / "sep27_ml_report.json")
+    db = tmp_path / "rows.db"
+    monkeypatch.setattr(ri, "DB_PATH", db)
+    ri._ready.discard(str(db))
+    ri.forget_indexes()
+    ri.ensure()
+    sl_.reload()
+    sml.reload()
+    yield msw, ri, sml, lc
+    sl_.reload()
+    sml.reload()
+
+
+def _mlrow(coin, tf, signal, sl=1.0, tp=2.0):
+    return {"coin": coin, "tf": tf, "signal": signal, "th": 0.0, "sl": sl, "tp": tp,
+            "sizing": "flat", "trades": 12, "wins": 8, "losses": 4, "winrate": 66.67,
+            "profit": 5.0, "monthly": {}, "res": "1m", "last_ms": 1}
+
+
+def test_an_ml_run_lands_its_rows_and_models_and_leaves_lx_alone(v2ml):
+    msw, ri, sml, lc = v2ml
+    grid = [_mlrow("BTC", "1h", "keltner"), _mlrow("BTC", "1h", "lx_BTC_1h_1")]
+    msw.save_pair_rows("BTC", "1h", grid + [_mlrow("BTC", "1h", "ml_BTC_1h_2")])
+    msw.save_states("BTC", "1h", {"__cloud__": True, "__last_ms__": 123})
+    sml.write_file({"ml_BTC_1h_2": {"coin": "BTC", "tf": "1h"},
+                    "ml_ETH_4h_1": {"coin": "ETH", "tf": "4h"}})
+    new = {"ml_BTC_1h_1": {"name": "ml_BTC_1h_1", "coin": "BTC", "tf": "1h",
+                           "learned": {"validate": {"profit": 3.0},
+                                       "unseen": {"profit": -1.0}}}}
+    report = [{"coin": "BTC", "tf": "1h", "kept": ["ml_BTC_1h_1"]},
+              {"coin": "ETH", "tf": "4h", "error": "HTTPError: 502"}]
+    got = lc.land(new, report, {("BTC", "1h"): [_mlrow("BTC", "1h", "ml_BTC_1h_1", 1.0, 3.0)]},
+                  run_id=7, family=lc.ML)
+    sigs = sorted(r["signal"] for r in msw.pair_rows("BTC", "1h"))
+    assert sigs == ["keltner", "lx_BTC_1h_1", "ml_BTC_1h_1"]
+    assert msw.load_states("BTC", "1h").get("__last_ms__") == 123
+    assert set(sml.read_file()) == {"ml_BTC_1h_1", "ml_ETH_4h_1"}
+    # a model that lost on the unseen month is KEPT: the test never chooses
+    assert "ml_BTC_1h_1" in sml.read_file()
+    rep = json.loads(lc.ML_REPORT_FILE.read_text(encoding="utf-8"))["report"]
+    assert {(e["coin"], e["tf"]) for e in rep} == {("BTC", "1h"), ("ETH", "4h")}
+    assert got["rows"] == 1
+
+
+def test_an_ml_collect_refuses_a_model_file_past_its_ceiling(v2ml, monkeypatch):
+    msw, ri, sml, lc = v2ml
+    monkeypatch.setattr(lc, "ML", lc.Family(**{**lc.ML.__dict__, "max_mb": 0.000001}))
+    with pytest.raises(RuntimeError, match="MB"):
+        lc.land({"ml_BTC_1h_1": {"coin": "BTC", "tf": "1h"}},
+                [{"coin": "BTC", "tf": "1h"}], {}, family=lc.ML)
+
+
+def test_the_ml_workflow_artifacts_are_the_ones_the_collect_downloads():
+    from tradingagents import learn_collect as lc
+
+    wf = (REPO / ".github/workflows/ml.yml").read_text(encoding="utf-8")
+    for pat in lc.ML.artifacts:
+        assert pat.rstrip("*") in wf

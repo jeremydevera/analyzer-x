@@ -32,10 +32,42 @@ import os
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 USUAL_FILE = Path(__file__).resolve().parent / "learned" / "usual_costs.json"
 REPORT_FILE = Path(__file__).resolve().parent / "learned" / "sep25_report.json"
+ML_REPORT_FILE = Path(__file__).resolve().parent / "learned" / "sep27_ml_report.json"
+
+
+@dataclass(frozen=True)
+class Family:
+    """One learned set: where its formulas live, its rows' prefix, its report,
+    its GitHub artifacts and its partial index. Sep 25 Strat and Sep 27 ML
+    land through ONE body, so a fix to one is a fix to both."""
+    key: str
+    prefix: str
+    registry: str               # module with read_file / write_file / reload
+    report_attr: str            # a module global, read at CALL time
+    artifacts: tuple
+    scratch: str
+    index: str
+    terms_attr: str             # rows_index global naming the family's rows
+    max_mb: float | None = None
+
+
+LX = Family("lx", "lx_", "tradingagents.signals_learned", "REPORT_FILE",
+            ("learn-rows-*", "learn-formulas-*"), "learn", "rows_lx_profit",
+            "LEARNED_TERMS")
+ML = Family("ml", "ml_", "tradingagents.signals_ml", "ML_REPORT_FILE",
+            ("ml-rows-*", "ml-models-*"), "ml", "rows_ml_profit", "ML_TERMS",
+            max_mb=50.0)
+
+
+def _registry(family: Family):
+    import importlib
+
+    return importlib.import_module(family.registry)
 
 
 def _in_v2() -> bool:
@@ -78,12 +110,13 @@ def build_usual_costs(sample: int = 200) -> dict:
     return out
 
 
-def download(run_id: int, slug: str | None = None) -> Path:
-    """The run's learn-* artifacts, unpacked on the STORE's drive (CLAUDE.md:
-    big files go where the store is, never the system drive)."""
+def download(run_id: int, slug: str | None = None, family: Family | None = None) -> Path:
+    """The run's artifacts, unpacked on the STORE's drive (CLAUDE.md: big
+    files go where the store is, never the system drive)."""
     from tradingagents import cloud_sweep as cs
 
-    root = Path(cs._scratch()) / f"learn-{run_id}"
+    family = family or LX
+    root = Path(cs._scratch()) / f"{family.scratch}-{run_id}"
     # THIS RUN'S OWN SCRATCH, emptied first: `gh run download` refuses to
     # write over files a previous attempt left ("file exists"), which is how
     # the re-run of a stopped collect failed on Sep 25, 2026. Nothing but
@@ -93,8 +126,9 @@ def download(run_id: int, slug: str | None = None) -> Path:
 
         shutil.rmtree(root)
     root.mkdir(parents=True, exist_ok=True)
-    cmd = ["gh", "run", "download", str(run_id), "-D", str(root),
-           "-p", "learn-rows-*", "-p", "learn-formulas-*"]
+    cmd = ["gh", "run", "download", str(run_id), "-D", str(root)]
+    for p in family.artifacts:
+        cmd += ["-p", p]
     if slug:
         cmd += ["-R", slug]
     subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=1800)
@@ -153,11 +187,16 @@ def forget_verdicts(pairs: set) -> int:
     return len(gone)
 
 
-def land(formulas: dict, report: list, rows: dict, *, run_id=None) -> dict:
-    """Write one run into the v2 store and the formula file. See module doc."""
-    from tradingagents import market_sweep as msw, signals_learned as sl_
+def land(formulas: dict, report: list, rows: dict, *, run_id=None,
+         family: Family | None = None) -> dict:
+    """Write one run into the v2 store and its formula/model file. See module
+    doc. `family` picks Sep 25 Strat (lx_, the default) or Sep 27 ML (ml_) —
+    same body, different registry, prefix, report file and partial index."""
+    from tradingagents import market_sweep as msw
     from tradingagents.positions_view import fmt_when
 
+    family = family or LX
+    reg = _registry(family)
     if not _in_v2():
         raise RuntimeError("learned rows belong to Backtest v2 — run this in "
                            "the v2 environment (stores.V2.env_for())")
@@ -194,33 +233,21 @@ def land(formulas: dict, report: list, rows: dict, *, run_id=None) -> dict:
     if stray:
         raise ValueError(f"rows for pairs the report does not account for: "
                          f"{stray[:5]}")
-    # the formula file: that pair's old learned formulas out, the new ones in
-    raw = {}
-    try:
-        raw = json.loads(sl_.LEARNED_FILE.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        raw = {}
-    # which pairs carry learned rows NOW: exactly the pairs with a formula in
-    # the file (rows are only ever written for kept formulas). Only those and
-    # the pairs with new rows are rewritten — never all ~5,000 attempted pair
+    # the formula/model file: that pair's old formulas out, the new ones in
+    old_f = reg.read_file()
+    # which pairs carry rows NOW: exactly the pairs with a formula/model in
+    # the file (rows are only ever written for kept ones). Only those and the
+    # pairs with new rows are rewritten — never all ~5,000 attempted pair
     # files at ~5 MB each for nothing.
-    had = {(str(v.get("coin")), str(v.get("tf")))
-           for v in (raw.get("formulas") or {}).values()}
-    have = {k: v for k, v in (raw.get("formulas") or {}).items()
+    had = {(str(v.get("coin")), str(v.get("tf"))) for v in old_f.values()}
+    have = {k: v for k, v in old_f.items()
             if (str(v.get("coin")), str(v.get("tf"))) not in attempted}
     have.update({k: v for k, v in formulas.items()
                  if (str(v.get("coin")), str(v.get("tf"))) in attempted})
-    sl_.LEARNED_FILE.parent.mkdir(parents=True, exist_ok=True)
-    tmp = sl_.LEARNED_FILE.with_suffix(".tmp")
-    tmp.write_text(json.dumps({
-        "about": "Sep 25 Strat — learned formulas, one set per coin and "
-                 "timeframe (tradingagents/formula_learner.py)",
-        "run": run_id, "collected": fmt_when(time.time()),
-        "formulas": dict(sorted(have.items()))}, indent=1, sort_keys=False),
-        encoding="utf-8")
-    tmp.replace(sl_.LEARNED_FILE)
-    sl_.reload()
-    forget_verdicts(attempted)
+    reg.write_file(dict(sorted(have.items())), run_id,
+                   max_bytes=int(family.max_mb * 1_000_000) if family.max_mb else None)
+    if family is LX:
+        forget_verdicts(attempted)
     # the rows, pair by pair: FILES first (each under its lock), then ONE
     # index pass in batches (see file_learned)
     landed = refiled = 0
@@ -231,11 +258,11 @@ def land(formulas: dict, report: list, rows: dict, *, run_id=None) -> dict:
 
         def swap(old, new=new, old_lx=old_lx):
             # under the pair's lock (market_sweep.rewrite_pair_rows): the old
-            # learned rows out, the new in, every other row untouched
+            # rows of this family out, the new in, every other row untouched
             old_lx.update(str(r.get("signal")) for r in old
-                          if str(r.get("signal", "")).startswith(sl_.PREFIX))
+                          if str(r.get("signal", "")).startswith(family.prefix))
             return [r for r in old
-                    if not str(r.get("signal", "")).startswith(sl_.PREFIX)] + new
+                    if not str(r.get("signal", "")).startswith(family.prefix)] + new
 
         if not new and (coin, tf) not in had:
             continue                 # nothing to add and nothing to remove
@@ -245,7 +272,7 @@ def land(formulas: dict, report: list, rows: dict, *, run_id=None) -> dict:
         landed += len(new)
         names = old_lx | {str(r["signal"]) for r in new}
         to_file.append((msw.ROWDIR / f"{coin}-{tf}.json", sorted(names)))
-    refiled = file_learned(to_file)
+    refiled = file_learned(to_file, family=family)
     # the report, without the round-by-round detail
     # MERGED, pair by pair, like the formula file: a run replaces the lines of
     # the coins+timeframes it reported on and keeps everyone else's. Written
@@ -255,13 +282,14 @@ def land(formulas: dict, report: list, rows: dict, *, run_id=None) -> dict:
     slim = [{k: v for k, v in e.items() if k != "rounds_detail"} | {"run": run_id}
             for e in report]
     mine = {(str(e["coin"]), str(e.get("tf"))) for e in slim}
+    report_file = globals()[family.report_attr]
     old = []
     try:
-        old = json.loads(REPORT_FILE.read_text(encoding="utf-8")).get("report") or []
+        old = json.loads(report_file.read_text(encoding="utf-8")).get("report") or []
     except (OSError, ValueError):
         old = []
     kept_old = [e for e in old if (str(e.get("coin")), str(e.get("tf"))) not in mine]
-    REPORT_FILE.write_text(json.dumps({"collected": fmt_when(time.time()),
+    report_file.write_text(json.dumps({"collected": fmt_when(time.time()),
                                        "report": kept_old + slim}, indent=0),
                            encoding="utf-8")
     return {"pairs": len(attempted), "formulas": len(formulas), "rows": landed,
@@ -274,9 +302,9 @@ FILE_BATCH = 100
 FILE_CACHE_MB = 1024
 
 
-def file_learned(entries: list, log=print) -> int:
-    """Re-file the learned rules of many pairs in the v2 index, FILE_BATCH
-    pairs per transaction on one connection with a large page cache.
+def file_learned(entries: list, log=print, family: Family | None = None) -> int:
+    """Re-file the rules of many pairs in the v2 index, FILE_BATCH pairs per
+    transaction on one connection with a large page cache.
 
     Pair by pair (index_pair's own commit) measured ~20 s a pair on the
     operator's 15 GB table on a spinning disk — about seven hours for one
@@ -289,6 +317,7 @@ def file_learned(entries: list, log=print) -> int:
 
     from tradingagents import rows_index as ri
 
+    family = family or LX
     if not entries:
         return 0
     con = ri._connect()
@@ -296,22 +325,23 @@ def file_learned(entries: list, log=print) -> int:
     t0 = _t.time()
     try:
         con.execute(f"PRAGMA cache_size = -{FILE_CACHE_MB * 1024}")
-        # WHICH PAIRS ALREADY HAVE LEARNED ROWS FILED — one read of the small
-        # learned-rows slice (the rows_lx_* partial index serves it), instead
-        # of a delete per rule that walks each coin's ~13,000 rows to find
-        # nothing. A pair not in this set is filed `fresh` (no delete).
+        # WHICH PAIRS ALREADY HAVE THIS FAMILY'S ROWS FILED — one read of the
+        # small slice (its own partial index serves it), instead of a delete
+        # per rule that walks each coin's ~13,000 rows to find nothing. A
+        # pair not in this set is filed `fresh` (no delete).
         # INDEXED BY the partial index: left to itself the planner walked
         # rows_pair — every row's key, 244.6 s on the operator's store — to
         # find 68 pairs. Without that index (a new store) the plain query.
         import sqlite3 as _sq
 
+        terms = getattr(ri, family.terms_attr)
         try:
             filed_before = {r[0] for r in con.execute(
-                f"SELECT DISTINCT pair FROM rows INDEXED BY rows_lx_profit "
-                f"WHERE {ri.LEARNED_TERMS}")}
+                f"SELECT DISTINCT pair FROM rows INDEXED BY {family.index} "
+                f"WHERE {terms}")}
         except _sq.OperationalError:
             filed_before = {r[0] for r in con.execute(
-                f"SELECT DISTINCT pair FROM rows WHERE {ri.LEARNED_TERMS}")}
+                f"SELECT DISTINCT pair FROM rows WHERE {terms}")}
         for i, (path, names) in enumerate(entries, 1):
             n += ri.index_pair(path, con, signals=names, commit=False,
                                fresh=path.stem not in filed_before)
@@ -324,18 +354,19 @@ def file_learned(entries: list, log=print) -> int:
     return n
 
 
-def collect(run_id: int, slug: str | None = None) -> dict:
+def collect(run_id: int, slug: str | None = None, family: Family | None = None) -> dict:
     from tradingagents import db_jobs as dj
 
+    family = family or LX
     # ONE JOB ON THE DISK: a v2 sweep, collect or rebuild holding the store
     # is named, never raced (the rule start() and resume_if_died share)
     holder = dj.disk_holder("collect_v2")
     if holder:
         raise RuntimeError(f"{holder} is running — one job at a time on the "
                            f"store; collect when it finishes")
-    root = download(run_id, slug)
+    root = download(run_id, slug, family=family)
     formulas, report, rows = read_run(root)
-    return land(formulas, report, rows, run_id=run_id)
+    return land(formulas, report, rows, run_id=run_id, family=family)
 
 
 def main(argv: list[str]) -> int:
@@ -345,15 +376,18 @@ def main(argv: list[str]) -> int:
         return 0
     if not _in_v2():
         # the v2 roots travel as environment, read at import (stores.py), so
-        # the collect runs as a child process with them set
+        # the collect runs as a child process with them set. The original
+        # argv (including --ml) travels unchanged — the child parses it again.
         from tradingagents import stores
 
         env = {**os.environ, **stores.V2.env_for(), "PYTHONUNBUFFERED": "1"}
         return subprocess.call([sys.executable, "-m", "tradingagents.learn_collect",
                                 *argv], env=env)
+    family = ML if argv and argv[0] == "--ml" else LX
+    argv = [a for a in argv if a != "--ml"]
     run_id = int(argv[0])
     slug = argv[1] if len(argv) > 1 else None
-    print(json.dumps(collect(run_id, slug)))
+    print(json.dumps(collect(run_id, slug, family=family)))
     return 0
 
 

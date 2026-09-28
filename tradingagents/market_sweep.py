@@ -1215,7 +1215,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
         # a learned formula measures only TP > SL inside 80% of liquidation
         # (below), so its total counts only those — a bar that stops short of
         # 100% until the job snaps it there is a label disagreeing with its run
-        _pairs = [p for p in br.pairs_for(tf) if not br.is_learned(_sig)
+        _pairs = [p for p in br.pairs_for(tf) if not str(_sig).startswith("lx_")
                   or (p[1] > p[0] and (liq is None or p[0] * 100 < 0.8 * abs(liq)))]
         total_combos += len(_ths) * len(_pairs) * 2
     worker_write(pair=f"{coin} {tf}", done=0, total=total_combos,
@@ -1243,11 +1243,11 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                                                   br.sizings_for(FINE_TF)):
                 if liq is not None and sl * 100 >= liq:
                     continue
-                # A LEARNED formula ("Sep 25 Strat" or "Sep 27 ML") keeps its
-                # own rule on every door — the GitHub run and a row's UPDATE
-                # button alike: TP strictly above SL, and the stop inside 80%
-                # of the liquidation distance (sweep_shard.run_pair(learned=...))
-                if br.is_learned(sig) and (
+                # A LEARNED formula ("Sep 25 Strat") keeps its own rule on
+                # every door — the GitHub run and a row's UPDATE button alike:
+                # TP strictly above SL, and the stop inside 80% of the
+                # liquidation distance (sweep_shard.run_pair(learned=...))
+                if str(sig).startswith("lx_") and (
                         tp <= sl or (liq is not None
                                      and sl * 100 >= 0.8 * abs(liq))):
                     continue

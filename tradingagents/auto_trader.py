@@ -1720,17 +1720,6 @@ def signal_for(key: str, high: list, low: list, close: list,
         dirs = _sl.dirs_for(_spec, opens or [], high, low, close, volume or [],
                             ts or [], funding or [])
         return dirs[-1] if dirs else 0
-    # A SEP 27 ML model (signals_ml): the same `dirs_for` the grid measured
-    # it with, last bar only. An unknown ml_ name abstains.
-    if str(key).startswith("ml_"):
-        from tradingagents import signals_ml as _sm
-
-        _spec = _sm.spec_for(key)
-        if _spec is None:
-            return 0
-        dirs = _sm.dirs_for(_spec, opens or [], high, low, close, volume or [],
-                            ts or [], funding or [])
-        return dirs[-1] if dirs else 0
     # Same order as the backtest path. A rule the grid can pick and the runner
     # cannot emit is a strategy that trades zero times once deployed.
     for _name in sorted(CONF_SIGNALS, key=len, reverse=True):
@@ -3127,16 +3116,6 @@ def _dirs_for_backtest(key: str, high: list, low: list,
         if _spec is None:
             return out
         return _sl.dirs_for(_spec, opens or [], high, low, close, volume or [],
-                            ts or [], funding or [])
-    # A SEP 27 ML model (signals_ml), checked before every registry for the
-    # same reason as lx_: an unknown ml_ name abstains rather than guessing.
-    if str(key).startswith("ml_"):
-        from tradingagents import signals_ml as _sm
-
-        _spec = _sm.spec_for(key)
-        if _spec is None:
-            return out
-        return _sm.dirs_for(_spec, opens or [], high, low, close, volume or [],
                             ts or [], funding or [])
     # The expansion rules live in their own modules and are matched FIRST, by
     # the longest name, so `sr_break_x` cannot be swallowed by a shorter key.

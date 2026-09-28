@@ -396,6 +396,8 @@ export interface JobStatus {
   signal?: string;
   index_queued?: boolean;
   already_current?: boolean;
+  /** the job measured NOTHING, and why (an ml_ row this PC cannot rebuild) */
+  not_measured?: string;
   /** the exchange's cost at the press was NOT charged, and why
    *  (backtest_report.cost_note) */
   cost_note?: string;
@@ -1044,6 +1046,8 @@ export const api = {
    *  window, or the re-measure raised */
   window_skipped?: {
     no_candles?: number; outside_window?: number; failed?: number;
+    /** Sep 27 ML rows with fewer than 200 bars of clues before the window */
+    ml_history_short?: number;
   };
       /** a filtered count stops at COUNT_CAP: print "N+" */
       total_capped?: boolean;

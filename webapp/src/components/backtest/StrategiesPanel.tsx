@@ -553,6 +553,11 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
             bits.push(`${sk.outside_window} last backtested before this window`);
           }
           if (sk.failed) bits.push(`${sk.failed} the re-measure could not read`);
+          // a Sep 27 ML row whose replay would start with fewer than 200
+          // bars of clues behind it (market_sweep.ml_history_short)
+          if (sk.ml_history_short) {
+            bits.push(`${sk.ml_history_short} Sep 27 ML row(s) this PC holds too few candles before the window to re-check`);
+          }
           setSkipNote(bits.length
             ? `${bits.join(", ")} — those rows still show their whole history`
             : "");

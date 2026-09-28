@@ -2651,6 +2651,36 @@ def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
     # 5:19am New York the book is 14-18x its usual width, and the screen must
     # say why the row did not move with it
     cost_said = str(res.get("cost_note") or "") if isinstance(res, dict) else ""
+    # NOTHING WAS MEASURED (Task 8 harddev, item a): run_pair skipped every
+    # rule it was given (an ml_ row this PC cannot rebuild —
+    # market_sweep.ml_history_short) and wrote nothing, so the watermark
+    # did not move because nothing ran, not because the pair was current.
+    # "no new bars — it was already current" / already_current=True would
+    # be a false label on a pair nobody looked at; the one true sentence is
+    # why it was not measured. No index write either: nothing changed.
+    if isinstance(res, dict) and res.get("skipped") and not n_rows:
+        why = str(res.get("why") or "")
+        note = f"{what}: not measured: {why}"
+        # a retry of RESOLVE PENDING would skip the same way, so the press is
+        # resolved exactly as the measured path resolves it
+        with contextlib.suppress(Exception):
+            from tradingagents import pending_ledger as _pl
+
+            _pl.clear("backtest", [(sym, tf)])
+        print(f"[{kind}] {note}", flush=True)
+        _pub(running=False, rows=0, indexed=0, after_ms=before,
+             index_error="", index_queued=False, signal=signal,
+             already_current=False, not_measured=why, cost_note=cost_said,
+             measured_through="", finished=int(time.time()), note=note)
+        try:
+            from tradingagents import notifications as _nt
+
+            _nt.record("backtest", f"Not measured: {coin} {tf}", detail=note,
+                       ok=False, meta={"coin": coin, "tf": tf, "rows": 0,
+                                       "indexed": 0})
+        except Exception:                                      # noqa: BLE001
+            pass
+        return
     _pub(running=True, now=f"{coin} {tf}: indexing {n_rows:,} row(s)",
          rows=n_rows)
     # INDEX IT, and keep trying. `_connect` already waits 60 s for the write

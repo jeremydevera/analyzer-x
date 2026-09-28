@@ -27,9 +27,9 @@ on:
       coin_list:
         description: "Comma-separated symbols (BTC_USDT,ETH_USDT); empty = the whole market"
         default: ""
-      days:
-        description: "The unseen window in days (Backtest v2's window)"
-        default: "30"
+      # NO `days` INPUT: ml_shard pins DAYS=30 (the learner's unseen window,
+      # ml_learner.UNSEEN_DAYS) before sweep_shard reads it, so a box here
+      # would change nothing while saying it did (Task 8 harddev, item b)
       base:
         description: "Base margin $ per trade"
         default: "5"
@@ -82,7 +82,6 @@ jobs:
           SHARDS: ${{ github.event.inputs.shards }}
           TFS: ${{ github.event.inputs.timeframes }}
           COIN_LIST: ${{ github.event.inputs.coin_list }}
-          DAYS: ${{ github.event.inputs.days }}
           BASE_MARGIN: ${{ github.event.inputs.base }}
         run: python .github/scripts/ml_shard.py
 

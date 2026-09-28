@@ -163,7 +163,14 @@ def describe(spec: dict) -> str:
 
     gain: dict = {}
     for model in (spec.get("models") or {}).values():
-        for rank, name in enumerate(mt.importance(model, mf.FEATURES)):
+        if not isinstance(model, dict):
+            continue
+        # A MODEL FROM ANOTHER CLUE SET (an older VERSION had a 21st clue,
+        # funding) carries a longer `gain` vector than FEATURES names; its
+        # unknown indexes are skipped, never an IndexError on the collect
+        # (Task 8 harddev, item e)
+        known = dict(model, gain=list(model.get("gain") or [])[:len(mf.FEATURES)])
+        for rank, name in enumerate(mt.importance(known, mf.FEATURES)):
             gain[name] = gain.get(name, 0) + (len(mf.FEATURES) - rank)
     top = sorted(gain, key=lambda k: (-gain[k], k))[:4]
     side = {"both": "long and short", "long": "long only",

@@ -821,3 +821,176 @@ def test_a_machine_stopped_mid_coin_has_handed_over_every_finished_timeframe(
         m.ml_coin("TEST_USDT", out, formulas, report, {})
     assert saved == [(["ml_TEST_1h_1"], [("1h", 1)])]
     assert [json.loads(x)["tp"] for x in out.getvalue().splitlines()] == [2.0]
+
+
+# ------------------------------------------ Task 8 harddev, items (a)-(e)
+def test_an_update_that_measured_nothing_never_says_already_current(monkeypatch):
+    """(a): run_pair skipped the only rule it was given, wrote nothing, and so
+    the watermark did not move. That is not "already current" — the job says
+    only why it was not measured, and touches no index."""
+    from tradingagents import db_jobs as dj, market_sweep as msw
+    from tradingagents import notifications as nt, pending_ledger as pl
+    from tradingagents import rows_index as ri
+
+    why = ("this PC holds only 0 1h bars before the window; an ml_ model "
+           "needs 200 — the stored row came from GitHub's longer candles")
+    wrote = []
+    monkeypatch.setattr(dj, "_write", lambda path, payload: wrote.append(payload))
+    monkeypatch.setattr(msw, "pair_watermark", lambda *a, **k: 1_758_000_000_000)
+    monkeypatch.setattr(msw, "run_pair", lambda *a, **k: {
+        "coin": "TEST", "tf": "1h", "rows": [], "thin": 0, "why": why,
+        "skipped": ["ml_TEST_1h_1"], "bars": 700, "days": 29})
+    monkeypatch.setattr(ri, "index_pair", lambda *a, **k: pytest.fail(
+        "nothing was measured, so nothing may be re-filed"))
+    monkeypatch.setattr(nt, "record", lambda *a, **k: None)
+    monkeypatch.setattr(pl, "clear", lambda *a, **k: 0)
+    dj._run_pairbt({"coin": "TEST", "tf": "1h", "signal": "ml_TEST_1h_1",
+                    "days": 29}, kind="pairbt")
+    last = wrote[-1]
+    assert last["running"] is False
+    assert last["already_current"] is False
+    assert last["not_measured"] == why
+    assert "already current" not in last["note"]
+    assert last["note"] == f"TEST 1h · ml_TEST_1h_1: not measured: {why}"
+    assert last["measured_through"] == ""
+
+
+def test_the_row_update_sentence_says_not_measured(tmp_path):
+    """(a) on screen: `rowUpdateSentence` must not print "100% done" over a
+    job that measured nothing."""
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    src = (REPO / "webapp/src/lib/rowUpdate.ts").as_uri()
+    job = {"pair": "TEST 1h", "signal": "ml_TEST_1h_1", "rows": 0,
+           "not_measured": "this PC holds only 0 1h bars before the window"}
+    probe = tmp_path / "probe.mjs"
+    probe.write_text(
+        f'import {{ rowUpdateSentence }} from "{src}";\n'
+        f"console.log(JSON.stringify(rowUpdateSentence({json.dumps(job)}, "
+        f'"Sep 28, 2026 1:05am")));\n', encoding="utf-8")
+    got = subprocess.run([node, str(probe)], capture_output=True, text=True,
+                         encoding="utf-8")
+    assert got.returncode == 0, got.stderr
+    said = json.loads(got.stdout.strip().splitlines()[-1])
+    assert said["text"] == ("Not measured at Sep 28, 2026 1:05am: this PC holds "
+                            "only 0 1h bars before the window")
+    assert said["bad"] is True and "100% done" not in said["text"]
+
+
+def test_the_ml_workflow_has_no_days_box_that_does_nothing():
+    """(b): ml_shard pins DAYS=30; a `days` input would be a false label."""
+    wf = (REPO / ".github/workflows/ml.yml").read_text(encoding="utf-8")
+    inputs = wf.split("inputs:", 1)[1].split("permissions:", 1)[0]
+    assert "\n      days:" not in inputs
+    assert "inputs.days" not in wf and "DAYS:" not in wf
+    for kept in ("shards:", "timeframes:", "coin_list:", "base:"):
+        assert f"\n      {kept}" in inputs, kept
+
+
+def test_the_fingerprint_names_only_the_rules_that_were_measured(monkeypatch):
+    """(c): keltner measured, ml_TEST_1h_1 skipped (no 200 bars before the
+    window) — the state says one rule, never two."""
+    import tradingagents.auto_trader as at
+    from tradingagents import market_sweep as msw
+    from tradingagents.dataflows import mexc_futures as fx
+
+    df = _frame(700, "1h")
+    monkeypatch.setattr(msw, "FINE_TF", "")
+    monkeypatch.setattr(msw, "refresh_candles", lambda *a, **k: (df, 0, "cache"))
+    monkeypatch.setattr(fx, "funding_history", lambda *a, **k: [])
+    monkeypatch.setattr(fx, "liquidation_move_pct", lambda *a, **k: 4.5)
+    monkeypatch.setattr(fx, "book_cost", lambda *a, **k: {"slippage": 0.0001})
+    monkeypatch.setattr(at, "taker_fee", lambda *a, **k: 0.0004)
+    monkeypatch.setattr(msw, "charge_cost", lambda *a, **k: (0.0001, []))
+    monkeypatch.setattr(msw, "save_costs", lambda *a, **k: None)
+    monkeypatch.setattr(msw, "deployed_combos", lambda *a, **k: set())
+    monkeypatch.setattr(msw, "load_states", lambda *a, **k: {})
+    monkeypatch.setattr(msw, "worker_write", lambda *a, **k: None)
+    monkeypatch.setattr(msw, "merge_pair_rows", lambda *a, **k: 0)
+    monkeypatch.setattr(msw, "save_pair_rows", lambda *a, **k: 0)
+    saved = []
+    monkeypatch.setattr(msw, "save_states", lambda c, t, s: saved.append(dict(s)))
+    got = msw.run_pair("TEST_USDT", "1h", signals=["keltner", "ml_TEST_1h_1"],
+                       merge=True)
+    assert got["skipped"] == ["ml_TEST_1h_1"]
+    st = saved[-1]
+    assert st["__signals__"] == ["keltner"]
+    assert st["__version__"].startswith("signals1-"), st["__version__"]
+
+
+def _window_setup(monkeypatch, n):
+    from tradingagents import market_sweep as msw
+    from tradingagents import signals_ml as sml
+
+    now = pd.Timestamp.now().floor("h") - pd.Timedelta(days=1)
+    df = _frame(n, "1h", end=now)
+    sml.register({"ml_TEST_1h_1": _toy_spec()})
+    monkeypatch.setattr(msw, "cached_candles", lambda *a, **k: df)
+    monkeypatch.setattr(msw, "load_states", lambda *a, **k: {})
+    monkeypatch.setattr(msw, "load_costs", lambda *a, **k: {
+        "fee": 0.0004, "liq": 4.5, "funding": [], "slippage": 0.0001})
+    msw._DIRS_CACHE.clear()
+    return {"coin": "TEST", "tf": "1h", "signal": "ml_TEST_1h_1", "th": 0.0,
+            "tp": 2.0, "sl": 1.0, "sizing": "flat", "base": 5.0,
+            "last_ms": int(df["Date"].iloc[-1].value // 1_000_000)}
+
+
+def test_the_days_window_refuses_an_ml_row_it_cannot_rebuild(monkeypatch):
+    """(d): 300 hours on disk, a 5-day window replayed from 12 days back —
+    fewer than 200 bars of clues before it. Unrestated and COUNTED, never
+    re-measured on too few bars."""
+    from tradingagents import market_sweep as msw
+    from tradingagents import signals_ml as sml
+
+    try:
+        row = _window_setup(monkeypatch, 300)
+        win = msw.window_rows([row], 5)
+        assert not row.get("restated")
+        assert win["skipped"]["ml_history_short"] == 1
+        # the same rule, 2,000 hours deep: re-measured
+        row2 = _window_setup(monkeypatch, 2000)
+        win2 = msw.window_rows([row2], 5)
+        assert row2.get("restated") is True
+        assert win2["skipped"]["ml_history_short"] == 0
+    finally:
+        sml.reload()
+    empty = msw.window_rows([], 5)
+    assert set(empty["skipped"]) == set(win["skipped"])
+
+
+def test_the_months_window_refuses_an_ml_row_it_cannot_rebuild(monkeypatch):
+    """(d), months: api.restate_window replays through trades_for, whose
+    guard answers first — nothing is restated and no cost file is read."""
+    from tradingagents import api, stores
+    from tradingagents import market_sweep as msw
+
+    df = _frame(150, "1h")
+    row = {"id": "X", "coin": "TEST", "tf": "1h", "signal": "ml_TEST_1h_1",
+           "th": 0.0, "sl": 1.0, "tp": 2.0, "sizing": "flat", "bars": 100,
+           "last_ms": 0}
+    monkeypatch.setattr(msw, "cached_candles", lambda *a, **k: df)
+    monkeypatch.setattr(msw, "pair_rows", lambda *a, **k: [row])
+    monkeypatch.setattr(msw, "load_states", lambda *a, **k: {})
+    monkeypatch.setattr(msw, "load_costs", lambda *a, **k: pytest.fail(
+        "the refusal must come before any cost read"))
+    assert api.restate_window(row, ["2026-09"], store=stores.V1) == {}
+
+
+def test_an_old_model_with_a_longer_gain_vector_still_describes():
+    """(e): a version-1 model carried a 21st clue (funding); describe skips
+    the index FEATURES does not name instead of raising IndexError."""
+    from tradingagents import ml_features as mf
+    from tradingagents import signals_ml as sml
+
+    n = len(mf.FEATURES)
+    gain = [0.0] * (n + 1)
+    gain[n] = 9.0                  # the clue this version no longer has
+    gain[0] = 1.0                  # ret_1
+    spec = {"sides": "long", "q": 0.9,
+            "models": {"long": {"gain": gain}, "short": "not a model"}}
+    said = sml.describe(spec)
+    assert said.endswith("reads most: ret_1"), said

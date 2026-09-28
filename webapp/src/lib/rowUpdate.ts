@@ -23,6 +23,10 @@ export interface RowUpdateJob {
   /** the exchange's cost right now was NOT charged, and why (Sep 25, 2026:
    *  a 5:19am New York press turned #9GNPMXFF from 94% to 0 wins) */
   cost_note?: string;
+  /** NOTHING WAS MEASURED, and why — an ml_ row this PC cannot rebuild
+   *  (market_sweep.ml_history_short). "100% done" over a job that measured
+   *  nothing would be a false label (Sep 27 ML, Task 8 harddev item a). */
+  not_measured?: string;
 }
 
 // SHORT. Operator, Sep 25, 2026, after reading "Done at Sep 25, 2026 6:37pm —
@@ -44,6 +48,13 @@ export function rowUpdateSentence(
   const cost = j.cost_note ? ` · ${j.cost_note}` : "";
   if (j.error) {
     return { text: `Failed${at}: ${j.error}`, bad: true, detail: j.error };
+  }
+  if (j.not_measured) {
+    return {
+      text: `Not measured${at}: ${j.not_measured}`,
+      bad: true,
+      detail: `Nothing was re-tested for ${what}: ${j.not_measured}`,
+    };
   }
   if (j.index_error && j.index_queued) {
     // measured fine; the searchable table was busy, and the pair is next

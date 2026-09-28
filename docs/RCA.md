@@ -172,6 +172,82 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-28-F — Sep 27 ML: an UPDATE that measured nothing said "already current", and four other false labels found in review
+
+**CEO**
+
+* Nothing reached your screen yet: a last review of the Sep 27 ML work found
+  five places where a Sep 27 ML row would have been described wrongly — the
+  worst was the row's UPDATE button saying "100% done, no new candles" for a
+  row it had not checked at all.
+* Why: the new ML rows need 200 candles of history before they can be
+  re-checked, and a few screens and one GitHub setting did not know that yet.
+* What stops it now: each of those places now says "not measured" and why,
+  or leaves the row alone and counts it, and each has a test.
+
+**DEV**
+
+* `db_jobs.py:2661` `_run_pairbt` → `run_pair` returned `skipped` with 0
+  rows → the watermark did not move → `already_current=bool(after == before)`
+  published True; `market_sweep.py:1217` stamped `ver` before the ml_ skip;
+  `window_rows` (`market_sweep.py:2304`) re-measured ml_ rows with `lead` < 200
+  bars; `signals_ml.describe` → `ml_trees.importance` indexed `names[j]` past
+  `FEATURES` (20); `ml.yml` offered a `days` box `ml_shard` overrides.
+* Invariants broken: **a label is derived from what ran, never from what did
+  not move** (label-must-match-data) and **one guard, every door** (the
+  `ml_history_short` guard lived in `trades_for` and `run_pair` only).
+* Guards: `test_an_update_that_measured_nothing_never_says_already_current`,
+  `test_the_row_update_sentence_says_not_measured`,
+  `test_the_ml_workflow_has_no_days_box_that_does_nothing`,
+  `test_the_fingerprint_names_only_the_rules_that_were_measured`,
+  `test_the_days_window_refuses_an_ml_row_it_cannot_rebuild`,
+  `test_the_months_window_refuses_an_ml_row_it_cannot_rebuild`,
+  `test_an_old_model_with_a_longer_gain_vector_still_describes`.
+
+**SAW** — NEVER HAPPENED YET on the operator's screen: found by the Task 8
+harddev review of the Sep 27 ML branch on `Sep 28, 2026`, before any ml_ row
+was updated or windowed by hand.
+
+**TIMELINE** (each reproduced by its guard on HEAD f3c6e30b77e1, then green)
+
+1. UPDATE on `ml_TEST_1h_1` with 0 bars before the window: `run_pair` skipped
+   it, wrote 0 rows, and the job published `already_current: true` with the
+   note "TEST 1h · ml_TEST_1h_1: 0 row(s), N indexed · no new bars — it was
+   already current · not measured: this PC holds only 0 1h bars…"; the row
+   line printed "100% done — finished at Sep 28, 2026 1:05am".
+2. `run_pair(signals=["keltner", "ml_TEST_1h_1"], merge=True)` measured 1
+   rule and saved `__version__ = "signals2-th1"` beside `__signals__ =
+   ["keltner"]`.
+3. `window_rows` over 300 hours, a 5-day window: the replay began at bar 0
+   (`lead` = 0 < 200) and the ml_ row came back `restated: True` — a quieter
+   strategy under the stored row's name.
+4. `describe` on a model with a 21-long `gain` (FEATURES is 20):
+   `IndexError: tuple index out of range` at `ml_trees.py:134`.
+5. `ml.yml` input `days` (default 30) → `DAYS` env → overwritten to "30" by
+   `ml_shard.py:42` before `sweep_shard` reads it: any other value did nothing.
+
+**ROOT CAUSE** — the `ml_history_short` guard and the "what was measured"
+facts were added at two doors (`trades_for`, `run_pair`); the UPDATE job's
+note, the state fingerprint, the days window and `describe` read the request
+or the watermark instead.
+
+**WHY IT WAS NOT CAUGHT** — every Sep 27 ML test asserted on the ROWS a
+path produced; a path that produces no rows (the skipped UPDATE) had nothing
+to assert against, and the F5 test stopped at `run_pair`'s return instead of
+driving the job that turns it into words. The window path had no ml_ test at
+all, and `describe` was only ever called on models this version had fitted.
+
+**COST** — none: no money, no ml_ row armed; found before the operator used
+these screens on an ml_ row.
+
+**FIX** — this commit.
+
+**GUARD** — the seven tests named in DEV, in `tests/test_sep27_ml.py`; six
+fail on f3c6e30b77e1 and pass here (the months window was already guarded by
+`trades_for` and is now pinned).
+
+---
+
 ## RCA-2026-09-28-E — a one-feature commit shipped another session's unfinished code to main on both accounts
 
 **CEO**

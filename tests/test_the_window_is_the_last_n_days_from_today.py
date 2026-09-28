@@ -242,4 +242,5 @@ def test_zero_days_still_changes_nothing(offline):
     r = _row()
     got = msw.window_rows([r], 0)
     assert r.get("restated") is not True
-    assert got["skipped"] == {"no_candles": 0, "outside_window": 0, "failed": 0}
+    assert got["skipped"] == {"no_candles": 0, "outside_window": 0, "failed": 0,
+                              "ml_history_short": 0}

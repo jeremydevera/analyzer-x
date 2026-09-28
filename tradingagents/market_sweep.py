@@ -1214,6 +1214,14 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
         sigs = [s for s in sigs if s not in ml_short]
         sig_set -= set(ml_short)
         skipped_why = next(iter(ml_short.values()))
+        # THE FINGERPRINT NAMES ONLY WHAT WAS MEASURED (Task 8 harddev, item
+        # c): `ver` was counted before the skip, so a pass that measured 1 of
+        # 2 rules stamped "signals2" — a true count under a false label. The
+        # reset decision above still read the request (it must, it decides
+        # the resume point the skip is judged by); the stamp reads the set.
+        ver = (f"signals{len(sig_set | had_sigs) if merge else len(sig_set)}"
+               f"-th{thresholds}")
+        states["__version__"] = ver
         if not sigs:
             worker_write(pair=f"{coin} {tf}", done=0, total=0, pct=100.0,
                          state="skipped")
@@ -2112,7 +2120,8 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
         # request with a window and raised KeyError on the one without.
         return {"rows": rows, "first": "", "last": "",
                 "first_ms": 0, "last_ms": 0, "groups": 0,
-                "skipped": {"no_candles": 0, "outside_window": 0, "failed": 0},
+                "skipped": {"no_candles": 0, "outside_window": 0, "failed": 0,
+                            "ml_history_short": 0},
                 "straddled": 0}
     cap = int(group_max or WINDOW_GROUP_MAX)
     # ANOTHER STORE (Backtest v2): see trades_for — rows/states/costs under
@@ -2144,7 +2153,10 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
     # which is the label-does-not-match-its-data failure this repo keeps
     # paying for. Counted and returned, so the caller can say so out loud
     # (rule 20).
-    skipped = {"no_candles": 0, "outside_window": 0, "failed": 0}
+    # `ml_history_short`: an ml_ row whose replay would start with fewer than
+    # ml_features.MAX_WINDOW bars of clues behind it (see below)
+    skipped = {"no_candles": 0, "outside_window": 0, "failed": 0,
+               "ml_history_short": 0}
     straddled = 0
     for (coin, tf, sig, th), grp in groups.items():
         sym = f"{coin}_USDT"
@@ -2283,6 +2295,17 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                 # of vanishing (WINDOW_LEAD_DAYS).
                 lead_lo = lo - WINDOW_LEAD_DAYS * MS_PER_DAY
                 lead = next((i for i in range(stop) if int(ms[i]) >= lead_lo), 0)
+                # AN ml_ ROW NEEDS ITS 200 BARS OF CLUES BEFORE THE REPLAY,
+                # the same guard as trades_for (Task 8 harddev, item d): with
+                # fewer, the model abstains on the window's first bars and the
+                # "last N days" figure is a quieter strategy shown under the
+                # stored row's name. Left unrestated and COUNTED, like every
+                # other row this path cannot re-measure.
+                if ml_history_short(sig, tf, lead):
+                    skipped["ml_history_short"] += sum(
+                        1 for r in grp
+                        if (int(r.get("last_ms") or 0) or wm or int(ms[-1])) == end)
+                    continue
                 fr = full.iloc[lead:stop].reset_index(drop=True)
                 frames[end] = (fr, dirs[lead:stop], start, stop, lead)
                 f0ms, l0ms = int(ms[start]), int(ms[stop - 1])

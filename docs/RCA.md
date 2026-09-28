@@ -172,6 +172,53 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-28-A — every GitHub backtest run was titled "(15m / 30m)" whatever it measured
+
+**CEO**
+
+* On GitHub, the update you asked for on Sep 28 (15m, 30m, 1h and 4h, on
+  Backtest v2) was listed as "Market sweep (15m / 30m)", on both accounts.
+* Why: the title was the workflow's fixed name, written when it only ever
+  measured those two timeframes.
+* What stops it now: each run's title is built from what that run was asked
+  to measure — timeframes, v2 or not, update or full.
+
+**DEV**
+
+* `.github/workflows/sweep.yml:1` `name: Market sweep (15m / 30m)` with no
+  `run-name:`, so GitHub titles every run with the workflow name;
+  `cloud_sweep.WORKFLOW` looks the file up by that name, so it cannot change.
+* Invariant broken: **a label is derived from the data it describes**
+  (label-must-match-data) — a run title is a label.
+* Guard: `tests/test_cloud_sweep.py::test_a_sweep_run_is_titled_by_what_it_measures`.
+
+**SAW** — found while watching UPDATE ALL BACKTESTS for the operator, not
+reported: runs 36446487985 (jeremydvera) and 36446504224 (jeremydevera),
+`Sep 28, 2026 11:49am`, dispatched with `timeframes=15m,30m,1h,4h`, `res=1m`,
+`mode=update`, both titled "Market sweep (15m / 30m)".
+
+**TIMELINE**
+
+1. The workflow was named for its first job, two timeframes.
+2. It grew to five timeframes, then v2 (`res`), then update mode; the name
+   stayed.
+3. `Sep 28, 2026 11:49am` — two runs of four timeframes each, titled with two.
+4. Fixed: `run-name` from `inputs.timeframes`, `inputs.res`, `inputs.mode`.
+
+**ROOT CAUSE** — a fixed string used as the title of a variable thing.
+
+**WHY IT WAS NOT CAUGHT** — every check of this workflow is about what the
+run DOES (inputs, shards, artifacts); none read what GitHub SHOWS for it, and
+the only test naming the title stubbed it as a literal.
+
+**COST** — none in money; a run list that misdescribes its runs.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_cloud_sweep.py`.
+
+---
+
 ## RCA-2026-09-28-A — a re-learned coin would have kept the old formula's "passed old-data test" mark
 
 NEVER HAPPENED YET — caught before the second learning run was started.

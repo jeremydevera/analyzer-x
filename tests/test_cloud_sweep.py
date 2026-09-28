@@ -357,3 +357,20 @@ def test_every_dispatch_path_asks_for_every_contract():
         assert "min_days=" in inspect.getsource(fn), (
             f"{fn.__name__} must pass min_days explicitly -- a default is a "
             f"cap nobody chose")
+
+
+def test_a_sweep_run_is_titled_by_what_it_measures():
+    """Sep 28, 2026: an UPDATE of 15m,30m,1h,4h on Backtest v2 showed on
+    GitHub as "Market sweep (15m / 30m)" — the workflow's fixed name. The run
+    title now comes from the run's own inputs; the workflow NAME is untouched
+    because cloud_sweep.WORKFLOW finds the file by it."""
+    from pathlib import Path
+
+    from tradingagents import cloud_sweep as cs
+
+    text = (Path(__file__).resolve().parents[1]
+            / ".github/workflows/sweep.yml").read_text(encoding="utf-8")
+    assert text.splitlines()[0] == f"name: {cs.WORKFLOW}"
+    run_name = text[text.index("run-name:"):text.index("\non:")]
+    for field in ("inputs.timeframes", "inputs.res == '1m'", "inputs.mode"):
+        assert field in run_name, field

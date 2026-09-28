@@ -5110,6 +5110,56 @@ def spawn_indexer() -> int | None:
     return proc.pid
 
 
+def file_after_collect() -> str:
+    """Bring THIS store's table up to its pair files after a cloud collect,
+    and say what was done — one sentence the collect's note carries.
+
+    WHY IT EXISTS (RCA-2026-09-28-C). Backtest v2 has no indexer process
+    (`status()["filed_by"] == "job"`), and since Sep 21, 2026 the job that
+    used to file its rows — the local v2 sweep — no longer runs: v2 measures
+    on GitHub, and its rows arrive through the live door and `collect_v2`,
+    neither of which filed anything. Sep 28, 2026, after UPDATE ALL
+    BACKTESTS: 3,854 pairs on disk newer than the table, which printed the
+    pre-update numbers and told the operator to press UPDATE again.
+
+    SIZE DECIDES THE METHOD, measured: `sync` inserts with the table's
+    indexes in place, 1.5 pairs/min on this disk (43 hours for 3,854); a
+    fresh `rebuild` loaded all 5,004 v2 pairs in 73 minutes on Sep 24, 2026
+    and the page keeps reading the old file until the swap. So up to
+    BIG_FILL pairs are synced here, and more start one detached rebuild —
+    never two, and never while a rebuild of this file is already going.
+    """
+    import os
+    import subprocess
+    import sys
+
+    try:
+        todo = len(stale_pairs())
+    except Exception as exc:                                   # noqa: BLE001
+        return f"could not count the pairs waiting for the table: {exc}"
+    if not todo:
+        return "the table holds every measured pair"
+    if todo <= BIG_FILL:
+        got = sync(force=True)
+        return f"filed {int(got.get('pairs') or 0):,} pair(s) into the table"
+    prog = rebuild_progress(DB_PATH)
+    if prog.get("running"):
+        return (f"{todo:,} pair(s) wait for the table — a rebuild of it is "
+                f"already running ({prog.get('pairs_done', 0):,} of "
+                f"{prog.get('pairs_total', 0):,})")
+    held = write_available()
+    if held:
+        return f"{todo:,} pair(s) wait for the table — {held}"
+    log_path = Path(DB_PATH).with_name("rows_rebuild.log")
+    with open(log_path, "a", encoding="utf-8", errors="replace") as log:
+        proc = subprocess.Popen(
+            [sys.executable, "-u", "-m", "tradingagents.rows_index", "--rebuild"],
+            stdout=log, stderr=subprocess.STDOUT, **portable.DETACHED,
+            env={**os.environ, "PYTHONUNBUFFERED": "1"})
+    return (f"filing {todo:,} pair(s) into a fresh table (pid {proc.pid}, about "
+            f"70 minutes) — the page shows the earlier numbers until it swaps in")
+
+
 # HOW LONG TO WAIT BEFORE ASKING FOR THE DATABASE AGAIN.
 #
 # THE INDEXER MAY NOT DIE (Sep 14, 2026). `main()` called `ensure()` bare, so

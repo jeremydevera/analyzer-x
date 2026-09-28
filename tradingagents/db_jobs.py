@@ -2487,6 +2487,20 @@ def _run_collect(spec: dict, kind: str = "collect") -> None:
                            "finished": int(time.time()), "note": note,
                            **{k: got.get(k) for k in
                               ("rows", "pairs", "coins", "skipped", "artifacts")}})
+    if kind.endswith("_v2"):
+        # THE TABLE IS PART OF THE COLLECT (RCA-2026-09-28-C): Backtest v2 has
+        # no indexer, so a collect that only writes pair files leaves the
+        # screen on the previous numbers. AFTER the progress says finished,
+        # so the rebuild this may start does not see this job as a writer.
+        try:
+            from tradingagents import rows_index as _ri
+
+            filed = _ri.file_after_collect()
+        except Exception as exc:                               # noqa: BLE001
+            filed = f"the table was NOT filed: {type(exc).__name__}: {exc}"
+        note = f"{note} · {filed}"
+        print(f"[collect] {filed}", flush=True)
+        _write(f["progress"], {**_read(f["progress"]), "note": note})
     try:
         from tradingagents import notifications as _nt
 

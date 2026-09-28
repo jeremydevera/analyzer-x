@@ -172,6 +172,67 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-28-C — Backtest v2's table did not show GitHub's results: nothing filed them, and the screen said to press UPDATE again
+
+**CEO**
+
+* After UPDATE ALL BACKTESTS on Sep 28, the new results were saved on this
+  PC but the Backtest v2 table kept showing the earlier numbers for 3,854
+  coin-timeframes, and its note told you to press UPDATE again — which you
+  had just done.
+* Why: since v2 moved to GitHub on Sep 21 its results come home by a
+  different road, and the step that puts them into the table was left on
+  the old road.
+* What stops it now: every time GitHub's results finish copying in, the
+  table is brought up to date (a quick top-up for a few coins, a fresh
+  rebuild for a whole-market run), and the note says which is happening.
+
+**DEV**
+
+* `db_jobs._run_backtest` (the local v2 sweep, `kind.endswith("_v2")`) was
+  the only caller of `rows_index.sync` for the v2 store; since
+  `_run_btupdate_v2` / `backtest_v2` dispatch to GitHub, rows land via
+  `live_ingest.land` and `db_jobs._run_collect("collect_v2")`, neither of
+  which filed. `status()` said `filed_by: "job"`, `stale: 3854`.
+* Invariant broken: **the UI is the source of truth, so it is kept current**
+  (Sep 14 rule) — and a note must name the action that works: "press UPDATE
+  again" was the action that had just failed.
+* Guard: `tests/test_a_v2_collect_files_its_table.py` (7).
+
+**SAW** — found while watching UPDATE ALL BACKTESTS for the operator:
+`/api/v2/strategies` at `Sep 28, 2026 ~2:00pm` returned
+`index: {pairs_on_disk: 5006, stale: 3854, filed_by: "job"}` while the live
+door had landed 3,966 pairs since 11:50am.
+
+**TIMELINE**
+
+1. `Sep 17, 2026` — v2 runs on this PC; its job files its own rows at the end.
+2. `Sep 21, 2026` — v2 moves to GitHub; the filing stays in the local job.
+3. `Sep 24, 2026` — a hand-run rebuild fills the table (49,503,932 rows,
+   73 min), which hid the gap.
+4. `Sep 28, 2026 11:49am → 1:29pm` — UPDATE ALL BACKTESTS; 3,966 pairs land;
+   the table files none of them.
+5. Fixed: `rows_index.file_after_collect()` at the end of every v2 collect —
+   `sync` up to `BIG_FILL` (500) pairs, one detached `--rebuild` above it,
+   never two, never over a held lock; the panel's sentence follows it.
+
+**ROOT CAUSE** — the filing step belonged to a job, and the job stopped
+being the one that brings rows home.
+
+**WHY IT WAS NOT CAUGHT** — `test_v2_measures_on_github.py` proves the rows
+LAND in the v2 store; nothing asked whether they reach the TABLE, and the Sep
+24 rebuild made the table look current for four days. A row that is on disk
+and not on screen passes every store test.
+
+**COST** — none in money; the Backtest v2 table read the pre-update numbers
+for 3,854 coin-timeframes.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_a_v2_collect_files_its_table.py`.
+
+---
+
 ## RCA-2026-09-28-B — a Backtest v2 UPDATE continued some pairs with hour-candle exits and labelled them minute-exact
 
 **CEO**

@@ -1191,9 +1191,13 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
         ) : null}
         {idx && indexTodo > 0 && (store === "v2" || idx.filed_by === "job") ? (
           <span className="text-theme-xs text-warning-600 dark:text-warning-400 text-right">
+            {/* It said "press BACKTEST or UPDATE ALL BACKTESTS again" — the
+                operator did, Sep 28, 2026, and the table stayed 3,854 pairs
+                behind: nothing filed GitHub's rows (RCA-2026-09-28-C). */}
             {`${indexTodo.toLocaleString()} pair(s) measured but not in this table yet — `
-              + `the v2 backtest files its rows when it finishes; if it was stopped, `
-              + `press BACKTEST or UPDATE ALL BACKTESTS again`}
+              + (idx.rebuild?.running
+                ? `a fresh table is being built (${(idx.rebuild.pairs_done ?? 0).toLocaleString()} of ${(idx.rebuild.pairs_total ?? 0).toLocaleString()} pairs); this one keeps the earlier numbers until it swaps in`
+                : `they are filed when GitHub's results finish copying in`)}
           </span>
         ) : idx && indexTodo > 0 && idx.indexer_off ? (
           /* SWITCHED OFF BY THE OPERATOR — not an alarm and not a button:

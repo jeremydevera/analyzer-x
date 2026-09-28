@@ -534,3 +534,49 @@ def test_the_ml_workflow_artifacts_are_the_ones_the_collect_downloads():
     wf = (REPO / ".github/workflows/ml.yml").read_text(encoding="utf-8")
     for pat in lc.ML.artifacts:
         assert pat.rstrip("*") in wf
+
+
+# ------------------------------------------------------------ the machines
+def test_an_ml_measurement_writes_rows_only_and_only_tp_above_sl(monkeypatch):
+    import importlib.util
+    import io
+    import sys
+
+    from tradingagents import signals_ml as sml
+
+    monkeypatch.setenv("RES", "1m")
+    monkeypatch.setenv("MODE", "full")
+    spec = importlib.util.spec_from_file_location(
+        "sweep_shard_ml", REPO / ".github/scripts/sweep_shard.py")
+    ss = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, "sweep_shard_ml", ss)
+    spec.loader.exec_module(ss)
+    now = pd.Timestamp.now("UTC").tz_localize(None).floor("h")
+    df = _frame(1100, "1h", end=now)
+    sml.register({"ml_TEST_1h_1": _toy_spec()})
+    wrote = []
+    monkeypatch.setattr(ss, "write_state", lambda *a, **k: wrote.append(1))
+    monkeypatch.setattr(ss, "post_pair", lambda *a, **k: wrote.append(2))
+    out = io.StringIO()
+    try:
+        ss.run_pair("TEST_USDT", "1h", out, signals=["ml_TEST_1h_1"],
+                    learned={"fee": 0.0004, "liq": 4.5, "fund": [], "slip": 0.0001,
+                             "df": df, "fine": None})
+    finally:
+        sml.reload()
+    rows = [json.loads(x) for x in out.getvalue().splitlines() if x.strip()]
+    assert rows and wrote == []
+    assert not [r for r in rows if r.get("pair_done")]
+    assert all(r["tp"] > r["sl"] and r["sl"] < 0.8 * 4.5 for r in rows)
+    assert {r["signal"] for r in rows} == {"ml_TEST_1h_1"}
+
+
+def test_the_ml_machines_claim_one_coin_at_a_time_and_hand_over_what_they_finished():
+    src = (REPO / ".github/scripts/ml_shard.py").read_text(encoding="utf-8")
+    assert "stream = ss.coin_stream(coins, t0)" in src
+    assert "list(ss.coin_stream" not in src
+    assert "ml.learn_pair(" in src and "sml.register(" in src
+    wf = (REPO / ".github/workflows/ml.yml").read_text(encoding="utf-8")
+    assert "python .github/scripts/ml_shard.py" in wf
+    assert wf.count("if: always()") >= 2
+    assert "ml-rows-" in wf and "ml-models-" in wf

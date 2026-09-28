@@ -227,3 +227,31 @@ def test_the_groups_setting_survives_a_bash_shell():
                          capture_output=True, text=True, timeout=60,
                          env={**os.environ, "PY": _sys.executable, "PROBE": probe})
     assert out.stdout.strip() == "sep25", out.stderr[-300:]
+
+
+def test_a_coin_nobody_claimed_is_picked_up_on_the_next_walk(rs, monkeypatch):
+    """Run 36488093731: fast coins, unanswered claims, and 261 of 1,067 coins
+    claimed by nobody. A second walk takes what is still untaken."""
+    walks = [["A_USDT", "B_USDT"], ["C_USDT"], []]
+    calls = []
+
+    def _stream(coins, t0):
+        calls.append(1)
+        yield from walks[len(calls) - 1]
+
+    monkeypatch.setattr(rs.ss, "coin_stream", _stream)
+    monkeypatch.setattr(rs.ss.board, "enabled", True)
+    assert list(rs.board_passes([], 0)) == ["A_USDT", "B_USDT", "C_USDT"]
+    assert len(calls) == 3, "stops once a walk claims nothing"
+
+
+def test_without_a_board_one_walk_is_the_whole_slice(rs, monkeypatch):
+    calls = []
+
+    def _stream(coins, t0):
+        calls.append(1)
+        yield "A_USDT"
+
+    monkeypatch.setattr(rs.ss, "coin_stream", _stream)
+    monkeypatch.setattr(rs.ss.board, "enabled", False)
+    assert list(rs.board_passes([], 0)) == ["A_USDT"] and len(calls) == 1

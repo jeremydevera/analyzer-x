@@ -64,6 +64,7 @@ def merge(folder) -> dict:
                     c.setdefault("group", group_of(c["signal"]))
                     combos.setdefault(c["id"], c)
     starts = set()
+    by_groups: dict = {}
     for f in reports:
         with open(f, encoding="utf-8") as fh:
             r = json.load(fh)
@@ -77,12 +78,19 @@ def merge(folder) -> dict:
         for k in ("start", "tz", "cfg"):
             totals[k] = totals[k] or r.get(k)
         starts.add(r.get("start"))
+        # WHICH COINS each set of groups was measured on, from the pairs that
+        # actually had bars and rules — never a sum of runs' coin counts,
+        # which read "1,873 of 1,067 coins" once two runs were merged
+        key = ",".join(r.get("groups") or ["classic", "preset"])
+        by_groups.setdefault(key, set()).update(
+            str(k).rsplit(" ", 1)[0] for k in (r.get("spans") or {}))
         # a report from before `groups` existed walked the shared rules only
         for g in (r.get("groups") or ["classic", "preset"]):
             if g not in totals["groups"]:
                 totals["groups"].append(g)
     if len(starts) > 1:
         raise RuntimeError(f"these runs start on different days: {sorted(starts)}")
+    totals["coins_by_groups"] = {k: len(v) for k, v in by_groups.items()}
     return {"combos": list(combos.values()), "totals": totals}
 
 

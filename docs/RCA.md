@@ -247,6 +247,75 @@ both in `tests/test_sep27_ml.py`; both fail on the pre-fix file.
 
 ---
 
+## RCA-2026-09-28-I — the learned-formula replay left 196 coins untested: GitHub dropped their claims and no machine came back for them
+
+**CEO**
+
+* The "what would the watcher have made" replay said it had added the Sep 25
+  Strat formulas for every coin, and it had tested only 599 of the 795 coins
+  that have them.
+* Why: each GitHub machine asks for one coin at a time, those coins took
+  seconds, GitHub stopped answering some of the asks, and every machine had
+  already walked past the coins it skipped.
+* What stops it now: a replay machine walks the list again until nothing is
+  left untaken, the page counts coins per group from what was really tested,
+  and the 196 were re-run on their own.
+
+**DEV**
+
+* `.github/scripts/replay_shard.py:main` took coins from ONE pass of
+  `sweep_shard.coin_stream`, which logs `claim of GPNSTOCK_USDT got no answer
+  — skipping it, not stopping` and moves on; nothing walks the board again.
+* Invariant broken: **a coin a machine could not claim must still be claimed
+  by somebody** — "skipping" is only safe while another walk is still coming.
+* Guard: `tests/test_the_replay_shard.py::test_a_coin_nobody_claimed_is_picked_up_on_the_next_walk`
+  and `tests/test_replay_collect.py::test_coins_are_counted_per_group_set_never_summed_across_runs`.
+
+**SAW** — nothing yet. Found while checking run 36488093731 before its
+results went on the page: its reports said 806 coins done of a 1,067 board.
+
+**TIMELINE**
+
+1. `Sep 28, 2026 5:44pm` — run 36488093731 dispatched with `groups=sep25,sep27ml`
+   on 20 machines. A learned-only coin costs seconds, so twenty machines ask
+   for coins many times a minute.
+2. `5:53pm` onward — shard 7 alone logs "got no answer — skipping it" for
+   FUJIKURASTOCK, GPNSTOCK, GPS, GP, GTLBSTOCK, G, HAJIMI, INIT and more; four
+   machines finish with 0 coins.
+3. `6:14pm` — the run ends "success" on all 21 jobs with 806 of 1,067 coins
+   claimed; 196 of the 795 coins with committed formulas were never tested.
+   Merged as it was, the page would have read 54 switched on, +$203.83, and
+   "1,873 of 1,067 coins" (the two runs' counts added together).
+4. `6:15pm` — run 36491289612 re-runs only the 196 (coin_list, 5 machines).
+   The run with the market grid (36478015729) had 32 unanswered claims and
+   still reached 1,067 of 1,067: its coins take minutes, so other machines
+   were still walking when the skipped ones came round.
+
+**ROOT CAUSE** — a single walk of a claim board whose "no answer" path skips
+the coin, run on work fast enough that every walk ends before a retry could.
+
+**WHY IT WAS NOT CAUGHT** — every claim-board test and every earlier run
+measured SLOW coins (a market-grid coin is minutes), where another machine
+always comes past a skipped coin later; the daily v2 update of Sep 28 had 5
+unanswered claims and all 5 were claimed later. Speed was the variable and no
+test varied it. The coin count on the page was a SUM, so two runs could not
+disagree with it.
+
+**COST** — none: found before the merged replay was published.
+
+**FIX** — this commit: `replay_shard.board_passes` (up to 3 walks, stops
+when a walk claims nothing, one walk without a board); `replay_collect`
+counts coins per set of groups from the pairs really measured
+(`coins_by_groups`), and the page prints those. `sweep_shard.coin_stream` is
+unchanged: the market grid's slow coins are re-walked by other machines, and
+its callers are other sessions' work.
+
+**GUARD** — `tests/test_the_replay_shard.py::test_a_coin_nobody_claimed_is_picked_up_on_the_next_walk`,
+`tests/test_the_replay_shard.py::test_without_a_board_one_walk_is_the_whole_slice`,
+`tests/test_replay_collect.py::test_coins_are_counted_per_group_set_never_summed_across_runs`.
+
+---
+
 ## RCA-2026-09-28-G — Sep 27 ML: a re-collected model could be answered with the old model's trades, and the forecast walked ml_ rows on no history
 
 **CEO**

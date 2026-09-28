@@ -225,6 +225,31 @@ def coin_costs(sym: str, usual: dict) -> dict:
             "rt": br.round_trip_cost(fee, {"slippage": slip})}
 
 
+PASSES = 3
+
+
+def board_passes(coins, t0):
+    """Every coin this machine claims, over up to PASSES walks of the board.
+
+    One walk is not enough when coins are FAST. On run 36488093731 (the
+    learned formulas only, Sep 28, 2026) a coin took seconds, GitHub left
+    claims unanswered, `coin_stream` skipped each one ("claim of GPNSTOCK_USDT
+    got no answer — skipping it, not stopping"), and every machine had
+    already walked past it: 261 of 1,067 coins were claimed by nobody,
+    196 of them coins with learned formulas. A later walk sees the board as
+    it is THEN and claims only what is still untaken, so a coin somebody
+    measured is never claimed twice. Without a board (local runs) one walk is
+    the whole static slice, so there is nothing to repeat."""
+    for n in range(PASSES):
+        got = 0
+        for sym in ss.coin_stream(coins, t0):
+            got += 1
+            yield sym
+        if got == 0 or not ss.board.enabled:
+            return
+        ss.log(f"pass {n + 1} of the board claimed {got} coin(s); walking it again")
+
+
 def _save(stats: dict) -> None:
     tmp = REPORT_OUT + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
@@ -246,7 +271,7 @@ def main() -> int:
     ss.report.board = len(coins)
     failed: dict = {}
     with open(OUT, "w", encoding="utf-8") as out:
-        stream = ss.coin_stream(coins, t0)
+        stream = board_passes(coins, t0)
         queue: list = []
         while True:
             sym = next(stream, None)

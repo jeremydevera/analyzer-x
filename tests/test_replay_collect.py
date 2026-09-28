@@ -125,3 +125,18 @@ def test_runs_that_start_on_different_days_are_refused(tmp_path):
     rep.write_text(json.dumps({**d, "start": "2026-09-05"}))
     with pytest.raises(RuntimeError, match="different days"):
         rc.merge([str(a), str(b)])
+
+
+def test_coins_are_counted_per_group_set_never_summed_across_runs(tmp_path):
+    a, b, c = (tmp_path / n for n in ("r1", "r2", "r3"))
+    for d in (a, b, c):
+        d.mkdir()
+    _machine(a, 0, [], {"GPN 1h": [0, 5], "KKR 1h": [0, 5], "KKR 15m": [0, 5]}, 1)
+    _machine(b, 0, [], {"GPN 1h": [0, 6]}, 1)
+    _machine(c, 0, [], {"FAST 1h": [0, 6]}, 1)
+    for d in (b, c):
+        rep = d / "replay-0" / "replay-report-0.json"
+        rep.write_text(json.dumps({**json.loads(rep.read_text()),
+                                   "groups": ["sep25", "sep27ml"]}))
+    got = rc.merge([str(a), str(b), str(c)])["totals"]["coins_by_groups"]
+    assert got == {"classic,preset": 2, "sep25,sep27ml": 2}

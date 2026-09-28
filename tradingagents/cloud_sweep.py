@@ -433,9 +433,16 @@ def dispatch_across(*, coin_list, shards: int = 20, timeframes: str = "15m,30m",
         # than silently measuring with last week's engine.
         drift = sync_fleet(slug)
         extra = dict(kw)
-        if mode == "update":
+        if mode == "update" and not kw.get("res"):
             # each account continues from ITS OWN saved positions
             extra["state_runs"] = state_runs_for(tfs, slug=slug)
+        # BACKTEST v2 NEVER CONTINUES (RCA-2026-09-28-B). The continuation
+        # (`sweep_shard.continue_pair`) walks the new bars with the BAR rule —
+        # it has no minutes — and the saved-position records carry no `res`,
+        # so a v2 UPDATE was handed v1 and v2 positions alike and continued
+        # them bar-by-bar under a v2 label. Sep 28, 2026 11:49am: 2 pairs by
+        # the first status read. v2 measures every pair in full over its
+        # 30-day window, minute-exact, and downloads no positions at all.
         got = dispatch(coin_list=coins, shards=shards, timeframes=timeframes,
                        mode=mode, slug=slug, **extra)
         out = {**got, "repo": slug, "coins": len(coins)}

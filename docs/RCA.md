@@ -172,6 +172,71 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-28-B — a Backtest v2 UPDATE continued some pairs with hour-candle exits and labelled them minute-exact
+
+**CEO**
+
+* When you press UPDATE ALL BACKTESTS on Backtest v2, a coin that had been
+  tested before could be carried forward the old way — its win or loss
+  decided on the whole candle, not minute by minute — while the result still
+  said "v2". On Sep 28 two coins went that way within the first minutes.
+* Why: the "carry on from last time" shortcut was written for v1 and never
+  learned about minutes; the list of saved positions also did not say which
+  version made them.
+* What stops it now: v2 never takes the shortcut — every coin is measured in
+  full over its 30 days with every exit settled by the minute — and no saved
+  positions are sent to a v2 run at all.
+
+**DEV**
+
+* `.github/scripts/sweep_shard.py:continue_pair` walks `rs.continue_combo`
+  with no `fine=` and no Min1 download, then writes rows and a `pair_done`
+  marker stamped `res=RES`; `cloud_sweep.dispatch_across` passed
+  `state_runs_for(tfs, slug)` for every update, and `state_runs()` records
+  carry no `res` (runs 36140207405 / 36123188935 are `run_res` '').
+* Invariant broken: **a row may only carry the resolution it was measured
+  at** — the Sep 21 rule "a row may only land in the store it was measured
+  for", one level down: the label was right about the STORE and wrong about
+  the EXIT RULE.
+* Guard: `tests/test_v2_update_is_never_continued_by_the_bar.py` (4).
+
+**SAW** — found while watching UPDATE ALL BACKTESTS for the operator. The
+first status read of run 36446487985 (jeremydvera, 20 machines) at
+`Sep 28, 2026 ~12:05pm`: `continued: 2, fresh: 176`.
+
+**TIMELINE**
+
+1. `Sep 09, 2026` — UPDATE learns to continue saved positions (v1 only
+   existed).
+2. `Sep 21, 2026` — v2 moves to GitHub with `res=1m`; the full path gains
+   minute exits (`backtest_strategy(fine=)`), the continuation does not.
+3. `Sep 28, 2026 11:49am` — UPDATE ALL BACKTESTS on v2, 1,003 coins,
+   40 machines; `mode=update` sends 5 saved-position runs to jeremydvera and
+   1 to jeremydevera.
+4. `~12:05pm` — 2 pairs continued bar-by-bar under `res=1m`.
+5. Fixed for every later run: `continue_pair` returns None under RES, the
+   dispatch sends no `state_runs` with `res`. Runs 36446487985 / 36446504224
+   started on the old code; their continued pairs are named from the shard
+   logs and re-measured by themselves.
+
+**ROOT CAUSE** — two code paths measure a pair, and only one of them learned
+the minute rule.
+
+**WHY IT WAS NOT CAUGHT** — `test_v2_measures_on_github.py` (17 tests) pins
+the FULL path's `fine=` and the `res` stamp on rows; nothing asked what the
+UPDATE path does under `RES`, and `test_cloud_update_mode.py` exercises the
+continuation with no `RES` set. When one mode gains a rule, list every path
+that writes the same rows (the Sep 05 "grep the concept" rule).
+
+**COST** — none in money; a few v2 rows per update with exits decided by the
+bar (on ARKM 1h the two rules differ by 45 of 359 trades).
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_v2_update_is_never_continued_by_the_bar.py`.
+
+---
+
 ## RCA-2026-09-28-A — every GitHub backtest run was titled "(15m / 30m)" whatever it measured
 
 **CEO**

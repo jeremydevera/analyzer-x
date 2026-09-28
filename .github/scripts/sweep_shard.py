@@ -528,6 +528,14 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
     runs keeps it. Returns the rows kept, like run_pair."""
     iv, bs, cap = br.TFS[tf]
     coin = sym.replace("_USDT", "")
+    if RES:
+        # THE CONTINUATION HAS NO MINUTES (RCA-2026-09-28-B): every exit below
+        # is settled by the bar rule, while the rows go out stamped `res=1m`.
+        # A v2 pair is measured in full — the only path that settles each
+        # exit minute by minute (`backtest_strategy(fine=)`).
+        log(f"{coin} {tf}: Backtest v2 is never continued — measured in full "
+            f"so every exit is settled minute by minute")
+        return None
     last_ms = int(prior["__last_ms__"])
     report("testing", i, n, rows=rows_so_far, span="",
            note=f"{coin} {tf}: continuing from {fmt_when(last_ms / 1000)} · "

@@ -181,7 +181,9 @@ def test_the_store_itself_refuses_a_row_measured_for_the_other_store():
 
     src = inspect.getsource(cs.land_rows)
     assert "msw.FINE_TF" in src
-    assert "raise ValueError" in src
+    # WrongStore IS a ValueError (RCA-2026-09-28-B: its own type, so the
+    # collect can refuse one pair and keep landing the rest)
+    assert "raise WrongStore" in src and issubclass(cs.WrongStore, ValueError)
     # and it actually fires, in the direction this process is pointed
     other = "1m" if msw.FINE_TF != "1m" else ""
     row = {"coin": "AAA", "tf": "1h", "last_ms": 1, "res": other}

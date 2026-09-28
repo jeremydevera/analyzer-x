@@ -2477,7 +2477,11 @@ def _run_collect(spec: dict, kind: str = "collect") -> None:
             f"shard file(s)"
             + (f" · {got.get('skipped', 0)} pair(s) already here and no older "
                f"(landed live while the run was going, or measured newer since)"
-               if got.get("skipped") else ""))
+               if got.get("skipped") else "")
+            # REFUSED FOR THE WRONG STORE, by name (RCA-2026-09-28-B)
+            + (f" · {len(got['wrong_store'])} pair(s) REFUSED, measured for the "
+               f"other store: {', '.join(got['wrong_store'][:10])}"
+               if got.get("wrong_store") else ""))
     print(f"[collect] {note}", flush=True)
     _write(f["progress"], {"running": False, "run": run_id,
                            "finished": int(time.time()), "note": note,

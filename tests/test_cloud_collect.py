@@ -106,7 +106,7 @@ def test_rows_land_in_the_store_per_pair(monkeypatch, store):
     r = cs.collect_into_store(1)
     assert r == {"pairs": 3, "rows": 4, "coins": 2, "artifacts": 1,
                  "skipped": 0, "skipped_pairs": [], "unparseable": 0,
-                 "why_skipped": ""}
+                 "wrong_store": [], "why_skipped": ""}
     assert len(msw.pair_rows("APEX", "1h")) == 2
     assert len(msw.pair_rows("APEX", "4h")) == 1
     assert msw.pair_watermark("APEX", "1h") == 1000
@@ -387,3 +387,31 @@ def test_every_ci_script_actually_compiles():
 
     for f in pathlib.Path(".github/scripts").glob("*.py"):
         py_compile.compile(str(f), doraise=True)
+
+
+def test_one_pair_for_the_other_store_is_refused_by_name_and_the_rest_land(
+        monkeypatch, store):
+    """RCA-2026-09-28-B: run 36446487985's collect died on `A 1h` — rows
+    with no `res`, continued by the bar rule on a v2 run — and landed nothing
+    after it. One wrong pair is refused and NAMED; every other pair lands."""
+    from tradingagents import market_sweep as msw
+    monkeypatch.setattr(msw, "FINE_TF", "1m")
+    v2 = lambda coin, tf, sig: {**_row(coin, tf, sig), "res": "1m"}   # noqa: E731
+    _download(monkeypatch, {"rows-0": [
+        _row("A", "1h", "mom6"),                       # no res: bar-rule rows
+        v2("APEX", "1h", "mom6"), v2("PI", "4h", "rsi14")]})
+    r = cs.collect_into_store(1)
+    assert r["pairs"] == 2, r
+    assert len(r["wrong_store"]) == 1 and r["wrong_store"][0].startswith("A 1h:")
+    assert msw.pair_rows("A", "1h") == []
+    assert len(msw.pair_rows("APEX", "1h")) == 1
+    assert len(msw.pair_rows("PI", "4h")) == 1
+
+
+def test_the_collect_note_names_a_refused_pair():
+    import inspect
+
+    from tradingagents import db_jobs
+    src = inspect.getsource(db_jobs)
+    assert "pair(s) REFUSED, measured for the " in src
+    assert "', '.join(got['wrong_store'][:10])" in src

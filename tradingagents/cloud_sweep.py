@@ -1050,10 +1050,22 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
 
     written: set = set()
     skipped: list = []
+    wrong_store: list = []
     kept = rows_seen = bad = 0
     coins: set = set()
 
     def flush(key, buf):
+        try:
+            _flush(key, buf)
+        except WrongStore as exc:
+            # ONE PAIR, NEVER THE RUN (RCA-2026-09-28-B). Sep 28, 2026: run
+            # 36446487985's collect died on its first such pair — `A 1h`,
+            # continued bar-by-bar with no `res` — and landed nothing after
+            # it. The pair is refused and NAMED; every other pair still lands.
+            refused.add(key)
+            wrong_store.append(str(exc).split(" — ")[0])
+
+    def _flush(key, buf):
         nonlocal kept
         if not key or not buf:
             return
@@ -1172,9 +1184,17 @@ def collect_into_store(run_id: int, slug: str | None = None, *,
     return {"pairs": kept, "rows": rows_seen, "coins": len(coins),
             "artifacts": len(names), "skipped": len(skipped),
             "skipped_pairs": skipped[:20], "unparseable": bad,
+            "wrong_store": wrong_store,
             "why_skipped": ("no newer than the measurement already stored "
                             "(a stale run landing after a fresher one)"
                             if skipped else "")}
+
+
+class WrongStore(ValueError):
+    """A pair's rows were measured for the OTHER store (their `res` is not
+    this process's `market_sweep.FINE_TF`). A ValueError still, so every
+    caller that already catches one keeps working; its own type so the
+    collect can refuse ONE pair by name and keep landing the rest."""
 
 
 def land_rows(coin: str, tf: str, rows: list, *, marks=(), append: bool = False) -> str:
@@ -1209,7 +1229,7 @@ def land_rows(coin: str, tf: str, rows: list, *, marks=(), append: bool = False)
     wrong = sorted({str(r.get("res") or "") for r in rows + marks
                     if str(r.get("res") or "") != msw.FINE_TF})
     if wrong:
-        raise ValueError(
+        raise WrongStore(
             f"{coin} {tf}: these rows were measured at res="
             f"{wrong[0]!r} and this store takes res={msw.FINE_TF!r} — "
             f"collect a v2 run with the `collect_v2` job (it runs with "

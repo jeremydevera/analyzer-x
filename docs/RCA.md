@@ -198,7 +198,8 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
   at** — the Sep 21 rule "a row may only land in the store it was measured
   for", one level down: the label was right about the STORE and wrong about
   the EXIT RULE.
-* Guard: `tests/test_v2_update_is_never_continued_by_the_bar.py` (4).
+* Guard: `tests/test_v2_update_is_never_continued_by_the_bar.py` (4);
+  `tests/test_cloud_collect.py::test_one_pair_for_the_other_store_is_refused_by_name_and_the_rest_land`.
 
 **SAW** — found while watching UPDATE ALL BACKTESTS for the operator. The
 first status read of run 36446487985 (jeremydvera, 20 machines) at
@@ -216,8 +217,22 @@ first status read of run 36446487985 (jeremydvera, 20 machines) at
 4. `~12:05pm` — 2 pairs continued bar-by-bar under `res=1m`.
 5. Fixed for every later run: `continue_pair` returns None under RES, the
    dispatch sends no `state_runs` with `res`. Runs 36446487985 / 36446504224
-   started on the old code; their continued pairs are named from the shard
-   logs and re-measured by themselves.
+   started on the old code.
+6. `1:29pm` — both runs done, 40 of 40 machines green. The final count was
+   **21 continued pairs, all on jeremydvera**: `A 1h`, `A 4h` (rows with no
+   `res` — the live door refused both, HTTP 500, 12:21pm / 12:22pm) and 19
+   that kept 0 rows and landed as empty measurements: BATON 15m, COFSTOCK
+   15m, CSOPSAMSUNG2L 15m/30m/1h, EYE 15m/30m/1h, FONE 15m, JMKESTOCK 15m,
+   KII 15m, STANDARD 15m, SWARM 15m, TFUEL 15m/30m, TOAD 15m/30m, TROLLSOL
+   15m, ZCAT 15m. Named by downloading the five saved-position runs and
+   running the shard's own `state_usable` over them: 2 + 23 usable, 21 on
+   this board. The continuation writes NO log line of its own, so the
+   shard logs could not name a single one.
+7. `collect_v2` of 36446487985 then FAILED outright on `A 1h`
+   (`land_rows` raised) and landed nothing after it — one pair ending a
+   whole run's collect. Fixed: `land_rows` raises `WrongStore`, the collect
+   refuses that pair, names it in the note, and lands the rest.
+8. The 14 coins re-measured in full, minute-exact, on GitHub.
 
 **ROOT CAUSE** — two code paths measure a pair, and only one of them learned
 the minute rule.

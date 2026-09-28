@@ -32,6 +32,9 @@ on:
       base:
         description: "Base margin $ per trade"
         default: "5"
+      groups:
+        description: "Strategy groups: all, or any of classic,preset,sep25,sep27ml"
+        default: "all"
 
 permissions:
   contents: write        # claims and progress on the sweep-progress branch
@@ -83,6 +86,7 @@ jobs:
           COIN_LIST: ${{ github.event.inputs.coin_list }}
           START: ${{ github.event.inputs.start }}
           BASE_MARGIN: ${{ github.event.inputs.base }}
+          REPLAY_GROUPS: ${{ github.event.inputs.groups }}
           # the daily checks are the OPERATOR's midnights, not the runner's UTC
           TZ: America/New_York
         run: python .github/scripts/replay_shard.py

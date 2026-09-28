@@ -59,6 +59,17 @@ from tradingagents.dataflows import mexc_futures as fx
 TFS = [t.strip() for t in (os.environ.get("TFS") or "15m,30m,1h,4h,1d").split(",")
        if t.strip() in br.BARRIERS]
 START = (os.environ.get("START") or "2026-09-01").strip()
+# WHICH GROUPS (the Stored strategies "group" filter): classic, preset, sep25
+# (the learned formulas, one set per coin and timeframe) and sep27ml (the ML
+# models). Operator, Sep 28, 2026: "did you used all group available?" / "i
+# want all then". "all" is every one of them.
+# NOT named GROUPS: that is a bash builtin (the user's unix groups), which a
+# shell never passes on, so `GROUPS=sep25 python ...` silently measured all
+# four groups when this was first tried on Sep 28, 2026.
+GROUP_NAMES = ("classic", "preset", "sep25", "sep27ml")
+GROUPS = tuple(g for g in GROUP_NAMES
+               if (os.environ.get("REPLAY_GROUPS") or "all").strip() in ("all", "")
+               or g in [x.strip() for x in os.environ.get("REPLAY_GROUPS", "").split(",")])
 OUT = os.path.join("out", f"replay-{ss.SHARD}.jsonl")
 REPORT_OUT = os.path.join("out", f"replay-report-{ss.SHARD}.json")
 COIN_RETRIES = 2
@@ -87,9 +98,36 @@ def bars_needed(tf: str, now_ms: int) -> int:
     return min(cap, int(span / bs) + WARMUP_BARS + 50)
 
 
+def group_of(sig: str) -> str:
+    """The Stored strategies group a signal belongs to, by the one definition
+    the row index filters with (rows_index.GROUP_PREFIXES)."""
+    from tradingagents import rows_index as ri
+
+    for g, prefixes in ri.GROUP_PREFIXES.items():
+        if str(sig).startswith(tuple(prefixes)):
+            return g
+    return "classic"
+
+
+def signals_for(coin: str, tf: str) -> list[str]:
+    """This pair's rules in the asked groups: the shared registry, plus the
+    learned formulas and ML models that belong to THIS coin and timeframe."""
+    from tradingagents import signals_learned as sl, signals_ml as sm
+
+    out = [s for s in br.SIGNALS if group_of(s) in GROUPS]
+    if "sep25" in GROUPS:
+        out += sl.for_pair(coin, tf)
+    if "sep27ml" in GROUPS:
+        out += sm.for_pair(coin, tf)
+    return out
+
+
 def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
     """Every combination of one pair that could pass, as JSON lines."""
     iv, bs, _cap = br.TFS[tf]
+    sigs = signals_for(sym.replace("_USDT", ""), tf)
+    if not sigs:
+        return []                  # nothing of the asked groups on this pair
     now_ms = int(time.time() * 1000)
     df = at._closed_bars(fx.klines(sym, iv, bars_needed(tf, now_ms)), bs)
     first = start_ms() - wr.WINDOW_MS
@@ -119,7 +157,7 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
     cks = checks(end)
     coin = sym.replace("_USDT", "")
     lines: list[str] = []
-    for sig in br.SIGNALS:
+    for sig in sigs:
         key = f"{sig}_rp_{tf}"
         ths = br.THRESHOLDS[tf] if sig in br.THRESH_SIGNALS else [None]
         for th in ths:
@@ -161,6 +199,7 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
                          "coin": coin, "tf": tf, "signal": sig, "th": thp,
                          "sl": round(sl * 100, 3), "tp": round(tp * 100, 3),
                          "gate": "ok", "cost_of_tp": round(rt / tp * 100, 1),
+                         "group": group_of(sig),
                          "trades": trades}
                 book = wr._Book(combo)
                 if not any((r := book.row(c)) is not None
@@ -199,6 +238,7 @@ def main() -> int:
     coins = ss.eligible()
     usual = usual_costs()
     stats = {"start": START, "tz": os.environ.get("TZ", ""), "tfs": TFS,
+             "groups": list(GROUPS),
              "cfg": CFG, "coins_board": len(coins), "coins_done": 0,
              "pairs": 0, "tested": 0, "kept": 0, "short": [], "failed": {},
              "spans": {}}

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import datetime as dt
 import importlib.util
+import re
 import sys
 from pathlib import Path
 
@@ -21,11 +22,21 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / ".github" / "scripts"
 
 
+class _Groups:
+    value = "classic,preset"
+
+
+rs_groups = _Groups()
+
+
 @pytest.fixture
 def rs(monkeypatch):
     for k in ("GITHUB_TOKEN", "GITHUB_REPOSITORY", "COIN_LIST", "INGEST_URL"):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("START", "2026-09-01")
+    # the shared rules only, so the learned formulas that really exist for
+    # GPNSTOCK do not join these made-up candles (the group tests set it)
+    monkeypatch.setenv("REPLAY_GROUPS", getattr(rs_groups, "value", "classic,preset"))
     monkeypatch.syspath_prepend(str(SCRIPTS))
     spec = importlib.util.spec_from_file_location("replay_shard_test",
                                                   SCRIPTS / "replay_shard.py")
@@ -145,3 +156,74 @@ def test_the_workflow_runs_this_script_on_the_operators_clock():
     assert "python .github/scripts/replay_shard.py" in wf
     assert "America/New_York" in wf, "the daily checks are the operator's midnights"
     assert "out/replay-" in wf
+
+
+def test_the_groups_input_decides_which_rules_are_walked(rs, world, monkeypatch):
+    """Operator, Sep 28, 2026: "did you used all group available?" / "i want
+    all then". A pair's learned formulas are ITS OWN (signals_learned.for_pair)
+    and join the shared rules only when their group is asked for."""
+    from tradingagents import signals_learned as sl, signals_ml as sm
+
+    monkeypatch.setattr(sl, "for_pair", lambda coin, tf: ["lx_GPNSTOCK_1h_1"])
+    monkeypatch.setattr(sm, "for_pair", lambda coin, tf: [])
+    monkeypatch.setattr(rs, "GROUPS", ("sep25",))
+    combos, stats = _run(rs, world)
+    assert stats["tested"] == 2, "only the one learned formula, both pairs"
+    assert {c["signal"] for c in combos} == {"lx_GPNSTOCK_1h_1"}
+    assert {c["group"] for c in combos} == {"sep25"}
+    monkeypatch.setattr(rs, "GROUPS", ("classic", "preset", "sep25", "sep27ml"))
+    _combos, stats = _run(rs, world)
+    assert stats["tested"] == 4, "bb20 and the learned formula"
+
+
+def test_a_pair_with_nothing_in_the_asked_groups_downloads_nothing(rs, world, monkeypatch):
+    from tradingagents import signals_ml as sm
+    from tradingagents.dataflows import mexc_futures as fx
+
+    asked = []
+    monkeypatch.setattr(fx, "klines", lambda *a, **k: asked.append(a))
+    monkeypatch.setattr(sm, "for_pair", lambda coin, tf: [])
+    monkeypatch.setattr(rs, "GROUPS", ("sep27ml",))
+    combos, stats = _run(rs, world)
+    assert combos == [] and asked == [] and stats["tested"] == 0
+
+
+def test_every_written_combination_names_its_group(rs, world):
+    combos, _ = _run(rs, world)
+    assert combos and all(c["group"] == "classic" for c in combos)
+
+
+def test_all_means_every_group():
+    import os
+    import subprocess
+    import sys as _sys
+
+    code = ("import os,sys;sys.path.insert(0,'.github/scripts');"
+            "os.environ['REPLAY_GROUPS']='all';import replay_shard as r;print(','.join(r.GROUPS))")
+    out = subprocess.run([_sys.executable, "-c", code], capture_output=True,
+                         text=True, cwd=str(ROOT), timeout=120,
+                         env={**os.environ, "GITHUB_TOKEN": "", "GITHUB_REPOSITORY": ""})
+    assert out.stdout.strip().splitlines()[-1] == "classic,preset,sep25,sep27ml", out.stderr[-400:]
+
+
+def test_the_groups_setting_survives_a_bash_shell():
+    """GROUPS is a bash builtin, never passed to a child: GitHub runs this
+    step through bash, so the setting must travel under another name — and
+    arrive. Run exactly the way the workflow does: bash sets it, python reads."""
+    import shutil
+    import subprocess
+
+    bash = shutil.which("bash")
+    if not bash:
+        pytest.skip("no bash on this machine")
+    wf = (ROOT / ".github" / "workflows" / "replay.yml").read_text("utf-8")
+    assert "REPLAY_GROUPS: ${{ github.event.inputs.groups }}" in wf
+    assert re.search(r"^\s+GROUPS:", wf, re.M) is None, "the bash builtin name"
+    import os
+    import sys as _sys
+
+    probe = "import os; print(os.environ.get('REPLAY_GROUPS'))"
+    out = subprocess.run([bash, "-c", 'REPLAY_GROUPS=sep25 "$PY" -c "$PROBE"'],
+                         capture_output=True, text=True, timeout=60,
+                         env={**os.environ, "PY": _sys.executable, "PROBE": probe})
+    assert out.stdout.strip() == "sep25", out.stderr[-300:]

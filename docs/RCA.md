@@ -172,6 +172,81 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-28-H — Sep 27 ML crashed on two coins with a short candle fetch instead of saying the history was thin
+
+**CEO**
+
+* The automatic strategy-learning run on GitHub's test machines stopped with
+  an error on 2 of the 95 coin-and-timeframe pairs it was checking, instead of
+  quietly reporting that those two did not have enough price history yet.
+* Why: the machine that fetches price candles for those two coins came back
+  with only a few weeks of data, even though one of them has traded for
+  years, and the learning tool was not written to expect zero candles.
+* What stops it now: the tool always answers "not enough history" for a thin
+  fetch and says exactly how many candles it got and from what date, so a
+  short fetch shows up as a plain sentence, never a crash, and the other 93
+  pairs are unaffected either way.
+
+**DEV**
+
+* Failing call path: `ml_learner.py:145` (`MLLearner.__init__`) built
+  `self.X = mf.features(*self.sel, ...)` eagerly, before `run()`'s own
+  "not enough history" checks ever execute; with `u0 == 0` (nothing before
+  the unseen cut) `self.sel` was six zero-length arrays, and
+  `ml_features.py:81` (`tr[0] = h[0] - lo[0]`) indexed bar 0 of an empty `h`,
+  raising `IndexError: index 0 is out of bounds for axis 0 with size 0`.
+* Invariant broken: a clue function must answer on ANY window it is handed,
+  including zero bars — "there is no history" is the caller's sentence to
+  write, never the callee's crash, and `MLLearner` must be able to finish
+  building itself on a frame of any size before its own checks get a turn.
+* Guards: `test_features_on_zero_bars_answers_empty_instead_of_crashing`,
+  `test_a_frame_entirely_inside_the_unseen_window_names_itself_and_does_not_crash`,
+  both in `tests/test_sep27_ml.py`.
+
+**SAW** — GitHub Actions run `36484597671` (Sep 28, 2026) reported failures
+for DOGE 15m and TIA 15m; the operator never saw a strategy for either, only
+the run's own red X — the other 93 coin-timeframe pairs in the same run
+finished and filed normally.
+
+**TIMELINE** (each reproduced by its guard on the pre-fix file, then green)
+
+1. Run `36484597671` dispatched Sep 28, 2026, sweeping 95 coin-timeframe
+   pairs through `MLLearner`.
+2. DOGE 15m and TIA 15m each raised at `ml_learner.py:145` →
+   `ml_features.py:81`, `IndexError: index 0 is out of bounds for axis 0
+   with size 0`; the other 93 pairs measured with no error.
+3. Both fetched frames held `u0 == 0` — 0 bars before the unseen cut — even
+   for DOGE, a coin with years of history, so the candle fetch itself most
+   likely came back short of the 30 days it should have reached.
+4. Reproduced with a fixture spanning 20 days on 15m (`_ml_frame(days=20,
+   tf="15m")`, `u0 == 0`, 1,920 bars total): before the fix, `__init__`
+   raised the same `IndexError`; after it, `run()` returns
+   `formulas == []` with `why` starting `"not enough history: 0 day(s) to
+   learn from, and the trees need 30"` and naming the 1,920 bars and their
+   first candle's date.
+
+**ROOT CAUSE** — `ml_features.features()` indexed bar 0 unconditionally
+(`tr[0] = h[0] - lo[0]`) with no guard for a 0-length input, and
+`MLLearner.__init__` calls it before `run()`'s own history-length checks
+have any chance to answer first.
+
+**WHY IT WAS NOT CAUGHT** — every existing learner test built its frame with
+months of history before the unseen cut (`_ml_frame`'s shortest case was 80
+days, well clear of the 30-day cut), so no test ever called `features()` on
+a truly empty window or constructed an `MLLearner` whose entire fetched
+frame sat inside the last 30 days — the one shape a thin real fetch produces.
+
+**COST** — none: a GitHub test-run measurement, no money placed, no strategy
+deployed from either coin.
+
+**FIX** — this commit.
+
+**GUARD** — `test_features_on_zero_bars_answers_empty_instead_of_crashing`
+and `test_a_frame_entirely_inside_the_unseen_window_names_itself_and_does_not_crash`,
+both in `tests/test_sep27_ml.py`; both fail on the pre-fix file.
+
+---
+
 ## RCA-2026-09-28-G — Sep 27 ML: a re-collected model could be answered with the old model's trades, and the forecast walked ml_ rows on no history
 
 **CEO**

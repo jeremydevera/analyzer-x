@@ -42,6 +42,7 @@ import numpy as np
 from tradingagents import formula_learner as fl
 from tradingagents import ml_features as mf
 from tradingagents import ml_trees as mt
+from tradingagents import positions_view as pv
 from tradingagents import signals_ml as sml
 
 UNSEEN_DAYS = fl.UNSEEN_DAYS
@@ -147,6 +148,16 @@ class MLLearner:
         self.sim = fl.Sim(*self.sel[:4])
 
     # ----------------------------------------------------------- pieces
+    def _frame_desc(self) -> str:
+        """Names the frame a "not enough history" answer is about — a short
+        fetch (Sep 28, 2026: DOGE/TIA 15m on GitHub, candles that never
+        reached before the last 30 days) must be visible in the words, not
+        just a crash. No bar means no first-candle time to print."""
+        if not self.n:
+            return f"the {self.tf} frame holds 0 bars"
+        first = pv.fmt_when(float(self.ts[0]) / 1000.0)
+        return f"the {self.tf} frame holds {self.n:,} bars from {first}"
+
     def missing_clues(self) -> list[str]:
         """The clues that are NaN on every TRAIN row (none when TRAIN is empty)."""
         train = self.X[self.l0:max(self.l0, self.v0 - 1)]
@@ -209,18 +220,21 @@ class MLLearner:
     # -------------------------------------------------------------- run
     def run(self) -> dict:
         t0 = time.time()
+        frame_desc = self._frame_desc()
         rep = {"coin": self.f.coin, "tf": self.tf, "bars": self.n,
                "train_days": round(self.train_days, 1),
                "validate_days": VALIDATE_DAYS, "unseen_days": UNSEEN_DAYS,
                "min_validate_trades": self.min_validate,
-               "min_unseen_trades": self.min_unseen, "pairs": len(self.pairs)}
+               "min_unseen_trades": self.min_unseen, "pairs": len(self.pairs),
+               "first_bar": frame_desc}
         if not self.pairs:
             return {**rep, "formulas": [], "why": "no TP > SL pair clears the cost gate"}
         if (self.u0 >= self.n - 2 or self.v0 >= self.u0 - 2
                 or self.train_days < MIN_TRAIN_DAYS):
             return {**rep, "formulas": [],
                     "why": (f"not enough history: {self.train_days:.0f} day(s) to "
-                            f"learn from, and the trees need {MIN_TRAIN_DAYS}")}
+                            f"learn from, and the trees need {MIN_TRAIN_DAYS} "
+                            f"({frame_desc})")}
         # A CLUE MISSING ON EVERY TRAINING CANDLE is named, never reported as
         # "not enough history" (Sep 28, 2026 review). Dropping the column is
         # not allowed — the model must read the same columns live — so the

@@ -61,6 +61,14 @@ def features(o, h, lo, c, v, ts, funding, tf) -> np.ndarray:
     lo = np.asarray(lo, dtype=float)
     c = np.asarray(c, dtype=float)
     n = len(c)
+    if n == 0:
+        # A frame with nothing before the cut (Sep 28, 2026: DOGE/TIA 15m on
+        # GitHub, a fetch that came back with no candles before the last 30
+        # days) has no bar to read. Every column below indexes bar 0
+        # (`tr[0] = h[0] - lo[0]`), which raises IndexError on an empty
+        # array; the caller (MLLearner) is the one that says why history is
+        # short, this function just answers "no rows" instead of crashing.
+        return np.zeros((0, len(FEATURES)))
     v = np.asarray(v, dtype=float) if v is not None and len(v) == n else np.zeros(n)
     ts = np.asarray(ts, dtype=np.int64) if ts is not None and len(ts) == n \
         else np.zeros(n, dtype=np.int64)

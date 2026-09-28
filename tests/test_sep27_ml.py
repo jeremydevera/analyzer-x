@@ -92,6 +92,21 @@ def test_there_is_no_funding_clue_and_the_clue_set_is_version_2():
                           mf.features(o, h, lo, c, v, ts, [], "1h"), equal_nan=True)
 
 
+def test_features_on_zero_bars_answers_empty_instead_of_crashing():
+    """Sep 28, 2026 (GitHub run 36484597671): DOGE 15m and TIA 15m raised
+    IndexError at `tr[0] = h[0] - lo[0]` because MLLearner's `self.sel` (the
+    bars before the unseen cut) was empty — a fetch with no candles before
+    the last 30 days. features() on 0 bars must return 0 rows, never raise."""
+    from tradingagents import ml_features as mf
+
+    empty = np.array([], dtype=float)
+    x = mf.features(empty, empty, empty, empty, empty, empty, [], "15m")
+    assert x.shape == (0, len(mf.FEATURES))
+    empty_i = np.array([], dtype=np.int64)
+    x2 = mf.features(empty, empty, empty, empty, None, empty_i, [], "15m")
+    assert x2.shape == (0, len(mf.FEATURES))
+
+
 # ------------------------------------------------------------- the trees
 def test_the_trees_learn_a_planted_rule():
     from tradingagents import ml_trees as mt
@@ -393,6 +408,26 @@ def test_too_little_history_says_so_instead_of_guessing():
     fr = _ml_frame(days=80)
     rep = ml.MLLearner(fr, now_ms=_now(fr)).run()
     assert rep["formulas"] == [] and "not enough history" in rep["why"]
+
+
+def test_a_frame_entirely_inside_the_unseen_window_names_itself_and_does_not_crash():
+    """Sep 28, 2026 (GitHub run 36484597671): DOGE 15m and TIA 15m raised
+    IndexError inside MLLearner.__init__ because the fetched frame had no
+    candles before the last 30 days, so u0 == 0 and self.sel was empty. Such
+    a frame must answer "not enough history" and NAME the frame it actually
+    got — the bar count and the first candle's time — never raise and never
+    say so without saying how short the fetch was."""
+    from tradingagents import ml_learner as ml
+
+    fr = _ml_frame(days=20, tf="15m")
+    lr = ml.MLLearner(fr, now_ms=_now(fr))
+    assert lr.u0 == 0          # nothing before the unseen cut, the crash's shape
+    rep = lr.run()
+    assert rep["formulas"] == []
+    assert rep["why"].startswith("not enough history")
+    assert f"{rep['bars']:,} bars" in rep["why"]
+    assert rep["bars"] > 0
+    assert rep["first_bar"] and rep["first_bar"] in rep["why"]
 
 
 def test_a_contract_with_no_volume_names_the_missing_clue():

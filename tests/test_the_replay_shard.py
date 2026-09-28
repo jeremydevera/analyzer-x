@@ -1,0 +1,147 @@
+"""The GitHub machine of the watcher replay tests only what could be armed.
+
+Operator, Sep 28, 2026: "Then do the backtest replay so i know the pnl for
+every day". The machine walks every combination the watcher could ever switch
+on — TP strictly wider than SL, a stop inside 80% of liquidation, a cost under
+20% of the target — with the market grid's own signals, walk and per-trade
+formula, and writes only the ones that pass at some daily check. These tests
+drive `replay_pair` on made-up candles (no network) and pin each filter.
+"""
+from __future__ import annotations
+
+import datetime as dt
+import importlib.util
+import sys
+from pathlib import Path
+
+import pandas as pd
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = ROOT / ".github" / "scripts"
+
+
+@pytest.fixture
+def rs(monkeypatch):
+    for k in ("GITHUB_TOKEN", "GITHUB_REPOSITORY", "COIN_LIST", "INGEST_URL"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("START", "2026-09-01")
+    monkeypatch.syspath_prepend(str(SCRIPTS))
+    spec = importlib.util.spec_from_file_location("replay_shard_test",
+                                                  SCRIPTS / "replay_shard.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    yield mod
+    sys.modules.pop("replay_shard_test", None)
+
+
+def _bars(n_hours: int, start: dt.datetime) -> pd.DataFrame:
+    """A 1h series that rises 0.4% every bar: every long hits a 1% target in
+    three bars and never touches a stop."""
+    rows, px = [], 100.0
+    for i in range(n_hours):
+        o = px
+        c = px * 1.004
+        rows.append({"Date": pd.Timestamp(start + dt.timedelta(hours=i)),
+                     "Open": o, "High": c * 1.0005, "Low": o * 0.9999,
+                     "Close": c, "Volume": 1.0})
+        px = c
+    return pd.DataFrame(rows)
+
+
+@pytest.fixture
+def world(rs, monkeypatch):
+    from tradingagents import auto_trader as at, backtest_report as br
+    from tradingagents.dataflows import mexc_futures as fx
+
+    start = dt.datetime(2026, 7, 20)
+    now = dt.datetime(2026, 9, 10)
+    n = int((now - start).total_seconds() // 3600)
+    df = _bars(n, start)
+    monkeypatch.setattr(fx, "klines", lambda sym, iv, limit: df.tail(limit))
+    monkeypatch.setattr(at, "_closed_bars", lambda d, bs: d)
+    monkeypatch.setattr(rs.time, "time", lambda: now.timestamp())
+    # one rule, long every 6th bar
+    monkeypatch.setattr(br, "SIGNALS", ["bb20"])
+    monkeypatch.setattr(at, "_dirs_for_backtest",
+                        lambda key, hi, *a, **k: [1 if i % 6 == 0 else 0
+                                                  for i in range(len(hi))])
+    monkeypatch.setattr(br, "pairs_for",
+                        lambda tf: [(0.01, 0.01), (0.007, 0.01), (0.04, 0.05),
+                                    (0.005, 0.0006), (0.006, 0.012)])
+    cost = {"fee": 0.0002, "slip": 0.0001, "liq": 4.5, "fund": [],
+            "rt": 0.0006}
+    return {"cost": cost, "df": df}
+
+
+def _run(rs, world, tf="1h"):
+    stats = {"pairs": 0, "tested": 0, "kept": 0, "short": [], "spans": {}}
+    lines = rs.replay_pair("GPNSTOCK_USDT", tf, world["cost"], stats)
+    import json
+
+    return [json.loads(x) for x in lines], stats
+
+
+def test_only_tp_wider_than_sl_inside_the_wall_and_cheap_enough_is_tested(rs, world):
+    combos, stats = _run(rs, world)
+    # (0.01, 0.01) equal: refused. (0.04, 0.05): a 4% stop past 80% of the
+    # 4.5% wall: refused. (0.005, 0.0006): TP narrower: refused.
+    # (0.007, 0.01) and (0.006, 0.012) are the two tested.
+    assert stats["tested"] == 2
+    assert {(c["sl"], c["tp"]) for c in combos} <= {(0.7, 1.0), (0.6, 1.2)}
+
+
+def test_a_cost_over_a_fifth_of_the_target_is_not_tested(rs, world):
+    world["cost"]["rt"] = 0.0021           # 21% of a 1.0% target, 17.5% of 1.2%
+    _combos, stats = _run(rs, world)
+    assert stats["tested"] == 1
+
+
+def test_a_passing_combination_carries_its_v2_id_and_every_trade(rs, world):
+    from tradingagents import backtest_report as br, fast_grid as fg
+
+    combos, _ = _run(rs, world)
+    c = next(c for c in combos if c["tp"] == 1.0)
+    assert c["id"] == br.row_code("GPNSTOCK", "1h", "bb20", 0.0, 0.7, 1.0,
+                                  "flat", res="1m")
+    won = [t for t in c["trades"] if t[3] and t[2] > 0]
+    assert won, "a rising series wins every long"
+    expect = fg.trade_pnl(0.01, fg.WHY_TP, 0.0, margin=5.0, lev=20,
+                          fee=0.0003)
+    assert won[0][2] == pytest.approx(round(expect, 4))
+    assert all(t[1] > t[0] for t in c["trades"]), "exit after entry"
+
+
+def test_no_trade_is_taken_inside_the_warm_up(rs, world):
+    combos, _ = _run(rs, world)
+    first_measured = dt.datetime(2026, 8, 2).timestamp() * 1000
+    for c in combos:
+        assert min(t[0] for t in c["trades"]) >= first_measured - 3_600_000
+
+
+def test_a_combination_that_never_passes_is_counted_not_written(rs, world, monkeypatch):
+    from tradingagents import auto_trader as at
+
+    # long every 6th bar on a series that now FALLS: every trade loses
+    df = world["df"].copy()
+    df["Open"], df["Close"] = df["Close"][::-1].values, df["Open"][::-1].values
+    df["High"] = df[["Open", "Close"]].max(axis=1) * 1.0005
+    df["Low"] = df[["Open", "Close"]].min(axis=1) * 0.9995
+    from tradingagents.dataflows import mexc_futures as fx
+
+    monkeypatch.setattr(fx, "klines", lambda sym, iv, limit: df.tail(limit))
+    combos, stats = _run(rs, world)
+    assert combos == [] and stats["tested"] == 2 and stats["kept"] == 0
+
+
+def test_it_downloads_only_what_the_replay_reads(rs, world):
+    """58 days of 1h is ~1,400 bars, never the 10,000 a year-deep fetch asks for."""
+    need = rs.bars_needed("1h", int(dt.datetime(2026, 9, 28).timestamp() * 1000))
+    assert 1_400 < need < 2_000
+
+
+def test_the_workflow_runs_this_script_on_the_operators_clock():
+    wf = (ROOT / ".github" / "workflows" / "replay.yml").read_text("utf-8")
+    assert "python .github/scripts/replay_shard.py" in wf
+    assert "America/New_York" in wf, "the daily checks are the operator's midnights"
+    assert "out/replay-" in wf

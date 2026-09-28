@@ -103,6 +103,16 @@ const GROUP_LABEL: Record<string, string> = {
 // the server's ceiling per request, and the CSV has none at all.
 const PAGE_SIZES = [100, 500, 1000, 5000];
 
+/** WHAT THE FILTER STARTS WITH (operator, Sep 28, 2026: "when cloking filter
+ *  i wnt the following as default / TP is equal or greater than sl - checked /
+ *  last days - 30"). The boxes AND the first request both start here, so the
+ *  rows on screen and the ticked boxes agree from the first paint; a box that
+ *  showed a default the list was not filtered by would be the
+ *  label-must-match-data failure this panel keeps paying for. "clear all"
+ *  still clears everything — it says so on the button. */
+const DEFAULT_TP_OVER_SL = true;
+const DEFAULT_DAYS = 30;
+
 /** The header of the window's own profit column. Not sortable: the store ranks
  *  by the full-history columns it has indexes for, and a header that reordered
  *  only the rows on screen is the "it only sorted the page" lie (2026-08-26). */
@@ -190,7 +200,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
   // disabled, their values are not sent and no chip claims them. A disabled
   // box that still filtered is the label-must-match-data failure this panel
   // keeps paying for. The typed text stays, so unchecking hands it back.
-  const [tpOverSl, setTpOverSl] = useState(false);
+  const [tpOverSl, setTpOverSl] = useState(DEFAULT_TP_OVER_SL);
   // crypto coins vs tokenized stocks (the STOCK-suffix contracts that go
   // quiet outside US market hours) — operator, 2026-09-05, right after
   // finding 6 of their 9 deployed coins were stocks
@@ -239,7 +249,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
   // summed out of the store -- the sweep keeps profit per MONTH and no trade
   // counts at all -- so this is a RE-MEASUREMENT from the stored candles, and
   // the server caps how many rows one request may restate.
-  const [days, setDays] = useState(0);
+  const [days, setDays] = useState(DEFAULT_DAYS);
   // the window the SERVER measured, in real dates, and how it was reached
   const [dayWin, setDayWin] = useState<string[]>([]);
   // rows the window re-measured and then CUT because the window's own figures
@@ -299,8 +309,8 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
     coin: "", tf: "", signal: "", profitable: false,
     minTrades: 0, minWinrate: 0, maxTp: 0, maxSl: 0, sizing: "", rowId: "",
     group: "",
-    minTp: 0, minSl: 0, tpOverSl: false, asset: "",
-    months: 0, days: 0, measuredDays: 0,
+    minTp: 0, minSl: 0, tpOverSl: DEFAULT_TP_OVER_SL, asset: "",
+    months: 0, days: DEFAULT_DAYS, measuredDays: 0,
   });
   // The filter set the ROWS ON SCREEN came from — set only when a request
   // SUCCEEDS. `applied` is what was asked for, and the two differ every time a

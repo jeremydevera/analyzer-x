@@ -16,28 +16,62 @@ import sys
 from pathlib import Path
 
 OUT_DIR = Path(os.path.expanduser("~/.tradingagents")) / "replay"
-DIALS = ("on_winrate", "off_winrate", "min_trades", "tp_rule", "window_days",
-         "rank", "max_per_coin", "max_new_per_day", "cooldown_days",
-         "off_streak_live")
+DIALS = ("on_winrate", "off_winrate", "min_trades", "tp_rule", "max_sl",
+         "window_days", "rank", "max_per_coin", "max_new_per_day",
+         "cooldown_days", "off_streak_live")
 PARTS = ("profit", "closed", "wins", "losses", "winrate", "slots", "open",
          "worst_day", "green_days", "days_n", "max_dd", "worst_run",
          "worst_run_n", "max_open")
+
+
+def _from_log(test: dict, log: list, start_ms: int, end_ms: int) -> tuple[dict, list]:
+    """September's days and headline figures FROM ITS TRADE LOG, so the card,
+    the table, the day-by-day panel and the log's TOTAL PROFIT are one sum
+    (label-must-match-data). The replay rounds each day to cents before adding
+    them, which drifted up to 3 cents from the trades' own sum on 39 of the 100
+    scenarios (Sep 29, 2026)."""
+    from tradingagents import watcher_replay as wr
+
+    keys = [wr.day_of(m) for m in wr.local_midnights(start_ms, end_ms)]
+    at = {k: i for i, k in enumerate(keys)}
+    raw = [0.0] * len(keys)
+    for t in log:
+        i = at.get(wr.day_of(t[2]))
+        if i is not None:
+            raw[i] += t[3]
+    days = [round(v, 4) for v in raw]      # cents are rounded on screen, not before adding
+    peak = eq = dd = 0.0
+    for v in raw:
+        eq += v
+        peak = max(peak, eq)
+        dd = max(dd, peak - eq)
+    out = {**test, "profit": round(sum(raw), 2), "days_n": len(days),
+           "worst_day": min(days) if days else 0.0,
+           "green_days": sum(1 for v in days if v > 0), "max_dd": round(dd, 2)}
+    return out, days
 
 
 def payload(res: dict) -> dict:
     """Compact and complete: every rule set carries every field (kit F)."""
     rows = []
     for r in res["rows"]:
-        rows.append({"id": r["id"], "c": [r["cfg"][k] for k in DIALS],
+        if r.get("test_log") is not None:
+            te, ted = _from_log(r["test"], r["test_log"], res["test"][0], res["end_ms"])
+            r = {**r, "test": {**te, "days": ted}}
+        rows.append({"id": r["id"], "c": [r["cfg"].get(k, 0.0) if k == "max_sl" else r["cfg"][k]
+                                          for k in DIALS],
                      "tr": [r["train"][k] for k in PARTS], "trd": r["train"]["days"],
-                     "te": [r["test"][k] for k in PARTS], "ted": r["test"]["days"]})
+                     "te": [r["test"][k] for k in PARTS], "ted": r["test"]["days"],
+                     # September trade by trade, when the run kept it (kit B)
+                     "tl": r.get("test_log")})
     t = res["totals"]
     return {"rows": rows, "dials": list(DIALS), "parts": list(PARTS),
             "train": res["train"], "test": res["test"], "end": res["end_ms"],
             "current": res["current_id"], "best_train": res["best_train_id"],
             "combos": res["combos"], "tested": t["tested"],
             "coins": t.get("coins_by_groups") or {}, "board": t["coins_board"],
-            "groups": t.get("groups") or [], "base": 5.0, "lev": 20}
+            "groups": t.get("groups") or [], "base": 5.0, "lev": 20,
+            "strategies": res.get("strategies") or []}
 
 
 def build(res: dict) -> str:
@@ -135,8 +169,10 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
   <label>Min Jul–Aug profit $<input id="f-tr" type="number" step="1" placeholder="any"></label>
   <label>Min Sep win %<input id="f-wr" type="number" min="0" max="100" placeholder="any"></label>
   <label>Max Sep worst dip $<input id="f-dd" type="number" min="0" step="1" placeholder="any"></label>
+  <label>Min Sep green days<input id="f-gd" type="number" min="0" step="1" placeholder="any"></label>
   <label>Switch on at %<select id="f-on"><option value="">any</option></select></label>
-  <label>TP<select id="f-tp"><option value="">any</option><option value=">">wider than SL</option><option value=">=">at least SL</option></select></label>
+  <label>TP rule<select id="f-tp"><option value="">all</option><option value=">">wider than SL</option><option value=">=">at least SL</option><option value="any">no TP rule</option></select></label>
+  <label>Max SL %<select id="f-sl"><option value="">all</option><option value="2">capped at 2%</option><option value="0">no cap</option></select></label>
   <label>Days judged<select id="f-win"><option value="">any</option></select></label>
   <label>Find rule id<input id="f-id" type="text" placeholder="#50B27C00"></label>
   <button class="btn" id="clear" type="button">Clear all</button>
@@ -160,13 +196,15 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const money=(v,sign=true)=>(sign&&v>0?"+":"")+(v<0?"-":"")+"$"+Math.abs(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const P=Object.fromEntries(D.parts.map((p,i)=>[p,i])),C=Object.fromEntries(D.dials.map((d,i)=>[d,i]));
-const state={base:5,te:null,tr:null,wr:null,dd:null,on:"",tp:"",win:"",id:"",sort:{k:"te_profit",dir:-1},shown:200};
+const state={base:5,te:null,tr:null,wr:null,dd:null,gd:null,on:"",tp:"",sl:"",win:"",id:"",sort:{k:"te_profit",dir:-1},shown:200};
+const TPW={">":"wider than",">=":"at least","any":"any"};
 const k=()=>state.base/D.base;
 const RANK={winrate:"win rate",profit:"profit",trades:"trades"};
-function rulesText(r){const c=r.c;return [`switch on at <b>${c[C.on_winrate]}%+</b>`,`off under <b>${c[C.off_winrate]}%</b>`,`<b>${c[C.min_trades]}+</b> trades`,`TP <b>${c[C.tp_rule]===">"?"wider than":"at least"}</b> SL`,`judged on <b>${c[C.window_days]}</b> days`,`best <b>${RANK[c[C.rank]]}</b> first`,`<b>${c[C.max_per_coin]}</b> per coin`,`<b>${c[C.max_new_per_day]}</b> new a day`,`<b>${c[C.cooldown_days]}</b>-day wait`,c[C.off_streak_live]?`off after <b>${c[C.off_streak_live]}</b> practice losses in a row`:`practice losses never switch off`].map(t=>`<span>${t}</span>`).join("")}
+function rulesText(r){const c=r.c;return [`switch on at <b>${c[C.on_winrate]}%+</b>`,`off under <b>${c[C.off_winrate]}%</b>`,`<b>${c[C.min_trades]}+</b> trades`,(c[C.tp_rule]==="any"?`<b>any</b> TP`:`TP <b>${TPW[c[C.tp_rule]]}</b> SL`),(c[C.max_sl]?`SL <b>≤ ${c[C.max_sl]}%</b>`:`<b>no</b> SL cap`),`judged on <b>${c[C.window_days]}</b> days`,`best <b>${RANK[c[C.rank]]}</b> first`,`<b>${c[C.max_per_coin]}</b> per coin`,`<b>${c[C.max_new_per_day]}</b> new a day`,`<b>${c[C.cooldown_days]}</b>-day wait`,c[C.off_streak_live]?`off after <b>${c[C.off_streak_live]}</b> practice losses in a row`:`practice losses never switch off`].map(t=>`<span>${t}</span>`).join("")}
 function val(r,key){const [part,f]=key.split("_",2).length>1&&(key.startsWith("te_")||key.startsWith("tr_"))?[key.slice(0,2),key.slice(3)]:[null,key];
+ if(part&&f==="per_day"){const n=r[part][P.days_n];return n?r[part][P.closed]/n:0}
  if(part){const v=r[part][P[f]];return ["profit","worst_day","max_dd","worst_run"].includes(f)?v*k():v}
- if(key==="id")return r.id;return r.c[C[key]]}
+ if(key==="id")return r.id;if(key==="lev")return D.lev;return r.c[C[key]]}
 const byId=Object.fromEntries(D.rows.map(r=>[r.id,r]));
 function filtered(){const want=state.id.replace(/^#+/,"").trim().toUpperCase();
  if(want)return {rows:D.rows.filter(r=>r.id===want),names:[`rule #${want} (overrides the other filters)`],byId:true};
@@ -175,24 +213,30 @@ function filtered(){const want=state.id.replace(/^#+/,"").trim().toUpperCase();
  f(state.tr!=null,`Jul–Aug profit ≥ ${money(state.tr,false)}`,r=>r.tr[P.profit]*k()>=state.tr);
  f(state.wr!=null,`September win ≥ ${state.wr}%`,r=>r.te[P.winrate]>=state.wr);
  f(state.dd!=null,`September worst dip ≤ ${money(state.dd,false)}`,r=>r.te[P.max_dd]*k()<=state.dd);
+ f(state.gd!=null,`${state.gd}+ green days in September`,r=>r.te[P.green_days]>=state.gd);
  f(!!state.on,`switch on at ${state.on}%`,r=>String(r.c[C.on_winrate])===state.on);
- f(!!state.tp,`TP ${state.tp===">"?"wider than":"at least"} SL`,r=>r.c[C.tp_rule]===state.tp);
+ f(!!state.tp,state.tp==="any"?"no TP rule":`TP ${TPW[state.tp]} SL`,r=>r.c[C.tp_rule]===state.tp);
+ f(state.sl!=="",state.sl==="0"?"no SL cap":`SL capped at ${state.sl}%`,r=>String(r.c[C.max_sl]||0)===state.sl);
  f(!!state.win,`judged on ${state.win} days`,r=>String(r.c[C.window_days])===state.win);
  return {rows:out,names,byId:false}}
 
-const COLS=[["id","rule",1],["on_winrate","on %"],["off_winrate","off %"],["min_trades","trades ≥"],["tp_rule","TP vs SL",1],["window_days","days"],["rank","first",1],["max_per_coin","per coin"],["max_new_per_day","new/day"],["cooldown_days","wait"],["off_streak_live","loss stop"],
+const COLS=[["id","rule",1],["on_winrate","on %"],["off_winrate","off %"],["min_trades","trades ≥"],["tp_rule","TP vs SL",1],["max_sl","SL cap"],["lev","lev"],["window_days","days"],["rank","first",1],["max_per_coin","per coin"],["max_new_per_day","new/day"],["cooldown_days","wait"],["off_streak_live","loss stop"],
  ["tr_profit","PROFIT $"],["tr_closed","trades"],["tr_wins","W"],["tr_losses","L"],["tr_winrate","win %"],["tr_worst_run","worst run"],
- ["te_profit","PROFIT $"],["te_closed","trades"],["te_wins","W"],["te_losses","L"],["te_winrate","win %"],["te_worst_day","worst day"],["te_max_dd","worst dip"],["te_worst_run","worst run"],["te_slots","switched on"],["te_max_open","open at once"]];
+ ["te_profit","PROFIT $"],["te_closed","trades"],["te_per_day","a day"],["te_wins","W"],["te_losses","L"],["te_winrate","win %"],["te_green_days","green days"],["te_worst_day","worst day"],["te_max_dd","worst dip"],["te_worst_run","worst run"],["te_slots","switched on"],["te_max_open","open at once"]];
 function cell(r,key){const v=val(r,key);
  if(key==="id")return `<td class="l id">#${r.id}${r.id===D.current?'<span class="tag mine">yours</span>':""}${r.id===D.best_train?'<span class="tag top">picked</span>':""}</td>`;
- if(key==="tp_rule")return `<td class="l">${v===">"?"wider":"≥"}</td>`;if(key==="rank")return `<td class="l">${RANK[v]}</td>`;
+ if(key==="tp_rule")return `<td class="l">${v===">"?"wider":v==="any"?"any":"≥"}</td>`;
+ if(key==="max_sl")return `<td>${v?`≤ ${v}%`:"none"}</td>`;
+ if(key==="lev")return `<td>${v}x</td>`;if(key==="rank")return `<td class="l">${RANK[v]}</td>`;
  if(key==="off_streak_live")return `<td>${v||"—"}</td>`;
  if(key.endsWith("_profit")||key.endsWith("worst_day")||key.endsWith("max_dd"))return `<td class="${key.endsWith("max_dd")?(v>0?"neg":""):v>0?"pos":v<0?"neg":""}">${key.endsWith("max_dd")?(v?money(-v):"—"):money(v)}</td>`;
  if(key.endsWith("worst_run")){const part=key.slice(0,2);const n=r[part][P.worst_run_n];return `<td class="${v<0?"neg":""}">${n?`${money(v)} (${n})`:"—"}</td>`}
- if(key==="te_winrate"||key==="tr_winrate")return `<td>${v.toFixed(1)}%</td>`;return `<td>${v}</td>`}
+ if(key==="te_winrate"||key==="tr_winrate")return `<td>${v.toFixed(1)}%</td>`;
+ if(key==="te_per_day")return `<td>${v.toFixed(1)}</td>`;
+ if(key==="te_green_days")return `<td>${v}/${r.te[P.days_n]}</td>`;return `<td>${v}</td>`}
 function render(){const F=filtered();const rows=[...F.rows].sort((a,b)=>{const x=val(a,state.sort.k),y=val(b,state.sort.k);return (x>y?1:x<y?-1:0)*state.sort.dir});
  const th=$("t").querySelector("thead");
- th.innerHTML=`<tr><th class="grp" colspan="11">the rules</th><th class="grp" colspan="6">Jul 01 – Aug 31 (where they were tuned)</th><th class="grp" colspan="10">September (never seen while tuning)</th></tr><tr>`+COLS.map(([key,l,left])=>`<th class="${left?"l":""}" data-k="${key}" aria-sort="${state.sort.k===key?(state.sort.dir>0?"ascending":"descending"):"none"}">${l}</th>`).join("")+"</tr>";
+ th.innerHTML=`<tr><th class="grp" colspan="13">the rules</th><th class="grp" colspan="6">Jul 01 – Aug 31 (where they were tuned)</th><th class="grp" colspan="12">September (never seen while tuning)</th></tr><tr>`+COLS.map(([key,l,left])=>`<th class="${left?"l":""}" data-k="${key}" aria-sort="${state.sort.k===key?(state.sort.dir>0?"ascending":"descending"):"none"}">${l}</th>`).join("")+"</tr>";
  th.querySelectorAll("th[data-k]").forEach(h=>h.onclick=()=>{const key=h.dataset.k;state.sort=state.sort.k===key?{k:key,dir:-state.sort.dir}:{k:key,dir:key==="id"?1:-1};render()});
  $("t").querySelector("tbody").innerHTML=rows.slice(0,state.shown).map(r=>`<tr class="click ${r.id===D.current?"mine":""} ${r.id===D.best_train?"top":""}" data-id="${r.id}" tabindex="0">${COLS.map(([key])=>cell(r,key)).join("")}</tr>`).join("");
  $("t").querySelectorAll("tr.click").forEach(tr=>{const go=()=>openRule(byId[tr.dataset.id]);tr.onclick=go;tr.onkeydown=e=>{if(e.key==="Enter")go()}});
@@ -233,22 +277,29 @@ function openRule(r){if(!r)return;const part=(key,days,from)=>{let t=0;return da
  $("dlg-body").innerHTML=`<h3 id="dlg-h" style="margin:0"><span class="id">#${r.id}</span>${r.id===D.current?" · your rules":""}${r.id===D.best_train?" · picked on Jul–Aug":""} · ${D.lev}x · ${money(state.base,false)} margin (${money(state.base*D.lev,false)} a trade)</h3>
   <div class="card"><div class="rules">${rulesText(r)}</div></div>${sum(r.te,"September")}
   <div class="scroll" style="max-height:300px"><table><thead><tr><th class="l">September day</th><th>profit</th><th>running</th></tr></thead><tbody>${part("te",r.ted,D.test[0])}</tbody></table></div>
+  ${tradeLog(r)}
   ${sum(r.tr,"Jul–Aug")}<div class="scroll" style="max-height:220px"><table><thead><tr><th class="l">Jul–Aug day</th><th>profit</th><th>running</th></tr></thead><tbody>${part("tr",r.trd,D.train[0])}</tbody></table></div>`;
  $("dlg").showModal()}
 $("dlg-close").onclick=()=>$("dlg").close();
+function tradeLog(r){if(!r.tl)return "";let run=0;const S=D.strategies;
+ const body=r.tl.map((t,i)=>{const s=S[t[0]];const p=t[3]*k();run+=p;
+  return `<tr><td>${i+1}</td><td class="l">${esc(s[1])} ${esc(s[2])} ${esc(s[3])}${s[4]?` ${s[4]}`:""}</td><td>${s[5]}% / ${s[6]}%</td><td class="l">${fmtWhen(t[1])}</td><td class="l">${fmtWhen(t[2])}</td><td class="${p>0?"pos":p<0?"neg":""}">${money(p)}</td><td>${money(run)}</td></tr>`}).join("");
+ const w=r.tl.filter(t=>t[3]>0).length;
+ return `<div class="sum"><span>September trade by trade · TOTAL PROFIT <b class="total ${run>=0?"pos":"neg"}">${money(run)}</b></span><span>${r.tl.length} trades · ${w} won · ${r.tl.length-w} lost</span></div>
+  <div class="scroll" style="max-height:340px"><table><thead><tr><th>#</th><th class="l">strategy</th><th>TP / SL</th><th class="l">opened</th><th class="l">closed</th><th>profit</th><th>running</th></tr></thead><tbody>${body}</tbody></table></div>`}
 
 const num=v=>{const t=String(v).trim();if(t==="")return null;const n=Number(t);return Number.isFinite(n)?n:null};
-for(const [id,key] of [["f-base","base"],["f-te","te"],["f-tr","tr"],["f-wr","wr"],["f-dd","dd"]])$(id).addEventListener("input",e=>{state[key]=num(e.target.value);if(key==="base"&&!(state.base>0))state.base=D.base;state.shown=200;render()});
-for(const [id,key] of [["f-on","on"],["f-tp","tp"],["f-win","win"]])$(id).addEventListener("change",e=>{state[key]=e.target.value;state.shown=200;render()});
+for(const [id,key] of [["f-base","base"],["f-te","te"],["f-tr","tr"],["f-wr","wr"],["f-dd","dd"],["f-gd","gd"]])$(id).addEventListener("input",e=>{state[key]=num(e.target.value);if(key==="base"&&!(state.base>0))state.base=D.base;state.shown=200;render()});
+for(const [id,key] of [["f-on","on"],["f-tp","tp"],["f-sl","sl"],["f-win","win"]])$(id).addEventListener("change",e=>{state[key]=e.target.value;state.shown=200;render()});
 $("f-id").addEventListener("input",e=>{state.id=e.target.value;render()});
 $("more").onclick=()=>{state.shown+=200;render()};
-$("clear").onclick=()=>{for(const id of ["f-te","f-tr","f-wr","f-dd","f-on","f-tp","f-win","f-id"])$(id).value="";Object.assign(state,{te:null,tr:null,wr:null,dd:null,on:"",tp:"",win:"",id:"",shown:200});render()};
+$("clear").onclick=()=>{for(const id of ["f-te","f-tr","f-wr","f-dd","f-gd","f-on","f-tp","f-sl","f-win","f-id"])$(id).value="";Object.assign(state,{te:null,tr:null,wr:null,dd:null,gd:null,on:"",tp:"",sl:"",win:"",id:"",shown:200});render()};
 for(const v of [...new Set(D.rows.map(r=>r.c[C.on_winrate]))].sort((a,b)=>a-b))$("f-on").insertAdjacentHTML("beforeend",`<option value="${v}">${v}%</option>`);
 for(const v of [...new Set(D.rows.map(r=>r.c[C.window_days]))].sort((a,b)=>a-b))$("f-win").insertAdjacentHTML("beforeend",`<option value="${v}">${v} days</option>`);
 addEventListener("resize",()=>{clearTimeout(window.__rz);window.__rz=setTimeout(render,120)});
 const G={classic:"Classic",preset:"Preset Confluence",sep25:"Sep 25 Strat",sep27ml:"Sep 27 ML"};
 $("prov").innerHTML=`Built on <b>${D.tested.toLocaleString()}</b> strategy combinations tested on GitHub (${Object.entries(D.coins).map(([g,n])=>`${g.split(",").map(x=>G[x]||x).join(" + ")} on <b>${n.toLocaleString()}</b> coins`).join("; ")}), of which <b>${D.combos.toLocaleString()}</b> reached the loosest switch-on rule tried at some midnight. Tuned on checks from <b>${dayLabel(D.train[0])}</b> to <b>${dayLabel(D.train[1])}</b>, with nothing that closed after it; tested from <b>${dayLabel(D.test[0])}</b> to <b>${fmtWhen(D.end)}</b>. Every trade pays the fee both ways, the coin's usual slippage and funding, at ${money(D.base,false)} × ${D.lev}x = ${money(D.base*D.lev,false)} a trade.`;
-$("notes").innerHTML=`How to read it: a rule set is every setting together. Each was replayed on July–August exactly the way the watcher works (every midnight: switch off what fell below its line, switch on what cleared its rules), and the one that made the most there is "Picked". September is the honest grade, because nothing from September was used to choose it. Exits are settled on the strategy's own candles (MEXC keeps only ~30 days of 1-minute candles), and a candle that touched both the target and the stop counts as the stop. The learned groups (Sep 25 Strat, Sep 27 ML) are left out: they were built from these same months, so they would make any rule look better than it is. Your rules show a slightly different September here than on the replay page (+$203.69 there): here every strategy's trades were walked from June, so a strategy that was mid-trade on Aug 01 opens and closes its later trades a little differently.`;
+$("notes").innerHTML=`How to read it: a rule set is every setting together. Each was replayed on July–August exactly the way the watcher works (every midnight: switch off what fell below its line, switch on what cleared its rules), and the one that made the most there is "Picked". September is the honest grade, because nothing from September was used to choose it. Exits are settled on the strategy's own candles (MEXC keeps only ~30 days of 1-minute candles), and a candle that touched both the target and the stop counts as the stop. The learned groups (Sep 25 Strat, Sep 27 ML) are left out: they were built from these same months, so they would make any rule look better than it is. Your rules can show a slightly different September here than on the replay page: here every strategy's trades were walked from June, so a strategy that was mid-trade on Aug 01 opens and closes its later trades a little differently.<br><br>The trade-by-trade list in each row covers September; July–August, where the rules were tuned, is shown as day totals.<br><br><b>Read these as backtest numbers, not a promise.</b> Every figure is replayed from backtest trades. Your real practice account did much worse than its backtests: rows switched on at 90%+ won 61% of 457 practice trades since Sep 15 (−$138.02). A rule that looks good here still needs a few weeks in the practice account before real money.<br><br>Two filters the standard kit asks for do not apply to this page: a <b>max TP %</b> (a rule set has no single target, only the TP-vs-SL rule and the SL cap, both filterable above), and a <b>last N days</b> window (each rule set was replayed over two fixed stretches; its day-by-day panel shows any slice of September).`;
 render();
 </script>
 """

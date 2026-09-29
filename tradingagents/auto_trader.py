@@ -1630,6 +1630,11 @@ STRATEGY_ORDER = STRATEGY_ORDER + tuple(_OPERATORS_V2_SEP29_ML)
 # started days ago trades a key registered this morning. Never overrides a
 # committed key: register() refuses a clash before it is ever written.
 _RUNTIME_SEEN = {"mtime": None}
+# the keys this file DEFINES — everything else in STRATEGY_SPECS arrived at
+# runtime. runtime_specs.register compares a clash against these only, so a
+# key that is merely in memory (a preview check) is still written to the file
+# the runner reads.
+_COMMITTED_KEYS = frozenset(STRATEGY_SPECS)
 
 
 def merge_runtime_specs() -> int:

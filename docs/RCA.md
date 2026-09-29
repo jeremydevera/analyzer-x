@@ -172,6 +172,102 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-29-A — a review of the live strategy watcher found a switch-off that could have traded every coin, a mode that did not stick, and five more
+
+NEVER HAPPENED YET — found by a review at `Sep 29, 2026 3:50am`, before the
+watcher's first switch-on pass (noon). It had armed nothing: `watcher_slots` was
+empty, the global coin list was empty and the real-money switch was off.
+
+**CEO**
+
+* Nothing was lost: the watcher had not switched anything on yet. Left as it
+  was, switching a strategy off could have made it trade EVERY coin in the
+  app's global list (on real money too, if that switch were on); pressing
+  "off" during a pass could have been undone by the pass; and the log could
+  say "switched on" for rows that never were.
+* Why: switching off a strategy's last coin deleted its coin list, and this
+  app reads "no list" as "every coin"; and each pass wrote back an old copy of
+  the watcher's own settings.
+* What stops it now: an empty list is kept (it means none), a pass only writes
+  back its own results, re-checks the mode before it acts, and logs a decision
+  as done only after it was saved.
+
+**DEV**
+
+* `strategy_watcher._disarm` popped `strategy_coins[key]` on the last coin;
+  `auto_trader.coins_for` (auto_trader.py:1874) returns `settings["coins"]` for a
+  MISSING key, and `_armed_here` is False with no book entry, so the key takes
+  the global switches. `consider()` wrote the whole state it read at the start;
+  `on`/`off` decisions, the bell and the 7-day cooldown were recorded before
+  `_write_settings` succeeded; a preview put a recipe in memory, after which
+  `runtime_specs.register` answered "same" and wrote no file.
+* Invariants broken: **an EXPLICITLY EMPTY list means none — never delete a
+  list to empty it**; **a long pass writes back only the fields it owns, onto
+  the file as it is now**; **a decision is logged as done only after it is
+  saved**.
+* Guard: `tests/test_the_strategy_watcher.py::test_a_switched_off_last_coin_leaves_an_empty_list_never_a_missing_key`,
+  `::test_the_operator_turning_it_off_mid_pass_wins`,
+  `::test_a_write_that_never_lands_is_not_logged_as_done`,
+  `::test_a_key_only_in_memory_is_still_written_to_the_runners_file`,
+  `::test_a_deleted_pair_file_switches_the_row_off`.
+
+**SAW** — nothing: the operator asked *"can you review it and see if thre are
+bugs"* 20 minutes after it was deployed.
+
+**TIMELINE**
+
+1. `Sep 29, 2026 3:40am` — the watcher goes live in act mode (commit 80c4…,
+   API restarted, runner restarted at 3:42am on the new code); first
+   switch-off pass runs, reports 32 of the operator's own rows, arms nothing.
+2. `3:50am` — the review returns 10 findings; 8 hold up when checked against
+   the code, 1 is partly real, 1 is by design:
+   * `_disarm` → `coins_for` fallback (checked: `coins_for` returns
+     `settings["coins"]` for a missing key; this PC's list is `[]`, `enabled`
+     False, so today it would have traded nothing);
+   * a preview recipe left in `STRATEGY_SPECS` → `register` "same", no file;
+   * `consider()` overwrote a `set_mode("off")` made during the pass;
+   * decisions/bell/cooldown before the write; preview stamped cooldowns;
+   * a DELETED pair file (the delisted cleanup) read as "unreadable" and kept
+     the slot for ever;
+   * the index was asked AT the 90% line, so a row at 91% in its fresh pair
+     file but 84% in a lagging index was never nominated, and a capped list
+     did not say so (197 nominated today, far under the 5,000 cap);
+   * the watcher ran inside the supervisor loop, so its minute of index,
+     6 MB pair files and live-book reads delayed restarting a dead runner;
+   * the panel printed `window_days` and other dials the live watcher never
+     reads; the practice record was computed nowhere;
+   * `_last_ms` parsed the whole state file; pair files were read twice.
+   By design, not changed: a stored row whose own cost is 20%+ of its target
+   (gate "warn") is not a candidate — the replay the operator approved never
+   held one either; only the LIVE check at switch-on lets a "warn" through.
+3. Fixed before noon: all of the above, 15 new tests, each of three
+   re-introduced faults turning its test red.
+
+**ROOT CAUSE** — the watcher was written against the settings file and its
+own state as if it were their only writer, and against the runner's
+"missing means all" rule without reading `coins_for`.
+
+**WHY IT WAS NOT CAUGHT** — every watcher test drove ONE pass on a fixture it
+owned: nobody else wrote the state file mid-pass, the settings fake never had
+a global coin list, the write never failed, and "unreadable" and "deleted"
+were the same fake. The fallback lives in `coins_for`, which no watcher test
+called — the test asserted the coin was gone from the list, not what the
+runner would then trade.
+
+**COST** — none: no slot had been armed.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_strategy_watcher.py::test_a_switched_off_last_coin_leaves_an_empty_list_never_a_missing_key`
+(and the four tests named in DEV, plus
+`::test_preview_starts_no_seven_day_wait`,
+`::test_a_pair_file_that_is_there_but_unreadable_keeps_the_row`,
+`::test_a_rule_the_live_watcher_cannot_honour_is_refused_not_printed`,
+`::test_the_watcher_runs_on_its_own_thread_not_in_the_supervisor`,
+`tests/test_watcher_candidates_are_fresh.py::test_a_capped_list_says_it_was_capped`).
+
+---
+
 ## RCA-2026-09-28-F — a finished v2 rebuild could never swap itself in while the site ran, and its failed swap copied 25 GB
 
 **CEO**

@@ -26,12 +26,17 @@ def load() -> dict:
 def register(key: str, spec: dict) -> str:
     from tradingagents import auto_trader as at
 
-    have = at.STRATEGY_SPECS.get(key) or load().get(key)
+    # A clash is judged against what is COMMITTED or already in the FILE —
+    # never against a key that is only in this process's memory. A preview
+    # check once put a key in memory, and the act pass afterwards answered
+    # "same" and wrote nothing, so the runner never learned the key.
+    committed = getattr(at, "_COMMITTED_KEYS", frozenset())
+    reg = load()
+    have = at.STRATEGY_SPECS.get(key) if key in committed else reg.get(key)
     if have is not None:
         if dict(have) != dict(spec):
             raise ValueError(f"{key} already means {have}, not {spec}")
         return "same"
-    reg = load()
     reg[key] = dict(spec)
     PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = PATH.with_suffix(".tmp")

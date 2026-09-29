@@ -561,11 +561,15 @@ export interface WatcherDecision {
 /** what the Trade screen prints about the strategy watcher — every word of it */
 export interface Watcher {
   mode: "off" | "preview" | "act";
+  /** only the rules the live watcher reads */
   cfg: Record<string, number | string>;
+  /** the window every v2 row is measured over (cloud_sweep.SWEEP_DAYS) */
+  window_days: number;
   why: string;
   last_on_pass: number | null; last_off_pass: number | null; next_on_pass: number | null;
   running: number; cooling: number;
-  slots: { slot: string; id: string; coin: string; tf: string; signal: string; tp: number; sl: number; on_at: number }[];
+  slots: { slot: string; id: string; coin: string; tf: string; signal: string; tp: number; sl: number; on_at: number;
+    practice?: { trades: number; wins: number; losses: number; pnl: number; streak: number; warn: string } | null }[];
   decisions: WatcherDecision[];
 }
 

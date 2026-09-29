@@ -24,9 +24,9 @@ const MODE_TEXT: Record<Watcher["mode"], string> = {
   off: "switched off — it changes nothing",
 };
 
-function rules(c: Watcher["cfg"]): string[] {
+function rules(c: Watcher["cfg"], days: number): string[] {
   return [
-    `switch on at ${c.on_winrate}%+ over the last ${c.window_days} days`,
+    `switch on at ${c.on_winrate}%+ over the last ${days} days`,
     `switch off under ${c.off_winrate}%`,
     `${c.min_trades}+ trades`,
     `TP ${c.tp_rule === ">" ? "wider than" : "at least"} SL`,
@@ -78,7 +78,7 @@ export default function WatcherPanel() {
       {w && (
         <>
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {rules(w.cfg).map((t) => (
+            {rules(w.cfg, w.window_days).map((t) => (
               <span key={t} className="rounded-full border border-gray-200 px-2.5 py-0.5 text-theme-xs text-gray-600 dark:border-white/[0.08] dark:text-gray-300">{t}</span>
             ))}
           </div>
@@ -90,9 +90,28 @@ export default function WatcherPanel() {
             {" · "}last switch-off check {w.last_off_pass ? fmtWhen(w.last_off_pass) : "not yet"}
           </p>
           {w.why && <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">{w.why}</p>}
+          {w.slots.length > 0 && (
+            <div className="mt-3 flex flex-col gap-1">
+              <p className="text-theme-xs font-semibold text-gray-700 dark:text-gray-300">Running now</p>
+              {w.slots.map((s) => (
+                <div key={s.slot} className="flex flex-wrap gap-x-2 text-theme-xs text-gray-600 dark:text-gray-300">
+                  <span className="font-mono text-brand-500">#{s.id}</span>
+                  <span>{s.coin} {s.tf} {s.signal} · TP {s.tp}% / SL {s.sl}%</span>
+                  <span className="text-gray-400">on since {fmtWhen(s.on_at)}</span>
+                  {s.practice && (
+                    <span>practice: {s.practice.trades} trades, {s.practice.wins} won, {s.practice.losses} lost, {s.practice.pnl >= 0 ? "+" : ""}{s.practice.pnl.toFixed(2)}</span>
+                  )}
+                  {s.practice?.warn && <span className="text-warning-600 dark:text-warning-400">{s.practice.warn}</span>}
+                </div>
+              ))}
+            </div>
+          )}
           <div className="mt-3 flex flex-col gap-1.5">
             {w.decisions.length === 0 && (
-              <p className="text-theme-xs text-gray-400">no decision yet — the first check runs a minute after the site starts</p>
+              <p className="text-theme-xs text-gray-400">
+                {w.mode === "off" ? "switched off — it makes no decisions"
+                  : "no decision yet — the first check runs a minute after the site starts"}
+              </p>
             )}
             {w.decisions.map((d, i) => (
               <div key={`${d.at}-${d.id}-${i}`}

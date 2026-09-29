@@ -23,32 +23,58 @@ from tradingagents import stores
 DAY_MS = 86_400_000
 
 
+# The index is NOMINATED from below the line: a row whose fresh pair file
+# reads 91% may still read 84% in an index a few days behind it, and would
+# never be looked at if the index were asked for the line itself.
+NOMINATE_BELOW = 10.0
+
+
 def _index_rows(cfg: dict, limit: int) -> list[dict]:
-    """The v2 index's nominees: flat rows at or over the floors, best win rate
-    first. TP >= SL is asked of the index; a strict TP > SL is applied after."""
+    """The v2 index's nominees: flat rows at or over (the floors minus
+    NOMINATE_BELOW), best win rate first. TP >= SL is asked of the index; a
+    strict TP > SL is applied after, on the fresh row."""
     from tradingagents import rows_index as ri
 
     got = ri.query(db_path=stores.V2.rows_db, sort="winrate", desc=True,
                    limit=limit, min_trades=int(cfg["min_trades"]),
-                   min_winrate=float(cfg["on_winrate"]), tp_over_sl=True,
-                   sizing="flat")
+                   min_winrate=max(0.0, float(cfg["on_winrate"]) - NOMINATE_BELOW),
+                   tp_over_sl=True, sizing="flat")
     return list(got.get("rows") or [])
+
+
+def pair_file(coin: str, tf: str) -> Path:
+    return Path(stores.V2.home) / "rows" / f"{coin}-{tf}.json"
+
+
+# (coin, tf) -> (mtime, rows). A pair file is ~6 MB and only changes when the
+# daily collect writes it, while the switch-off pass re-reads every running
+# row every hour — so a file is parsed again only when it changed. At most
+# the pairs the watcher is judging are held (a few hundred, not the store).
+_ROWS_CACHE: dict = {}
 
 
 def _pair_rows(coin: str, tf: str) -> list[dict]:
     from tradingagents import market_sweep as msw
 
-    return msw.pair_rows(coin, tf, root=stores.V2.home)
+    try:
+        mtime = pair_file(coin, tf).stat().st_mtime
+    except OSError:
+        return []
+    hit = _ROWS_CACHE.get((coin, tf))
+    if hit and hit[0] == mtime:
+        return hit[1]
+    rows = msw.pair_rows(coin, tf, root=stores.V2.home)
+    if rows:
+        _ROWS_CACHE[(coin, tf)] = (mtime, rows)
+    return rows
 
 
 def _last_ms(coin: str, tf: str) -> float | None:
-    """The last candle the pair file was measured through (its state's
-    `__last_ms__`), or None when it cannot be read."""
-    p = Path(stores.V2.home) / "state" / f"{coin}-{tf}.json"
-    try:
-        return float(json.loads(p.read_text(encoding="utf-8")).get("__last_ms__") or 0) or None
-    except (OSError, ValueError):
-        return None
+    """The last candle the pair file was measured through, or None. The
+    256-byte tail read (market_sweep.pair_watermark), never a full parse."""
+    from tradingagents import market_sweep as msw
+
+    return float(msw.pair_watermark(coin, tf, root=stores.V2.home) or 0) or None
 
 
 def _match(rows: list[dict], want: dict) -> dict | None:
@@ -106,19 +132,22 @@ def fresh_candidates(cfg: dict, *, now: float, limit: int = 5000) -> dict:
                 gone += 1
                 continue
             rows.append(_fresh(coin, tf, got, last))
-    why = (f"{len(rows):,} candidate(s) from {len(nominees):,} nominated · "
+    capped = len(nominees) >= limit
+    why = (f"{len(rows):,} candidate(s) from {len(nominees):,} nominated"
+           + (f" (the list STOPPED at {limit:,} — rows ranked below it were not "
+              f"examined)" if capped else "") + " · "
            f"{stale:,} row(s) skipped: pair file older than "
            f"{cfg.get('fresh_hours', 36):g} hours · {gone:,} gone from their pair file")
     return {"rows": rows, "asked": len(nominees), "stale": stale, "gone": gone,
-            "why": why}
+            "capped": capped, "why": why}
 
 
 def fresh_row(row_id: str, coin: str, tf: str, spec: dict, *, now: float,
-              cfg: dict) -> dict | None:
+              cfg: dict, rows: list | None = None) -> dict | None:
     """A RUNNING slot's row as its pair file holds it now, or None when the
     file no longer holds it. A stale pair file still answers with what it has
     (switching off on old news would be its own mistake); `measured_ms` says
     how old it is."""
     last = _last_ms(coin, tf) or 0.0
-    got = _match(_pair_rows(coin, tf), spec)
+    got = _match(_pair_rows(coin, tf) if rows is None else rows, spec)
     return None if got is None else _fresh(coin, tf, got, last)

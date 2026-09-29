@@ -182,17 +182,6 @@ def _keep_the_row_index_current() -> None:
                     _du.tick()
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[daily-update] failed: {exc!r}", flush=True)
-                # THE STRATEGY WATCHER (operator, Sep 29, 2026: "deploy now the
-                # wathcer replay ... the backtest everyday the promotion and
-                # demotion"). Practice account only: switches rows on once a
-                # day from the fresh v2 results and off every hour, by the
-                # operator's own rules (watcher_policy.DEFAULTS).
-                try:
-                    from tradingagents import strategy_watcher as _sw
-
-                    _sw.tick()
-                except Exception as exc:                       # noqa: BLE001
-                    print(f"[watcher] failed: {exc!r}", flush=True)
                 # NO AUTOMATIC CANDLE TOP-UP. candle_autopilot.tick() ran here
                 # from 2026-09-06 to 2026-09-09 and started an UPDATE by itself
                 # whenever the store was 3h stale. The operator saw
@@ -277,6 +266,26 @@ def _keep_the_row_index_current() -> None:
                           f"{exc!r}", flush=True)
 
         _th.Thread(target=_watch, name="job-supervisor", daemon=True).start()
+
+        # THE STRATEGY WATCHER, ON ITS OWN THREAD (operator, Sep 29, 2026:
+        # "deploy now the wathcer replay ... the backtest everyday the
+        # promotion and demotion"). Practice account only: switches rows on
+        # once a day at noon from the fresh v2 results and off every hour, by
+        # the operator's own rules. NOT inside the supervisor loop above: its
+        # switch-on pass reads the index, ~6 MB pair files and the live order
+        # book for each pick, and for that minute the supervisor would not
+        # restart a dead runner or indexer.
+        def _watcher_loop() -> None:
+            while True:
+                _time.sleep(60)
+                try:
+                    from tradingagents import strategy_watcher as _sw
+
+                    _sw.tick()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[watcher] failed: {exc!r}", flush=True)
+
+        _th.Thread(target=_watcher_loop, name="strategy-watcher", daemon=True).start()
         print("[supervisor] watching for crashed jobs", flush=True)
     except Exception as exc:
         # The API must still start -- but SILENTLY skipping this is how

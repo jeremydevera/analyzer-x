@@ -19,7 +19,7 @@ def test_the_panel_is_on_the_trade_screen():
 
 def test_every_figure_comes_from_the_payload():
     for used in ("w.running", "w.cooling", "fmtWhen(w.last_on_pass)", "fmtWhen(w.next_on_pass)",
-                 "fmtWhen(w.last_off_pass)", "w.why", "rules(w.cfg)", "fmtWhen(d.at)", "d.why"):
+                 "fmtWhen(w.last_off_pass)", "w.why", "rules(w.cfg, w.window_days)", "fmtWhen(d.at)", "d.why"):
         assert used in PANEL, used
     assert "c.on_winrate" in PANEL and "c.off_winrate" in PANEL and "c.min_trades" in PANEL
 
@@ -36,3 +36,16 @@ def test_switching_it_on_asks_first_and_names_what_it_touches():
 def test_the_routes_exist():
     api = (ROOT / "tradingagents" / "api.py").read_text("utf-8")
     assert '@app.get("/api/trade/watcher")' in api and '@app.post("/api/trade/watcher")' in api
+
+
+def test_the_window_printed_is_the_stores_not_a_dial():
+    """window_days is a replay dial the live watcher never reads."""
+    assert "c.window_days" not in PANEL and "w.window_days" in PANEL
+
+
+def test_each_running_row_shows_its_practice_record():
+    assert "s.practice" in PANEL and "s.practice?.warn" in PANEL
+
+
+def test_the_empty_state_never_promises_a_check_when_it_is_off():
+    assert 'w.mode === "off" ? "switched off' in PANEL

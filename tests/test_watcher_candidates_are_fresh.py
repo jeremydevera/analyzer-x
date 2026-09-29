@@ -97,3 +97,25 @@ def test_a_running_slot_is_re_read_from_its_pair_file(store):
     store["pairs"][("FASTSTOCK", "15m")] = []
     assert wc.fresh_row("R6FRS3KD", "FASTSTOCK", "15m", _row(), now=NOW,
                         cfg=dict(wp.DEFAULTS)) is None
+
+
+
+def test_a_capped_list_says_it_was_capped(store):
+    store["index"] = [{**_row(sl=0.1 * i, tp=0.1 * i + 0.1), "id": f"X{i}"} for i in range(1, 4)]
+    got = wc.fresh_candidates(dict(wp.DEFAULTS), now=NOW, limit=3)
+    assert got["capped"] is True and "STOPPED at 3" in got["why"]
+
+
+def test_the_index_is_asked_from_below_the_line():
+    """A row at 91% in its fresh pair file may still read 84% in an index a
+    few days behind it."""
+    import inspect
+
+    assert wc.NOMINATE_BELOW >= 5
+    assert "NOMINATE_BELOW" in inspect.getsource(wc._index_rows)
+
+
+def test_the_last_candle_is_read_from_the_tail_not_the_whole_file():
+    import inspect
+
+    assert "pair_watermark" in inspect.getsource(wc._last_ms)

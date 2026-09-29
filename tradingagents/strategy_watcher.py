@@ -72,9 +72,30 @@ def _write(d: dict) -> None:
         os.replace(tmp, STATE)
 
 
+# The rules the LIVE watcher actually reads. The replay and the research dial
+# more (window_days, off_streak_live, judge_after, off_streak), but the live
+# watcher judges each row on the v2 store's own window — 30 days, measured
+# daily on GitHub — and the practice record is shown, never obeyed. A rule it
+# cannot honour is refused by name rather than printed on the screen as if it
+# were in force (label-must-match-data).
+LIVE_RULES = ("on_winrate", "off_winrate", "min_trades", "tp_rule",
+              "profit_floor", "max_slots", "max_per_coin", "max_new_per_day",
+              "cooldown_days", "fresh_hours", "rank")
+
+
+def store_window_days() -> int:
+    """The window every v2 row was measured over (cloud_sweep.SWEEP_DAYS)."""
+    with contextlib.suppress(Exception):                       # noqa: BLE001
+        from tradingagents import cloud_sweep as cs
+
+        return int(cs.SWEEP_DAYS)
+    return 30
+
+
 def cfg_of(st: dict | None = None) -> dict:
     st = _read() if st is None else st
-    return {**wp.DEFAULTS, **(st.get("cfg") or {})}
+    return {**wp.DEFAULTS, **(st.get("cfg") or {}),
+            "window_days": store_window_days(), "off_streak_live": 0}
 
 
 def mode_of(st: dict | None = None) -> str:
@@ -101,6 +122,10 @@ def set_cfg(partial: dict) -> dict:
     for k, v in (partial or {}).items():
         if k not in wp.DEFAULTS:
             raise ValueError(f"unknown rule {k!r}")
+        if k not in LIVE_RULES:
+            raise ValueError(f"{k} is a replay/research rule the live watcher does not "
+                             f"use — it judges every row on the store's own "
+                             f"{store_window_days()}-day window")
         want = type(wp.DEFAULTS[k])
         if want is float and isinstance(v, int):
             v = float(v)
@@ -144,14 +169,20 @@ def _candidates(cfg: dict, now: float) -> dict:
 
 
 def _fresh_row(meta: dict, now: float, cfg: dict):
-    """(row or None, readable) — `readable` False when the pair file could not
-    be read at all, which is NOT the same as the row being gone."""
+    """(row or None, readable). A pair file that is NOT THERE (a delisted
+    coin's, removed by the cleanup) is a row that is gone: (None, True), and
+    judge() switches it off. A file that IS there but reads empty or broken is
+    `readable` False — kept, and checked again next hour. The file is read
+    once (and only again when it changes)."""
     from tradingagents import watcher_candidates as wc
 
+    if not wc.pair_file(meta["coin"], meta["tf"]).exists():
+        return None, True
     rows = wc._pair_rows(meta["coin"], meta["tf"])
     if not rows:
         return None, False
-    return wc.fresh_row(meta["id"], meta["coin"], meta["tf"], meta, now=now, cfg=cfg), True
+    return wc.fresh_row(meta["id"], meta["coin"], meta["tf"], meta, now=now,
+                        cfg=cfg, rows=rows), True
 
 
 def _practice(slots: dict, now: float) -> dict:
@@ -170,8 +201,10 @@ def _register(key: str, spec: dict, persist: bool = True) -> str:
         have = at.STRATEGY_SPECS.get(key) or rs.load().get(key)
         if have is not None and dict(have) != dict(spec):
             raise ValueError(f"{key} already means {have}, not {spec}")
-        at.STRATEGY_SPECS.setdefault(key, dict(spec))
-        return "same" if have is not None else "in memory"
+        if key in at.STRATEGY_SPECS:
+            return "same"
+        at.STRATEGY_SPECS[key] = dict(spec)
+        return "in memory"         # the caller takes it out after edge_check
     got = rs.register(key, spec)
     at.merge_runtime_specs()            # this process trades it too (edge_check)
     return got
@@ -242,11 +275,12 @@ def _arm(s: dict, key: str, symbol: str, meta: dict) -> dict:
 def _disarm(s: dict, slot: str) -> dict:
     key, symbol = slot.split("|", 1)
     coins = dict(s.get("strategy_coins") or {})
-    left = [c for c in (coins.get(key) or []) if c != symbol]
-    if left:
-        coins[key] = left
-    else:
-        coins.pop(key, None)
+    # EMPTY, NEVER MISSING. coins_for() reads a missing key as "every coin in
+    # the global list" (the Aug 19, 2026 fallback), and with no book entry left
+    # _armed_here() is False, so a popped key would trade every global coin on
+    # the GLOBAL switches — real money included. `[]` means none; the same
+    # rule disarm_coins keeps.
+    coins[key] = [c for c in (coins.get(key) or []) if c != symbol]
     s["strategy_coins"] = coins
     for field in ("strategy_books", "strategy_res", "watcher_slots"):
         d = dict(s.get(field) or {})
@@ -304,8 +338,7 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
             continue
         why = wp.judge({"id": meta["id"]}, fresh, cfg)
         if why:
-            drop.append(slot)
-            st.setdefault("cooling", {})[meta["id"]] = now
+            drop.append((slot, meta["id"], len(out)))
             out.append(_d(now, st, "off", meta, why, fresh))
     # the operator's own practice rows: judged the same way, only REPORTED
     seen = st.setdefault("reported", {})
@@ -332,14 +365,34 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
                           f"one of YOUR practice rows would be switched off: {why}", fresh))
     if act and drop:
         def mutate(s):
-            for slot in drop:
+            for slot, _id, _i in drop:
                 _disarm(s, slot)
             return s
-        if not _write_settings(mutate):
-            out.append({"at": now, "mode": mode_of(st), "action": "refused",
-                        "id": "", "why": "the settings file kept changing — nothing "
-                        "switched off this hour, trying again next hour"})
-    return drop
+        stop = _stopped_meanwhile()
+        if stop or not _write_settings(mutate):
+            # NOTHING WAS SWITCHED OFF — say so on every line that claimed it
+            reason = stop or ("the settings file kept changing — nothing switched "
+                              "off this hour, trying again next hour")
+            for _slot, _id, i in drop:
+                _undo(out[i], reason)
+        else:
+            # the wait starts only for a switch-off that really happened
+            for _slot, rid, _i in drop:
+                st.setdefault("cooling", {})[rid] = now
+    return [slot for slot, _id, _i in drop]
+
+
+def _undo(d: dict, reason: str) -> None:
+    """A decision that was not carried out is logged as what it is."""
+    d["action"] = "refused"
+    d["why"] = f"{d['why']} — NOT DONE: {reason}"
+
+
+def _stopped_meanwhile() -> str:
+    """Why a pass must not write, if the operator changed the mode while it
+    ran (set_mode writes the state file; the pass holds an older copy)."""
+    m = mode_of(_read())
+    return "" if m == "act" else f"the watcher was set to {m} while this pass ran"
 
 
 def _row_id(settings: dict, key: str, sym: str, meta: dict) -> str:
@@ -391,12 +444,21 @@ def _try_picks(picks, now, st, act, out, settings, ws, arm, refused) -> None:
             refused.add(r["id"])
             continue
         try:
-            _register(key, spec, persist=act)
+            reg = _register(key, spec, persist=act)
         except ValueError as exc:
             out.append(_d(now, st, "refused", meta, f"its recipe clashes: {exc}", r))
             refused.add(r["id"])
             continue
-        edge = _edge(key, sym)
+        try:
+            edge = _edge(key, sym)
+        finally:
+            if reg == "in memory":
+                # a PREVIEW recipe must not outlive its check: left in memory
+                # it would make a later act pass answer "same" and never
+                # write the file the runner reads
+                from tradingagents import auto_trader as _at
+
+                _at.STRATEGY_SPECS.pop(key, None)
         if edge.get("verdict") not in EDGE_OK:
             out.append(_d(now, st, "refused", meta, f"the cost check said "
                           f"{edge.get('verdict')}: {edge.get('reason', '')[:160]}", r))
@@ -437,8 +499,14 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
             for key, sym, meta in arm:
                 _arm(s, key, sym, meta)
             return s
-        if not _write_settings(mutate):
-            return "the settings file kept changing — nothing switched on, trying again"
+        stop = _stopped_meanwhile()
+        if stop or not _write_settings(mutate):
+            reason = stop or "the settings file kept changing — nothing switched on"
+            for d in out:
+                if d["action"] == "on":
+                    _undo(d, reason)
+            if not stop:
+                return f"{reason}, trying again"
     st["last_candidates"] = got.get("why", "")
     return ""
 
@@ -478,6 +546,7 @@ def consider(*, now: float | None = None) -> dict:
     if now - float(st.get("last_off_pass") or 0) >= OFF_EVERY_S:
         _off_pass(now, cfg, st, act, out)
         st["last_off_pass"] = now
+        st["practice"] = _practice_now(now, cfg)
     due_on = _on_due(now, float(st.get("last_on_pass") or 0))
     tried = now - float(st.get("last_on_try") or 0) >= RETRY_S
     if due_on and tried:
@@ -499,8 +568,34 @@ def consider(*, now: float | None = None) -> dict:
                 nt.record("trade", f"Watcher{' (preview)' if not act else ''}: "
                           f"{n_on} switched on, {n_off} switched off", ok=True,
                           detail="; ".join(d["why"] for d in out[:6]))
-    _write(st)
+    # ONLY THE PASS'S OWN FIELDS go back, onto the state file as it is NOW: a
+    # mode or rule the operator set while this pass ran (it can take a minute
+    # of live book reads) must survive the pass writing its results.
+    fresh = _read()
+    for k in PASS_FIELDS:
+        if k in st:
+            fresh[k] = st[k]
+    _write(fresh)
     return {"decisions": out, "why": st.get("why", "")}
+
+
+PASS_FIELDS = ("last_on_pass", "last_off_pass", "last_on_try", "cooling",
+               "reported", "why", "last_candidates", "practice")
+
+
+def _practice_now(now: float, cfg: dict) -> dict:
+    """{slot: practice record + its warning} for every running watcher slot —
+    SHOWN on the screen, never a reason to switch off (the operator gave one
+    off rule, the 30-day win rate). Computed once an hour, so the panel's
+    30-second poll never reads the whole trade record."""
+    from tradingagents import auto_trader as at
+
+    with contextlib.suppress(Exception):                       # noqa: BLE001
+        ws = at.load_settings().get("watcher_slots") or {}
+        rec = _practice({slot: float(m.get("on_at") or now) for slot, m in ws.items()}, now)
+        return {slot: {**p, "warn": wp.warn(p, {**wp.DEFAULTS, **cfg})}
+                for slot, p in rec.items()}
+    return {}
 
 
 def _when(ts: float) -> str:
@@ -515,10 +610,14 @@ def status() -> dict:
     st = _read()
     settings = at.load_settings()
     ws = settings.get("watcher_slots") or {}
-    return {"mode": mode_of(st), "cfg": cfg_of(st), "why": st.get("why", ""),
+    practice = st.get("practice") or {}
+    cfg = cfg_of(st)
+    return {"mode": mode_of(st), "cfg": {k: cfg[k] for k in LIVE_RULES},
+            "window_days": cfg["window_days"], "why": st.get("why", ""),
             "last_on_pass": st.get("last_on_pass"), "last_off_pass": st.get("last_off_pass"),
             "next_on_pass": next_on(time.time(), float(st.get("last_on_pass") or 0)),
-            "running": len(ws), "slots": [{"slot": k, **v} for k, v in sorted(ws.items())],
+            "running": len(ws),
+            "slots": [{"slot": k, **v, "practice": practice.get(k)} for k, v in sorted(ws.items())],
             "cooling": len(st.get("cooling") or {}), "decisions": recent(50)}
 
 

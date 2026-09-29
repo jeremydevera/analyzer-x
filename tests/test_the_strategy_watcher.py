@@ -179,13 +179,19 @@ def test_it_never_runs_under_a_test():
     assert sw.tick() == {"decisions": [], "why": "never under a test run"}
 
 
-def test_the_supervisor_ticks_it():
+def test_the_watcher_runs_on_its_own_thread_not_in_the_supervisor():
+    """Its switch-on pass reads the index, 6 MB pair files and the live book;
+    inside the supervisor loop that minute would stop it restarting a dead
+    runner or indexer."""
     import pathlib
 
     src = pathlib.Path(sw.__file__).with_name("api.py").read_text("utf-8")
     watch = src[src.index("def _watch() -> None:"):]
     watch = watch[:watch.index("_th.Thread(target=_watch")]
-    assert "_sw.tick()" in watch
+    assert "_sw.tick()" not in watch
+    loop = src[src.index("def _watcher_loop() -> None:"):]
+    assert "_sw.tick()" in loop[:600]
+    assert 'name="strategy-watcher"' in src
 
 
 def _local(y, m, d, h, mi=0):
@@ -224,3 +230,105 @@ def test_a_refused_pick_does_not_use_up_one_of_the_days_places(world):
     got = sw.consider(now=NOW)
     on = [d for d in got["decisions"] if d["action"] == "on"]
     assert len(on) == 20 and all(d["coin"] != "IGV" for d in on)
+
+
+
+# ------------------------------------------------ the review of Sep 29, 2026
+def test_a_switched_off_last_coin_leaves_an_empty_list_never_a_missing_key(world):
+    """coins_for() reads a MISSING key as every coin in the global list, and
+    with no book entry left the row would take the GLOBAL switches."""
+    world["settings"]["coins"] = ["BTC_USDT", "ETH_USDT"]
+    world["settings"]["enabled"] = True
+    sw.consider(now=NOW)
+    world["fresh"]["77Y3BPFG"] = {**R6, "winrate": 60.0}
+    sw.consider(now=NOW + 3601)
+    s = world["settings"]
+    assert s["strategy_coins"][KEY] == [], "explicitly empty means none"
+    assert at.coins_for(KEY, s) == []
+
+
+def test_the_operator_turning_it_off_mid_pass_wins(world, monkeypatch):
+    """set_mode writes the state file while the pass holds an older copy."""
+    def _edge_then_off(key, sym):
+        sw.set_mode("off")
+        return {"verdict": "ok", "reason": "t"}
+
+    monkeypatch.setattr(sw, "_edge", _edge_then_off)
+    got = sw.consider(now=NOW)
+    assert world["saves"] == 0, "nothing armed after it was switched off"
+    assert sw.mode_of() == "off", "the pass must not write the old mode back"
+    assert got["decisions"][0]["action"] == "refused"
+    assert "NOT DONE" in got["decisions"][0]["why"]
+
+
+def test_a_write_that_never_lands_is_not_logged_as_done(world, monkeypatch):
+    monkeypatch.setattr(sw, "_write_settings", lambda mutate: False)
+    got = sw.consider(now=NOW)
+    assert [d["action"] for d in got["decisions"]] == ["refused"]
+    assert not world["bells"], "no 'switched on' bell for nothing"
+
+
+def test_preview_starts_no_seven_day_wait(world):
+    sw.consider(now=NOW)                       # act: armed
+    sw.set_mode("preview")
+    world["fresh"]["77Y3BPFG"] = {**R6, "winrate": 60.0}
+    sw.consider(now=NOW + 3601)
+    assert "77Y3BPFG" not in (sw._read().get("cooling") or {})
+
+
+def test_a_preview_recipe_does_not_outlive_its_check(world, monkeypatch):
+    """Left in memory it made the next act pass answer "same" and write no
+    file, so the runner never learned the key."""
+    monkeypatch.setattr(sw, "_register", sw.__dict__["_register"].__wrapped__
+                        if hasattr(sw.__dict__["_register"], "__wrapped__") else _REAL_REGISTER)
+    sw.set_mode("preview")
+    sw.consider(now=NOW)
+    assert KEY not in at.STRATEGY_SPECS
+
+
+def test_a_key_only_in_memory_is_still_written_to_the_runners_file(tmp_path, monkeypatch):
+    from tradingagents import runtime_specs as rs
+
+    monkeypatch.setattr(rs, "PATH", tmp_path / "runtime_specs.json")
+    spec = {"interval": "Min60", "bar_seconds": 3600, "tp": 0.01, "sl": 0.007}
+    monkeypatch.setitem(at.STRATEGY_SPECS, KEY, dict(spec))     # a stray preview
+    assert rs.register(KEY, spec) == "added"
+    assert KEY in rs.load()
+
+
+def test_a_deleted_pair_file_switches_the_row_off(world, monkeypatch, tmp_path):
+    """The delisted cleanup removes a coin's pair files: that row is gone, not
+    unreadable, and must not sit in the watcher for ever."""
+    from tradingagents import watcher_candidates as wc
+
+    monkeypatch.setattr(sw, "_fresh_row", _REAL_FRESH_ROW)
+    sw.consider(now=NOW)
+    monkeypatch.setattr(wc, "pair_file", lambda coin, tf: tmp_path / "gone.json")
+    got = sw.consider(now=NOW + 3601)
+    assert [d["action"] for d in got["decisions"]] == ["off"]
+    assert "no longer holds" in got["decisions"][0]["why"]
+
+
+def test_a_pair_file_that_is_there_but_unreadable_keeps_the_row(world, monkeypatch, tmp_path):
+    from tradingagents import watcher_candidates as wc
+
+    monkeypatch.setattr(sw, "_fresh_row", _REAL_FRESH_ROW)
+    sw.consider(now=NOW)
+    f = tmp_path / "broken.json"
+    f.write_text("{not json")
+    monkeypatch.setattr(wc, "pair_file", lambda coin, tf: f)
+    monkeypatch.setattr(wc, "_pair_rows", lambda coin, tf: [])
+    got = sw.consider(now=NOW + 3601)
+    assert not [d for d in got["decisions"] if d["action"] == "off"]
+
+
+def test_a_rule_the_live_watcher_cannot_honour_is_refused_not_printed(world):
+    with pytest.raises(ValueError, match="does not use"):
+        sw.set_cfg({"window_days": 14})
+    st = sw.status()
+    assert "window_days" not in st["cfg"] and st["window_days"] == sw.store_window_days()
+    assert "off_streak_live" not in st["cfg"]
+
+
+_REAL_REGISTER = sw._register
+_REAL_FRESH_ROW = sw._fresh_row

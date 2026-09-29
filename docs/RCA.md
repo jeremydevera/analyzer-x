@@ -172,6 +172,58 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-29-D — 32 switched-off strategies stayed on the deployed list as blank rows
+
+**CEO**
+
+* You saw strategies the watcher had just switched off still listed on your
+  screen, and asked why the page was not updating.
+* Why: the page updates every 5 seconds, but a strategy with no coins left
+  was still counted as deployed, so each one came back as an empty row with
+  no id and no coin. None of them was trading.
+* What stops it now: a strategy with no coins left is not listed as
+  deployed. It still shows under "show all" so you can switch it on again.
+
+**DEV**
+
+* `api.trade_strategies` (api.py:2404) set `deployed = [k ... if books.get(k)
+  or coins.get(k)]`; `strategy_watcher._disarm` leaves `strategy_coins[key] =
+  []` (RCA-2026-09-29-A) while the bare-key `strategy_books[key] = ["paper"]`
+  stays, and `coins.get(key) or [None]` then emitted one coinless row.
+* Invariant broken: **the screen's "deployed" and the runner's `coins_for`
+  must agree: `[]` means none on both.**
+* Guard: `tests/test_both_books_on_a_deployed_row.py::test_a_strategy_with_no_coins_left_is_not_a_deployed_row`.
+
+**SAW** — *"why is it still reflecting, why is my ui not realtime"*, right
+after *"VWQ2L6KF is 88 now"*.
+
+**TIMELINE**
+
+1. `Sep 29, 2026 1:20pm` — the watcher switches 39 practice rows off; the
+   runner's row count goes from 99 to 60.
+2. `/api/trade/strategies` still returns **92** rows. **32** of them have
+   `coins: []`, `books: ["paper"]` and no id (keltner_30m_sl1tp15,
+   rsidiv_15m_sl06tp06 — #VWQ2L6KF's key — and 30 more).
+3. After the fix: 60 rows, one per coin actually switched on.
+
+**ROOT CAUSE** — the deployed filter counted a bare-key book entry as
+deployed even when the key's coin list was explicitly empty.
+
+**WHY IT WAS NOT CAUGHT** — the Sep 29 watcher tests asserted what the
+settings file held after a switch-off (`coins[key] == []`) and what the
+runner would trade. None of them asked what the SCREEN then listed, and the
+route test fixtures never had a key with an empty coin list.
+
+**COST** — none: those 32 traded nothing. The list was wrong for about 10
+minutes.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_both_books_on_a_deployed_row.py::test_a_strategy_with_no_coins_left_is_not_a_deployed_row`
+(red on the old api.py, green on the fix).
+
+---
+
 ## RCA-2026-09-29-C — the watcher left the operator's own practice rows running under 90%, because it only reported them
 
 **CEO**

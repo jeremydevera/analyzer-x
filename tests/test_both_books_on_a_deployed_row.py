@@ -263,3 +263,24 @@ def test_every_row_id_has_a_copy_button_that_reports_what_happened():
         assert 'from "./CopyableId"' in src, f"{path} must import the one"
         assert "navigator.clipboard" not in src, \
             f"{path} has its own clipboard call again — that is the bug"
+
+
+def test_a_strategy_with_no_coins_left_is_not_a_deployed_row(books, monkeypatch):
+    """Sep 29, 2026 1:20pm: the watcher switched 39 rows off; each key keeps
+    an EMPTY coin list (never a missing one, RCA-2026-09-29-A), and the 32
+    whose bare key still said ["paper"] came back as blank rows — no id, no
+    coin — so the operator asked "why is it still reflecting". `[]` trades
+    nothing, so it is not deployed. A MISSING list is still shown: it means
+    the global coin list."""
+    from tradingagents import api
+
+    monkeypatch.setattr(at, "load_settings", lambda: {
+        "strategies": [LIVE_KEY, DEMO_KEY], "coins": ["LYN_USDT"],
+        "strategy_coins": {DEMO_KEY: []},
+        "strategy_books": {LIVE_KEY: ["paper"], DEMO_KEY: ["paper"]},
+    })
+    got = {r["key"] for r in api.trade_strategies()["rows"]}
+    assert DEMO_KEY not in got, "switched off: its coin list is empty"
+    assert LIVE_KEY in got, "no list at all still means the global coins"
+    # the catalog view still lists every key, so it can be armed again
+    assert DEMO_KEY in {r["key"] for r in api.trade_strategies(catalog=True)["rows"]}

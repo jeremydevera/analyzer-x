@@ -2401,8 +2401,15 @@ def trade_strategies(catalog: bool = False) -> dict:
     from tradingagents import rolling30 as _r30
     _now30 = _time.time()
     _exits30 = _r30.PRACTICE.get(_now30)
+    # A key whose coin list is EXPLICITLY EMPTY trades nothing (coins_for:
+    # `[]` means none) and is not deployed, whatever its bare-key book says.
+    # Sep 29, 2026 1:20pm: the watcher switched 39 rows off, and the 32 whose
+    # key kept `strategy_books[key] = ["paper"]` came back as blank rows with
+    # no id and no coin — "why is it still reflecting". A MISSING coin list
+    # still falls back to the global one, so such a key still shows.
     deployed = [k for k in at.STRATEGY_ORDER
-                if (books.get(k) or coins.get(k))]
+                if (books.get(k) or coins.get(k))
+                and not (k in coins and not coins[k])]
     keys = at.STRATEGY_ORDER if catalog else deployed
     rows = []
     for key in keys:

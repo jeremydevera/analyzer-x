@@ -143,6 +143,11 @@ export default function WatcherPanel() {
           )}
           <p className="mt-3 text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
             Decisions · {w.decisions_total}
+            {/* the page waits its turn behind the screen's other requests
+                (~4 s measured), so the click is answered at once */}
+            {w.decisions_page !== dPage && (
+              <span className="ml-2 font-normal text-gray-400">loading page {dPage}…</span>
+            )}
           </p>
           <div className="mt-1 flex flex-col gap-1.5">
             {w.decisions.length === 0 && (
@@ -161,7 +166,7 @@ export default function WatcherPanel() {
               </div>
             ))}
           </div>
-          <Pager cur={w.decisions_page} pages={w.decisions_pages}
+          <Pager cur={Math.min(dPage, w.decisions_pages)} pages={w.decisions_pages}
             goto={(n) => setDPage(Math.min(Math.max(1, n), w.decisions_pages))} what="decisions" />
         </>
       )}

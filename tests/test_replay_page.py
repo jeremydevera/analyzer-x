@@ -95,3 +95,13 @@ def test_every_strategy_names_its_group_and_can_be_filtered_by_it():
     assert data["groups"] == ["classic", "preset", "sep25", "sep27ml"]
     assert '["group","group",1]' in html and 'id="f-grp"' in html
     assert "judged on the same days they were learned from" in html
+
+
+def test_a_group_that_switched_nothing_on_says_so_and_never_claims_it_was_missing():
+    """Sep 27 ML: 474 models existed and were walked (run 36504572167) and
+    none cleared the rules — "had no finished models yet" would be false."""
+    res = _res()
+    res["totals"]["groups"] = ["classic", "preset", "sep25", "sep27ml"]
+    html = rp.build(res)
+    assert "no finished models yet" not in html
+    assert "cleared the switch-on rules" in html

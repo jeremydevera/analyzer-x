@@ -20,7 +20,31 @@ def store(tmp_path, monkeypatch):
                         lambda coin, tf: list(s["pairs"].get((coin, tf), [])))
     monkeypatch.setattr(wc, "_last_ms",
                         lambda coin, tf: s["last_ms"].get((coin, tf)))
+    # the tests' OWN pair files: the match cache is keyed on a file's mtime,
+    # and the real G: file for FASTSTOCK 15m exists on this PC, so a row
+    # cached by one test was served to the next (harddev round 1)
+    monkeypatch.setattr(wc, "_MATCH_CACHE", {})
+    monkeypatch.setattr(wc, "pair_file", lambda coin, tf: _FakeFile(s, coin, tf))
     return s
+
+
+class _FakeFile:
+    """exists() when the test gave the pair any rows list; mtime changes
+    whenever the rows do, the way a real rewrite would."""
+
+    def __init__(self, s, coin, tf):
+        self.s, self.key = s, (coin, tf)
+
+    def exists(self):
+        return self.key in self.s["pairs"]
+
+    def stat(self):
+        import json as _j
+
+        if not self.exists():
+            raise FileNotFoundError(self.key)
+        body = _j.dumps(self.s["pairs"][self.key], sort_keys=True)
+        return type("S", (), {"st_mtime": float(abs(hash(body)))})()
 
 
 def _row(**kw):
@@ -59,6 +83,7 @@ def test_each_pair_file_is_read_once_however_many_rows_it_holds(store, monkeypat
     reads = []
     store["index"] = [{**_row(sl=s, tp=s), "id": f"X{s}"} for s in (1.2, 1.5, 2.0)]
     rows = [_row(sl=s, tp=s) for s in (1.2, 1.5, 2.0)]
+    store["pairs"][("FASTSTOCK", "15m")] = rows       # the file is there
     monkeypatch.setattr(wc, "_pair_rows",
                         lambda coin, tf: (reads.append((coin, tf)), rows)[1])
     store["last_ms"][("FASTSTOCK", "15m")] = NOW * 1000
@@ -119,3 +144,20 @@ def test_the_last_candle_is_read_from_the_tail_not_the_whole_file():
     import inspect
 
     assert "pair_watermark" in inspect.getsource(wc._last_ms)
+
+
+
+def test_the_cache_keeps_only_the_rows_asked_for(store):
+    """Holding whole ~6 MB pair files for the few hundred pairs a switch-on
+    pass reads was gigabytes in the API process."""
+    store["pairs"][("FASTSTOCK", "15m")] = [_row(sl=x / 10, tp=x / 10 + 0.2) for x in range(5, 40)]
+    wc.matched_rows("FASTSTOCK", "15m", [_row(sl=0.5, tp=0.7)])
+    kept = wc._MATCH_CACHE[("FASTSTOCK", "15m")][1]
+    assert len(kept) == 1, "one row asked for, one row kept"
+
+
+def test_a_rewritten_pair_file_is_read_again(store):
+    store["pairs"][("FASTSTOCK", "15m")] = [_row(winrate=91.0)]
+    assert wc.matched_rows("FASTSTOCK", "15m", [_row()])[wc._sig(_row())]["winrate"] == 91.0
+    store["pairs"][("FASTSTOCK", "15m")] = [_row(winrate=60.0)]
+    assert wc.matched_rows("FASTSTOCK", "15m", [_row()])[wc._sig(_row())]["winrate"] == 60.0

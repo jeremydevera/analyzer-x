@@ -148,8 +148,13 @@ def _log(decisions: list[dict]) -> None:
 
 
 def recent(n: int = 50) -> list[dict]:
+    """The newest `n` decisions, read from the log's TAIL — the panel asks
+    every 30 seconds and the log only ever grows."""
     try:
-        lines = LOG.read_text(encoding="utf-8").splitlines()
+        size = LOG.stat().st_size
+        with LOG.open("rb") as fh:
+            fh.seek(max(0, size - 256 * 1024))
+            lines = fh.read().decode("utf-8", "replace").splitlines()
     except OSError:
         return []
     out = []
@@ -178,11 +183,12 @@ def _fresh_row(meta: dict, now: float, cfg: dict):
 
     if not wc.pair_file(meta["coin"], meta["tf"]).exists():
         return None, True
-    rows = wc._pair_rows(meta["coin"], meta["tf"])
-    if not rows:
+    got = wc.matched_rows(meta["coin"], meta["tf"], [meta])
+    if got is None:
         return None, False
-    return wc.fresh_row(meta["id"], meta["coin"], meta["tf"], meta, now=now,
-                        cfg=cfg, rows=rows), True
+    row = got.get(wc._sig(meta))
+    last = wc._last_ms(meta["coin"], meta["tf"]) or 0.0
+    return (None if row is None else wc._fresh(meta["coin"], meta["tf"], row, last)), True
 
 
 def _practice(slots: dict, now: float) -> dict:
@@ -328,8 +334,22 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
     settings = at.load_settings()
     ws = settings.get("watcher_slots") or {}
     drop = []
+    gone_by_hand = []
     for slot, meta in sorted(ws.items()):
-        if "real" in at.book_names(settings, *slot.split("|", 1)):
+        key, sym = slot.split("|", 1)
+        if sym not in at.coins_for(key, settings):
+            # YOU switched it off (or the delisted cleanup did): it is no
+            # longer the watcher's, and must not count toward its 100 or its
+            # 3 per coin for ever. Said once a day — in PREVIEW the slot stays
+            # (nothing is written) and would otherwise be reported hourly.
+            gone_by_hand.append(slot)
+            mark = st.setdefault("reported", {})
+            if mark.get(f"gone:{slot}") != _today(now):
+                mark[f"gone:{slot}"] = _today(now)
+                out.append(_d(now, st, "report", meta, "switched off outside the "
+                              "watcher — no longer counted as one of its rows"))
+            continue
+        if "real" in at.book_names(settings, key, sym):
             continue                       # never touch a slot holding real money
         fresh, readable = _fresh_row(meta, now, cfg)
         if not readable:
@@ -363,6 +383,15 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
             seen[meta["id"]] = day
             out.append(_d(now, st, "report", meta,
                           f"one of YOUR practice rows would be switched off: {why}", fresh))
+    if act and gone_by_hand:
+        def forget(s):
+            ws2 = dict(s.get("watcher_slots") or {})
+            for slot in gone_by_hand:
+                ws2.pop(slot, None)
+            s["watcher_slots"] = ws2
+            return s
+        if not _stopped_meanwhile():
+            _write_settings(forget)
     if act and drop:
         def mutate(s):
             for slot, _id, _i in drop:
@@ -393,6 +422,12 @@ def _stopped_meanwhile() -> str:
     ran (set_mode writes the state file; the pass holds an older copy)."""
     m = mode_of(_read())
     return "" if m == "act" else f"the watcher was set to {m} while this pass ran"
+
+
+def _today(now: float) -> str:
+    import datetime as _dt
+
+    return str(_dt.date.fromtimestamp(now))          # a key, never printed
 
 
 def _row_id(settings: dict, key: str, sym: str, meta: dict) -> str:
@@ -441,6 +476,16 @@ def _try_picks(picks, now, st, act, out, settings, ws, arm, refused) -> None:
         if by_hand and not mine_already:
             out.append(_d(now, st, "refused", meta, "you already run this row "
                           "yourself — the watcher leaves it alone", r))
+            refused.add(r["id"])
+            continue
+        # THE STAKE IS PER STRATEGY NAME, not per coin (auto_trader.margin_for).
+        # A name the operator runs at another stake would trade the watcher's
+        # coin at THAT stake — never what the replay measured ($5).
+        have = (settings.get("strategy_margins") or {}).get(key)
+        if have is not None and float(have) != MARGIN:
+            out.append(_d(now, st, "refused", meta, f"its strategy name {key} is "
+                          f"set to ${float(have):g} a trade, and the watcher only "
+                          f"trades ${MARGIN:g}", r))
             refused.add(r["id"])
             continue
         try:
@@ -544,14 +589,22 @@ def consider(*, now: float | None = None) -> dict:
     act = mode == "act"
     out: list[dict] = []
     if now - float(st.get("last_off_pass") or 0) >= OFF_EVERY_S:
-        _off_pass(now, cfg, st, act, out)
+        # stamped FIRST: a pass that raises is retried next hour, never every
+        # minute (the tick only prints the error; nothing else would stop it)
         st["last_off_pass"] = now
+        try:
+            _off_pass(now, cfg, st, act, out)
+        except Exception as exc:                               # noqa: BLE001
+            st["why"] = f"the switch-off check failed: {type(exc).__name__}: {str(exc)[:160]}"
         st["practice"] = _practice_now(now, cfg)
     due_on = _on_due(now, float(st.get("last_on_pass") or 0))
     tried = now - float(st.get("last_on_try") or 0) >= RETRY_S
     if due_on and tried:
         st["last_on_try"] = now
-        wait = _on_pass(now, cfg, st, act, out)
+        try:
+            wait = _on_pass(now, cfg, st, act, out)
+        except Exception as exc:                               # noqa: BLE001
+            wait = f"it failed: {type(exc).__name__}: {str(exc)[:160]}"
         if wait:
             st["why"] = f"switch-on pass waiting: {wait}"
         else:
@@ -571,6 +624,13 @@ def consider(*, now: float | None = None) -> dict:
     # ONLY THE PASS'S OWN FIELDS go back, onto the state file as it is NOW: a
     # mode or rule the operator set while this pass ran (it can take a minute
     # of live book reads) must survive the pass writing its results.
+    wait_s = float(cfg.get("cooldown_days", 7)) * 86_400
+    st["cooling"] = {k: v for k, v in (st.get("cooling") or {}).items()
+                     if now - float(v) < wait_s}
+    import datetime as _dt
+
+    today = str(_dt.date.fromtimestamp(now))
+    st["reported"] = {k: v for k, v in (st.get("reported") or {}).items() if v == today}
     fresh = _read()
     for k in PASS_FIELDS:
         if k in st:

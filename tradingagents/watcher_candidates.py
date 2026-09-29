@@ -46,27 +46,46 @@ def pair_file(coin: str, tf: str) -> Path:
     return Path(stores.V2.home) / "rows" / f"{coin}-{tf}.json"
 
 
-# (coin, tf) -> (mtime, rows). A pair file is ~6 MB and only changes when the
-# daily collect writes it, while the switch-off pass re-reads every running
-# row every hour — so a file is parsed again only when it changed. At most
-# the pairs the watcher is judging are held (a few hundred, not the store).
-_ROWS_CACHE: dict = {}
-
-
 def _pair_rows(coin: str, tf: str) -> list[dict]:
+    """The whole pair file, parsed — ~6 MB, so callers keep only what they
+    match (never the list itself: the switch-on pass reads a few hundred)."""
     from tradingagents import market_sweep as msw
 
+    return msw.pair_rows(coin, tf, root=stores.V2.home)
+
+
+def _sig(want: dict) -> tuple:
+    return (want["signal"], round(float(want.get("th") or 0), 3),
+            round(float(want["sl"]), 3), round(float(want["tp"]), 3))
+
+
+# (coin, tf) -> (mtime, {signature: row or None}). Only the ROWS ASKED FOR are
+# kept — a few per running pair — never a pair file's ~10,000 rows: holding
+# the lists of the few hundred pairs the switch-on pass reads was gigabytes
+# (harddev round 1, Sep 29, 2026). A file is parsed again only when it changed
+# or a row not asked for before is wanted.
+_MATCH_CACHE: dict = {}
+
+
+def matched_rows(coin: str, tf: str, wants: list[dict]) -> dict | None:
+    """{signature: the pair row that IS it, or None} for each wanted row, or
+    None when the pair file is there but reads empty or broken."""
     try:
         mtime = pair_file(coin, tf).stat().st_mtime
     except OSError:
-        return []
-    hit = _ROWS_CACHE.get((coin, tf))
-    if hit and hit[0] == mtime:
-        return hit[1]
-    rows = msw.pair_rows(coin, tf, root=stores.V2.home)
-    if rows:
-        _ROWS_CACHE[(coin, tf)] = (mtime, rows)
-    return rows
+        return {}
+    sigs = {_sig(w) for w in wants}
+    hit = _MATCH_CACHE.get((coin, tf))
+    if hit and hit[0] == mtime and sigs <= set(hit[1]):
+        return {s: hit[1][s] for s in sigs}
+    rows = _pair_rows(coin, tf)
+    if not rows:
+        return None
+    known = dict(hit[1]) if hit and hit[0] == mtime else {}
+    for s in sigs:
+        known[s] = _match(rows, {"signal": s[0], "th": s[1], "sl": s[2], "tp": s[3]})
+    _MATCH_CACHE[(coin, tf)] = (mtime, known)
+    return {s: known[s] for s in sigs}
 
 
 def _last_ms(coin: str, tf: str) -> float | None:
@@ -125,9 +144,9 @@ def fresh_candidates(cfg: dict, *, now: float, limit: int = 5000) -> dict:
         if last is None or now * 1000 - last > fresh_ms:
             stale += len(want)
             continue
-        have = _pair_rows(coin, tf)
+        have = matched_rows(coin, tf, want) or {}
         for w in want:
-            got = _match(have, w)
+            got = have.get(_sig(w))
             if got is None:
                 gone += 1
                 continue
@@ -149,5 +168,8 @@ def fresh_row(row_id: str, coin: str, tf: str, spec: dict, *, now: float,
     (switching off on old news would be its own mistake); `measured_ms` says
     how old it is."""
     last = _last_ms(coin, tf) or 0.0
-    got = _match(_pair_rows(coin, tf) if rows is None else rows, spec)
+    if rows is not None:
+        got = _match(rows, spec)
+    else:
+        got = (matched_rows(coin, tf, [spec]) or {}).get(_sig(spec))
     return None if got is None else _fresh(coin, tf, got, last)

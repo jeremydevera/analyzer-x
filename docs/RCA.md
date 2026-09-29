@@ -172,6 +172,93 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-29-B — harddev on the strategy watcher: a cache that would have held gigabytes, a crashed check retried every minute, and four more
+
+NEVER HAPPENED YET — found by the harddev loop the operator asked for (*"fix
+the bug, keep on looping until there is no bug ues harddev"*), `Sep 29, 2026`
+early morning, before the watcher's first switch-on pass (noon). It had armed
+nothing.
+
+**CEO**
+
+* Nothing was lost. Left in, the noon check could have used gigabytes of the
+  PC's memory; a check that crashed would have retried every minute all day;
+  a strategy you switched off yourself would have stayed counted as the
+  watcher's for ever; and a strategy name you run at another stake would
+  have traded that stake instead of $5.
+* Why: the fixes of RCA-2026-09-29-A widened what the watcher reads (every
+  row from 80% up) while its new cache kept each whole ~6 MB results file,
+  and the watcher assumed its passes cannot fail and that only it changes
+  its own rows.
+* What stops it now: the cache keeps only the rows it was asked for, a
+  failed check waits its normal turn, stale rows and old notes are cleared,
+  and a strategy name not at $5 is refused by name.
+
+**DEV**
+
+* Round 1: `watcher_candidates._ROWS_CACHE` held whole pair-file lists for
+  every pair a switch-on pass read (NOMINATE_BELOW widened it to every row
+  from 80% up); `consider()` stamped `last_off_pass` / saved `last_on_try`
+  only after a pass returned, so a raising pass re-ran every 60 s; a watcher
+  slot the operator unticked stayed in `watcher_slots`; `recent()` read the
+  whole growing log on every 30 s poll; `cooling`/`reported` were never
+  pruned. Round 2: `auto_trader.margin_for` is per strategy NAME, so a coin
+  added under a $20 name trades $20; preview re-reported an unticked slot
+  hourly. Round 3: `merge_runtime_specs` had no lock, and the API merges from
+  request threads and the watcher thread. Rounds 4-5: clean (live signal ==
+  backtest signal on 60 bars for all 130 rules and 40 bars for 3 ML + 3 Sep 25
+  formulas; recipe lookups by settings name are all guarded or walk
+  STRATEGY_ORDER; the ledger read is 2.5 s for 53,765 rows; no other session
+  touched these files).
+* Invariants broken: **a cache holds what was asked for, never the file it
+  was found in**; **a periodic job stamps its clock BEFORE it runs**; **a
+  mutation of a shared registry from more than one thread takes a lock**.
+* Guard: `tests/test_watcher_candidates_are_fresh.py::test_the_cache_keeps_only_the_rows_asked_for`,
+  `tests/test_the_strategy_watcher.py::test_a_check_that_crashes_is_not_retried_every_minute`,
+  `::test_a_row_you_switched_off_yourself_stops_counting`,
+  `::test_a_strategy_name_set_to_another_stake_is_refused`,
+  `tests/test_a_watcher_key_reaches_the_runner.py::test_two_threads_merging_at_once_add_the_key_once`.
+
+**SAW** — nothing: a review the operator asked for.
+
+**TIMELINE**
+
+1. `Sep 29, 2026 ~4:05am` — RCA-2026-09-29-A's fixes deployed; the watcher
+   asks the index from 80% up (was 90%) and caches pair files by mtime.
+2. Round 1 — 5 findings (above). Two test fixtures also leaked a real G:
+   file's cached row between tests (the cache is keyed on the real path);
+   they now use their own fake files.
+3. Round 2 — the per-name stake and the preview report spam. All 72
+   strategy names on this PC are at $5, so nothing would have traded
+   otherwise today. Seen in passing and NOT the watcher's to change: the
+   practice account has Martingale mode on, so its practice stakes double
+   after a loss where the replay staked a flat $5.
+4. Round 3 — the merge race, fixed with a lock (8 threads merging at once
+   now add a key exactly once).
+5. Rounds 4 and 5 — clean. Test run: 681 passed across the watcher, replay,
+   research, runner, deploy and daily-update suites; 11 date-format and
+   entry-point checks passed.
+
+**ROOT CAUSE** — each fix of RCA-2026-09-29-A was made without re-asking
+what it did to memory, to failure and to the other threads.
+
+**WHY IT WAS NOT CAUGHT** — the watcher's tests fed it a handful of rows on
+one thread, with every call succeeding: no test measured what a cache held,
+raised inside a pass, unticked a slot behind the watcher's back, or merged
+from two threads at once.
+
+**COST** — none: no slot had been armed.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_watcher_candidates_are_fresh.py::test_the_cache_keeps_only_the_rows_asked_for`
+(and the four named in DEV, plus
+`tests/test_the_strategy_watcher.py::test_the_waits_and_the_report_marks_are_trimmed`,
+`::test_the_panel_reads_only_the_logs_tail`,
+`::test_a_row_switched_off_by_hand_is_reported_once_a_day_in_preview`).
+
+---
+
 ## RCA-2026-09-29-A — a review of the live strategy watcher found a switch-off that could have traded every coin, a mode that did not stick, and five more
 
 NEVER HAPPENED YET — found by a review at `Sep 29, 2026 3:50am`, before the

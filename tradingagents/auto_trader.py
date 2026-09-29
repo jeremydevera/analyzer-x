@@ -1637,6 +1637,16 @@ _RUNTIME_SEEN = {"mtime": None}
 _COMMITTED_KEYS = frozenset(STRATEGY_SPECS)
 
 
+import threading as _threading
+
+# ONE MERGE AT A TIME. The API process loads settings from its request threads
+# AND the strategy-watcher thread: two merges that both saw the file change
+# would both pass `key in STRATEGY_SPECS` and append the key to STRATEGY_ORDER
+# twice, and every screen that walks it would show that row twice
+# (harddev round 3, Sep 29, 2026).
+_RUNTIME_LOCK = _threading.Lock()
+
+
 def merge_runtime_specs() -> int:
     global STRATEGY_ORDER
     from tradingagents import runtime_specs as _rs
@@ -1647,15 +1657,19 @@ def merge_runtime_specs() -> int:
         return 0
     if _RUNTIME_SEEN["mtime"] == mtime:
         return 0
-    _RUNTIME_SEEN["mtime"] = mtime
-    added = 0
-    for key, spec in _rs.load().items():
-        if key in STRATEGY_SPECS or not isinstance(spec, dict):
-            continue
-        STRATEGY_SPECS[key] = dict(spec)
-        STRATEGY_ORDER = STRATEGY_ORDER + (key,)
-        added += 1
-    return added
+    with _RUNTIME_LOCK:
+        if _RUNTIME_SEEN["mtime"] == mtime:
+            return 0
+        added = 0
+        for key, spec in _rs.load().items():
+            if key in STRATEGY_SPECS or not isinstance(spec, dict):
+                continue
+            STRATEGY_SPECS[key] = dict(spec)
+            if key not in STRATEGY_ORDER:
+                STRATEGY_ORDER = STRATEGY_ORDER + (key,)
+            added += 1
+        _RUNTIME_SEEN["mtime"] = mtime
+        return added
 
 
 # ------------------------------------------------------------------ signals

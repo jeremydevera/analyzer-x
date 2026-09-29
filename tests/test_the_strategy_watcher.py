@@ -333,3 +333,68 @@ def test_a_rule_the_live_watcher_cannot_honour_is_refused_not_printed(world):
 
 _REAL_REGISTER = sw._register
 _REAL_FRESH_ROW = sw._fresh_row
+
+
+# ------------------------------------------------ harddev round 1 (Sep 29, 2026)
+def test_a_check_that_crashes_is_not_retried_every_minute(world, monkeypatch):
+    calls = []
+
+    def _boom(cfg, now):
+        calls.append(now)
+        raise RuntimeError("the index went away")
+
+    monkeypatch.setattr(sw, "_candidates", _boom)
+    got = sw.consider(now=NOW)
+    assert "failed" in got["why"] and "RuntimeError" in got["why"]
+    sw.consider(now=NOW + 60)
+    assert len(calls) == 1, "not again a minute later"
+    sw.consider(now=NOW + sw.RETRY_S)
+    assert len(calls) == 2
+
+
+def test_a_row_you_switched_off_yourself_stops_counting(world):
+    sw.consider(now=NOW)
+    s = world["settings"]
+    s["strategy_coins"][KEY] = []                    # unticked on the screen
+    got = sw.consider(now=NOW + 3601)
+    assert SLOT not in world["settings"]["watcher_slots"]
+    assert any("switched off outside the watcher" in d["why"] for d in got["decisions"])
+
+
+def test_the_waits_and_the_report_marks_are_trimmed(world):
+    st = sw._read()
+    st["cooling"] = {"OLD00001": NOW - 8 * 86_400, "NEW00001": NOW - 86_400}
+    st["reported"] = {"OLD00001": "2026-01-01"}
+    sw._write(st)
+    sw.consider(now=NOW)
+    after = sw._read()
+    assert "OLD00001" not in after["cooling"] and "NEW00001" in after["cooling"]
+    assert "OLD00001" not in (after.get("reported") or {})
+
+
+def test_the_panel_reads_only_the_logs_tail(world):
+    big = [{"at": i, "mode": "act", "action": "report", "id": f"X{i}", "why": "x" * 400}
+           for i in range(3000)]
+    sw._log(big)
+    got = sw.recent(50)
+    assert len(got) == 50 and got[0]["id"] == "X2999"
+
+
+# ------------------------------------------------ harddev round 2
+def test_a_strategy_name_set_to_another_stake_is_refused(world):
+    """The stake is per NAME (margin_for): a coin added under a $20 name would
+    trade $20, never the $5 the replay measured."""
+    world["settings"]["strategy_margins"] = {KEY: 20.0}
+    got = sw.consider(now=NOW)
+    assert got["decisions"][0]["action"] == "refused"
+    assert "$20 a trade" in got["decisions"][0]["why"] and world["saves"] == 0
+
+
+def test_a_row_switched_off_by_hand_is_reported_once_a_day_in_preview(world):
+    sw.consider(now=NOW)
+    world["settings"]["strategy_coins"][KEY] = []
+    sw.set_mode("preview")
+    first = sw.consider(now=NOW + 3601)["decisions"]
+    again = sw.consider(now=NOW + 7202)["decisions"]
+    assert any("outside the watcher" in d["why"] for d in first)
+    assert not any("outside the watcher" in d["why"] for d in again)

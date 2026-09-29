@@ -54,3 +54,28 @@ def test_a_corrupt_registry_changes_nothing_and_does_not_raise(tmp_path):
     before = dict(at.STRATEGY_SPECS)
     assert at.merge_runtime_specs() == 0
     assert at.STRATEGY_SPECS == before
+
+
+def test_two_threads_merging_at_once_add_the_key_once():
+    """The API loads settings from request threads AND the watcher thread."""
+    import threading
+
+    rs.register(KEY, SPEC)
+    barrier = threading.Barrier(8)
+
+    def go():
+        barrier.wait()
+        at.merge_runtime_specs()
+
+    ts = [threading.Thread(target=go) for _ in range(8)]
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join()
+    assert at.STRATEGY_ORDER.count(KEY) == 1
+
+
+def test_the_merge_takes_a_lock():
+    import inspect
+
+    assert "_RUNTIME_LOCK" in inspect.getsource(at.merge_runtime_specs)

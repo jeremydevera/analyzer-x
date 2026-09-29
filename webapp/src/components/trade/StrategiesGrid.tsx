@@ -9,8 +9,8 @@ import PanelStatus from "./PanelStatus";
 import CopyableId from "./CopyableId";
 import WinBadge from "./WinBadge";
 import { Live, FeedBadge } from "./LivePrice";
-import { api, fmtMoney, fmtWhen, JobStatus, tradeApi, StrategyDeployRow } from "@/lib/api";
-import type { FeedStatus } from "@/lib/api";
+import { api, fmtMoney, fmtWhen, fmtWhenMs, JobStatus, tradeApi, StrategyDeployRow } from "@/lib/api";
+import type { FeedStatus, Rolling30 } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
@@ -214,6 +214,42 @@ export default function StrategiesGrid() {
       })}
     </div>
   );
+  // THE DEMO FIGURE IS THE LAST 30 DAYS (operator, Sep 29, 2026: "in the
+  // DEMO W/L · $ column i want the winrate for that id for the past 30 days
+  // / not the winrate strating when i deployed it"). The backtest's trades
+  // up to its last candle, then the practice trades after it — so five
+  // practice losses an hour after the daily update count at once. ONE helper
+  // for the cell, the phone card and both TOTALs, so they cannot disagree.
+  // A row not rebuilt yet falls back to since-deployed and SAYS so.
+  const demoOf = (r: StrategyDeployRow) => {
+    const d = r.paper30;
+    if (d) return { wins: d.wins, losses: d.losses, pnl: d.pnl, d30: d };
+    return { wins: r.paper?.wins ?? 0, losses: r.paper?.losses ?? 0,
+             pnl: r.paper?.pnl ?? 0, d30: null as Rolling30 | null };
+  };
+  const demoTitle = (r: StrategyDeployRow) => {
+    const d = r.paper30, p = r.paper;
+    const since = p && p.wins + p.losses
+      ? `practice since deployed: ${p.wins} won, ${p.losses} lost, ${fmtMoney(p.pnl)}`
+      : "no practice trade closed since deployed";
+    if (!d) return `last 30 days not worked out yet — showing since deployed. ${since}`;
+    const n = d.wins + d.losses;
+    return `last 30 days: ${d.wins} won, ${d.losses} lost`
+      + (n ? ` (${Math.round((100 * d.wins) / n)}%), ${fmtMoney(d.pnl)}` : "")
+      + ` — ${d.from_backtest} backtest trade${d.from_backtest === 1 ? "" : "s"} to `
+      + `${fmtWhenMs(d.backtest_through_ms)}, then ${d.from_practice} practice `
+      + `trade${d.from_practice === 1 ? "" : "s"} since`
+      + (d.match ? "" : `. NOTE: rebuilding this backtest gave ${d.rebuilt.trades} `
+        + `trades / ${d.rebuilt.wins} won where the stored row says `
+        + `${d.stored.trades} / ${d.stored.wins}`)
+      + `. ${since}`;
+  };
+  // the TOTAL's words follow the rows: demo is the last 30 days only where
+  // every row with a demo figure had one worked out
+  const notYet = rows.filter((r) => !r.paper30 && r.coins.length).length;
+  const totalLabel = notYet
+    ? `live: every closed trade · demo: last 30 days (${notYet} row${notYet === 1 ? "" : "s"} since deployed, not worked out yet)`
+    : "live: every closed trade · demo: last 30 days";
   const bookRecord = (w: number, l: number, pnl: number, n = w + l) => (
     <>
       {n === 0 ? <span className="text-gray-400">—</span> : (
@@ -485,12 +521,15 @@ export default function StrategiesGrid() {
               </span>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-theme-xs">
-              {([["real", r.real, "LIVE"], ["paper", r.paper, "DEMO"]] as const).map(([which, bk, label]) => {
-                const w = bk?.wins ?? 0, l = bk?.losses ?? 0;
+              {([["real", "LIVE"], ["paper", "DEMO 30d"]] as const).map(([which, label]) => {
+                const bk = which === "real"
+                  ? { wins: r.real?.wins ?? 0, losses: r.real?.losses ?? 0, pnl: r.real?.pnl ?? 0 }
+                  : demoOf(r);
                 return (
-                  <div key={which} className="flex items-center gap-2">
+                  <div key={which} className="flex items-center gap-2"
+                    title={which === "paper" ? demoTitle(r) : undefined}>
                     <span className="text-gray-500 dark:text-gray-400">{label}</span>
-                    {bookRecord(w, l, bk?.pnl ?? 0)}
+                    {bookRecord(bk.wins, bk.losses, bk.pnl)}
                   </div>
                 );
               })}
@@ -516,8 +555,8 @@ export default function StrategiesGrid() {
             on that book count, and the books never add together */}
         {rows.length > 0 && (
           <div className="rounded-xl border-2 border-gray-300 bg-gray-50 p-3 text-theme-xs dark:border-gray-600 dark:bg-white/[0.03]">
-            <span className="font-semibold text-gray-600 dark:text-gray-300">TOTAL — every closed trade so far</span>
-            {([["LIVE", (r: StrategyDeployRow) => r.real], ["DEMO", (r: StrategyDeployRow) => r.paper]] as const).map(([label, pick]) => {
+            <span className="font-semibold text-gray-600 dark:text-gray-300">TOTAL — {totalLabel}</span>
+            {([["LIVE", (r: StrategyDeployRow) => r.real], ["DEMO", demoOf]] as const).map(([label, pick]) => {
               const had = rows.filter((r) => ((pick(r)?.wins ?? 0) + (pick(r)?.losses ?? 0)) > 0);
               const sum = had.reduce((a2, r) => a2 + (pick(r)?.pnl ?? 0), 0);
               return (
@@ -583,7 +622,8 @@ export default function StrategiesGrid() {
                  // live"); what merged is the $ and the W/L of the SAME book,
                  // which always described one thing. The 16 points that frees
                  // go back to the columns that were squeezed for them.
-                 ["LIVE W/L · $", "11%"], ["DEMO W/L · $", "11%"]] as [string, string][])
+                 // demo = the LAST 30 DAYS (Sep 29, 2026), live = all time
+                 ["LIVE W/L · $", "11%"], ["DEMO 30 DAYS W/L · $", "11%"]] as [string, string][])
                 .map(([h, w]) => (
                 <TableCell key={h} isHeader style={{ width: w }}
                   className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
@@ -699,13 +739,16 @@ export default function StrategiesGrid() {
                 {([["real", r.real], ["paper", r.paper]] as const).map(([which, b]) => {
                   const armed = b?.armed ?? (which === "real"
                     ? r.books.includes("real") : r.books.includes("paper"));
-                  const pnl = b?.pnl ?? 0, w = b?.wins ?? 0, l = b?.losses ?? 0;
+                  const got = which === "paper" ? demoOf(r) : null;
+                  const pnl = got ? got.pnl : b?.pnl ?? 0;
+                  const w = got ? got.wins : b?.wins ?? 0;
+                  const l = got ? got.losses : b?.losses ?? 0;
                   const n = w + l;
                   const dim = armed ? "" : " opacity-45";
                   const book = which === "real" ? "live" : "demo";
                   return (
                     <TableCell key={`${which}-wl`}
-                      title={armed
+                      title={which === "paper" ? demoTitle(r) : armed
                         ? (n
                           ? `${w} won, ${l} lost of ${n} closed on the ${book} `
                             + `book — ${Math.round((100 * w) / n)}% win rate, `
@@ -745,11 +788,12 @@ export default function StrategiesGrid() {
                         wins: acc.wins + (b?.wins ?? 0), losses: acc.losses + (b?.losses ?? 0) }
                     : acc;
                 }, { sum: 0, rows: 0, wins: 0, losses: 0 });
-              const live = tot((r) => r.real), demo = tot((r) => r.paper);
+              const live = tot((r) => r.real), demo = tot(demoOf);
               const cell = (t: typeof live, book: string) => (
                 <TableCell
                   title={t.rows
-                    ? `${fmtMoney(t.sum)} — every closed ${book} trade across the `
+                    ? `${fmtMoney(t.sum)} — ${book === "practice" ? "the last 30 days of"
+                        : "every closed"} ${book} trade${book === "practice" ? "s" : ""} across the `
                       + `${t.rows} row${t.rows === 1 ? "" : "s"} above that have one `
                       + `(${t.wins} won, ${t.losses} lost)`
                     : `nothing has closed on the ${book} side yet`}
@@ -771,7 +815,7 @@ export default function StrategiesGrid() {
                 <TableRow className="border-t-2 border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-white/[0.03]">
                   <TableCell colSpan={10}
                     className="px-2 py-2 text-end text-theme-xs font-semibold text-gray-600 dark:text-gray-300">
-                    TOTAL — every closed trade so far
+                    TOTAL — {totalLabel}
                   </TableCell>
                   {cell(live, "real-money")}
                   {cell(demo, "practice")}

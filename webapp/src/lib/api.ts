@@ -1326,8 +1326,29 @@ export interface StrategyDeployRow {
    *  Live and demo are separate records and are never blended. */
   real?: BookRecord;
   paper?: BookRecord;
+  /** THIS ROW's last 30 days (operator, Sep 29, 2026: "i need the live
+   *  winrate for past 30 days"): its backtest's trades up to the backtest's
+   *  last candle, then its practice trades since. null = not rebuilt yet. */
+  paper30?: Rolling30 | null;
   open_on: string[];
   open_on_paper: string[];
+}
+
+/** A row's last 30 days, from tradingagents/rolling30.py. */
+export interface Rolling30 {
+  wins: number;
+  losses: number;
+  trades: number;
+  pnl: number;
+  winrate: number | null;
+  from_backtest: number;
+  from_practice: number;
+  /** ms: the backtest's last candle closed here; practice trades after it */
+  backtest_through_ms: number;
+  /** the rebuilt trades equal the stored backtest row */
+  match: boolean;
+  stored: { trades: number; wins: number; profit: number };
+  rebuilt: { trades: number; wins: number; profit: number };
 }
 
 /** One book's realized record for a strategy. */

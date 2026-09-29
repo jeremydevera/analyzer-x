@@ -299,6 +299,36 @@ def _keep_the_row_index_current() -> None:
                     print(f"[watcher] failed: {exc!r}", flush=True)
 
         _th.Thread(target=_watcher_loop, name="strategy-watcher", daemon=True).start()
+
+        # EACH ROW'S LAST 30 DAYS (operator, Sep 29, 2026: "i need the live
+        # winrate for past 30 days"). Rebuilds a row's backtest trades only
+        # when its backtest was updated, so after the first pass it is idle
+        # until the daily UPDATE lands. Its own thread, for the same reason
+        # as the watcher: a first pass reads the venue for every deployed row.
+        def _rolling30_loop() -> None:
+            from tradingagents import rolling30 as _r30
+
+            print("[rolling30] up: rebuilding each deployed row's last 30 days",
+                  flush=True)
+            try:
+                # the first read of the trade record is the whole file (~2 s);
+                # done here so no screen request waits for it
+                _r30.PRACTICE.get(_time.time())
+            except Exception as exc:                           # noqa: BLE001
+                print(f"[rolling30] the trade record could not be read: {exc!r}",
+                      flush=True)
+            while True:
+                try:
+                    got = _r30.refresh()
+                    if got.get("rebuilt") or got.get("errors"):
+                        print(f"[rolling30] rebuilt {got['rebuilt']} row(s), "
+                              f"{len(got['errors'])} could not be: "
+                              f"{list(got['errors'].items())[:3]}", flush=True)
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[rolling30] failed: {exc!r}", flush=True)
+                _time.sleep(600)
+
+        _th.Thread(target=_rolling30_loop, name="rolling30", daemon=True).start()
         print("[supervisor] watching for crashed jobs", flush=True)
     except Exception as exc:
         # The API must still start -- but SILENTLY skipping this is how
@@ -2365,6 +2395,12 @@ def trade_strategies(catalog: bool = False) -> dict:
     _armed_since = _lh.deployed_at()
     today_real = at.pnl_today_by_strategy(dry=False, by_coin=True)
     today_paper = at.pnl_today_by_strategy(dry=True, by_coin=True)
+    # each row's LAST 30 DAYS: its backtest's trades up to the backtest's last
+    # candle, then its practice trades since (tradingagents/rolling30.py).
+    # The practice exits are read ONCE for every row.
+    from tradingagents import rolling30 as _r30
+    _now30 = _time.time()
+    _exits30 = _r30.PRACTICE.get(_now30)
     deployed = [k for k in at.STRATEGY_ORDER
                 if (books.get(k) or coins.get(k))]
     keys = at.STRATEGY_ORDER if catalog else deployed
@@ -2497,6 +2533,10 @@ def trade_strategies(catalog: bool = False) -> dict:
             "paper": _book_record(stats_paper, today_paper, key,
                                   "paper" in at.book_names(settings, key, _coin),
                                   _coin),
+            # None = not rebuilt yet; the screen then says so, and shows
+            # the since-deployed record instead of a guess
+            "paper30": (_r30.figure(f"{key}|{_coin}", now=_now30, exits=_exits30)
+                        if _coin else None),
             # only THIS contract's open positions — the row is one coin now.
             # A row with NO configured coin still reports everything it holds:
             # the position is the only evidence there is, and filtering it

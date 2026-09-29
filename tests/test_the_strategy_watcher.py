@@ -190,7 +190,8 @@ def test_the_watcher_runs_on_its_own_thread_not_in_the_supervisor():
     watch = watch[:watch.index("_th.Thread(target=_watch")]
     assert "_sw.tick()" not in watch
     loop = src[src.index("def _watcher_loop() -> None:"):]
-    assert "_sw.tick()" in loop[:600]
+    loop = loop[:loop.index('name="strategy-watcher"')]      # the loop's own body
+    assert "_sw.tick()" in loop and "[watcher] up" in loop, "it ticks, and says it started"
     assert 'name="strategy-watcher"' in src
 
 

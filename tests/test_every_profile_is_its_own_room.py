@@ -247,3 +247,30 @@ def test_the_wallet_check_counts_margin_other_rooms_just_committed(home, monkeyp
     src = open("tradingagents/auto_trader.py", encoding="utf-8").read()
     assert "held += float(_CYCLE_COMMITTED.get(\"usdt\") or 0.0) + _others" in src
     assert "cross_commit(float(margin))" in src and "cross_commit(-float(margin))" in src
+
+
+def test_the_tab_i_reads_each_rooms_own_rules(home, monkeypatch):
+    """Sep 29, 2026: "put i icon beside each tab id when i click it show pop
+    up on what's the criteria" — the rules the room's watcher RUNS on."""
+    from fastapi.testclient import TestClient
+
+    from tradingagents import api, strategy_watcher as sw
+
+    monkeypatch.setattr(sw, "STATE", home / "strategy_watcher.json")
+    monkeypatch.setattr(sw, "LOG", home / "strategy_watcher.jsonl")
+    got = {r["id"]: r for r in TestClient(api.app).get("/api/trade/profiles").json()["profiles"]}
+    assert list(got) == profiles.ids()
+    b = got["B52662ED"]
+    assert (b["cfg"]["on_winrate"], b["cfg"]["min_trades"], b["cfg"]["max_sl"]) == (70.0, 50, 2.0)
+    assert b["mode"] == "act" and b["live"] is False
+    assert got["DC57174E"]["cfg"]["on_winrate"] == 80.0 and got["DC57174E"]["cfg"]["min_trades"] == 50
+
+
+def test_the_popup_and_the_panel_say_the_rules_with_one_function():
+    screen = _src("webapp/src/components/trade/AutoTradeScreen.tsx")
+    panel = _src("webapp/src/components/trade/WatcherPanel.tsx")
+    assert 'import { rules } from "./WatcherPanel";' in screen
+    assert "rules(r.cfg, r.window_days, r.live)" in screen
+    assert "export function rules(c: Watcher[\"cfg\"], days: number, live = false)" in panel
+    assert 'live ? "practice AND real money" : "practice account only"' in panel
+    assert "aria-label={`What ${p.name} switches on and off`}" in screen

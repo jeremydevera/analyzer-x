@@ -1125,6 +1125,31 @@ def watcher_status(page: int = 1, per: int = 10) -> dict:
     return sw.status(page, per)
 
 
+@app.get("/api/trade/profiles")
+def trade_profiles() -> dict:
+    """Every trading room and the rules its watcher runs on — the "i" beside
+    each tab (operator, Sep 29, 2026: "put i icon beside each tab id when i
+    click it show pop up on what's the criteria"). Read from each room's own
+    watcher, so the popup says what the room DOES, not what it started with."""
+    import tradingagents.auto_trader as at
+    from tradingagents import profiles as _pf
+    from tradingagents import strategy_watcher as sw
+
+    out = []
+    for pid in _pf.ids():
+        with _pf.using(pid):
+            st = sw._read()
+            cfg = sw.cfg_of(st)
+            s = at.load_settings()
+            out.append({"id": pid, "name": (_pf.get(pid) or {}).get("name", pid),
+                        "mode": sw.mode_of(st), "live": sw.live_of(st),
+                        "cfg": {k: cfg[k] for k in sw.LIVE_RULES},
+                        "window_days": cfg["window_days"],
+                        "running": len(s.get("watcher_slots") or {}),
+                        "rows": sum(len(v or []) for v in (s.get("strategy_coins") or {}).values())})
+    return {"profiles": out}
+
+
 @app.post("/api/trade/watcher")
 def watcher_switch(body: dict) -> dict:
     """`{"mode": "off"|"preview"|"act"}`, `{"live": true|false}` or

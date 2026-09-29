@@ -19,7 +19,7 @@ def test_the_panel_is_on_the_trade_screen():
 
 def test_every_figure_comes_from_the_payload():
     for used in ("w.running", "w.cooling", "fmtWhen(w.last_on_pass)", "fmtWhen(w.next_on_pass)",
-                 "fmtWhen(w.last_off_pass)", "w.why", "rules(w.cfg, w.window_days)", "fmtWhen(d.at)", "d.why"):
+                 "fmtWhen(w.last_off_pass)", "w.why", "rules(w.cfg, w.window_days, !!w.live)", "fmtWhen(d.at)", "d.why"):
         assert used in PANEL, used
     assert "c.on_winrate" in PANEL and "c.off_winrate" in PANEL and "c.min_trades" in PANEL
 

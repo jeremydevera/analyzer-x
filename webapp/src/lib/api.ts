@@ -965,6 +965,8 @@ export const api = {
   /** the strategy watcher (tradingagents/strategy_watcher.py): mode, rules,
    *  what it runs, and its last 50 decisions */
   watcher: (page = 1) => get<Watcher>(`/api/trade/watcher?page=${page}`),
+  /** every trading room and the rules its watcher runs on (the tab "i") */
+  profiles: () => get<{ profiles: RoomInfo[] }>("/api/trade/profiles"),
   watcherSet: (body: { mode?: "off" | "preview" | "act"; live?: boolean; cfg?: Record<string, number | string> }) =>
     post<Watcher>("/api/trade/watcher", body),
   dailyUpdateSwitch: (enabled: boolean) =>
@@ -1369,6 +1371,18 @@ export interface StrategyDeployRow {
   paper30?: Rolling30 | null;
   open_on: string[];
   open_on_paper: string[];
+}
+
+/** One trading room and its watcher's rules (GET /api/trade/profiles). */
+export interface RoomInfo {
+  id: string;
+  name: string;
+  mode: "off" | "preview" | "act";
+  live: boolean;
+  cfg: Watcher["cfg"];
+  window_days: number;
+  running: number;
+  rows: number;
 }
 
 /** A row's last 30 days, from tradingagents/rolling30.py. */

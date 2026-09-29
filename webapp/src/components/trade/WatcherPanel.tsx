@@ -57,7 +57,10 @@ const MODE_TEXT: Record<Watcher["mode"], string> = {
   off: "Smart Watcher is OFF — it switches nothing on or off; the daily backtest update still runs",
 };
 
-function rules(c: Watcher["cfg"], days: number): string[] {
+/** The rules as the operator reads them — shared by this panel and the
+ *  tab "i" popup, so the two can never say different things. The last line
+ *  follows the room's real-money switch (label-must-match-data). */
+export function rules(c: Watcher["cfg"], days: number, live = false): string[] {
   return [
     `switch on at ${c.on_winrate}%+ over the last ${days} days`,
     `switch off under ${c.off_winrate}%`,
@@ -67,7 +70,7 @@ function rules(c: Watcher["cfg"], days: number): string[] {
     `up to ${c.max_slots} at once · ${c.max_per_coin} per coin · ${c.max_new_per_day} new a day`,
     `${c.cooldown_days}-day wait after a switch-off`,
     "judged on the DEMO 30 DAYS figure",
-    "practice account only",
+    live ? "practice AND real money" : "practice account only",
   ];
 }
 
@@ -133,7 +136,7 @@ export default function WatcherPanel() {
       {w && (
         <>
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {rules(w.cfg, w.window_days).map((t) => (
+            {rules(w.cfg, w.window_days, !!w.live).map((t) => (
               <span key={t} className="rounded-full border border-gray-200 px-2.5 py-0.5 text-theme-xs text-gray-600 dark:border-white/[0.08] dark:text-gray-300">{t}</span>
             ))}
           </div>

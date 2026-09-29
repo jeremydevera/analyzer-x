@@ -18,6 +18,7 @@ import { hasUnsaved } from "@/lib/unsaved";
 
 const MINE = process.env.NEXT_PUBLIC_BUILD_ID ?? "";
 const EVERY_MS = 20_000;
+const TRIED = "ta-reloaded-for-build";
 
 function busyTyping(): boolean {
   const el = document.activeElement;
@@ -28,7 +29,7 @@ function busyTyping(): boolean {
 }
 
 export default function NewVersionReload() {
-  const [behind, setBehind] = useState(false);
+  const [behind, setBehind] = useState<"" | "busy" | "stuck">("");
 
   useEffect(() => {
     if (!MINE) return;
@@ -40,8 +41,16 @@ export default function NewVersionReload() {
         if (!r.ok) return;
         const { build } = (await r.json()) as { build: string };
         if (!build || build === MINE) return;
-        if (!hasUnsaved() && !busyTyping()) window.location.reload();
-        else setBehind(true);
+        // ONE RELOAD PER SERVER BUILD, EVER. If a reload does not bring this
+        // tab onto that build (the ids disagree — RCA-2026-09-29-E, 260
+        // loads in 25 s), reloading again cannot either: say so and stop.
+        let tried = "";
+        try { tried = sessionStorage.getItem(TRIED) ?? ""; } catch { /* blocked */ }
+        if (tried === build) { setBehind("stuck"); return; }
+        if (!hasUnsaved() && !busyTyping()) {
+          try { sessionStorage.setItem(TRIED, build); } catch { /* blocked */ }
+          window.location.reload();
+        } else setBehind("busy");
       } catch {
         /* the site is restarting: ask again next time */
       }
@@ -60,7 +69,9 @@ export default function NewVersionReload() {
   if (!behind) return null;
   return (
     <div className="fixed inset-x-0 bottom-0 z-[100000] flex flex-wrap items-center justify-center gap-3 bg-brand-500 px-4 py-2 text-theme-sm text-white">
-      The screen was updated. It did not reload by itself because you have unsaved changes or are typing.
+      {behind === "busy"
+        ? "The screen was updated. It did not reload by itself because you have unsaved changes or are typing."
+        : "The screen was updated, but reloading did not bring this tab onto the new version."}
       <button onClick={() => window.location.reload()}
         className="rounded-lg bg-white px-3 py-1 font-semibold text-brand-600">
         Reload now

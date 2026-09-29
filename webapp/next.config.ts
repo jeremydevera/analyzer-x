@@ -7,7 +7,14 @@ const API = process.env.API_ORIGIN ?? "http://127.0.0.1:8787";
  * NewVersionReload compares the two so an open tab reloads onto a new build
  * (Sep 29, 2026: "i thought everyting you change will reflect to web
  * autoamtically"). */
-const BUILD_ID = `b${Date.now()}`;
+//
+// SET ONCE, INHERITED BY EVERY BUILD WORKER. `next build` evaluates this file
+// in more than one process, so a bare `b${Date.now()}` gave the browser
+// bundle b1790703444296 and .next/BUILD_ID b1790703443442 on Sep 29, 2026 —
+// every tab on that build saw itself "behind" and reloaded ~10 times a
+// second (260 loads in 25 s, RCA-2026-09-29-E). The first evaluation writes
+// the id into the environment; the workers it spawns read it back.
+const BUILD_ID = (process.env.TA_BUILD_ID ??= `b${Date.now()}`);
 
 const nextConfig: NextConfig = {
   generateBuildId: async () => BUILD_ID,

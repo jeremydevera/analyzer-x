@@ -172,6 +172,69 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-29-E — the new "reload when the site is updated" check made every tab reload about 10 times a second
+
+**CEO**
+
+* For about 3 minutes, any tab opened on the new version of the site would
+  have kept reloading itself, over and over. It was caught by a test run
+  before you reported it.
+* Why: the site's version name was worked out twice while the site was
+  being built, so the page and the server each got a different one. Every
+  tab therefore thought it was out of date and reloaded, forever.
+* What stops it now: the version name is worked out once and shared, and a
+  tab may reload at most once for any one update; after that it shows a bar
+  with a button instead.
+
+**DEV**
+
+* `webapp/next.config.ts` had `const BUILD_ID = \`b${Date.now()}\``;
+  `next build` evaluates the config in more than one process, so the
+  browser bundle inlined `NEXT_PUBLIC_BUILD_ID = b1790703444296` while
+  `.next/BUILD_ID` (served by `/build-version`) held `b1790703443442`.
+  `NewVersionReload` reloaded on any difference.
+* Invariants broken: **an id two halves compare must come from ONE
+  evaluation**, and **an automatic reload must be bounded, since a
+  mismatch a reload cannot fix will loop.**
+* Guard: `tests/test_an_open_tab_takes_a_new_build.py::test_one_id_for_every_build_process`,
+  `::test_a_tab_reloads_at_most_once_for_a_build`.
+
+**SAW** — nothing on the operator's side: found by this session's own check
+(a headless tab left on the page, counting its load events).
+
+**TIMELINE**
+
+1. `Sep 29, 2026 1:37pm` — the site is rebuilt and restarted with the new
+   checker (commit c73e376a).
+2. `~1:38pm` — the proof run opens a tab and counts loads: **260 in 25
+   seconds** on an UNCHANGED build (507 after 50 s).
+3. `~1:39pm` — stopped without a restart: `.next/BUILD_ID` was set to the
+   id the browser code carries (`b1790703444296`), since the route reads the
+   file on every request. The same check then counted **1 load in 45 s**.
+4. Fixed in this commit: `process.env.TA_BUILD_ID ??=` (set by the first
+   evaluation, inherited by the build workers), plus a one-reload-per-build
+   mark in `sessionStorage`.
+
+**ROOT CAUSE** — `Date.now()` in a config file that the build evaluates per
+process, treated as though it ran once.
+
+**WHY IT WAS NOT CAUGHT** — the first tests read the source for the pieces
+(one id given to both halves, a route that reads BUILD_ID, the checker in
+the layout). Every piece was there and every test passed. Only a real build
+could show that "one id" was two ids, and only a real tab could show the
+loop. The proof run was the first time both were in the same place.
+
+**COST** — none in money. The site served a reloading page for about 3
+minutes; the runner was not affected.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_an_open_tab_takes_a_new_build.py::test_one_id_for_every_build_process`
+and `::test_a_tab_reloads_at_most_once_for_a_build`, plus the live count
+after the restart (loads on an unchanged build must stay at 1).
+
+---
+
 ## RCA-2026-09-29-D — 32 switched-off strategies stayed on the deployed list as blank rows
 
 **CEO**

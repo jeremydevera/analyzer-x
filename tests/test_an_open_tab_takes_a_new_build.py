@@ -34,7 +34,25 @@ def test_every_page_carries_the_checker():
 
 def test_it_never_reloads_over_an_unsaved_edit_or_a_field_being_typed_in():
     chk = _read("src/components/NewVersionReload.tsx")
-    assert "if (!hasUnsaved() && !busyTyping()) window.location.reload();" in chk
-    assert "else setBehind(true);" in chk and "Reload now" in chk
+    assert "if (!hasUnsaved() && !busyTyping()) {" in chk
+    assert "window.location.reload();" in chk
+    assert 'else setBehind("busy");' in chk and "Reload now" in chk
     grid = _read("src/components/trade/StrategiesGrid.tsx")
     assert 'markUnsaved("strategies", dirty)' in grid
+
+
+def test_one_id_for_every_build_process():
+    """RCA-2026-09-29-E: a Date.now() evaluated per build process gave the
+    browser and the server two ids, and every tab reloaded ~10 times a
+    second. The id is set once in the environment and inherited."""
+    cfg = _read("next.config.ts")
+    assert "process.env.TA_BUILD_ID ??=" in cfg
+    assert "const BUILD_ID = `b${Date.now()}`;" not in cfg
+
+
+def test_a_tab_reloads_at_most_once_for_a_build():
+    chk = _read("src/components/NewVersionReload.tsx")
+    assert 'if (tried === build) { setBehind("stuck"); return; }' in chk
+    assert "sessionStorage.setItem(TRIED, build)" in chk
+    # the mark is written BEFORE the reload it guards
+    assert chk.index("sessionStorage.setItem(TRIED, build)") < chk.rindex("window.location.reload();\n        } else")

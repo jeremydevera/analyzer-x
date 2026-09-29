@@ -156,9 +156,10 @@ def test_the_screen_names_which_book_each_column_is():
     # real money. `["PROFIT $"...]` was the unlabelled column that broke it,
     # and it is still banned below. Merging a book's own $ with its own W/L
     # is a different thing — they always described one book.
-    # The demo column reads the LAST 30 DAYS since Sep 29, 2026 ("i want the
-    # winrate for that id for the past 30 days"), and its header says so.
-    for head in ("LIVE W/L · $", "DEMO 30 DAYS W/L · $"):
+    # The demo column's PERCENTAGE is the last 30 days since Sep 29, 2026 ("i
+    # want to see winrate percentage for past 30 days"), its W/L and $ since
+    # deployed — and its header says both.
+    for head in ("LIVE W/L · $", "DEMO W/L · $ · % 30 DAYS"):
         assert f'["{head}", ' in src, head
     assert '["PROFIT $", "6%"]' not in src, "the unlabelled column is gone"
     assert '["LIVE $ · W/L"' not in src, "the joined column is gone"
@@ -169,12 +170,13 @@ def test_the_screen_names_which_book_each_column_is():
     assert cell.count("<TableCell") == 1,         "one cell per book — the money sits beside the W/L, not in its own column"
     # the cell draws through `bookRecord`, the one helper the phone card uses
     # too (it was red on main from the day the donut moved into it)
-    assert "{bookRecord(w, l, pnl)}" in cell
+    assert "{bookRecord(w, l, pnl, got?.rate)}" in cell
     helper = src[src.index("const bookRecord = "):]
     helper = helper[:helper.index("\n  );\n")]
     assert "<WinBadge" in helper and "fmtMoney(pnl)" in helper
     # a book with nothing on it prints an em dash, not a 0/0 it never tried
-    assert "n === 0 ? <span className=\"text-gray-400\">—</span>" in src
+    # (a demo row with no closed trade but a 30-day rate still draws its ring)
+    assert "w + l === 0 && !rate ? <span className=\"text-gray-400\">—</span>" in src
     assert "opacity-45" in src and "not armed on the" in src
 
 

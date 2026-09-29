@@ -179,13 +179,31 @@ def test_the_api_gives_every_row_its_30_days(home):
 
 def test_the_screen_uses_one_helper_for_every_demo_figure():
     src = open("webapp/src/components/trade/StrategiesGrid.tsx", encoding="utf-8").read()
-    assert '["DEMO 30 DAYS W/L · $", ' in src
+    assert '["DEMO W/L · $ · % 30 DAYS", ' in src
     assert "demo = tot(demoOf)" in src                     # desktop TOTAL
     assert '["DEMO", demoOf]' in src                       # phone TOTAL
     assert 'const got = which === "paper" ? demoOf(r) : null;' in src   # the cell
     assert ": demoOf(r);" in src                           # the phone card
-    # the TOTAL no longer claims "every closed trade so far" for the demo side
-    assert "TOTAL — every closed trade so far" not in src
-    assert "demo: last 30 days" in src
     # a row not worked out yet SAYS so
     assert "last 30 days not worked out yet" in src
+
+
+def test_the_ring_is_30_days_and_the_counts_and_money_are_since_deployed():
+    """Operator, Sep 29, 2026: "you are showing the win and l should be the
+    win lose since you deployed them, also the profit / the percentage is
+    correct since i want to see winrate percentage for past 30 days"."""
+    src = open("webapp/src/components/trade/StrategiesGrid.tsx", encoding="utf-8").read()
+    helper = src[src.index("const demoOf = "):]
+    helper = helper[:helper.index("\n  };\n")]
+    # the counts and the money come from the since-deployed record...
+    assert "wins: r.paper?.wins ?? 0, losses: r.paper?.losses ?? 0" in helper
+    assert "pnl: r.paper?.pnl ?? 0" in helper
+    # ...and only the ring's rate from the 30 days
+    assert "rate: d && d.wins + d.losses > 0 ? { wins: d.wins, losses: d.losses }" in helper
+    assert "{bookRecord(w, l, pnl, got?.rate)}" in src
+    assert 'which === "paper" ? demoOf(r).rate : undefined' in src
+    # the TOTAL is money since deployed again, and says so
+    assert 'const totalLabel = "every closed trade so far";' in src
+    badge = open("webapp/src/components/trade/WinBadge.tsx", encoding="utf-8").read()
+    assert "const ring = rate ?? { wins, losses };" in badge
+    assert "{wins}W</span>" in badge and "{losses}L</span>" in badge   # counts stay

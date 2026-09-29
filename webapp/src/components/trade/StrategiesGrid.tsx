@@ -222,38 +222,42 @@ export default function StrategiesGrid() {
   // practice losses an hour after the daily update count at once. ONE helper
   // for the cell, the phone card and both TOTALs, so they cannot disagree.
   // A row not rebuilt yet falls back to since-deployed and SAYS so.
+  //
+  // SPLIT, Sep 29, 2026, the same day: *"you are showing the win and l should
+  // be the win lose since you deployed them, also the profit / the
+  // percentage is correct since i want to see winrate percentage for past 30
+  // days"*. So the counts, the money and the TOTALs are SINCE DEPLOYED, and
+  // only the ring's percentage is the last 30 days (`rate`).
   const demoOf = (r: StrategyDeployRow) => {
     const d = r.paper30;
-    if (d) return { wins: d.wins, losses: d.losses, pnl: d.pnl, d30: d };
     return { wins: r.paper?.wins ?? 0, losses: r.paper?.losses ?? 0,
-             pnl: r.paper?.pnl ?? 0, d30: null as Rolling30 | null };
+             pnl: r.paper?.pnl ?? 0,
+             rate: d && d.wins + d.losses > 0 ? { wins: d.wins, losses: d.losses } : undefined,
+             d30: (d ?? null) as Rolling30 | null };
   };
   const demoTitle = (r: StrategyDeployRow) => {
     const d = r.paper30, p = r.paper;
     const since = p && p.wins + p.losses
       ? `practice since deployed: ${p.wins} won, ${p.losses} lost, ${fmtMoney(p.pnl)}`
       : "no practice trade closed since deployed";
-    if (!d) return `last 30 days not worked out yet — showing since deployed. ${since}`;
+    if (!d) return `win rate over the last 30 days not worked out yet — the ring shows since deployed. ${since}`;
     const n = d.wins + d.losses;
-    return `last 30 days: ${d.wins} won, ${d.losses} lost`
-      + (n ? ` (${Math.round((100 * d.wins) / n)}%), ${fmtMoney(d.pnl)}` : "")
+    return `win rate over the last 30 days: ${n ? `${Math.round((100 * d.wins) / n)}%` : "no trades"}`
+      + ` (${d.wins} won, ${d.losses} lost)`
       + ` — ${d.from_backtest} backtest trade${d.from_backtest === 1 ? "" : "s"} to `
       + `${fmtWhenMs(d.backtest_through_ms)}, then ${d.from_practice} practice `
       + `trade${d.from_practice === 1 ? "" : "s"} since`
       + (d.match ? "" : `. NOTE: rebuilding this backtest gave ${d.rebuilt.trades} `
         + `trades / ${d.rebuilt.wins} won where the stored row says `
         + `${d.stored.trades} / ${d.stored.wins}`)
-      + `. ${since}`;
+      + `. The W/L and the money are since deployed — ${since}`;
   };
-  // the TOTAL's words follow the rows: demo is the last 30 days only where
-  // every row with a demo figure had one worked out
-  const notYet = rows.filter((r) => !r.paper30 && r.coins.length).length;
-  const totalLabel = notYet
-    ? `live: every closed trade · demo: last 30 days (${notYet} row${notYet === 1 ? "" : "s"} since deployed, not worked out yet)`
-    : "live: every closed trade · demo: last 30 days";
-  const bookRecord = (w: number, l: number, pnl: number, n = w + l) => (
+  // both TOTALs are money since deployed again (Sep 29, 2026)
+  const totalLabel = "every closed trade so far";
+  const bookRecord = (w: number, l: number, pnl: number,
+                      rate?: { wins: number; losses: number }) => (
     <>
-      {n === 0 ? <span className="text-gray-400">—</span> : (
+      {w + l === 0 && !rate ? <span className="text-gray-400">—</span> : (
         // THREE THINGS, TWO DIFFERENT GAPS (operator,
         // `Sep 17, 2026`: "can you fix this column its
         // jumbled / can you make spacing between profit and
@@ -265,7 +269,7 @@ export default function StrategiesGrid() {
         // all three read as one run of characters, which is
         // what "jumbled" was.
         <span className="flex items-center gap-3">
-          <WinBadge wins={w} losses={l} />
+          <WinBadge wins={w} losses={l} rate={rate} />
           {/* the dollars the donut beside it was made of */}
           <span className={`font-semibold tabular-nums ${
             pnl >= 0 ? "text-success-600" : "text-error-500"}`}>
@@ -524,7 +528,7 @@ export default function StrategiesGrid() {
               </span>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-theme-xs">
-              {([["real", "LIVE"], ["paper", "DEMO 30d"]] as const).map(([which, label]) => {
+              {([["real", "LIVE"], ["paper", "DEMO"]] as const).map(([which, label]) => {
                 const bk = which === "real"
                   ? { wins: r.real?.wins ?? 0, losses: r.real?.losses ?? 0, pnl: r.real?.pnl ?? 0 }
                   : demoOf(r);
@@ -532,7 +536,8 @@ export default function StrategiesGrid() {
                   <div key={which} className="flex items-center gap-2"
                     title={which === "paper" ? demoTitle(r) : undefined}>
                     <span className="text-gray-500 dark:text-gray-400">{label}</span>
-                    {bookRecord(bk.wins, bk.losses, bk.pnl)}
+                    {bookRecord(bk.wins, bk.losses, bk.pnl,
+                      which === "paper" ? demoOf(r).rate : undefined)}
                   </div>
                 );
               })}
@@ -625,8 +630,9 @@ export default function StrategiesGrid() {
                  // live"); what merged is the $ and the W/L of the SAME book,
                  // which always described one thing. The 16 points that frees
                  // go back to the columns that were squeezed for them.
-                 // demo = the LAST 30 DAYS (Sep 29, 2026), live = all time
-                 ["LIVE W/L · $", "11%"], ["DEMO 30 DAYS W/L · $", "11%"]] as [string, string][])
+                 // demo: W/L and $ since deployed, the ring's % over the
+                 // LAST 30 DAYS (Sep 29, 2026) — the header says both
+                 ["LIVE W/L · $", "11%"], ["DEMO W/L · $ · % 30 DAYS", "11%"]] as [string, string][])
                 .map(([h, w]) => (
                 <TableCell key={h} isHeader style={{ width: w }}
                   className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
@@ -759,7 +765,7 @@ export default function StrategiesGrid() {
                           : `nothing closed yet on the ${book} book`)
                         : `not armed on the ${book} book`}
                       className={`px-2 py-1.5 text-theme-xs whitespace-nowrap${dim}`}>
-                      {bookRecord(w, l, pnl)}
+                      {bookRecord(w, l, pnl, got?.rate)}
                     </TableCell>
                   );
                 })}
@@ -795,8 +801,7 @@ export default function StrategiesGrid() {
               const cell = (t: typeof live, book: string) => (
                 <TableCell
                   title={t.rows
-                    ? `${fmtMoney(t.sum)} — ${book === "practice" ? "the last 30 days of"
-                        : "every closed"} ${book} trade${book === "practice" ? "s" : ""} across the `
+                    ? `${fmtMoney(t.sum)} — every closed ${book} trade across the `
                       + `${t.rows} row${t.rows === 1 ? "" : "s"} above that have one `
                       + `(${t.wins} won, ${t.losses} lost)`
                     : `nothing has closed on the ${book} side yet`}

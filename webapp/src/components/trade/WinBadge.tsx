@@ -33,22 +33,39 @@ const C = 2 * Math.PI * R;
 const GAP = 2.5;         // surface gap between the green and the red arc
 const BOX = 36;          // just big enough for the ring — no halo around it
 
-export default function WinBadge({ wins, losses }: { wins: number; losses: number }) {
+/**
+ * `rate`, when given, is what the RING and its percentage are drawn from,
+ * while the `W`/`L` counts beside it stay `wins`/`losses`. The demo column
+ * uses it (operator, Sep 29, 2026: *"you are showing the win and l should be
+ * the win lose since you deployed them, also the profit / the percentage is
+ * correct since i want to see winrate percentage for past 30 days"*): ring =
+ * the last 30 days, counts = since deployed. Without `rate` both are one
+ * record, exactly as before.
+ */
+export default function WinBadge({ wins, losses, rate }: {
+  wins: number; losses: number; rate?: { wins: number; losses: number };
+}) {
   const n = wins + losses;
-  if (n <= 0) return <span className="text-gray-400">—</span>;
-  const frac = wins / n;
-  const pctText = `${Math.round(100 * frac)}%`;
+  const ring = rate ?? { wins, losses };
+  const rn = ring.wins + ring.losses;
+  if (n <= 0 && rn <= 0) return <span className="text-gray-400">—</span>;
+  const frac = rn > 0 ? ring.wins / rn : 0;
+  const pctText = rn > 0 ? `${Math.round(100 * frac)}%` : "—";
   const arc = Math.max(0.5, frac * C - GAP);
+  const rwins = ring.wins, rlosses = ring.losses;
 
   return (
     <div className="flex items-center gap-1.5">
       <svg width={BOX} height={BOX} viewBox={`0 0 ${BOX} ${BOX}`} className="shrink-0"
-           role="img" aria-label={`${wins} won, ${losses} lost, ${pctText} win rate`}>
+           role="img" aria-label={rate
+             ? `${pctText} win rate over the last 30 days; ${wins} won, ${losses} lost since deployed`
+             : `${wins} won, ${losses} lost, ${pctText} win rate`}>
         {/* losses underneath, wins on top — one full ring plus one arc is
             fewer moving parts than two arcs that have to meet exactly */}
         <circle cx={BOX / 2} cy={BOX / 2} r={R} fill="none" strokeWidth={SW}
-                className={losses > 0 ? "stroke-error-500" : "stroke-success-600"} />
-        {wins > 0 && losses > 0 && (
+                className={rn <= 0 ? "stroke-gray-300 dark:stroke-gray-600"
+                  : rlosses > 0 ? "stroke-error-500" : "stroke-success-600"} />
+        {rwins > 0 && rlosses > 0 && (
           <g transform={`rotate(-90 ${BOX / 2} ${BOX / 2})`}>
             <circle cx={BOX / 2} cy={BOX / 2} r={R} fill="none" strokeWidth={SW}
                     strokeLinecap="round" className="stroke-success-600"

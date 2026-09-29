@@ -1610,6 +1610,33 @@ _OPERATORS_V2_SEP27 = {
 STRATEGY_SPECS.update(_OPERATORS_V2_SEP27)
 STRATEGY_ORDER = STRATEGY_ORDER + tuple(_OPERATORS_V2_SEP27)
 
+# KEYS THE WATCHER ADDED at runtime (tradingagents/runtime_specs.py). Merged
+# on every load_settings(), which run_cycle calls every round, so a runner
+# started days ago trades a key registered this morning. Never overrides a
+# committed key: register() refuses a clash before it is ever written.
+_RUNTIME_SEEN = {"mtime": None}
+
+
+def merge_runtime_specs() -> int:
+    global STRATEGY_ORDER
+    from tradingagents import runtime_specs as _rs
+
+    try:
+        mtime = _rs.PATH.stat().st_mtime
+    except OSError:
+        return 0
+    if _RUNTIME_SEEN["mtime"] == mtime:
+        return 0
+    _RUNTIME_SEEN["mtime"] = mtime
+    added = 0
+    for key, spec in _rs.load().items():
+        if key in STRATEGY_SPECS or not isinstance(spec, dict):
+            continue
+        STRATEGY_SPECS[key] = dict(spec)
+        STRATEGY_ORDER = STRATEGY_ORDER + (key,)
+        added += 1
+    return added
+
 
 # ------------------------------------------------------------------ signals
 # Each takes plain OHLC lists of CLOSED bars and answers the direction the
@@ -1797,6 +1824,13 @@ def _write_json(path: Path, payload: dict) -> None:
 
 
 def load_settings() -> dict:
+    # the strategy watcher's runtime keys ride on this read: run_cycle calls
+    # it every round, so a runner started days ago trades a key the watcher
+    # registered this morning. A registry problem never fails a settings read.
+    try:
+        merge_runtime_specs()
+    except Exception:                                          # noqa: BLE001
+        pass
     return _read_json(SETTINGS_PATH)
 
 

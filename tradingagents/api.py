@@ -11,6 +11,7 @@ Run:  .venv/bin/uvicorn tradingagents.api:app --port 8787
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 import time as _time
@@ -252,18 +253,24 @@ def _keep_the_row_index_current() -> None:
                 # this loop leaves it alone. It cannot double a runner —
                 # `start_runner` returns the existing pid when one is alive,
                 # and the runner takes an exclusive lock before it trades.
-                try:
-                    import tradingagents.auto_trader as _at
-                    from tradingagents import portable as _portable
+                # EVERY PROFILE'S RUNNER (Sep 29, 2026: one room each). Main
+                # first, exactly as before; a profile nobody started has no
+                # WANT file and is left alone.
+                import tradingagents.auto_trader as _at
+                from tradingagents import portable as _portable
+                from tradingagents import profiles as _pf
 
-                    if (not _portable.MACOS and _at.wants_runner()
-                            and not _at.runner_pid()):
-                        pid = _at.start_runner()
-                        print(f"[supervisor] runner was down — restarted "
-                              f"(pid {pid})", flush=True)
-                except Exception as exc:
-                    print(f"[supervisor] could not restart the runner: "
-                          f"{exc!r}", flush=True)
+                for _pid in _pf.ids():
+                    try:
+                        with _pf.using(_pid):
+                            if (not _portable.MACOS and _at.wants_runner()
+                                    and not _at.runner_pid()):
+                                pid = _at.start_runner()
+                                print(f"[supervisor] {_pid} runner was down — "
+                                      f"restarted (pid {pid})", flush=True)
+                    except Exception as exc:
+                        print(f"[supervisor] could not restart the {_pid} "
+                              f"runner: {exc!r}", flush=True)
 
         _th.Thread(target=_watch, name="job-supervisor", daemon=True).start()
 
@@ -291,12 +298,16 @@ def _keep_the_row_index_current() -> None:
                       flush=True)
             while True:
                 _time.sleep(60)
-                try:
-                    from tradingagents import strategy_watcher as _sw
+                # ONE WATCHER PER PROFILE, each in its own room (Sep 29, 2026)
+                from tradingagents import profiles as _pf
+                from tradingagents import strategy_watcher as _sw
 
-                    _sw.tick()
-                except Exception as exc:                       # noqa: BLE001
-                    print(f"[watcher] failed: {exc!r}", flush=True)
+                for _pid in _pf.ids():
+                    try:
+                        with _pf.using(_pid):
+                            _sw.tick()
+                    except Exception as exc:                   # noqa: BLE001
+                        print(f"[watcher] {_pid} failed: {exc!r}", flush=True)
 
         _th.Thread(target=_watcher_loop, name="strategy-watcher", daemon=True).start()
 
@@ -334,6 +345,49 @@ def _keep_the_row_index_current() -> None:
         # The API must still start -- but SILENTLY skipping this is how
         # "behind 55 and never moving" looked like a working system.
         print(f"[supervisor] COULD NOT START: {exc!r}", flush=True)
+
+class _ProfileMiddleware:
+    """WHICH ROOM a request is for (tradingagents/profiles.py): `?profile=`
+    or the `X-TA-Profile` header; none means Main, exactly as before. Set as
+    a ContextVar for the request, so every route below reads and writes that
+    profile's settings, positions and trade record without being edited — a
+    sync route runs in a thread that copies this context. An unknown profile
+    is refused, never quietly served as Main."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http":
+            return await self.app(scope, receive, send)
+        from urllib.parse import parse_qs
+
+        from tradingagents import profiles as _pf
+
+        pid = ""
+        for k, v in scope.get("headers") or []:
+            if k == b"x-ta-profile":
+                pid = v.decode("latin-1").strip()
+        if not pid:
+            got = parse_qs((scope.get("query_string") or b"").decode("latin-1"))
+            pid = (got.get("profile") or [""])[0].strip()
+        if not pid:
+            return await self.app(scope, receive, send)
+        if not _pf.valid(pid):
+            body = json.dumps({"detail": f"unknown profile {pid!r}; the profiles "
+                                         f"are {_pf.ids()}"}).encode()
+            await send({"type": "http.response.start", "status": 404,
+                        "headers": [(b"content-type", b"application/json")]})
+            await send({"type": "http.response.body", "body": body})
+            return
+        tok = _pf.set_current(pid)
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            _pf.reset(tok)
+
+
+app.add_middleware(_ProfileMiddleware)
 
 # The Next.js dev server runs on :3000; the API on :8787. Same machine, two
 # ports — the browser calls this CORS and blocks it without consent.
@@ -1073,11 +1127,14 @@ def watcher_status(page: int = 1, per: int = 10) -> dict:
 
 @app.post("/api/trade/watcher")
 def watcher_switch(body: dict) -> dict:
-    """`{"mode": "off"|"preview"|"act"}` or `{"cfg": {rule: value}}`."""
+    """`{"mode": "off"|"preview"|"act"}`, `{"live": true|false}` or
+    `{"cfg": {rule: value}}` — for the profile the request names."""
     from tradingagents import strategy_watcher as sw
 
     body = body or {}
     try:
+        if "live" in body:
+            return sw.set_live(bool(body["live"]))
         if "mode" in body:
             return sw.set_mode(str(body["mode"]))
         if isinstance(body.get("cfg"), dict):
@@ -2176,6 +2233,25 @@ def _all_time_records(rows) -> tuple[float, dict]:
     return round(life_total, 2), paper_all
 
 
+def _own_exchange_positions(live: list, state: dict | None = None) -> list:
+    """This ROOM's real positions out of the exchange's list (profiles, Sep
+    29, 2026). One MEXC account holds every room's money; a profile's tiles
+    and tables show the coins its own book holds, and Main shows the rest —
+    its own and true orphans — minus any coin another profile holds."""
+    import tradingagents.auto_trader as at
+    from tradingagents import profiles as _pf
+
+    state = at.load_state() if state is None else state
+    main = _pf.current() == _pf.MAIN
+    out = []
+    for p in live or []:
+        sym = p.get("symbol")
+        mine = bool(sym) and bool(at.open_slices(state, sym, False))
+        if mine or (main and not at.other_profile_holding(sym, claim=False)):
+            out.append(p)
+    return out
+
+
 @app.get("/api/trade/summary")
 def trade_summary() -> dict:
     """The status ribbon: process, modes, wallet, today, all-time, open."""
@@ -2195,7 +2271,7 @@ def trade_summary() -> dict:
     except Exception:
         equity = None
     try:
-        for p in fx.open_positions():
+        for p in _own_exchange_positions(fx.open_positions()):
             open_rows.append({
                 "symbol": p.get("symbol"),
                 "unrealized": round(float(p.get("unRealizedPnl") or 0.0), 2),
@@ -2279,7 +2355,7 @@ def trade_positions() -> dict:
 
     state = at.load_state()
     try:
-        live = fx.open_positions()
+        live = _own_exchange_positions(fx.open_positions(), state)
     except Exception:
         live = []
     settings = at.load_settings()
@@ -2421,6 +2497,13 @@ def trade_strategies(catalog: bool = False) -> dict:
     # copy of the settings that holds the pair, and returns the copy BEFORE
     # it as well — a window, never a bare upper bound dressed as a fact.
     _armed_since = _lh.deployed_at()
+    from tradingagents import profiles as _pf
+
+    if _pf.current() != _pf.MAIN:
+        # a profile's rows were switched on by ITS watcher: that is the date,
+        # never Main's deploy log for the same strategy (profiles, Sep 29, 2026)
+        _armed_since = {slot: {"at": m.get("on_at")}
+                        for slot, m in (settings.get("watcher_slots") or {}).items()}
     today_real = at.pnl_today_by_strategy(dry=False, by_coin=True)
     today_paper = at.pnl_today_by_strategy(dry=True, by_coin=True)
     # each row's LAST 30 DAYS: its backtest's trades up to the backtest's last
@@ -3081,10 +3164,10 @@ def trade_halt(body: dict) -> dict:
     import tradingagents.auto_trader as at
 
     if bool(body.get("halt", True)):
-        at.KILL_PATH.parent.mkdir(parents=True, exist_ok=True)
-        at.KILL_PATH.write_text("halted from the UI", encoding="utf-8")
+        at._pp(at.KILL_PATH).parent.mkdir(parents=True, exist_ok=True)
+        at._pp(at.KILL_PATH).write_text("halted from the UI", encoding="utf-8")
     else:
-        at.KILL_PATH.unlink(missing_ok=True)
+        at._pp(at.KILL_PATH).unlink(missing_ok=True)
     return {"halted": at.halted()}
 
 
@@ -4170,7 +4253,11 @@ def portfolio_forecast_v2(book: str = "demo", fresh: int = 0) -> dict:
     dry = book != "live"
     if not _stores.V2.candles.exists():
         return {"why": _V2_EMPTY_WHY, "book": "demo" if dry else "live"}
-    hit = _PORTFOLIO_CACHE.get(dry)
+    from tradingagents import profiles as _pf
+
+    # per ROOM: one profile's portfolio must never answer for another
+    ckey = (_pf.current(), dry)
+    hit = _PORTFOLIO_CACHE.get(ckey)
     now = _time.time()
     if hit and not fresh and now - hit[0] < PORTFOLIO_TTL_S:
         return hit[1]
@@ -4198,7 +4285,7 @@ def portfolio_forecast_v2(book: str = "demo", fresh: int = 0) -> dict:
             if r.get("twin_of"):
                 r["twin_id"] = ids.get(r["twin_of"], "")
     out["computed_at"] = int(now)
-    _PORTFOLIO_CACHE[dry] = (now, out)
+    _PORTFOLIO_CACHE[ckey] = (now, out)
     return out
 
 
@@ -4728,7 +4815,7 @@ def supervisor_status() -> dict:
 
     got = sv.status()
     try:
-        beat = at.LOG_PATH.stat().st_mtime
+        beat = at._pp(at.LOG_PATH).stat().st_mtime
         got["last_beat_seconds"] = round(time.time() - beat, 1)
     except OSError:
         got["last_beat_seconds"] = None

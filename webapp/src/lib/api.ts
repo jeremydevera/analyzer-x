@@ -54,7 +54,31 @@ function freeLane(): void {
   waiting.shift()?.();
 }
 
+// WHICH ROOM the Auto Trade screen is showing (trading profiles, Sep 29,
+// 2026: "when i switch to B52662ED i should see its own tiles, own live
+// trade, own demo trade, own calendar pnl"). Sent as `X-TA-Profile` on every
+// trade and trade-record call — never on the backtest or candle screens,
+// which have no rooms. Main sends nothing, exactly as before.
+export const PROFILES = [
+  { id: "main", name: "Main" },
+  { id: "DC57174E", name: "#DC57174E" },
+  { id: "CC8DC54C", name: "#CC8DC54C" },
+  { id: "B52662ED", name: "#B52662ED" },
+] as const;
+let _profile = "main";
+export function setProfile(id: string): void { _profile = id; }
+export function currentProfile(): string { return _profile; }
+function _roomed(input: string): boolean {
+  const path = input.replace(/^https?:\/\/[^/]+/, "");
+  return /^\/api\/(trade\/|ledger)/.test(path);
+}
+
 async function fetchLaned(input: string, init?: RequestInit): Promise<Response> {
+  if (_profile !== "main" && _roomed(input)) {
+    const headers = new Headers(init?.headers);
+    headers.set("X-TA-Profile", _profile);
+    init = { ...(init ?? {}), headers };
+  }
   await takeLane();
   try {
     return await fetch(input, init);
@@ -573,6 +597,10 @@ export interface Watcher {
   /** ONE page, newest first — the server pages, never the browser */
   decisions: WatcherDecision[];
   decisions_total: number;
+  /** the room this watcher belongs to, and whether it also switches real
+   *  money rows (off until the operator turns it on) */
+  profile?: string;
+  live?: boolean;
   decisions_page: number;
   decisions_pages: number;
   decisions_per: number;
@@ -937,7 +965,7 @@ export const api = {
   /** the strategy watcher (tradingagents/strategy_watcher.py): mode, rules,
    *  what it runs, and its last 50 decisions */
   watcher: (page = 1) => get<Watcher>(`/api/trade/watcher?page=${page}`),
-  watcherSet: (body: { mode?: "off" | "preview" | "act"; cfg?: Record<string, number | string> }) =>
+  watcherSet: (body: { mode?: "off" | "preview" | "act"; live?: boolean; cfg?: Record<string, number | string> }) =>
     post<Watcher>("/api/trade/watcher", body),
   dailyUpdateSwitch: (enabled: boolean) =>
     post<DailyUpdate>("/api/v2/daily-update", { enabled }),

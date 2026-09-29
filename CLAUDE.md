@@ -1118,6 +1118,38 @@ Guards: `tests/test_the_strategy_watcher.py` (18),
 `tests/test_a_watcher_key_reaches_the_runner.py`,
 `tests/test_strategy_keys_match_every_generated_block.py`.
 
+## Every trading profile is its own room (MANDATORY — 2026-09-29)
+
+The operator: *"when i switch to B52662ED i should see its own tiles, own
+live trade, own demo trade, own calendar pnl, in short it has its own room/
+profile"*, *"Real money too"*, *"i want both, if i enable live trade, then it
+should be included"*. Plan: `docs/superpowers/plans/2026-09-29-trading-profiles.md`.
+
+* **Main is `~/.tradingagents` exactly as before; a profile is
+  `~/.tradingagents/profiles/<ID>/`.** Every runner file goes through
+  `auto_trader._pp(PATH)` (settings, state, trade record, pid, lock, log,
+  WANT, KILL), the watcher through `_state_path()`/`_log_path()`, the deploy
+  log through `local_history._deploy_log()`. A new path that belongs to a
+  room and skips these leaks one room into another.
+* **One runner process per room** (`TA_PROFILE`), **one API for all**:
+  `_ProfileMiddleware` sets `profiles.current()` from `X-TA-Profile` (the
+  screen sends it on `/api/trade/*` and `/api/ledger` only). Any cache in the
+  API that answers a trade route is keyed by profile (`_PORTFOLIO_CACHE`).
+* **One real position per coin across ALL rooms** — MEXC nets a contract into
+  one position. `other_profile_holding` claims the coin under a machine-wide
+  lock before a real entry; the orphan sweep never adopts another room's
+  coin; PANIC closes only the room's own (Main also true orphans); a room's
+  screens list only its own real positions (`api._own_exchange_positions`);
+  the wallet check adds other rooms' margin of the last `COMMIT_WINDOW_S`
+  (`others_committed`).
+* **Each room's watcher** starts ON with its own rules (`profiles.BUILTIN`)
+  and practice only; its **live switch** arms `["paper","real"]` and may
+  switch off only the real rows it armed (`meta["real"]`); turning it off
+  takes real money off those rows and keeps their practice half.
+
+Guards: `tests/test_every_profile_is_its_own_room.py` (19) and the profile
+tests in `tests/test_the_strategy_watcher.py`.
+
 ## Backtest v2 is the v1 engine in its own folder (MANDATORY — 2026-09-17)
 
 The operator: *"lets do a v2 of candles tab, when i download candles ... it

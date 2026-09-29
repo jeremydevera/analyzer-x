@@ -44,7 +44,7 @@ def load_rows() -> list[dict]:
 
     out = []
     try:
-        for line in at.LEDGER_PATH.read_bytes().decode(
+        for line in at._pp(at.LEDGER_PATH).read_bytes().decode(
                 "utf-8", errors="replace").splitlines():
             try:
                 out.append(json.loads(line))

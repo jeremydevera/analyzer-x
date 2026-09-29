@@ -164,7 +164,8 @@ def test_the_api_restarts_a_dead_runner_where_launchd_cannot():
     from tradingagents import api
 
     src = inspect.getsource(api)
-    i = src.index("[supervisor] runner was down")
+    # one room each since Sep 29, 2026: "[supervisor] <profile> runner was down"
+    i = src.index("runner was down")
     frag = src[i - 700:i + 200]
     assert "_at.wants_runner()" in frag, "intent first: STOP must stick"
     assert "not _at.runner_pid()" in frag, "only when it is actually down"

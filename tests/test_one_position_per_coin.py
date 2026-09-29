@@ -223,7 +223,8 @@ def test_the_runner_does_not_refuse_its_own_launcher():
 def test_the_pid_file_ends_up_holding_the_REAL_runner():
     """Otherwise STOP kills the launcher and leaves the runner trading."""
     src = inspect.getsource(at.run_forever)
-    assert "PID_PATH.write_text(str(os.getpid())" in src
+    # through the profile's own folder since Sep 29, 2026 (`_pp`)
+    assert "_pp(PID_PATH).write_text(str(os.getpid())" in src
 
 
 # ---------------------------------------------------------------------------

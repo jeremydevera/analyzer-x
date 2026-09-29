@@ -277,7 +277,7 @@ def main(argv=None) -> int:
               f"{len(got['plan']['arm'])} strategies stay armed; "
               f"every other row is disarmed.")
     if write:
-        print(f"\nWRITTEN to {at.SETTINGS_PATH}")
+        print(f"\nWRITTEN to {at._pp(at.SETTINGS_PATH)}")
         print("Every row is on the book the preset asked for. Going LIVE is a "
               "click per row, on the machine with the keys.")
     else:

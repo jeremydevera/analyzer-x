@@ -53,6 +53,22 @@ KILL_PATH = STATE_DIR / "auto_trade.KILL"
 WANT_PATH = STATE_DIR / "auto_trade.WANT"
 # held for the process's whole life: the single-instance lock
 LOCK_PATH = STATE_DIR / "auto_trade.lock"
+
+
+def _profile() -> str:
+    from tradingagents import profiles
+
+    return profiles.current()
+
+
+def _pp(path: Path) -> Path:
+    """`path` for the CURRENT PROFILE (tradingagents/profiles.py): the path
+    itself for Main — read at the call, so a monkeypatched `LEDGER_PATH` still
+    wins — or the same file in the profile's own folder. Every read and write
+    of a runner file goes through here (Sep 29, 2026, trading profiles)."""
+    from tradingagents import profiles
+
+    return profiles.path(path)
 _RUN_LOCK = None
 
 BAR_SECONDS = 4 * 3600       # the default (coarsest) strategy timeframe
@@ -1865,7 +1881,31 @@ def load_settings() -> dict:
         merge_runtime_specs()
     except Exception:                                          # noqa: BLE001
         pass
-    return _read_json(SETTINGS_PATH)
+    path = _pp(SETTINGS_PATH)
+    if not path.exists():
+        _seed_profile_settings(path)
+    return _read_json(path)
+
+
+# A NEW PROFILE STARTS EMPTY: Main's general preferences (stake, sizing, the
+# partial TP/SL and Martingale boxes, the practice switch), NO strategy rows,
+# and the real-money master switch OFF. Its watcher fills it.
+_ROW_KEYS = {"coins": [], "strategies": [], "strategy_coins": {},
+             "strategy_books": {}, "strategy_margins": {}, "strategy_sizing": {},
+             "strategy_res": {}, "watcher_slots": {}, "strategy_loss_limits": {},
+             "enabled": False}
+
+
+def _seed_profile_settings(path: Path) -> None:
+    from tradingagents import profiles
+
+    if profiles.current() == profiles.MAIN:
+        return
+    main = _read_json(profiles.path(SETTINGS_PATH, profiles.MAIN))
+    seed = {**{k: v for k, v in main.items() if k not in _ROW_KEYS},
+            **{k: (list(v) if isinstance(v, list) else dict(v) if isinstance(v, dict) else v)
+               for k, v in _ROW_KEYS.items()}}
+    _write_json(path, seed)
 
 
 def timeframe_conflicts(settings: dict) -> list[dict]:
@@ -2018,7 +2058,7 @@ STATE_LOCK_PATH = STATE_DIR / "auto_trade_state.lock"
 def load_state() -> dict:
     """The shared book. Carries a per-slot revision so a writer can tell
     whether someone else has changed a slot since this copy was read."""
-    state = _read_json(STATE_PATH)
+    state = _read_json(_pp(STATE_PATH))
     state.setdefault("_rev", {})
     return state
 
@@ -2050,10 +2090,10 @@ def save_state(state: dict, keys: list | None = None) -> None:
     mine_rev = state.get("_rev") or {}
     if keys is None:
         keys = [k for k in state if k != "_rev"]
-    with STATE_LOCK_PATH.open("a+", encoding="utf-8") as lock:
+    with _pp(STATE_LOCK_PATH).open("a+", encoding="utf-8") as lock:
         portable.lock_exclusive(lock)
         try:
-            disk = _read_json(STATE_PATH)
+            disk = _read_json(_pp(STATE_PATH))
             disk_rev = dict(disk.get("_rev") or {})
             for k in keys:
                 if k not in state:
@@ -2068,7 +2108,7 @@ def save_state(state: dict, keys: list | None = None) -> None:
                 disk[k] = state[k]
                 disk_rev[k] = disk_rev.get(k, 0) + 1
             disk["_rev"] = disk_rev
-            _write_json(STATE_PATH, disk)
+            _write_json(_pp(STATE_PATH), disk)
             # Leave the caller's copy in step with what is now on disk, so a
             # second save in the same cycle is not treated as stale.
             state["_rev"] = dict(disk_rev)
@@ -2077,9 +2117,9 @@ def save_state(state: dict, keys: list | None = None) -> None:
 
 
 def append_ledger(entry: dict) -> None:
-    LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _pp(LEDGER_PATH).parent.mkdir(parents=True, exist_ok=True)
     entry = {"ts": int(time.time()), **entry}
-    with LEDGER_PATH.open("a", encoding="utf-8") as fh:
+    with _pp(LEDGER_PATH).open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(entry) + "\n")
 
 
@@ -2154,7 +2194,7 @@ def backfill_ledger_ids(path=None, *, dry_run: bool = False,
     and a rename, keeping a timestamped ``.bak`` — a half-written ledger would
     take every PnL figure in the app with it.
     """
-    p = Path(path) if path else LEDGER_PATH
+    p = Path(path) if path else _pp(LEDGER_PATH)
     if not p.exists():
         return {"rows": 0, "entered": 0, "exited": 0, "written": False}
     lines = p.read_text(encoding="utf-8").splitlines()
@@ -2206,7 +2246,7 @@ def backfill_ledger_ids(path=None, *, dry_run: bool = False,
         return {"rows": len(rows), "entered": n_enter, "exited": n_exit,
                 "written": False}
     STATE_DIR.mkdir(parents=True, exist_ok=True)
-    with (STATE_DIR / "ledger.lock").open("a+") as lock:
+    with (_pp(STATE_DIR / "ledger.lock")).open("a+") as lock:
         portable.lock_exclusive(lock)
         try:
             # Re-read under the lock: the runner may have appended while the
@@ -2288,7 +2328,7 @@ def log_tail(n: int = 200) -> list[str]:
     survive any byte; the odd bad character shows as � instead.
     """
     try:
-        return (LOG_PATH.read_bytes().decode("utf-8", errors="replace")
+        return (_pp(LOG_PATH).read_bytes().decode("utf-8", errors="replace")
                 .strip().splitlines()[-n:])
     except OSError:
         return []
@@ -2332,7 +2372,7 @@ def ledger_since(ts: float) -> list[dict]:
     """
     out = []
     try:
-        with LEDGER_PATH.open(encoding="utf-8") as fh:
+        with _pp(LEDGER_PATH).open(encoding="utf-8") as fh:
             for line in fh:
                 try:
                     e = json.loads(line)
@@ -2347,7 +2387,7 @@ def ledger_since(ts: float) -> list[dict]:
 
 def ledger_tail(n: int = 20) -> list[dict]:
     try:
-        lines = LEDGER_PATH.read_text(encoding="utf-8").strip().splitlines()
+        lines = _pp(LEDGER_PATH).read_text(encoding="utf-8").strip().splitlines()
     except OSError:
         return []
     out = []
@@ -2741,6 +2781,51 @@ CAPITAL_TTL_S = 20          # a burst of signals at one bar close is ONE read
 # cannot close this hole: it lags the fill, and a 0-second cache would only
 # turn one stale read into five. Found by the harddev loop before it shipped.
 _CYCLE_COMMITTED: dict = {"usdt": 0.0}
+
+# ...AND MARGIN OTHER PROFILES' RUNNERS JUST COMMITTED (Sep 29, 2026). Each
+# room is its own process with its own `_CYCLE_COMMITTED`, and they all spend
+# one wallet whose `positionMargin` lags a fill — so four rooms on one bar
+# close could each see the same free balance. A real order is recorded in a
+# machine-wide file before it is sent; every gate counts the other rooms'
+# records of the last COMMIT_WINDOW_S. Counting one twice (the venue already
+# shows it) refuses a trade; missing it could overspend — the safe side.
+COMMIT_WINDOW_S = 180.0
+
+
+def _commits_path() -> Path:
+    return STATE_DIR / "real_claims" / "committed.jsonl"
+
+
+def cross_commit(margin: float) -> None:
+    """Record `margin` (negative gives it back) for this profile, now."""
+    from tradingagents import profiles
+
+    p = _commits_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError), p.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps({"profile": profiles.current(), "margin": float(margin),
+                             "at": time.time()}) + "\n")
+
+
+def others_committed(now: float | None = None) -> float:
+    """Margin OTHER profiles committed in the last COMMIT_WINDOW_S."""
+    from tradingagents import profiles
+
+    now = time.time() if now is None else now
+    me, total = profiles.current(), 0.0
+    try:
+        with _commits_path().open("rb") as fh:
+            fh.seek(0, 2)
+            fh.seek(max(0, fh.tell() - 64 * 1024))
+            lines = fh.read().decode("utf-8", "replace").splitlines()
+    except OSError:
+        return 0.0
+    for line in lines:
+        with contextlib.suppress(ValueError, TypeError):
+            e = json.loads(line)
+            if e.get("profile") != me and now - float(e["at"]) < COMMIT_WINDOW_S:
+                total += float(e["margin"])
+    return max(0.0, total)
 # Share of equity this runner may hold as position margin, all coins together.
 # 0.5 of a 153.61 USDT account is 15 concurrent 5 USDT positions at 20x; the
 # operator has held 6. It binds long before a wallet does, which is the point.
@@ -2805,8 +2890,9 @@ def capital_check(margin: float, *, fx=None, settings: dict | None = None) -> di
                           f"balance is unknown"}
     ceiling = eq * frac
     held = 0.0 if held is None else held
-    held += float(_CYCLE_COMMITTED.get("usdt") or 0.0)
-    avail -= float(_CYCLE_COMMITTED.get("usdt") or 0.0)
+    _others = others_committed()
+    held += float(_CYCLE_COMMITTED.get("usdt") or 0.0) + _others
+    avail -= float(_CYCLE_COMMITTED.get("usdt") or 0.0) + _others
     if want > avail:
         return {"verdict": "block", "want": want, "ceiling": ceiling, **cap,
                 "reason": f"this trade needs {want:.2f} USDT of margin and the "
@@ -4068,8 +4154,8 @@ def panic_stop(*, fx=None, close_positions: bool = True) -> dict:
         from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
     report = {"halted": False, "runner_stopped": False,
               "closed": [], "failed": []}
-    KILL_PATH.parent.mkdir(parents=True, exist_ok=True)
-    KILL_PATH.write_text("panic stop")
+    _pp(KILL_PATH).parent.mkdir(parents=True, exist_ok=True)
+    _pp(KILL_PATH).write_text("panic stop")
     report["halted"] = True
     report["runner_stopped"] = stop_runner()
     if close_positions:
@@ -4078,11 +4164,23 @@ def panic_stop(*, fx=None, close_positions: bool = True) -> dict:
         except Exception as exc:
             report["failed"].append(f"could not read positions: {exc}")
             positions = []
+        # ONLY THIS ROOM'S MONEY (Sep 29, 2026, profiles): a profile closes
+        # the coins its own book holds; Main also closes true orphans, but
+        # never a coin another profile holds.
+        from tradingagents import profiles as _pf
+
+        _own = load_state()
+        _me = _pf.current()
         for p in positions:
             sym = p.get("symbol")
             side = 1 if int(p.get("positionType") or 0) == 1 else -1
             vol = int(p.get("holdVol") or 0)
             if not sym or vol <= 0:
+                continue
+            _mine = bool(open_slices(_own, sym, False))
+            if not _mine and (_me != _pf.MAIN
+                              or other_profile_holding(sym, claim=False)):
+                report.setdefault("left_to_other_profiles", []).append(sym)
                 continue
             try:
                 _force_close(sym, {"side": side, "vol": vol,
@@ -4591,7 +4689,7 @@ def dry_mode(settings: dict | None = None) -> bool:
 
 
 def halted() -> bool:
-    return KILL_PATH.exists()
+    return _pp(KILL_PATH).exists()
 
 
 def reset_record(books=("paper", "real")) -> dict:
@@ -4629,12 +4727,12 @@ def reset_record(books=("paper", "real")) -> dict:
             raise RuntimeError("the runner is mid-cycle and did not stop in "
                                "10s — nothing was reset, try again")
     removed, kept, backup = 0, [], ""
-    if LEDGER_PATH.exists():
+    if _pp(LEDGER_PATH).exists():
         stamp = time.strftime("%Y%m%d-%H%M%S")
-        bak = LEDGER_PATH.with_suffix(f".jsonl.before-reset-{stamp}")
-        shutil.copy2(LEDGER_PATH, bak)
+        bak = _pp(LEDGER_PATH).with_suffix(f".jsonl.before-reset-{stamp}")
+        shutil.copy2(_pp(LEDGER_PATH), bak)
         backup = bak.name
-        for line in LEDGER_PATH.read_text(encoding="utf-8").splitlines():
+        for line in _pp(LEDGER_PATH).read_text(encoding="utf-8").splitlines():
             try:
                 r = json.loads(line)
             except ValueError:
@@ -4647,7 +4745,7 @@ def reset_record(books=("paper", "real")) -> dict:
                 removed += 1
                 continue
             kept.append(line)
-        LEDGER_PATH.write_text(chr(10).join(kept) + (chr(10) if kept else ''),
+        _pp(LEDGER_PATH).write_text(chr(10).join(kept) + (chr(10) if kept else ''),
                                encoding="utf-8")
     cleared = 0
     if drop_dry:
@@ -5629,6 +5727,21 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                                "strategy": key, "why": _why,
                                "holders": _holders, "dry_run": dry})
                 continue
+        # ANOTHER ROOM'S REAL POSITION on this coin (profiles): the venue
+        # would net the two into one. Refused out loud, bar marked seen.
+        if not dry:
+            _other = other_profile_holding(symbol)
+            if _other:
+                st["last_ts"][spec["interval"]] = last_ts
+                if _say_once(f"profile-busy-{symbol}-{key}", 3600):
+                    logger.info("%s: %s not accepted — profile %s holds this "
+                                "coin with real money", symbol.replace("_USDT", ""),
+                                key, _other)
+                append_ledger({"symbol": symbol, "action": "coin_busy",
+                               "strategy": key, "dry_run": dry,
+                               "why": f"profile {_other} holds this coin with real money",
+                               "holders": [f"profile {_other}"]})
+                continue
         # The mark is TENTATIVE from here on. A signal fired, so the candle must
         # not be re-evaluated once the order is away — but if the attempt dies on
         # a venue read, the trade never happened and the signal has to survive to
@@ -5791,6 +5904,7 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             # gives it back below.
             _CYCLE_COMMITTED["usdt"] = (
                 float(_CYCLE_COMMITTED.get("usdt") or 0.0) + float(margin))
+            cross_commit(float(margin))            # ...and every other room
         try:
             fx.submit(symbol, order_side, vol, leverage=LEVERAGE, dry_run=dry)
         except Exception as exc:
@@ -5805,6 +5919,7 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                 _CYCLE_COMMITTED["usdt"] = max(
                     0.0, float(_CYCLE_COMMITTED.get("usdt") or 0.0)
                     - float(margin))
+                cross_commit(-float(margin))
             st["last_ts"][spec["interval"]] = _prev_seen
             logger.error(
                 "ORDER REFUSED %s %s: %s — nothing opened, the %s candle is "
@@ -5974,6 +6089,44 @@ def open_slices(state: dict, symbol: str, dry: bool) -> list[tuple[str, dict]]:
     return out
 
 
+# ONE REAL POSITION PER COIN ACROSS EVERY PROFILE (Sep 29, 2026). MEXC nets
+# every order on a contract into ONE position, so two rooms holding the same
+# coin with real money are one trade nobody can split — and the comparison the
+# rooms exist for would be a lie. A real entry first CLAIMS the coin for its
+# profile under a machine-wide lock; a coin another profile holds (its state
+# says so) or claimed in the last CLAIM_S (an order in flight) is refused.
+CLAIM_S = 15 * 60
+
+
+def other_profile_holding(symbol: str, *, claim: bool = True) -> str | None:
+    """The OTHER profile holding `symbol` with real money, or None — and
+    when None (and `claim`), `symbol` is now claimed for this profile."""
+    from tradingagents import profiles
+
+    me = profiles.current()
+    claims = STATE_DIR / "real_claims"
+    claims.mkdir(parents=True, exist_ok=True)
+    with (claims / "claims.lock").open("a+", encoding="utf-8") as lk:
+        portable.lock_exclusive(lk)
+        try:
+            for pid in profiles.ids():
+                if pid == me:
+                    continue
+                other = _read_json(profiles.path(STATE_PATH, pid))
+                if open_slices(other, symbol, False):
+                    return pid
+            path = claims / f"{symbol}.json"
+            prev = _read_json(path)
+            owner, since = prev.get("owner"), float(prev.get("at") or 0)
+            if owner and owner != me and time.time() - since < CLAIM_S:
+                return str(owner)
+            if claim:
+                _write_json(path, {"owner": me, "at": time.time()})
+            return None
+        finally:
+            portable.unlock(lk)
+
+
 def _busy_refusal(symbol: str, st: dict, strategies, frames,
                   *, dry: bool) -> None:
     """Say that this coin is taken, once per closed bar.
@@ -6038,6 +6191,10 @@ def adopt_orphans(settings: dict, state: dict, *, fx, dry: bool) -> None:
             if any(k for k in state
                    if is_slice_slot(k) and coin_of_slot(k) == symbol
                    and (state.get(k) or {}).get("position")):
+                continue
+            # ANOTHER PROFILE'S position is not an orphan (Sep 29, 2026): it
+            # is tracked, bracketed and closed by that room's runner
+            if other_profile_holding(symbol, claim=False):
                 continue
             if held and held.get("dry"):
                 # A paper trade parked in the live slot would block rescue on
@@ -6548,7 +6705,7 @@ def _feed_follow(state: dict) -> None:
 # --------------------------------------------------------- process control
 def wants_runner() -> bool:
     """Whether the operator has asked for the runner to be up."""
-    return WANT_PATH.exists()
+    return _pp(WANT_PATH).exists()
 
 
 def run_lock_held() -> bool:
@@ -6565,7 +6722,7 @@ def run_lock_held() -> bool:
     holding a byte-range lock on.
     """
     try:
-        fh = open(LOCK_PATH, "a+", encoding="utf-8")   # noqa: SIM115
+        fh = open(_pp(LOCK_PATH), "a+", encoding="utf-8")   # noqa: SIM115
     except OSError:
         return False                       # no lock file, so nobody holds it
     try:
@@ -6588,7 +6745,7 @@ def runner_pid() -> int | None:
     and `stop_runner` from sending SIGTERM to it.
     """
     try:
-        pid = int(PID_PATH.read_text(encoding="utf-8").strip())
+        pid = int(_pp(PID_PATH).read_text(encoding="utf-8").strip())
     except (OSError, ValueError):
         return None
     if not portable.pid_alive(pid):
@@ -6601,18 +6758,19 @@ def start_runner() -> int:
     existing = runner_pid()
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     # record the INTENT before spawning: a supervisor keeps it up from here
-    WANT_PATH.write_text("run", encoding="utf-8")
+    _pp(WANT_PATH).write_text("run", encoding="utf-8")
     if existing:
         return existing
-    with LOG_PATH.open("a", encoding="utf-8") as log:
+    with _pp(LOG_PATH).open("a", encoding="utf-8") as log:
         proc = subprocess.Popen(
             [sys.executable, "-m", "tradingagents.auto_trader", "run"],
             stdout=log, stderr=log, **portable.DETACHED,
             cwd=str(Path(__file__).resolve().parent.parent),
             # the child prints em dashes; without this Windows writes them as
             # cp1252 bytes into a log every reader treats as UTF-8
-            env={**os.environ, "PYTHONUTF8": "1"})
-    PID_PATH.write_text(str(proc.pid), encoding="utf-8")
+            # THE PROFILE this runner works for, for its whole life
+            env={**os.environ, "PYTHONUTF8": "1", "TA_PROFILE": _profile()})
+    _pp(PID_PATH).write_text(str(proc.pid), encoding="utf-8")
     return proc.pid
 
 
@@ -6622,13 +6780,13 @@ def stop_runner() -> bool:
     Clears the want-flag FIRST, so a supervisor does not restart what the
     operator just stopped.
     """
-    WANT_PATH.unlink(missing_ok=True)
+    _pp(WANT_PATH).unlink(missing_ok=True)
     pid = runner_pid()
     if not pid:
-        PID_PATH.unlink(missing_ok=True)
+        _pp(PID_PATH).unlink(missing_ok=True)
         return False
     os.kill(pid, signal.SIGTERM)
-    PID_PATH.unlink(missing_ok=True)
+    _pp(PID_PATH).unlink(missing_ok=True)
     return True
 
 
@@ -6809,7 +6967,7 @@ def run_forever() -> None:
     try:
         # held for the life of the process ON PURPOSE: closing it releases
         # the flock, which is the only thing stopping a second runner
-        _RUN_LOCK = open(LOCK_PATH, "w")   # noqa: SIM115
+        _RUN_LOCK = open(_pp(LOCK_PATH), "w")   # noqa: SIM115
         portable.lock_exclusive(_RUN_LOCK, blocking=False)
     except OSError:
         print("another auto-trader holds the run lock — exiting so trades are "
@@ -6827,8 +6985,8 @@ def run_forever() -> None:
         print(f"disk almost full: {free} MB free, need {MIN_FREE_MB} MB",
               file=sys.stderr)
         raise SystemExit(2)
-    PID_PATH.parent.mkdir(parents=True, exist_ok=True)
-    PID_PATH.write_text(str(os.getpid()), encoding="utf-8")
+    _pp(PID_PATH).parent.mkdir(parents=True, exist_ok=True)
+    _pp(PID_PATH).write_text(str(os.getpid()), encoding="utf-8")
     modes = active_modes()
     names = [("LIVE — real orders" if not d else "PAPER — simulated")
              for d in modes] or ["nothing enabled"]
@@ -6880,7 +7038,7 @@ def run_forever() -> None:
                 _log_what_woke_us()
     finally:
         if runner_pid() == os.getpid():
-            PID_PATH.unlink(missing_ok=True)
+            _pp(PID_PATH).unlink(missing_ok=True)
 
 
 
@@ -6892,7 +7050,7 @@ def save_settings(payload: dict) -> list[dict]:
     recorded changes so callers can show what happened.
     """
     prev = load_settings()
-    _write_json(SETTINGS_PATH, payload)
+    _write_json(_pp(SETTINGS_PATH), payload)
     changes: list[dict] = []
     try:
         from tradingagents import local_history as _lh
@@ -7067,13 +7225,13 @@ if __name__ == "__main__":
     #
     # Owning the handler here makes it true however the process was started.
     # No StreamHandler, or the UI path would write every line twice.
-    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _pp(LOG_PATH).parent.mkdir(parents=True, exist_ok=True)
     # THE date format on every line too. basicConfig's default asctime is
     # "2026-08-22 19:27:03,488" — the compact stamp the operator banned,
     # printed on every row of the Runner feed they read.
     from tradingagents.positions_view import WhenFormatter
 
-    _h = logging.FileHandler(LOG_PATH, encoding="utf-8")
+    _h = logging.FileHandler(_pp(LOG_PATH), encoding="utf-8")
     _h.setFormatter(WhenFormatter("%(asctime)s %(levelname)s %(message)s"))
     logging.basicConfig(level=logging.INFO, handlers=[_h])
     if len(sys.argv) > 1 and sys.argv[1] == "once":

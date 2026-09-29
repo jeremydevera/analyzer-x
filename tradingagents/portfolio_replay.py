@@ -151,7 +151,7 @@ def _funding_per_day(funding: list) -> float:
 def ledger_rows(path=None) -> list[dict]:
     """Every row of the trade record, oldest first. A torn line is skipped,
     never raised — the ledger is appended live while this reads it."""
-    p = Path(path) if path else at.LEDGER_PATH
+    p = Path(path) if path else at._pp(at.LEDGER_PATH)
     out: list[dict] = []
     if not p.exists():
         return out

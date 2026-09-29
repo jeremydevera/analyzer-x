@@ -66,19 +66,52 @@ MARGIN = 5.0
 
 
 # ------------------------------------------------------------------ state
-def _read() -> dict:
-    try:
-        return json.loads(STATE.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+# ONE WATCHER PER PROFILE (Sep 29, 2026, tradingagents/profiles.py): each room
+# keeps its own state and log in its own folder. Main is STATE/LOG themselves,
+# read at the call, so a test that points them at tmp_path still works.
+def _state_path() -> Path:
+    from tradingagents import profiles
+
+    return profiles.path(STATE)
+
+
+def _log_path() -> Path:
+    from tradingagents import profiles
+
+    return profiles.path(LOG)
+
+
+def _seed() -> dict:
+    """A new profile's watcher: ON, with that profile's own rules, practice
+    only until its live switch is turned on."""
+    from tradingagents import profiles
+
+    pid = profiles.current()
+    rules = (profiles.get(pid) or {}).get("rules")
+    if pid == profiles.MAIN or not rules:
         return {}
+    return {"mode": "act", "cfg": dict(rules), "live": False,
+            "why": f"started for {pid} with its own rules"}
+
+
+def _read() -> dict:
+    path = _state_path()
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        seed = _seed()
+        if seed and not path.exists():
+            _write(seed)
+        return dict(seed)
 
 
 def _write(d: dict) -> None:
+    path = _state_path()
     with contextlib.suppress(OSError):
-        STATE.parent.mkdir(parents=True, exist_ok=True)
-        tmp = STATE.with_suffix(".tmp")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(d), encoding="utf-8")
-        os.replace(tmp, STATE)
+        os.replace(tmp, path)
 
 
 # The rules the LIVE watcher actually reads. The replay and the research dial
@@ -111,6 +144,35 @@ def mode_of(st: dict | None = None) -> str:
     st = _read() if st is None else st
     m = st.get("mode") or "act"
     return m if m in MODES else "act"
+
+
+def live_of(st: dict | None = None) -> bool:
+    """Does this profile's watcher also switch REAL-money rows? Off unless
+    the operator turned it on (Sep 29, 2026: "i want both, if i enable live
+    trade, then it should be included")."""
+    st = _read() if st is None else st
+    return bool(st.get("live"))
+
+
+def set_live(on: bool) -> dict:
+    """Turn the profile's live switch on or off. OFF also takes REAL off
+    every row this watcher armed with it, keeping their practice half: the
+    operator's "no" to real money reaches the rows it already armed."""
+    st = _read()
+    st["live"] = bool(on)
+    _write(st)
+    if not on:
+        def drop_real(s):
+            books = dict(s.get("strategy_books") or {})
+            ws = dict(s.get("watcher_slots") or {})
+            for slot, meta in ws.items():
+                if meta.get("real") and "real" in (books.get(slot) or []):
+                    books[slot] = [b for b in books[slot] if b != "real"] or ["paper"]
+                    ws[slot] = {**meta, "real": False}
+            s["strategy_books"], s["watcher_slots"] = books, ws
+            return s
+        _write_settings(drop_real)
+    return status()
 
 
 def set_mode(mode: str) -> dict:
@@ -150,8 +212,8 @@ def _log(decisions: list[dict]) -> None:
     if not decisions:
         return
     with contextlib.suppress(OSError):
-        LOG.parent.mkdir(parents=True, exist_ok=True)
-        with LOG.open("a", encoding="utf-8") as fh:
+        _log_path().parent.mkdir(parents=True, exist_ok=True)
+        with _log_path().open("a", encoding="utf-8") as fh:
             for d in decisions:
                 fh.write(json.dumps(d) + "\n")
 
@@ -160,8 +222,8 @@ def recent(n: int = 50) -> list[dict]:
     """The newest `n` decisions, read from the log's TAIL — the panel asks
     every 30 seconds and the log only ever grows."""
     try:
-        size = LOG.stat().st_size
-        with LOG.open("rb") as fh:
+        size = _log_path().stat().st_size
+        with _log_path().open("rb") as fh:
             fh.seek(max(0, size - 256 * 1024))
             lines = fh.read().decode("utf-8", "replace").splitlines()
     except OSError:
@@ -179,17 +241,24 @@ PER_PAGE = 10
 # (path, bytes counted, lines counted): the log only grows, so each call
 # counts only the newlines appended since the last one
 _COUNT = {"path": None, "size": 0, "lines": 0}
+_COUNTS: dict = {}          # one count per profile's log
 
 
 def _log_lines() -> int:
     try:
-        size = LOG.stat().st_size
+        size = _log_path().stat().st_size
     except OSError:
         return 0
-    if _COUNT["path"] != str(LOG) or size < _COUNT["size"]:
-        _COUNT.update(path=str(LOG), size=0, lines=0)
+    key = str(_log_path())
+    if _COUNT["path"] != key:
+        # another room's log: keep this one's count, pick up that one's
+        if _COUNT["path"] is not None:
+            _COUNTS[_COUNT["path"]] = dict(_COUNT)
+        _COUNT.update(_COUNTS.get(key) or {"path": key, "size": 0, "lines": 0})
+    if size < _COUNT["size"]:
+        _COUNT.update(path=key, size=0, lines=0)
     if size > _COUNT["size"]:
-        with contextlib.suppress(OSError), LOG.open("rb") as fh:
+        with contextlib.suppress(OSError), _log_path().open("rb") as fh:
             fh.seek(_COUNT["size"])
             chunk = fh.read(size - _COUNT["size"])
             _COUNT["lines"] += chunk.count(b"\n")
@@ -212,8 +281,8 @@ def decisions_page(page: int = 1, per: int = PER_PAGE) -> dict:
     need = page * per
     lines: list[bytes] = []
     try:
-        size = LOG.stat().st_size
-        with LOG.open("rb") as fh:
+        size = _log_path().stat().st_size
+        with _log_path().open("rb") as fh:
             end, block, tail = size, 64 * 1024, b""
             while end > 0 and len(lines) < need:
                 start = max(0, end - block)
@@ -345,14 +414,18 @@ def _write_settings(mutate) -> bool:
     return False
 
 
-def _arm(s: dict, key: str, symbol: str, meta: dict) -> dict:
+def _arm(s: dict, key: str, symbol: str, meta: dict, live: bool = False) -> dict:
+    """Switch one row on: practice, and REAL too when the profile's live
+    switch is on (`meta["real"]` remembers which, so the switch-off pass may
+    take back what it armed and nothing else)."""
     slot = f"{key}|{symbol}"
+    meta = {**meta, "real": bool(live)}
     s["strategies"] = sorted(set(s.get("strategies") or []) | {key})
     coins = dict(s.get("strategy_coins") or {})
     coins[key] = sorted(set(coins.get(key) or []) | {symbol})
     s["strategy_coins"] = coins
     books = dict(s.get("strategy_books") or {})
-    books[slot] = ["paper"]
+    books[slot] = ["paper", "real"] if live else ["paper"]
     s["strategy_books"] = books
     margins = dict(s.get("strategy_margins") or {})
     margins.setdefault(key, MARGIN)
@@ -440,8 +513,10 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
                 out.append(_d(now, st, "report", meta, "switched off outside the "
                               "watcher — no longer counted as one of its rows"))
             continue
-        if "real" in at.book_names(settings, key, sym):
-            continue                       # never touch a slot holding real money
+        if "real" in at.book_names(settings, key, sym) and not meta.get("real"):
+            # a real book the WATCHER did not arm is the operator's: never
+            # touched. One it armed under the live switch it may switch off.
+            continue
         fresh, readable = _fresh_row(meta, now, cfg)
         if not readable:
             out.append(_d(now, st, "report", meta, "its backtest file could not be "
@@ -641,9 +716,11 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
             break
         _try_picks(picks, now, st, act, out, settings, ws, arm, refused)
     if act and arm:
+        live = live_of(st)
+
         def mutate(s):
             for key, sym, meta in arm:
-                _arm(s, key, sym, meta)
+                _arm(s, key, sym, meta, live=live)
             return s
         stop = _stopped_meanwhile()
         if stop or not _write_settings(mutate):
@@ -719,7 +796,9 @@ def consider(*, now: float | None = None) -> dict:
             n_on = sum(d["action"] == "on" for d in out)
             n_off = sum(d["action"] == "off" for d in out)
             if n_on or n_off:
-                nt.record("trade", f"Watcher{' (preview)' if not act else ''}: "
+                from tradingagents import profiles as _pf
+
+                nt.record("trade", f"Watcher {_pf.current()}{' (preview)' if not act else ''}: "
                           f"{n_on} switched on, {n_off} switched off", ok=True,
                           detail="; ".join(d["why"] for d in out[:6]))
     # ONLY THE PASS'S OWN FIELDS go back, onto the state file as it is NOW: a
@@ -773,7 +852,10 @@ def status(page: int = 1, per: int = PER_PAGE) -> dict:
     ws = settings.get("watcher_slots") or {}
     practice = st.get("practice") or {}
     cfg = cfg_of(st)
-    return {"mode": mode_of(st), "cfg": {k: cfg[k] for k in LIVE_RULES},
+    from tradingagents import profiles
+
+    return {"profile": profiles.current(), "live": live_of(st),
+            "mode": mode_of(st), "cfg": {k: cfg[k] for k in LIVE_RULES},
             "window_days": cfg["window_days"], "why": st.get("why", ""),
             "last_on_pass": st.get("last_on_pass"), "last_off_pass": st.get("last_off_pass"),
             "next_on_pass": next_on(time.time(), float(st.get("last_on_pass") or 0)),
@@ -782,16 +864,20 @@ def status(page: int = 1, per: int = PER_PAGE) -> dict:
             "cooling": len(st.get("cooling") or {}), **decisions_page(page, per)}
 
 
-_LAST_SAID = {"why": ""}
+_LAST_SAID: dict = {}          # per profile
 
 
 def tick() -> dict:
-    """`consider()`, logged when its answer changes. NEVER under pytest."""
+    """`consider()` for the CURRENT profile, logged when its answer changes.
+    NEVER under pytest."""
     if os.environ.get("PYTEST_CURRENT_TEST"):
         return {"decisions": [], "why": "never under a test run"}
+    from tradingagents import profiles
+
+    pid = profiles.current()
     got = consider()
     why = str(got.get("why") or "")
-    if why and why != _LAST_SAID["why"]:
-        print(f"[watcher] {why}", flush=True)
-    _LAST_SAID["why"] = why
+    if why and why != _LAST_SAID.get(pid):
+        print(f"[watcher] {pid}: {why}", flush=True)
+    _LAST_SAID[pid] = why
     return got

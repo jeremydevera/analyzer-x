@@ -19,6 +19,14 @@ from pathlib import Path
 
 DEPLOY_LOG = Path(os.path.expanduser("~/.tradingagents/deployments.jsonl"))
 
+
+def _deploy_log() -> Path:
+    """Each trading profile keeps its own deploy history (Sep 29, 2026): a
+    SAVE in one room must not become a "deployed" date in another."""
+    from tradingagents import profiles
+
+    return profiles.path(DEPLOY_LOG)
+
 FIELDS = ("changed_at", "strategy_key", "symbol", "action", "timeframe",
           "signal", "threshold", "tp", "sl", "sizing", "books",
           "base_margin", "ladder_step", "row_code", "prev_json", "note")
@@ -47,8 +55,8 @@ def record_deployment(entry: dict) -> int:
             if old.get("change_id") == row["change_id"]:
                 return 0
             break
-    DEPLOY_LOG.parent.mkdir(parents=True, exist_ok=True)
-    with DEPLOY_LOG.open("a", encoding="utf-8") as fh:
+    _deploy_log().parent.mkdir(parents=True, exist_ok=True)
+    with _deploy_log().open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(row) + "\n")
     return 1
 
@@ -56,7 +64,7 @@ def record_deployment(entry: dict) -> int:
 def deployments(symbol: str | None = None, limit: int = 200) -> list[dict]:
     """What was live, newest first."""
     try:
-        lines = DEPLOY_LOG.read_text(encoding="utf-8").strip().splitlines()
+        lines = _deploy_log().read_text(encoding="utf-8").strip().splitlines()
     except OSError:
         return []
     out = []

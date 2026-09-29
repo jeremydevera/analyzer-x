@@ -552,3 +552,67 @@ def test_a_wide_stop_candidate_is_refused_in_a_real_pass(world):
     got = sw.consider(now=NOW)
     assert not [d for d in got["decisions"] if d["action"] == "on"]
     assert not (world["settings"].get("watcher_slots") or {})
+
+
+# ------------------------------------------------------------------------
+# ONE WATCHER PER PROFILE (Sep 29, 2026): each room starts ON with its own
+# rules, practice only until its live switch is on ("i want both, if i enable
+# live trade, then it should be included").
+
+def test_a_rooms_watcher_starts_on_with_that_rooms_rules(world):
+    from tradingagents import profiles
+
+    with profiles.using("B52662ED"):
+        st = sw._read()
+        assert st["mode"] == "act" and st["live"] is False
+        cfg = sw.cfg_of(st)
+        assert (cfg["on_winrate"], cfg["off_winrate"], cfg["min_trades"], cfg["max_sl"]) \
+            == (70.0, 70.0, 50, 2.0)
+        assert sw._state_path().parent.name == "B52662ED"
+    assert sw._read() == {}, "Main's watcher is untouched"
+
+
+def test_the_live_switch_arms_both_books_and_off_takes_real_back(world):
+    from tradingagents import profiles
+
+    with profiles.using("DC57174E"):
+        st = sw._read()
+        st["cfg"] = {}                       # R6 (100%, 20 trades) passes the defaults
+        sw._write(st)
+        sw.set_live(True)
+        sw.consider(now=NOW)
+        s = world["settings"]
+        assert s["strategy_books"][SLOT] == ["paper", "real"]
+        assert s["watcher_slots"][SLOT]["real"] is True
+        sw.set_live(False)
+        s = world["settings"]
+        assert s["strategy_books"][SLOT] == ["paper"], "real money is taken back, practice stays"
+        assert s["watcher_slots"][SLOT]["real"] is False
+
+
+def test_a_real_row_the_watcher_armed_is_switched_off_by_the_same_rule(world):
+    from tradingagents import profiles
+
+    with profiles.using("DC57174E"):
+        st = sw._read()
+        st["cfg"] = {}
+        sw._write(st)
+        sw.set_live(True)
+        sw.consider(now=NOW)
+        world["fresh"]["77Y3BPFG"] = {**R6, "winrate": 60.0}
+        got = sw.consider(now=NOW + 3601)
+        assert [d["id"] for d in got["decisions"] if d["action"] == "off"] == ["77Y3BPFG"]
+        assert SLOT not in (world["settings"].get("strategy_books") or {})
+
+
+def test_a_real_row_you_armed_yourself_is_never_touched(world):
+    world["settings"]["strategy_coins"] = {KEY: ["GPNSTOCK_USDT"]}
+    world["settings"]["strategy_books"] = {SLOT: ["real", "paper"]}
+    world["settings"]["strategy_res"] = {SLOT: "1m"}
+    world["settings"]["watcher_slots"] = {SLOT: {"id": "77Y3BPFG", "coin": "GPNSTOCK",
+                                                 "tf": "1h", "signal": "macddiv",
+                                                 "th": 0.0, "sl": 0.7, "tp": 1.0}}
+    world["fresh"]["77Y3BPFG"] = {**R6, "winrate": 10.0}
+    got = sw.consider(now=NOW)
+    assert not [d for d in got["decisions"] if d["action"] == "off"]
+    assert world["settings"]["strategy_books"][SLOT] == ["real", "paper"]

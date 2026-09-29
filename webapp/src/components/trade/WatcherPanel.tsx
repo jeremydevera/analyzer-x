@@ -104,7 +104,30 @@ export default function WatcherPanel() {
             {w ? MODE_TEXT[w.mode] : "reading…"}
           </p>
         </div>
-        <SmartWatcherBox onChange={(d) => setW((p) => (p ? { ...p, mode: d.mode, why: d.why } : d))} />
+        <div className="flex flex-wrap items-center gap-4">
+          <SmartWatcherBox onChange={(d) => setW((p) => (p ? { ...p, mode: d.mode, why: d.why } : d))} />
+          {/* THIS ROOM ALSO TRADES REAL MONEY (Sep 29, 2026: "i want both,
+              if i enable live trade, then it should be included"). Off by
+              default; turning it off takes real money off every row this
+              watcher armed with it and keeps their practice half. */}
+          {w && (
+            <label className={`flex items-center gap-2 text-theme-xs ${w.live
+              ? "font-semibold text-error-600 dark:text-error-400" : "text-gray-600 dark:text-gray-300"}`}
+              title="When on, the rows this watcher switches on also trade REAL money, and it switches their real money off by the same rule. Every real-money check still applies to every trade.">
+              <input type="checkbox" checked={!!w.live} className="h-4 w-4 accent-error-500"
+                onChange={(e) => {
+                  const v = e.target.checked;
+                  if (v && !window.confirm(
+                    ["Let this room's watcher trade REAL money?", "",
+                     "Rows it switches on will open real trades on your MEXC account.",
+                     "Only one room can hold a coin with real money at a time."]
+                      .join(String.fromCharCode(10)))) return;
+                  api.watcherSet({ live: v }).then(setW).catch((er) => setErr(String(er)));
+                }} />
+              Watcher trades real money
+            </label>
+          )}
+        </div>
       </div>
       {err && <p className="mt-2 text-theme-xs text-error-500">{err}</p>}
       {w && (

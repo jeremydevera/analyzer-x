@@ -179,29 +179,46 @@ def refresh(settings: dict | None = None, *, pause: float = 0.3) -> dict:
 
     if os.environ.get("PYTEST_CURRENT_TEST") and settings is None:
         return {"rebuilt": 0, "errors": {}, "skipped": "under pytest"}
-    settings = at.load_settings() if settings is None else settings
+    # EVERY PROFILE's rows (Sep 29, 2026): a slot's backtest is the same in
+    # every room, so it is rebuilt once however many rooms run it
+    if settings is None:
+        from tradingagents import profiles
+
+        each = []
+        for pid in profiles.ids():
+            with profiles.using(pid):
+                each.append(at.load_settings())
+    else:
+        each = [settings]
     done, errors = 0, {}
+    seen: set = set()
     _STATUS["running"] = True
     try:
-        for key, coins in (settings.get("strategy_coins") or {}).items():
-            for c in coins or []:
-                slot = f"{key}|{c}"
-                try:
-                    ident = _identity(settings, slot)
-                    if ident is None:
-                        continue
-                    _row, wm = _stored(ident)
-                    have = _load(slot)
-                    if have and have.get("wm") == wm:
-                        continue
-                    got = rebuild(slot, settings)
-                    if got.get("error"):
-                        errors[slot] = got["error"]
-                    else:
-                        done += 1
-                    time.sleep(pause)
-                except Exception as exc:                       # noqa: BLE001
-                    errors[slot] = f"{type(exc).__name__}: {str(exc)[:160]}"
+        for key, c in [(k, c) for st_ in each
+                       for k, cs in (st_.get("strategy_coins") or {}).items()
+                       for c in cs or []]:
+            settings = next(st_ for st_ in each
+                            if c in ((st_.get("strategy_coins") or {}).get(key) or []))
+            slot = f"{key}|{c}"
+            if slot in seen:
+                continue
+            seen.add(slot)
+            try:
+                ident = _identity(settings, slot)
+                if ident is None:
+                    continue
+                _row, wm = _stored(ident)
+                have = _load(slot)
+                if have and have.get("wm") == wm:
+                    continue
+                got = rebuild(slot, settings)
+                if got.get("error"):
+                    errors[slot] = got["error"]
+                else:
+                    done += 1
+                time.sleep(pause)
+            except Exception as exc:                       # noqa: BLE001
+                errors[slot] = f"{type(exc).__name__}: {str(exc)[:160]}"
     finally:
         _STATUS.update(running=False, last=time.time(), errors=errors)
     return {"rebuilt": done, "errors": errors}
@@ -246,7 +263,7 @@ class _PracticeExits:
         from tradingagents import auto_trader as at
 
         with self.lock:
-            path = Path(at.LEDGER_PATH)
+            path = Path(at._pp(at.LEDGER_PATH))
             if path != self.path:                  # an offset is one file's
                 self.path, self.offset, self.rows = path, 0, []
             try:
@@ -276,7 +293,25 @@ class _PracticeExits:
             return list(self.rows)
 
 
-PRACTICE = _PracticeExits()
+class _PerRecord:
+    """One incremental reader PER trade record: each profile has its own
+    (tradingagents/profiles.py), and one shared reader would start over from
+    the top every time the screen switched rooms."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.readers: dict = {}
+
+    def get(self, now: float) -> list[tuple]:
+        from tradingagents import auto_trader as at
+
+        key = str(at._pp(at.LEDGER_PATH))
+        with self.lock:
+            r = self.readers.setdefault(key, _PracticeExits())
+        return r.get(now)
+
+
+PRACTICE = _PerRecord()
 
 
 def figure(slot: str, *, now: float | None = None, exits: list | None = None) -> dict | None:

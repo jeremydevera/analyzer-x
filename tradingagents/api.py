@@ -182,6 +182,17 @@ def _keep_the_row_index_current() -> None:
                     _du.tick()
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[daily-update] failed: {exc!r}", flush=True)
+                # THE STRATEGY WATCHER (operator, Sep 29, 2026: "deploy now the
+                # wathcer replay ... the backtest everyday the promotion and
+                # demotion"). Practice account only: switches rows on once a
+                # day from the fresh v2 results and off every hour, by the
+                # operator's own rules (watcher_policy.DEFAULTS).
+                try:
+                    from tradingagents import strategy_watcher as _sw
+
+                    _sw.tick()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[watcher] failed: {exc!r}", flush=True)
                 # NO AUTOMATIC CANDLE TOP-UP. candle_autopilot.tick() ran here
                 # from 2026-09-06 to 2026-09-09 and started an UPDATE by itself
                 # whenever the store was 3h stale. The operator saw
@@ -997,6 +1008,31 @@ def strategies_export(body: dict) -> dict:
 def strategies_export_v2(body: dict) -> dict:
     """Start building the full CSV of a Backtest v2 filter."""
     return _start_export("export_v2", body)
+
+
+@app.get("/api/trade/watcher")
+def watcher_status() -> dict:
+    """The strategy watcher: its mode, its rules, what it runs, and its last 50
+    decisions (tradingagents/strategy_watcher.py)."""
+    from tradingagents import strategy_watcher as sw
+
+    return sw.status()
+
+
+@app.post("/api/trade/watcher")
+def watcher_switch(body: dict) -> dict:
+    """`{"mode": "off"|"preview"|"act"}` or `{"cfg": {rule: value}}`."""
+    from tradingagents import strategy_watcher as sw
+
+    body = body or {}
+    try:
+        if "mode" in body:
+            return sw.set_mode(str(body["mode"]))
+        if isinstance(body.get("cfg"), dict):
+            return sw.set_cfg(body["cfg"])
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    raise HTTPException(422, 'send {"mode": ...} or {"cfg": {...}}')
 
 
 @app.get("/api/v2/daily-update")

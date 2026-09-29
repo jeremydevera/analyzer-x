@@ -8,6 +8,7 @@ import LoadingOverlay, { useWaitlist } from "./LoadingCard";
 import SummaryRibbon from "./SummaryRibbon";
 import PositionsPanel from "./PositionsPanel";
 import StrategiesGrid from "./StrategiesGrid";
+import WatcherPanel from "./WatcherPanel";
 import PnlPanel from "./PnlPanel";
 import FeedPanel from "./FeedPanel";
 import CredentialsPanel from "./CredentialsPanel";
@@ -48,6 +49,7 @@ export default function AutoTradeScreen() {
       <SummaryRibbon key={`ribbon-${tick}`} onChanged={bump} />
       <PositionsPanel onChanged={bump} />
       <StrategiesGrid />
+      <WatcherPanel />
       <CredentialsPanel />
       <TradeHistory />
       <PnlPanel />

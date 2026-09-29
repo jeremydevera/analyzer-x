@@ -551,6 +551,24 @@ export interface CloudShard {
   fresh?: number;
 }
 
+/** one watcher decision, exactly as the log holds it */
+export interface WatcherDecision {
+  at: number; mode: string; action: "on" | "off" | "refused" | "report";
+  id: string; coin?: string; tf?: string; signal?: string; tp?: number; sl?: number;
+  why: string; numbers?: { trades?: number; wins?: number; losses?: number; winrate?: number; profit?: number };
+}
+
+/** what the Trade screen prints about the strategy watcher — every word of it */
+export interface Watcher {
+  mode: "off" | "preview" | "act";
+  cfg: Record<string, number | string>;
+  why: string;
+  last_on_pass: number | null; last_off_pass: number | null; next_on_pass: number | null;
+  running: number; cooling: number;
+  slots: { slot: string; id: string; coin: string; tf: string; signal: string; tp: number; sl: number; on_at: number }[];
+  decisions: WatcherDecision[];
+}
+
 /** what the Backtest v2 screen prints about the daily run — every word of it */
 export interface DailyUpdate {
   enabled: boolean;
@@ -907,6 +925,11 @@ export const api = {
   /** UPDATE ALL BACKTESTS on Backtest v2, pressed by itself once a day and on
    *  start-up when the last run is 24 hours old (tradingagents/daily_update.py) */
   dailyUpdate: () => get<DailyUpdate>("/api/v2/daily-update"),
+  /** the strategy watcher (tradingagents/strategy_watcher.py): mode, rules,
+   *  what it runs, and its last 50 decisions */
+  watcher: () => get<Watcher>("/api/trade/watcher"),
+  watcherSet: (body: { mode?: "off" | "preview" | "act"; cfg?: Record<string, number | string> }) =>
+    post<Watcher>("/api/trade/watcher", body),
   dailyUpdateSwitch: (enabled: boolean) =>
     post<DailyUpdate>("/api/v2/daily-update", { enabled }),
   /** `coin_list` is WHICH coins to measure, by name — `coins` is only the most

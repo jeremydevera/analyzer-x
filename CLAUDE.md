@@ -1059,6 +1059,50 @@ never dispatches; `tradingagents/daily_update.py` is the only tick that may.
 
 Guard: `tests/test_the_update_runs_itself_once_a_day.py` (20).
 
+## The watcher switches PRACTICE rows on and off by itself (MANDATORY — 2026-09-29)
+
+The operator: *"i need watcher that will undeploy a strategy if its not
+working anymore and will deploy new ones"*, the rules *"add it deployed if
+the trade is 90% above / Then undeploy if 90% below for past 30 days / I want
+tp is greater than sl / Then minimum trade for past 30 days should be 20"*,
+and *"deploy now the wathcer replay, /goal i want this fully working, the
+backtest everyday the promotion and demotion"*.
+`tradingagents/strategy_watcher.py`, ticked by the API supervisor after
+`daily_update`; plan and reasons in
+`docs/superpowers/plans/2026-09-28-strategy-watcher.md`.
+
+* **Practice account only, its own slots only.** It writes `["paper"]` and
+  nothing else, skips any slot holding `"real"`, refuses a coin the operator
+  already runs under that key, and REPORTS (never changes) the operator's own
+  v2 practice rows that fall under the line. It closes no position: a
+  switched-off practice trade is finished by the runner (7897c110).
+* **The rules live in ONE place, `watcher_policy`** — shared with the replay
+  (`watcher_replay`) and the research (`watcher_research`), so the thing that
+  trades is the thing that was replayed. Defaults are the operator's numbers;
+  changing them is `POST /api/trade/watcher {"cfg": ...}` or the screen.
+* **Decided on the pair file, nominated by the index.** The v2 index can be
+  days behind its pair files (Sep 28: measured-through Sep 22 against files
+  ending Sep 28), so a row is judged on `watcher_candidates`' fresh figures;
+  a file older than `fresh_hours` is skipped and counted, an UNREADABLE one
+  keeps a running row, and an index that is not ready (`SortNotReady`) is a
+  30-minute wait, never an empty day.
+* **Switch-on once a day at or after noon; switch-off every hour.** At
+  `Sep 29, 2026 3:36am` the cost check blocked IGV 1h on a 0.675% gap between
+  buy and sell (a stock token's book at night). `edge_check` "ok" and "warn"
+  may trade (the runner trades on "warn"), "block"/"unknown" never (rule 12),
+  and a refused pick does not use up one of the day's places.
+* **A new strategy key is a runtime recipe** (`strategy_keys` →
+  `runtime_specs.json`), merged by `load_settings()` on every runner round;
+  preview writes no recipe file. The runner and the API must be RUNNING this
+  code before the first real switch-on — restart both after deploying it.
+
+Guards: `tests/test_the_strategy_watcher.py` (18),
+`tests/test_the_watcher_panel_says_what_it_did.py`,
+`tests/test_watcher_candidates_are_fresh.py`,
+`tests/test_watcher_reads_practice_since_switch_on.py`,
+`tests/test_a_watcher_key_reaches_the_runner.py`,
+`tests/test_strategy_keys_match_every_generated_block.py`.
+
 ## Backtest v2 is the v1 engine in its own folder (MANDATORY — 2026-09-17)
 
 The operator: *"lets do a v2 of candles tab, when i download candles ... it

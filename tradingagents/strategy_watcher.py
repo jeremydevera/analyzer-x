@@ -38,6 +38,18 @@ HOME = Path(os.path.expanduser("~/.tradingagents"))
 STATE = HOME / "strategy_watcher.json"
 LOG = HOME / "strategy_watcher.jsonl"
 ON_EVERY_S = 24 * 3600
+# THE SWITCH-ON PASS RUNS ONCE A DAY, AT OR AFTER NOON (local). The first dry
+# run was at Sep 29, 2026 3:36am and the cost check blocked IGV 1h on a 0.675%
+# gap between buy and sell — a stock token's book at night. At noon the US
+# market is open (the books are tight) and that morning's UPDATE ALL
+# BACKTESTS (daily_update, ~11:49am) has been dispatched. The hourly
+# switch-off pass runs round the clock.
+ON_HOUR = 12
+# edge_check's verdicts that may trade: the runner itself trades on "warn"
+# (cost over 20% of the target) and only "block" stops it; "unknown" is never
+# ok (rule 12). Refusing "warn" refused #GUCXTP4L VUG 30m (91.3%, 37%) and
+# six more that the runner would have traded.
+EDGE_OK = ("ok", "warn")
 OFF_EVERY_S = 3600
 RETRY_S = 30 * 60
 MODES = ("off", "preview", "act")
@@ -148,10 +160,18 @@ def _practice(slots: dict, now: float) -> dict:
     return wres.practice(slots, now=now)
 
 
-def _register(key: str, spec: dict) -> str:
+def _register(key: str, spec: dict, persist: bool = True) -> str:
+    """Make `key` a known recipe. PREVIEW (`persist=False`) writes nothing:
+    the recipe lives in this process only, long enough for edge_check."""
     from tradingagents import auto_trader as at
     from tradingagents import runtime_specs as rs
 
+    if not persist:
+        have = at.STRATEGY_SPECS.get(key) or rs.load().get(key)
+        if have is not None and dict(have) != dict(spec):
+            raise ValueError(f"{key} already means {have}, not {spec}")
+        at.STRATEGY_SPECS.setdefault(key, dict(spec))
+        return "same" if have is not None else "in memory"
     got = rs.register(key, spec)
     at.merge_runtime_specs()            # this process trades it too (edge_check)
     return got
@@ -342,6 +362,51 @@ def _d(now, st, action, meta, why, row=None) -> dict:
     return d
 
 
+def _try_picks(picks, now, st, act, out, settings, ws, arm, refused) -> None:
+    """Check each pick in turn; the ones that pass go into `arm`, the rest
+    into `refused` (by id), every one of them with its sentence in `out`."""
+    for p in picks:
+        r = p["row"]
+        sym = f"{r['coin']}_USDT"
+        meta = {"id": r["id"], "coin": r["coin"], "tf": r["tf"], "signal": r["signal"],
+                "th": r["th"], "sl": r["sl"], "tp": r["tp"], "on_at": now}
+        try:
+            key, spec = sk.key_for(r), sk.spec_for(r)
+        except ValueError as exc:
+            out.append(_d(now, st, "refused", meta, str(exc), r))
+            refused.add(r["id"])
+            continue
+        if _sig_of(key) != r["signal"]:
+            out.append(_d(now, st, "refused", meta, f"its key {key} would read as "
+                          f"{_sig_of(key)!r}, not {r['signal']!r}", r))
+            refused.add(r["id"])
+            continue
+        slot = f"{key}|{sym}"
+        mine_already = slot in ws
+        by_hand = (slot in (settings.get("strategy_books") or {})
+                   or sym in ((settings.get("strategy_coins") or {}).get(key) or []))
+        if by_hand and not mine_already:
+            out.append(_d(now, st, "refused", meta, "you already run this row "
+                          "yourself — the watcher leaves it alone", r))
+            refused.add(r["id"])
+            continue
+        try:
+            _register(key, spec, persist=act)
+        except ValueError as exc:
+            out.append(_d(now, st, "refused", meta, f"its recipe clashes: {exc}", r))
+            refused.add(r["id"])
+            continue
+        edge = _edge(key, sym)
+        if edge.get("verdict") not in EDGE_OK:
+            out.append(_d(now, st, "refused", meta, f"the cost check said "
+                          f"{edge.get('verdict')}: {edge.get('reason', '')[:160]}", r))
+            refused.add(r["id"])
+            continue
+        out.append(_d(now, st, "on", meta, p["why"], r))
+        arm.append((key, sym, meta))
+        time.sleep(0.5 if act else 0)    # edge_check reads the live book
+
+
 def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     """Returns "" when the pass ran, else why it has to be tried again."""
     from tradingagents import auto_trader as at
@@ -354,43 +419,19 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     running = [{"id": m["id"], "coin": m["coin"]} for m in ws.values()]
     cooling = st.get("cooling") or {}
     rows = [r for r in got["rows"] if not wp.passes_on(r, cfg)]
-    picks = wp.pick(rows, running, cooling, now, cfg)
     arm = []
-    for p in picks:
-        r = p["row"]
-        sym = f"{r['coin']}_USDT"
-        meta = {"id": r["id"], "coin": r["coin"], "tf": r["tf"], "signal": r["signal"],
-                "th": r["th"], "sl": r["sl"], "tp": r["tp"], "on_at": now}
-        try:
-            key, spec = sk.key_for(r), sk.spec_for(r)
-        except ValueError as exc:
-            out.append(_d(now, st, "refused", meta, str(exc), r))
-            continue
-        if _sig_of(key) != r["signal"]:
-            out.append(_d(now, st, "refused", meta, f"its key {key} would read as "
-                          f"{_sig_of(key)!r}, not {r['signal']!r}", r))
-            continue
-        slot = f"{key}|{sym}"
-        mine_already = slot in ws
-        by_hand = (slot in (settings.get("strategy_books") or {})
-                   or sym in ((settings.get("strategy_coins") or {}).get(key) or []))
-        if by_hand and not mine_already:
-            out.append(_d(now, st, "refused", meta, "you already run this row "
-                          "yourself — the watcher leaves it alone", r))
-            continue
-        try:
-            _register(key, spec)
-        except ValueError as exc:
-            out.append(_d(now, st, "refused", meta, f"its recipe clashes: {exc}", r))
-            continue
-        edge = _edge(key, sym)
-        if edge.get("verdict") != "ok":
-            out.append(_d(now, st, "refused", meta, f"the cost check said "
-                          f"{edge.get('verdict')}: {edge.get('reason', '')[:160]}", r))
-            continue
-        out.append(_d(now, st, "on", meta, p["why"], r))
-        arm.append((key, sym, meta))
-        time.sleep(0.5 if act else 0)    # edge_check reads the live book
+    refused: set = set()
+    # A REFUSED PICK DOES NOT USE UP A PLACE: the day's 20 new are 20 that
+    # passed every check, so after a refusal the next candidate in line is
+    # tried — up to 5 rounds, each over what is still untried.
+    for _round in range(5):
+        taken = running + [{"id": m["id"], "coin": m["coin"]} for _, _, m in arm]
+        room_cfg = {**cfg, "max_new_per_day": max(0, int(cfg["max_new_per_day"]) - len(arm))}
+        picks = wp.pick([r for r in rows if r["id"] not in refused], taken, cooling, now,
+                        room_cfg)
+        if not picks:
+            break
+        _try_picks(picks, now, st, act, out, settings, ws, arm, refused)
     if act and arm:
         def mutate(s):
             for key, sym, meta in arm:
@@ -400,6 +441,29 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
             return "the settings file kept changing — nothing switched on, trying again"
     st["last_candidates"] = got.get("why", "")
     return ""
+
+
+def _on_due(now: float, last: float) -> bool:
+    """Once per local day, at or after ON_HOUR."""
+    import datetime as _dt
+
+    here = _dt.datetime.fromtimestamp(now)
+    if here.hour < ON_HOUR:
+        return False
+    return not last or _dt.date.fromtimestamp(last) < here.date()
+
+
+def next_on(now: float, last: float) -> float:
+    """When the next switch-on pass is due (epoch seconds)."""
+    import datetime as _dt
+
+    here = _dt.datetime.fromtimestamp(now)
+    noon = here.replace(hour=ON_HOUR, minute=0, second=0, microsecond=0)
+    if _on_due(now, last):
+        return now
+    if here < noon and (not last or _dt.date.fromtimestamp(last) < here.date()):
+        return noon.timestamp()
+    return (noon + _dt.timedelta(days=1)).timestamp()
 
 
 def consider(*, now: float | None = None) -> dict:
@@ -414,7 +478,7 @@ def consider(*, now: float | None = None) -> dict:
     if now - float(st.get("last_off_pass") or 0) >= OFF_EVERY_S:
         _off_pass(now, cfg, st, act, out)
         st["last_off_pass"] = now
-    due_on = now - float(st.get("last_on_pass") or 0) >= ON_EVERY_S
+    due_on = _on_due(now, float(st.get("last_on_pass") or 0))
     tried = now - float(st.get("last_on_try") or 0) >= RETRY_S
     if due_on and tried:
         st["last_on_try"] = now
@@ -453,7 +517,7 @@ def status() -> dict:
     ws = settings.get("watcher_slots") or {}
     return {"mode": mode_of(st), "cfg": cfg_of(st), "why": st.get("why", ""),
             "last_on_pass": st.get("last_on_pass"), "last_off_pass": st.get("last_off_pass"),
-            "next_on_pass": (float(st["last_on_pass"]) + ON_EVERY_S) if st.get("last_on_pass") else None,
+            "next_on_pass": next_on(time.time(), float(st.get("last_on_pass") or 0)),
             "running": len(ws), "slots": [{"slot": k, **v} for k, v in sorted(ws.items())],
             "cooling": len(st.get("cooling") or {}), "decisions": recent(50)}
 

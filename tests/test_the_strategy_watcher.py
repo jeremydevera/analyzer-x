@@ -47,7 +47,8 @@ def world(tmp_path, monkeypatch):
     monkeypatch.setattr(sw, "_fresh_row", lambda meta, now, cfg: (
         w["fresh"].get(meta["id"], R6 if meta["id"] == "77Y3BPFG" else None),
         w["readable"]))
-    monkeypatch.setattr(sw, "_register", lambda key, spec: w["registered"].append(key) or "added")
+    monkeypatch.setattr(sw, "_register", lambda key, spec, persist=True:
+                        (w["registered"].append((key, persist)), "added")[1])
     monkeypatch.setattr(sw, "_sig_of", lambda key: key.split("_")[0])
     monkeypatch.setattr(sw.time, "sleep", lambda s: None)
     from tradingagents import notifications as nt
@@ -66,13 +67,14 @@ def test_it_acts_by_default_and_arms_practice_only_by_id(world):
     assert s["watcher_slots"][SLOT]["id"] == "77Y3BPFG"
     assert s["enabled"] is False, "the live switch is never turned on"
     assert "#77Y3BPFG" in got["decisions"][0]["why"]
-    assert world["registered"] == [KEY]
+    assert world["registered"] == [(KEY, True)]
 
 
 def test_preview_decides_and_writes_nothing(world):
     sw.set_mode("preview")
     got = sw.consider(now=NOW)
     assert world["saves"] == 0 and got["decisions"][0]["mode"] == "preview"
+    assert world["registered"] == [(KEY, False)], "no recipe file written in preview"
 
 
 def test_off_does_nothing(world):
@@ -184,3 +186,41 @@ def test_the_supervisor_ticks_it():
     watch = src[src.index("def _watch() -> None:"):]
     watch = watch[:watch.index("_th.Thread(target=_watch")]
     assert "_sw.tick()" in watch
+
+
+def _local(y, m, d, h, mi=0):
+    import datetime as dt
+
+    return dt.datetime(y, m, d, h, mi).timestamp()
+
+
+def test_the_switch_on_pass_waits_for_noon(world):
+    """Sep 29, 2026 3:36am: stock-token books at night blocked IGV 1h on a
+    0.675% gap. The switch-on pass runs once a day at or after 12:00pm."""
+    night = _local(2026, 9, 29, 3, 36)
+    assert not [d for d in sw.consider(now=night)["decisions"] if d["action"] == "on"]
+    assert sw.next_on(night, 0) == _local(2026, 9, 29, 12)
+    noon = _local(2026, 9, 29, 12, 1)
+    assert [d["action"] for d in sw.consider(now=noon)["decisions"]] == ["on"]
+    assert sw.next_on(noon + 60, noon) == _local(2026, 9, 30, 12)
+
+
+def test_a_cost_warning_is_not_a_refusal(world):
+    """The runner trades on "warn" (cost over 20% of the target); only "block"
+    stops it. #GUCXTP4L VUG 30m (91.3%, 37% of its target) was refused."""
+    world["edge"]["GPNSTOCK_USDT"] = "warn"
+    got = sw.consider(now=NOW)
+    assert [d["action"] for d in got["decisions"]] == ["on"]
+
+
+def test_a_refused_pick_does_not_use_up_one_of_the_days_places(world):
+    """Twenty candidates, the first ten on a coin whose cost check blocks: the
+    day's 20 new must still be filled from the rest, 3 per coin."""
+    world["cands"] = ([{**R6, "id": f"BAD{i:05d}", "coin": "IGV", "winrate": 99.0,
+                        "tp": 1.0 + i / 100} for i in range(10)]
+                      + [{**R6, "id": f"OK{i:06d}", "coin": f"C{i}", "tp": 1.0 + i / 100}
+                         for i in range(25)])
+    world["edge"]["IGV_USDT"] = "block"
+    got = sw.consider(now=NOW)
+    on = [d for d in got["decisions"] if d["action"] == "on"]
+    assert len(on) == 20 and all(d["coin"] != "IGV" for d in on)

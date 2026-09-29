@@ -8,6 +8,7 @@ import { useLiveRefresh } from "@/lib/live";
 import PanelStatus from "./PanelStatus";
 import CopyableId from "./CopyableId";
 import WinBadge from "./WinBadge";
+import SmartWatcherBox from "./SmartWatcherBox";
 import { Live, FeedBadge } from "./LivePrice";
 import { api, fmtMoney, fmtWhen, fmtWhenMs, JobStatus, tradeApi, StrategyDeployRow } from "@/lib/api";
 import type { FeedStatus, Rolling30 } from "@/lib/api";
@@ -365,6 +366,8 @@ export default function StrategiesGrid() {
               }} />
             Martingale mode for LIVE
           </label>
+          {/* applies at once, not on SAVE CONFIG (Sep 29, 2026) */}
+          <SmartWatcherBox />
           <label className="flex flex-col text-theme-xs text-gray-500 dark:text-gray-400"
                  title="How many strategies may hold one coin at once, per book. Each slice stakes its own margin.">
             max slices per coin

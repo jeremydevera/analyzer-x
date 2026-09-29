@@ -16,12 +16,21 @@ The day, end to end:
       -> the OFF pass (every hour) re-reads each armed row's pair file and
          switches off what watcher_policy.judge rejects
 
-It only ever touches the slots it armed itself (`settings["watcher_slots"]`).
-It never writes "real" into a book, never touches a slot holding "real", never
-changes a row the operator armed by hand (those are REPORTED), and never
-closes a position: a switched-off practice trade is finished by the runner's
-own rule (7897c110). Every decision is a line in the log with the row's id and
-the numbers it was judged on.
+It SWITCHES ON only into slots of its own (`settings["watcher_slots"]`), and
+SWITCHES OFF every practice-only row under the line — the operator's own
+included. Operator, Sep 29, 2026, on #LLC76MPD at 89%: *"as i said it should
+be switched off, you should follow my criteria"*; it had only been reported.
+Every row is judged on the number the DEMO column prints (`rolling30`: the
+backtest to its last candle, then the practice trades since), falling back to
+the backtest's own 30 days while that is not worked out yet.
+It never writes "real" into a book, never touches a slot holding "real", and
+never closes a position: a switched-off practice trade is finished by the
+runner's own rule (7897c110). Every decision is a line in the log with the
+row's id and the numbers it was judged on.
+
+"Smart Watcher" on the screen is this module's mode: ticked is "act",
+unticked is "off", and off switches NOTHING on or off. It has nothing to do
+with the daily UPDATE ALL BACKTESTS (`daily_update`), which runs either way.
 """
 from __future__ import annotations
 
@@ -191,6 +200,27 @@ def _fresh_row(meta: dict, now: float, cfg: dict):
     return (None if row is None else wc._fresh(meta["coin"], meta["tf"], row, last)), True
 
 
+def _judged(slot: str, fresh: dict | None, now: float | None = None) -> dict | None:
+    """The row as the DEMO column prints it: its last 30 days from `rolling30`
+    (backtest to its last candle, then its practice trades since) — so a row
+    whose practice losses pulled it under the line is judged on them, not on
+    a backtest that has not run since. A row gone from the store stays gone;
+    one whose 30 days are not worked out yet is judged on its backtest."""
+    if fresh is None:
+        return None
+    try:
+        from tradingagents import rolling30 as r30
+
+        fig = r30.figure(slot, now=now)
+    except Exception:                                          # noqa: BLE001
+        fig = None
+    if not fig or not fig.get("trades") or fig.get("winrate") is None:
+        return fresh
+    return {**fresh, "winrate": fig["winrate"], "trades": fig["trades"],
+            "wins": fig["wins"], "losses": fig["losses"], "profit": fig["pnl"],
+            "from_backtest": fig["from_backtest"], "from_practice": fig["from_practice"]}
+
+
 def _practice(slots: dict, now: float) -> dict:
     from tradingagents import watcher_results as wres
 
@@ -356,11 +386,16 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
             out.append(_d(now, st, "report", meta, "its backtest file could not be "
                           "read this hour — kept, checked again next hour"))
             continue
+        fresh = _judged(slot, fresh, now)
         why = wp.judge({"id": meta["id"]}, fresh, cfg)
         if why:
             drop.append((slot, meta["id"], len(out)))
             out.append(_d(now, st, "off", meta, why, fresh))
-    # the operator's own practice rows: judged the same way, only REPORTED
+    # THE OPERATOR'S OWN PRACTICE ROWS: judged the same way and SWITCHED OFF
+    # the same way ("as i said it should be switched off, you should follow my
+    # criteria", Sep 29, 2026 — #LLC76MPD sat at 89% and was only reported).
+    # Practice-only rows only: _hand_slots never returns one holding "real".
+    # In preview each is said once a day, not every hour.
     seen = st.setdefault("reported", {})
     import datetime as _dt
 
@@ -373,16 +408,21 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
         if not meta:
             continue
         meta = {**meta, "id": _row_id(settings, key, sym, meta)}
-        if seen.get(meta["id"]) == day:
+        # a "reported today" mark only quiets PREVIEW: #LLC76MPD was reported
+        # at Sep 29, 2026 3:40am and must not then wait a day to be switched off
+        if not act and seen.get(meta["id"]) == day:
             continue
         fresh, readable = _fresh_row(meta, now, cfg)
         if not readable:
             continue
+        slot = f"{key}|{sym}"
+        fresh = _judged(slot, fresh, now)
         why = wp.judge({"id": meta["id"]}, fresh, cfg)
         if why:
-            seen[meta["id"]] = day
-            out.append(_d(now, st, "report", meta,
-                          f"one of YOUR practice rows would be switched off: {why}", fresh))
+            if not act:
+                seen[meta["id"]] = day
+            drop.append((slot, meta["id"], len(out)))
+            out.append(_d(now, st, "off", meta, f"one of YOUR practice rows: {why}", fresh))
     if act and gone_by_hand:
         def forget(s):
             ws2 = dict(s.get("watcher_slots") or {})

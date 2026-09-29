@@ -29,6 +29,12 @@ def world(tmp_path, monkeypatch):
                       "strategy_margins": {}, "strategy_sizing": {}, "enabled": False},
          "saves": 0, "edge": {}, "cands": [R6], "fresh": {}, "readable": True,
          "registered": [], "bells": [], "not_ready": False}
+    # the DEMO column's 30-day figures (rolling30) live under at.STATE_DIR:
+    # a test must never read the operator's real ones
+    monkeypatch.setattr(at, "STATE_DIR", tmp_path)
+    from tradingagents import rolling30 as _r30
+
+    _r30._MEMO.clear()
     monkeypatch.setattr(sw, "STATE", tmp_path / "w.json")
     monkeypatch.setattr(sw, "LOG", tmp_path / "w.jsonl")
     monkeypatch.setattr(at, "load_settings", lambda: sw._copy(w["settings"]))
@@ -398,3 +404,122 @@ def test_a_row_switched_off_by_hand_is_reported_once_a_day_in_preview(world):
     again = sw.consider(now=NOW + 7202)["decisions"]
     assert any("outside the watcher" in d["why"] for d in first)
     assert not any("outside the watcher" in d["why"] for d in again)
+
+
+# ------------------------------------------------------------------------
+# SMART WATCHER (Sep 29, 2026): "as i said it should be switched off, you
+# should follow my criteria" — #LLC76MPD GPNSTOCK 15m keltner sat at 89% and
+# was only REPORTED because the operator had switched it on themselves.
+
+def _hand_row(world, winrate, books=("paper",)):
+    """The operator's own practice row, armed from Backtest v2."""
+    key, sym = HAND.split("|")
+    world["settings"]["strategy_coins"] = {key: [sym]}
+    world["settings"]["strategy_books"] = {HAND: list(books)}
+    world["settings"]["strategy_res"] = {HAND: "1m"}
+    world["cands"] = []
+    meta = sw._meta_of_key(key, sym)
+    rid = sw._row_id(world["settings"], key, sym, meta)
+    world["fresh"][rid] = {**R6, "id": rid, "winrate": winrate, "trades": 87,
+                           "wins": 78, "losses": 9}
+    return key, sym, rid
+
+
+def test_your_own_practice_row_under_the_line_is_switched_off(world):
+    key, sym, rid = _hand_row(world, 89.66)
+    got = sw.consider(now=NOW)
+    offs = [d for d in got["decisions"] if d["action"] == "off"]
+    assert [d["id"] for d in offs] == [rid]
+    assert "YOUR practice rows" in offs[0]["why"] and "89.66%" in offs[0]["why"]
+    s = world["settings"]
+    assert s["strategy_coins"][key] == [], "empty list, never a missing key"
+    assert HAND not in s["strategy_books"] and HAND not in s["strategy_res"]
+    assert rid in sw._read()["cooling"], "it waits 7 days like any switch-off"
+
+
+def test_your_own_row_at_the_line_or_above_stays(world):
+    key, sym, _rid = _hand_row(world, 90.0)
+    got = sw.consider(now=NOW)
+    assert not [d for d in got["decisions"] if d["action"] == "off"]
+    assert world["settings"]["strategy_coins"][key] == [sym]
+
+
+def test_a_row_holding_real_money_is_never_switched_off(world):
+    key, sym, _rid = _hand_row(world, 50.0, books=("real", "paper"))
+    got = sw.consider(now=NOW)
+    assert not [d for d in got["decisions"] if d["action"] == "off"]
+    assert world["settings"]["strategy_coins"][key] == [sym]
+    assert world["settings"]["strategy_books"][HAND] == ["real", "paper"]
+
+
+def test_it_judges_on_the_demo_columns_30_day_figure(world, monkeypatch):
+    """The backtest says 95%, but five practice losses since pulled the last
+    30 days to 79% — the operator's own example ("the backtest for last 30
+    days is 95% then i have 5 losing trades in live")."""
+    from tradingagents import rolling30 as r30
+
+    key, sym, rid = _hand_row(world, 95.0)
+    monkeypatch.setattr(r30, "figure", lambda slot, **k: (
+        {"wins": 19, "losses": 5, "trades": 24, "pnl": 3.1, "winrate": 79.17,
+         "from_backtest": 19, "from_practice": 5} if slot == HAND else None))
+    got = sw.consider(now=NOW)
+    offs = [d for d in got["decisions"] if d["action"] == "off"]
+    assert [d["id"] for d in offs] == [rid] and "79.17%" in offs[0]["why"]
+
+
+def test_a_row_reported_earlier_today_is_still_switched_off(world):
+    """#LLC76MPD was REPORTED at Sep 29, 2026 3:40am under the old rule; the
+    day's report mark must not hold its switch-off until tomorrow."""
+    key, sym, rid = _hand_row(world, 89.66)
+    import datetime as dt
+
+    st = sw._read()
+    st["reported"] = {rid: str(dt.date.fromtimestamp(NOW))}
+    sw._write(st)
+    got = sw.consider(now=NOW)
+    assert [d["id"] for d in got["decisions"] if d["action"] == "off"] == [rid]
+
+
+def test_smart_watcher_off_switches_nothing_on_or_off(world):
+    key, sym, _rid = _hand_row(world, 50.0)
+    world["cands"] = [R6]
+    sw.set_mode("off")
+    before = sw._copy(world["settings"])
+    got = sw.consider(now=NOW)
+    assert got["decisions"] == [] and world["saves"] == 0
+    assert world["settings"] == before
+
+
+def test_preview_says_it_would_switch_your_row_off_and_changes_nothing(world):
+    key, sym, rid = _hand_row(world, 89.66)
+    sw.set_mode("preview")
+    got = sw.consider(now=NOW)
+    offs = [d for d in got["decisions"] if d["action"] == "off"]
+    assert [d["mode"] for d in offs] == ["preview"]
+    assert world["settings"]["strategy_coins"][key] == [sym]
+    # said once a day in preview, not every hour
+    again = sw.consider(now=NOW + 3601)
+    assert not [d for d in again["decisions"] if d["id"] == rid]
+
+
+def test_the_daily_backtest_update_runs_whatever_the_watcher_says():
+    """ "still the scheduled github backest run should still run every 24 hrs
+    wether this is on or off" — the supervisor ticks daily_update on its own,
+    and daily_update never asks the watcher anything."""
+    src = open("tradingagents/daily_update.py", encoding="utf-8").read()
+    assert "strategy_watcher" not in src and "watcher" not in src.lower()
+    api = open("tradingagents/api.py", encoding="utf-8").read()
+    tick = api[api.index("from tradingagents import daily_update as _du"):]
+    tick = tick[:tick.index("_du.tick()") + len("_du.tick()")]
+    assert "mode" not in tick and "watcher" not in tick
+
+
+def test_the_screen_has_one_smart_watcher_box_in_both_places():
+    box = open("webapp/src/components/trade/SmartWatcherBox.tsx", encoding="utf-8").read()
+    assert "Smart Watcher" in box
+    assert 'mode: v ? "act" : "off"' in box
+    grid = open("webapp/src/components/trade/StrategiesGrid.tsx", encoding="utf-8").read()
+    panel = open("webapp/src/components/trade/WatcherPanel.tsx", encoding="utf-8").read()
+    assert "<SmartWatcherBox />" in grid and "<SmartWatcherBox onChange={setW} />" in panel
+    assert 'aria-label="Watcher mode"' not in panel, "the three mode buttons are gone"
+    assert "the daily backtest update still runs" in panel

@@ -172,6 +172,68 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-29-C — the watcher left the operator's own practice rows running under 90%, because it only reported them
+
+**CEO**
+
+* You saw #LLC76MPD (GPNSTOCK 15m) still switched on at 89%, under your 90%
+  line, along with 33 more of your own practice rows.
+* Why: the watcher was built to switch off only the rows it had switched on
+  itself, and just to warn about yours. Your rules never said to spare yours.
+* What stops it now: it switches off every practice row under the line, yours
+  included, judged on the same 30-day number the DEMO column shows. The new
+  "Smart Watcher" box turns all of this on or off, and the daily backtest
+  update runs either way.
+
+**DEV**
+
+* `strategy_watcher._off_pass` judged `_hand_slots()` and appended
+  `action: "report"` with no `drop` entry, so no write happened. The day's
+  `reported` mark would then also have held the row until the next day.
+* Invariant broken: **the operator's rule applies to every row it names; an
+  exemption they never asked for is a rule they did not set.**
+* Guard: `tests/test_the_strategy_watcher.py::test_your_own_practice_row_under_the_line_is_switched_off`.
+
+**SAW** — *"why is LLC76MPD still in deployed? when its  89%?"*, then *"as i
+said it should be switched off, you should follow my criteria"*.
+
+**TIMELINE**
+
+1. `Sep 28, 2026` — the operator's rules: *"undeploy if 90% below for past 30
+   days"*. No exception for their own rows.
+2. `Sep 29, 2026 3:40am` — the first switch-off check reports 32 of the
+   operator's own rows, #LLC76MPD at 89.41% (76W/9L) among them, and changes
+   none.
+3. `12:37pm` — the operator asks why it is still on. Measured at 12:45pm:
+   **34 of 89** practice rows under 90% on the DEMO 30 DAYS figure (LLC76MPD
+   89.66%, 78W/9L; the lowest, 8EZ3XPKE AONSTOCK 15m, 68.60%).
+4. Fixed in this commit, with no restart yet: the first hourly check on the
+   new code switches those rows off in the practice account and starts each
+   one's 7-day wait.
+
+**ROOT CAUSE** — `_off_pass` handled the operator's rows with
+`out.append(_d(..., "report", ...))` instead of adding them to `drop`.
+
+**WHY IT WAS NOT CAUGHT** — the one test with an operator-armed row
+(`test_it_never_touches_real_money_or_a_row_you_armed_yourself`) asserted that
+it was left ALONE. The limitation had been written into a test as a safety
+rule, so the suite defended the very thing the operator had not asked for.
+Nothing compared the switch-off against the operator's own words.
+
+**COST** — none in money: practice account only. Up to 34 practice rows ran
+for about 9 hours under the operator's line.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_strategy_watcher.py::test_your_own_practice_row_under_the_line_is_switched_off`
+(and `::test_a_row_reported_earlier_today_is_still_switched_off`,
+`::test_it_judges_on_the_demo_columns_30_day_figure`,
+`::test_a_row_holding_real_money_is_never_switched_off`,
+`::test_smart_watcher_off_switches_nothing_on_or_off`,
+`::test_the_daily_backtest_update_runs_whatever_the_watcher_says`).
+
+---
+
 ## RCA-2026-09-29-B — harddev on the strategy watcher: a cache that would have held gigabytes, a crashed check retried every minute, and four more
 
 NEVER HAPPENED YET — found by the harddev loop the operator asked for (*"fix

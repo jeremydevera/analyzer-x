@@ -1071,11 +1071,22 @@ backtest everyday the promotion and demotion"*.
 `daily_update`; plan and reasons in
 `docs/superpowers/plans/2026-09-28-strategy-watcher.md`.
 
-* **Practice account only, its own slots only.** It writes `["paper"]` and
-  nothing else, skips any slot holding `"real"`, refuses a coin the operator
-  already runs under that key, and REPORTS (never changes) the operator's own
-  v2 practice rows that fall under the line. It closes no position: a
-  switched-off practice trade is finished by the runner (7897c110).
+* **Practice account only.** It writes `["paper"]` and nothing else, skips
+  any slot holding `"real"`, and refuses to switch ON a coin the operator
+  already runs under that key. It SWITCHES OFF every practice-only v2 row
+  under the line, the operator's own included — *"as i said it should be
+  switched off, you should follow my criteria"* (Sep 29, 2026, #LLC76MPD at
+  89%, which had only been reported). It closes no position: a switched-off
+  practice trade is finished by the runner (7897c110).
+* **Judged on the DEMO column's number.** `rolling30.figure` — the backtest's
+  trades to its last candle, then the practice trades since — so the screen
+  and the switch-off read the same win rate; the backtest's own 30 days only
+  while that figure is not worked out yet.
+* **"Smart Watcher" is the on/off box** (deployed-strategies toolbar and the
+  Watcher panel, `SmartWatcherBox.tsx`): ticked = mode `act`, unticked =
+  `off`, which switches NOTHING on or off. It never touches `daily_update`:
+  *"the scheduled github backest run should still run every 24 hrs wether
+  this is on or off"*.
 * **The rules live in ONE place, `watcher_policy`** — shared with the replay
   (`watcher_replay`) and the research (`watcher_research`), so the thing that
   trades is the thing that was replayed. Defaults are the operator's numbers;

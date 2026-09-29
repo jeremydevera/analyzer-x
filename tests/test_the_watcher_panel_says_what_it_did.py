@@ -29,8 +29,12 @@ def test_dates_are_printed_by_the_projects_formatter_only():
 
 
 def test_switching_it_on_asks_first_and_names_what_it_touches():
-    assert 'mode === "act" && !confirm(' in PANEL
-    assert "never touches real money" in PANEL
+    # the switch is the Smart Watcher box since Sep 29, 2026, and it now
+    # says it switches the operator's own practice rows off too
+    box = (ROOT / "webapp" / "src" / "components" / "trade" / "SmartWatcherBox.tsx").read_text("utf-8")
+    assert "if (v && !window.confirm(" in box
+    assert "It never touches real money." in box
+    assert "your own rows too" in box
 
 
 def test_the_routes_exist():

@@ -7,21 +7,22 @@
  *  word here comes from GET /api/trade/watcher: the mode, the rules, the
  *  counts and each decision's own sentence, which already names the row id.
  */
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, fmtWhen, Watcher, WatcherDecision } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
+import SmartWatcherBox, { WATCHER_EVENT } from "./SmartWatcherBox";
 
 const ACTION: Record<WatcherDecision["action"], { label: string; cls: string }> = {
   on: { label: "switched on", cls: "text-success-600" },
   off: { label: "switched off", cls: "text-error-500" },
   refused: { label: "refused", cls: "text-warning-600 dark:text-warning-400" },
-  report: { label: "your row", cls: "text-gray-500 dark:text-gray-400" },
+  report: { label: "note", cls: "text-gray-500 dark:text-gray-400" },
 };
 
 const MODE_TEXT: Record<Watcher["mode"], string> = {
-  act: "switching practice rows on and off by itself",
+  act: "Smart Watcher is ON — switching practice rows on and off by itself, your own practice rows included",
   preview: "PREVIEW — it decides and changes nothing",
-  off: "switched off — it changes nothing",
+  off: "Smart Watcher is OFF — it switches nothing on or off; the daily backtest update still runs",
 };
 
 function rules(c: Watcher["cfg"], days: number): string[] {
@@ -32,6 +33,7 @@ function rules(c: Watcher["cfg"], days: number): string[] {
     `TP ${c.tp_rule === ">" ? "wider than" : "at least"} SL`,
     `up to ${c.max_slots} at once · ${c.max_per_coin} per coin · ${c.max_new_per_day} new a day`,
     `${c.cooldown_days}-day wait after a switch-off`,
+    "judged on the DEMO 30 DAYS figure",
     "practice account only",
   ];
 }
@@ -39,17 +41,15 @@ function rules(c: Watcher["cfg"], days: number): string[] {
 export default function WatcherPanel() {
   const [w, setW] = useState<Watcher | null>(null);
   const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
   const load = useCallback(() => api.watcher().then((d) => { setW(d); setErr(""); })
     .catch((e) => setErr(String(e))), []);
   useLiveRefresh(load, 30_000);
-
-  const setMode = (mode: Watcher["mode"]) => {
-    if (mode === "act" && !confirm("Let the watcher switch PRACTICE rows on and off by itself?\n\n"
-      + "It never touches real money or the rows you armed yourself.")) return;
-    setBusy(true);
-    api.watcherSet({ mode }).then(setW).catch((e) => setErr(String(e))).finally(() => setBusy(false));
-  };
+  // the Smart Watcher box above the table changes the same mode
+  useEffect(() => {
+    const on = (e: Event) => setW((e as CustomEvent<Watcher>).detail);
+    window.addEventListener(WATCHER_EVENT, on);
+    return () => window.removeEventListener(WATCHER_EVENT, on);
+  }, []);
 
   return (
     <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -60,19 +60,7 @@ export default function WatcherPanel() {
             {w ? MODE_TEXT[w.mode] : "reading…"}
           </p>
         </div>
-        {w && (
-          <div className="flex gap-1" role="group" aria-label="Watcher mode">
-            {(["act", "preview", "off"] as const).map((m) => (
-              <button key={m} type="button" disabled={busy} onClick={() => setMode(m)}
-                aria-pressed={w.mode === m}
-                className={`rounded-lg border px-3 py-1 text-theme-xs font-medium ${w.mode === m
-                  ? "border-brand-500 bg-brand-500 text-white"
-                  : "border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300"}`}>
-                {m === "act" ? "on" : m}
-              </button>
-            ))}
-          </div>
-        )}
+        <SmartWatcherBox onChange={setW} />
       </div>
       {err && <p className="mt-2 text-theme-xs text-error-500">{err}</p>}
       {w && (

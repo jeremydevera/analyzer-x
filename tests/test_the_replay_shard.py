@@ -274,3 +274,16 @@ def test_a_looser_write_rule_writes_equal_barriers_too(rs, world, monkeypatch):
     combos, stats = _run(rs, world)
     assert stats["tested"] == 3, "(0.01, 0.01) joins the two wider targets"
     assert (1.0, 1.0) in {(c["sl"], c["tp"]) for c in combos}
+
+
+def test_an_ml_model_is_walked_with_its_own_target_and_stop_only(rs, monkeypatch):
+    """Sep 27 ML models carry their own tp/sl (ml_0G_1h_1: TP 2%, SL 1.2%)."""
+    from tradingagents import signals_ml as sm
+
+    monkeypatch.setattr(sm, "spec_for", lambda k: {"tp": 0.02, "sl": 0.012}
+                        if k == "ml_0G_1h_1" else None)
+    assert rs.barriers_for("ml_0G_1h_1", "1h") == [(0.012, 0.02)]
+    assert rs.barriers_for("ml_GONE_1h_9", "1h") == [], "no model, no walk"
+    from tradingagents import backtest_report as br
+
+    assert rs.barriers_for("bb20", "1h") == br.pairs_for("1h")

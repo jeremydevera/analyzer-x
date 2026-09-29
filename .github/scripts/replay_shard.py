@@ -151,6 +151,22 @@ def signals_for(coin: str, tf: str) -> list[str]:
     return out
 
 
+def barriers_for(sig: str, tf: str) -> list[tuple[float, float]]:
+    """The (SL, TP) pairs a rule is walked with. The grid's for every rule —
+    except a Sep 27 ML model, which carries its OWN target and stop
+    (signals_ml: "tp"/"sl" as fractions) and is stored as one v2 row per
+    model (analyzer-x-11, Sep 28, 2026). Walking a model over the whole grid
+    would test 110 strategies that were never learned."""
+    if str(sig).startswith("ml_"):
+        from tradingagents import signals_ml as sm
+
+        spec = sm.spec_for(sig) or {}
+        if spec.get("tp") and spec.get("sl"):
+            return [(float(spec["sl"]), float(spec["tp"]))]
+        return []
+    return br.pairs_for(tf)
+
+
 def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
     """Every combination of one pair that could pass, as JSON lines."""
     iv, bs, _cap = br.TFS[tf]
@@ -203,7 +219,7 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
             at.STRATEGY_SPECS.pop(key, None)
             thp = 0.0 if th is None else round(th * 100, 3)
             dirs_idx = [k for k, v in enumerate(dirs) if v and k >= warm]
-            for (sl, tp) in br.pairs_for(tf):
+            for (sl, tp) in barriers_for(sig, tf):
                 if not (tp > sl if WRITE["tp"] == ">" else tp >= sl):
                     continue                      # the operator's TP > SL
                 if liq is not None and sl * 100 >= STOP_CEILING * abs(liq):

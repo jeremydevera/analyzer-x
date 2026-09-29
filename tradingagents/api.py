@@ -219,6 +219,20 @@ def _keep_the_row_index_current() -> None:
                 # process that feeds it is supervised exactly like the runner
                 # and the jobs above. `spawn_indexer` no-ops while one is
                 # alive, so this cannot double it.
+                # A VERIFIED REBUILD WAITING FOR ITS SWAP (RCA-2026-09-28-F).
+                # A rebuild in another process cannot rename rows.db while
+                # this process reads it; this process can, because it holds
+                # the gate its own readers pass through.
+                try:
+                    from tradingagents import rows_index as _ri, stores as _st
+
+                    for _live in (_ri.DB_PATH, _st.V2.rows_db):
+                        _said = _ri.swap_ready_rebuild(_live)
+                        if _said:
+                            print(f"[supervisor] {_live}: {_said}", flush=True)
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[supervisor] rebuild swap failed: {exc!r}",
+                          flush=True)
                 try:
                     from tradingagents import rows_index as _ri
 

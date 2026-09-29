@@ -104,11 +104,12 @@ def test_a_six_hour_job_can_be_spawned_with_a_log():
 
 
 def _held(monkeypatch, target):
-    """Make `shutil.move` refuse to move `target`, the way Windows does while
-    another process has the file open."""
-    import shutil
+    """Make the rename refuse to move `target`, the way Windows does while
+    another process has the file open. `os.replace` since RCA-2026-09-28-F:
+    `shutil.move` answered a refused rename by COPYING the whole file."""
+    import os
 
-    real = shutil.move
+    real = os.replace
 
     def fake(src, dst, *a, **k):
         if str(src) == str(target):
@@ -117,7 +118,7 @@ def _held(monkeypatch, target):
                     "used by another process")
         return real(src, dst, *a, **k)
 
-    monkeypatch.setattr(shutil, "move", fake)
+    monkeypatch.setattr(os, "replace", fake)
 
 
 def test_a_held_index_file_makes_the_swap_SAY_FAILED_not_raise(

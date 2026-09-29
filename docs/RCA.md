@@ -172,6 +172,69 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-28-F — a finished v2 rebuild could never swap itself in while the site ran, and its failed swap copied 25 GB
+
+**CEO**
+
+* The rebuilt Backtest v2 table (51 million rows, checked and ready) did
+  not appear on your screen: the last step, replacing the old file, was
+  refused, and I had to stop the site's server for a minute to finish it.
+* Why: Windows will not replace a file another program has open, and the
+  site opens that file on every screen refresh; and the failed replace
+  quietly made a 25 GB copy of your old table first.
+* What stops it now: the site itself does the replace on its next 30-second
+  check, pausing its own reads of that one file for a moment, and a refused
+  replace never copies anything.
+
+**DEV**
+
+* `rows_index.rebuild` → `swap_in` → `shutil.move(DB_PATH, backup)`: on
+  Windows the rename raises PermissionError while `api` holds rows.db open
+  (every `_connect`), and `shutil.move` falls back to copy + unlink — the
+  copy (25,258,029,056 bytes) succeeded, the unlink raised.
+* Invariant broken: **a swap is a rename or nothing** — and the process that
+  holds the readers must be the one that swaps (the file can only be renamed
+  by the owner of the gate every reader passes).
+* Guard: `tests/test_a_verified_rebuild_is_swapped_in_by_the_site.py` (9);
+  `tests/test_rebuild_guards.py::_held` now refuses `os.replace`.
+
+**SAW** — `v2/rows_rebuild.json` at `Sep 28, 2026 10:33pm`: `"failed: the swap
+could not take place: PermissionError: [WinError 32] ... rows.db"`, pairs
+5,006/5,006, rows 51,066,478; `rows.before-rebuild.db` 25,258,029,056 bytes,
+the same size and time as `rows.db`.
+
+**TIMELINE**
+
+1. `8:43pm` — rebuild started for 2,912 stale v2 pairs (after analyzer-x-11's
+   ml collect), pid 25080.
+2. `10:22pm` — `rows.rebuild.db` complete and verified.
+3. `10:33pm` — swap refused; `shutil.move` had already copied 25 GB.
+4. `10:34pm` — swapped by hand with the API stopped for ~1 minute;
+   the index builds (rows_wr2 first) queued.
+5. Fixed: `os.replace` everywhere in `swap_in`/`put_back`; a refused swap
+   writes `rows.rebuild.db.ready`; the API tick calls
+   `swap_ready_rebuild()` for v1 and v2, which closes `_SWAP_GATE` for that
+   file (`_connect` waits at `_await_gate`), retries the rename for up to
+   30 s, reopens it, and stands back while an index build holds the file.
+
+**ROOT CAUSE** — a swap designed for a file nobody else had open, on a
+machine where the API always has it open.
+
+**WHY IT WAS NOT CAUGHT** — the Sep 23 and Sep 24 rebuilds swapped fine
+because the API happened to be restarted or idle at that moment; the guard
+test (`test_a_held_index_file_makes_the_swap_SAY_FAILED_not_raise`) proved
+the failure is REPORTED, and its fake refused `shutil.move` outright, so the
+copy fallback of the real function never ran in a test.
+
+**COST** — none in money; ~2 hours of a finished table not shown, 25 GB of
+disk briefly, a one-minute API stop.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_a_verified_rebuild_is_swapped_in_by_the_site.py`.
+
+---
+
 ## RCA-2026-09-28-H — Sep 27 ML crashed on two coins with a short candle fetch instead of saying the history was thin
 
 **CEO**

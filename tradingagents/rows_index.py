@@ -416,6 +416,28 @@ def using_db(db_path):
         _DB_OVERRIDE.reset(tok)
 
 
+# THE SWAP GATE (RCA-2026-09-28-F). Windows will not rename a file any
+# handle holds open, and this API opens rows.db for every poll — so a rebuild
+# in ANOTHER process could never swap its finished file in while the site ran
+# (Sep 28, 2026 10:33pm: 51,066,478 rows built and verified, then refused).
+# `swap_ready_rebuild` runs INSIDE the API: it closes this gate for the one
+# file, so new connections to it wait (a second or two), lets the in-flight
+# ones finish, renames, and opens the gate again.
+_SWAP_GATE = threading.Condition()
+_SWAP_CLOSED: set = set()
+
+
+def _gate_key(p) -> str:
+    return os.path.normcase(os.path.abspath(str(p)))
+
+
+def _await_gate(p) -> None:
+    key = _gate_key(p)
+    with _SWAP_GATE:
+        while key in _SWAP_CLOSED:
+            _SWAP_GATE.wait(timeout=1.0)
+
+
 def _connect(readonly: bool = False,
              same_thread: bool = True,
              db_path=None) -> sqlite3.Connection:
@@ -436,6 +458,7 @@ def _connect(readonly: bool = False,
     # `db_path` wins, then the `using_db` override, then DB_PATH
     p = Path(db_path) if db_path else _db()
     p.parent.mkdir(parents=True, exist_ok=True)
+    _await_gate(p)
     if readonly and p.exists():
         con = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=60.0,
                               check_same_thread=same_thread)
@@ -1343,7 +1366,8 @@ def make_wal(path: Path) -> str:
         con.close()
 
 
-def swap_in(dest: Path, backup: Path, *, keep_backup: bool = True) -> None:
+def swap_in(dest: Path, backup: Path, *, keep_backup: bool = True,
+            live: Path | None = None) -> None:
     """Put `dest` in `DB_PATH`'s place, retiring the current file to `backup`.
 
     ONE definition, because `compact()` and `rebuild()` each had their own
@@ -1366,21 +1390,31 @@ def swap_in(dest: Path, backup: Path, *, keep_backup: bool = True) -> None:
 
     Raises whatever the filesystem raises. The caller reports it; this
     function does not decide what a failure means.
-    """
-    import shutil
 
+    * **A RENAME, NEVER A COPY (RCA-2026-09-28-F).** This was `shutil.move`,
+      which answers a refused rename by COPYING the file and then trying to
+      delete the original. Sep 28, 2026 10:33pm, v2: the rename was refused
+      (the API had rows.db open), so it copied all 25.26 GB to
+      rows.before-rebuild.db, failed the delete, and reported the swap as
+      failed — with a 25 GB duplicate on the disk. All four paths sit in one
+      folder, so `os.replace` is the whole move, and a refusal costs nothing.
+
+    `live` is the file to replace — DB_PATH unless the caller is the API
+    swapping ANOTHER store's file (`swap_ready_rebuild`).
+    """
+    live = Path(live) if live else DB_PATH
     for tail in ("", "-wal", "-shm", "-journal"):
         with contextlib.suppress(FileNotFoundError):
             Path(str(backup) + tail).unlink()
-    if DB_PATH.exists():
-        shutil.move(str(DB_PATH), str(backup))          # <- the failure point
+    if live.exists():
+        os.replace(live, backup)                        # <- the failure point
     for tail in ("-wal", "-shm", "-journal"):
         with contextlib.suppress(FileNotFoundError):
-            shutil.move(str(DB_PATH) + tail, str(backup) + tail)
-    shutil.move(str(dest), str(DB_PATH))
+            os.replace(str(live) + tail, str(backup) + tail)
+    os.replace(dest, live)
     for tail in ("-wal", "-shm", "-journal"):
         with contextlib.suppress(FileNotFoundError):
-            shutil.move(str(dest) + tail, str(DB_PATH) + tail)
+            os.replace(str(dest) + tail, str(live) + tail)
     if not keep_backup:
         # SUPPRESS EVERYTHING HERE, not just FileNotFoundError. The new index
         # is already in place by this line; throwing the old copy away is
@@ -1391,21 +1425,99 @@ def swap_in(dest: Path, backup: Path, *, keep_backup: bool = True) -> None:
                 Path(str(backup) + tail).unlink()
 
 
-def put_back(backup: Path) -> None:
-    """Undo a half-finished `swap_in`: the retired file returns to DB_PATH.
+SWAP_WINDOW_S = 30.0     # how long new readers of one file may be held
+
+
+def ready_marker(dest: Path) -> Path:
+    """`rows.rebuild.db.ready`: a rebuild wrote it after VERIFYING `dest`
+    and failing only the rename. No marker, no swap — an unverified or
+    half-built file is never put in front of the operator."""
+    return Path(str(dest) + ".ready")
+
+
+def swap_ready_rebuild(live: Path) -> str:
+    """Swap a finished, verified rebuild of `live` in, from inside the
+    process whose readers held it open. "" when there is nothing to do,
+    else one sentence of what happened.
+
+    Called by the API's 30-second tick for each store. It closes the swap
+    gate for `live` (new connections wait, `_await_gate`), retries the
+    rename while the in-flight requests finish, and opens the gate again —
+    new readers are held for at most SWAP_WINDOW_S, usually well under a
+    second. It stands back while another process is building an index on
+    `live` (that holder is outside this gate, so waiting would only hold
+    the page for nothing).
+    """
+    live = Path(live)
+    dest = live.with_suffix(".rebuild.db")
+    marker = ready_marker(dest)
+    if not (dest.exists() and marker.exists()):
+        return ""
+    backup = live.with_name("rows.before-rebuild.db")
+    with using_db(live):
+        held = lock_holder()
+        building = build_running()
+    if building:
+        # a detached index build has the file open, outside this gate:
+        # holding the page's readers would buy nothing
+        return (f"a verified rebuild waits to be swapped in — {building} "
+                f"is being built on the current file")
+    if held:
+        return f"a verified rebuild waits to be swapped in — {held}"
+    key = _gate_key(live)
+    with _SWAP_GATE:
+        _SWAP_CLOSED.add(key)
+    last = None
+    try:
+        deadline = time.monotonic() + SWAP_WINDOW_S
+        while True:
+            try:
+                with using_db(live):
+                    _ready.discard(str(live))
+                    forget_indexes()
+                swap_in(dest, backup, keep_backup=True, live=live)
+                break
+            except OSError as exc:
+                last = exc
+                put_back(backup, live)
+                if time.monotonic() >= deadline:
+                    return (f"a verified rebuild could not be swapped in yet "
+                            f"({type(exc).__name__}: {exc}) — next check "
+                            f"tries again")
+                time.sleep(0.25)
+    finally:
+        with _SWAP_GATE:
+            _SWAP_CLOSED.discard(key)
+            _SWAP_GATE.notify_all()
+    with contextlib.suppress(OSError):
+        marker.unlink()
+    prog = live.parent / "rows_rebuild.json"
+    with contextlib.suppress(OSError, ValueError):
+        got = json.loads(prog.read_text(encoding="utf-8"))
+        got["phase"] = "done"
+        prog.write_text(json.dumps(got), encoding="utf-8")
+    with using_db(live):
+        queued = _after_fill_indexes()
+    return (f"swapped the rebuilt index into {live.name}"
+            + (f"; building {', '.join(queued)}" if queued else "")
+            + (f" (after a refusal: {last})" if last else ""))
+
+
+def put_back(backup: Path, live: Path | None = None) -> None:
+    """Undo a half-finished `swap_in`: the retired file returns to `live`
+    (DB_PATH by default).
 
     With the WAL it arrived with. A database whose `-wal` is still wearing
     the backup's name has lost every transaction in it.
     """
-    import shutil
-
-    if DB_PATH.exists() or not backup.exists():
+    live = Path(live) if live else DB_PATH
+    if live.exists() or not backup.exists():
         return
     with contextlib.suppress(Exception):
-        shutil.move(str(backup), str(DB_PATH))
+        os.replace(backup, live)
         for tail in ("-wal", "-shm", "-journal"):
             with contextlib.suppress(FileNotFoundError):
-                shutil.move(str(backup) + tail, str(DB_PATH) + tail)
+                os.replace(str(backup) + tail, str(live) + tail)
 
 
 def compact(*, dest: Path | None = None, keep_backup: bool = True) -> dict:
@@ -1685,6 +1797,9 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
     if not files:
         return {"rebuilt": False, "why": "no pair files to index"}
     dest = Path(dest) if dest else DB_PATH.with_suffix(".rebuild.db")
+    # a new build of `dest` voids any earlier "verified, swap me" marker
+    with contextlib.suppress(OSError):
+        ready_marker(dest).unlink()
 
     already, seeded_rows, fresh_because = set(), 0, ""
     started = _t.time()
@@ -1930,10 +2045,17 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
             # Put the live index back if the move got that far, so the
             # operator's panel is never left with no file at all.
             put_back(backup)
+            # VERIFIED AND WAITING: the API swaps it in on its next tick,
+            # from inside the process that holds rows.db open
+            # (swap_ready_rebuild, RCA-2026-09-28-F)
+            with contextlib.suppress(OSError):
+                ready_marker(dest).write_text(json.dumps(
+                    {"at": int(_t.time()), "pairs": done, "rows": rows,
+                     "db": str(DB_PATH)}), encoding="utf-8")
             why = (f"the swap could not take place: "
                    f"{type(exc).__name__}: {exc} — the rebuilt index is "
-                   f"finished and verified at {dest}; close whatever holds "
-                   f"{DB_PATH.name} open and swap it in")
+                   f"finished and verified at {dest}; the site swaps it in "
+                   f"on its next check (every 30 s)")
             _say(f"failed: {why}")
             print(f"[rows-index] rebuild: {why}", flush=True)
             return {"rebuilt": False, "why": why, "pairs": done,

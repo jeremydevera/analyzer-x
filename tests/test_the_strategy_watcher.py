@@ -520,6 +520,6 @@ def test_the_screen_has_one_smart_watcher_box_in_both_places():
     assert 'mode: v ? "act" : "off"' in box
     grid = open("webapp/src/components/trade/StrategiesGrid.tsx", encoding="utf-8").read()
     panel = open("webapp/src/components/trade/WatcherPanel.tsx", encoding="utf-8").read()
-    assert "<SmartWatcherBox />" in grid and "<SmartWatcherBox onChange={setW} />" in panel
+    assert "<SmartWatcherBox />" in grid and "<SmartWatcherBox onChange=" in panel
     assert 'aria-label="Watcher mode"' not in panel, "the three mode buttons are gone"
     assert "the daily backtest update still runs" in panel

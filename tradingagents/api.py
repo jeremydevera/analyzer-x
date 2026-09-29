@@ -1063,12 +1063,12 @@ def strategies_export_v2(body: dict) -> dict:
 
 
 @app.get("/api/trade/watcher")
-def watcher_status() -> dict:
-    """The strategy watcher: its mode, its rules, what it runs, and its last 50
-    decisions (tradingagents/strategy_watcher.py)."""
+def watcher_status(page: int = 1, per: int = 10) -> dict:
+    """The strategy watcher: its mode, its rules, what it runs, and ONE PAGE
+    of its decisions, newest first, with the total (strategy_watcher.py)."""
     from tradingagents import strategy_watcher as sw
 
-    return sw.status()
+    return sw.status(page, per)
 
 
 @app.post("/api/trade/watcher")
@@ -2148,6 +2148,34 @@ def reports() -> dict:
 
 
 # ------------------------------------------------------------------- trading
+def _all_time_records(rows) -> tuple[float, dict]:
+    """(real all-time closed P&L, the practice account's whole record) in ONE
+    pass over the trade record — it replaced coin_stats(dry=False), itself a
+    full read summed per coin.
+
+    The practice half is the operator's, Sep 29, 2026: "the Paper · open tile
+    i want to see the pnl for my demo overall starting when i did demo
+    trade". `since` is its first practice entry or exit."""
+    life_total = 0.0
+    paper_all = {"total": 0.0, "wins": 0, "losses": 0, "trades": 0, "since": None}
+    for e in rows:
+        act = e.get("action")
+        dry = bool(e.get("dry_run"))
+        if dry and act in ("enter", "exit") and paper_all["since"] is None:
+            paper_all["since"] = e.get("ts")
+        if act != "exit":
+            continue
+        p = float(e.get("pnl_est") or 0.0)
+        if not dry:
+            life_total += p
+            continue
+        paper_all["total"] += p
+        paper_all["trades"] += 1
+        paper_all["wins" if p > 0 else "losses"] += 1
+    paper_all["total"] = round(paper_all["total"], 2)
+    return round(life_total, 2), paper_all
+
+
 @app.get("/api/trade/summary")
 def trade_summary() -> dict:
     """The status ribbon: process, modes, wallet, today, all-time, open."""
@@ -2191,8 +2219,7 @@ def trade_summary() -> dict:
                 "margin": pos.get("margin"),
                 "strategy": pos.get("strategy"),
             })
-    life = at.coin_stats(dry=False)
-    life_total = round(sum(v["pnl"] for v in life.values()), 2)
+    life_total, paper_all = _all_time_records(at.ledger_since(0))
     open_real = round(sum(r["unrealized"] for r in open_rows), 2)
     return {
         "pid": pid,
@@ -2208,6 +2235,7 @@ def trade_summary() -> dict:
         "all_time": round(life_total + open_real, 2),
         "open_positions": open_rows,
         "paper_positions": paper_rows,
+        "paper_all_time": paper_all,
     }
 
 

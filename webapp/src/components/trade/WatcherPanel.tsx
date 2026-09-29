@@ -10,7 +10,39 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, fmtWhen, Watcher, WatcherDecision } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
+import { pageWindow } from "@/lib/pager";
 import SmartWatcherBox, { WATCHER_EVENT } from "./SmartWatcherBox";
+
+/** TEN A PAGE (operator, Sep 29, 2026: "paginate the Watcher"), the same
+ *  size and the same buttons as the positions table. */
+const PER_PAGE = 10;
+const pageNum = "h-8 min-w-8 rounded-lg border px-2 text-theme-xs tabular-nums";
+const pageBtn = "h-8 rounded-lg border border-gray-300 px-2 text-theme-xs text-gray-600 "
+  + "disabled:opacity-40 dark:border-gray-700 dark:text-gray-300";
+
+function Pager({ cur, pages, goto, what }: {
+  cur: number; pages: number; goto: (n: number) => void; what: string;
+}) {
+  if (pages <= 1) return null;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1">
+      <button onClick={() => goto(cur - 1)} disabled={cur === 1} className={pageBtn}>prev</button>
+      {pageWindow(cur, pages).map((n, i) => n == null ? (
+        <span key={`gap${i}`} aria-hidden className="px-1 text-theme-xs text-gray-400">…</span>
+      ) : (
+        <button key={n} onClick={() => goto(n)} aria-label={`${what} page ${n}`}
+          aria-current={n === cur ? "page" : undefined}
+          className={`${pageNum} ${n === cur
+            ? "border-brand-500 bg-brand-500 font-semibold text-white"
+            : "border-gray-300 text-gray-600 hover:border-brand-400 dark:border-gray-700 dark:text-gray-300"}`}>
+          {n}
+        </button>
+      ))}
+      <button onClick={() => goto(cur + 1)} disabled={cur === pages} className={pageBtn}>next</button>
+      <span className="text-theme-xs text-gray-500 dark:text-gray-400">of {pages}</span>
+    </div>
+  );
+}
 
 const ACTION: Record<WatcherDecision["action"], { label: string; cls: string }> = {
   on: { label: "switched on", cls: "text-success-600" },
@@ -41,15 +73,26 @@ function rules(c: Watcher["cfg"], days: number): string[] {
 export default function WatcherPanel() {
   const [w, setW] = useState<Watcher | null>(null);
   const [err, setErr] = useState("");
-  const load = useCallback(() => api.watcher().then((d) => { setW(d); setErr(""); })
-    .catch((e) => setErr(String(e))), []);
-  useLiveRefresh(load, 30_000);
-  // the Smart Watcher box above the table changes the same mode
+  // the decisions page is asked of the SERVER; the running rows arrive whole
+  // and page here
+  const [dPage, setDPage] = useState(1);
+  const [sPage, setSPage] = useState(1);
+  const load = useCallback(() => api.watcher(dPage).then((d) => { setW(d); setErr(""); })
+    .catch((e) => setErr(String(e))), [dPage]);
+  useLiveRefresh(load, 30_000, [load]);
+  // the Smart Watcher box changes the same mode; its answer carries page 1
+  // of the decisions, so only the mode and the status line are taken from it
   useEffect(() => {
-    const on = (e: Event) => setW((e as CustomEvent<Watcher>).detail);
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<Watcher>).detail;
+      setW((p) => (p ? { ...p, mode: d.mode, why: d.why } : d));
+    };
     window.addEventListener(WATCHER_EVENT, on);
     return () => window.removeEventListener(WATCHER_EVENT, on);
   }, []);
+  const sPages = w ? Math.max(1, Math.ceil(w.slots.length / PER_PAGE)) : 1;
+  const sCur = Math.min(sPage, sPages);
+  const slotsShown = w ? w.slots.slice((sCur - 1) * PER_PAGE, sCur * PER_PAGE) : [];
 
   return (
     <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -60,7 +103,7 @@ export default function WatcherPanel() {
             {w ? MODE_TEXT[w.mode] : "reading…"}
           </p>
         </div>
-        <SmartWatcherBox onChange={setW} />
+        <SmartWatcherBox onChange={(d) => setW((p) => (p ? { ...p, mode: d.mode, why: d.why } : d))} />
       </div>
       {err && <p className="mt-2 text-theme-xs text-error-500">{err}</p>}
       {w && (
@@ -80,8 +123,10 @@ export default function WatcherPanel() {
           {w.why && <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">{w.why}</p>}
           {w.slots.length > 0 && (
             <div className="mt-3 flex flex-col gap-1">
-              <p className="text-theme-xs font-semibold text-gray-700 dark:text-gray-300">Running now</p>
-              {w.slots.map((s) => (
+              <p className="text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
+                Running now · {w.slots.length}
+              </p>
+              {slotsShown.map((s) => (
                 <div key={s.slot} className="flex flex-wrap gap-x-2 text-theme-xs text-gray-600 dark:text-gray-300">
                   <span className="font-mono text-brand-500">#{s.id}</span>
                   <span>{s.coin} {s.tf} {s.signal} · TP {s.tp}% / SL {s.sl}%</span>
@@ -92,9 +137,14 @@ export default function WatcherPanel() {
                   {s.practice?.warn && <span className="text-warning-600 dark:text-warning-400">{s.practice.warn}</span>}
                 </div>
               ))}
+              <Pager cur={sCur} pages={sPages} goto={(n) => setSPage(Math.min(Math.max(1, n), sPages))}
+                what="running" />
             </div>
           )}
-          <div className="mt-3 flex flex-col gap-1.5">
+          <p className="mt-3 text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
+            Decisions · {w.decisions_total}
+          </p>
+          <div className="mt-1 flex flex-col gap-1.5">
             {w.decisions.length === 0 && (
               <p className="text-theme-xs text-gray-400">
                 {w.mode === "off" ? "switched off — it makes no decisions"
@@ -111,6 +161,8 @@ export default function WatcherPanel() {
               </div>
             ))}
           </div>
+          <Pager cur={w.decisions_page} pages={w.decisions_pages}
+            goto={(n) => setDPage(Math.min(Math.max(1, n), w.decisions_pages))} what="decisions" />
         </>
       )}
     </div>

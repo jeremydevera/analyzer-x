@@ -3,7 +3,7 @@
  * from /api/trade/summary, the same numbers the runner acts on. */
 import { useEffect, useState, useRef } from "react";
 import { LATE_MS, markReady } from "@/lib/loading";
-import { fmtMoney, tradeApi, TradeSummary } from "@/lib/api";
+import { fmtMoney, fmtWhen, tradeApi, TradeSummary } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
 
@@ -151,7 +151,16 @@ export default function SummaryRibbon({ onChanged }: { onChanged?: () => void })
         <Tile label="Real · today closed" value={money(s.today_real.total)} sub={`${s.today_real.wins}W / ${s.today_real.losses}L · ${s.today_real.trades} closed`} tone={tone(s.today_real.total)} />
         <Tile label="Open · unrealized" value={money(s.open_unrealized)} sub={`${s.open_positions.length} real position${s.open_positions.length === 1 ? "" : "s"}`} tone={tone(s.open_unrealized)} />
         <Tile label="Paper · today" value={money(s.today_paper.total)} sub={`${s.today_paper.wins}W / ${s.today_paper.losses}L`} tone={tone(s.today_paper.total)} />
-        <Tile label="Paper · open" value={String(s.paper_positions.length)} sub="simulated positions" />
+        {/* the practice account's whole closed record, from its first trade
+            (Sep 29, 2026) — the open count moves into the line under it */}
+        <Tile label="Paper · all time"
+          value={s.paper_all_time ? money(s.paper_all_time.total) : "—"}
+          sub={s.paper_all_time && s.paper_all_time.trades
+            ? `${s.paper_all_time.wins}W / ${s.paper_all_time.losses}L closed`
+              + (s.paper_all_time.since ? ` since ${fmtWhen(s.paper_all_time.since)}` : "")
+              + ` · ${s.paper_positions.length} open`
+            : `no practice trade closed yet · ${s.paper_positions.length} open`}
+          tone={s.paper_all_time ? tone(s.paper_all_time.total) : undefined} />
       </div>
     </div>
   );

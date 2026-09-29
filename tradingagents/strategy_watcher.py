@@ -175,6 +175,67 @@ def recent(n: int = 50) -> list[dict]:
     return out
 
 
+PER_PAGE = 10
+# (path, bytes counted, lines counted): the log only grows, so each call
+# counts only the newlines appended since the last one
+_COUNT = {"path": None, "size": 0, "lines": 0}
+
+
+def _log_lines() -> int:
+    try:
+        size = LOG.stat().st_size
+    except OSError:
+        return 0
+    if _COUNT["path"] != str(LOG) or size < _COUNT["size"]:
+        _COUNT.update(path=str(LOG), size=0, lines=0)
+    if size > _COUNT["size"]:
+        with contextlib.suppress(OSError), LOG.open("rb") as fh:
+            fh.seek(_COUNT["size"])
+            chunk = fh.read(size - _COUNT["size"])
+            _COUNT["lines"] += chunk.count(b"\n")
+            _COUNT["size"] = size
+    return _COUNT["lines"]
+
+
+def decisions_page(page: int = 1, per: int = PER_PAGE) -> dict:
+    """One page of decisions, newest first, and how many there are in all.
+
+    PAGED HERE, never in the browser (operator, Sep 29, 2026: "paginate the
+    Watcher"): the screen used to receive only the newest 50, so page numbers
+    drawn over that would have ended at 5 while the log held more — a pager
+    over a list the server already cut (CLAUDE.md, kit item G). Read from
+    the END, only as far back as this page needs."""
+    per = max(1, min(int(per or PER_PAGE), 100))
+    total = _log_lines()
+    pages = max(1, -(-total // per))
+    page = max(1, min(int(page or 1), pages))
+    need = page * per
+    lines: list[bytes] = []
+    try:
+        size = LOG.stat().st_size
+        with LOG.open("rb") as fh:
+            end, block, tail = size, 64 * 1024, b""
+            while end > 0 and len(lines) < need:
+                start = max(0, end - block)
+                fh.seek(start)
+                buf = fh.read(end - start) + tail
+                parts = buf.split(b"\n")
+                tail = parts[0] if start > 0 else b""
+                got = [p for p in (parts[1:] if start > 0 else parts) if p.strip()]
+                lines = got + lines
+                end = start
+                block *= 2
+    except OSError:
+        lines = []
+    newest = list(reversed(lines))[(page - 1) * per:page * per]
+    out = []
+    for line in newest:
+        with contextlib.suppress(ValueError):
+            out.append(json.loads(line))
+    return {"decisions": out, "decisions_total": total, "decisions_page": page,
+            "decisions_pages": pages, "decisions_per": per}
+
+
 # ------------------------------------------------------ seams (tests replace)
 def _candidates(cfg: dict, now: float) -> dict:
     from tradingagents import watcher_candidates as wc
@@ -704,7 +765,7 @@ def _when(ts: float) -> str:
     return fmt_when(ts)
 
 
-def status() -> dict:
+def status(page: int = 1, per: int = PER_PAGE) -> dict:
     from tradingagents import auto_trader as at
 
     st = _read()
@@ -718,7 +779,7 @@ def status() -> dict:
             "next_on_pass": next_on(time.time(), float(st.get("last_on_pass") or 0)),
             "running": len(ws),
             "slots": [{"slot": k, **v, "practice": practice.get(k)} for k, v in sorted(ws.items())],
-            "cooling": len(st.get("cooling") or {}), "decisions": recent(50)}
+            "cooling": len(st.get("cooling") or {}), **decisions_page(page, per)}
 
 
 _LAST_SAID = {"why": ""}

@@ -570,7 +570,12 @@ export interface Watcher {
   running: number; cooling: number;
   slots: { slot: string; id: string; coin: string; tf: string; signal: string; tp: number; sl: number; on_at: number;
     practice?: { trades: number; wins: number; losses: number; pnl: number; streak: number; warn: string } | null }[];
+  /** ONE page, newest first — the server pages, never the browser */
   decisions: WatcherDecision[];
+  decisions_total: number;
+  decisions_page: number;
+  decisions_pages: number;
+  decisions_per: number;
 }
 
 /** what the Backtest v2 screen prints about the daily run — every word of it */
@@ -931,7 +936,7 @@ export const api = {
   dailyUpdate: () => get<DailyUpdate>("/api/v2/daily-update"),
   /** the strategy watcher (tradingagents/strategy_watcher.py): mode, rules,
    *  what it runs, and its last 50 decisions */
-  watcher: () => get<Watcher>("/api/trade/watcher"),
+  watcher: (page = 1) => get<Watcher>(`/api/trade/watcher?page=${page}`),
   watcherSet: (body: { mode?: "off" | "preview" | "act"; cfg?: Record<string, number | string> }) =>
     post<Watcher>("/api/trade/watcher", body),
   dailyUpdateSwitch: (enabled: boolean) =>
@@ -1258,6 +1263,10 @@ export interface TradeSummary {
   all_time: number;
   open_positions: OpenPosition[];
   paper_positions: PaperPosition[];
+  /** the practice account's whole closed record, from its first trade
+   *  (`since`, seconds; null = none yet) */
+  paper_all_time?: { total: number; wins: number; losses: number; trades: number;
+                     since: number | null };
 }
 
 export interface CredStatus {

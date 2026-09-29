@@ -1,4 +1,5 @@
 import { Outfit } from 'next/font/google';
+import NewVersionReload from "@/components/NewVersionReload";
 import './globals.css';
 import "flatpickr/dist/flatpickr.css";
 import { SidebarProvider } from '@/context/SidebarContext';
@@ -18,6 +19,7 @@ export default function RootLayout({
       <body className={`${outfit.className} dark:bg-gray-900`}>
         <ThemeProvider>
           <SidebarProvider>{children}</SidebarProvider>
+          <NewVersionReload />
         </ThemeProvider>
       </body>
     </html>

@@ -2,7 +2,16 @@ import type { NextConfig } from "next";
 
 const API = process.env.API_ORIGIN ?? "http://127.0.0.1:8787";
 
+/* ONE id per build, given to both halves: the browser bundle carries it as
+ * NEXT_PUBLIC_BUILD_ID, the server writes it to .next/BUILD_ID, and
+ * NewVersionReload compares the two so an open tab reloads onto a new build
+ * (Sep 29, 2026: "i thought everyting you change will reflect to web
+ * autoamtically"). */
+const BUILD_ID = `b${Date.now()}`;
+
 const nextConfig: NextConfig = {
+  generateBuildId: async () => BUILD_ID,
+  env: { NEXT_PUBLIC_BUILD_ID: BUILD_ID },
   /* The API is proxied through this server, so the operator has ONE url and
    * the browser never makes a cross-origin request. Same rewrite in dev and
    * production, so what is verified is what ships. */

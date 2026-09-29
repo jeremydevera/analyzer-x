@@ -9,6 +9,7 @@ import PanelStatus from "./PanelStatus";
 import CopyableId from "./CopyableId";
 import WinBadge from "./WinBadge";
 import SmartWatcherBox from "./SmartWatcherBox";
+import { markUnsaved } from "@/lib/unsaved";
 import { Live, FeedBadge } from "./LivePrice";
 import { api, fmtMoney, fmtWhen, fmtWhenMs, JobStatus, tradeApi, StrategyDeployRow } from "@/lib/api";
 import type { FeedStatus, Rolling30 } from "@/lib/api";
@@ -74,6 +75,8 @@ export default function StrategiesGrid() {
   // A ref, not the `dirty` state: this callback is the poll's dependency, so
   // reading `dirty` here would rebuild it on every edit and restart the timer.
   const dirtyRef = useRef(false);
+  // an unsaved draft holds off the automatic reload onto a new build
+  useEffect(() => { markUnsaved("strategies", dirty); return () => markUnsaved("strategies", false); }, [dirty]);
   const load = useCallback(() =>
     Promise.all([tradeApi.strategies(catalog), tradeApi.settingsGet()])
       .then(([st, se]) => {

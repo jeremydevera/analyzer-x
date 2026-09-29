@@ -26,7 +26,8 @@ def _res():
     t1 = int(dt.datetime(2026, 9, 1).timestamp() * 1000)
     part = {"profit": 12.5, "closed": 20, "wins": 18, "losses": 2, "winrate": 90.0,
             "slots": 4, "open": 0, "worst_day": -1.6, "green_days": 10, "days_n": 3,
-            "max_dd": 1.6, "worst_run": -1.6, "worst_run_n": 1, "days": [5.0, -1.6, 9.1]}
+            "max_dd": 1.6, "worst_run": -1.6, "worst_run_n": 1, "max_open": 3,
+            "days": [5.0, -1.6, 9.1]}
     cur = {"id": wres.rule_id(wres.CURRENT), "cfg": dict(wres.CURRENT),
            "train": part, "test": part}
     other_cfg = {**wres.CURRENT, "on_winrate": 85.0}

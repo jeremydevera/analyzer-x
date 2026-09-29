@@ -91,3 +91,68 @@ def test_score_counts_the_worst_day_the_dip_and_the_run():
     s = rs.score(res)
     assert s["worst_day"] == -1.5 and s["max_dd"] == 1.5
     assert s["worst_run"] == -1.5 and s["worst_run_n"] == 2
+
+
+def _folder(tmp_path, combos, end):
+    d = tmp_path / "run" / "replay-0"
+    d.mkdir(parents=True)
+    with open(d / "replay-0.jsonl", "w", encoding="utf-8") as fh:
+        for c in combos:
+            fh.write(json.dumps(c) + "\n")
+    (d / "replay-report-0.json").write_text(json.dumps({
+        "start": "2026-07-01", "tz": "America/New_York", "cfg": {},
+        "coins_board": 4, "coins_done": 4, "pairs": 4, "tested": 999, "kept": len(combos),
+        "failed": {}, "short": [], "groups": ["classic", "preset"],
+        "spans": {f"{c['coin']} 1h": [0, end] for c in combos}}))
+    return str(tmp_path / "run")
+
+
+@pytest.mark.parametrize("cfg", [rs.CURRENT,
+                                 {**rs.CURRENT, "on_winrate": 80.0, "off_winrate": 70.0,
+                                  "tp_rule": ">=", "window_days": 14, "rank": "profit",
+                                  "min_trades": 15, "off_streak_live": 3,
+                                  "cooldown_days": 0, "max_per_coin": 1}])
+def test_the_lean_path_gives_what_simulate_computes_itself(tmp_path, cfg):
+    """Research run 36495354168 wrote ~10.4 million trades with 2.4 GB free,
+    so the research feeds simulate numpy books and per-check arrays. The
+    replay those produce must be the replay simulate builds from plain lists."""
+    end = _ms(2026, 9, 20)
+    folder = _folder(tmp_path, COMBOS, end)
+    L = rs.load_lean([folder])
+    start = _ms(2026, 9, 1)
+    pre = rs.compact_rows(L["books"], wr.local_midnights(start, end),
+                          cfg["window_days"] * wr.DAY_MS, rs.loose(rs.grid()))
+    lean = wr.simulate([], start_ms=start, end_ms=end, cfg=cfg,
+                       rows=rs.CfgRows(pre, L["books"], cfg), books=L["books"])
+    plain = wr.simulate(rc.cut(COMBOS, end), start_ms=start, end_ms=end, cfg=cfg)
+    assert [s["id"] for s in lean["slots"]] == [s["id"] for s in plain["slots"]]
+    assert [s["on_ms"] for s in lean["slots"]] == [s["on_ms"] for s in plain["slots"]]
+    assert rs.score(lean) == rs.score(plain)
+
+
+def test_an_arrbook_row_is_a_book_row():
+    c = COMBOS[1]
+    a = rs.ArrBook({k: v for k, v in c.items() if k != "trades"},
+                   __import__("numpy").asarray(c["trades"], dtype=float))
+    b = wr._Book(c)
+    for at in wr.local_midnights(_ms(2026, 7, 1), _ms(2026, 9, 20)):
+        for w in (14, 30):
+            assert a.row(at, w * wr.DAY_MS) == b.row(at, w * wr.DAY_MS)
+
+
+def test_a_trade_that_closed_after_the_period_is_not_counted():
+    res = {"summary": {"profit": 0, "closed": 2, "wins": 2, "losses": 0,
+                       "winrate": 100.0, "slots": 1, "open": 0},
+           "days": [{"pnl": 0.8}],
+           "slots": [{"trades": [[0, 10, 0.8, 1], [20, 99, 0.8, 1]]}]}
+    s = rs.score(res, end_ms=50)
+    assert (s["closed"], s["wins"], s["profit"]) == (1, 1, 0.8)
+
+
+def test_the_most_trades_open_at_once_is_what_the_wallet_must_hold():
+    res = {"summary": {"profit": 0, "closed": 3, "wins": 3, "losses": 0,
+                       "winrate": 100.0, "slots": 2, "open": 0},
+           "days": [{"pnl": 2.4}],
+           "slots": [{"trades": [[0, 10, 0.8, 1], [12, 20, 0.8, 1]]},
+                     {"trades": [[5, 15, 0.8, 1]]}]}
+    assert rs.score(res)["max_open"] == 2

@@ -40,7 +40,20 @@ def group_of(sig: str) -> str:
     return "classic"
 
 
-def merge(folder) -> dict:
+def combo_files(folder) -> list[str]:
+    """Every machine's combination file under `folder` (a path or a list)."""
+    folders = [folder] if isinstance(folder, str) else list(folder)
+    return [f for d in folders for f in sorted(glob.glob(
+        os.path.join(d, "**", "replay-*.jsonl"), recursive=True))]
+
+
+def merge_reports(folder) -> dict:
+    """The machines' counts only — `merge` without reading a single trade,
+    for a caller that streams the combinations itself (watcher_research)."""
+    return merge(folder, _combos=False)["totals"]
+
+
+def merge(folder, _combos: bool = True) -> dict:
     """Every machine's combinations and counts under `folder` (one path, or a
     list of them — one per run), merged.
 
@@ -55,7 +68,7 @@ def merge(folder) -> dict:
         os.path.join(d, "**", "replay-*.jsonl"), recursive=True))]
     reports = [f for d in folders for f in sorted(glob.glob(
         os.path.join(d, "**", "replay-report-*.json"), recursive=True))]
-    for f in files:
+    for f in (files if _combos else []):
         with open(f, encoding="utf-8") as fh:
             for line in fh:
                 line = line.strip()

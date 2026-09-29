@@ -1082,6 +1082,10 @@ backtest everyday the promotion and demotion"*.
   trades to its last candle, then the practice trades since — so the screen
   and the switch-off read the same win rate; the backtest's own 30 days only
   while that figure is not worked out yet.
+* **No stop wider than 2% is switched on** (`watcher_policy` `max_sl`,
+  operator Sep 29, 2026: *"okay do it"*): of 457 practice trades since
+  Sep 15, the 93 with a stop wider than 2% won 31% and lost $139.66 — the
+  whole -$138.02. The cap is also sent to the index query.
 * **"Smart Watcher" is the on/off box** (deployed-strategies toolbar and the
   Watcher panel, `SmartWatcherBox.tsx`): ticked = mode `act`, unticked =
   `off`, which switches NOTHING on or off. It never touches `daily_update`:

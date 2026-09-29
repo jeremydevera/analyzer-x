@@ -12,6 +12,11 @@ DEFAULTS = {"on_winrate": 90.0, "off_winrate": 90.0, "min_trades": 20,
             "tp_rule": ">", "profit_floor": 0.0, "max_slots": 100,
             "max_per_coin": 3, "max_new_per_day": 20, "judge_after": 10,
             "off_streak": 4, "cooldown_days": 7, "fresh_hours": 36,
+            # NO STOP WIDER THAN 2% (operator, Sep 29, 2026, "okay do it"): of
+            # the 457 practice trades since Sep 15, the 93 with a stop wider
+            # than 2% won 31% and lost $139.66 — the whole -$138.02; the other
+            # 364 made +$1.64. 0 means no cap (the replay and research dials).
+            "max_sl": 2.0,
             # RESEARCH DIALS (Sep 28, 2026: "can you research whats the best
             # criteria for promotion and demotion"). The defaults are the
             # operator's rules exactly: judged on 30 days, ranked by win rate,
@@ -30,6 +35,9 @@ def passes_on(row: dict, cfg: dict) -> str:
         return f"TP {tp:g}% is not wider than SL {sl:g}%"
     if cfg["tp_rule"] == ">=" and not tp >= sl:
         return f"TP {tp:g}% is narrower than SL {sl:g}%"
+    cap = float(cfg.get("max_sl") or 0)
+    if cap > 0 and sl > cap:
+        return f"SL {sl:g}% is wider than {cap:g}%"
     if float(row["winrate"]) < cfg["on_winrate"]:
         return f"win rate {row['winrate']:g}% is under {cfg['on_winrate']:g}%"
     if int(row["trades"]) < cfg["min_trades"]:

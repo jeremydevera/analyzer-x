@@ -88,8 +88,8 @@ def _write(d: dict) -> None:
 # cannot honour is refused by name rather than printed on the screen as if it
 # were in force (label-must-match-data).
 LIVE_RULES = ("on_winrate", "off_winrate", "min_trades", "tp_rule",
-              "profit_floor", "max_slots", "max_per_coin", "max_new_per_day",
-              "cooldown_days", "fresh_hours", "rank")
+              "max_sl", "profit_floor", "max_slots", "max_per_coin",
+              "max_new_per_day", "cooldown_days", "fresh_hours", "rank")
 
 
 def store_window_days() -> int:

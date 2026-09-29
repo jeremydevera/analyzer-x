@@ -38,7 +38,8 @@ def _index_rows(cfg: dict, limit: int) -> list[dict]:
     got = ri.query(db_path=stores.V2.rows_db, sort="winrate", desc=True,
                    limit=limit, min_trades=int(cfg["min_trades"]),
                    min_winrate=max(0.0, float(cfg["on_winrate"]) - NOMINATE_BELOW),
-                   tp_over_sl=True, sizing="flat")
+                   tp_over_sl=True, sizing="flat",
+                   max_sl=float(cfg.get("max_sl") or 0))
     return list(got.get("rows") or [])
 
 

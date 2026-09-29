@@ -523,3 +523,32 @@ def test_the_screen_has_one_smart_watcher_box_in_both_places():
     assert "<SmartWatcherBox />" in grid and "<SmartWatcherBox onChange=" in panel
     assert 'aria-label="Watcher mode"' not in panel, "the three mode buttons are gone"
     assert "the daily backtest update still runs" in panel
+
+
+# ------------------------------------------------------------------------
+# NO STOP WIDER THAN 2% (Sep 29, 2026, "okay do it"): the 93 practice trades
+# with a stop wider than 2% won 31% and lost $139.66 of the -$138.02.
+
+def test_a_row_with_a_stop_wider_than_two_percent_is_never_switched_on():
+    from tradingagents import watcher_policy as wp
+
+    cfg = dict(wp.DEFAULTS)
+    row = {"tp": 5.0, "sl": 3.0, "winrate": 100.0, "trades": 30, "profit": 9.0, "gate": "ok"}
+    assert "SL 3% is wider than 2%" in wp.passes_on(row, cfg)
+    assert wp.passes_on({**row, "sl": 2.0}, cfg) == "", "2% itself is allowed"
+    assert wp.passes_on(row, {**cfg, "max_sl": 0}) == "", "0 means no cap"
+
+
+def test_the_cap_is_a_live_rule_and_reaches_the_index_query():
+    assert "max_sl" in sw.LIVE_RULES and sw.cfg_of({})["max_sl"] == 2.0
+    src = open("tradingagents/watcher_candidates.py", encoding="utf-8").read()
+    assert 'max_sl=float(cfg.get("max_sl") or 0))' in src
+    panel = open("webapp/src/components/trade/WatcherPanel.tsx", encoding="utf-8").read()
+    assert "SL no wider than ${c.max_sl}%" in panel
+
+
+def test_a_wide_stop_candidate_is_refused_in_a_real_pass(world):
+    world["cands"] = [{**R6, "id": "WIDE0001", "sl": 3.0, "tp": 5.0}]
+    got = sw.consider(now=NOW)
+    assert not [d for d in got["decisions"] if d["action"] == "on"]
+    assert not (world["settings"].get("watcher_slots") or {})

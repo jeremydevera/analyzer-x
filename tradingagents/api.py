@@ -276,6 +276,19 @@ def _keep_the_row_index_current() -> None:
         # book for each pick, and for that minute the supervisor would not
         # restart a dead runner or indexer.
         def _watcher_loop() -> None:
+            # A SUCCESSFUL START LOGS SOMETHING (CLAUDE.md): a watcher with
+            # nothing new to say is otherwise indistinguishable from one that
+            # never started.
+            try:
+                from tradingagents import strategy_watcher as _sw
+                from tradingagents.positions_view import fmt_when as _fw
+
+                _st = _sw.status()
+                print(f"[watcher] up: mode {_st['mode']}, {_st['running']} row(s) "
+                      f"running, next switch-on {_fw(_st['next_on_pass'])}", flush=True)
+            except Exception as exc:                           # noqa: BLE001
+                print(f"[watcher] up, but its status could not be read: {exc!r}",
+                      flush=True)
             while True:
                 _time.sleep(60)
                 try:

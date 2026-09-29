@@ -1610,6 +1610,21 @@ _OPERATORS_V2_SEP27 = {
 STRATEGY_SPECS.update(_OPERATORS_V2_SEP27)
 STRATEGY_ORDER = STRATEGY_ORDER + tuple(_OPERATORS_V2_SEP27)
 
+# The operator's Sep 29, 2026 picks from the "Sep 27 ML" group
+# (presets/v2-sep29-ml.json), added to the practice account: "can you add
+# these ids auto trade, turn on for demo only". GENERATED FROM THE MEASURED
+# ROWS by strategy_keys.key_for / spec_for; each key's signal is a decision-
+# tree model in learned/sep27_ml.json.gz (signals_ml), not a fixed rule.
+_OPERATORS_V2_SEP29_ML = {
+    "ml_ALUMINUM_15m_1_15m_sl02tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.002},
+    "ml_ALUMINUM_15m_2_15m_sl03tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.003},
+    "ml_ALUMINUM_15m_3_15m_sl03tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.003},
+    "ml_LEAD_15m_2_15m_sl02tp04": {"interval": "Min15", "bar_seconds": 900, "tp": 0.004, "sl": 0.002},
+    "ml_MNT_30m_2_30m_sl1tp2": {"interval": "Min30", "bar_seconds": 1800, "tp": 0.02, "sl": 0.01},
+}
+STRATEGY_SPECS.update(_OPERATORS_V2_SEP29_ML)
+STRATEGY_ORDER = STRATEGY_ORDER + tuple(_OPERATORS_V2_SEP29_ML)
+
 # KEYS THE WATCHER ADDED at runtime (tradingagents/runtime_specs.py). Merged
 # on every load_settings(), which run_cycle calls every round, so a runner
 # started days ago trades a key registered this morning. Never overrides a

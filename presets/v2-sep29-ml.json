@@ -1,0 +1,246 @@
+{
+ "name": "v2-sep29-ml",
+ "why": "The operator's Sep 29, 2026 pick of five Sep 27 ML rows from Backtest v2 (\"can you add these ids auto trade, turn on for demo only\"), ADDED to the practice account, never replacing what runs there. Each is a decision-tree model (learned/sep27_ml.json.gz); the numbers are its last 30 days, which the model never saw while it was chosen.",
+ "measured": {
+  "store": "Backtest v2 (1-minute exits), group Sep 27 ML",
+  "base_margin": 5.0,
+  "notional": 100.0,
+  "leverage": 20,
+  "sizing": "flat"
+ },
+ "base_margin": 5.0,
+ "sizing": "flat",
+ "book": [
+  "paper"
+ ],
+ "res": "1m",
+ "replace": false,
+ "refused": [],
+ "strategies": {
+  "ml_ALUMINUM_15m_1_15m_sl02tp04": {
+   "coins": [
+    "ALUMINUM_USDT"
+   ],
+   "rows": [
+    "JYRT8AN8"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "ALUMINUM": {
+     "tf": "15m",
+     "signal": "ml_ALUMINUM_15m_1",
+     "th": 0.0,
+     "tp_pct": 0.4,
+     "sl_pct": 0.2,
+     "given": [
+      "JYRT8AN8"
+     ],
+     "runs_as": "JYRT8AN8",
+     "flat": {
+      "trades": 135,
+      "wins": 133,
+      "losses": 2,
+      "winrate": 98.52,
+      "profit": 31.33,
+      "dd": 0.35,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 40.1,
+      "rt": 0.1603,
+      "unclear": 0,
+      "breakeven_winrate": 60.0
+     },
+     "gate_now": {
+      "verdict": "warn",
+      "reason": "round-trip cost 0.161% vs take-profit 0.40% = 40% of the target (includes 0.000% funding for a 15m hold at 0.037% a day)"
+     }
+    }
+   }
+  },
+  "ml_ALUMINUM_15m_2_15m_sl03tp04": {
+   "coins": [
+    "ALUMINUM_USDT"
+   ],
+   "rows": [
+    "TT23MEZG"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "ALUMINUM": {
+     "tf": "15m",
+     "signal": "ml_ALUMINUM_15m_2",
+     "th": 0.0,
+     "tp_pct": 0.4,
+     "sl_pct": 0.3,
+     "given": [
+      "TT23MEZG"
+     ],
+     "runs_as": "TT23MEZG",
+     "flat": {
+      "trades": 138,
+      "wins": 127,
+      "losses": 11,
+      "winrate": 92.03,
+      "profit": 25.59,
+      "dd": 2.75,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 40.1,
+      "rt": 0.1603,
+      "unclear": 0,
+      "breakeven_winrate": 65.8
+     },
+     "gate_now": {
+      "verdict": "warn",
+      "reason": "round-trip cost 0.161% vs take-profit 0.40% = 40% of the target (includes 0.000% funding for a 15m hold at 0.037% a day)"
+     }
+    }
+   }
+  },
+  "ml_ALUMINUM_15m_3_15m_sl03tp04": {
+   "coins": [
+    "ALUMINUM_USDT"
+   ],
+   "rows": [
+    "QHB5UVQP"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "ALUMINUM": {
+     "tf": "15m",
+     "signal": "ml_ALUMINUM_15m_3",
+     "th": 0.0,
+     "tp_pct": 0.4,
+     "sl_pct": 0.3,
+     "given": [
+      "QHB5UVQP"
+     ],
+     "runs_as": "QHB5UVQP",
+     "flat": {
+      "trades": 70,
+      "wins": 70,
+      "losses": 0,
+      "winrate": 100.0,
+      "profit": 16.83,
+      "dd": 0.0,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 40.1,
+      "rt": 0.1603,
+      "unclear": 0,
+      "breakeven_winrate": 65.8
+     },
+     "gate_now": {
+      "verdict": "warn",
+      "reason": "round-trip cost 0.161% vs take-profit 0.40% = 40% of the target (includes 0.000% funding for a 15m hold at 0.037% a day)"
+     }
+    }
+   }
+  },
+  "ml_LEAD_15m_2_15m_sl02tp04": {
+   "coins": [
+    "LEAD_USDT"
+   ],
+   "rows": [
+    "CW6Z7FWT"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "LEAD": {
+     "tf": "15m",
+     "signal": "ml_LEAD_15m_2",
+     "th": 0.0,
+     "tp_pct": 0.4,
+     "sl_pct": 0.2,
+     "given": [
+      "CW6Z7FWT"
+     ],
+     "runs_as": "CW6Z7FWT",
+     "flat": {
+      "trades": 16,
+      "wins": 16,
+      "losses": 0,
+      "winrate": 100.0,
+      "profit": 3.71,
+      "dd": 0.0,
+      "days": 29,
+      "gate": "warn",
+      "cost_of_tp": 40.1,
+      "rt": 0.1605,
+      "unclear": 0,
+      "breakeven_winrate": 60.1
+     },
+     "gate_now": {
+      "verdict": "warn",
+      "reason": "round-trip cost 0.161% vs take-profit 0.40% = 40% of the target (includes 0.000% funding for a 15m hold at 0.011% a day)"
+     }
+    }
+   }
+  },
+  "ml_MNT_30m_2_30m_sl1tp2": {
+   "coins": [
+    "MNT_USDT"
+   ],
+   "rows": [
+    "2P3LRFMX"
+   ],
+   "res": "1m",
+   "margin": 5.0,
+   "sizing": "flat",
+   "book": [
+    "paper"
+   ],
+   "measured": {
+    "MNT": {
+     "tf": "30m",
+     "signal": "ml_MNT_30m_2",
+     "th": 0.0,
+     "tp_pct": 2.0,
+     "sl_pct": 1.0,
+     "given": [
+      "2P3LRFMX"
+     ],
+     "runs_as": "2P3LRFMX",
+     "flat": {
+      "trades": 12,
+      "wins": 11,
+      "losses": 1,
+      "winrate": 91.67,
+      "profit": 18.98,
+      "dd": 1.17,
+      "days": 29,
+      "gate": "ok",
+      "cost_of_tp": 8.0,
+      "rt": 0.16,
+      "unclear": 0,
+      "breakeven_winrate": 38.7
+     },
+     "gate_now": {
+      "verdict": "ok",
+      "reason": "round-trip cost 0.191% vs take-profit 2.00% = 10% of the target (includes 0.001% funding for a 30m hold at 0.030% a day)"
+     }
+    }
+   }
+  }
+ }
+}

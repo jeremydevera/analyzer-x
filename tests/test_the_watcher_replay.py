@@ -179,3 +179,13 @@ def test_round_three_is_raw_with_the_runners_coin_limit():
         "never looser than the data's write rule (70% / 20 trades), RCA-2026-09-29-F"
     lo = rs.loose(g)
     assert lo["raw"] and lo["tp_rule"] == "any" and lo["max_sl"] == 0.0
+
+
+def test_round_four_is_raw_on_15_or_30_days_and_never_looser_than_its_data():
+    from tradingagents import watcher_research as rs
+
+    g = rs.scenarios4()
+    assert len(g) == 84 and {c["window_days"] for c in g} == {15, 30}
+    assert all(c["raw"] and c["tp_rule"] == ">" and c["coin_slices"] == 4 for c in g)
+    assert min(c["on_winrate"] for c in g) >= 50 and min(c["min_trades"] for c in g) >= 10, \
+        "the data of run 36763426504 is written at 50% / 10 trades"

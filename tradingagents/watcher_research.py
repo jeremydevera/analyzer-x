@@ -454,7 +454,9 @@ def research(folders: list[str], *, train_start: str = "2026-07-01",
                             log.append([strat_ix[sid], int(t[0]), int(t[1]),
                                         round(float(t[2]), 4)])
                 log.sort(key=lambda t: t[2])
-                out["test_log"] = log
+                # compact until written: 144 raw rule sets of September trades
+                # held as lists of lists would be gigabytes
+                out["test_log"] = np.asarray(log, dtype=np.float64).reshape(-1, 4)
         rows.append(out)
         if progress and (i + 1) % max(1, min(200, len(g) // 12)) == 0:
             progress(i + 1, len(g))
@@ -517,23 +519,58 @@ def scenarios3() -> list[dict]:
     return out
 
 
+# ROUND FOUR (operator, Sep 30, 2026: "have you tried last 15 days when
+# searching for most profitable? example winrate over 50% last 15 days, tp
+# higher than sl with 10 trades ... research for best combination"). Raw, as
+# the rooms run, with the runner's 4 per coin; judged on 15 or 30 days. The
+# data (run 36763426504) is written at 50% / 10 trades / TP > SL / 15|30 days,
+# so no rule here is looser than it (RCA-2026-09-29-F).
+SCENARIOS4 = {"window_days": [15, 30],
+              "on_winrate": [50.0, 55.0, 60.0, 65.0, 70.0, 80.0, 90.0],
+              "min_trades": [10, 20, 30],
+              "max_sl": [2.0, 0.0]}
+
+
+def scenarios4() -> list[dict]:
+    out = [{**CURRENT, **RAW, "window_days": wd, "on_winrate": on, "off_winrate": on,
+            "min_trades": mt, "tp_rule": ">", "max_sl": cap}
+           for wd in SCENARIOS4["window_days"] for on in SCENARIOS4["on_winrate"]
+           for mt in SCENARIOS4["min_trades"] for cap in SCENARIOS4["max_sl"]]
+    assert len(out) == 84
+    # "yours" is a grid point: the operator's Main rules (90% / 20+ / 2%), raw, 30 days
+    assert any(all(c[k] == v for k, v in {**CURRENT, **RAW}.items()) for c in out)
+    return out
+
+
 SCENARIOS_TEXT = {"on_winrate": SCENARIOS["on_winrate"],
                   "min_trades": SCENARIOS["min_trades"],
                   "shape": [f"TP {r} SL, stop cap {c:g}%" for r, c in SCENARIOS["shape"]]}
 
 
+def _log_rows(o):
+    """json's fallback for a compact (n, 4) log array."""
+    if hasattr(o, "tolist"):
+        return [[int(a), int(b), int(c), round(float(d), 4)] for a, b, c, d in o]
+    raise TypeError(f"not JSON: {type(o).__name__}")
+
+
 def main(argv=None) -> int:
     argv = list(argv or sys.argv[1:])
-    use = (scenarios3() if "--scenarios3" in argv
+    use = (scenarios4() if "--scenarios4" in argv
+           else scenarios3() if "--scenarios3" in argv
            else scenarios2() if "--scenarios2" in argv
            else scenarios() if "--scenarios" in argv else None)
-    argv = [a for a in argv if a not in ("--scenarios", "--scenarios2", "--scenarios3")]
+    argv = [a for a in argv if a not in ("--scenarios", "--scenarios2", "--scenarios3",
+                                         "--scenarios4")]
     name, folders = argv[0], argv[1:]
     res = research(folders, grid_=use, keep_log=use is not None,
                    progress=lambda i, n: print(f"  {i:,} of {n:,} rule sets", flush=True))
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     path = OUT_DIR / f"research-{name}.json"
-    path.write_text(json.dumps(res, separators=(",", ":")), encoding="utf-8")
+    # STREAMED, the compact logs turned back into [strategy, entry, exit,
+    # profit] as they are written — never one string of the whole result
+    with path.open("w", encoding="utf-8") as fh:
+        json.dump(res, fh, separators=(",", ":"), default=_log_rows)
     best = next(r for r in res["rows"] if r["id"] == res["best_train_id"])
     cur = next(r for r in res["rows"] if r["id"] == res["current_id"])
     print(f"{len(res['rows'])} rule sets on {res['combos']:,} combinations. "

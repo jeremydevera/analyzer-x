@@ -169,6 +169,24 @@ def test_the_replay_holds_at_most_the_runners_trades_per_coin():
     assert kept["S10"] == 1, "a slot frees up when a trade closes"
 
 
+def test_a_capped_slot_is_still_an_array_the_shard_can_slice():
+    """RCA-2026-09-30-B: research_shard.py slices `t[:, 3]`. The research
+    ran on a watcher_replay that kept numpy blocks while GitHub checked out
+    the committed one, whose cap handed back lists — 19 of 20 machines died
+    on 'list indices must be integers or slices, not tuple'."""
+    import numpy as np
+
+    blk = lambda rows: np.array(rows, dtype=np.float64)     # noqa: E731
+    slots = [{"id": f"S{i}", "coin": "KII", "trades": blk([[100 + i, 1000, 1.0, 1]])}
+             for i in range(6)]
+    wr.cap_per_coin(slots, 4)
+    for s in slots:
+        t = s["trades"]
+        assert hasattr(t, "shape") and t.ndim == 2 and t.shape[1] == 4
+        assert ((t[:, 3] > 0) & (t[:, 1] <= 1000)).sum() == len(t)
+    assert [len(s["trades"]) for s in slots] == [1, 1, 1, 1, 0, 0]
+
+
 def test_round_three_is_raw_with_the_runners_coin_limit():
     from tradingagents import watcher_research as rs
 

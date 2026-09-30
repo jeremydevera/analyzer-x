@@ -172,6 +172,56 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-30-B — GitHub's research run died on 19 of 20 machines because the change it needed was never committed
+
+**CEO**
+
+* The top-100 research took about an hour longer: the first GitHub run
+  failed on 19 of its 20 machines and had to be run again.
+* Why: a change that ran on this PC was never saved to GitHub, so GitHub
+  ran the old version of that file.
+* What stops it now: the change is committed, and a test fails if that
+  file ever goes back to the old shape.
+
+**DEV**
+
+* `.github/scripts/research_shard.py:69` slices `t[:, 3]` on each slot's
+  trades; `watcher_replay.cap_per_coin` at `main` handed back Python lists
+  (the numpy-block version and `_stack` sat uncommitted in the working copy).
+* Invariant broken: **the cloud runs `main`, so anything a dispatch relies
+  on is pushed before the dispatch** (CLAUDE.md, "Commit and push EVERY change").
+* Guard: `tests/test_the_watcher_replay.py::test_a_capped_slot_is_still_an_array_the_shard_can_slice`,
+  red on `d625986c~1`.
+
+**SAW** — nothing on screen; the run page. `Sep 30, 2026 ~4:40pm`, research
+run 36780071136: 19 shards failed with `list indices must be integers or
+slices, not tuple`, 1 passed (a shard whose slots were never capped).
+
+**TIMELINE**
+
+1. Earlier Sep 30 — `simulate()` moved to one numpy block per slot to get the
+   PC research under 6 GB; `cap_per_coin` gained `_stack`. Not committed.
+2. `research.yml` + `research_shard.py` committed and pushed (de952d7e);
+   run 36780071136 dispatched — checked out `main`, without step 1.
+3. 19 of 20 machines fail on their first capped slot.
+4. `5:36pm` — d625986c commits the replay change; run 36780527422 succeeds,
+   20 of 20, 144 rule sets over 4,585,414 combinations.
+
+**ROOT CAUSE** — a working-copy change the new shard depended on was left
+out of the commit that shipped the shard.
+
+**WHY IT WAS NOT CAUGHT** — every test ran on the working copy, which had
+the change; nothing tests what `main` holds, and the replay tests built
+slots as lists, which both versions accepted.
+
+**COST** — none in money; one wasted GitHub run (~1 hour of 20 machines).
+
+**FIX** — d625986c.
+
+**GUARD** — `tests/test_the_watcher_replay.py::test_a_capped_slot_is_still_an_array_the_shard_can_slice`.
+
+---
+
 ## RCA-2026-09-30-A — the header said "GitHub measuring 0%" while 40 machines were measuring
 
 **CEO**

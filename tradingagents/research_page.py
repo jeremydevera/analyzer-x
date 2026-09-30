@@ -116,7 +116,8 @@ def build(res: dict, write: dict | None = None) -> str:
 LOG_T0_MIN = 1_767_225_600 // 60      # Jan 01, 2026 00:00 UTC, in minutes
 
 
-def build_split(res: dict, out_dir: Path, write: dict | None = None) -> tuple[str, dict]:
+def build_split(res: dict, out_dir: Path, write: dict | None = None,
+                log_top: int | None = None) -> tuple[str, dict]:
     """The page, with each rule set's September trades in ITS OWN gzip file
     fetched when its row is opened (Sep 30, 2026: the raw round held
     10,957,184 September trades, 464,598 in one rule set — no single page
@@ -135,8 +136,19 @@ def build_split(res: dict, out_dir: Path, write: dict | None = None) -> tuple[st
     logs = out_dir / "logs"
     logs.mkdir(parents=True, exist_ok=True)
     by_id = {r["id"]: r for r in res["rows"]}
+    # WHICH ROWS KEEP THEIR TRADE LIST: all, or the `log_top` best on
+    # July-August (the fair ranking) when all would not fit an artifact
+    # (round five: 27,262,960 September trades, 825,749 in one rule set).
+    # Every row stays on the page; one without a list says so, and why.
+    rank = {r["id"]: i + 1 for i, r in
+            enumerate(sorted(res["rows"], key=lambda r: -r["train"]["profit"]))}
+    pl["log_top"] = log_top
     for row in pl["rows"]:
         log = by_id[row["id"]].get("test_log") or []
+        row["rank"] = rank[row["id"]]
+        if log_top and rank[row["id"]] > log_top:
+            row["tl"], row["lf"], row["ln"] = None, None, len(log)
+            continue
         used: dict = {}
         t = []
         for si, e, x, p in log:
@@ -406,6 +418,7 @@ function fileLog(r,page){const box=$("log-box");if(!box)return;box.innerHTML='<p
   const p=$("lp"),q=$("ln");if(p)p.onclick=()=>fileLog(r,cur-1);if(q)q.onclick=()=>fileLog(r,cur+1)})
  .catch(e=>{box.innerHTML=`<p class="note neg">${esc(String(e.message||e))}</p>`})}
 function tradeLog(r){if(r.lf){setTimeout(()=>fileLog(r,1),0);return '<div id="log-box"></div>'}
+ if(D.log_top&&r.ln!=null&&!r.lf)return `<p class="note">The trade-by-trade list is kept for the ${D.log_top} best rule sets on July–August; this one ranks ${r.rank} of ${D.rows.length} and made ${r.ln.toLocaleString()} September trades — its day-by-day figures above are complete.</p>`;
  if(!r.tl)return "";let run=0;const S=D.strategies;
  const body=r.tl.map((t,i)=>{const s=S[t[0]];const p=t[3]*k();run+=p;
   return `<tr><td>${i+1}</td><td class="l">${esc(s[1])} ${esc(s[2])} ${esc(s[3])}${s[4]?` ${s[4]}`:""}</td><td>${s[5]}% / ${s[6]}%</td><td class="l">${fmtWhen(t[1])}</td><td class="l">${fmtWhen(t[2])}</td><td class="${p>0?"pos":p<0?"neg":""}">${money(p)}</td><td>${money(run)}</td></tr>`}).join("");

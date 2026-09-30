@@ -87,3 +87,35 @@ def test_the_pages_date_format_is_the_projects():
     out = subprocess.run(["node", "-e", js + f"\nfor (const m of {ms}) console.log(fmtWhen(m));"],
                          capture_output=True, text=True, timeout=60).stdout.split("\n")
     assert out[:3] == [fmt_when(m / 1000) for m in ms]
+
+
+def test_a_rule_looser_than_its_data_is_never_picked():
+    """RCA-2026-09-29-F: data written at 80% / 15 trades / TP >= SL cannot
+    grade a 70% rule — it only holds strategies known to reach 80% later."""
+    from tradingagents import research_page as rp
+
+    w = {"wr": 80.0, "trades": 15, "tp": ">=", "windows": [30]}
+    base = {"on_winrate": 80.0, "min_trades": 20, "tp_rule": ">"}
+    assert rp.unfair(base, w) == ""
+    assert "reached 80%" in rp.unfair({**base, "on_winrate": 70.0}, w)
+    assert "15+" in rp.unfair({**base, "min_trades": 10}, w)
+    assert "never held" in rp.unfair({**base, "tp_rule": "<"}, w)
+    assert rp.unfair({**base, "tp_rule": "any"}, w) == "", "any over >= data IS at least"
+
+    def row(rid, on, profit):
+        part = {"profit": profit, "closed": 1, "wins": 1, "losses": 0, "winrate": 100.0,
+                "slots": 1, "open": 0, "worst_day": 0.0, "green_days": 1, "days_n": 1,
+                "max_dd": 0.0, "worst_run": 0.0, "worst_run_n": 0, "max_open": 1,
+                "days": [profit]}
+        cfg = {**base, "on_winrate": on, "off_winrate": on, "window_days": 30,
+               "rank": "winrate", "max_per_coin": 3, "max_new_per_day": 20,
+               "cooldown_days": 7, "off_streak_live": 0, "max_sl": 2.0}
+        return {"id": rid, "cfg": cfg, "train": dict(part), "test": dict(part)}
+
+    res = {"rows": [row("LOOSE70", 70.0, 999.0), row("FAIR80", 80.0, 10.0)],
+           "train": [0, 1], "test": [0, 1], "end_ms": 1, "current_id": "FAIR80",
+           "best_train_id": "LOOSE70", "combos": 2,
+           "totals": {"tested": 2, "coins_board": 1, "write": w}}
+    got = rp.payload(res)
+    assert got["best_train"] == "FAIR80", "the hindsight row is never picked"
+    assert next(r for r in got["rows"] if r["id"] == "LOOSE70")["unfair"]

@@ -35,6 +35,10 @@ def passes_on(row: dict, cfg: dict) -> str:
         return f"TP {tp:g}% is not wider than SL {sl:g}%"
     if cfg["tp_rule"] == ">=" and not tp >= sl:
         return f"TP {tp:g}% is narrower than SL {sl:g}%"
+    # "<": the target NARROWER than the stop (Sep 29, 2026: "you can try sl
+    # greater than tp") — it only pays at a high win rate
+    if cfg["tp_rule"] == "<" and not tp < sl:
+        return f"TP {tp:g}% is not narrower than SL {sl:g}%"
     cap = float(cfg.get("max_sl") or 0)
     if cap > 0 and sl > cap:
         return f"SL {sl:g}% is wider than {cap:g}%"

@@ -62,7 +62,10 @@ def merge(folder, _combos: bool = True) -> dict:
     combos: dict[str, dict] = {}
     totals = {"coins_board": 0, "coins_done": 0, "pairs": 0, "tested": 0,
               "kept": 0, "machines": 0, "failed": {}, "short": [],
-              "spans": {}, "start": "", "tz": "", "cfg": {}, "groups": []}
+              "spans": {}, "start": "", "tz": "", "cfg": {}, "groups": [],
+              # the WRITE RULE: which combinations the data holds at all — a
+              # rule looser than it can only pick from rows that passed it
+              "write": {}}
     folders = [folder] if isinstance(folder, str) else list(folder)
     files = [f for d in folders for f in sorted(glob.glob(
         os.path.join(d, "**", "replay-*.jsonl"), recursive=True))]
@@ -88,7 +91,7 @@ def merge(folder, _combos: bool = True) -> dict:
         totals["failed"].update(r.get("failed") or {})
         totals["short"] += list(r.get("short") or [])
         totals["spans"].update(r.get("spans") or {})
-        for k in ("start", "tz", "cfg"):
+        for k in ("start", "tz", "cfg", "write"):
             totals[k] = totals[k] or r.get(k)
         starts.add(r.get("start"))
         # WHICH COINS each set of groups was measured on, from the pairs that

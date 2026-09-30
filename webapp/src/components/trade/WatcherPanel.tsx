@@ -65,7 +65,7 @@ export function rules(c: Watcher["cfg"], days: number, live = false): string[] {
     `switch on at ${c.on_winrate}%+ over the last ${days} days`,
     `switch off under ${c.off_winrate}%`,
     `${c.min_trades}+ trades`,
-    `TP ${c.tp_rule === ">" ? "wider than" : "at least"} SL`,
+    c.tp_rule === "any" ? "any TP" : `TP ${c.tp_rule === ">" ? "wider than" : c.tp_rule === "<" ? "narrower than" : "at least"} SL`,
     ...(c.max_sl ? [`SL no wider than ${c.max_sl}%`] : []),
     `up to ${c.max_slots} at once · ${c.max_per_coin} per coin · ${c.max_new_per_day} new a day`,
     `${c.cooldown_days}-day wait after a switch-off`,

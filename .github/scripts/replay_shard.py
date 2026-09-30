@@ -96,11 +96,23 @@ def write_rule(text: str) -> dict:
             rule["wr"] = float(v)
         elif k == "trades":
             rule["trades"] = int(v)
-        elif k == "tp" and v in (">", ">="):
+        elif k == "tp" and v in (">", ">=", "<", "any"):
+            # "<" and "any" (Sep 29, 2026: "you can try sl greater than
+            # tp"): without them no SL-wider-than-TP row could ever be written
             rule["tp"] = v
         elif k == "windows":
             rule["windows"] = sorted({int(x) for x in v.split("|") if x.strip()})
     return rule
+
+
+def _tp_written(tp: float, sl: float, rule: str) -> bool:
+    """The write rule's TP-vs-SL shape: ">" wider, ">=" at least, "<"
+    narrower, "any" every barrier pair."""
+    if rule == "any":
+        return True
+    if rule == "<":
+        return tp < sl
+    return tp > sl if rule == ">" else tp >= sl
 
 
 WRITE = write_rule(os.environ.get("REPLAY_WRITE", ""))
@@ -220,8 +232,8 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
             thp = 0.0 if th is None else round(th * 100, 3)
             dirs_idx = [k for k, v in enumerate(dirs) if v and k >= warm]
             for (sl, tp) in barriers_for(sig, tf):
-                if not (tp > sl if WRITE["tp"] == ">" else tp >= sl):
-                    continue                      # the operator's TP > SL
+                if not _tp_written(tp, sl, WRITE["tp"]):
+                    continue                      # outside the write rule's TP shape
                 if liq is not None and sl * 100 >= STOP_CEILING * abs(liq):
                     continue                      # a stop past the wall
                 if rt / tp >= GATE_OK:

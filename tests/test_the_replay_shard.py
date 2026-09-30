@@ -287,3 +287,15 @@ def test_an_ml_model_is_walked_with_its_own_target_and_stop_only(rs, monkeypatch
     from tradingagents import backtest_report as br
 
     assert rs.barriers_for("bb20", "1h") == br.pairs_for("1h")
+
+
+def test_a_write_rule_can_keep_every_target_shape(rs):
+    """Sep 29, 2026: "you can try sl greater than tp". The research data of
+    Sep 28 (run 36495354168) was written with tp=>=, so it held 0 of its
+    77,952 combinations with a target narrower than the stop — and a rule
+    that asked for them found nothing to pick."""
+    assert rs.write_rule("tp=any")["tp"] == "any"
+    assert rs.write_rule("tp=<")["tp"] == "<"
+    assert rs._tp_written(1.0, 2.0, "any") and rs._tp_written(1.0, 2.0, "<")
+    assert not rs._tp_written(2.0, 2.0, "<") and not rs._tp_written(1.0, 2.0, ">=")
+    assert rs._tp_written(2.0, 2.0, ">=") and not rs._tp_written(2.0, 2.0, ">")

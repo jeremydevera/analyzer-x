@@ -116,7 +116,9 @@ def loose(grid_: list[dict]) -> dict:
     caps = [float(c.get("max_sl") or 0) for c in grid_]
     return {**wp.DEFAULTS, "on_winrate": min(c["on_winrate"] for c in grid_),
             "min_trades": min(c["min_trades"] for c in grid_),
-            "tp_rule": "any" if "any" in rules else ">=" if ">=" in rules else ">",
+            # "<" and ">" together (or "any") can only be served by no rule
+            "tp_rule": ("any" if "any" in rules or ("<" in rules and len(rules) > 1)
+                        else "<" if rules == {"<"} else ">=" if ">=" in rules else ">"),
             # 0 = no cap: the loosest cap is none at all if any set has none
             "max_sl": 0.0 if min(caps) <= 0 else max(caps)}
 
@@ -286,6 +288,8 @@ def _tp_ok(tp, sl, rule):
     """`passes_on`'s TP rule over arrays: ">" wider, ">=" at least, "any" none."""
     if rule == "any":
         return np.ones(np.shape(tp), bool)
+    if rule == "<":
+        return tp < sl
     return tp > sl if rule == ">" else tp >= sl
 
 
@@ -379,6 +383,27 @@ def research(folders: list[str], *, train_start: str = "2026-07-01",
             "strategies": strategies}
 
 
+# ROUND TWO (operator, Sep 29, 2026: "Can you research more combination, you
+# can try sl greater than tp then up to you what is winrate"): the target
+# NARROWER than the stop joins wider and any; five lines from 70 to 95; four
+# trade floors (40 makes #CC8DC54C a grid point). 5 x 4 x 3 x 2 = 120, every
+# room's rules among them.
+SCENARIOS2 = {"on_winrate": [70.0, 80.0, 85.0, 90.0, 95.0],
+              "min_trades": [20, 30, 40, 50],
+              "tp_rule": ["<", ">", "any"],
+              "max_sl": [2.0, 0.0]}
+
+
+def scenarios2() -> list[dict]:
+    out = [{**CURRENT, "on_winrate": on, "off_winrate": on, "min_trades": mt,
+            "tp_rule": tr, "max_sl": cap}
+           for on in SCENARIOS2["on_winrate"] for mt in SCENARIOS2["min_trades"]
+           for tr in SCENARIOS2["tp_rule"] for cap in SCENARIOS2["max_sl"]]
+    assert len(out) == 120
+    assert any(all(c[k] == v for k, v in CURRENT.items()) for c in out)
+    return out
+
+
 SCENARIOS_TEXT = {"on_winrate": SCENARIOS["on_winrate"],
                   "min_trades": SCENARIOS["min_trades"],
                   "shape": [f"TP {r} SL, stop cap {c:g}%" for r, c in SCENARIOS["shape"]]}
@@ -386,8 +411,9 @@ SCENARIOS_TEXT = {"on_winrate": SCENARIOS["on_winrate"],
 
 def main(argv=None) -> int:
     argv = list(argv or sys.argv[1:])
-    use = scenarios() if "--scenarios" in argv else None
-    argv = [a for a in argv if a != "--scenarios"]
+    use = (scenarios2() if "--scenarios2" in argv
+           else scenarios() if "--scenarios" in argv else None)
+    argv = [a for a in argv if a not in ("--scenarios", "--scenarios2")]
     name, folders = argv[0], argv[1:]
     res = research(folders, grid_=use, keep_log=use is not None,
                    progress=lambda i, n: print(f"  {i:,} of {n:,} rule sets", flush=True))

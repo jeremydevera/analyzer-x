@@ -51,10 +51,41 @@ def _from_log(test: dict, log: list, start_ms: int, end_ms: int) -> tuple[dict, 
     return out, days
 
 
-def payload(res: dict) -> dict:
+def unfair(cfg: dict, write: dict) -> str:
+    """Why a rule set is NOT a fair test of its data, or "".
+
+    The data holds only the combinations its WRITE RULE let through at some
+    check of the whole run (RCA-2026-09-29-F). A rule looser than that picks
+    only from rows already known to reach the write floor — some of them
+    known from LATER checks than the one choosing — so its figures lean on
+    hindsight. And a target shape the data never held finds nothing."""
+    if not write:
+        return ""
+    why = []
+    if float(cfg["on_winrate"]) < float(write.get("wr", 0)):
+        why.append(f"switches on at {cfg['on_winrate']:g}% but the data holds only "
+                   f"strategies that reached {float(write['wr']):g}% at some point")
+    if int(cfg["min_trades"]) < int(write.get("trades", 0)):
+        why.append(f"asks for {cfg['min_trades']}+ trades but the data holds only "
+                   f"rows that had {int(write['trades'])}+")
+    wt, rt = str(write.get("tp") or ""), str(cfg.get("tp_rule") or "")
+    # "any" over data written with TP >= SL IS "at least" — a fair test under
+    # the wrong name, which the page renames; "<" finds nothing at all
+    if (wt in (">", ">=") and rt == "<") or (wt == ">" and rt in ("any", ">=")):
+        why.append("its target rule reaches rows this data never held (it was "
+                   f"written with TP {wt} SL)")
+    return "; ".join(why)
+
+
+def payload(res: dict, write: dict | None = None) -> dict:
     """Compact and complete: every rule set carries every field (kit F)."""
+    write = write if write is not None else (res.get("totals") or {}).get("write") or {}
     rows = []
+    best_fair = None
     for r in res["rows"]:
+        why = unfair(r["cfg"], write)
+        if not why and (best_fair is None or r["train"]["profit"] > best_fair["train"]["profit"]):
+            best_fair = r
         if r.get("test_log") is not None:
             te, ted = _from_log(r["test"], r["test_log"], res["test"][0], res["end_ms"])
             r = {**r, "test": {**te, "days": ted}}
@@ -63,27 +94,37 @@ def payload(res: dict) -> dict:
                      "tr": [r["train"][k] for k in PARTS], "trd": r["train"]["days"],
                      "te": [r["test"][k] for k in PARTS], "ted": r["test"]["days"],
                      # September trade by trade, when the run kept it (kit B)
-                     "tl": r.get("test_log")})
+                     "tl": r.get("test_log"), "unfair": why})
     t = res["totals"]
     return {"rows": rows, "dials": list(DIALS), "parts": list(PARTS),
             "train": res["train"], "test": res["test"], "end": res["end_ms"],
-            "current": res["current_id"], "best_train": res["best_train_id"],
+            "current": res["current_id"],
+            # THE PICK IS MADE AMONG FAIR TESTS ONLY (RCA-2026-09-29-F)
+            "best_train": (best_fair or {}).get("id") or res["best_train_id"],
+            "write": write,
             "combos": res["combos"], "tested": t["tested"],
             "coins": t.get("coins_by_groups") or {}, "board": t["coins_board"],
             "groups": t.get("groups") or [], "base": 5.0, "lev": 20,
             "strategies": res.get("strategies") or []}
 
 
-def build(res: dict) -> str:
+def build(res: dict, write: dict | None = None) -> str:
     return _HTML.replace("/*__DATA__*/null",
-                         json.dumps(payload(res), separators=(",", ":")))
+                         json.dumps(payload(res, write), separators=(",", ":")))
 
 
 def main(argv=None) -> int:
-    name = (argv or sys.argv[1:])[0]
+    """`<name> [--data <folder>]`: --data reads the write rule from the run's
+    own reports, for a result saved before it recorded one."""
+    argv = list(argv or sys.argv[1:])
+    name, write = argv[0], None
+    if "--data" in argv:
+        folder = Path(argv[argv.index("--data") + 1])
+        rep = next(folder.rglob("replay-report-*.json"))
+        write = json.loads(rep.read_text(encoding="utf-8")).get("write") or {}
     res = json.loads((OUT_DIR / f"research-{name}.json").read_text(encoding="utf-8"))
     path = OUT_DIR / f"research-{name}.html"
-    path.write_text(build(res), encoding="utf-8")
+    path.write_text(build(res, write), encoding="utf-8")
     print(path)
     return 0
 
@@ -145,7 +186,7 @@ tbody tr:hover{background:var(--accent-soft)}tr.click{cursor:pointer}
 tr.mine td:first-child{box-shadow:inset 3px 0 var(--s2)}tr.top td:first-child{box-shadow:inset 3px 0 var(--accent)}
 .id{color:var(--accent)}.muted{color:var(--ink3)}
 .tag{font:600 10.5px var(--sans);border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:1px}
-.tag.mine{background:var(--warn-soft);color:var(--warn)}.tag.top{background:var(--accent-soft);color:var(--accent)}
+.tag.mine{background:var(--warn-soft);color:var(--warn)}.tag.unfair{background:var(--warn-soft);color:var(--loss)}.tag.top{background:var(--accent-soft);color:var(--accent)}
 dialog{border:1px solid var(--rule);border-radius:12px;background:var(--panel);color:var(--ink);padding:18px;width:min(900px,calc(100vw - 32px));max-height:86vh}
 dialog::backdrop{background:rgba(0,0,0,.35)}
 .sum{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--ink2)}.sum b{color:var(--ink);font-family:var(--mono)}
@@ -171,7 +212,7 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
   <label>Max Sep worst dip $<input id="f-dd" type="number" min="0" step="1" placeholder="any"></label>
   <label>Min Sep green days<input id="f-gd" type="number" min="0" step="1" placeholder="any"></label>
   <label>Switch on at %<select id="f-on"><option value="">any</option></select></label>
-  <label>TP rule<select id="f-tp"><option value="">all</option><option value=">">wider than SL</option><option value=">=">at least SL</option><option value="any">no TP rule</option></select></label>
+  <label>TP rule<select id="f-tp"><option value="">all</option><option value=">">wider than SL</option><option value=">=">at least SL</option><option value="<">narrower than SL</option><option value="any">no TP rule</option></select></label>
   <label>Max SL %<select id="f-sl"><option value="">all</option><option value="2">capped at 2%</option><option value="0">no cap</option></select></label>
   <label>Days judged<select id="f-win"><option value="">any</option></select></label>
   <label>Find rule id<input id="f-id" type="text" placeholder="#50B27C00"></label>
@@ -197,10 +238,12 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 const money=(v,sign=true)=>(sign&&v>0?"+":"")+(v<0?"-":"")+"$"+Math.abs(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const P=Object.fromEntries(D.parts.map((p,i)=>[p,i])),C=Object.fromEntries(D.dials.map((d,i)=>[d,i]));
 const state={base:5,te:null,tr:null,wr:null,dd:null,gd:null,on:"",tp:"",sl:"",win:"",id:"",sort:{k:"te_profit",dir:-1},shown:200};
-const TPW={">":"wider than",">=":"at least","any":"any"};
+// "any" over data written with TP >= SL means exactly "at least": say so
+const ANY_IS=D.write&&D.write.tp===">="?"at least":"";
+const TPW={">":"wider than",">=":"at least","<":"narrower than","any":ANY_IS?`${ANY_IS} (no narrower target in this data)`:"any"};
 const k=()=>state.base/D.base;
 const RANK={winrate:"win rate",profit:"profit",trades:"trades"};
-function rulesText(r){const c=r.c;return [`switch on at <b>${c[C.on_winrate]}%+</b>`,`off under <b>${c[C.off_winrate]}%</b>`,`<b>${c[C.min_trades]}+</b> trades`,(c[C.tp_rule]==="any"?`<b>any</b> TP`:`TP <b>${TPW[c[C.tp_rule]]}</b> SL`),(c[C.max_sl]?`SL <b>≤ ${c[C.max_sl]}%</b>`:`<b>no</b> SL cap`),`judged on <b>${c[C.window_days]}</b> days`,`best <b>${RANK[c[C.rank]]}</b> first`,`<b>${c[C.max_per_coin]}</b> per coin`,`<b>${c[C.max_new_per_day]}</b> new a day`,`<b>${c[C.cooldown_days]}</b>-day wait`,c[C.off_streak_live]?`off after <b>${c[C.off_streak_live]}</b> practice losses in a row`:`practice losses never switch off`].map(t=>`<span>${t}</span>`).join("")}
+function rulesText(r){const c=r.c;return [`switch on at <b>${c[C.on_winrate]}%+</b>`,`off under <b>${c[C.off_winrate]}%</b>`,`<b>${c[C.min_trades]}+</b> trades`,(c[C.tp_rule]==="any"&&!ANY_IS?`<b>any</b> TP`:`TP <b>${TPW[c[C.tp_rule]]}</b> SL`),(c[C.max_sl]?`SL <b>≤ ${c[C.max_sl]}%</b>`:`<b>no</b> SL cap`),`judged on <b>${c[C.window_days]}</b> days`,`best <b>${RANK[c[C.rank]]}</b> first`,`<b>${c[C.max_per_coin]}</b> per coin`,`<b>${c[C.max_new_per_day]}</b> new a day`,`<b>${c[C.cooldown_days]}</b>-day wait`,c[C.off_streak_live]?`off after <b>${c[C.off_streak_live]}</b> practice losses in a row`:`practice losses never switch off`].map(t=>`<span>${t}</span>`).join("")}
 function val(r,key){const [part,f]=key.split("_",2).length>1&&(key.startsWith("te_")||key.startsWith("tr_"))?[key.slice(0,2),key.slice(3)]:[null,key];
  if(part&&f==="per_day"){const n=r[part][P.days_n];return n?r[part][P.closed]/n:0}
  if(part){const v=r[part][P[f]];return ["profit","worst_day","max_dd","worst_run"].includes(f)?v*k():v}
@@ -224,8 +267,8 @@ const COLS=[["id","rule",1],["on_winrate","on %"],["off_winrate","off %"],["min_
  ["tr_profit","PROFIT $"],["tr_closed","trades"],["tr_wins","W"],["tr_losses","L"],["tr_winrate","win %"],["tr_worst_run","worst run"],
  ["te_profit","PROFIT $"],["te_closed","trades"],["te_per_day","a day"],["te_wins","W"],["te_losses","L"],["te_winrate","win %"],["te_green_days","green days"],["te_worst_day","worst day"],["te_max_dd","worst dip"],["te_worst_run","worst run"],["te_slots","switched on"],["te_max_open","open at once"]];
 function cell(r,key){const v=val(r,key);
- if(key==="id")return `<td class="l id">#${r.id}${r.id===D.current?'<span class="tag mine">yours</span>':""}${r.id===D.best_train?'<span class="tag top">picked</span>':""}</td>`;
- if(key==="tp_rule")return `<td class="l">${v===">"?"wider":v==="any"?"any":"≥"}</td>`;
+ if(key==="id")return `<td class="l id">#${r.id}${r.id===D.current?'<span class="tag mine">yours</span>':""}${r.id===D.best_train?'<span class="tag top">picked</span>':""}${r.unfair?`<span class="tag unfair" title="${esc(r.unfair)}">not a fair test</span>`:""}</td>`;
+ if(key==="tp_rule")return `<td class="l">${v===">"?"wider":v==="<"?"narrower":v==="any"?(ANY_IS?"≥ (any*)":"any"):"≥"}</td>`;
  if(key==="max_sl")return `<td>${v?`≤ ${v}%`:"none"}</td>`;
  if(key==="lev")return `<td>${v}x</td>`;if(key==="rank")return `<td class="l">${RANK[v]}</td>`;
  if(key==="off_streak_live")return `<td>${v||"—"}</td>`;
@@ -247,10 +290,12 @@ function render(){const F=filtered();const rows=[...F.rows].sort((a,b)=>{const x
 let opened="";
 
 function drawTop(){const best=byId[D.best_train],mine=byId[D.current];
- const hind=D.rows.reduce((m,r)=>r.te[P.profit]>m.te[P.profit]?r:m,D.rows[0]);
+ const fair=D.rows.filter(r=>!r.unfair);
+ const hind=fair.reduce((m,r)=>r.te[P.profit]>m.te[P.profit]?r:m,fair[0]||D.rows[0]);
  const up=best.te[P.profit]-mine.te[P.profit];
  $("verdict").textContent=up>0?`Better rules would have made ${money(best.te[P.profit]*k(),false)} in September, against ${money(mine.te[P.profit]*k(),false)} with yours`:`Your rules held up: ${money(mine.te[P.profit]*k(),false)} in September, the tuned ones ${money(best.te[P.profit]*k(),false)}`;
- $("lede").textContent=`${D.rows.length.toLocaleString()} rule sets were replayed on July and August and the one that made the most there was picked. The September figures are the fair test: that month played no part in picking it.`;
+ const nUnfair=D.rows.length-fair.length;
+ $("lede").textContent=`${D.rows.length.toLocaleString()} rule sets were replayed on July and August and the one that made the most there was picked. The September figures are the fair test: that month played no part in picking it.`+(nUnfair?` ${nUnfair} of them ask for rows this data does not hold (it was collected with ${D.write.wr}%+ at some point, ${D.write.trades}+ trades, TP ${D.write.tp} SL): they are marked "not a fair test", their figures lean on hindsight, and they are never picked.`:"");
  const card=(r,title,cls,sub)=>`<div class="card ${cls}"><h3>${title} · <span class="id">#${r.id}</span></h3><div class="big ${r.te[P.profit]>=0?"pos":"neg"}">${money(r.te[P.profit]*k())}</div><div class="sub">in September · ${r.te[P.closed]} trades, ${r.te[P.wins]} won, ${r.te[P.losses]} lost · worst day ${money(r.te[P.worst_day]*k())}</div><div class="sub">up to <b>${r.te[P.max_open]}</b> trades open at once — <b>${money(r.te[P.max_open]*state.base,false)}</b> of margin tied up at ${money(state.base,false)} each</div><div class="sub">Jul–Aug: ${money(r.tr[P.profit]*k())} over ${r.tr[P.closed]} trades${sub?` · ${sub}`:""}</div><div class="rules">${rulesText(r)}</div></div>`;
  $("cmp").innerHTML=card(best,"Picked on Jul–Aug","best","")+card(mine,"Your rules","","")+card(hind,"Best on September (hindsight)","","picked by looking at September, so not a fair test");
  drawSep(best,mine)}
@@ -275,7 +320,7 @@ function drawSep(a,b){const box=$("c-sep"),svg=box.querySelector("svg");const W=
 function openRule(r){if(!r)return;const part=(key,days,from)=>{let t=0;return days.map((p,i)=>{t+=p*k();return `<tr><td class="l">${dayLabel(from+i*86400000)}</td><td class="${p>0?"pos":p<0?"neg":""}">${money(p*k())}</td><td>${money(t)}</td></tr>`}).join("")};
  const sum=(v,lbl)=>`<div class="sum"><span>${lbl} TOTAL PROFIT <b class="total ${v[P.profit]>=0?"pos":"neg"}">${money(v[P.profit]*k())}</b></span><span>${v[P.closed]} trades · ${v[P.wins]} won · ${v[P.losses]} lost · ${v[P.winrate].toFixed(1)}%</span><span>worst losing run <b>${v[P.worst_run_n]?`${money(v[P.worst_run]*k())} over ${v[P.worst_run_n]}`:"none"}</b></span><span>${v[P.slots]} strategies switched on</span><span>up to <b>${v[P.max_open]}</b> trades open at once (${money(v[P.max_open]*state.base,false)} of margin)</span></div>`;
  $("dlg-body").innerHTML=`<h3 id="dlg-h" style="margin:0"><span class="id">#${r.id}</span>${r.id===D.current?" · your rules":""}${r.id===D.best_train?" · picked on Jul–Aug":""} · ${D.lev}x · ${money(state.base,false)} margin (${money(state.base*D.lev,false)} a trade)</h3>
-  <div class="card"><div class="rules">${rulesText(r)}</div></div>${sum(r.te,"September")}
+  <div class="card"><div class="rules">${rulesText(r)}</div>${r.unfair?`<div class="sub neg"><b>Not a fair test:</b> ${esc(r.unfair)}. Its figures lean on hindsight.</div>`:""}</div>${sum(r.te,"September")}
   <div class="scroll" style="max-height:300px"><table><thead><tr><th class="l">September day</th><th>profit</th><th>running</th></tr></thead><tbody>${part("te",r.ted,D.test[0])}</tbody></table></div>
   ${tradeLog(r)}
   ${sum(r.tr,"Jul–Aug")}<div class="scroll" style="max-height:220px"><table><thead><tr><th class="l">Jul–Aug day</th><th>profit</th><th>running</th></tr></thead><tbody>${part("tr",r.trd,D.train[0])}</tbody></table></div>`;

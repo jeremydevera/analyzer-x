@@ -172,6 +172,80 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-29-F — the 100-scenario page crowned #B52662ED on data that already knew which strategies would do well
+
+**CEO**
+
+* The rule-research page said #B52662ED (switch on at 70%) was the best
+  rule set, at +$2,080.18 in September, and you set up a trading room for
+  it. That figure was inflated, and so were 75 more of the 100 rows.
+* Why: the trade data behind the page only held strategies that reached 80%
+  at some point, September included. A 70% rule could therefore only pick
+  strategies already known to do well later.
+* What stops it now: the data records what it was collected with, and the
+  page marks any rule set looser than that "not a fair test" and never picks
+  it. The fair pick is #47F649E8 (80%, 50+ trades): +$994.75 in September.
+  A new collection (70%+, 20+ trades, every target shape) is running on GitHub.
+
+**DEV**
+
+* `.github/scripts/replay_shard.py` writes a combination only if it passes
+  `WRITE` (`wr=80,trades=15,tp=>=` for run 36495354168) at ANY check of the
+  whole run. `watcher_research.scenarios()` then replayed on_winrate 60 and 70,
+  min_trades 10, and tp_rule "any" over it. `research_page.payload` picked by
+  Jul–Aug profit with no knowledge of `WRITE`, and `replay_collect.merge`
+  did not even carry it into the totals.
+* Invariants broken: **a replay may only test rules at least as strict as
+  the rule that wrote its data**, and **a label names what the data holds**
+  ("any TP" over data written TP ≥ SL is "at least").
+* Guard: `tests/test_research_page.py::test_a_rule_looser_than_its_data_is_never_picked`,
+  `tests/test_the_replay_shard.py::test_a_write_rule_can_keep_every_target_shape`.
+
+**SAW** — the operator asked for SL-greater-than-TP scenarios (*"you can try
+sl greater than tp"*); all 40 came back with **0 trades**, which is what
+exposed that the data's write rule had never been checked.
+
+**TIMELINE**
+
+1. `Sep 28, 2026 ~6:57pm` — replay run 36495354168 writes 77,952 combinations
+   under `wr=80, trades=15, tp=>=, windows=14|30`.
+2. `Sep 29, 2026 2:51pm` — the 100-scenario research replays 60/70/80/90/95%
+   and 10–50 trades over it. Published at 3:11pm
+   (https://claude.ai/artifact/A5FE8PZcbLsHHafhCUuBsZ): "picked" #B52662ED,
+   Jul–Aug +$1,272.98, September +$2,080.18.
+3. `~3:20pm` — the operator picks #DC57174E, #CC8DC54C and #B52662ED as three
+   trading rooms; they go live at 3:46pm (practice only, real money off).
+4. `~5:30pm` — round two (SL > TP) returns 0 trades on all 40 narrower-target
+   scenarios. Counted: the data holds 0 of 77,952 with TP < SL (48,847 equal,
+   29,105 wider). Its report names the write rule: 80% / 15 trades / TP ≥ SL.
+5. Re-scored with the write rule: 76 of 100 rows flagged, 48 fair. Fair pick
+   #47F649E8 (80% / 50+ / TP ≥ SL / 2% cap): Jul–Aug +$1,131.84, September
+   +$994.75. #DC57174E (+$1,057.66) and #CC8DC54C (+$962.61) are fair tests;
+   #B52662ED is not.
+
+**ROOT CAUSE** — the research grid went below the data's write floor, and
+nothing compared a rule set against the rule that wrote its data.
+
+**WHY IT WAS NOT CAUGHT** — every research test checked that a rule set was
+scored correctly on the rows it was given (`test_the_lean_path_gives_what_
+simulate_computes_itself`). None asked whether those were ALL the rows the
+rule could have picked. The write rule lived only inside each shard's report
+file, which the merge dropped, so no code that picked a winner could see it.
+
+**COST** — no money: the #B52662ED room is practice only (real money off),
+and it trades by the live watcher on the live v2 store, not on this data.
+What it cost was a wrong recommendation and a room built on it.
+
+**FIX** — this commit (the merge keeps `write`; `research_page.unfair` marks
+and never picks a looser rule; "any" over TP ≥ SL data is labelled "at
+least"; the shard can write `tp=<` and `tp=any`; the published page is
+corrected in place).
+
+**GUARD** — `tests/test_research_page.py::test_a_rule_looser_than_its_data_is_never_picked`
+and `tests/test_the_replay_shard.py::test_a_write_rule_can_keep_every_target_shape`.
+
+---
+
 ## RCA-2026-09-29-E — the new "reload when the site is updated" check made every tab reload about 10 times a second
 
 **CEO**

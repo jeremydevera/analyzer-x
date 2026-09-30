@@ -616,3 +616,21 @@ def test_a_real_row_you_armed_yourself_is_never_touched(world):
     got = sw.consider(now=NOW)
     assert not [d for d in got["decisions"] if d["action"] == "off"]
     assert world["settings"]["strategy_books"][SLOT] == ["real", "paper"]
+
+
+def test_a_target_narrower_than_the_stop_is_its_own_rule():
+    """Sep 29, 2026: "you can try sl greater than tp"."""
+    import numpy as np
+
+    from tradingagents import watcher_policy as wp
+    from tradingagents import watcher_research as wr_
+
+    cfg = {**wp.DEFAULTS, "tp_rule": "<", "max_sl": 0}
+    row = {"tp": 1.0, "sl": 2.0, "winrate": 95.0, "trades": 30, "profit": 5.0, "gate": "ok"}
+    assert wp.passes_on(row, cfg) == ""
+    assert "not narrower" in wp.passes_on({**row, "tp": 2.0}, cfg)
+    assert "not narrower" in wp.passes_on({**row, "tp": 3.0}, cfg)
+    ok = wr_._tp_ok(np.array([1.0, 2.0, 3.0]), np.array([2.0, 2.0, 2.0]), "<")
+    assert ok.tolist() == [True, False, False]
+    assert wr_.loose([{**wr_.CURRENT, "tp_rule": "<"}, {**wr_.CURRENT, "tp_rule": ">"}])["tp_rule"] == "any"
+    assert len(wr_.scenarios2()) == 120

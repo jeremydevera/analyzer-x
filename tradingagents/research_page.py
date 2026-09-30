@@ -113,17 +113,73 @@ def build(res: dict, write: dict | None = None) -> str:
                          json.dumps(payload(res, write), separators=(",", ":")))
 
 
+LOG_T0_MIN = 1_767_225_600 // 60      # Jan 01, 2026 00:00 UTC, in minutes
+
+
+def build_split(res: dict, out_dir: Path, write: dict | None = None) -> tuple[str, dict]:
+    """The page, with each rule set's September trades in ITS OWN gzip file
+    fetched when its row is opened (Sep 30, 2026: the raw round held
+    10,957,184 September trades, 464,598 in one rule set — no single page
+    can carry them). Returns (html, {published path: local file}).
+
+    A file is {"s": [[id, coin, tf, signal, th, tp, sl], ...], "t": [[s,
+    entry min, exit min, profit x 10,000], ...]}: minutes from Jan 01, 2026
+    (every entry and exit is a whole minute — checked as it is written), the
+    profit exact to the 4 decimals the headline was summed from."""
+    import base64
+    import gzip
+
+    pl = payload(res, write)
+    strategies = res.get("strategies") or []
+    files: dict = {}
+    logs = out_dir / "logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    by_id = {r["id"]: r for r in res["rows"]}
+    for row in pl["rows"]:
+        log = by_id[row["id"]].get("test_log") or []
+        used: dict = {}
+        t = []
+        for si, e, x, p in log:
+            si, e, x = int(si), int(e), int(x)
+            if e % 60_000 or x % 60_000:
+                raise ValueError(f"#{row['id']}: a trade time is not a whole minute ({e}, {x})")
+            j = used.setdefault(si, len(used))
+            t.append([j, e // 60_000 - LOG_T0_MIN, x // 60_000 - LOG_T0_MIN,
+                      int(round(float(p) * 10_000))])
+        s = [strategies[si] for si in sorted(used, key=used.get)]
+        # gzip, then base64 as .txt: an artifact serves .txt and not .gz
+        name = f"logs/{row['id']}.gz.txt"
+        path = logs / f"{row['id']}.gz.txt"
+        path.write_bytes(base64.b64encode(gzip.compress(
+            json.dumps({"s": s, "t": t}, separators=(",", ":")).encode("utf-8"), 9)))
+        files[name] = str(path)
+        row["tl"] = None
+        row["lf"] = name
+        row["ln"] = len(t)
+    pl["strategies"] = []
+    pl["log_t0_min"] = LOG_T0_MIN
+    html = _HTML.replace("/*__DATA__*/null", json.dumps(pl, separators=(",", ":")))
+    return html, files
+
+
 def main(argv=None) -> int:
     """`<name> [--data <folder>]`: --data reads the write rule from the run's
     own reports, for a result saved before it recorded one."""
     argv = list(argv or sys.argv[1:])
     name, write = argv[0], None
+    split = "--split" in argv
     if "--data" in argv:
         folder = Path(argv[argv.index("--data") + 1])
         rep = next(folder.rglob("replay-report-*.json"))
         write = json.loads(rep.read_text(encoding="utf-8")).get("write") or {}
     res = json.loads((OUT_DIR / f"research-{name}.json").read_text(encoding="utf-8"))
     path = OUT_DIR / f"research-{name}.html"
+    if split:
+        html, files = build_split(res, OUT_DIR / f"research-{name}", write)
+        path.write_text(html, encoding="utf-8")
+        (OUT_DIR / f"research-{name}" / "files.json").write_text(json.dumps(files), encoding="utf-8")
+        print(f"{path} + {len(files)} log files")
+        return 0
     path.write_text(build(res, write), encoding="utf-8")
     print(path)
     return 0
@@ -326,7 +382,31 @@ function openRule(r){if(!r)return;const part=(key,days,from)=>{let t=0;return da
   ${sum(r.tr,"Jul–Aug")}<div class="scroll" style="max-height:220px"><table><thead><tr><th class="l">Jul–Aug day</th><th>profit</th><th>running</th></tr></thead><tbody>${part("tr",r.trd,D.train[0])}</tbody></table></div>`;
  $("dlg").showModal()}
 $("dlg-close").onclick=()=>$("dlg").close();
-function tradeLog(r){if(!r.tl)return "";let run=0;const S=D.strategies;
+// ONE FILE PER RULE SET, fetched and unzipped when its row opens (the
+// raw round has up to 464,598 September trades in one rule set), shown 500
+// a page; the TOTAL PROFIT is summed over every trade in the file.
+const LOGS={};
+async function loadLog(r){if(LOGS[r.id])return LOGS[r.id];
+ const res=await fetch(r.lf);if(!res.ok)throw new Error(`the trade file ${r.lf} did not load (HTTP ${res.status})`);
+ const b64=(await res.text()).trim(),bin=atob(b64),bytes=new Uint8Array(bin.length);
+ for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+ const txt=await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+ const j=JSON.parse(txt),T0=D.log_t0_min;
+ const tl=j.t.map(t=>[t[0],(T0+t[1])*60000,(T0+t[2])*60000,t[3]/10000]);
+ return LOGS[r.id]={s:j.s,tl}}
+function fileLog(r,page){const box=$("log-box");if(!box)return;box.innerHTML='<p class="note">loading the trade list…</p>';
+ loadLog(r).then(L=>{const PER=500,n=L.tl.length,pages=Math.max(1,Math.ceil(n/PER)),cur=Math.min(Math.max(1,page),pages);
+  let total=0,w=0;for(const t of L.tl){total+=t[3];if(t[3]>0)w++}
+  let run=0;for(let i=0;i<(cur-1)*PER;i++)run+=L.tl[i][3]*k();
+  const body=L.tl.slice((cur-1)*PER,cur*PER).map((t,i)=>{const s=L.s[t[0]];const p=t[3]*k();run+=p;
+   return `<tr><td>${(cur-1)*PER+i+1}</td><td class="l">${esc(s[1])} ${esc(s[2])} ${esc(s[3])}${s[4]?` ${s[4]}`:""}</td><td>${s[5]}% / ${s[6]}%</td><td class="l">${fmtWhen(t[1])}</td><td class="l">${fmtWhen(t[2])}</td><td class="${p>0?"pos":p<0?"neg":""}">${money(p)}</td><td>${money(run)}</td></tr>`}).join("");
+  box.innerHTML=`<div class="sum"><span>September trade by trade · TOTAL PROFIT <b class="total ${total>=0?"pos":"neg"}">${money(total*k())}</b></span><span>${n.toLocaleString()} trades · ${w.toLocaleString()} won · ${(n-w).toLocaleString()} lost</span></div>
+   <div class="scroll" style="max-height:340px"><table><thead><tr><th>#</th><th class="l">strategy</th><th>TP / SL</th><th class="l">opened</th><th class="l">closed</th><th>profit</th><th>running</th></tr></thead><tbody>${body}</tbody></table></div>
+   ${pages>1?`<div class="sum"><button class="btn" id="lp" type="button" ${cur===1?"disabled":""}>prev 500</button><span>page ${cur} of ${pages.toLocaleString()}</span><button class="btn" id="ln" type="button" ${cur===pages?"disabled":""}>next 500</button></div>`:""}`;
+  const p=$("lp"),q=$("ln");if(p)p.onclick=()=>fileLog(r,cur-1);if(q)q.onclick=()=>fileLog(r,cur+1)})
+ .catch(e=>{box.innerHTML=`<p class="note neg">${esc(String(e.message||e))}</p>`})}
+function tradeLog(r){if(r.lf){setTimeout(()=>fileLog(r,1),0);return '<div id="log-box"></div>'}
+ if(!r.tl)return "";let run=0;const S=D.strategies;
  const body=r.tl.map((t,i)=>{const s=S[t[0]];const p=t[3]*k();run+=p;
   return `<tr><td>${i+1}</td><td class="l">${esc(s[1])} ${esc(s[2])} ${esc(s[3])}${s[4]?` ${s[4]}`:""}</td><td>${s[5]}% / ${s[6]}%</td><td class="l">${fmtWhen(t[1])}</td><td class="l">${fmtWhen(t[2])}</td><td class="${p>0?"pos":p<0?"neg":""}">${money(p)}</td><td>${money(run)}</td></tr>`}).join("");
  const w=r.tl.filter(t=>t[3]>0).length;
@@ -344,7 +424,7 @@ for(const v of [...new Set(D.rows.map(r=>r.c[C.window_days]))].sort((a,b)=>a-b))
 addEventListener("resize",()=>{clearTimeout(window.__rz);window.__rz=setTimeout(render,120)});
 const G={classic:"Classic",preset:"Preset Confluence",sep25:"Sep 25 Strat",sep27ml:"Sep 27 ML"};
 $("prov").innerHTML=`Built on <b>${D.tested.toLocaleString()}</b> strategy combinations tested on GitHub (${Object.entries(D.coins).map(([g,n])=>`${g.split(",").map(x=>G[x]||x).join(" + ")} on <b>${n.toLocaleString()}</b> coins`).join("; ")}), of which <b>${D.combos.toLocaleString()}</b> reached the loosest switch-on rule tried at some midnight. Tuned on checks from <b>${dayLabel(D.train[0])}</b> to <b>${dayLabel(D.train[1])}</b>, with nothing that closed after it; tested from <b>${dayLabel(D.test[0])}</b> to <b>${fmtWhen(D.end)}</b>. Every trade pays the fee both ways, the coin's usual slippage and funding, at ${money(D.base,false)} × ${D.lev}x = ${money(D.base*D.lev,false)} a trade.`;
-$("notes").innerHTML=`How to read it: a rule set is every setting together. Each was replayed on July–August exactly the way the watcher works (every midnight: switch off what fell below its line, switch on what cleared its rules), and the one that made the most there is "Picked". September is the honest grade, because nothing from September was used to choose it. Exits are settled on the strategy's own candles (MEXC keeps only ~30 days of 1-minute candles), and a candle that touched both the target and the stop counts as the stop. The learned groups (Sep 25 Strat, Sep 27 ML) are left out: they were built from these same months, so they would make any rule look better than it is. Your rules can show a slightly different September here than on the replay page: here every strategy's trades were walked from June, so a strategy that was mid-trade on Aug 01 opens and closes its later trades a little differently.<br><br>The trade-by-trade list in each row covers September; July–August, where the rules were tuned, is shown as day totals.<br><br><b>Read these as backtest numbers, not a promise.</b> Every figure is replayed from backtest trades. Your real practice account did much worse than its backtests: rows switched on at 90%+ won 61% of 457 practice trades since Sep 15 (−$138.02). A rule that looks good here still needs a few weeks in the practice account before real money.<br><br>Two filters the standard kit asks for do not apply to this page: a <b>max TP %</b> (a rule set has no single target, only the TP-vs-SL rule and the SL cap, both filterable above), and a <b>last N days</b> window (each rule set was replayed over two fixed stretches; its day-by-day panel shows any slice of September).`;
+$("notes").innerHTML=`How to read it: a rule set is every setting together. Each was replayed on July–August exactly the way the watcher works (every midnight: switch off what fell below its line, switch on what cleared its rules), and the one that made the most there is "Picked". September is the honest grade, because nothing from September was used to choose it. Exits are settled on the strategy's own candles (MEXC keeps only ~30 days of 1-minute candles), and a candle that touched both the target and the stop counts as the stop. The learned groups (Sep 25 Strat, Sep 27 ML) are left out: they were built from these same months, so they would make any rule look better than it is. Your rules can show a slightly different September here than on the replay page: here every strategy's trades were walked from June, so a strategy that was mid-trade on Aug 01 opens and closes its later trades a little differently.<br><br>${D.write&&D.write.wr?`<b>What this data can and cannot see.</b> It was collected keeping only strategies that, at some midnight, won ${D.write.wr}%+ over ${D.write.trades}+ trades AND were in profit with a stored cost under 20% of their target. A raw rule would also switch on strategies that never met those two extra conditions; they are not in this data, so rule sets whose target is narrower than the stop — the ones most often at 70%+ and still losing money — probably look better here than they will trade.<br><br>`:""}The trade-by-trade list in each row covers September; July–August, where the rules were tuned, is shown as day totals.<br><br><b>Read these as backtest numbers, not a promise.</b> Every figure is replayed from backtest trades. Your real practice account did much worse than its backtests: rows switched on at 90%+ won 61% of 457 practice trades since Sep 15 (−$138.02). A rule that looks good here still needs a few weeks in the practice account before real money.<br><br>Two filters the standard kit asks for do not apply to this page: a <b>max TP %</b> (a rule set has no single target, only the TP-vs-SL rule and the SL cap, both filterable above), and a <b>last N days</b> window (each rule set was replayed over two fixed stretches; its day-by-day panel shows any slice of September).`;
 render();
 </script>
 """

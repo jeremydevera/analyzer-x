@@ -245,3 +245,4 @@ static/bt/*
 !static/bt/README.txt
 /*.xlsx
 .DS_Store
+.artifact-tmp/

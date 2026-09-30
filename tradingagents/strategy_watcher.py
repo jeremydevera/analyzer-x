@@ -122,7 +122,7 @@ def _write(d: dict) -> None:
 # were in force (label-must-match-data).
 LIVE_RULES = ("on_winrate", "off_winrate", "min_trades", "tp_rule",
               "max_sl", "profit_floor", "max_slots", "max_per_coin",
-              "max_new_per_day", "cooldown_days", "fresh_hours", "rank")
+              "max_new_per_day", "cooldown_days", "fresh_hours", "rank", "raw")
 
 
 def store_window_days() -> int:
@@ -309,6 +309,16 @@ def decisions_page(page: int = 1, per: int = PER_PAGE) -> dict:
 def _candidates(cfg: dict, now: float) -> dict:
     from tradingagents import watcher_candidates as wc
 
+    # a fresh order-book memory for each switch-on pass
+    _PASS_FX["fx"] = _PassFx()
+    if cfg.get("raw"):
+        return wc.raw_candidates(cfg)
+    # NO LIMIT ON THE LIST EITHER when there is none on the picks: stopping
+    # at 5,000 left "rows ranked below it were not examined" (#B52662ED,
+    # Sep 29, 2026 4:18pm)
+    if not int(cfg.get("max_new_per_day") or 0) and not int(cfg.get("max_slots") or 0):
+        return wc.fresh_candidates(cfg, now=now, limit=0)
+
     return wc.fresh_candidates(cfg, now=now)
 
 
@@ -376,11 +386,56 @@ def _register(key: str, spec: dict, persist: bool = True) -> str:
     return got
 
 
+class _PassFx:
+    """The MEXC module for ONE switch-on pass, with each coin's order book
+    read ONCE and reused (Sep 30, 2026). With no limit a pass checks every
+    row that passes — 5,000+ for #B52662ED — and edge_check reads the book
+    for each: 5,000 calls in a burst is how Aug 19, 2026's 166 `code=510`
+    refusals happened. The venue is asked once per coin, a little apart."""
+
+    TTL_S = 600
+    GAP_S = 0.2
+
+    def __init__(self):
+        from tradingagents.dataflows import mexc_futures as fx
+
+        self._fx, self._book, self._cost = fx, {}, {}
+
+    def __getattr__(self, name):
+        return getattr(self._fx, name)
+
+    def _fresh(self, store, key):
+        hit = store.get(key)
+        return hit if hit and time.time() - hit[0] < self.TTL_S else None
+
+    def order_book(self, symbol, *a, **k):
+        hit = self._fresh(self._book, symbol)
+        if hit:
+            return hit[1]
+        time.sleep(self.GAP_S)
+        got = self._fx.order_book(symbol, *a, **k)
+        self._book[symbol] = (time.time(), got)
+        return got
+
+    def book_cost(self, symbol, notional_usd=200.0):
+        key = (symbol, round(float(notional_usd), 2))
+        hit = self._fresh(self._cost, key)
+        if hit:
+            return hit[1]
+        time.sleep(self.GAP_S)
+        got = self._fx.book_cost(symbol, notional_usd)
+        self._cost[key] = (time.time(), got)
+        return got
+
+
+_PASS_FX: dict = {"fx": None}
+
+
 def _edge(key: str, symbol: str) -> dict:
     from tradingagents import auto_trader as at
 
     try:
-        return at.edge_check(key, symbol, MARGIN)
+        return at.edge_check(key, symbol, MARGIN, fx=_PASS_FX["fx"])
     except Exception as exc:                                   # noqa: BLE001
         return {"verdict": "unknown", "reason": f"{type(exc).__name__}: {exc}"}
 
@@ -671,7 +726,11 @@ def _try_picks(picks, now, st, act, out, settings, ws, arm, refused) -> None:
             refused.add(r["id"])
             continue
         try:
-            edge = _edge(key, sym)
+            # RAW deploys what the table says; the runner still checks the
+            # cost at the moment of every trade (gate_blocked), so no order
+            # goes out on a contract its edge cannot survive (rule 12)
+            edge = ({"verdict": "ok", "reason": "raw: checked at each trade"}
+                    if st.get("cfg", {}).get("raw") else _edge(key, sym))
         finally:
             if reg == "in memory":
                 # a PREVIEW recipe must not outlive its check: left in memory
@@ -709,7 +768,12 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     # tried — up to 5 rounds, each over what is still untried.
     for _round in range(5):
         taken = running + [{"id": m["id"], "coin": m["coin"]} for _, _, m in arm]
-        room_cfg = {**cfg, "max_new_per_day": max(0, int(cfg["max_new_per_day"]) - len(arm))}
+        # 0 is NO LIMIT, so a used-up day must stop here rather than turn
+        # into 0 and mean "unlimited" (found building "no limit", Sep 30, 2026)
+        per_day = int(cfg["max_new_per_day"])
+        if per_day and len(arm) >= per_day:
+            break
+        room_cfg = {**cfg, "max_new_per_day": (per_day - len(arm)) if per_day else 0}
         picks = wp.pick([r for r in rows if r["id"] not in refused], taken, cooling, now,
                         room_cfg)
         if not picks:
@@ -734,12 +798,14 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     return ""
 
 
-def _on_due(now: float, last: float) -> bool:
-    """Once per local day, at or after ON_HOUR."""
+def _on_due(now: float, last: float, raw: bool = False) -> bool:
+    """Once per local day, at or after ON_HOUR — any hour when RAW: the noon
+    rule existed for the switch-on cost check (stock books are wide before
+    the open), and raw leaves that check to the runner at each trade."""
     import datetime as _dt
 
     here = _dt.datetime.fromtimestamp(now)
-    if here.hour < ON_HOUR:
+    if here.hour < ON_HOUR and not raw:
         return False
     return not last or _dt.date.fromtimestamp(last) < here.date()
 
@@ -775,7 +841,7 @@ def consider(*, now: float | None = None) -> dict:
         except Exception as exc:                               # noqa: BLE001
             st["why"] = f"the switch-off check failed: {type(exc).__name__}: {str(exc)[:160]}"
         st["practice"] = _practice_now(now, cfg)
-    due_on = _on_due(now, float(st.get("last_on_pass") or 0))
+    due_on = _on_due(now, float(st.get("last_on_pass") or 0), bool(cfg.get("raw")))
     tried = now - float(st.get("last_on_try") or 0) >= RETRY_S
     if due_on and tried:
         st["last_on_try"] = now

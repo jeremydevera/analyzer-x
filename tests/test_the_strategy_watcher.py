@@ -634,3 +634,116 @@ def test_a_target_narrower_than_the_stop_is_its_own_rule():
     assert ok.tolist() == [True, False, False]
     assert wr_.loose([{**wr_.CURRENT, "tp_rule": "<"}, {**wr_.CURRENT, "tp_rule": ">"}])["tp_rule"] == "any"
     assert len(wr_.scenarios2()) == 120
+
+
+# ------------------------------------------------------------------------
+# NO LIMIT (operator, Sep 30, 2026: "i dont want a limit remove it", "if its
+# millions then deploy all i dont care"). #B52662ED ran 7 rows while 5,000+
+# passed its rules, because the day allowed 20 and the list stopped at 5,000.
+
+def test_zero_means_no_limit_on_the_day_the_total_or_a_coin():
+    from tradingagents import watcher_policy as wp
+
+    cfg = {**wp.DEFAULTS, "max_new_per_day": 0, "max_slots": 0, "max_per_coin": 0}
+    cands = [{**R6, "id": f"X{i:04d}", "coin": "GPNSTOCK"} for i in range(250)]
+    got = wp.pick(cands, [], {}, NOW, cfg)
+    assert len(got) == 250, "every row that passes, all on one coin"
+    capped = wp.pick(cands, [], {}, NOW, dict(wp.DEFAULTS))
+    assert len(capped) == 3, "the old defaults still mean what they said"
+
+
+def test_with_no_limit_the_whole_list_is_read(monkeypatch):
+    from tradingagents import watcher_candidates as wc
+
+    pages = []
+
+    def page(cfg, limit, offset):
+        pages.append(offset)
+        n = 12_345 - offset
+        return [{"coin": "X", "tf": "1h", "signal": "s", "th": 0, "sl": 1, "tp": 2}] * max(0, min(limit, n))
+
+    monkeypatch.setattr(wc, "_index_page", page)
+    got = wc._index_rows({}, 0)
+    assert len(got) == 12_345 and pages == [0, 5000, 10000]
+
+
+def test_one_order_book_read_per_coin_per_pass(monkeypatch):
+    calls = []
+
+    class FX:
+        def order_book(self, symbol):
+            calls.append(("book", symbol))
+            return {"asks": [], "bids": []}
+
+        def book_cost(self, symbol, notional_usd=200.0):
+            calls.append(("cost", symbol))
+            return {"spread": 0.001}
+
+    f = sw._PassFx()
+    f._fx = FX()
+    monkeypatch.setattr(sw.time, "sleep", lambda s: None)
+    for _ in range(50):
+        f.book_cost("VUG_USDT", 100.0)
+        f.order_book("VUG_USDT")
+    f.book_cost("XLI_USDT", 100.0)
+    assert calls == [("cost", "VUG_USDT"), ("book", "VUG_USDT"), ("cost", "XLI_USDT")]
+
+
+def test_every_new_room_starts_with_no_limit():
+    from tradingagents import profiles
+
+    for p in profiles.BUILTIN:
+        if p["rules"]:
+            assert (p["rules"]["max_new_per_day"], p["rules"]["max_slots"],
+                    p["rules"]["max_per_coin"]) == (0, 0, 0), p["id"]
+
+
+def test_raw_is_the_criteria_and_nothing_else():
+    """Sep 30, 2026: "i want raw output, dont put any limit, you only need to
+    serach a criteria in the table and deploy it"."""
+    from tradingagents import watcher_policy as wp
+
+    cfg = {**wp.DEFAULTS, "raw": True, "on_winrate": 70.0, "min_trades": 50,
+           "tp_rule": ">", "max_sl": 2.0}
+    row = {"tp": 2.0, "sl": 1.5, "winrate": 71.0, "trades": 55, "profit": -3.0, "gate": "warn"}
+    assert wp.passes_on(row, cfg) == "", "a loss and a warned cost do not stop raw"
+    assert wp.passes_on({**row, "winrate": 69.9}, cfg)
+    assert wp.passes_on({**row, "trades": 49}, cfg)
+    assert wp.passes_on({**row, "tp": 1.5}, cfg)
+    assert wp.passes_on({**row, "sl": 2.5, "tp": 3.0}, cfg)
+    cands = [{**R6, **row, "id": f"R{i}", "coin": "VUG"} for i in range(40)]
+    assert len(wp.pick(cands, [], {f"R{i}": NOW for i in range(40)}, NOW, cfg)) == 40, \
+        "no wait, no daily cap, no per-coin cap"
+
+
+def test_raw_deploys_every_match_without_the_cost_pre_check(world, monkeypatch):
+    many = [{**R6, "id": f"RAW{i:03d}", "coin": f"C{i}", "gate": "warn", "profit": -1.0}
+            for i in range(30)]
+    world["cands"] = many
+    world["edge"] = {f"C{i}_USDT": "block" for i in range(30)}   # would refuse all
+    st = sw._read()
+    st["cfg"] = {"raw": True}
+    sw._write(st)
+    got = sw.consider(now=NOW)
+    assert sum(d["action"] == "on" for d in got["decisions"]) == 30
+    assert len(world["settings"]["watcher_slots"]) == 30
+
+
+def test_a_used_up_day_stops_it_never_turns_into_no_limit(world):
+    """0 means no limit, so 20 - 20 must not become it."""
+    world["cands"] = [{**R6, "id": f"D{i:03d}", "coin": f"C{i}"} for i in range(60)]
+    st = sw._read()
+    st["cfg"] = {"max_new_per_day": 20, "max_per_coin": 3, "max_slots": 100}
+    sw._write(st)
+    got = sw.consider(now=NOW)
+    assert sum(d["action"] == "on" for d in got["decisions"]) == 20
+
+
+def test_raw_searches_at_any_hour():
+    import datetime as dt
+
+    morning = dt.datetime(2026, 9, 30, 9, 21).timestamp()
+    yesterday = dt.datetime(2026, 9, 29, 16, 18).timestamp()
+    assert not sw._on_due(morning, yesterday), "the old rule waited for noon"
+    assert sw._on_due(morning, yesterday, raw=True)
+    assert not sw._on_due(morning, morning - 60, raw=True), "still once a day"

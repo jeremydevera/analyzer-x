@@ -137,7 +137,8 @@ def test_the_index_is_asked_from_below_the_line():
     import inspect
 
     assert wc.NOMINATE_BELOW >= 5
-    assert "NOMINATE_BELOW" in inspect.getsource(wc._index_rows)
+    # the query moved into _index_page when the list went page by page
+    assert "NOMINATE_BELOW" in inspect.getsource(wc._index_page)
 
 
 def test_the_last_candle_is_read_from_the_tail_not_the_whole_file():

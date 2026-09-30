@@ -29,15 +29,32 @@ DAY_MS = 86_400_000
 NOMINATE_BELOW = 10.0
 
 
+PAGE = 5000
+RAW_BUDGET_S = 900.0
+
+
 def _index_rows(cfg: dict, limit: int) -> list[dict]:
+    """`limit` 0 = every nominee: the index is read page by page to its end."""
+    if not limit:
+        out: list = []
+        while True:
+            got = _index_page(cfg, PAGE, len(out))
+            out += got
+            if len(got) < PAGE:
+                return out
+    return _index_page(cfg, limit, 0)
+
+
+def _index_page(cfg: dict, limit: int, offset: int) -> list[dict]:
     """The v2 index's nominees: flat rows at or over (the floors minus
     NOMINATE_BELOW), best win rate first. TP >= SL is asked of the index; a
     strict TP > SL is applied after, on the fresh row."""
     from tradingagents import rows_index as ri
 
     got = ri.query(db_path=stores.V2.rows_db, sort="winrate", desc=True,
-                   limit=limit, min_trades=int(cfg["min_trades"]),
-                   min_winrate=max(0.0, float(cfg["on_winrate"]) - NOMINATE_BELOW),
+                   limit=limit, offset=offset, min_trades=int(cfg["min_trades"]),
+                   min_winrate=(float(cfg["on_winrate"]) if cfg.get("_at_line")
+                                else max(0.0, float(cfg["on_winrate"]) - NOMINATE_BELOW)),
                    tp_over_sl=True, sizing="flat",
                    max_sl=float(cfg.get("max_sl") or 0))
     return list(got.get("rows") or [])
@@ -122,6 +139,32 @@ def _fresh(coin: str, tf: str, r: dict, last_ms: float) -> dict:
             "measured_ms": last_ms}
 
 
+def raw_candidates(cfg: dict) -> dict:
+    """RAW: every Backtest v2 row that meets the criteria, straight from the
+    table — asked AT the line (no nominating from below), read to its end,
+    the table's own figures (Sep 30, 2026: "you only need to serach a
+    criteria in the table and deploy it")."""
+    from tradingagents import rows_index as ri
+
+    try:
+        got = []
+        # a background search may take its time (15 min), the screens' 20 s
+        # budget is theirs
+        with ri.using_budget(RAW_BUDGET_S):
+            while True:
+                page = _index_page({**cfg, "_at_line": True}, PAGE, len(got))
+                got += page
+                if len(page) < PAGE:
+                    break
+    except Exception as exc:                                   # noqa: BLE001
+        return {"rows": [], "asked": 0, "stale": 0, "gone": 0, "not_ready": True,
+                "why": f"the Backtest v2 list could not be read yet "
+                       f"({type(exc).__name__}: {str(exc)[:160]}) — asking again later"}
+    rows = [_fresh(r["coin"], r["tf"], r, 0.0) for r in got]
+    return {"rows": rows, "asked": len(got), "stale": 0, "gone": 0,
+            "why": f"{len(rows):,} row(s) in the Backtest v2 table meet the criteria"}
+
+
 def fresh_candidates(cfg: dict, *, now: float, limit: int = 5000) -> dict:
     """{"rows", "asked", "stale", "gone", "why"}: the index's nominees, each
     replaced by its pair file's current figures. Each pair file is read once."""
@@ -152,7 +195,7 @@ def fresh_candidates(cfg: dict, *, now: float, limit: int = 5000) -> dict:
                 gone += 1
                 continue
             rows.append(_fresh(coin, tf, got, last))
-    capped = len(nominees) >= limit
+    capped = bool(limit) and len(nominees) >= limit
     why = (f"{len(rows):,} candidate(s) from {len(nominees):,} nominated"
            + (f" (the list STOPPED at {limit:,} — rows ranked below it were not "
               f"examined)" if capped else "") + " · "

@@ -25,6 +25,12 @@ MAIN = "main"
 HOME = Path(os.path.expanduser("~/.tradingagents"))
 _ID = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 
+# NO LIMIT ON HOW MANY (operator, Sep 30, 2026: "i dont want a limit remove
+# it"): 0 = unlimited for the day, the total and per coin.
+NO_LIMIT = {"max_new_per_day": 0, "max_slots": 0, "max_per_coin": 0,
+            # ...and RAW: the criteria and nothing else ("i want raw output")
+            "raw": True}
+
 # The four rooms (operator, Sep 29, 2026). `rules` seeds a profile's watcher
 # the first time it runs: the three rule sets from the 100-scenario research
 # (https://claude.ai/artifact/A5FE8PZcbLsHHafhCUuBsZ), Main keeps its own.
@@ -32,13 +38,13 @@ BUILTIN = [
     {"id": MAIN, "name": "Main", "rules": None},
     {"id": "DC57174E", "name": "#DC57174E",
      "rules": {"on_winrate": 80.0, "off_winrate": 80.0, "min_trades": 50,
-               "tp_rule": ">", "max_sl": 2.0}},
+               "tp_rule": ">", "max_sl": 2.0, **NO_LIMIT}},
     {"id": "CC8DC54C", "name": "#CC8DC54C",
      "rules": {"on_winrate": 80.0, "off_winrate": 80.0, "min_trades": 40,
-               "tp_rule": ">", "max_sl": 2.0}},
+               "tp_rule": ">", "max_sl": 2.0, **NO_LIMIT}},
     {"id": "B52662ED", "name": "#B52662ED",
      "rules": {"on_winrate": 70.0, "off_winrate": 70.0, "min_trades": 50,
-               "tp_rule": ">", "max_sl": 2.0}},
+               "tp_rule": ">", "max_sl": 2.0, **NO_LIMIT}},
 ]
 
 _CURRENT: contextvars.ContextVar[str] = contextvars.ContextVar(

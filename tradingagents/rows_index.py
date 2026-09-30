@@ -503,6 +503,24 @@ def _open(readonly: bool = False, same_thread: bool = True, db_path=None):
         con.close()
 
 
+# A LONGER BUDGET FOR ONE CALLER, never for everyone: the watcher's raw
+# search (#B52662ED at 70% / 50+, Sep 30, 2026) ran past the screen's 20 s,
+# and raising QUERY_BUDGET_S would let a slow screen query hold the disk too.
+# A ContextVar, like using_db: it covers this thread's calls only.
+import contextvars as _cv
+
+_BUDGET_OVERRIDE: "_cv.ContextVar[float | None]" = _cv.ContextVar("rows_budget", default=None)
+
+
+@contextlib.contextmanager
+def using_budget(seconds: float):
+    tok = _BUDGET_OVERRIDE.set(float(seconds))
+    try:
+        yield
+    finally:
+        _BUDGET_OVERRIDE.reset(tok)
+
+
 def _budgeted(con, seconds=None):
     """Abort this connection's work after `seconds` of wall clock.
 
@@ -511,7 +529,8 @@ def _budgeted(con, seconds=None):
     a fraction of a millisecond of work, so the check is free and the deadline
     is honoured to well under a second.
     """
-    budget = QUERY_BUDGET_S if seconds is None else seconds
+    over = _BUDGET_OVERRIDE.get()
+    budget = (over if over is not None else QUERY_BUDGET_S) if seconds is None else seconds
     deadline = time.monotonic() + float(budget)
 
     def _tick():

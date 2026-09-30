@@ -21,7 +21,14 @@ DEFAULTS = {"on_winrate": 90.0, "off_winrate": 90.0, "min_trades": 20,
             # criteria for promotion and demotion"). The defaults are the
             # operator's rules exactly: judged on 30 days, ranked by win rate,
             # the practice record never switches a row off.
-            "window_days": 30, "rank": "winrate", "off_streak_live": 0}
+            "window_days": 30, "rank": "winrate", "off_streak_live": 0,
+            # RAW (operator, Sep 30, 2026: "i want raw output, dont put any
+            # limit, you only need to serach a criteria in the table and
+            # deploy it in my strategies deployed that's it"): the criteria
+            # alone — win rate, trades, TP vs SL, the SL cap — and nothing
+            # the watcher added (profit floor, stored cost check, limits,
+            # waits). Off for the replay/research, which measured the rest.
+            "raw": False}
 
 
 def break_even(win_usd: float, loss_usd: float) -> float:
@@ -46,6 +53,8 @@ def passes_on(row: dict, cfg: dict) -> str:
         return f"win rate {row['winrate']:g}% is under {cfg['on_winrate']:g}%"
     if int(row["trades"]) < cfg["min_trades"]:
         return f"{row['trades']} trades in 30 days, fewer than {cfg['min_trades']}"
+    if cfg.get("raw"):
+        return ""
     if float(row["profit"]) <= cfg["profit_floor"]:
         return f"profit {row['profit']:+.2f} is not above {cfg['profit_floor']:+.2f}"
     if str(row.get("gate") or "") != "ok":
@@ -54,12 +63,20 @@ def passes_on(row: dict, cfg: dict) -> str:
 
 
 def pick(candidates, running, cooling, now, cfg) -> list:
+    """The candidates to switch on now. `max_new_per_day`, `max_slots` and
+    `max_per_coin` of 0 mean NO LIMIT (operator, Sep 30, 2026: "i dont want a
+    limit remove it" — "if its millions then deploy all i dont care")."""
     held = {r["id"] for r in running}
     per_coin: dict = {}
     for r in running:
         per_coin[r["coin"]] = per_coin.get(r["coin"], 0) + 1
-    room = max(0, min(cfg["max_new_per_day"], cfg["max_slots"] - len(running)))
-    wait = cfg["cooldown_days"] * 86400
+    big = float("inf")
+    raw = bool(cfg.get("raw"))
+    per_day = big if raw else (int(cfg["max_new_per_day"]) or big)
+    slots = big if raw else (int(cfg["max_slots"]) or big)
+    coin_cap = big if raw else (int(cfg["max_per_coin"]) or big)
+    room = max(0, min(per_day, slots - len(running)))
+    wait = 0 if cfg.get("raw") else cfg["cooldown_days"] * 86400
     out = []
     # which candidate goes first when there is not room for all of them
     by = cfg.get("rank", "winrate")
@@ -77,7 +94,7 @@ def pick(candidates, running, cooling, now, cfg) -> list:
             continue
         if now - float(cooling.get(row["id"], -1e18)) < wait:
             continue
-        if per_coin.get(row["coin"], 0) >= cfg["max_per_coin"]:
+        if per_coin.get(row["coin"], 0) >= coin_cap:
             continue
         per_coin[row["coin"]] = per_coin.get(row["coin"], 0) + 1
         held.add(row["id"])

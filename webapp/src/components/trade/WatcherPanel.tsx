@@ -67,8 +67,13 @@ export function rules(c: Watcher["cfg"], days: number, live = false): string[] {
     `${c.min_trades}+ trades`,
     c.tp_rule === "any" ? "any TP" : `TP ${c.tp_rule === ">" ? "wider than" : c.tp_rule === "<" ? "narrower than" : "at least"} SL`,
     ...(c.max_sl ? [`SL no wider than ${c.max_sl}%`] : []),
-    `up to ${c.max_slots} at once · ${c.max_per_coin} per coin · ${c.max_new_per_day} new a day`,
-    `${c.cooldown_days}-day wait after a switch-off`,
+    // RAW (Sep 30, 2026: "i want raw output, dont put any limit"): the
+    // criteria above and nothing else
+    ...(c.raw ? ["every matching row in the Backtest v2 table, no limit"] : [
+      [c.max_slots ? `up to ${c.max_slots} at once` : "no limit at once",
+       c.max_per_coin ? `${c.max_per_coin} per coin` : "no limit per coin",
+       c.max_new_per_day ? `${c.max_new_per_day} new a day` : "no limit a day"].join(" · "),
+      `${c.cooldown_days}-day wait after a switch-off`]),
     "judged on the DEMO 30 DAYS figure",
     live ? "practice AND real money" : "practice account only",
   ];

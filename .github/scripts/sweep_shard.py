@@ -959,7 +959,10 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                                 slippage=slip,
                                 dirs=dirs, tp=tp, sl=sl, liq_move_pct=liq,
                                 funding=fund, keep_log=False, start_at=warm,
-                                fine=fine)
+                                fine=fine,
+                                # the row's last 15 days too (br.RECENT_DAYS)
+                                recent_from_ms=(int(ts[-1]) - br.RECENT_DAYS * 86_400_000
+                                                if len(ts) else None))
                         except Exception:
                             continue
                         # the engine's OWN resume state, which is what
@@ -1032,7 +1035,9 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                         "last_ms": int(ts[-1]) if len(ts) else 0,
                         "bars": nbars, "monthly": {k: round(v, 2) for k, v in m.items()},
                         "cost_of_tp": round(rt / tp * 100, 1), "rt": round(rt * 100, 4),
-                        "gate": "warn" if rt / tp >= .2 else "ok"}) + "\n")
+                        "gate": "warn" if rt / tp >= .2 else "ok",
+                        # v2: trades/wins/profit of the last 15 days
+                        **br.recent_fields(r)}) + "\n")
                     kept += 1
         at.STRATEGY_SPECS.pop(key, None)
         report("testing", i, n, rows=rows_so_far + kept, span=span, span_ms=span_ms,

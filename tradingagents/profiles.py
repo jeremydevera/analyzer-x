@@ -46,6 +46,35 @@ BUILTIN = [
      "rules": {"on_winrate": 70.0, "off_winrate": 70.0, "min_trades": 50,
                "tp_rule": ">", "max_sl": 2.0, **NO_LIMIT}},
 ]
+# THE THREE ABOVE ARE RETIRED (operator, Sep 30, 2026: "undeploy my current
+# live then deploy the table you mentined"): every row switched off and the
+# watcher OFF, but the room stays — its runner finishes the practice trades
+# still open, and its record and calendar are kept to compare against.
+for _p in BUILTIN[1:]:
+    _p["retired"] = True
+
+# ...AND THE TABLE, one room per rule set, named by the rule set's id: the
+# round-five research (https://claude.ai/artifact/UUNAie322TPyjJU8MaZtQo,
+# 144 rule sets over 4,585,414 strategies, picked on Jul 01-Aug 31 and graded
+# on Sep 01-Sep 30, 2026). Every rule of each is copied from its row; a
+# 15-day window reads each row's own measured t15/w15.
+def _rule(window: int, line: float, trades: int) -> dict:
+    return {"on_winrate": line, "off_winrate": line, "min_trades": trades,
+            "tp_rule": ">", "max_sl": 2.0, "window_days": window, **NO_LIMIT}
+
+
+# Main first, then the table, then the retired rooms — the order of the tabs
+BUILTIN[1:1] = [
+    {"id": "55D32617", "name": "#55D32617", "rules": _rule(15, 70.0, 50)},
+    {"id": "4FC03172", "name": "#4FC03172", "rules": _rule(30, 70.0, 50)},
+    {"id": "B2404C0B", "name": "#B2404C0B", "rules": _rule(15, 75.0, 50)},
+    {"id": "6B08FF64", "name": "#6B08FF64", "rules": _rule(15, 80.0, 30)},
+    {"id": "CC94D9FB", "name": "#CC94D9FB", "rules": _rule(30, 80.0, 30)},
+]
+
+
+def retired(pid: str) -> bool:
+    return bool((get(pid) or {}).get("retired"))
 
 _CURRENT: contextvars.ContextVar[str] = contextvars.ContextVar(
     "ta_profile", default=os.environ.get("TA_PROFILE") or MAIN)

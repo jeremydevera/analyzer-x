@@ -205,8 +205,8 @@ def test_the_screen_offers_exactly_the_servers_rooms():
     import re
 
     api_ts = _src("webapp/src/lib/api.ts")
-    block = api_ts[api_ts.index("export const PROFILES = ["):]
-    block = block[:block.index("] as const;")]
+    block = api_ts[api_ts.index("export const PROFILES"):]
+    block = block[:block.index("];")]
     assert re.findall(r'id: "([^"]+)"', block) == profiles.ids()
 
 
@@ -260,10 +260,14 @@ def test_the_tab_i_reads_each_rooms_own_rules(home, monkeypatch):
     monkeypatch.setattr(sw, "LOG", home / "strategy_watcher.jsonl")
     got = {r["id"]: r for r in TestClient(api.app).get("/api/trade/profiles").json()["profiles"]}
     assert list(got) == profiles.ids()
-    b = got["B52662ED"]
+    # the table's rooms (Sep 30, 2026): #55D32617 judges on 15 days
+    b = got["55D32617"]
     assert (b["cfg"]["on_winrate"], b["cfg"]["min_trades"], b["cfg"]["max_sl"]) == (70.0, 50, 2.0)
+    assert b["window_days"] == 15 and b["cfg"]["window_days"] == 15
     assert b["mode"] == "act" and b["live"] is False
-    assert got["DC57174E"]["cfg"]["on_winrate"] == 80.0 and got["DC57174E"]["cfg"]["min_trades"] == 50
+    assert got["CC94D9FB"]["cfg"]["on_winrate"] == 80.0 and got["CC94D9FB"]["window_days"] == 30
+    # ...and the rooms before it are retired: their watcher switches nothing on
+    assert got["B52662ED"]["mode"] == "off"
 
 
 def test_the_popup_and_the_panel_say_the_rules_with_one_function():

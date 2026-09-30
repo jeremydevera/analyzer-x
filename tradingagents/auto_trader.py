@@ -3397,7 +3397,8 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                       start_at: int = 0,
                       slices: list | None = None,
                       sig_idx=None,
-                      fine: tuple | None = None) -> dict:
+                      fine: tuple | None = None,
+                      recent_from_ms: int | None = None) -> dict:
     """Run one strategy's exact live rules over a candle history.
 
     Same engine as the 13-month studies: signal at bar close, enter next bar
@@ -3447,6 +3448,14 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     stopped out at Sep 16, 2026 7:28am in the practice account and the hour
     walk said 7:00am -- this is the fix. ``None`` is byte-identical to before
     (tests/test_minute_exact_exits.py).
+
+    ``recent_from_ms`` also counts the trades that CLOSED at or after that
+    instant — ``recent: {trades, wins, profit}`` — by the same exit clock the
+    trade log prints (the minute when the minutes settled it, else the exit
+    bar's open). Backtest v2 passes its last candle minus 15 days, so a room
+    that judges rows on their last 15 days (#55D32617, Sep 30, 2026) reads a
+    measured count, never one estimated from the 30-day totals. ``None``
+    leaves the result exactly as before.
     """
     if slices is not None:
         if not slices:
@@ -3518,6 +3527,10 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
         _fine_h = _np.asarray(fine[1], dtype="float64")
         _fine_l = _np.asarray(fine[2], dtype="float64")
     n_unclear = 0
+    rec_n = rec_w = 0
+    rec_p = 0.0
+    _rec_ms = (df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
+               if recent_from_ms is not None else None)
     # Bar timestamps in EPOCH MILLISECONDS, converted through datetime64[ms]
     # rather than by dividing a raw int64. MEXC's frames come back as
     # datetime64[s], so `astype("int64") // 1_000_000` read 1,754 instead of
@@ -3910,6 +3923,11 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
         trades += 1
         wins += pnl > 0
         profit += pnl
+        if _rec_ms is not None and (int(_exit_min) if _exit_min is not None
+                                    else int(_rec_ms[j])) >= recent_from_ms:
+            rec_n += 1
+            rec_w += pnl > 0
+            rec_p += pnl
         worst_trade = min(worst_trade, pnl)
         equity += pnl
         peak = max(peak, equity)
@@ -3987,7 +4005,10 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             "max_dd": round(max_dd, 2), "bars": n, "days": days, "log": log,
             "monthly": monthly, "months_green": green,
             "months_total": len(monthly),
-            "worst_month": round(min(monthly.values()), 2) if monthly else 0.0}
+            "worst_month": round(min(monthly.values()), 2) if monthly else 0.0,
+            **({"recent": {"trades": rec_n, "wins": int(rec_w),
+                           "profit": round(rec_p, 2)}}
+               if recent_from_ms is not None else {})}
 
 
 def daily_pnl(dry: bool | None = None) -> dict:

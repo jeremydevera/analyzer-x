@@ -59,12 +59,22 @@ function freeLane(): void {
 // trade, own demo trade, own calendar pnl"). Sent as `X-TA-Profile` on every
 // trade and trade-record call — never on the backtest or candle screens,
 // which have no rooms. Main sends nothing, exactly as before.
-export const PROFILES = [
+// Sep 30, 2026: "undeploy my current live then deploy the table you
+// mentined" — the five rule sets of the round-five research became rooms, and
+// the three before them were switched off. Those stay as RETIRED tabs: their
+// runners finish the practice trades still open, and their history is kept.
+// Held equal to tradingagents/profiles.BUILTIN by a test.
+export const PROFILES: readonly { id: string; name: string; retired?: boolean }[] = [
   { id: "main", name: "Main" },
-  { id: "DC57174E", name: "#DC57174E" },
-  { id: "CC8DC54C", name: "#CC8DC54C" },
-  { id: "B52662ED", name: "#B52662ED" },
-] as const;
+  { id: "55D32617", name: "#55D32617" },
+  { id: "4FC03172", name: "#4FC03172" },
+  { id: "B2404C0B", name: "#B2404C0B" },
+  { id: "6B08FF64", name: "#6B08FF64" },
+  { id: "CC94D9FB", name: "#CC94D9FB" },
+  { id: "DC57174E", name: "#DC57174E", retired: true },
+  { id: "CC8DC54C", name: "#CC8DC54C", retired: true },
+  { id: "B52662ED", name: "#B52662ED", retired: true },
+];
 let _profile = "main";
 export function setProfile(id: string): void { _profile = id; }
 export function currentProfile(): string { return _profile; }

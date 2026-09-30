@@ -314,14 +314,17 @@ class _PerRecord:
 PRACTICE = _PerRecord()
 
 
-def figure(slot: str, *, now: float | None = None, exits: list | None = None) -> dict | None:
+def figure(slot: str, *, now: float | None = None, exits: list | None = None,
+           window_ms: int = WINDOW_MS) -> dict | None:
     """This slot's last-30-days record, or None when its backtest trades have
-    not been rebuilt yet (the screen says so rather than print a guess)."""
+    not been rebuilt yet (the screen says so rather than print a guess).
+    `window_ms` shortens it for a room that judges on 15 days (Sep 30, 2026);
+    the DEMO column always asks for 30."""
     now = time.time() if now is None else now
     rec = _load(slot)
     if rec is None:
         return None
-    lo = now * 1000 - WINDOW_MS
+    lo = now * 1000 - int(window_ms)
     end = int(rec["end_ms"])
     bt = [t for t in rec["trades"] if lo <= t[1] <= end]
     pr = [e for e in (PRACTICE.get(now) if exits is None else exits)

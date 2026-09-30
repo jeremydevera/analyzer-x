@@ -70,11 +70,15 @@ COLS = ("id", "coin", "tf", "signal", "th", "sl", "tp", "rr", "sizing", "lev",
         # settled at ("1m"). NULL on every v1 row — the v1 file is never
         # rewritten for this; ensure() ALTERs the two columns on, which is
         # metadata only in SQLite (no pass over the 41.94 GB file).
-        "unclear", "res")
+        "unclear", "res",
+        # Backtest v2 (Sep 30, 2026): trades, wins and profit of the row's LAST
+        # 15 DAYS (backtest_report.RECENT_DAYS), for the rooms that judge on
+        # 15 days. NULL on every row measured before — "not measured", never 0.
+        "t15", "w15", "p15")
 _NUMERIC = {"th", "sl", "tp", "rr", "base", "notional", "winrate", "profit",
-            "funding", "h1", "h2", "worst", "dd", "cost_of_tp", "rt"}
+            "funding", "h1", "h2", "worst", "dd", "cost_of_tp", "rt", "p15"}
 _INTEGER = {"lev", "trades", "wins", "losses", "green", "months", "liqs",
-            "days", "bars", "stop_reachable", "unclear"}
+            "days", "bars", "stop_reachable", "unclear", "t15", "w15"}
 
 _SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS rows (
@@ -612,7 +616,7 @@ def ensure() -> None:
         # before v2 keeps its 113,495,608 rows; `unclear` and `res` are added
         # as NULL. ADD COLUMN does not rewrite the file.
         have_rows = {r[1] for r in con.execute("PRAGMA table_info(rows)")}
-        for col, typ in (("unclear", "INTEGER"), ("res", "TEXT")):
+        for col, typ in LATE_COLUMNS:
             if col not in have_rows:
                 con.execute(f"ALTER TABLE rows ADD COLUMN {col} {typ}")
         # COIN AND TF COME FROM THE PAIR KEY, NOT FROM THE ROWS TABLE.
@@ -684,6 +688,24 @@ def _kept(r: dict) -> bool:
     return br.store_keeps(r)
 
 
+# Columns added after stores already existed. ensure() ALTERs them on, but a
+# writer that never ran ensure() with this code (a job's own filing, the
+# learned-formula collect) would otherwise fail every INSERT on "no column
+# named t15" — so every write adds what is missing first. ADD COLUMN is
+# metadata only; PRAGMA table_info is a schema read.
+LATE_COLUMNS = (("unclear", "INTEGER"), ("res", "TEXT"),
+                ("t15", "INTEGER"), ("w15", "INTEGER"), ("p15", "REAL"))
+
+
+def _late_columns(con: sqlite3.Connection) -> None:
+    have = {r[1] for r in con.execute("PRAGMA table_info(rows)")}
+    if not have:
+        return                      # no table yet: the caller's schema makes it
+    for col, typ in LATE_COLUMNS:
+        if col not in have:
+            con.execute(f"ALTER TABLE rows ADD COLUMN {col} {typ}")
+
+
 def index_pair(path: Path, con: sqlite3.Connection | None = None, *,
                fresh: bool = False, signals=None, commit: bool = True) -> int:
     """(Re)index one pair file. Returns how many rows landed.
@@ -717,6 +739,7 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None, *,
     own = con is None
     con = con or _connect()   # caller-owned when passed
     try:
+        _late_columns(con)
         st = path.stat()
         try:
             rows = json.loads(path.read_text())
@@ -4020,6 +4043,28 @@ def count_exact(**filters) -> int:
     for k in ("limit", "offset", "months", "exact_count"):
         filters.pop(k, None)
     return int(query(limit=1, exact_count=True, **filters)["total"])
+
+
+RECENT_SQL = ("SELECT * FROM rows WHERE t15 >= ? AND w15 * 100.0 >= ? * t15 "
+              "AND tp > sl AND (sizing = 'flat' OR sizing IS NULL)")
+
+
+def recent_rows(*, min_trades: int, min_winrate: float, max_sl: float = 0,
+                db_path=None) -> list[dict]:
+    """Every flat row whose LAST 15 DAYS (`t15`/`w15`, backtest_report.
+    RECENT_DAYS) meet the floors, target wider than stop, stop at or under
+    `max_sl` when given (Sep 30, 2026: the 15-day rooms). A row measured
+    before the columns existed has NULL there and is never a match — not
+    measured is not a pass. One pass over the table: this is the watcher's
+    once-a-day background search, never a screen's query."""
+    sql = RECENT_SQL + (" AND sl <= ?" if max_sl else "")
+    args = [int(min_trades), float(min_winrate)] + ([float(max_sl)] if max_sl else [])
+    with _open(readonly=True, db_path=db_path) as con:
+        have = {r[1] for r in con.execute("PRAGMA table_info(rows)")}
+        if "t15" not in have:
+            return []
+        con.row_factory = sqlite3.Row
+        return [{k: r[k] for k in r.keys()} for r in con.execute(sql, args)]  # noqa: SIM118
 
 
 def query_sql(coin=None, tf=None, signal=None, profitable=False,

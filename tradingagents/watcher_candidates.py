@@ -127,16 +127,38 @@ def _match(rows: list[dict], want: dict) -> dict | None:
     return None
 
 
-def _fresh(coin: str, tf: str, r: dict, last_ms: float) -> dict:
-    return {"id": br.row_code(coin, tf, r["signal"], float(r.get("th") or 0),
-                              float(r["sl"]), float(r["tp"]), "flat", res="1m"),
-            "coin": coin, "tf": tf, "signal": r["signal"],
-            "th": float(r.get("th") or 0), "sl": float(r["sl"]), "tp": float(r["tp"]),
-            "trades": int(r["trades"]), "wins": int(r["wins"]),
-            "losses": int(r.get("losses", int(r["trades"]) - int(r["wins"]))),
-            "winrate": float(r["winrate"]), "profit": float(r["profit"]),
-            "gate": r.get("gate") or "", "cost_of_tp": r.get("cost_of_tp"),
-            "measured_ms": last_ms}
+def window_of(cfg: dict | None) -> int:
+    """The days a room judges rows on: 15 (backtest_report.RECENT_DAYS, the
+    row's own t15/w15/p15) or the store's 30."""
+    w = int((cfg or {}).get("window_days") or 30)
+    return br.RECENT_DAYS if w == br.RECENT_DAYS else 30
+
+
+def _fresh(coin: str, tf: str, r: dict, last_ms: float, window: int = 30) -> dict:
+    """The row's figures over the room's window. On 15 days they are the
+    row's own last-15-day count; a row measured before that count existed is
+    `unmeasured` (0 trades, so it can never be switched on by it) — never
+    its 30-day totals relabelled as 15."""
+    out = {"id": br.row_code(coin, tf, r["signal"], float(r.get("th") or 0),
+                             float(r["sl"]), float(r["tp"]), "flat", res="1m"),
+           "coin": coin, "tf": tf, "signal": r["signal"],
+           "th": float(r.get("th") or 0), "sl": float(r["sl"]), "tp": float(r["tp"]),
+           "trades": int(r["trades"]), "wins": int(r["wins"]),
+           "losses": int(r.get("losses", int(r["trades"]) - int(r["wins"]))),
+           "winrate": float(r["winrate"]), "profit": float(r["profit"]),
+           "gate": r.get("gate") or "", "cost_of_tp": r.get("cost_of_tp"),
+           "measured_ms": last_ms, "window_days": 30}
+    if window == br.RECENT_DAYS:
+        n, w = r.get("t15"), r.get("w15")
+        if n is None or w is None:
+            out.update(trades=0, wins=0, losses=0, winrate=0.0, profit=0.0,
+                       unmeasured=True, window_days=window)
+        else:
+            n, w = int(n), int(w)
+            out.update(trades=n, wins=w, losses=n - w,
+                       winrate=round(100 * w / n, 2) if n else 0.0,
+                       profit=float(r.get("p15") or 0.0), window_days=window)
+    return out
 
 
 def raw_candidates(cfg: dict) -> dict:
@@ -146,6 +168,8 @@ def raw_candidates(cfg: dict) -> dict:
     criteria in the table and deploy it")."""
     from tradingagents import rows_index as ri
 
+    if window_of(cfg) == br.RECENT_DAYS:
+        return _raw_recent(cfg)
     try:
         got = []
         # a background search may take its time (15 min), the screens' 20 s
@@ -163,6 +187,54 @@ def raw_candidates(cfg: dict) -> dict:
     rows = [_fresh(r["coin"], r["tf"], r, 0.0) for r in got]
     return {"rows": rows, "asked": len(got), "stale": 0, "gone": 0,
             "why": f"{len(rows):,} row(s) in the Backtest v2 table meet the criteria"}
+
+
+def recent_measured(sample: int = 5) -> bool:
+    """Has the daily update written the 15-day count yet? The newest pair
+    files are the answer: a row carries t15/w15/p15 as its LAST keys
+    (backtest_report.recent_fields), so the file's tail names them. A few
+    stats and 512-byte reads, never a pass over the table."""
+    try:
+        files = sorted((Path(stores.V2.home) / "rows").glob("*.json"),
+                       key=lambda f: f.stat().st_mtime, reverse=True)[:sample]
+    except OSError:
+        return False
+    for f in files:
+        try:
+            with f.open("rb") as fh:
+                fh.seek(max(0, f.stat().st_size - 512))
+                if b'"t15"' in fh.read():
+                    return True
+        except OSError:
+            continue
+    return False
+
+
+def _raw_recent(cfg: dict) -> dict:
+    """RAW on the last 15 days: every row whose own t15/w15 meet the floors.
+    Until the daily update has measured the count at all, the pass is NOT
+    READY (tried again every 30 minutes), never an empty day: a once-a-day
+    pass that ran before the count landed would otherwise wait a whole day."""
+    from tradingagents import rows_index as ri
+
+    if not recent_measured():
+        return {"rows": [], "asked": 0, "stale": 0, "gone": 0, "not_ready": True,
+                "why": f"no Backtest v2 row carries its last-{br.RECENT_DAYS}-day "
+                       f"count yet — the daily update adds it to every row it "
+                       f"measures; checking again every 30 minutes"}
+    try:
+        got = ri.recent_rows(min_trades=int(cfg["min_trades"]),
+                             min_winrate=float(cfg["on_winrate"]),
+                             max_sl=float(cfg.get("max_sl") or 0),
+                             db_path=stores.V2.rows_db)
+    except Exception as exc:                                   # noqa: BLE001
+        return {"rows": [], "asked": 0, "stale": 0, "gone": 0, "not_ready": True,
+                "why": f"the Backtest v2 list could not be read yet "
+                       f"({type(exc).__name__}: {str(exc)[:160]}) — asking again later"}
+    rows = [_fresh(r["coin"], r["tf"], r, 0.0, br.RECENT_DAYS) for r in got]
+    why = (f"{len(rows):,} row(s) in the Backtest v2 table meet the criteria on "
+           f"their last {br.RECENT_DAYS} days")
+    return {"rows": rows, "asked": len(got), "stale": 0, "gone": 0, "why": why}
 
 
 def fresh_candidates(cfg: dict, *, now: float, limit: int = 5000) -> dict:
@@ -194,7 +266,7 @@ def fresh_candidates(cfg: dict, *, now: float, limit: int = 5000) -> dict:
             if got is None:
                 gone += 1
                 continue
-            rows.append(_fresh(coin, tf, got, last))
+            rows.append(_fresh(coin, tf, got, last, window_of(cfg)))
     capped = bool(limit) and len(nominees) >= limit
     why = (f"{len(rows):,} candidate(s) from {len(nominees):,} nominated"
            + (f" (the list STOPPED at {limit:,} — rows ranked below it were not "
@@ -216,4 +288,4 @@ def fresh_row(row_id: str, coin: str, tf: str, spec: dict, *, now: float,
         got = _match(rows, spec)
     else:
         got = (matched_rows(coin, tf, [spec]) or {}).get(_sig(spec))
-    return None if got is None else _fresh(coin, tf, got, last)
+    return None if got is None else _fresh(coin, tf, got, last, window_of(cfg))

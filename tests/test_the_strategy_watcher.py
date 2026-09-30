@@ -331,9 +331,13 @@ def test_a_pair_file_that_is_there_but_unreadable_keeps_the_row(world, monkeypat
 
 def test_a_rule_the_live_watcher_cannot_honour_is_refused_not_printed(world):
     with pytest.raises(ValueError, match="does not use"):
+        sw.set_cfg({"off_streak_live": 3})
+    # a window is honoured only where every row is measured: 15 or 30 days
+    # (Sep 30, 2026, the table's 15-day rooms)
+    with pytest.raises(ValueError, match="must be one of"):
         sw.set_cfg({"window_days": 14})
     st = sw.status()
-    assert "window_days" not in st["cfg"] and st["window_days"] == sw.store_window_days()
+    assert st["window_days"] == sw.store_window_days()
     assert "off_streak_live" not in st["cfg"]
 
 
@@ -575,7 +579,7 @@ def test_a_rooms_watcher_starts_on_with_that_rooms_rules(world):
 def test_the_live_switch_arms_both_books_and_off_takes_real_back(world):
     from tradingagents import profiles
 
-    with profiles.using("DC57174E"):
+    with profiles.using("CC94D9FB"):
         st = sw._read()
         st["cfg"] = {}                       # R6 (100%, 20 trades) passes the defaults
         sw._write(st)
@@ -593,7 +597,7 @@ def test_the_live_switch_arms_both_books_and_off_takes_real_back(world):
 def test_a_real_row_the_watcher_armed_is_switched_off_by_the_same_rule(world):
     from tradingagents import profiles
 
-    with profiles.using("DC57174E"):
+    with profiles.using("CC94D9FB"):
         st = sw._read()
         st["cfg"] = {}
         sw._write(st)

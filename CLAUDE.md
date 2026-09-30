@@ -1150,6 +1150,32 @@ should be included"*. Plan: `docs/superpowers/plans/2026-09-29-trading-profiles.
 Guards: `tests/test_every_profile_is_its_own_room.py` (19) and the profile
 tests in `tests/test_the_strategy_watcher.py`.
 
+**THE TABLE BECAME ROOMS (Sep 30, 2026):** *"undeploy my current live then
+deploy the table you mentined"* — and, asked where and with which money,
+*"why are you asking again, you should have documented this, refer to my
+previous task"*. So: **a rule set they choose from a research table is a room
+named by its id, practice account only, real money only through that room's
+own box; Main untouched.** Never ask again. `profiles.BUILTIN` holds Main,
+#55D32617, #4FC03172, #B2404C0B, #6B08FF64, #CC94D9FB (the round-five winners,
+https://claude.ai/artifact/UUNAie322TPyjJU8MaZtQo), then the RETIRED three
+(#DC57174E, #CC8DC54C, #B52662ED): `profiles.retired()` forces the watcher off
+(`mode_of`), `strategy_watcher.retire_room()` took every practice row off, and
+their runners keep going only to finish the practice trades still open.
+
+* **A 15-day room is judged on MEASURED 15-day counts, never the 30-day
+  totals.** The v2 shard asks the engine `backtest_strategy(recent_from_ms=
+  last candle - 15 days)` and writes `t15`/`w15`/`p15` on every row
+  (`backtest_report.RECENT_DAYS`, `recent_fields`); `rows_index` files them
+  (`LATE_COLUMNS`, added by every writer before it inserts);
+  `rows_index.recent_rows` finds a room's matches; `rolling30.figure(
+  window_ms=)` judges its running rows. A row without the count is
+  `unmeasured` and can never be switched on by it, and until the daily update
+  has written the count anywhere the pass is NOT READY (retried every 30
+  minutes), never an empty day. `window_days` is a live rule: 15 or the
+  store's 30, nothing else.
+
+Guard: `tests/test_rooms_judge_on_15_days.py`.
+
 ## Backtest v2 is the v1 engine in its own folder (MANDATORY — 2026-09-17)
 
 The operator: *"lets do a v2 of candles tab, when i download candles ... it

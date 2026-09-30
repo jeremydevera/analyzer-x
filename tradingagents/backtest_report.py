@@ -213,6 +213,28 @@ SIZINGS: tuple[str, ...] = ("flat", "martingale")
 SIZINGS_BY_RES: dict[str, tuple[str, ...]] = {"1m": ("flat",)}
 
 
+# THE SHORT WINDOW a v2 row also carries (Sep 30, 2026): `t15`/`w15`/`p15`,
+# the trades, wins and profit that closed in the last RECENT_DAYS before the
+# row's last candle. The operator deployed rule sets that judge a row on its
+# last 15 days ("deploy the table you mentioned": #55D32617, #B2404C0B,
+# #6B08FF64) and the 30-day totals cannot answer that — a row can be 90% in
+# its first fortnight and 50% in its second. Measured by the engine
+# (`backtest_strategy(recent_from_ms=)`), never derived from `h1`/`h2`, which
+# are profit only and split by calendar month.
+RECENT_DAYS = 15
+RECENT_FIELDS = ("t15", "w15", "p15")
+
+
+def recent_fields(r: dict) -> dict:
+    """The row's `t15`/`w15`/`p15` from an engine result, or {} when the run
+    was not asked for them."""
+    rec = r.get("recent")
+    if not rec:
+        return {}
+    return {"t15": int(rec["trades"]), "w15": int(rec["wins"]),
+            "p15": round(float(rec["profit"]), 2)}
+
+
 def sizings_for(res: str | None) -> tuple[str, ...]:
     """The sizings a store measures and keeps: its `res` ("1m" = Backtest v2,
     "" = v1) decides. One definition, as SIZINGS is."""

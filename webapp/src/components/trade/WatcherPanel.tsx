@@ -74,7 +74,8 @@ export function rules(c: Watcher["cfg"], days: number, live = false): string[] {
        c.max_per_coin ? `${c.max_per_coin} per coin` : "no limit per coin",
        c.max_new_per_day ? `${c.max_new_per_day} new a day` : "no limit a day"].join(" · "),
       `${c.cooldown_days}-day wait after a switch-off`]),
-    "judged on the DEMO 30 DAYS figure",
+    days === 30 ? "judged on the DEMO 30 DAYS figure"
+      : `judged on its own last ${days} days: the backtest, then its practice trades`,
     live ? "practice AND real money" : "practice account only",
   ];
 }

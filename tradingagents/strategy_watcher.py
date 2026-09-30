@@ -122,7 +122,10 @@ def _write(d: dict) -> None:
 # were in force (label-must-match-data).
 LIVE_RULES = ("on_winrate", "off_winrate", "min_trades", "tp_rule",
               "max_sl", "profit_floor", "max_slots", "max_per_coin",
-              "max_new_per_day", "cooldown_days", "fresh_hours", "rank", "raw")
+              "max_new_per_day", "cooldown_days", "fresh_hours", "rank", "raw",
+              # 15 or the store's 30 (Sep 30, 2026): on 15 a row is judged on
+              # its own measured last-15-day count (backtest_report.RECENT_DAYS)
+              "window_days")
 
 
 def store_window_days() -> int:
@@ -135,12 +138,20 @@ def store_window_days() -> int:
 
 
 def cfg_of(st: dict | None = None) -> dict:
+    from tradingagents import backtest_report as br
+
     st = _read() if st is None else st
-    return {**wp.DEFAULTS, **(st.get("cfg") or {}),
-            "window_days": store_window_days(), "off_streak_live": 0}
+    cfg = {**wp.DEFAULTS, **(st.get("cfg") or {})}
+    w = int(cfg.get("window_days") or 0)
+    return {**cfg, "window_days": br.RECENT_DAYS if w == br.RECENT_DAYS
+            else store_window_days(), "off_streak_live": 0}
 
 
 def mode_of(st: dict | None = None) -> str:
+    from tradingagents import profiles
+
+    if profiles.retired(profiles.current()):
+        return "off"          # a retired room switches nothing on (Sep 30, 2026)
     st = _read() if st is None else st
     m = st.get("mode") or "act"
     return m if m in MODES else "act"
@@ -186,6 +197,35 @@ def set_mode(mode: str) -> dict:
     return status()
 
 
+def retire_room() -> dict:
+    """Switch the CURRENT room off for good (Sep 30, 2026: "undeploy my
+    current live then deploy the table you mentined"): the watcher OFF, and
+    every practice-only row taken off. A row holding REAL money is never
+    touched here — it is listed back instead. Open practice trades are left
+    to the runner, which finishes them at their own TP or SL."""
+    from tradingagents import auto_trader as at
+
+    set_mode("off")
+    kept_real: list = []
+    off: list = []
+
+    def mutate(s):
+        kept_real.clear()
+        off.clear()
+        for key, coins in list((s.get("strategy_coins") or {}).items()):
+            for c in list(coins or []):
+                slot = f"{key}|{c}"
+                if "real" in at.book_names(s, key, c):
+                    kept_real.append(slot)
+                    continue
+                _disarm(s, slot)
+                off.append(slot)
+        return s
+    if not _write_settings(mutate):
+        raise RuntimeError("the settings file kept changing — nothing switched off")
+    return {"switched_off": len(off), "real_kept": kept_real}
+
+
 def set_cfg(partial: dict) -> dict:
     """Change some rules. Every key must be a known rule of the same type."""
     st = _read()
@@ -197,6 +237,13 @@ def set_cfg(partial: dict) -> dict:
             raise ValueError(f"{k} is a replay/research rule the live watcher does not "
                              f"use — it judges every row on the store's own "
                              f"{store_window_days()}-day window")
+        if k == "window_days":
+            from tradingagents import backtest_report as br
+
+            ok = (br.RECENT_DAYS, store_window_days())
+            if v not in ok:
+                raise ValueError(f"window_days must be one of {ok} — the only "
+                                 f"windows every Backtest v2 row is measured over")
         want = type(wp.DEFAULTS[k])
         if want is float and isinstance(v, int):
             v = float(v)
@@ -311,7 +358,8 @@ def _candidates(cfg: dict, now: float) -> dict:
 
     # a fresh order-book memory for each switch-on pass
     _PASS_FX["fx"] = _PassFx()
-    if cfg.get("raw"):
+    # 15 days: only the index's own t15/w15 can answer, raw or not
+    if cfg.get("raw") or wc.window_of(cfg) != 30:
         return wc.raw_candidates(cfg)
     # NO LIMIT ON THE LIST EITHER when there is none on the picks: stopping
     # at 5,000 left "rows ranked below it were not examined" (#B52662ED,
@@ -337,10 +385,12 @@ def _fresh_row(meta: dict, now: float, cfg: dict):
         return None, False
     row = got.get(wc._sig(meta))
     last = wc._last_ms(meta["coin"], meta["tf"]) or 0.0
-    return (None if row is None else wc._fresh(meta["coin"], meta["tf"], row, last)), True
+    return (None if row is None else wc._fresh(meta["coin"], meta["tf"], row, last,
+                                               wc.window_of(cfg))), True
 
 
-def _judged(slot: str, fresh: dict | None, now: float | None = None) -> dict | None:
+def _judged(slot: str, fresh: dict | None, now: float | None = None,
+            window_days: int = 30) -> dict | None:
     """The row as the DEMO column prints it: its last 30 days from `rolling30`
     (backtest to its last candle, then its practice trades since) — so a row
     whose practice losses pulled it under the line is judged on them, not on
@@ -351,14 +401,15 @@ def _judged(slot: str, fresh: dict | None, now: float | None = None) -> dict | N
     try:
         from tradingagents import rolling30 as r30
 
-        fig = r30.figure(slot, now=now)
+        fig = r30.figure(slot, now=now, window_ms=int(window_days) * 86_400_000)
     except Exception:                                          # noqa: BLE001
         fig = None
     if not fig or not fig.get("trades") or fig.get("winrate") is None:
         return fresh
     return {**fresh, "winrate": fig["winrate"], "trades": fig["trades"],
             "wins": fig["wins"], "losses": fig["losses"], "profit": fig["pnl"],
-            "from_backtest": fig["from_backtest"], "from_practice": fig["from_practice"]}
+            "from_backtest": fig["from_backtest"], "from_practice": fig["from_practice"],
+            "unmeasured": False}
 
 
 def _practice(slots: dict, now: float) -> dict:
@@ -577,7 +628,11 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
             out.append(_d(now, st, "report", meta, "its backtest file could not be "
                           "read this hour — kept, checked again next hour"))
             continue
-        fresh = _judged(slot, fresh, now)
+        fresh = _judged(slot, fresh, now, cfg["window_days"])
+        if fresh and fresh.get("unmeasured"):
+            out.append(_d(now, st, "report", meta, f"no {cfg['window_days']}-day count "
+                          f"for it yet — kept until the daily update measures it"))
+            continue
         why = wp.judge({"id": meta["id"]}, fresh, cfg)
         if why:
             drop.append((slot, meta["id"], len(out)))
@@ -607,7 +662,9 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
         if not readable:
             continue
         slot = f"{key}|{sym}"
-        fresh = _judged(slot, fresh, now)
+        fresh = _judged(slot, fresh, now, cfg["window_days"])
+        if fresh and fresh.get("unmeasured"):
+            continue
         why = wp.judge({"id": meta["id"]}, fresh, cfg)
         if why:
             if not act:

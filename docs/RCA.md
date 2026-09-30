@@ -222,6 +222,12 @@ exposed that the data's write rule had never been checked.
    #47F649E8 (80% / 50+ / TP ≥ SL / 2% cap): Jul–Aug +$1,131.84, September
    +$994.75. #DC57174E (+$1,057.66) and #CC8DC54C (+$962.61) are fair tests;
    #B52662ED is not.
+6. `Sep 29, 2026 ~9:15pm` — the fair data (run 36648844400: wr=70, trades=20,
+   tp=any; 354,791 combinations, 60,485,822 trades, 271,311 with TP < SL)
+   grades all 120 round-two rule sets with 0 flagged. #B52662ED HOLDS UP:
+   Jul–Aug +$1,222.88, September +$2,150.57 (69.4%, 5,692 trades). The best
+   stop-wider-than-target rule, #CA0B0C82 (90% / 50+ / 2% cap), won 88.7% for
+   +$584.71. https://claude.ai/artifact/UUp4VNZKAFqA6rhHvEXorG
 
 **ROOT CAUSE** — the research grid went below the data's write floor, and
 nothing compared a rule set against the rule that wrote its data.

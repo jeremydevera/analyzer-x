@@ -201,6 +201,34 @@ def score(res: dict, end_ms: float | None = None) -> dict:
 # test_the_lean_path_gives_what_simulate_computes_itself pins that.
 
 
+def _cut_trades(t: np.ndarray, end: float) -> np.ndarray:
+    """Nothing entered after the data's common end; a trade that closed after
+    it is still open there."""
+    t = t[t[:, 0] < end]
+    late = (t[:, 3] > 0) & (t[:, 1] > end)
+    t[late, 2] = 0.0
+    t[late, 3] = 0.0
+    return t
+
+
+class _LazyMeta(dict):
+    """A book's `.c`: every field at hand, its "trades" read from its line on
+    disk when first asked, cut exactly as load_lean cut it, and then kept."""
+
+    src: tuple = ()
+
+    def __missing__(self, key):
+        if key != "trades":
+            raise KeyError(key)
+        path, off, end = self.src
+        with open(path, "rb") as fh:
+            fh.seek(off)
+            c = json.loads(fh.readline())
+        t = _cut_trades(np.asarray(c.get("trades") or [], dtype=np.float64).reshape(-1, 4), end)
+        self["trades"] = t
+        return t
+
+
 class ArrBook:
     """`watcher_replay._Book`, backed by numpy arrays: the same `row()`, the
     same `.c` (whose "trades" is an (n, 4) array: entry_ms, exit_ms, pnl,
@@ -208,12 +236,23 @@ class ArrBook:
 
     __slots__ = ("c", "exits", "w", "p")
 
-    def __init__(self, meta: dict, trades: np.ndarray):
-        self.c = {**meta, "trades": trades}
+    def __init__(self, meta: dict, trades: np.ndarray, src: tuple | None = None):
+        # `src` = (file, byte offset, end_ms): the trades are NOT kept — they
+        # are read back from disk the first time `.c["trades"]` is asked,
+        # which `simulate` does only for a strategy some rule switched on.
+        # Measured Sep 29, 2026: run 36648844400 carries 60,485,822 trades
+        # over 354,791 combinations; held as (n, 4) float64 that is 1.9 GB
+        # on top of the counts, on a machine with 6.1 GB free.
+        if src is None:
+            self.c = {**meta, "trades": trades}
+        else:
+            self.c = _LazyMeta(meta)
+            self.c.src = src
         closed = trades[trades[:, 3] > 0]
         closed = closed[np.argsort(closed[:, 1], kind="stable")]
         self.exits = closed[:, 1].astype(np.int64)
-        self.w = np.concatenate([[0], np.cumsum(closed[:, 2] > 0)]).astype(np.int64)
+        self.w = np.concatenate([[0], np.cumsum(closed[:, 2] > 0)]).astype(
+            np.int64 if src is None else np.int32)
         self.p = np.concatenate([[0.0], np.cumsum(closed[:, 2])])
 
     def counts(self, at_ms: int, window_ms: int) -> tuple[int, int, float]:
@@ -236,27 +275,27 @@ def _row_dict(c: dict, n: int, wins: int, profit: float) -> dict:
             "winrate": round(100 * wins / n, 2), "profit": round(profit, 2)}
 
 
-def load_lean(folders: list[str]) -> dict:
+def load_lean(folders: list[str], lazy: bool = True) -> dict:
     """Every combination of the runs, as ArrBooks, cut to the common end."""
     got_tot = rc.merge_reports(folders)
     end = rc.common_end(got_tot["spans"])
     books: dict = {}
     for f in rc.combo_files(folders):
-        with open(f, encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
+        with open(f, "rb") as fh:
+            while True:
+                off = fh.tell()
+                line = fh.readline()
                 if not line:
+                    break
+                if not line.strip():
                     continue
                 c = json.loads(line)
                 if c["id"] in books:
                     continue
-                t = np.asarray(c.pop("trades") or [], dtype=np.float64).reshape(-1, 4)
-                t = t[t[:, 0] < end]                  # nothing entered after the end
-                late = (t[:, 3] > 0) & (t[:, 1] > end)
-                t[late, 2] = 0.0                      # closed after the end = still open
-                t[late, 3] = 0.0
+                t = _cut_trades(np.asarray(c.pop("trades") or [],
+                                           dtype=np.float64).reshape(-1, 4), end)
                 c.setdefault("group", rc.group_of(c["signal"]))
-                books[c["id"]] = ArrBook(c, t)
+                books[c["id"]] = ArrBook(c, t, src=(str(f), off, end) if lazy else None)
     return {"books": books, "end": end, "totals": got_tot}
 
 
@@ -371,7 +410,7 @@ def research(folders: list[str], *, train_start: str = "2026-07-01",
                 log.sort(key=lambda t: t[2])
                 out["test_log"] = log
         rows.append(out)
-        if progress and (i + 1) % 200 == 0:
+        if progress and (i + 1) % max(1, min(200, len(g) // 12)) == 0:
             progress(i + 1, len(g))
     by_train = sorted(rows, key=lambda r: -r["train"]["profit"])
     cur = next(r for r in rows if r["id"] == rule_id(CURRENT))

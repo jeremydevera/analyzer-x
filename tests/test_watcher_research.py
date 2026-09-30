@@ -156,3 +156,21 @@ def test_the_most_trades_open_at_once_is_what_the_wallet_must_hold():
            "slots": [{"trades": [[0, 10, 0.8, 1], [12, 20, 0.8, 1]]},
                      {"trades": [[5, 15, 0.8, 1]]}]}
     assert rs.score(res)["max_open"] == 2
+
+
+def test_trades_read_back_from_disk_are_the_trades_held_in_memory(tmp_path):
+    """Sep 29, 2026: 60,485,822 trades over 354,791 combinations (run
+    36648844400) do not fit beside the counts, so a book keeps only its
+    counts and reads its trades back when a rule switches it on. What it
+    reads back must be exactly what the in-memory load held."""
+    import numpy as np
+
+    end = _ms(2026, 9, 20)
+    folder = _folder(tmp_path, COMBOS, end)
+    lazy = rs.load_lean([folder], lazy=True)["books"]
+    eager = rs.load_lean([folder], lazy=False)["books"]
+    assert list(lazy) == list(eager)
+    for k in eager:
+        assert "trades" not in dict.keys(lazy[k].c), "nothing held before it is asked"
+        assert np.array_equal(lazy[k].c["trades"], eager[k].c["trades"])
+        assert lazy[k].counts(end, 30 * wr.DAY_MS) == eager[k].counts(end, 30 * wr.DAY_MS)

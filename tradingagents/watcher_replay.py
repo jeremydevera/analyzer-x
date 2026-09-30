@@ -167,8 +167,14 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
     # 3. WHAT EACH SLOT TRADED
     for s in slots:
         hi = s["off_ms"] if s["off_ms"] is not None else float("inf")
-        s["trades"] = [t for t in books[s["id"]].c["trades"]
-                       if s["on_ms"] <= t[0] < hi]
+        tr = books[s["id"]].c["trades"]
+        if hasattr(tr, "shape"):
+            # ONE compact block per slot, not an object per trade: a raw rule
+            # set switches on tens of thousands of strategies, and a Python
+            # list of row views took the research to 6 GB (Sep 30, 2026)
+            s["trades"] = tr[(tr[:, 0] >= s["on_ms"]) & (tr[:, 0] < hi)]
+        else:
+            s["trades"] = [t for t in tr if s["on_ms"] <= t[0] < hi]
     if int(cfg.get("coin_slices") or 0) > 0:
         cap_per_coin(slots, int(cfg["coin_slices"]))
     for s in slots:
@@ -203,7 +209,15 @@ def cap_per_coin(slots: list, n: int) -> None:
             open_until.append(float(t[1]) if t[3] else float("inf"))
             keep[i].append(t)
     for i, s in enumerate(slots):
-        s["trades"] = keep[i]
+        was = s["trades"]
+        s["trades"] = _stack(keep[i], was) if hasattr(was, "shape") else keep[i]
+
+
+def _stack(rows: list, like):
+    """`rows` (row views of `like`) back as one compact array like it."""
+    import numpy as np
+
+    return np.array(rows, dtype=like.dtype).reshape(-1, like.shape[1])
 
 
 def _totals(s: dict) -> None:

@@ -120,7 +120,8 @@ def loose(grid_: list[dict]) -> dict:
             "tp_rule": ("any" if "any" in rules or ("<" in rules and len(rules) > 1)
                         else "<" if rules == {"<"} else ">=" if ">=" in rules else ">"),
             # 0 = no cap: the loosest cap is none at all if any set has none
-            "max_sl": 0.0 if min(caps) <= 0 else max(caps)}
+            "max_sl": 0.0 if min(caps) <= 0 else max(caps),
+            "raw": any(c.get("raw") for c in grid_)}
 
 
 def prepare(combos: list[dict], start_ms: int, end_ms: int,
@@ -316,8 +317,10 @@ def compact_rows(books: dict, checks: list[int], window_ms: int, lo: dict) -> di
         for k, i in enumerate(ids):
             n[k], w[k], pr[k] = books[i].counts(at, window_ms)
         rate = np.where(n > 0, 100 * w / np.maximum(n, 1), 0.0)
+        money = (np.ones(len(ids), bool) if lo.get("raw")
+                 else (np.round(pr, 2) > lo["profit_floor"]) & gate)
         keep = ((n >= lo["min_trades"]) & (np.round(rate, 2) >= lo["on_winrate"])
-                & (np.round(pr, 2) > lo["profit_floor"]) & gate & tp_ok)
+                & money & tp_ok)
         k = np.nonzero(keep)[0]
         out[at] = (k, n[k], w[k], pr[k])
     return {"ids": ids, "tp": tp, "sl": sl, "at": out}
@@ -356,7 +359,8 @@ class CfgRows:
         rate = np.round(100 * w / np.maximum(n, 1), 2)
         tp, sl = self.pre["tp"][k], self.pre["sl"][k]
         ok = ((n >= c["min_trades"]) & (rate >= c["on_winrate"])
-              & (np.round(pr, 2) > c["profit_floor"])
+              & ((np.round(pr, 2) > c["profit_floor"]) if not c.get("raw")
+                 else np.ones(len(n), bool))
               & _tp_ok(tp, sl, c["tp_rule"]) & _sl_ok(sl, c.get("max_sl")))
         ids = self.pre["ids"]
         return [_row_dict(self.books[ids[kk]].c, int(nn), int(ww), float(pp))
@@ -413,7 +417,11 @@ def research(folders: list[str], *, train_start: str = "2026-07-01",
         if progress and (i + 1) % max(1, min(200, len(g) // 12)) == 0:
             progress(i + 1, len(g))
     by_train = sorted(rows, key=lambda r: -r["train"]["profit"])
-    cur = next(r for r in rows if r["id"] == rule_id(CURRENT))
+    # "yours" is the operator's own rules as the grid runs them — raw in
+    # round three, where the limited CURRENT is not a grid point
+    ids_ = {r["id"] for r in rows}
+    want = rule_id(CURRENT) if rule_id(CURRENT) in ids_ else rule_id({**CURRENT, **RAW})
+    cur = next((r for r in rows if r["id"] == want), rows[0])
     return {"train": list(periods["train"]), "test": list(periods["test"]),
             "end_ms": end, "totals": L["totals"], "combos": len(books),
             "grid": GRID if grid_ is None else SCENARIOS_TEXT,
@@ -443,6 +451,30 @@ def scenarios2() -> list[dict]:
     return out
 
 
+# ROUND THREE — RAW (operator, Sep 30, 2026: "can you create a strategy
+# again on what's best combination to use / generate top 100 then show me in
+# artefact, because the previous you gave me has limit of 20 per day"). Every
+# rule set is replayed the way the rooms now run: every matching row on, no
+# daily/total/per-coin cap, no wait, no profit floor or stored cost verdict —
+# and the runner's own 4 open trades per coin (`coin_slices`). 6 x 4 x 3 x 2
+# = 144; the data (run 36648844400) was written at 70% / 20 trades / any TP.
+SCENARIOS3 = {"on_winrate": [70.0, 75.0, 80.0, 85.0, 90.0, 95.0],
+              "min_trades": [20, 30, 40, 50],
+              "tp_rule": [">", "<", "any"],
+              "max_sl": [2.0, 0.0]}
+RAW = {"raw": True, "max_new_per_day": 0, "max_slots": 0, "max_per_coin": 0,
+       "cooldown_days": 0, "coin_slices": 4}
+
+
+def scenarios3() -> list[dict]:
+    out = [{**CURRENT, **RAW, "on_winrate": on, "off_winrate": on, "min_trades": mt,
+            "tp_rule": tr, "max_sl": cap}
+           for on in SCENARIOS3["on_winrate"] for mt in SCENARIOS3["min_trades"]
+           for tr in SCENARIOS3["tp_rule"] for cap in SCENARIOS3["max_sl"]]
+    assert len(out) == 144
+    return out
+
+
 SCENARIOS_TEXT = {"on_winrate": SCENARIOS["on_winrate"],
                   "min_trades": SCENARIOS["min_trades"],
                   "shape": [f"TP {r} SL, stop cap {c:g}%" for r, c in SCENARIOS["shape"]]}
@@ -450,9 +482,10 @@ SCENARIOS_TEXT = {"on_winrate": SCENARIOS["on_winrate"],
 
 def main(argv=None) -> int:
     argv = list(argv or sys.argv[1:])
-    use = (scenarios2() if "--scenarios2" in argv
+    use = (scenarios3() if "--scenarios3" in argv
+           else scenarios2() if "--scenarios2" in argv
            else scenarios() if "--scenarios" in argv else None)
-    argv = [a for a in argv if a not in ("--scenarios", "--scenarios2")]
+    argv = [a for a in argv if a not in ("--scenarios", "--scenarios2", "--scenarios3")]
     name, folders = argv[0], argv[1:]
     res = research(folders, grid_=use, keep_log=use is not None,
                    progress=lambda i, n: print(f"  {i:,} of {n:,} rule sets", flush=True))

@@ -147,3 +147,35 @@ def test_the_per_coin_cap_holds_in_the_replay():
                      tp=1.0 + i / 10) for i in range(6)]
     got = wr.simulate(combos, start_ms=SEP1, end_ms=END)
     assert len(got["slots"]) == 3
+
+
+def test_the_replay_holds_at_most_the_runners_trades_per_coin():
+    """Sep 30, 2026: a raw replay switches on every matching row; the runner
+    holds at most 4 trades on one coin (max slices per coin), so a fifth that
+    would open while 4 are open never happens."""
+    from tradingagents import watcher_replay as wr_
+
+    def slot(i, coin, trades):
+        return {"id": f"S{i}", "coin": coin, "trades": trades}
+
+    t = lambda a, b: [a, b, 1.0, 1]                        # noqa: E731
+    slots = [slot(i, "KII", [t(100 + i, 1000)]) for i in range(6)]
+    slots.append(slot(9, "VUG", [t(100, 1000)]))
+    slots.append(slot(10, "KII", [t(2000, 3000)]))          # after they closed
+    wr_.cap_per_coin(slots, 4)
+    kept = {s["id"]: len(s["trades"]) for s in slots}
+    assert [kept[f"S{i}"] for i in range(6)] == [1, 1, 1, 1, 0, 0]
+    assert kept["S9"] == 1, "another coin is not affected"
+    assert kept["S10"] == 1, "a slot frees up when a trade closes"
+
+
+def test_round_three_is_raw_with_the_runners_coin_limit():
+    from tradingagents import watcher_research as rs
+
+    g = rs.scenarios3()
+    assert len(g) == 144 and all(c["raw"] and c["coin_slices"] == 4 for c in g)
+    assert all(c["max_new_per_day"] == 0 and c["cooldown_days"] == 0 for c in g)
+    assert min(c["on_winrate"] for c in g) >= 70 and min(c["min_trades"] for c in g) >= 20, \
+        "never looser than the data's write rule (70% / 20 trades), RCA-2026-09-29-F"
+    lo = rs.loose(g)
+    assert lo["raw"] and lo["tp_rule"] == "any" and lo["max_sl"] == 0.0

@@ -169,9 +169,41 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
         hi = s["off_ms"] if s["off_ms"] is not None else float("inf")
         s["trades"] = [t for t in books[s["id"]].c["trades"]
                        if s["on_ms"] <= t[0] < hi]
+    if int(cfg.get("coin_slices") or 0) > 0:
+        cap_per_coin(slots, int(cfg["coin_slices"]))
+    for s in slots:
         _totals(s)
     return {"days": _days(slots, events, checks, end_ms), "slots": slots,
             "events": events, "summary": _summary(slots, checks, end_ms)}
+
+
+def cap_per_coin(slots: list, n: int) -> None:
+    """THE RUNNER'S OWN LIMIT: at most `n` open trades on one coin (the
+    operator's "max slices per coin", 4, with partial TP/SL on for demo). A
+    trade that would open while `n` are already open on its coin never
+    happens — the runner answers `coin_busy` — so it is removed from its
+    slot. Without this a raw replay (Sep 30, 2026: every matching row, no
+    limit) counts trades that 50 rows on KII can never make at once.
+
+    First come, first served in entry order; a tie in the same minute goes
+    to the slot switched on first."""
+    by_coin: dict = {}
+    for i, s in enumerate(slots):
+        for t in s["trades"]:
+            by_coin.setdefault(s["coin"], []).append((float(t[0]), i, t))
+    keep: dict = {i: [] for i in range(len(slots))}
+    for trades in by_coin.values():
+        trades.sort(key=lambda x: (x[0], x[1]))
+        open_until: list = []
+        for entry, i, t in trades:
+            open_until = [x for x in open_until if x > entry]
+            if len(open_until) >= n:
+                continue
+            # a trade still open at the end counts as open for ever
+            open_until.append(float(t[1]) if t[3] else float("inf"))
+            keep[i].append(t)
+    for i, s in enumerate(slots):
+        s["trades"] = keep[i]
 
 
 def _totals(s: dict) -> None:

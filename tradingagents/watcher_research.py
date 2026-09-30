@@ -212,6 +212,43 @@ def _cut_trades(t: np.ndarray, end: float) -> np.ndarray:
     return t
 
 
+# COMPACT TRADES (Sep 30, 2026): the raw round switches on tens of thousands
+# of strategies per rule set, and reading each one's trades back from the
+# 2.3 GB of lines on G: ran at ~97 CPU-seconds per half hour while the disk
+# served a v2 index rebuild beside it. Held in memory instead, at 13 bytes a
+# trade (int32 seconds from T0, float32 profit, a closed flag) against 32 as
+# float64 — 0.8 GB for 60,485,822 trades — and turned back into the
+# (n, 4) float64 array each time a replay asks.
+T0 = 1_767_225_600          # Jan 01, 2026 00:00 UTC, the zero of the int32 seconds
+
+
+def _pack(t: np.ndarray) -> tuple:
+    return ((t[:, 0] // 1000 - T0).astype(np.int32), (t[:, 1] // 1000 - T0).astype(np.int32),
+            t[:, 2].astype(np.float32), t[:, 3] > 0)
+
+
+def _unpack(pk: tuple) -> np.ndarray:
+    ent, ext, pnl, closed = pk
+    out = np.empty((len(ent), 4), dtype=np.float64)
+    out[:, 0] = (ent.astype(np.int64) + T0) * 1000
+    out[:, 1] = (ext.astype(np.int64) + T0) * 1000
+    out[:, 2] = pnl.astype(np.float64)
+    out[:, 3] = closed
+    return out
+
+
+class _PackedMeta(dict):
+    """A book's `.c` whose "trades" live packed in memory and are unpacked
+    on every ask (never kept unpacked: that would undo the saving)."""
+
+    pk: tuple = ()
+
+    def __missing__(self, key):
+        if key != "trades":
+            raise KeyError(key)
+        return _unpack(self.pk)
+
+
 class _LazyMeta(dict):
     """A book's `.c`: every field at hand, its "trades" read from its line on
     disk when first asked, cut exactly as load_lean cut it, and then kept."""
@@ -237,14 +274,18 @@ class ArrBook:
 
     __slots__ = ("c", "exits", "w", "p")
 
-    def __init__(self, meta: dict, trades: np.ndarray, src: tuple | None = None):
+    def __init__(self, meta: dict, trades: np.ndarray, src: tuple | None = None,
+                 packed: bool = False):
         # `src` = (file, byte offset, end_ms): the trades are NOT kept — they
         # are read back from disk the first time `.c["trades"]` is asked,
         # which `simulate` does only for a strategy some rule switched on.
         # Measured Sep 29, 2026: run 36648844400 carries 60,485,822 trades
         # over 354,791 combinations; held as (n, 4) float64 that is 1.9 GB
         # on top of the counts, on a machine with 6.1 GB free.
-        if src is None:
+        if packed:
+            self.c = _PackedMeta(meta)
+            self.c.pk = _pack(trades)
+        elif src is None:
             self.c = {**meta, "trades": trades}
         else:
             self.c = _LazyMeta(meta)
@@ -253,7 +294,7 @@ class ArrBook:
         closed = closed[np.argsort(closed[:, 1], kind="stable")]
         self.exits = closed[:, 1].astype(np.int64)
         self.w = np.concatenate([[0], np.cumsum(closed[:, 2] > 0)]).astype(
-            np.int64 if src is None else np.int32)
+            np.int64 if (src is None and not packed) else np.int32)
         self.p = np.concatenate([[0.0], np.cumsum(closed[:, 2])])
 
     def counts(self, at_ms: int, window_ms: int) -> tuple[int, int, float]:
@@ -276,7 +317,7 @@ def _row_dict(c: dict, n: int, wins: int, profit: float) -> dict:
             "winrate": round(100 * wins / n, 2), "profit": round(profit, 2)}
 
 
-def load_lean(folders: list[str], lazy: bool = True) -> dict:
+def load_lean(folders: list[str], lazy: bool = False, packed: bool = True) -> dict:
     """Every combination of the runs, as ArrBooks, cut to the common end."""
     got_tot = rc.merge_reports(folders)
     end = rc.common_end(got_tot["spans"])
@@ -296,7 +337,8 @@ def load_lean(folders: list[str], lazy: bool = True) -> dict:
                 t = _cut_trades(np.asarray(c.pop("trades") or [],
                                            dtype=np.float64).reshape(-1, 4), end)
                 c.setdefault("group", rc.group_of(c["signal"]))
-                books[c["id"]] = ArrBook(c, t, src=(str(f), off, end) if lazy else None)
+                books[c["id"]] = ArrBook(c, t, src=(str(f), off, end) if lazy else None,
+                                         packed=packed and not lazy)
     return {"books": books, "end": end, "totals": got_tot}
 
 

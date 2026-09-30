@@ -168,9 +168,27 @@ def test_trades_read_back_from_disk_are_the_trades_held_in_memory(tmp_path):
     end = _ms(2026, 9, 20)
     folder = _folder(tmp_path, COMBOS, end)
     lazy = rs.load_lean([folder], lazy=True)["books"]
-    eager = rs.load_lean([folder], lazy=False)["books"]
+    eager = rs.load_lean([folder], lazy=False, packed=False)["books"]
     assert list(lazy) == list(eager)
     for k in eager:
         assert "trades" not in dict.keys(lazy[k].c), "nothing held before it is asked"
         assert np.array_equal(lazy[k].c["trades"], eager[k].c["trades"])
         assert lazy[k].counts(end, 30 * wr.DAY_MS) == eager[k].counts(end, 30 * wr.DAY_MS)
+
+
+
+def test_packed_trades_are_the_trades(tmp_path):
+    """Sep 30, 2026: the raw round keeps every trade in memory packed (int32
+    seconds, float32 profit). Times come back exact; a profit to far below a
+    cent."""
+    import numpy as np
+
+    end = _ms(2026, 9, 20)
+    folder = _folder(tmp_path, COMBOS, end)
+    packed = rs.load_lean([folder], packed=True)["books"]
+    plain = rs.load_lean([folder], packed=False)["books"]
+    for k in plain:
+        a, b = packed[k].c["trades"], plain[k].c["trades"]
+        assert np.array_equal(a[:, [0, 1, 3]], b[:, [0, 1, 3]])
+        assert np.allclose(a[:, 2], b[:, 2], atol=1e-4)
+        assert packed[k].counts(end, 30 * wr.DAY_MS)[:2] == plain[k].counts(end, 30 * wr.DAY_MS)[:2]

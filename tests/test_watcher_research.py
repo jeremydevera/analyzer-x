@@ -192,3 +192,27 @@ def test_packed_trades_are_the_trades(tmp_path):
         assert np.array_equal(a[:, [0, 1, 3]], b[:, [0, 1, 3]])
         assert np.allclose(a[:, 2], b[:, 2], atol=1e-4)
         assert packed[k].counts(end, 30 * wr.DAY_MS)[:2] == plain[k].counts(end, 30 * wr.DAY_MS)[:2]
+
+
+@pytest.mark.parametrize("on,mt,rule", [(80.0, 15, ">"), (60.0, 10, "any"), (90.0, 20, "<")])
+def test_the_fast_raw_path_is_simulate(tmp_path, on, mt, rule):
+    """Sep 30, 2026: the 50% / 10-trade data (4,585,414 combinations) is
+    replayed with raw_fast, not simulate. It must be simulate, exactly —
+    including the ORDER rows are switched on in, which decides who gets a
+    coin's 4 places (without it: 10,067 trades against simulate's 10,692)."""
+    end = _ms(2026, 9, 20)
+    folder = _folder(tmp_path, COMBOS, end)
+    L = rs.load_lean([folder])
+    books = L["books"]
+    start = _ms(2026, 9, 1)
+    cfg = {**rs.CURRENT, **rs.RAW, "on_winrate": on, "off_winrate": on,
+           "min_trades": mt, "tp_rule": rule, "max_sl": 0.0}
+    checks = wr.local_midnights(start, end)
+    lo = rs.loose([cfg])
+    pre = rs.compact_rows(books, checks, cfg["window_days"] * wr.DAY_MS, lo)
+    slow = rs.score(wr.simulate([], start_ms=start, end_ms=end, cfg=cfg,
+                                rows=rs.CfgRows(pre, books, cfg), books=books), end_ms=end)
+    blist = list(books.values())
+    grid = rs.count_grid(blist, checks, cfg["window_days"] * wr.DAY_MS)
+    fast = rs.score(rs.raw_fast(blist, grid, checks, cfg, end), end_ms=end)
+    assert fast == slow

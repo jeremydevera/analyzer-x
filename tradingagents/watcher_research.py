@@ -317,10 +317,13 @@ def _row_dict(c: dict, n: int, wins: int, profit: float) -> dict:
             "winrate": round(100 * wins / n, 2), "profit": round(profit, 2)}
 
 
-def load_lean(folders: list[str], lazy: bool = False, packed: bool = True) -> dict:
-    """Every combination of the runs, as ArrBooks, cut to the common end."""
+def load_lean(folders: list[str], lazy: bool = False, packed: bool = True,
+              end_ms: int | None = None) -> dict:
+    """Every combination of the runs, as ArrBooks, cut to the common end —
+    or to `end_ms`, the WHOLE run's end, when one machine loads only its own
+    shard (research on GitHub, Sep 30, 2026)."""
     got_tot = rc.merge_reports(folders)
-    end = rc.common_end(got_tot["spans"])
+    end = int(end_ms) if end_ms else rc.common_end(got_tot["spans"])
     books: dict = {}
     for f in rc.combo_files(folders):
         with open(f, "rb") as fh:
@@ -495,6 +498,82 @@ def scenarios2() -> list[dict]:
     return out
 
 
+# ------------------------------------------------------------ the fast raw path
+# RAW HAS NO RULE THAT LINKS TWO ROWS except the runner's 4 trades per coin,
+# so it does not need simulate's check-by-check picking (Sep 30, 2026: the
+# 50% / 10-trade data is 4,585,414 combinations and ~734M trades, and at 50%
+# tens of thousands of rows pass every midnight). A row is ON from the check
+# where it passes the criteria until the check where its window reads empty
+# or under the off line — exactly simulate's two steps — which is a
+# numpy walk over checks x books. Then each on-interval takes its trades,
+# cap_per_coin applies, and the result has the shape score() reads, so both
+# paths are scored by one function (test_the_fast_raw_path_is_simulate).
+
+
+def count_grid(books: list, checks: list[int], window_ms: int) -> tuple:
+    """(N, W): closed trades and wins in each book's window ending at each
+    check, as (checks x books) int32 arrays — `ArrBook.counts` for all at once."""
+    ck = np.asarray(checks, dtype=np.int64)
+    N = np.zeros((len(ck), len(books)), dtype=np.int32)
+    W = np.zeros_like(N)
+    for i, b in enumerate(books):
+        if not len(b.exits):
+            continue
+        a = np.searchsorted(b.exits, ck - window_ms, "left")
+        z = np.searchsorted(b.exits, ck, "right")
+        N[:, i] = z - a
+        W[:, i] = b.w[z] - b.w[a]
+    return N, W
+
+
+def raw_fast(books: list, grid: tuple, checks: list[int], cfg: dict, end_ms: int) -> dict:
+    """simulate() for a RAW rule set, from the (N, W) grid of count_grid."""
+    from tradingagents import watcher_replay as wr_
+
+    c = {**wp.DEFAULTS, **cfg}
+    N, W = grid
+    rate = np.round(100.0 * W / np.maximum(N, 1), 2)
+    tp = np.array([float(b.c["tp"]) for b in books])
+    sl = np.array([float(b.c["sl"]) for b in books])
+    static = _tp_ok(tp, sl, c["tp_rule"]) & _sl_ok(sl, c.get("max_sl"))
+    passon = (N >= int(c["min_trades"])) & (N > 0) & (rate >= float(c["on_winrate"])) & static
+    off = (N == 0) | (rate < float(c["off_winrate"]))
+    on = np.zeros(len(books), dtype=bool)
+    open_slot = np.full(len(books), -1, dtype=np.int64)
+    ids = [b.c["id"] for b in books]
+    slots: list = []                   # [book, on_ms, off_ms] in SWITCH-ON order
+    for k, at in enumerate(checks):
+        stop = on & off[k]
+        for i in np.nonzero(stop)[0]:
+            slots[open_slot[i]][2] = int(at)
+        on &= ~stop
+        start = np.nonzero(~on & passon[k])[0]
+        # simulate appends a check's picks in pick()'s own order — best win
+        # rate, then most trades, then id — and cap_per_coin gives a tie in
+        # the same minute to the slot switched on first, so the ORDER is part
+        # of the answer (found: 10,067 against simulate's 10,692 without it)
+        order = sorted(start, key=lambda i: (-rate[k, i], -int(N[k, i]), ids[i]))
+        for i in order:
+            open_slot[i] = len(slots)
+            slots.append([int(i), int(at), None])
+        on[start] = True
+    out = []
+    for i, a, z in slots:
+        tr = books[i].c["trades"]
+        hi = float("inf") if z is None else z
+        b = books[i].c
+        out.append({"id": b["id"], "coin": b["coin"], "tf": b["tf"], "signal": b["signal"],
+                    "th": b.get("th", 0.0), "sl": b["sl"], "tp": b["tp"],
+                    "group": b.get("group", "classic"), "on_ms": a, "off_ms": z,
+                    "trades": tr[(tr[:, 0] >= a) & (tr[:, 0] < hi)]})
+    if int(c.get("coin_slices") or 0) > 0:
+        wr_.cap_per_coin(out, int(c["coin_slices"]))
+    for s_ in out:
+        wr_._totals(s_)
+    return {"days": wr_._days(out, [], checks, end_ms), "slots": out, "events": [],
+            "summary": wr_._summary(out, checks, end_ms)}
+
+
 # ROUND THREE — RAW (operator, Sep 30, 2026: "can you create a strategy
 # again on what's best combination to use / generate top 100 then show me in
 # artefact, because the previous you gave me has limit of 20 per day"). Every
@@ -538,6 +617,27 @@ def scenarios4() -> list[dict]:
            for mt in SCENARIOS4["min_trades"] for cap in SCENARIOS4["max_sl"]]
     assert len(out) == 84
     # "yours" is a grid point: the operator's Main rules (90% / 20+ / 2%), raw, 30 days
+    assert any(all(c[k] == v for k, v in {**CURRENT, **RAW}.items()) for c in out)
+    return out
+
+
+# ROUND FIVE — the full 50% / 10-trade grid (operator, Sep 30, 2026: "show
+# me the result for top 100 combinations so i can decide which to deploy").
+# 2 windows x 9 lines x 4 trade floors x 2 SL caps = 144, raw, target wider
+# than stop, the runner's 4 per coin. Measured on GitHub, one coin-whole
+# shard per machine (.github/workflows/research.yml), with raw_fast.
+SCENARIOS5 = {"window_days": [15, 30],
+              "on_winrate": [50.0, 55.0, 60.0, 65.0, 70.0, 75.0, 80.0, 85.0, 90.0],
+              "min_trades": [10, 20, 30, 50],
+              "max_sl": [2.0, 0.0]}
+
+
+def scenarios5() -> list[dict]:
+    out = [{**CURRENT, **RAW, "window_days": wd, "on_winrate": on, "off_winrate": on,
+            "min_trades": mt, "tp_rule": ">", "max_sl": cap}
+           for wd in SCENARIOS5["window_days"] for on in SCENARIOS5["on_winrate"]
+           for mt in SCENARIOS5["min_trades"] for cap in SCENARIOS5["max_sl"]]
+    assert len(out) == 144
     assert any(all(c[k] == v for k, v in {**CURRENT, **RAW}.items()) for c in out)
     return out
 

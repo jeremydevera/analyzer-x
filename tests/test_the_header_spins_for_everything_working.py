@@ -89,14 +89,27 @@ def test_the_indexer_working_off_a_backlog_is_a_chip(monkeypatch):
 
 def test_a_github_run_still_measuring_is_a_chip(monkeypatch):
     _quiet(monkeypatch)
+    # COINS, NOT MACHINES (Sep 30, 2026: "why is github stuck at 0%"). Every
+    # machine works until the board is empty, so machines-finished read 0% for
+    # the whole run. Two accounts, each run's board counted once.
     monkeypatch.setattr(api._CLOUD_STATUS, "get", lambda pending=None: {
-        "run": {"id": 35776582134, "res": "1m"}, "conclusion": None,
-        "shards": [{"status": "completed", "conclusion": "success"},
-                   {"status": "in_progress"}, {"status": "in_progress"}]})
+        "run": {"id": 36720050181, "res": "1m"}, "conclusion": None,
+        "shards": [{"run": 36720050181, "board": 493, "finished": 120},
+                   {"run": 36720050181, "board": 493, "finished": 106},
+                   {"run": 36720066515, "board": 510, "finished": 150}]})
     got = api._background_activity()
     assert [g["kind"] for g in got] == ["github_v2"]
-    assert got[0]["now"] == "GitHub measuring · 1 of 3 machine(s) finished"
-    assert got[0]["pct"] == 33
+    assert got[0]["now"] == ("GitHub measuring · 376 of 1,003 coin(s) "
+                             "finished on 3 machine(s)")
+    assert got[0]["pct"] == 37
+    # a run whose own record lacks `res` still reads as v2 from its store mark
+    from tradingagents import cloud_sweep as cs
+    monkeypatch.setattr(cs, "run_res", lambda rid: "1m")
+    monkeypatch.setattr(api._CLOUD_STATUS, "get", lambda pending=None: {
+        "run": {"id": 36720050181}, "conclusion": None,
+        "shards": [{"run": 36720050181, "board": 493, "finished": 0}]})
+    got = api._background_activity()
+    assert got[0]["kind"] == "github_v2" and got[0]["pct"] == 0
     # finished: no chip; still being read for the first time: no chip either
     monkeypatch.setattr(api._CLOUD_STATUS, "get", lambda pending=None: {
         "run": {"id": 1}, "conclusion": "success", "shards": []})
@@ -131,3 +144,15 @@ def test_every_kind_the_header_can_receive_has_a_name_and_a_way_back():
     for k, href in hrefs.items():
         page = ROOT / "webapp" / "src" / "app" / "(admin)" / href.strip("/") / "page.tsx"
         assert page.exists(), f"{k} links to {href}, which has no page"
+
+
+def test_the_cloud_card_counts_the_sister_run_found_by_listing_github():
+    """The lead run found by listing GitHub has no `runs`; the press's own
+    record does. Without merging them the 40-machine update of Sep 30, 2026
+    was drawn as 20 machines (36720050181 without 36720066515)."""
+    import inspect
+    src = inspect.getsource(api)
+    i = src.index("run = (_working_run_cached() if ok else None) or cs.remembered()")
+    block = src[i:i + 1400]
+    assert 'rem = cs.remembered() or {}' in block
+    assert '"runs": rem.get("runs") or []' in block

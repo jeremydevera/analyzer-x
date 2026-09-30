@@ -172,6 +172,60 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-30-A — the header said "GitHub measuring 0%" while 40 machines were measuring
+
+**CEO**
+
+* The top bar showed GitHub stuck at 0% for the whole daily update, though
+  the machines were working through the coins the entire time.
+* Why: it counted machines that had FINISHED, and every machine keeps
+  working until the last coin is taken — so it stays at 0% until the very
+  end; it also only saw one of your two accounts.
+* What stops it now: it counts coins finished out of all coins on both
+  accounts, the same count the Backtest page's card uses.
+
+**DEV**
+
+* `api._background_activity` built `pct` from `fin / len(shards)` (shards
+  with `conclusion`); `api._read_cloud_status` took the lead run from
+  `_working_run_cached()` (a GitHub listing: no `runs`, no `res`), so the
+  sibling run's shards were never added and `kind` read `github`, not
+  `github_v2`.
+* Invariant broken: **one progress rule for one run** — the header and
+  `JobsPanel.runProgress` measured different things under the same word.
+* Guard: `tests/test_the_header_spins_for_everything_working.py::test_a_github_run_still_measuring_is_a_chip`
+  (coins, two runs, `run_res` fallback) and
+  `::test_the_cloud_card_counts_the_sister_run_found_by_listing_github`.
+
+**SAW** — the operator's screenshot, `Sep 30, 2026 ~10:00am`: "GitHub
+measuring 0%" — *"why is github stuck at 0%"*. At `10:01am` the lead run's
+20 machines had finished 226 of their 493 coins; the sister run
+36720066515 (jeremydevera) was measuring too and not counted.
+
+**TIMELINE**
+
+1. `9:13am` — daily update dispatched: 36720050181 + 36720066515, 1,003 coins.
+2. `10:01am` — 20 machines on AIOZ 1h, ARCSOL 30m, BBSTOCK 1h...; 0 machines
+   finished, so the chip read 0%.
+3. Fixed: coins finished (Σ `finished`) over each run's `board`, summed per
+   run; the press's remembered record supplies `runs`/`res` to the listed run.
+
+**ROOT CAUSE** — a machine-count used as a progress bar for a job whose
+machines all finish together at the end.
+
+**WHY IT WAS NOT CAUGHT** — the chip's test built three shards with one
+already `completed`, a state that exists only in the last minutes of a run;
+and the two-account merge was added to the Backtest card (Sep 22) but the
+header read a different run record.
+
+**COST** — none; a progress badge that could not move.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_header_spins_for_everything_working.py`.
+
+---
+
 ## RCA-2026-09-29-F — the 100-scenario page crowned #B52662ED on data that already knew which strategies would do well
 
 **CEO**

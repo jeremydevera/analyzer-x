@@ -2025,12 +2025,34 @@ def _background_activity() -> list:
         run = cs.get("run") or {}
         if run and not cs.get("conclusion") and not cs.get("reading"):
             shards = cs.get("shards") or []
-            fin = sum(1 for sh in shards if sh.get("conclusion") or sh.get("status") == "completed")
-            out.append({"kind": "github_v2" if run.get("res") == "1m" else "github",
-                        "now": (f"GitHub measuring · {fin} of {len(shards)} machine(s) finished"
-                                if shards else "GitHub measuring"),
-                        "done": fin, "total": len(shards),
-                        "pct": (round(100 * fin / len(shards)) if shards else None)})
+            # COINS FINISHED OVER THE COINS ON THE BOARD — the Backtest card's
+            # own count (JobsPanel.runProgress). This was machines finished
+            # over machines, and every machine works until the board is empty,
+            # so the badge read "0%" for the whole run and jumped at the end:
+            # Sep 30, 2026 10:01am, 20 machines on AIOZ, ARCSOL, BBSTOCK...
+            # and the operator asked "why is github stuck at 0%".
+            done, boards = 0, {}
+            for sh in shards:
+                done += int(sh.get("finished") if sh.get("finished") is not None
+                            else sh.get("done") or 0)
+                k = str(sh.get("run") or sh.get("repo") or "")
+                boards[k] = max(boards.get(k, 0), int(sh.get("board") or 0))
+            total = sum(boards.values()) or sum(int(sh.get("total") or 0)
+                                                 for sh in shards)
+            res = run.get("res")
+            if res is None:
+                try:
+                    from tradingagents import cloud_sweep as _cs
+
+                    res = _cs.run_res(int(run["id"]))
+                except Exception:                              # noqa: BLE001
+                    res = None
+            out.append({"kind": "github_v2" if res == "1m" else "github",
+                        "now": (f"GitHub measuring · {done:,} of {total:,} coin(s) "
+                                f"finished on {len(shards)} machine(s)"
+                                if total else "GitHub measuring"),
+                        "done": done, "total": total,
+                        "pct": (min(100, round(100 * done / total)) if total else None)})
     except Exception:                                          # noqa: BLE001
         pass
     return out
@@ -3326,6 +3348,20 @@ def _read_cloud_status() -> dict:
     # API burned 5,000 requests in an hour on 2026-08-25 and blinded every tool
     # at once.
     run = (_working_run_cached() if ok else None) or cs.remembered()
+    # THE PRESS'S OWN RECORD FILLS IN WHAT GITHUB'S LIST CANNOT SAY. A run
+    # found by listing GitHub carries no `runs` (its sister run on the other
+    # account) and no `res`, so on Sep 30, 2026 the 40-machine update
+    # (36720050181 + 36720066515) was counted as 20 machines and "v1": the
+    # header read "GitHub measuring 0%" while both fleets were measuring.
+    try:
+        rem = cs.remembered() or {}
+        ids = {int(r["id"]) for r in (rem.get("runs") or []) if r.get("id")}
+        if run and rem and run is not rem and int(run.get("id") or 0) in (
+                ids | {int(rem.get("id") or 0)}):
+            run = {**rem, **run, "runs": rem.get("runs") or [],
+                   "res": run.get("res", rem.get("res"))}
+    except Exception:                                          # noqa: BLE001
+        pass
     if run and run.get("id"):
         out["run"] = run
         try:

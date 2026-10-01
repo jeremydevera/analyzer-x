@@ -52,7 +52,8 @@ def passes_on(row: dict, cfg: dict) -> str:
     if float(row["winrate"]) < cfg["on_winrate"]:
         return f"win rate {row['winrate']:g}% is under {cfg['on_winrate']:g}%"
     if int(row["trades"]) < cfg["min_trades"]:
-        return f"{row['trades']} trades in 30 days, fewer than {cfg['min_trades']}"
+        return (f"{row['trades']} trades in {int(cfg.get('window_days') or 30)} days, "
+                f"fewer than {cfg['min_trades']}")
     if cfg.get("raw"):
         return ""
     if float(row["profit"]) <= cfg["profit_floor"]:

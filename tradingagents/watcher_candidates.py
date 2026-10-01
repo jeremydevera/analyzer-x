@@ -185,8 +185,12 @@ def raw_candidates(cfg: dict) -> dict:
                 "why": f"the Backtest v2 list could not be read yet "
                        f"({type(exc).__name__}: {str(exc)[:160]}) — asking again later"}
     rows = [_fresh(r["coin"], r["tf"], r, 0.0) for r in got]
+    # NOT "meet the criteria": the index is asked TP >= SL and the strict
+    # TP > SL is applied after, so this count is the floors only
+    # (RCA-2026-09-30-C — #CC94D9FB printed 1,511 and switched on 539)
     return {"rows": rows, "asked": len(got), "stale": 0, "gone": 0,
-            "why": f"{len(rows):,} row(s) in the Backtest v2 table meet the criteria"}
+            "why": f"{len(rows):,} row(s) in the Backtest v2 table pass the win rate, "
+                   f"trades and stop floors with TP at least as wide as SL"}
 
 
 def recent_measured(sample: int = 5) -> bool:

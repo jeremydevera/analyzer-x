@@ -172,6 +172,60 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-09-30-C — the watcher said "1,511 rows meet the criteria" and switched on 539
+
+**CEO**
+
+* The new room #CC94D9FB's status said 1,511 rows met its rules, but only
+  539 were switched on, which reads as 972 rows lost.
+* Why: the count was taken before the "target wider than stop" rule was
+  applied; the 972 had a target equal to their stop, and your rule excludes
+  those.
+* What stops it now: the line says how many pass the first check, how many
+  pass every rule, and the most common reason the others failed.
+
+**DEV**
+
+* `watcher_candidates.raw_candidates` asks `rows_index.query(tp_over_sl=True)`
+  (TP >= SL) and labelled that count "meet the criteria"; the strict TP > SL
+  is `watcher_policy.passes_on`, applied in `strategy_watcher._on_pass`, whose
+  `last_candidates` copied the earlier label.
+* Invariant broken: **label-must-match-data** — a count printed beside a
+  decision is the count the decision used.
+* Guard: `tests/test_rooms_judge_on_15_days.py::test_the_status_line_says_how_many_pass_every_rule`.
+
+**SAW** — not yet seen by the operator; found checking the deploy. `Sep 30,
+2026 8:22pm`, #CC94D9FB: "1,511 row(s) in the Backtest v2 table meet the
+criteria", 539 running; #4FC03172 at 7:57pm: 6,398 against 2,878.
+
+**TIMELINE**
+
+1. `7:57pm` — #4FC03172's first pass: 6,398 "meet the criteria", 2,878 on.
+2. `8:22pm` — #CC94D9FB: 1,511 and 539; no refusal in either log.
+3. Retraced by hand: of #CC94D9FB's 1,511, 539 pass every rule and the other
+   972 fail one rule, "TP is not wider than SL" (1% / 1%: 221, 0.8% / 0.8%:
+   167, ...).
+4. Fixed: "1,511 row(s) ... pass the win rate, trades and stop floors with TP
+   at least as wide as SL — 539 pass every rule (972 fail one, most often TP
+   is not wider than SL)". The same pass also stopped saying "trades in 30
+   days" in a 15-day room.
+
+**ROOT CAUSE** — a count taken one step before the last filter, printed as the
+filter's result.
+
+**WHY IT WAS NOT CAUGHT** — the raw path's tests assert which rows are
+switched on, never the sentence beside them; and every fixture's candidates
+already had TP wider than SL, so the two counts were always equal.
+
+**COST** — none; a wrong number on screen for under an hour, nothing switched
+wrongly.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_rooms_judge_on_15_days.py::test_the_status_line_says_how_many_pass_every_rule`.
+
+---
+
 ## RCA-2026-09-30-B — GitHub's research run died on 19 of 20 machines because the change it needed was never committed
 
 **CEO**

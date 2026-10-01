@@ -851,8 +851,24 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
                     _undo(d, reason)
             if not stop:
                 return f"{reason}, trying again"
-    st["last_candidates"] = got.get("why", "")
+    # the count that passes EVERY rule, beside the one the list was asked for
+    # (RCA-2026-09-30-C): "1,511 meet the criteria" over 539 switched on read
+    # as 972 rows lost
+    st["last_candidates"] = (f"{got.get('why', '')} — {len(rows):,} pass every rule"
+                             + (f" ({len(got['rows']) - len(rows):,} fail one, most often "
+                                f"{_top_fail(got['rows'], cfg)})"
+                                if len(got["rows"]) > len(rows) else ""))
     return ""
+
+
+def _top_fail(rows: list, cfg: dict) -> str:
+    """The reason most of the refused candidates share, numbers taken out."""
+    import collections
+    import re
+
+    c = collections.Counter(" ".join(re.sub(r"[+-]?\d[\d.,]*%?", " ", wp.passes_on(r, cfg)).split())
+                            for r in rows if wp.passes_on(r, cfg))
+    return c.most_common(1)[0][0] if c else "?"
 
 
 def _on_due(now: float, last: float, raw: bool = False) -> bool:

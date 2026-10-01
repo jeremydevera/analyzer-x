@@ -1,17 +1,17 @@
 "use client";
-/** Per-coin and per-day realized PnL. Every total here is summed from the
- * rows shown beside it, so the caption cannot disagree with the table. */
+/** Per-day realized PnL, as a calendar. Every total here is summed from the
+ * boxes shown, so the caption cannot disagree with the grid.
+ *
+ * "Closed profit by coin" was REMOVED (operator, Oct 01, 2026: "remove the
+ * Closed profit by coin for all i dont need it") — from every tab, since all
+ * rooms draw this one panel; its per-coin read went with it. */
 import { useEffect, useRef, useState } from "react";
 import { markReady } from "@/lib/loading";
 import { useLiveRefresh } from "@/lib/live";
 import PanelStatus from "./PanelStatus";
 import { DayStat, fmtMoney, tradeApi } from "@/lib/api";
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
-
-type CoinStat = { pnl: number; trades: number; wins: number; losses: number };
 
 export default function PnlPanel() {
-  const [coins, setCoins] = useState<Record<string, CoinStat>>({});
   const [days, setDays] = useState<Record<string, DayStat>>({});
   const [dry, setDry] = useState(false);
   // WHICH BOOK THE NUMBERS ON SCREEN BELONG TO (null = none yet). Both reads
@@ -46,66 +46,21 @@ export default function PnlPanel() {
   useEffect(() => { dryNow.current = dry; }, [dry]);
   useLiveRefresh(() => {
     const asked = dry;
-    Promise.all([tradeApi.pnlByCoin(dry), tradeApi.pnlDaily(dry)])
-      .then(([c, d]) => {
+    tradeApi.pnlDaily(dry)
+      .then((d) => {
         if (asked !== dryNow.current) return;
         if (!asked && !picked.current && !Object.keys(d.days).length) { setDry(true); return; }
-        setCoins(c.coins); setDays(d.days); setShown(asked); setErr("");
+        setDays(d.days); setShown(asked); setErr("");
         got.current = true; markReady("profit");
       })
       .catch((e) => setErr(String(e)));
   }, 5_000, [dry]);
 
   const loading = shown !== dry;
-  const coinRows = Object.entries(loading ? {} : coins).sort((a, b) => b[1].pnl - a[1].pnl);
-  const coinTotal = coinRows.reduce((a, [, v]) => a + v.pnl, 0);
-  const trades = coinRows.reduce((a, [, v]) => a + v.trades, 0);
-  const wins = coinRows.reduce((a, [, v]) => a + v.wins, 0);
-  const losses = coinRows.reduce((a, [, v]) => a + v.losses, 0);
 
   return (
-    <div className="grid min-w-0 gap-5 xl:grid-cols-2">
-      <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-        <div className="flex items-center gap-3 px-5 pt-4">
-          <div>
-            <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Closed profit by coin</h3>
-            <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-              {loading ? <Loading what={dry ? "practice account" : "real-money account"} />
-                : <>{coinRows.length} coins · {fmtMoney(coinTotal)} total · {trades} closed trades · {wins}W / {losses}L</>}
-            </p>
-          </div>
-          <label className="ml-auto flex items-center gap-2 text-theme-xs text-gray-600 dark:text-gray-300">
-            <input type="checkbox" checked={dry} onChange={(e) => pick(e.target.checked)} className="h-4 w-4 accent-brand-500" />
-            paper book
-          </label>
-        </div>
-        <PanelStatus err={err} loaded={got.current} />
-        <div className="max-h-72 w-full overflow-y-auto p-2">
-          <Table fixed>
-            <TableHeader className="sticky top-0 bg-white dark:bg-gray-900">
-              <TableRow>
-                {["coin", "PROFIT $", "trades", "W", "L", "win %"].map((h) => (
-                  <TableCell key={h} isHeader className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {coinRows.map(([coin, v]) => (
-                <TableRow key={coin}>
-                  <TableCell className="px-2 py-1.5 text-theme-xs font-medium text-gray-800 dark:text-white/90">{coin.replace("_USDT", "")}</TableCell>
-                  <TableCell className={`px-2 py-1.5 text-theme-xs font-semibold ${v.pnl >= 0 ? "text-success-600" : "text-error-500"}`}>{fmtMoney(v.pnl)}</TableCell>
-                  <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{v.trades}</TableCell>
-                  <TableCell className="px-2 py-1.5 text-theme-xs text-success-600">{v.wins}</TableCell>
-                  <TableCell className="px-2 py-1.5 text-theme-xs text-error-500">{v.losses}</TableCell>
-                  <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{v.trades ? ((v.wins / v.trades) * 100).toFixed(1) : "—"}</TableCell>
-                </TableRow>
-              ))}
-              {!coinRows.length && !loading && <TableRow><TableCell className="px-3 py-4 text-theme-sm text-gray-500 dark:text-gray-400">No closed trades on this book yet.</TableCell></TableRow>}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
+    <div className="min-w-0">
+      <PanelStatus err={err} loaded={got.current} />
       <DayCalendar days={loading ? {} : days} loading={loading}
         book={dry ? "practice account" : "real-money account"} dry={dry} onBook={pick} />
     </div>

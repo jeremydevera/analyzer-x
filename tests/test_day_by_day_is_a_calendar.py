@@ -72,7 +72,9 @@ def test_it_opens_on_the_book_that_has_trades():
     assert "if (!asked && !picked.current && !Object.keys(d.days).length) { setDry(true); return; }" in PANEL
     # the operator's own choice is never overridden
     assert "const pick = (v: boolean) => { picked.current = true; setDry(v); };" in PANEL
-    assert "onChange={(e) => pick(e.target.checked)}" in PANEL
+    # the book is picked on the calendar's own Real money / Practice buttons
+    # (the coin card's "paper book" box went with the card, Oct 01, 2026)
+    assert "onBook={pick}" in PANEL
     assert '"Real money"' in _calendar() and '"Practice"' in _calendar()
 
 
@@ -82,7 +84,10 @@ def test_switching_books_shows_a_spinner_not_the_other_books_numbers():
     assert "const loading = shown !== dry;" in PANEL
     assert "setShown(asked)" in PANEL
     # while loading neither panel is handed the old book's figures
-    assert "Object.entries(loading ? {} : coins)" in PANEL
+    # "Closed profit by coin" is gone from every tab (operator, Oct 01, 2026:
+    # "remove the Closed profit by coin for all i dont need it"), and so is
+    # its read — nothing fetches figures nothing draws
+    assert "Closed profit by coin</h3>" not in PANEL and "pnlByCoin" not in PANEL
     assert "<DayCalendar days={loading ? {} : days} loading={loading}" in PANEL
     assert "animate-spin" in PANEL
     # and the empty-account sentence waits for the answer

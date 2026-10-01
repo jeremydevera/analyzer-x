@@ -15,8 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from tradingagents import api, auto_trader as at, backtest_report as br
-from tradingagents import deploy_preset as dp
+from tradingagents import api, auto_trader as at, backtest_report as br, deploy_preset as dp
 from tradingagents.local_history import _sig_of
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,7 +49,7 @@ def test_every_pasted_id_is_the_combination_it_was_hashed_from(preset):
     """Check 1 of deploy-by-id: an id names ONE combination including its
     coin. Re-hash each pasted id from the fields it is armed with."""
     rows = list(_slots(preset)) + [(None, r["coin"], r) for r in preset["refused"]]
-    for key, coin, m in rows:
+    for _key, coin, m in rows:
         c = coin.replace("_USDT", "")
         codes = {br.row_code(c, m["tf"], m["signal"], m["th"], m["sl_pct"],
                              m["tp_pct"], sz, res="1m"): sz
@@ -61,7 +60,7 @@ def test_every_pasted_id_is_the_combination_it_was_hashed_from(preset):
 
 
 def test_every_armed_key_is_the_spec_its_rows_were_measured_with(preset):
-    for key, coin, m in _slots(preset):
+    for key, _coin, m in _slots(preset):
         spec = at.STRATEGY_SPECS[key]
         assert key in at.STRATEGY_ORDER, f"{key} is armed and never walked"
         iv, secs = TF_IV[m["tf"]]

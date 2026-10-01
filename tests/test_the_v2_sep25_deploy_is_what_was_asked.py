@@ -14,8 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from tradingagents import api, auto_trader as at, backtest_report as br
-from tradingagents import deploy_preset as dp
+from tradingagents import api, auto_trader as at, backtest_report as br, deploy_preset as dp
 from tradingagents.local_history import _sig_of
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,7 +54,7 @@ def test_every_id_is_its_combination_and_runs_as_itself(preset):
 
 
 def test_every_key_is_its_rows_spec_and_is_walked(preset):
-    for key, coin, m in _slots(preset):
+    for key, _coin, m in _slots(preset):
         spec = at.STRATEGY_SPECS[key]
         assert key in at.STRATEGY_ORDER
         assert (spec["interval"], spec["bar_seconds"]) == TF_IV[m["tf"]], key

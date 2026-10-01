@@ -988,7 +988,7 @@ export const api = {
   watcher: (page = 1) => get<Watcher>(`/api/trade/watcher?page=${page}`),
   /** every trading room and the rules its watcher runs on (the tab "i") */
   profiles: () => get<{ profiles: RoomInfo[] }>("/api/trade/profiles"),
-  // Backtest -> Errors -> Deployed Tabs (Oct 01, 2026): filtered and paged by
+  // Auto Trade -> Errors -> Deployed Tabs (Oct 01, 2026): filtered and paged by
   // the server, never here
   roomErrors: (q: { room?: string; kind?: string; hours?: number; page?: number }) => {
     const p = new URLSearchParams();

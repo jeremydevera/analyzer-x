@@ -341,7 +341,7 @@ def _keep_the_row_index_current() -> None:
 
         _th.Thread(target=_rolling30_loop, name="rolling30", daemon=True).start()
 
-        # THE ROOMS' ERRORS (Backtest -> Errors -> Deployed Tabs, Oct 01, 2026):
+        # THE ROOMS' ERRORS (Auto Trade -> Errors -> Deployed Tabs, Oct 01, 2026):
         # the first read of every room's log takes ~30 s on this disk, so it
         # is done here, behind the start, and the page's first poll is cheap
         def _room_errors_warm() -> None:
@@ -1141,7 +1141,7 @@ def watcher_status(page: int = 1, per: int = 10) -> dict:
 @app.get("/api/errors/rooms")
 def room_errors_route(room: str = "", kind: str = "", hours: float = 24.0,
                       page: int = 1) -> dict:
-    """Backtest -> Errors -> Deployed Tabs (operator, Oct 01, 2026: "can you
+    """Auto Trade -> Errors -> Deployed Tabs (operator, Oct 01, 2026: "can you
     create a tab called 'Errors' then create a section Named 'Deployed Tabs'
     there i should see errors"). Filtered and paged HERE, never in the page:
     a room writes tens of thousands of refusals a day."""

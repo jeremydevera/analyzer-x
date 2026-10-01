@@ -32,10 +32,16 @@ type NavItem = {
 // STROKE, so beside five filled shapes it read as a thinner, lighter icon —
 // which is the same "these don't look like a set" complaint in a new form.
 const navItems: NavItem[] = [
+  // ERRORS LIVES UNDER AUTO TRADE (operator, Oct 01, 2026: first "i want it
+  // under backtest tab", then "make it udner auto trade instead"). Auto Trade
+  // opens a two-item group; the trading screen is still the first item.
   {
     icon: <DollarLineIcon />,
     name: "Auto Trade",
-    path: "/trade",
+    subItems: [
+      { name: "Auto Trade", path: "/trade" },
+      { name: "Errors", path: "/errors" },
+    ],
   },
   // v1 IS OFF THE NAV (Sep 24, 2026). The operator, three times:
   // *"fuck you, stop the v1 now and start the v2 who said to start v1?"*
@@ -54,17 +60,10 @@ const navItems: NavItem[] = [
     name: "Candles",
     path: "/candles-v2",
   },
-  // ERRORS LIVES UNDER BACKTEST (operator, Oct 01, 2026: "can you create a
-  // tab called 'Errors' then create a section Named 'Deployed Tabs' there i
-  // should see errors ... i want it under backtest tab"). Backtest opens a
-  // two-item group; the results page is still the first item.
   {
     icon: <TableIcon />,
     name: "Backtest",
-    subItems: [
-      { name: "Backtest", path: "/backtest-v2" },
-      { name: "Errors", path: "/errors" },
-    ],
+    path: "/backtest-v2",
   },
   {
     icon: <ShootingStarIcon />,

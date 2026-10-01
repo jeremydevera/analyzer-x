@@ -195,7 +195,7 @@ were turned off this way: 2,945 practice rows switched off, Main untouched.
 
 ## Where to see a room's errors
 
-**Backtest → Errors → Deployed Tabs** (asked Oct 01, 2026). One card per tab
+**Auto Trade → Errors → Deployed Tabs** (asked Oct 01, 2026). One card per tab
 says whether its runner is running, how many errors it had in the chosen
 window and when the last one was. The table lists each kind of error once,
 with how many times it happened. Example from Sep 30–Oct 01, 2026:
@@ -450,5 +450,5 @@ an outage. `GET /api/errors/rooms?room=&kind=&hours=&page=` groups by (room,
 kind, message without numbers) and pages on the server; the API warms the
 first read in a thread at start (~30 s on this disk). Screen:
 `webapp/src/components/errors/DeployedTabsErrors.tsx` at `/errors`, under
-Backtest in `AppSidebar.tsx`. Guard:
+Auto Trade in `AppSidebar.tsx`. Guard:
 `tests/test_the_errors_tab_shows_each_rooms_errors.py`.

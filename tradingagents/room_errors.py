@@ -1,4 +1,4 @@
-"""The errors of every trading room, for Backtest -> Errors -> Deployed Tabs.
+"""The errors of every trading room, for Auto Trade -> Errors -> Deployed Tabs.
 
 Operator, Oct 01, 2026: *"can you create a tab called 'Errors' then create a
 section Named 'Deployed Tabs' there i should see errors ... i want it under

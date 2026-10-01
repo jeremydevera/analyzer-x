@@ -1,4 +1,4 @@
-"""Backtest -> Errors -> Deployed Tabs (operator, Oct 01, 2026: "can you
+"""Auto Trade -> Errors -> Deployed Tabs (operator, Oct 01, 2026: "can you
 create a tab called 'Errors' then create a section Named 'Deployed Tabs'
 there i should see errors ... i want it under backtest tab").
 
@@ -143,11 +143,14 @@ def test_the_route_refuses_a_room_without_a_tab():
     assert c.get("/api/errors/rooms?kind=nonsense").status_code == 400
 
 
-def test_errors_sits_under_backtest_and_the_screen_asks_the_server():
+def test_errors_sits_under_auto_trade_and_the_screen_asks_the_server():
+    """Oct 01, 2026: "make it udner auto trade instead" (it was first put
+    under Backtest)."""
     nav = (ROOT / "webapp/src/layout/AppSidebar.tsx").read_text(encoding="utf-8")
-    block = nav[nav.index('name: "Backtest"'):nav.index("New Crypto")]
-    assert '{ name: "Backtest", path: "/backtest-v2" }' in block
+    block = nav[nav.index('name: "Auto Trade"'):nav.index('name: "Candles"')]
+    assert '{ name: "Auto Trade", path: "/trade" }' in block
     assert '{ name: "Errors", path: "/errors" }' in block
+    assert nav.count('path: "/errors"') == 1, "one door to the page, not two"
     page = (ROOT / "webapp/src/app/(admin)/errors/page.tsx").read_text(encoding="utf-8")
     assert "DeployedTabsErrors" in page
     comp = (ROOT / "webapp/src/components/errors/DeployedTabsErrors.tsx").read_text(encoding="utf-8")

@@ -105,7 +105,7 @@ def test_a_six_hour_job_can_be_spawned_with_a_log():
 
 def _held(monkeypatch, target):
     """Make the rename refuse to move `target`, the way Windows does while
-    another process has the file open. `os.replace` since RCA-2026-09-28-F:
+    another process has the file open. `os.replace` since RCA-2026-09-28-K:
     `shutil.move` answered a refused rename by COPYING the whole file."""
     import os
 

@@ -420,7 +420,7 @@ def using_db(db_path):
         _DB_OVERRIDE.reset(tok)
 
 
-# THE SWAP GATE (RCA-2026-09-28-F). Windows will not rename a file any
+# THE SWAP GATE (RCA-2026-09-28-K). Windows will not rename a file any
 # handle holds open, and this API opens rows.db for every poll — so a rebuild
 # in ANOTHER process could never swap its finished file in while the site ran
 # (Sep 28, 2026 10:33pm: 51,066,478 rows built and verified, then refused).
@@ -1433,7 +1433,7 @@ def swap_in(dest: Path, backup: Path, *, keep_backup: bool = True,
     Raises whatever the filesystem raises. The caller reports it; this
     function does not decide what a failure means.
 
-    * **A RENAME, NEVER A COPY (RCA-2026-09-28-F).** This was `shutil.move`,
+    * **A RENAME, NEVER A COPY (RCA-2026-09-28-K).** This was `shutil.move`,
       which answers a refused rename by COPYING the file and then trying to
       delete the original. Sep 28, 2026 10:33pm, v2: the rename was refused
       (the API had rows.db open), so it copied all 25.26 GB to
@@ -2089,7 +2089,7 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
             put_back(backup)
             # VERIFIED AND WAITING: the API swaps it in on its next tick,
             # from inside the process that holds rows.db open
-            # (swap_ready_rebuild, RCA-2026-09-28-F)
+            # (swap_ready_rebuild, RCA-2026-09-28-K)
             with contextlib.suppress(OSError):
                 ready_marker(dest).write_text(json.dumps(
                     {"at": int(_t.time()), "pairs": done, "rows": rows,

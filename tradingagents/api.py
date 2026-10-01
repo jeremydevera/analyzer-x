@@ -238,7 +238,7 @@ def _keep_the_row_index_current() -> None:
                 # process that feeds it is supervised exactly like the runner
                 # and the jobs above. `spawn_indexer` no-ops while one is
                 # alive, so this cannot double it.
-                # A VERIFIED REBUILD WAITING FOR ITS SWAP (RCA-2026-09-28-F).
+                # A VERIFIED REBUILD WAITING FOR ITS SWAP (RCA-2026-09-28-K).
                 # A rebuild in another process cannot rename rows.db while
                 # this process reads it; this process can, because it holds
                 # the gate its own readers pass through.

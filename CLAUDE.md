@@ -129,6 +129,11 @@ saw "no changes" on GitHub and was right to.
   must not ship, say so in the same breath as pushing the rest
 - anything the CI runs from `main` (workflows, `.github/scripts/*`) is doubly
   urgent: unpushed means the cloud is running different code from this machine
+- commit through `python scripts/commit_own.py -F msg.txt <paths>` while other
+  sessions share this checkout: it builds the commit from a private index
+  holding only the named paths, so their staged files stay staged and out of
+  yours (RCA-2026-09-28-E: a plain `git commit` shipped 11 files for a 5-file
+  change). Check `git diff HEAD -- <path>` first — it commits whole files
 
 DO NOT commit the operator's private notes (`.obsidian/`, `*.md` scratch files
 in the repo root) — those are theirs, not the project's.

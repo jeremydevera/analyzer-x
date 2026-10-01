@@ -1224,7 +1224,10 @@ runner would then trade.
 
 ---
 
-## RCA-2026-09-28-F — a finished v2 rebuild could never swap itself in while the site ran, and its failed swap copied 25 GB
+## RCA-2026-09-28-K — a finished v2 rebuild could never swap itself in while the site ran, and its failed swap copied 25 GB
+
+
+*Filed as RCA-2026-09-28-F in d73cd46af0c1's message; renamed RCA-2026-09-28-K on Oct 01, 2026, because another entry had taken F first (test_every_entry_has_its_own_id had been red since).*
 
 **CEO**
 
@@ -1593,9 +1596,9 @@ fail on f3c6e30b77e1 and pass here (the months window was already guarded by
   COMMIT must be built from a tree that holds only mine
   (`GIT_INDEX_FILE=<private> git read-tree HEAD; add; write-tree;
   commit-tree`).
-* Guard: none automatic — a process rule; the check is reading
-  `git diff --cached --stat` before every commit and refusing any file
-  that is not mine.
+* Guard: `test_another_sessions_staged_files_stay_staged_and_out_of_the_commit`
+  (added Oct 01, 2026) holds `scripts/commit_own.py`, which builds a commit
+  from a private index holding only the named paths.
 
 **SAW** — `git diff --cached --stat` printed 11 files for a 5-file change,
 `Sep 28, 2026 ~2:55pm`; the first push said "remote end hung up" but had
@@ -1623,8 +1626,14 @@ already gone; and a "failed" push was believed without re-fetching.
 
 **FIX** — af1c66e74982.
 
-**GUARD** — process: build every commit on a private index; re-fetch after
-any push that reports an error.
+**GUARD** — `tests/test_commit_own_takes_only_the_named_files.py` (added
+Oct 01, 2026, when this entry was found to name no test):
+`scripts/commit_own.py` commits HEAD plus exactly the named paths from a
+private index; `test_another_sessions_staged_files_stay_staged_and_out_of_the_commit`
+stages another session's file and proves it stays staged and out of the
+commit, and `test_nothing_to_commit_and_a_moved_head_change_nothing` proves a
+commit made meanwhile is never overwritten. Re-fetching after a push that
+reports an error stays a process rule.
 
 ---
 
@@ -1827,7 +1836,10 @@ bar (on ARKM 1h the two rules differ by 45 of 359 trades).
 
 ---
 
-## RCA-2026-09-28-A — every GitHub backtest run was titled "(15m / 30m)" whatever it measured
+## RCA-2026-09-28-J — every GitHub backtest run was titled "(15m / 30m)" whatever it measured
+
+
+*Filed as RCA-2026-09-28-A in 085fb1a09692's message; renamed RCA-2026-09-28-J on Oct 01, 2026, because another entry had taken A first (test_every_entry_has_its_own_id had been red since).*
 
 **CEO**
 

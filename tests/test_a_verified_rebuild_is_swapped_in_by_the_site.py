@@ -1,5 +1,5 @@
 """A finished, verified rebuild gets swapped in while the site is running
-(RCA-2026-09-28-F).
+(RCA-2026-09-28-K).
 
 Sep 28, 2026 10:33pm, Backtest v2: the rebuild loaded 5,006 pairs, 51,066,478
 rows, verified them, and then failed on the rename — Windows refuses to

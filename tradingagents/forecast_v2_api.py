@@ -1,0 +1,386 @@
+"""The Forecast v2 page's answers — every filter, sort and page done HERE,
+never in the browser over a list already cut (CLAUDE.md, filter where the
+data is).
+
+* the PRACTICE half (forecast_v2.live) is a copy made in the background, the
+  way the Forecast tab's room numbers are (api._forecast_live_refresh): a
+  request gets the copy at once and, when it is older than LIVE_FRESH_S,
+  starts a new one; a failed refresh is named and the last copy served.
+* the BACKTEST half is latest.json / streaks.json, written once a day by
+  forecast_v2_daily and read here, re-read only when the file changes.
+"""
+from __future__ import annotations
+
+import calendar
+import datetime as dt
+import json
+import threading
+import time
+from pathlib import Path
+
+from tradingagents import forecast_rules as fr, forecast_v2 as f2
+
+LIVE_FRESH_S = 30
+PER_PAGE = 25
+_LIVE: dict = {"value": None, "busy": False, "error": ""}
+_LIVE_LOCK = threading.Lock()
+_FILES: dict = {}
+_FILES_LOCK = threading.Lock()
+
+
+# ------------------------------------------------------- the practice copy
+def live_refresh() -> dict:
+    with _LIVE_LOCK:
+        if _LIVE["busy"]:
+            return _LIVE["value"] or {}
+        _LIVE["busy"] = True
+    try:
+        value = f2.live()
+        json.dumps(value, allow_nan=False)          # a copy that cannot be sent is never kept
+        _LIVE["value"] = value
+        _LIVE["error"] = ""
+        return value
+    except Exception as exc:                                   # noqa: BLE001
+        from tradingagents.positions_view import fmt_when
+
+        why = f"{type(exc).__name__}: {str(exc)[:200]}"
+        if why not in _LIVE["error"]:
+            print(f"[forecast v2] the practice numbers could not be worked out: {why}", flush=True)
+        _LIVE["error"] = f"could not be worked out at {fmt_when(time.time())}: {why}"
+        if _LIVE["value"] is None:
+            raise
+        return _LIVE["value"]
+    finally:
+        _LIVE["busy"] = False
+
+
+def live() -> dict:
+    have = _LIVE["value"]
+    if have is None:
+        return live_refresh()
+    if time.time() - have["at"] > LIVE_FRESH_S and not _LIVE["busy"]:
+        threading.Thread(target=live_refresh, name="forecast-v2-live", daemon=True).start()
+    return have
+
+
+# ----------------------------------------------------- the backtest files
+def _file(name: str, default):
+    """latest.json / streaks.json, re-read only when the file changes."""
+    p = f2._home() / name
+    try:
+        st = p.stat()
+    except OSError:
+        return default
+    stamp = (st.st_mtime_ns, st.st_size)
+    with _FILES_LOCK:
+        got = _FILES.get(name)
+        if got and got[0] == stamp:
+            return got[1]
+    try:
+        value = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return got[1] if got else default
+    with _FILES_LOCK:
+        _FILES[name] = (stamp, value)
+    return value
+
+
+def latest() -> dict | None:
+    return _file("latest.json", None)
+
+
+def backtest_streaks() -> dict | None:
+    """streaks.npz as columns (forecast_v2_merge.streak_arrays), re-read only
+    when the file changes."""
+    import numpy as np
+
+    p = f2._home() / "streaks.npz"
+    try:
+        st = p.stat()
+    except OSError:
+        return None
+    stamp = (st.st_mtime_ns, st.st_size)
+    with _FILES_LOCK:
+        got = _FILES.get("streaks.npz")
+        if got and got[0] == stamp:
+            return got[1]
+    try:
+        with np.load(p) as z:
+            value = {k: z[k] for k in z.files}
+    except (OSError, ValueError):
+        return got[1] if got else None
+    with _FILES_LOCK:
+        _FILES["streaks.npz"] = (stamp, value)
+    return value
+
+
+def _streak_row(a: dict, i: int) -> dict:
+    import math
+
+    be = float(a["break_even"][i])
+    name = lambda k: str(a[f"{k}_names"][int(a[k][i])])  # noqa: E731
+    return {"source": "backtest", "kind": "win" if int(a["kind"][i]) == 0 else "loss",
+            "length": int(a["length"][i]), "id": a["id"][i].decode(), "coin": name("coin"),
+            "tf": name("tf"), "signal": name("signal"), "th": float(a["th"][i]),
+            "tp": round(float(a["tp"][i]), 3), "sl": round(float(a["sl"][i]), 3),
+            "started_ms": int(a["started_ms"][i]), "last_ms": int(a["last_ms"][i]),
+            "profit": round(float(a["profit"][i]), 2), "trades": int(a["trades"][i]),
+            "wins": int(a["wins"][i]), "break_even": None if math.isnan(be) else round(be, 1)}
+
+
+def _by_id() -> dict:
+    lt = latest() or {}
+    return {s["id"]: s for s in lt.get("sets", [])}
+
+
+# ------------------------------------------------------------------ pages
+def _page(rows: list, page: int, per: int = PER_PAGE) -> dict:
+    total = len(rows)
+    pages = max(1, -(-total // per))
+    page = min(max(1, int(page)), pages)
+    return {"rows": rows[(page - 1) * per: page * per], "total": total, "page": page,
+            "pages": pages, "per": per}
+
+
+def _follow_for(kind: str, length: int) -> dict | None:
+    """What followed past backtest streaks this long (forecast_shard.streaks):
+    under 30 past cases it says so instead of giving a number."""
+    lt = latest() or {}
+    table = (lt.get("follow") or {}).get(kind) or []
+    k = min(int(length), len(table))
+    if k < 1:
+        return None
+    row = table[k - 1]
+    if row["cases"] < 30:
+        return {"k": row["k"], "cases": row["cases"], "enough": False}
+    return {"k": row["k"], "cases": row["cases"], "enough": True,
+            "next_win": round(100 * row["next_win"] / row["cases"], 1),
+            "cases10": row["cases10"],
+            "next10": round(row["pnl10"] / row["cases10"], 2) if row["cases10"] else None,
+            "capped": k < int(length)}
+
+
+def streaks(source: str = "practice", kind: str = "win", min_len: int | None = None,
+            page: int = 1) -> dict:
+    """One streak list, longest first, filtered and paged here."""
+    if source not in ("practice", "backtest"):
+        raise ValueError(f"source must be practice or backtest, not {source!r}")
+    if kind not in ("win", "loss"):
+        raise ValueError(f"kind must be win or loss, not {kind!r}")
+    lv = live()
+    floor = f2.WIN_N if kind == "win" else f2.LOSS_M
+    n = floor if min_len is None else max(1, int(min_len))
+    if source == "practice":
+        every = [s for s in lv["streaks"] if s["kind"] == kind]
+        examined = {"rooms": len(lv["rooms"]), "rows": len(lv["streaks"]),
+                    "what": "every room and coin with a closed practice trade"}
+        note = ""
+    else:
+        import numpy as np
+
+        a = backtest_streaks()
+        lt = latest() or {}
+        data = lt.get("data") or {}
+        examined = {"strategies": data.get("strategies"), "trades": data.get("trades"),
+                    "end_ms": data.get("end_ms"),
+                    "what": "every strategy in the replay that could pass the loosest rule set"}
+        written = (lt.get("streaks") or {}).get("floor", 5)
+        note = (f"only runs of {written}+ were kept from the replay; a shorter "
+                f"setting shows the same list" if n < written else "")
+        on = lv.get("on_ids") or {}
+        if a is None:
+            out = _page([], page)
+            out.update(source=source, kind=kind, min=n, of=0, examined=examined, note=note)
+            return out
+        mine = np.flatnonzero(a["kind"] == (0 if kind == "win" else 1))
+        hit = mine[a["length"][mine] >= n]           # already longest first
+        out = _page(list(range(len(hit))), page)
+        out["rows"] = [{**_streak_row(a, int(hit[i])),
+                        "rooms_on": on.get(a["id"][hit[i]].decode(), [])} for i in out["rows"]]
+        for r in out["rows"]:
+            r["follow"] = _follow_for(kind, r["length"])
+        out.update(source=source, kind=kind, min=n, of=int(len(mine)), examined=examined, note=note)
+        return out
+    rows = [s for s in every if s["length"] >= n]
+    out = _page(rows, page)
+    for r in out["rows"]:
+        r["follow"] = _follow_for(kind, r["length"])
+    out.update(source=source, kind=kind, min=n, of=len(every), examined=examined, note=note)
+    return out
+
+
+SORTS = {"rank": lambda s: s["rank"],
+         "predicted": lambda s: -((s["predicted"] or {}).get("profit") or -1e18),
+         "corrected": lambda s: -((s["predicted"] or {}).get("corrected") or -1e18),
+         "beat": lambda s: -((s["random"] or {}).get("beat") or -1),
+         "money": lambda s: s["money_needed"],
+         "winrate": lambda s: -(s["total"]["winrate"] or 0),
+         "trades": lambda s: -((s["predicted"] or {}).get("trades") or 0)}
+
+
+def rules(sort: str = "rank", page: int = 1, base: str = "", deployable: bool = False,
+          min_beat: int = 0, tp_rule: str = "", window: int = 0, max_sl: float = 0.0,
+          q: str = "") -> dict:
+    """The rule sets, sorted, filtered and paged here."""
+    lt = latest()
+    if not lt:
+        return {"rows": [], "total": 0, "page": 1, "pages": 1, "per": PER_PAGE,
+                "tested": None, "why": "no Forecast v2 has been measured yet"}
+    if sort not in SORTS:
+        raise ValueError(f"sort must be one of {sorted(SORTS)}, not {sort!r}")
+    rows = list(lt["sets"])
+    named = []
+    if q.strip():
+        want = q.strip().lstrip("#").upper()
+        rows = [s for s in rows if s["id"] == want]
+        named.append(f"id #{want}")
+    else:
+        if base == "base":
+            rows = [s for s in rows if s["base"]]
+            named.append("base rule sets only")
+        elif base == "options":
+            rows = [s for s in rows if s["options"]]
+            named.append("with an option only")
+        if deployable:
+            rows = [s for s in rows if s["deployable"]]
+            named.append("a room can run it today")
+        if min_beat:
+            rows = [s for s in rows if ((s["random"] or {}).get("beat") or 0) >= int(min_beat)]
+            named.append(f"beat random {int(min_beat)}+ times in 100")
+        if tp_rule:
+            rows = [s for s in rows if s["cfg"]["tp_rule"] == tp_rule]
+            named.append(fr.TP_WORDS.get(tp_rule, tp_rule))
+        if window:
+            rows = [s for s in rows if int(s["cfg"]["window_days"]) == int(window)]
+            named.append(f"judged on {int(window)} days")
+        if max_sl:
+            rows = [s for s in rows if float(s["cfg"].get("max_sl") or 99) <= float(max_sl) + 1e-9]
+            named.append(f"stop {float(max_sl):g}% or tighter")
+    rows.sort(key=SORTS[sort])
+    out = _page(rows, page)
+    out.update(tested=lt["tested"], filters=named, sort=sort)
+    return out
+
+
+# ------------------------------------------------- the month, and grading
+def tracker(now: float | None = None) -> dict:
+    """Each room's practice month so far against its own rule set's
+    predicted range, both straight and after the reality check, the range
+    shared out over the days of the month."""
+    now = time.time() if now is None else float(now)
+    lt = latest() or {}
+    by = _by_id()
+    today = dt.date.fromtimestamp(now)
+    days_in = calendar.monthrange(today.year, today.month)[1]
+    share = today.day / days_in
+    out = []
+    lv = live()
+    for r in lv["rooms"]:
+        if r["retired"]:
+            continue
+        rid = ((lt.get("rooms") or {}).get(r["id"]) or {}).get("id")
+        s = by.get(rid) if rid else None
+        p = (s or {}).get("predicted") or {}
+        band = None
+        if p:
+            band = {k: (round(p[k] * share, 2) if p.get(k) is not None else None)
+                    for k in ("low", "profit", "high", "corrected_low", "corrected", "corrected_high")}
+        made = r["month"]["profit"]
+        below = band is not None and band.get("corrected_low") is not None and made < band["corrected_low"]
+        out.append({"room": r["id"], "name": r["name"], "id": rid, "words": (s or {}).get("words"),
+                    "month": r["month"], "predicted": p or None, "so_far": band,
+                    "share": round(share, 3), "below": below})
+    tops = list(lt.get("sets") or [])[:5]
+    cur = dt.datetime.fromtimestamp(now).strftime("%Y-%m")
+    top_rows = []
+    for s in tops:
+        m = next((x for x in s["months"] if x["month"] == cur), None)
+        top_rows.append({"id": s["id"], "words": s["words"], "predicted": s["predicted"],
+                         "month": m})
+    return {"rooms": out, "tops": top_rows, "month": cur, "day": today.day, "days": days_in}
+
+
+def grading() -> dict:
+    """Every month's FIRST prediction against what happened, for the months
+    the newest data covers: the backtest's result for every rule set, and the
+    rooms' own practice result for their own rule set."""
+    p = f2._home() / "predictions.jsonl"
+    lines = []
+    try:
+        lines = [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines() if x.strip()]
+    except (OSError, ValueError):
+        lines = []
+    lt = latest() or {}
+    complete = set((lt.get("data") or {}).get("complete") or [])
+    by = _by_id()
+    out = []
+    for line in lines:
+        m = line["month"]
+        if m not in complete:
+            out.append({"month": m, "made_at": line["made_at"], "graded": False,
+                        "why": "the month is not over in the newest data yet"})
+            continue
+        inside = judged = 0
+        for s in line["sets"]:
+            got = by.get(s["id"])
+            row = next((x for x in (got or {}).get("months", []) if x["month"] == m), None)
+            pr = s.get("predicted") or {}
+            if row is None or pr.get("low") is None:
+                continue
+            judged += 1
+            inside += pr["low"] <= row["profit"] <= pr["high"]
+        out.append({"month": m, "made_at": line["made_at"], "graded": True,
+                    "inside": inside, "judged": judged})
+    return {"months": out}
+
+
+def tracker_alarms(now: float | None = None) -> list:
+    """The bell, ONCE per room per month, when a room's practice month falls
+    under its predicted worst case after the reality check."""
+    from tradingagents import notifications as nt
+
+    path = f2._home() / "alarms.json"
+    try:
+        rung = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        rung = {}
+    t = tracker(now)
+    out = []
+    for r in t["rooms"]:
+        key = f"{t['month']}|{r['room']}"
+        if r["below"] and key not in rung:
+            nt.record("forecast", f"{r['name']} is under its predicted worst case",
+                      detail=(f"{r['name']} has made {r['month']['profit']:+.2f} this month; its rules "
+                              f"#{r['id']} were predicted at worst {r['so_far']['corrected_low']:+.2f} "
+                              f"by today after the reality check"), ok=False)
+            rung[key] = time.time()
+            out.append(key)
+    if out:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(rung), encoding="utf-8")
+    return out
+
+
+def summary(now: float | None = None) -> dict:
+    """Everything on the page except the two big lists (streaks, rule sets),
+    which page on their own routes."""
+    from tradingagents import forecast_v2_daily as fd
+
+    lv = live()
+    lt = latest()
+    st = fd.read()
+    return {"at": lv["at"], "took_ms": lv["took_ms"], "refresh_error": _LIVE["error"],
+            "rooms": lv["rooms"], "avoid": lv["avoid"], "money": lv["money"],
+            "reality": lv["reality"], "defaults": lv["defaults"],
+            "streak_counts": {"practice": {"win": sum(1 for s in lv["streaks"] if s["kind"] == "win"),
+                                           "loss": sum(1 for s in lv["streaks"] if s["kind"] == "loss")},
+                              "backtest": (lt or {}).get("streaks")},
+            "backtest": None if lt is None else {
+                "made_at": lt["made_at"], "runs": lt["runs"], "data": lt["data"],
+                "tested": lt["tested"], "reality": lt["reality"], "rooms": lt["rooms"],
+                "follow": lt["follow"]},
+            "chain": {k: st.get(k) for k in ("phase", "why", "error", "on", "done_at",
+                                             "replay_run", "base_run", "options_run", "repo")},
+            "tracker": tracker(now) if lt else None, "grading": grading() if lt else None,
+            "options": [{"key": k, "value": v, "words": w} for k, v, w in fr.OPTIONS],
+            "grid": fr.BASE}

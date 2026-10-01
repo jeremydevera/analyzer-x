@@ -44,6 +44,10 @@ const navItems: NavItem[] = [
       // Auto Trade -> Forecast (operator, Oct 01, 2026: "create a forecast
       // tab"): the saved forecasts of which trading room is best
       { name: "Forecast", path: "/forecast" },
+      // Auto Trade -> Forecast v2 (Oct 01, 2026: "okay run that prompt and
+      // create Forecast v2"): streaks, coins to avoid, where the money goes,
+      // and the room rules predicted for this month
+      { name: "Forecast v2", path: "/forecast-v2" },
     ],
   },
   // v1 IS OFF THE NAV (Sep 24, 2026). The operator, three times:

@@ -980,6 +980,91 @@ export type Forecasts = {
 };
 /** One room's numbers RIGHT NOW (tradingagents/room_stats.py — the one place
  *  they are worked out; this screen only prints them). */
+// ------------------------------------------------------------ Forecast v2
+export type F2Group = { group: string; trades: number; wins: number; losses: number;
+  profit: number; per_trade: number | null; winrate: number | null; thin: boolean };
+export type F2Follow = { k: number; cases: number; enough: boolean; next_win?: number;
+  cases10?: number; next10?: number | null; capped?: boolean } | null;
+export type F2Streak = { source: "practice" | "backtest"; kind: "win" | "loss"; length: number;
+  started_at?: number; started_ms?: number; last_at?: number; last_ms?: number; profit: number;
+  coin: string; id?: string | null; room?: string; room_name?: string; strategies?: number;
+  tf: string | null; signal: string | null; tp: number | null; sl: number | null;
+  trades: number; wins: number; losses?: number; winrate?: number;
+  break_even: number | null; switched_on?: boolean; rooms_on?: string[]; follow?: F2Follow };
+export type F2StreakPage = { rows: F2Streak[]; total: number; page: number; pages: number; per: number;
+  source: string; kind: string; min: number; of: number; note: string;
+  examined: { what: string; rooms?: number; rows?: number; strategies?: number; trades?: number; end_ms?: number } };
+export type F2Avoid = { coin: string; rooms: string[]; trades: number; wins: number; losses: number;
+  winrate: number; profit: number; worst_run: number; worst_run_trades: number;
+  backtest: { rows: number; of: number; trades: number; wins: number; winrate: number | null } };
+export type F2Reality = { rows: number; bt_trades: number; bt_wins: number; bt_profit: number;
+  pr_trades: number; pr_wins: number; pr_profit: number; bt_winrate: number | null;
+  pr_winrate: number | null; bt_per_trade: number | null; pr_per_trade: number | null;
+  took: number | null; gap: number | null; first?: number | null; last?: number | null;
+  no_backtest?: number; after_backtest?: number; bt_uncapped?: number };
+export type F2Months = { month: string; complete: boolean; trades: number; wins: number;
+  losses: number; profit: number; corrected: number | null };
+export type F2Predicted = { profit: number; low: number; high: number; trades: number; months: number;
+  thin: boolean; corrected: number | null; corrected_low: number | null; corrected_high: number | null } | null;
+export type F2Rule = { id: string; words: string; options: string[]; base: boolean; deployable: boolean;
+  deploy_why: string; rank: number; room?: string | null;
+  cfg: { window_days: number; on_winrate: number; min_trades: number; tp_rule: string; max_sl: number };
+  months: F2Months[]; predicted: F2Predicted;
+  total: { closed: number; wins: number; losses: number; winrate: number; profit: number;
+    worst_run: number; worst_run_n: number; max_open: number; worst_day: number;
+    green_days: number; days_n: number; max_dd: number };
+  per_trade: number | null; break_even: number | null; money_needed: number;
+  random: { draws: number; beat: number | null; per_trade: number | null }; luck: boolean; slots: number };
+export type F2RulePage = { rows: F2Rule[]; total: number; page: number; pages: number; per: number;
+  tested: { base: number; options: number; total: number } | null; filters?: string[]; sort?: string; why?: string };
+export type F2RuleQuery = { sort?: string; page?: number; base?: string; deployable?: boolean;
+  min_beat?: number; tp_rule?: string; window?: number; max_sl?: number; q?: string };
+export type F2WhatIfCfg = { window_days: number; on_winrate: number; min_trades: number;
+  tp_rule: string; max_sl: number; coin_slices?: number } & Record<string, unknown>;
+export type F2WhatIf = { id: string; words?: string; status: string; why: string; run?: number;
+  asked_at?: number; result?: F2Rule | null };
+export type F2Breakdown = { id: string; tf: Record<string, [number, number, number]>;
+  family: Record<string, [number, number, number]>; kind: Record<string, [number, number, number]>;
+  hour: Record<string, [number, number, number]>; stops: Record<string, [number, number, number]>;
+  sizes: [number, number, number, number]; costs: number; trades: number; profit: number };
+export type F2Summary = {
+  at: number; took_ms: number; refresh_error: string;
+  rooms: { id: string; name: string; retired: boolean; trades: number; unreadable: number;
+    month: { trades: number; wins: number; losses: number; profit: number; days: { day: string; total: number }[] } }[];
+  avoid: { rule: string; coins: F2Avoid[]; examined: number };
+  money: {
+    costs: { rooms: { room: string; name: string; retired: boolean; trades: number; profit: number;
+      costs: number; matched: number; without_costs: number;
+      worst_day: { day: string; profit: number } | null }[]; profit: number; costs: number; without_costs: number };
+    sizes: { avg_win: number | null; avg_loss: number | null; break_even: number | null;
+      winrate: number | null; trades: number; wins: number; losses: number };
+    by_tf: F2Group[]; by_family: F2Group[]; by_kind: F2Group[]; by_hour: F2Group[]; stop_outs: F2Group[];
+    overlap: { coin: string; rooms: string[]; count: number; trades: number; flag: boolean }[];
+    thin_below: number };
+  reality: { rooms: (F2Reality & { room: string; name: string; cap: number })[]; all: F2Reality; rule: string };
+  defaults: { win_n: number; loss_m: number; avoid_min_trades: number; thin: number; overlap_warn: number };
+  streak_counts: { practice: { win: number; loss: number }; backtest: { count: number; win: number; loss: number; floor: number } | null };
+  backtest: null | { made_at: number; runs: Record<string, number>; reality: F2Reality;
+    data: { start: string; end_ms: number; months: string[]; complete: string[];
+      write: { wr: number; trades: number; tp: string; windows: number[] } | null;
+      machines: number; strategies: number; trades: number };
+    tested: { base: number; options: number; total: number };
+    rooms: Record<string, F2Breakdown>;
+    follow: { win?: { k: number; cases: number; next_win: number; cases10: number; pnl10: number }[];
+      loss?: { k: number; cases: number; next_win: number; cases10: number; pnl10: number }[] } };
+  chain: { phase?: string; why?: string; error?: string; on?: boolean; done_at?: number;
+    replay_run?: number; base_run?: number; options_run?: number; repo?: string };
+  tracker: null | { month: string; day: number; days: number;
+    rooms: { room: string; name: string; id: string | null; words: string | null; below: boolean;
+      month: { trades: number; wins: number; losses: number; profit: number; days: { day: string; total: number }[] };
+      predicted: F2Predicted; share: number;
+      so_far: Record<"low" | "profit" | "high" | "corrected_low" | "corrected" | "corrected_high", number | null> | null }[];
+    tops: { id: string; words: string; predicted: F2Predicted; month: F2Months | null }[] };
+  grading: null | { months: { month: string; made_at: number; graded: boolean; why?: string; inside?: number; judged?: number }[] };
+  options: { key: string; value: unknown; words: string }[];
+  grid: { window_days: number[]; on_winrate: number[]; min_trades: number[]; tp_rule: string[]; max_sl: number[] };
+};
+
 export type RoomGroup = { trades: number; wins: number; losses: number; profit: number;
   per_trade: number | null; winrate: number | null };
 export type RoomNow = {
@@ -1118,6 +1203,29 @@ export const api = {
   // postDetail: a refusal ("a forecast was just saved at ...") reaches the
   // screen as its own sentence, not as "HTTP 409"
   forecastNew: () => postDetail<{ saved: Forecast }>("/api/forecasts/new", {}),
+  // Auto Trade -> Forecast v2 (Oct 01, 2026): streaks, coins to avoid, where the
+  // money goes, and the room rules predicted for this month — every list
+  // filtered and paged by the server (tradingagents/forecast_v2_api.py)
+  forecastV2: () => get<F2Summary>("/api/forecast-v2"),
+  forecastV2Streaks: (q: { source: "practice" | "backtest"; kind: "win" | "loss"; min?: number; page?: number }) => {
+    const p = new URLSearchParams({ source: q.source, kind: q.kind, page: String(q.page ?? 1) });
+    if (q.min != null) p.set("min", String(q.min));
+    return get<F2StreakPage>(`/api/forecast-v2/streaks?${p}`);
+  },
+  forecastV2Rules: (q: F2RuleQuery) => {
+    const p = new URLSearchParams({ sort: q.sort ?? "rank", page: String(q.page ?? 1) });
+    if (q.base) p.set("base", q.base);
+    if (q.deployable) p.set("deployable", "true");
+    if (q.min_beat) p.set("min_beat", String(q.min_beat));
+    if (q.tp_rule) p.set("tp_rule", q.tp_rule);
+    if (q.window) p.set("window", String(q.window));
+    if (q.max_sl) p.set("max_sl", String(q.max_sl));
+    if (q.q) p.set("q", q.q);
+    return get<F2RulePage>(`/api/forecast-v2/rules?${p}`);
+  },
+  forecastV2WhatIf: (cfg: F2WhatIfCfg) => postDetail<F2WhatIf>("/api/forecast-v2/whatif", { cfg }),
+  forecastV2WhatIfs: () => get<{ rows: F2WhatIf[]; total: number }>("/api/forecast-v2/whatif"),
+  forecastV2Switch: (on: boolean) => postDetail<{ on: boolean }>("/api/forecast-v2/switch", { on }),
   roomErrors: (q: { room?: string; kind?: string; hours?: number; page?: number }) => {
     const p = new URLSearchParams();
     if (q.room) p.set("room", q.room);

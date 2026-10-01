@@ -19,6 +19,8 @@ const KIND: Record<string, { icon: string; label: string }> = {
   trade_open: { icon: "→", label: "opened" },
   trade_close: { icon: "✓", label: "closed" },
   error: { icon: "!", label: "error" },
+  // Forecast v2's daily summary and month alarm (Oct 01, 2026)
+  forecast: { icon: "◆", label: "forecast" },
 };
 
 export default function NotificationDropdown() {

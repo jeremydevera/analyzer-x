@@ -25,7 +25,7 @@ from pathlib import Path
 DB_PATH = Path(os.path.expanduser("~/.tradingagents/notifications.db"))
 
 # The kinds the UI knows how to draw. Anything else still stores fine.
-KINDS = ("download", "backtest", "trade_open", "trade_close", "error")
+KINDS = ("download", "backtest", "trade_open", "trade_close", "error", "forecast")
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS events (

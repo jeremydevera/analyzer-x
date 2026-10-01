@@ -160,16 +160,41 @@ def _worst_run(pnls: list[float]) -> tuple[float, int]:
 
 
 # ------------------------------------------------------------- one room
+_READS: dict = {}
+
+
+def _read_cached(p: Path, parse):
+    """A file read again only when it changes (a room's settings file and
+    deploy log are read every refresh; #4FC03172's hold 2,362 rows)."""
+    try:
+        st = p.stat()
+    except OSError:
+        return parse(None)
+    stamp = (st.st_mtime_ns, st.st_size)
+    got = _READS.get(str(p))
+    if got and got[0] == stamp:
+        return got[1]
+    try:
+        text = p.read_text(encoding="utf-8")
+    except OSError:
+        return got[1] if got else parse(None)
+    value = parse(text)
+    _READS[str(p)] = (stamp, value)
+    return value
+
+
 def _settings(pid: str) -> dict:
     """The room's own settings file, read without the runner's defaults
     (load_settings writes nothing either, but this must not depend on it)."""
     from tradingagents import auto_trader as at, profiles
 
-    try:
-        p = Path(profiles.path(at.SETTINGS_PATH, pid))
-        return json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
+    def parse(text):
+        try:
+            return json.loads(text) if text else {}
+        except ValueError:
+            return {}
+
+    return _read_cached(Path(profiles.path(at.SETTINGS_PATH, pid)), parse)
 
 
 def _intervals(pid: str, now_s: float) -> dict:
@@ -183,7 +208,7 @@ def _intervals(pid: str, now_s: float) -> dict:
     try:
         with profiles.using(pid):
             path = Path(lh._deploy_log())
-        lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+        lines = _read_cached(path, lambda t: (t or "").splitlines())
     except Exception:                                          # noqa: BLE001
         lines = []
     open_at: dict = {}
@@ -426,30 +451,53 @@ def overlap(rooms: list[dict]) -> list[dict]:
 # --------------------------------------------------------- the reality check
 _ROLL: dict = {}
 _ROLL_LOCK = threading.Lock()
+_ROLL_DIR: dict = {"stamp": None}
 
 
 def _rolling(slot: str) -> dict | None:
-    """rolling30's rebuilt backtest of one row, re-read when its file changes."""
+    """rolling30's rebuilt backtest of one row, re-read when its file changes.
+
+    ONE STAT A REFRESH, not one per row (bug hunt, round 2, Oct 01, 2026):
+    3,868 rows meant 3,868 stats every 30 seconds, and under a CPU-bound
+    neighbour each stat waits its turn for Python's lock — the same queue
+    that made /api/health take 60 s. rolling30 replaces a file by renaming a
+    new one into the folder, which moves the FOLDER's own time; while that
+    time stands still, every row's last read stands."""
     from tradingagents import rolling30 as r30
 
     p = r30._cache_path(slot)
     try:
+        dstamp = p.parent.stat().st_mtime_ns
+    except OSError:
+        return None
+    with _ROLL_LOCK:
+        if _ROLL_DIR["stamp"] != dstamp:
+            _ROLL_DIR["stamp"] = dstamp
+            for k in list(_ROLL):
+                _ROLL[k] = (None, _ROLL[k][1])          # re-check each row once
+        got = _ROLL.get(slot)
+        if got and got[0] == dstamp:
+            return got[1]
+    try:
         st = p.stat()
     except OSError:
+        with _ROLL_LOCK:
+            _ROLL[slot] = (dstamp, None)
         return None
     stamp = (st.st_mtime_ns, st.st_size)
     with _ROLL_LOCK:
         got = _ROLL.get(slot)
-        if got and got[0] == stamp:
+        if got and got[1] is not None and got[1].get("_stamp") == stamp:
+            _ROLL[slot] = (dstamp, got[1])
             return got[1]
     try:
         rec = rs.loads(p.read_text(encoding="utf-8"))
-        rec = {"end_ms": int(rec["end_ms"]), "trades": [[float(a), float(b), float(c)]
-                                                       for a, b, c in rec.get("trades") or []]}
+        rec = {"end_ms": int(rec["end_ms"]), "_stamp": stamp,
+               "trades": [[float(a), float(b), float(c)] for a, b, c in rec.get("trades") or []]}
     except (OSError, ValueError, KeyError, TypeError):
         return None
     with _ROLL_LOCK:
-        _ROLL[slot] = (stamp, rec)
+        _ROLL[slot] = (dstamp, rec)
     return rec
 
 
@@ -553,6 +601,27 @@ def corrected(profit: float, trades: int, r: dict) -> float | None:
     return round(float(r["took"]) * (float(profit) - float(r["gap"]) * int(trades)), 2)
 
 
+# ------------------------------------------------- this month, day by day
+def month_so_far(r: dict, now: float) -> dict:
+    """A room's practice trades of THIS calendar month: the total and the
+    running total day by day, every day from the 1st to today."""
+    first = dt.date.fromtimestamp(now).replace(day=1)
+    lo = time.mktime(first.timetuple())
+    rows = [e for e in r["exits"] if e["ts"] >= lo]
+    per: dict = {}
+    for e in rows:
+        per[rs._day(e["ts"])] = per.get(rs._day(e["ts"]), 0.0) + e["pnl"]
+    days, total, d = [], 0.0, first
+    last = dt.date.fromtimestamp(now)
+    while d <= last:
+        total += per.get(d.isoformat(), 0.0)
+        days.append({"day": d.isoformat(), "total": round(total, 2)})
+        d += dt.timedelta(days=1)
+    wins = sum(1 for e in rows if e["pnl"] > 0)
+    return {"trades": len(rows), "wins": wins, "losses": len(rows) - wins,
+            "profit": round(sum(e["pnl"] for e in rows), 2), "days": days}
+
+
 # ------------------------------------------------------------ the live copy
 def live(now: float | None = None) -> dict:
     """Every practice-side number of Forecast v2, RIGHT NOW."""
@@ -561,9 +630,17 @@ def live(now: float | None = None) -> dict:
     now = time.time() if now is None else float(now)
     t0 = time.perf_counter()
     rooms = [room_data(pid, now) for pid in profiles.ids()]
+    on_ids: dict = {}
+    for r in rooms:
+        for v in r["slots"].values():
+            if v.get("id"):
+                on_ids.setdefault(v["id"], []).append(r["id"])
+    month = dt.datetime.fromtimestamp(now).strftime("%Y-%m")
     return {"at": int(now), "rooms": [{"id": r["id"], "name": r["name"], "retired": r["retired"],
-                                       "trades": len(r["exits"]), "unreadable": r["unreadable"]}
+                                       "trades": len(r["exits"]), "unreadable": r["unreadable"],
+                                       "month": month_so_far(r, now)}
                                       for r in rooms],
+            "on_ids": on_ids, "month": month,
             "streaks": practice_streaks(rooms), "avoid": coins_to_avoid(rooms),
             "money": money(rooms), "reality": reality(rooms),
             "defaults": {"win_n": WIN_N, "loss_m": LOSS_M, "avoid_min_trades": AVOID_MIN_TRADES,

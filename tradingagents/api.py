@@ -201,6 +201,30 @@ def _keep_the_row_index_current() -> None:
                     _rf.daily_tick()
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[forecast] the daily forecast failed: {exc!r}", flush=True)
+                # FORECAST v2 (operator, Oct 01, 2026: "okay run that prompt
+                # and create Forecast v2"): the practice numbers kept read,
+                # one step of the daily GitHub chain, and the month alarm —
+                # three guards, so one failing never stops the others
+                # IN THEIR OWN THREADS (bug hunt, round 2): the practice copy
+                # takes 1.5-6 s and the chain downloads hundreds of MB and
+                # waits for GitHub — neither may hold this loop, which is what
+                # restarts a crashed runner. Each skips while one is running.
+                try:
+                    from tradingagents import forecast_v2_api as _f2a
+                    from tradingagents import forecast_v2_daily as _f2d
+
+                    for _name, _fn in (("forecast-v2-live", _f2a.live_refresh),
+                                       ("forecast-v2-chain", _f2d.tick)):
+                        if not any(t.name == _name for t in _th.enumerate()):
+                            _th.Thread(target=_fn, name=_name, daemon=True).start()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[forecast v2] could not start its threads: {exc!r}", flush=True)
+                try:
+                    from tradingagents import forecast_v2_api as _f2a
+
+                    _f2a.tracker_alarms()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[forecast v2] the month alarm failed: {exc!r}", flush=True)
                 # NO AUTOMATIC CANDLE TOP-UP. candle_autopilot.tick() ran here
                 # from 2026-09-06 to 2026-09-09 and started an UPDATE by itself
                 # whenever the store was 3h stale. The operator saw
@@ -1278,6 +1302,70 @@ def forecasts_new_route() -> dict:
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
     return {"saved": entry}
+
+
+# ------------------------------------------------------------ Forecast v2
+@app.get("/api/forecast-v2")
+def forecast_v2_route() -> dict:
+    """Auto Trade -> Forecast v2: everything but the two big lists, which
+    page on their own routes (tradingagents/forecast_v2_api.py)."""
+    from tradingagents import forecast_v2_api as _f2a
+
+    return _f2a.summary()
+
+
+@app.get("/api/forecast-v2/streaks")
+def forecast_v2_streaks_route(source: str = "practice", kind: str = "win",
+                              min: int | None = None, page: int = 1) -> dict:  # noqa: A002
+    from tradingagents import forecast_v2_api as _f2a
+
+    try:
+        return _f2a.streaks(source, kind, min, page)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.get("/api/forecast-v2/rules")
+def forecast_v2_rules_route(sort: str = "rank", page: int = 1, base: str = "",
+                            deployable: bool = False, min_beat: int = 0, tp_rule: str = "",
+                            window: int = 0, max_sl: float = 0.0, q: str = "") -> dict:
+    from tradingagents import forecast_v2_api as _f2a
+
+    try:
+        return _f2a.rules(sort, page, base, deployable, min_beat, tp_rule, window, max_sl, q)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.post("/api/forecast-v2/whatif")
+def forecast_v2_whatif_route(body: dict) -> dict:
+    """The what-if box: one rule set, measured on GitHub on the newest
+    replay; an answer already measured on that data comes back at once."""
+    from tradingagents import forecast_rules as _fr, forecast_v2_daily as _f2d
+
+    cfg = (body or {}).get("cfg") or {}
+    try:
+        if str(cfg.get("tp_rule")) not in _fr.TP_WORDS:
+            raise ValueError(f"unknown TP rule {cfg.get('tp_rule')!r}")
+        return _f2d.whatif(cfg)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(422, f"not a rule set: {exc}") from exc
+
+
+@app.get("/api/forecast-v2/whatif")
+def forecast_v2_whatifs_route() -> dict:
+    from tradingagents import forecast_v2_daily as _f2d
+
+    rows = sorted(_f2d.whatifs().values(), key=lambda r: -float(r.get("asked_at") or 0))
+    return {"rows": rows[:20], "total": len(rows)}
+
+
+@app.post("/api/forecast-v2/switch")
+def forecast_v2_switch_route(body: dict) -> dict:
+    """The daily chain's on/off box. Off stops it dispatching; nothing else."""
+    from tradingagents import forecast_v2_daily as _f2d
+
+    return _f2d.switch(bool((body or {}).get("on")))
 
 
 @app.get("/api/errors/rooms")

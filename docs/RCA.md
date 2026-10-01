@@ -172,6 +172,68 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-01-F — the Forecast tab's room numbers took 1.9 s on the running site
+
+**CEO**
+
+* For about 20 minutes after the Forecast tab went live, its room numbers
+  took about two seconds to arrive instead of a blink; nothing was wrong
+  with the numbers themselves.
+* Why: the site was busy answering the Auto Trade screen, which re-reads
+  large trade records on every refresh, and the forecast numbers had to
+  wait their turn.
+* What stops it now: the site works the numbers out in the background every
+  30 seconds and hands the page the latest copy at once, saying when it was
+  read — and if a refresh ever fails, the page says so.
+
+**DEV**
+
+* `api.forecasts_live_route` called `room_stats.rooms()` inside the request;
+  py-spy at 3:10pm showed the GIL held by `auto_trader.ledger_since` (full
+  JSON parse per call) under `trade_summary` / `trade_pnl_daily` /
+  `trade_strategies` and the `rolling30` loop; the route's own work is
+  0.04 s warm.
+* Invariant broken: **a screen's answer may not wait on its neighbours'
+  work** — expensive numbers are made behind the request (`slow_cache`'s
+  shape) and served with their own timestamp.
+* Guard: `tests/test_room_forecast_features.py::test_the_live_numbers_are_served_from_a_background_copy`,
+  `::test_a_failed_refresh_is_named_and_the_last_copy_still_served`,
+  `::test_a_failing_refresh_never_skips_the_daily_forecast`.
+
+**SAW** — measured while verifying the build, `Oct 01, 2026 3:05-3:16pm`:
+`/api/forecasts/live` server time 1,861-1,982 ms; `/api/health` 58-60 s; in
+the last 3,000 log lines 974 `/api/trade/feed`, 98 `/api/trade/pnl/daily`,
+97 `/api/trade/strategies` requests.
+
+**TIMELINE**
+
+1. `2:58pm` — 2889cdac7957 live; the first automatic forecast made itself.
+2. `3:05pm` — the route measured 1.9 s of server time under the Auto Trade
+   load; once the load passed, 0.05-0.16 s.
+3. `3:20pm` — 61d50ab9a9e6: served from a background copy; the bug hunt
+   also caught a missing `import threading` (the next start would have
+   crashed) and one guard shared by the refresh and the daily forecast.
+
+**ROOT CAUSE** — expensive numbers worked out inside the request, on a
+server whose one Python lock other screens keep busy.
+
+**WHY IT WAS NOT CAUGHT** — every timing was taken in a quiet process
+(0.04 s warm, 0.31 s cold); the site's real load — another screen polling
+nine rooms — exists only in the running API, which is where it was found.
+Time a route ON THE SITE, with the operator's other screens open.
+
+**COST** — none in money; the tab was slow for ~20 minutes.
+
+**FIX** — 61d50ab9a9e6.
+
+**GUARD** — `tests/test_room_forecast_features.py` (3 tests above).
+
+**Not this tab's, so named here:** the Auto Trade screen's own slowness
+(full-file reads per poll) is the other session's open work
+(RCA-2026-10-01-D).
+
+---
+
 ## RCA-2026-10-01-E — three faults the Forecast tab's bug hunt caught before it shipped
 
 **CEO**

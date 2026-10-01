@@ -22,7 +22,9 @@ const roomName = (id: string) => (id === "main" ? "Main" : `#${id}`);
 const pct = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(1)}%`);
 const tone = (v: number | null | undefined) =>
   v == null ? "text-gray-500 dark:text-gray-400" : v >= 0 ? "text-success-600" : "text-error-500";
-const card = "rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]";
+// min-w-0: a card is a flex child, and a wide table inside would otherwise
+// widen the card and the whole page (measured: 1,590px at a 1,440px window)
+const card = "min-w-0 rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]";
 const btn = "rounded-lg border border-gray-300 px-3 py-1 text-theme-xs text-gray-600 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300";
 const field = "rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:text-gray-200";
 const th = "py-1.5 pr-3 text-start font-medium text-gray-500 dark:text-gray-400";
@@ -74,7 +76,7 @@ function StreakList({ kind, initial }: { kind: "win" | "loss"; initial: number }
   useLiveRefresh(load, 30_000, [load]);
   const word = kind === "win" ? "wins" : "losses";
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">{kind === "win" ? "Winning" : "Losing"} streaks</p>
         <select aria-label={`${kind} streak source`} className={field} value={source}
@@ -219,7 +221,7 @@ function Money({ s }: { s: F2Summary }) {
     <div className={card}>
       <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Where the money goes</h3>
       <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">practice trades of every room, split every way; a row under {m.thin_below} trades is marked as too few to mean anything · {btNote}</p>
-      <div className="mt-3 grid gap-4 lg:grid-cols-2">
+      <div className="mt-3 grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
         <div>
           <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">Costs: fees, spread and funding</p>
           <p className="text-theme-xs text-gray-600 dark:text-gray-300">All rooms made <b className={tone(m.costs.profit)}>{fmtMoney(m.costs.profit)}</b>; costs took {fmtMoney(-m.costs.costs)} of it — without costs it would be <span className={tone(m.costs.without_costs)}>{fmtMoney(m.costs.without_costs)}</span>.</p>
@@ -233,7 +235,7 @@ function Money({ s }: { s: F2Summary }) {
                   <td className={`${td} ${tone(r.profit)}`}>{fmtMoney(r.profit)}</td>
                   <td className={td}>{fmtMoney(-r.costs)}</td>
                   <td className={`${td} ${tone(r.without_costs)}`}>{fmtMoney(r.without_costs)}</td>
-                  <td className={`${td} ${tone(r.worst_day?.profit)}`}>{r.worst_day ? `${fmtMoney(r.worst_day.profit)} on ${r.worst_day.day}` : "—"}</td>
+                  <td className={`${td} ${tone(r.worst_day?.profit)}`}>{r.worst_day ? `${fmtMoney(r.worst_day.profit)} · the day from ${fmtWhen(r.worst_day.at)}` : "—"}</td>
                 </tr>))}
               </tbody>
             </table>
@@ -287,7 +289,7 @@ function RuleRow({ r, open, toggle }: { r: F2Rule; open: boolean; toggle: () => 
           <button type="button" className="text-brand-500 hover:underline" onClick={toggle} aria-expanded={open}>#{r.id}</button>
           {r.room && <span className="ml-1"><Badge kind="info">{roomName(r.room)}&apos;s rules</Badge></span>}
         </td>
-        <td className="py-1.5 pr-3 text-theme-xs text-gray-700 dark:text-gray-300">{r.words}</td>
+        <td className="min-w-[300px] max-w-[460px] py-1.5 pr-3 text-theme-xs text-gray-700 dark:text-gray-300">{r.words}</td>
         <td className={`${td} ${tone(p?.profit)}`}>{range(p)}</td>
         <td className={`${td} font-semibold ${tone(p?.corrected)}`}>{corrRange(p)}</td>
         <td className={td}>{p ? p.trades.toLocaleString() : "—"}</td>
@@ -415,8 +417,8 @@ function Rules({ s }: { s: F2Summary }) {
         </p>
       )}
       {d && d.rows.length > 0 && (
-        <div className="mt-2 overflow-x-auto">
-          <table className="w-full min-w-[1100px] text-theme-xs">
+        <div className="mt-2 max-w-full overflow-x-auto">
+          <table className="w-full min-w-[1300px] text-theme-xs">
             <thead><tr>
               {["id", "rule set", "this month — backtest (range)", "after the reality check (range)", "trades a month", "won / lost", "win rate", "worst losing run", "most open → money needed", "beat random", "can a room run it"].map((h) => <th key={h} className={th}>{h}</th>)}
             </tr></thead>
@@ -583,7 +585,7 @@ export default function ForecastV2() {
           <div className={card}>
             <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Streaks</h3>
             <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">wins (or losses) in a row ending with the most recent closed trade; the bell rings once when a coin first reaches one · practice: {s.streak_counts.practice.win.toLocaleString()} winning and {s.streak_counts.practice.loss.toLocaleString()} losing runs now{s.streak_counts.backtest ? ` · backtest: ${s.streak_counts.backtest.win.toLocaleString()} winning and ${s.streak_counts.backtest.loss.toLocaleString()} losing runs of ${s.streak_counts.backtest.floor}+` : ""}</p>
-            <div className="mt-3 grid gap-6 2xl:grid-cols-2">
+            <div className="mt-3 grid min-w-0 gap-6 2xl:grid-cols-2 [&>*]:min-w-0">
               <StreakList kind="win" initial={s.defaults.win_n} />
               <StreakList kind="loss" initial={s.defaults.loss_m} />
             </div>

@@ -1035,7 +1035,7 @@ export type F2Summary = {
   money: {
     costs: { rooms: { room: string; name: string; retired: boolean; trades: number; profit: number;
       costs: number; matched: number; without_costs: number;
-      worst_day: { day: string; profit: number } | null }[]; profit: number; costs: number; without_costs: number };
+      worst_day: { day: string; profit: number; at: number } | null }[]; profit: number; costs: number; without_costs: number };
     sizes: { avg_win: number | null; avg_loss: number | null; break_even: number | null;
       winrate: number | null; trades: number; wins: number; losses: number };
     by_tf: F2Group[]; by_family: F2Group[]; by_kind: F2Group[]; by_hour: F2Group[]; stop_outs: F2Group[];

@@ -412,6 +412,12 @@ def test_the_page_prints_and_works_nothing_out():
     assert "toLocale" not in src.replace("toLocaleString()", "")
     assert "new Date(" not in src
     assert ".filter(" not in src.split("function Avoid")[0], "the streak lists are filtered by the server"
+    # a day reaches the screen through fmtWhen, never as its "2026-10-01" key
+    # (found on the phone pass, Oct 01, 2026 7:35pm)
+    assert "worst_day.day" not in src and "fmtWhen(r.worst_day.at)" in src
+    # every card and grid column may shrink: a wide table scrolls inside its
+    # own box instead of widening the page (1,590px at 1,440; 489px at 390)
+    assert 'const card = "min-w-0 ' in src and src.count("[&>*]:min-w-0") >= 2
     side = (ROOT / "webapp/src/layout/AppSidebar.tsx").read_text(encoding="utf-8")
     assert '{ name: "Forecast v2", path: "/forecast-v2" }' in side
 

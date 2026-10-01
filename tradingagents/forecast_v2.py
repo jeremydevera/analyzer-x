@@ -387,7 +387,11 @@ def money(rooms: list[dict]) -> dict:
                          "trades": len(r["exits"]), "profit": profit,
                          "costs": c["total"] if c["matched"] else 0.0,
                          "matched": c["matched"], "without_costs": round(profit + (c["total"] or 0), 2),
-                         "worst_day": ({"day": worst[0], "profit": round(worst[1], 2)} if worst else None)})
+                         # the day's own local midnight rides along, so the page
+                         # prints it through fmtWhen, never as "2026-10-01"
+                         "worst_day": ({"day": worst[0], "profit": round(worst[1], 2),
+                                        "at": int(time.mktime(dt.date.fromisoformat(worst[0]).timetuple()))}
+                                       if worst else None)})
 
     def split(fn) -> list[dict]:
         groups: dict = {}

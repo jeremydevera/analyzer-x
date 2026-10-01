@@ -23,6 +23,8 @@
  * looked at again — which is the instant the answer matters.
  */
 import { useEffect, useRef } from "react";
+import { withProfile } from "./api";
+import { BEHIND_MS, useRoom } from "./room";
 
 /**
  * Call `load` now, every `ms` while the tab is visible, and again the moment
@@ -36,14 +38,22 @@ import { useEffect, useRef } from "react";
 export function useLiveRefresh(load: () => void, ms: number, deps: unknown[] = []) {
   const fn = useRef(load);
   fn.current = load;
+  // INSIDE A ROOM (Auto Trade, Oct 01, 2026): every call this load starts is
+  // that room's, and a room behind its tab refreshes every BEHIND_MS; its tab
+  // being clicked re-runs this at once (`active` is a dependency).
+  const room = useRoom();
+  const id = room?.id ?? null;
+  const active = room ? room.active : true;
+  const every = active ? ms : Math.max(ms, BEHIND_MS);
 
   useEffect(() => {
     let dead = false;
-    const run = () => { if (!dead && !document.hidden) fn.current(); };
+    const call = () => (id ? withProfile(id, () => fn.current()) : fn.current());
+    const run = () => { if (!dead && !document.hidden) call(); };
     let timer: ReturnType<typeof setInterval> | undefined;
     const start = () => {
       if (timer !== undefined) return;
-      timer = setInterval(run, ms);
+      timer = setInterval(run, every);
     };
     const stop = () => {
       if (timer === undefined) return;
@@ -66,5 +76,5 @@ export function useLiveRefresh(load: () => void, ms: number, deps: unknown[] = [
       window.removeEventListener("focus", onVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ms, ...deps]);
+  }, [every, id, active, ...deps]);
 }

@@ -14,10 +14,11 @@ import { useEffect, useState } from "react";
 import { markReady } from "@/lib/loading";
 import { useLiveRefresh } from "@/lib/live";
 import type { FeedStatus } from "@/lib/api";
+import { useRoomApis } from "@/lib/room";
 import PanelStatus from "./PanelStatus";
 import { Live, FeedBadge } from "./LivePrice";
 import CopyableId from "./CopyableId";
-import { fmtMoney, PositionRow, PositionsPayload, tradeApi } from "@/lib/api";
+import { fmtMoney, PositionRow, PositionsPayload } from "@/lib/api";
 import { pageWindow } from "@/lib/pager";
 import Badge from "@/components/ui/badge/Badge";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
@@ -67,6 +68,8 @@ const Barrier = ({ v, win }: { v: { pct: number; usd: number } | null; win: bool
   );
 
 export default function PositionsPanel({ onChanged }: { onChanged?: () => void }) {
+  // this panel's own room, even while its tab is not the one on screen
+  const { tradeApi } = useRoomApis();
   const [data, setData] = useState<PositionsPayload | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState("");

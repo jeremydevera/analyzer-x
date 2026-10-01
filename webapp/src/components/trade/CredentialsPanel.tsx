@@ -9,7 +9,8 @@
 import { useEffect, useState } from "react";
 import { markReady } from "@/lib/loading";
 import PanelStatus from "./PanelStatus";
-import { CredStatus, Preflight, tradeApi } from "@/lib/api";
+import { CredStatus, Preflight } from "@/lib/api";
+import { useRoomApis } from "@/lib/room";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
 
@@ -27,6 +28,8 @@ const CHECKS: [keyof Preflight, string][] = [
 ];
 
 export default function CredentialsPanel() {
+  // this panel's own room, even while its tab is not the one on screen
+  const { tradeApi } = useRoomApis();
   const [st, setSt] = useState<CredStatus | null>(null);
   const [key, setKey] = useState("");
   const [secret, setSecret] = useState("");
@@ -35,6 +38,7 @@ export default function CredentialsPanel() {
   const [err, setErr] = useState("");
 
   const load = () => tradeApi.creds().then((d) => { setSt(d); setErr(""); markReady("MEXC keys"); }).catch((e) => setErr(String(e)));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
   // SELF-HEALING: retry every 5s while errored — an API restart's few dark
   // seconds must not leave "reading…" and a red line until a page reload

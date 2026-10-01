@@ -1,23 +1,23 @@
 "use client";
 /** The runner's own log, newest last — polled while the page is open. */
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { markReady } from "@/lib/loading";
 import PanelStatus from "./PanelStatus";
-import { tradeApi } from "@/lib/api";
+import { useRoomApis } from "@/lib/room";
+import { useLiveRefresh } from "@/lib/live";
 
 export default function FeedPanel() {
+  // this panel's own room, even while its tab is not the one on screen
+  const { tradeApi } = useRoomApis();
   const [lines, setLines] = useState<string[]>([]);
   // an empty feed is real data, so "has it EVER loaded" needs its own flag —
   // lines.length would call a quiet runner "never loaded"
   const got = useRef(false);
   const [err, setErr] = useState("");
 
-  useEffect(() => {
-    const load = () => tradeApi.log(200).then((d) => { setLines(d.lines); setErr(""); got.current = true; markReady("runner feed"); }).catch((e) => setErr(String(e)));
-    load();
-    const t = setInterval(load, 8000);
-    return () => clearInterval(t);
-  }, []);
+  // the shared refresh: this room's log, slower while its tab is not on
+  // screen, and at once when it is clicked (Oct 01, 2026)
+  useLiveRefresh(() => tradeApi.log(200).then((d) => { setLines(d.lines); setErr(""); got.current = true; markReady("runner feed"); }).catch((e) => setErr(String(e))), 8_000);
 
   return (
     <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">

@@ -293,6 +293,69 @@ does not repeat them.
 
 ---
 
+## RCA-2026-10-01-D — a room took up to 88 seconds to show its numbers, and forgot them on every tab switch
+
+**CEO**
+
+* Clicking a room tab showed a blurred screen for a long time — up to
+  88 seconds for #4FC03172's open trades — and switching away and back
+  started the whole wait again.
+* Why: the open-trades table asked MEXC for each coin's price and details
+  one at a time (84 questions in a row), and every tab click threw away what
+  the last visit had loaded.
+* What stops it now: one question to MEXC returns every price, another every
+  coin's details, so the same table answers in about a second; and every room
+  stays loaded behind its tab and keeps updating, so a click shows numbers
+  that are already there.
+
+**DEV**
+
+* `api.trade_positions` → `positions_view.build_rows` called
+  `fx.last_price(symbol)` per coin (41 calls, 25.4 s) and
+  `fx.contract_spec(symbol)` per coin (17.6 s), each through
+  `mexc_futures._get_public` in series; `AutoTradeScreen` remounted every
+  panel with `key={room}`.
+* Invariants broken: **one question for many answers when the venue offers
+  it** (`/contract/ticker` and `/contract/detail` without a symbol return all
+  1,215 contracts in 0.38 s), and **a screen switch must not discard data it
+  will need again in seconds**.
+* Guards: `tests/test_the_rooms_load_fast.py`,
+  `tests/test_every_profile_is_its_own_room.py::test_every_room_stays_loaded_in_its_own_scope`.
+
+**SAW** — the operator, `Oct 01, 2026`: *"when i click strategy rooms why is
+it loading slow? ... when i switch tabs you forget it"*.
+
+**TIMELINE** (measured on this PC)
+
+1. `/api/trade/positions` for #4FC03172: 88.1 s, then 19.9 s and 25.2 s on
+   quieter repeats; in a fresh process 44.9 s, of which `_get_public` was
+   43.1 s over 84 calls.
+2. `/api/trade/summary` 42.7 s and `/api/trade/strategies` (Main) 63.0 s at
+   the first read — the API was busy with its hourly checks after a restart;
+   1–3 s on repeat.
+3. Fixed: `fx.last_prices()` (one ticker list, shared 3 s) and a one-call
+   contract list in `contract_spec` (1 h) — the same positions read: 1.4 s,
+   then 0.6 s.
+4. Screen: every room mounted once in its own `RoomScope`, calls bound to it
+   (`withProfile` / `roomBound` / `useRoomApis`), rooms behind their tab
+   refreshing every 15 s and the visible one first in the request queue.
+
+**ROOT CAUSE** — per-coin venue reads in series on a route that serves dozens
+of coins, plus a tab design that reloaded everything on each click.
+
+**WHY IT WAS NOT CAUGHT** — every positions test fakes the venue, so a call
+costs nothing in a test; and Main, the only room before Sep 29, 2026, held a
+handful of coins, where 84 calls never happened.
+
+**COST** — none in money; minutes of a blank, blurred screen per visit.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_rooms_load_fast.py`;
+`tests/test_every_profile_is_its_own_room.py::test_every_room_stays_loaded_in_its_own_scope`.
+
+---
+
 ## RCA-2026-10-01-C — "no heartbeat for 892 min" on a room whose runner was alive the whole time
 
 **CEO**

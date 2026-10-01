@@ -15,6 +15,7 @@ import CredentialsPanel from "./CredentialsPanel";
 import TradeHistory from "./TradeHistory";
 import { api, PROFILES, RoomInfo, setProfile } from "@/lib/api";
 import { rules } from "./WatcherPanel";
+import { RoomScope } from "@/lib/room";
 
 const ROOM_KEY = "ta-auto-trade-room";
 
@@ -33,9 +34,10 @@ function firstRoom(): string {
 export default function AutoTradeScreen() {
   // FOLDER TABS, ONE ROOM EACH (operator, Sep 29, 2026: "when i switch to
   // B52662ED i should see its own tiles, own live trade, own demo trade, own
-  // calendar pnl, in short it has its own room/ profile"). Every panel below
-  // is REMOUNTED on a switch (`key={room}`), so nothing a panel holds from
-  // one room can be drawn in another.
+  // calendar pnl, in short it has its own room/ profile"). Each room's panels
+  // are their OWN instances (one RoomScope per room, every call bound to that
+  // room), so nothing a panel holds from one room can be drawn in another —
+  // and since Oct 01, 2026 they are no longer remounted on a switch.
   // null until the browser has read the saved room: the server's first frame
   // cannot see it, and panels must not fetch Main's data on the way there
   const [room, setRoom] = useState<string | null>(null);
@@ -142,19 +144,29 @@ export default function AutoTradeScreen() {
         })}
       </div>
       <LoadingOverlay waitlist={waitlist} />
-      {room && <div key={room} aria-busy={waitlist.length > 0}
-           className={`flex min-w-0 flex-col gap-5 ${blurred
-             ? "pointer-events-none select-none blur-sm"
-             : ""}`}>
-      <SummaryRibbon key={`ribbon-${tick}`} onChanged={bump} />
-      <PositionsPanel onChanged={bump} />
-      <StrategiesGrid />
-      <WatcherPanel />
-      <CredentialsPanel />
-      <TradeHistory />
-      <PnlPanel />
-      <FeedPanel />
-      </div>}
+      {/* EVERY ROOM STAYS LOADED (operator, Oct 01, 2026: "when i switch tabs
+          you forget it ... when i click auto trade tab, load all the info for
+          all, then i want all the numbers updating in realtime"). Each room
+          is mounted once, inside its own RoomScope, and only HIDDEN when
+          another tab is picked — so a click shows numbers already there, and
+          a room behind its tab keeps refreshing (lib/room.tsx BEHIND_MS). */}
+      {room && PROFILES.map((p) => (
+        <RoomScope key={p.id} id={p.id} active={p.id === room}>
+          <div hidden={p.id !== room} aria-busy={p.id === room && waitlist.length > 0}
+               className={`min-w-0 flex-col gap-5 ${p.id === room ? "flex" : ""} ${p.id === room && blurred
+                 ? "pointer-events-none select-none blur-sm"
+                 : ""}`}>
+            <SummaryRibbon key={`ribbon-${tick}`} onChanged={bump} />
+            <PositionsPanel onChanged={bump} />
+            <StrategiesGrid />
+            <WatcherPanel />
+            <CredentialsPanel />
+            <TradeHistory />
+            <PnlPanel />
+            <FeedPanel />
+          </div>
+        </RoomScope>
+      ))}
     </div>
   );
 }

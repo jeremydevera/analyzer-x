@@ -9,9 +9,12 @@ import { useEffect, useRef, useState } from "react";
 import { markReady } from "@/lib/loading";
 import { useLiveRefresh } from "@/lib/live";
 import PanelStatus from "./PanelStatus";
-import { DayStat, fmtMoney, tradeApi } from "@/lib/api";
+import { DayStat, fmtMoney } from "@/lib/api";
+import { useRoomApis } from "@/lib/room";
 
 export default function PnlPanel() {
+  // this panel's own room, even while its tab is not the one on screen
+  const { tradeApi } = useRoomApis();
   const [days, setDays] = useState<Record<string, DayStat>>({});
   const [dry, setDry] = useState(false);
   // WHICH BOOK THE NUMBERS ON SCREEN BELONG TO (null = none yet). Both reads

@@ -1,9 +1,11 @@
 "use client";
 /** The system ribbon: process, wallet, today, all-time — polled every 10s
  * from /api/trade/summary, the same numbers the runner acts on. */
-import { useEffect, useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { LATE_MS, markReady } from "@/lib/loading";
-import { fmtMoney, fmtWhen, tradeApi, TradeSummary } from "@/lib/api";
+import { fmtMoney, fmtWhen, TradeSummary } from "@/lib/api";
+import { useRoomApis } from "@/lib/room";
+import { useLiveRefresh } from "@/lib/live";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
 
@@ -22,6 +24,8 @@ function Tile({ label, value, sub, tone }: { label: string; value: string; sub: 
 }
 
 export default function SummaryRibbon({ onChanged }: { onChanged?: () => void }) {
+  // this panel's own room, even while its tab is not the one on screen
+  const { tradeApi } = useRoomApis();
   const [s, setS] = useState<TradeSummary | null>(null);
   const mountedAt = useRef(Date.now());
   const [err, setErr] = useState("");
@@ -35,14 +39,10 @@ export default function SummaryRibbon({ onChanged }: { onChanged?: () => void })
 
   const loadSup = () => tradeApi.supervisor().then(setSup).catch(() => {});
 
-  useEffect(() => {
-    load();
-    loadSup();
-    const t = setInterval(load, 10000);
-    const su = setInterval(loadSup, 15000);
-    return () => { clearInterval(t); clearInterval(su); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // the shared refresh: this room's calls, slower while its tab is not on
+  // screen, and at once when it is clicked (Oct 01, 2026)
+  useLiveRefresh(load, 10_000);
+  useLiveRefresh(loadSup, 15_000);
 
   const halt = async () => {
     const on = !s?.halted;

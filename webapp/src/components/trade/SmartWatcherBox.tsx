@@ -16,23 +16,32 @@
  *  window event, so they never disagree.
  */
 import { useCallback, useEffect, useState } from "react";
-import { api, Watcher } from "@/lib/api";
+import { Watcher } from "@/lib/api";
+import { useRoom, useRoomApis } from "@/lib/room";
 import { useLiveRefresh } from "@/lib/live";
 
 export const WATCHER_EVENT = "smart-watcher";
 
 export default function SmartWatcherBox({ onChange }: { onChange?: (w: Watcher) => void }) {
+  // this panel's own room, even while its tab is not the one on screen
+  const { api } = useRoomApis();
+  const room = useRoom();
   const [w, setW] = useState<Watcher | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const load = useCallback(() => api.watcher().then((d) => { setW(d); setErr(""); })
-    .catch((e) => setErr(String(e))), []);
+    .catch((e) => setErr(String(e))), [api]);
   useLiveRefresh(load, 30_000);
   useEffect(() => {
-    const on = (e: Event) => setW((e as CustomEvent<Watcher>).detail);
+    // every room is on the page now: take only THIS room's switch
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<Watcher>).detail;
+      if (room && (d as { profile?: string }).profile && (d as { profile?: string }).profile !== room.id) return;
+      setW(d);
+    };
     window.addEventListener(WATCHER_EVENT, on);
     return () => window.removeEventListener(WATCHER_EVENT, on);
-  }, []);
+  }, [room]);
 
   const set = (v: boolean) => {
     if (v && !window.confirm(

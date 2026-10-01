@@ -11,7 +11,8 @@ import WinBadge from "./WinBadge";
 import SmartWatcherBox from "./SmartWatcherBox";
 import { markUnsaved } from "@/lib/unsaved";
 import { Live, FeedBadge } from "./LivePrice";
-import { api, fmtMoney, fmtWhen, fmtWhenMs, JobStatus, tradeApi, StrategyDeployRow } from "@/lib/api";
+import { fmtMoney, fmtWhen, fmtWhenMs, JobStatus, StrategyDeployRow } from "@/lib/api";
+import { useRoomApis } from "@/lib/room";
 import type { FeedStatus, Rolling30 } from "@/lib/api";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
@@ -21,6 +22,8 @@ const TF: Record<string, string> = { Min1: "1m", Min15: "15m", Min30: "30m", Min
 
 
 export default function StrategiesGrid() {
+  // this panel's own room, even while its tab is not the one on screen
+  const { api, tradeApi } = useRoomApis();
   const [rows, setRows] = useState<StrategyDeployRow[]>([]);
   const [sizing, setSizing] = useState("");
   const [counts, setCounts] = useState({ real_count: 0, paper_count: 0, idle_count: 0, deployed_count: 0, catalog_count: 0 });
@@ -106,7 +109,7 @@ export default function StrategiesGrid() {
         setAcctCap(st.account_loss_cap); setCapHit(st.account_cap_hit); setFlat(st.flat); setLocks(st.locks);
         markReady("strategies");
       })
-      .catch((e) => setErr(String(e))), [catalog]);
+      .catch((e) => setErr(String(e))), [catalog, tradeApi]);
   // EVERY 5 SECONDS, and again the moment the tab is looked at. This ran
   // ONCE — the 4-second timer below polls the BACKTEST JOB, not these rows —
   // so LIVE $ and LIVE W/L were frozen at whatever they were when the page

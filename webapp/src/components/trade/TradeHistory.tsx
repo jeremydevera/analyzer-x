@@ -10,7 +10,8 @@ import { markReady } from "@/lib/loading";
 import { useLiveRefresh } from "@/lib/live";
 import CopyableId from "./CopyableId";
 import PanelStatus from "./PanelStatus";
-import { fmtMoney, HistoryPayload, tradeApi } from "@/lib/api";
+import { fmtMoney, HistoryPayload } from "@/lib/api";
+import { useRoomApis } from "@/lib/room";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 
 // id and opened lead the row: the operator asked to be able to name a
@@ -31,6 +32,8 @@ function pageNumbers(page: number, pages: number): number[] {
 }
 
 export default function TradeHistory() {
+  // this panel's own room, even while its tab is not the one on screen
+  const { tradeApi } = useRoomApis();
   const [dry, setDry] = useState(false);
   const [page, setPage] = useState(1);
   const [d, setD] = useState<HistoryPayload | null>(null);

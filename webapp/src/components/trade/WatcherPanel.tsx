@@ -8,7 +8,8 @@
  *  counts and each decision's own sentence, which already names the row id.
  */
 import { useCallback, useEffect, useState } from "react";
-import { api, fmtWhen, Watcher, WatcherDecision } from "@/lib/api";
+import { fmtWhen, Watcher, WatcherDecision } from "@/lib/api";
+import { useRoom, useRoomApis } from "@/lib/room";
 import { useLiveRefresh } from "@/lib/live";
 import { pageWindow } from "@/lib/pager";
 import SmartWatcherBox, { WATCHER_EVENT } from "./SmartWatcherBox";
@@ -81,6 +82,9 @@ export function rules(c: Watcher["cfg"], days: number, live = false): string[] {
 }
 
 export default function WatcherPanel() {
+  // this panel's own room, even while its tab is not the one on screen
+  const { api } = useRoomApis();
+  const room = useRoom();
   const [w, setW] = useState<Watcher | null>(null);
   const [err, setErr] = useState("");
   // the decisions page is asked of the SERVER; the running rows arrive whole
@@ -88,18 +92,20 @@ export default function WatcherPanel() {
   const [dPage, setDPage] = useState(1);
   const [sPage, setSPage] = useState(1);
   const load = useCallback(() => api.watcher(dPage).then((d) => { setW(d); setErr(""); })
-    .catch((e) => setErr(String(e))), [dPage]);
+    .catch((e) => setErr(String(e))), [api, dPage]);
   useLiveRefresh(load, 30_000, [load]);
   // the Smart Watcher box changes the same mode; its answer carries page 1
   // of the decisions, so only the mode and the status line are taken from it
   useEffect(() => {
     const on = (e: Event) => {
       const d = (e as CustomEvent<Watcher>).detail;
+      // every room is on the page now: take only THIS room's switch
+      if (room && (d as { profile?: string }).profile && (d as { profile?: string }).profile !== room.id) return;
       setW((p) => (p ? { ...p, mode: d.mode, why: d.why } : d));
     };
     window.addEventListener(WATCHER_EVENT, on);
     return () => window.removeEventListener(WATCHER_EVENT, on);
-  }, []);
+  }, [room]);
   const sPages = w ? Math.max(1, Math.ceil(w.slots.length / PER_PAGE)) : 1;
   const sCur = Math.min(sPage, sPages);
   const slotsShown = w ? w.slots.slice((sCur - 1) * PER_PAGE, sCur * PER_PAGE) : [];

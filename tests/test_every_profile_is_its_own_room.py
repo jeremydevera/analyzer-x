@@ -13,6 +13,8 @@ and every profile's folder sits beside the file it replaces.
 """
 from __future__ import annotations
 
+import re
+
 import json
 
 import pytest
@@ -211,17 +213,41 @@ def test_the_screen_offers_exactly_the_servers_rooms():
 
 
 def test_every_trade_call_names_its_room_and_nothing_else_does():
+    """Since Oct 01, 2026 every room stays loaded, so the room is the CALL's
+    (captured at entry, withProfile) — never whatever tab is on screen."""
     api_ts = _src("webapp/src/lib/api.ts")
-    assert 'headers.set("X-TA-Profile", _profile);' in api_ts
-    assert "if (_profile !== \"main\" && _roomed(input))" in api_ts
+    assert 'headers.set("X-TA-Profile", room);' in api_ts
+    assert "if (room !== \"main\" && _roomed(input))" in api_ts
     assert r"/^\/api\/(trade\/|ledger)/.test(path)" in api_ts
+    assert "room: string = _roomNow()" in api_ts
+    get = api_ts[api_ts.index("async function get<T>"):api_ts.index("async function post<T>")]
+    assert get.count(", room)") == 2, "the retry asks the same room as the first try"
 
 
-def test_a_room_switch_remounts_every_panel():
+def test_every_room_stays_loaded_in_its_own_scope():
+    """Oct 01, 2026: "when i switch tabs you forget it ... load all the info
+    for all, then i want all the numbers updating in realtime". Every room is
+    mounted once in its own RoomScope and only hidden; each panel takes its
+    calls from useRoomApis(), so nothing one room draws comes from another."""
     screen = _src("webapp/src/components/trade/AutoTradeScreen.tsx")
     assert 'role="tablist" aria-label="Trading rooms"' in screen
-    assert "{room && <div key={room}" in screen, "nothing drawn from one room survives in another"
+    assert "{room && PROFILES.map((p) => (" in screen
+    assert "<RoomScope key={p.id} id={p.id} active={p.id === room}>" in screen
+    assert "hidden={p.id !== room}" in screen
     assert "setProfile(id);" in screen
+    for f in ("SummaryRibbon", "PositionsPanel", "StrategiesGrid", "WatcherPanel",
+              "CredentialsPanel", "TradeHistory", "PnlPanel", "FeedPanel", "SmartWatcherBox"):
+        src = _src(f"webapp/src/components/trade/{f}.tsx")
+        assert "= useRoomApis();" in src, f
+        imp = [ln for ln in src.splitlines() if ln.startswith("import") and '"@/lib/api"' in ln]
+        assert not any(re.search(r"(api|tradeApi)", ln) for ln in imp),             f"{f} imports the unbound api — its calls would go to the room on screen"
+    live = _src("webapp/src/lib/live.ts")
+    assert "withProfile(id, () => fn.current())" in live
+    assert "Math.max(ms, BEHIND_MS)" in live
+    api_ts = _src("webapp/src/lib/api.ts")
+    assert "await takeLane(_roomed(input) && room !== _profile);" in api_ts, "the room on screen goes first"
+    for f in ("SmartWatcherBox", "WatcherPanel"):
+        assert ".profile !== room.id) return;" in _src(f"webapp/src/components/trade/{f}.tsx"), f
 
 
 def test_each_rooms_watcher_has_its_real_money_switch():

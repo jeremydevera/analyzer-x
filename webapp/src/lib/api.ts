@@ -42,16 +42,20 @@ export class ApiError extends Error {
 const MAX_LANES = 4;
 let lanes = 0;
 const waiting: (() => void)[] = [];
+// THE ROOM ON SCREEN GOES FIRST (Oct 01, 2026). Every room stays loaded and
+// keeps refreshing behind its tab, so up to six rooms share these four lanes;
+// a call for a room nobody is looking at waits behind the visible room's.
+const waitingBehind: (() => void)[] = [];
 
-async function takeLane(): Promise<void> {
+async function takeLane(behind = false): Promise<void> {
   if (lanes < MAX_LANES) { lanes += 1; return; }
-  await new Promise<void>((res) => waiting.push(res));
+  await new Promise<void>((res) => (behind ? waitingBehind : waiting).push(res));
   lanes += 1;
 }
 
 function freeLane(): void {
   lanes -= 1;
-  waiting.shift()?.();
+  (waiting.shift() ?? waitingBehind.shift())?.();
 }
 
 // WHICH ROOM the Auto Trade screen is showing (trading profiles, Sep 29,
@@ -75,18 +79,50 @@ export const PROFILES: readonly { id: string; name: string }[] = [
 let _profile = "main";
 export function setProfile(id: string): void { _profile = id; }
 export function currentProfile(): string { return _profile; }
+
+// EVERY ROOM LOADED AT ONCE (operator, Oct 01, 2026: "when i click auto trade
+// tab, load all the info for all, then i want all the numbers updating in
+// realtime"). Each room's panels stay mounted, so a call can no longer take
+// its room from the one global above: `withProfile(id, fn)` names the room
+// for every call `fn` starts, and get/post read it SYNCHRONOUSLY — before
+// their first await — the same contract as `withApiPrefix`. The retry and the
+// header use the room captured at entry, never whatever is on screen later.
+let _scoped: string | null = null;
+export function withProfile<T>(id: string, fn: () => T): T {
+  const prev = _scoped;
+  _scoped = id;
+  try {
+    return fn();
+  } finally {
+    _scoped = prev;
+  }
+}
+function _roomNow(): string { return _scoped ?? _profile; }
+
+/** `obj` with every function bound to room `id` (lib/room.tsx). */
+export function roomBound<T extends object>(obj: T, id: string): T {
+  return new Proxy(obj, {
+    get(target, key, recv) {
+      const v = Reflect.get(target, key, recv);
+      return typeof v === "function"
+        ? (...a: unknown[]) => withProfile(id, () => (v as (...x: unknown[]) => unknown).apply(target, a))
+        : v;
+    },
+  });
+}
 function _roomed(input: string): boolean {
   const path = input.replace(/^https?:\/\/[^/]+/, "");
   return /^\/api\/(trade\/|ledger)/.test(path);
 }
 
-async function fetchLaned(input: string, init?: RequestInit): Promise<Response> {
-  if (_profile !== "main" && _roomed(input)) {
+async function fetchLaned(input: string, init?: RequestInit, room: string = _roomNow()): Promise<Response> {
+  if (room !== "main" && _roomed(input)) {
     const headers = new Headers(init?.headers);
-    headers.set("X-TA-Profile", _profile);
+    headers.set("X-TA-Profile", room);
     init = { ...(init ?? {}), headers };
   }
-  await takeLane();
+  // a roomed call for a room that is not on screen waits behind the rest
+  await takeLane(_roomed(input) && room !== _profile);
   try {
     return await fetch(input, init);
   } finally {
@@ -118,9 +154,11 @@ export function withApiPrefix<T>(prefix: string, fn: () => T): T {
 }
 
 async function get<T>(path: string): Promise<T> {
-  // rebased BEFORE the first await, while the caller's prefix is in force
+  // rebased BEFORE the first await, while the caller's prefix is in force —
+  // and the ROOM taken now too, so the retry asks the same room
   path = _rebase(path);
-  let r = await fetchLaned(`${API_BASE}${path}`, { cache: "no-store" });
+  const room = _roomNow();
+  let r = await fetchLaned(`${API_BASE}${path}`, { cache: "no-store" }, room);
   // ONE second try, only for a GET. When the API restarts (a fix landing),
   // the proxy answers 500 for the few seconds it is down — on Sep 09, 2026
   // the operator opened Auto Trade in that window and every panel went red.
@@ -129,7 +167,7 @@ async function get<T>(path: string): Promise<T> {
   // second submit is a second order.
   if (r.status === 500 || r.status === 502 || r.status === 504) {
     await new Promise((res) => setTimeout(res, 1_500));
-    r = await fetchLaned(`${API_BASE}${path}`, { cache: "no-store" });
+    r = await fetchLaned(`${API_BASE}${path}`, { cache: "no-store" }, room);
   }
   if (!r.ok) {
     let detail = "";

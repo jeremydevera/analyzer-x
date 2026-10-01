@@ -2552,16 +2552,24 @@ def trade_positions() -> dict:
     # of times every 15 seconds, from the runner's own address (Sep 24, 2026:
     # 537 practice slots on 64 coins, up to 4 open per coin).
     _prices: dict = {}
+    # EVERY COIN'S PRICE FROM ONE CALL (Oct 01, 2026): asked one coin at a
+    # time, #4FC03172's 41 coins took 25.4 s of a 44.9 s answer and the
+    # operator saw the room "loading slow". fx.last_prices() is one ticker
+    # list shared for 3 s; a coin it lacks still gets its own read.
+    _all = fx.last_prices()
 
     def last_price(symbol: str):
         # fx.last_price is the mark-price reader. klines() returns a DataFrame,
         # so indexing it like a list silently yielded nothing and the "to TP"
         # progress column rendered empty on every row.
         if symbol not in _prices:
-            try:
-                _prices[symbol] = float(fx.last_price(symbol))
-            except Exception:
-                _prices[symbol] = None
+            if symbol in _all:
+                _prices[symbol] = _all[symbol]
+            else:
+                try:
+                    _prices[symbol] = float(fx.last_price(symbol))
+                except Exception:
+                    _prices[symbol] = None
         return _prices[symbol]
 
     def contract_size(symbol: str) -> float:

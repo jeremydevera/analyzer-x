@@ -33,6 +33,7 @@ import json as _json
 import logging
 import os
 import pathlib as _pathlib
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -428,6 +429,7 @@ def position_history(symbol: str | None = None, page_size: int = 20) -> list:
 # the request budget for a number that never changes.
 _SPEC_CACHE: dict = {}
 _SPEC_TTL = 3600
+_SPEC_BULK_AT = [0.0]          # when the every-contract list was last read
 
 
 def clear_spec_cache() -> None:
@@ -455,6 +457,22 @@ def contract_spec(symbol: str) -> dict:
     hit = _SPEC_CACHE.get(symbol)
     if hit and now - hit[0] < _SPEC_TTL:
         return hit[1]
+    # EVERY CONTRACT IN ONE CALL first (Oct 01, 2026): the positions screen
+    # read #4FC03172's 41 coins one detail at a time, 17.6 s of a 44.9 s
+    # answer. One list fills the whole cache for the hour; a symbol the list
+    # does not carry still gets its own call below.
+    if now - _SPEC_BULK_AT[0] >= _SPEC_TTL:
+        _SPEC_BULK_AT[0] = now
+        try:
+            listed = _get_public(f"{BASE}/api/v1/contract/detail").get("data") or []
+            for d in listed if isinstance(listed, list) else []:
+                if isinstance(d, dict) and d.get("symbol"):
+                    _SPEC_CACHE[d["symbol"]] = (now, d)
+        except Exception:                                      # noqa: BLE001
+            pass
+        hit = _SPEC_CACHE.get(symbol)
+        if hit and now - hit[0] < _SPEC_TTL:
+            return hit[1]
     url = f"{BASE}/api/v1/contract/detail?symbol={urllib.parse.quote(symbol)}"
     payload = _get_public(url)
     d = payload.get("data") or {}
@@ -467,6 +485,39 @@ def contract_spec(symbol: str) -> dict:
             f"refusing to report a contract with no size")
     _SPEC_CACHE[symbol] = (now, d)
     return d
+
+
+_PRICES: dict = {"at": 0.0, "px": {}}
+_PRICES_TTL = 3.0
+_PRICES_LOCK = threading.Lock()
+
+
+def last_prices(max_age: float = _PRICES_TTL) -> dict:
+    """{symbol: last traded price} for EVERY contract, from ONE ticker call
+    (0.38 s for 1,215 contracts, measured Oct 01, 2026), shared for
+    `max_age` seconds. The screens read prices for dozens of coins at once —
+    #4FC03172's open positions asked 41 times in a row, 25.4 s — and one list
+    answers all of them. Only prices above zero are kept (see last_price);
+    an unreadable list is {} and the caller falls back to last_price()."""
+    now = time.time()
+    with _PRICES_LOCK:
+        if now - _PRICES["at"] < max_age:
+            return _PRICES["px"]
+        try:
+            rows = _get_public(f"{BASE}/api/v1/contract/ticker").get("data") or []
+        except Exception:                                      # noqa: BLE001
+            return {}
+        px = {}
+        for d in rows if isinstance(rows, list) else []:
+            try:
+                v = float(d.get("lastPrice"))
+            except (TypeError, ValueError, AttributeError):
+                continue
+            if v > 0 and d.get("symbol"):
+                px[d["symbol"]] = v
+        if px:
+            _PRICES.update(at=now, px=px)
+        return px
 
 
 def last_price(symbol: str) -> float:

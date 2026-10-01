@@ -172,6 +172,90 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-01-H — the Forecast tab timed every stock coin by New York, so Japanese stocks traded in Tokyo's daytime were booked as "night"
+
+**CEO**
+
+* The Forecast tab's "market hours vs nights" table said #4FC03172's stock
+  trades at night lost -19.08; most of that loss was really Japanese stocks
+  traded while Tokyo's market was open, and the US stocks traded at night
+  lost only -1.16.
+* Why: every stock coin was timed by New York's clock, so a Tokyo stock's
+  morning looked like New York's night, and a company not on any market yet
+  was put in one row or the other.
+* What stops it now: each stock coin is timed by its own market (New York,
+  Tokyo, Seoul, Taipei, Hong Kong, Shanghai), coins not on any market yet
+  get their own row, and the screen says how each coin was placed.
+
+**DEV**
+
+* `room_stats.hours_split` (`tradingagents/room_stats.py`) called
+  `market_hours(t)` — 9:30am-4pm New York — for every coin `is_stock`
+  accepted; MEXC's own `conceptPlate` tag could not be used instead (it marks
+  FASTSTOCK, Fastenal, as `japanstock` and misses RENESAS, NINTENDO and 8
+  more), so the market is now `home_market()` over `LISTED_IN` (74 names)
+  and `NOT_LISTED` (4 pre-IPO coins).
+* Invariant broken: **a trade is timed by its own market's clock** — a label
+  ("nights and weekends") must be true for every row counted under it, not
+  only for the coins the rule was written with in mind.
+* Guard: `test_each_stock_coin_is_timed_by_its_own_market` (one moment, five
+  coins, five answers), `test_the_coins_the_rooms_traded_are_on_the_right_market`,
+  and `test_12_stock_coins_split_by_new_york_market_hours` (updated).
+
+**SAW** — asked *"is there a bug on this"* at `Oct 01, 2026 5:14pm`. At
+5:20pm #4FC03172's table read "market hours 364 trades -132.37 · nights and
+weekends 102 trades -19.08", and the first "night" trades listed were
+GPNSTOCK at `Sep 30, 2026 8:45pm`, RENESASSTOCK and MITSUBISHISTOCK at
+`Sep 30, 2026 8:30pm` — 9:30am the next morning in Tokyo.
+
+**TIMELINE**
+
+1. `Oct 01, 2026 2:57pm` — the Forecast tab went live with every stock coin
+   timed by New York (the build prompt's own rule: "US market hours =
+   9:30am-4pm New York time").
+2. `5:20pm` — across the 9 rooms, 155 practice trades on stock coins sat in
+   "nights and weekends": 45 were Japanese stocks opened while Tokyo was open
+   (MITSUBISHI 8, RENESAS 7, AJINOMOTO 6, TOYOTA 5, ...) and 19 were
+   KIMISTOCK, which MEXC lists as pre-IPO (no market at all) — 64 of 155.
+3. `5:30pm` — MEXC's tags checked: `japanstock` on 10 coins; FASTSTOCK
+   (50.21) is Fastenal while Fast Retailing is FASTRETAILSTOCK (461.51), and
+   RENESAS, AJINOMOTO, PANASONIC, MUFG, RECRUIT, FANUC, SHINETSU, NINTENDO,
+   NEC and FASTRETAIL carry no tag; `preipo` on 4 (KIMI, OURA, POLYMARKET,
+   YMTC). FASTSTOCK's 34 trades all opened in New York hours.
+4. After the fix, #4FC03172: New York stocks open 365 trades -134.04, closed
+   52 trades -1.16; Tokyo stocks open 43 trades -21.15, closed 0; not on any
+   market yet 7 trades +3.23 (KIMISTOCK). #CC94D9FB and #B52662ED the same
+   way — all three equal to a direct count of their trade records.
+5. Same pass: the screen said stock coin = "a symbol ending in STOCK (the
+   project has no rule of its own)"; the Backtest's stocks filter
+   (`rows_index`, `coin LIKE '%STOCK'`) is that same rule, so the
+   parenthetical was false and now names it.
+
+**ROOT CAUSE** — one clock for every stock coin, while 74 of the 381 stock
+contracts MEXC lists are companies listed in another time zone.
+
+**WHY IT WAS NOT CAUGHT** — the spec named one clock, and the test was built
+from the spec: its only stock coin was ELSTOCK, a US stock, so no fixture
+could hold a coin whose market keeps other hours. The real-data check
+compared each room's closed, won, lost and profit with the trade record —
+the totals — and never the split; and the screenshot pass checked that the
+table fit a phone, not what its rows meant. A split whose rows add up to the
+right total can still put every trade in the wrong row.
+
+**COST** — none in money; the table pointed at the wrong cause for ~2.5
+hours ("nights lose -19.08" when New York's nights were -1.16 and the loss
+was Tokyo's daytime, -21.15).
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_room_forecast_features.py`:
+`test_each_stock_coin_is_timed_by_its_own_market`,
+`test_the_coins_the_rooms_traded_are_on_the_right_market`,
+`test_12_stock_coins_split_by_new_york_market_hours` — all three red on
+7a93c0901607's code.
+
+---
+
 ## RCA-2026-10-01-G — the Forecast tab spelled money two ways on one card, hid columns on a phone, and one bad number could have broken its saved list for good
 
 **CEO**

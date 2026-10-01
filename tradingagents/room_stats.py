@@ -26,9 +26,12 @@ THE DEFINITIONS (the operator's words, and nothing else):
   the entry price and is not in it — the screen says so.
 * worst case today = for every open trade, what it would book if its stop
   were hit now (its own charged cost included). Labelled "up to".
-* US market hours = 9:30am-4pm New York time, Monday-Friday (holidays are
-  not taken out). A stock coin = a symbol ending in STOCK: the project has no
-  rule of its own, and the screen says which rule it used.
+* market hours = each stock coin's OWN market, in its own time, Monday-
+  Friday (holidays not taken out): New York 9:30am-4pm, Tokyo 9am-3:30pm and
+  so on (MARKETS). The operator's spec said New York for all of them, and that
+  booked a Tokyo stock's morning as "night" (Oct 01, 2026: MITSUBISHISTOCK at
+  Sep 30, 2026 8:30pm New York = 9:30am Tokyo). A stock coin = a symbol
+  ending in STOCK — the project's own rule (rows_index's stocks filter).
 * "too early to tell" = under 100 closed trades OR under 7 days.
 
 Big records are read INCREMENTALLY: a room's trade record is 17 MB and grows
@@ -57,7 +60,39 @@ OFF_TRADES = 200
 FAR_BELOW_SHARE = 0.5         # real profit a trade under half the research's
 FAR_BELOW_MIN = 30            # ...once the room has this many closed trades
 TOP_LOSERS = 5
-STOCK_RULE = "a symbol ending in STOCK (the project has no rule of its own)"
+STOCK_RULE = "a symbol ending in STOCK (the same rule as the Backtest's stocks filter)"
+
+# WHERE EACH STOCK COIN IS LISTED, so its trades are timed by ITS market.
+# Every stock coin used to be timed by New York: 45 of the rooms' 155
+# "night" stock trades were Japanese stocks traded while Tokyo was open, and
+# 19 more were KIMISTOCK, a company not listed on any market yet. MEXC's own
+# tags cannot be used instead — "japanstock" marks 10 coins, one of them
+# wrongly (FASTSTOCK at 50.21 is Fastenal; Fast Retailing is FASTRETAILSTOCK
+# at 461.51), and misses RENESAS, NINTENDO and eight more the rooms traded.
+# So the list is kept here, by name, as of Oct 01, 2026; a STOCK coin not on
+# it is timed as a New York stock, and the screen says so.
+MARKETS = {                    # market: (time zone, opens, closes) local time
+    "New York": ("America/New_York", (9, 30), (16, 0)),
+    "Tokyo": ("Asia/Tokyo", (9, 0), (15, 30)),
+    "Seoul": ("Asia/Seoul", (9, 0), (15, 30)),
+    "Taipei": ("Asia/Taipei", (9, 0), (13, 30)),
+    "Hong Kong": ("Asia/Hong_Kong", (9, 30), (16, 0)),
+    "Shanghai/Shenzhen": ("Asia/Shanghai", (9, 30), (15, 0)),
+}
+LISTED_IN = {name: market for market, names in {
+    "Tokyo": "ADVANTEST AJINOMOTO DISCO FANUC FASTRETAIL FUJIKURA FURUKAWA HITACHI IBIDEN "
+             "KEYENCE KIOXIA KOKUSAI LASERTEC MITSUBISHI MUFG MURATA NEC NINTENDO PANASONIC "
+             "RECRUIT RENESAS SHINETSU SOFTBANK SONY SUMIELEC TAIYOYUDEN TAKEDA TOKYOEL TOYOTA",
+    "Seoul": "HANMI HANWHAAERO HYUNDAI KBFIN NAVER SAMSUNG SAMSUNGEM SKHY SKHYNIX SKINNOV "
+             "SKSQUARE",
+    "Taipei": "ASE BIZLINK DELTAELEC ELITEMAT GLOBALWFR GOLDCIR GUC INNOLUX KINSUS LARGAN "
+              "MEDIATEK NANYAPCB NANYAPLST NANYATECH POWERCHIP TSMC UNIMICRON WINBOND YAGEO "
+              "ZHENDING",
+    "Hong Kong": "AKESO GENSCRIPT INNOVENT KUAISHOU MEITUAN MINIMAX POPMART SMIC TENCENT "
+                 "WUXIBIO XIAOMI ZHIPU",
+    "Shanghai/Shenzhen": "GIGADEV ZHONGJI",
+}.items() for name in names.split()}
+NOT_LISTED = frozenset(["KIMI", "OURA", "POLYMARKET", "YMTC"])   # pre-IPO: no market at all
 COST_NOTE = ("charged at each exit: exchange fee, the exit's spread and funding; "
              "the spread paid on entry is already inside the entry price")
 RESEARCH_FILE = Path(__file__).resolve().parent / "learned" / "room_research.json"
@@ -341,17 +376,42 @@ def costs(exits: list[dict], enters: dict) -> dict:
             "rows": rows}
 
 
-def market_hours(ts: float) -> bool:
-    """9:30am-4pm New York, Monday-Friday."""
-    t = dt.datetime.fromtimestamp(ts, NY)
+def market_open(ts: float, market: str = "New York") -> bool:
+    """Whether `market` was open at `ts`: its own hours, its own time,
+    Monday-Friday (holidays not taken out, lunch breaks counted as open)."""
+    zone, (oh, om), (ch, cm) = MARKETS[market]
+    t = dt.datetime.fromtimestamp(ts, ZoneInfo(zone))
     if t.weekday() >= 5:
         return False
     minutes = t.hour * 60 + t.minute
-    return 9 * 60 + 30 <= minutes < 16 * 60
+    return oh * 60 + om <= minutes < ch * 60 + cm
+
+
+def market_hours(ts: float) -> bool:
+    """9:30am-4pm New York, Monday-Friday."""
+    return market_open(ts, "New York")
 
 
 def is_stock(symbol: str) -> bool:
     return str(symbol).upper().replace("_USDT", "").endswith("STOCK")
+
+
+def home_market(symbol: str) -> str | None:
+    """The market a stock coin's company is listed on; None for one not
+    listed anywhere yet (pre-IPO)."""
+    name = str(symbol).upper().replace("_USDT", "")
+    name = name[:-len("STOCK")] if name.endswith("STOCK") else name
+    if name in NOT_LISTED:
+        return None
+    return LISTED_IN.get(name, "New York")
+
+
+def _clock(market: str) -> str:
+    """'9:30am-4pm' for a market, in the project's way of printing a time."""
+    def one(h, m):
+        return f"{(h - 1) % 12 + 1}{f':{m:02d}' if m else ''}{'am' if h < 12 else 'pm'}"
+    _, o, c = MARKETS[market]
+    return f"{one(*o)}–{one(*c)}"
 
 
 def _group(rows: list[dict]) -> dict:
@@ -364,15 +424,31 @@ def _group(rows: list[dict]) -> dict:
 
 
 def hours_split(exits: list[dict]) -> dict:
-    """Stock coins only, split by when the trade OPENED."""
+    """Stock coins only, split by whether THEIR market was open when the
+    trade OPENED — each market in its own time; a coin with no market yet is
+    counted on its own, never split."""
     stock = [e for e in exits if is_stock(e["symbol"])]
-    mk, off = [], []
+    by: dict = {}
+    unlisted, unlisted_coins = [], set()
     for e in stock:
+        market = home_market(e["symbol"])
+        if market is None:
+            unlisted.append(e)
+            unlisted_coins.add(e["symbol"].replace("_USDT", ""))
+            continue
         t = e.get("opened_at") or e["ts"]
-        (mk if market_hours(t) else off).append(e)
+        by.setdefault(market, ([], []))[0 if market_open(t, market) else 1].append(e)
+    markets = [{"market": m, "hours": _clock(m), "open": _group(by[m][0]),
+                "closed": _group(by[m][1])} for m in MARKETS if m in by]
     return {"stock_trades": len(stock), "other_trades": len(exits) - len(stock),
-            "market": _group(mk), "off": _group(off), "rule": STOCK_RULE,
-            "split_by": "when the trade opened, New York time"}
+            "markets": markets, "unlisted": _group(unlisted),
+            "unlisted_coins": sorted(unlisted_coins), "rule": STOCK_RULE,
+            "split_by": "when the trade opened, in its own market's time",
+            "listed_abroad": len(LISTED_IN),
+            # the page built before this change reads these two; kept so a
+            # server restarted without a page rebuild cannot break it
+            "market": _group(by.get("New York", ([], []))[0]),
+            "off": _group(by.get("New York", ([], []))[1])}
 
 
 def losers(exits: list[dict], n: int = TOP_LOSERS) -> list[dict]:

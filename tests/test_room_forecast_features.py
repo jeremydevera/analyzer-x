@@ -191,7 +191,9 @@ def test_12_stock_coins_split_by_new_york_market_hours():
     _write(rows)
     h = rs.room(ROOM, NOW)["hours"]
     assert h["stock_trades"] == 2 and h["other_trades"] == 1
-    assert h["market"]["profit"] == 1.0 and h["off"]["profit"] == -1.0
+    (ny,) = h["markets"]
+    assert ny["market"] == "New York" and ny["hours"] == "9:30am–4pm"
+    assert ny["open"]["profit"] == 1.0 and ny["closed"]["profit"] == -1.0
     assert rs.market_hours(thu_10am) and not rs.market_hours(sat)
     assert not rs.market_hours(thu_10am + 6.5 * 3600)          # 4:30pm
 
@@ -557,3 +559,56 @@ def test_on_a_phone_the_tables_fit_and_a_forecast_opens_from_its_first_column():
     detail = src[src.index("function ForecastDetail"):src.index("function History")]
     assert "overflow-x-auto" not in detail          # one sideways scroll, not two
     assert "{pct(res.winrate)} wins" in src
+
+
+def test_each_stock_coin_is_timed_by_its_own_market():
+    """Oct 01, 2026: every stock coin was timed by New York, so #4FC03172's
+    MITSUBISHISTOCK trade at Sep 30, 2026 8:30pm New York — 9:30am in Tokyo,
+    an hour after its market opened — was booked "nights and weekends", and
+    KIMISTOCK, a company on no market at all, landed in either row. ONE
+    moment, five coins, five different answers."""
+    import datetime as dt
+    from zoneinfo import ZoneInfo
+
+    wed_830pm = dt.datetime(2026, 9, 30, 20, 30, tzinfo=ZoneInfo("America/New_York")).timestamp()
+    tokyo = dt.datetime.fromtimestamp(wed_830pm, ZoneInfo("Asia/Tokyo"))
+    assert (tokyo.weekday(), tokyo.hour, tokyo.minute) == (3, 9, 30)      # Thursday 9:30am
+    sat_tokyo_10am = dt.datetime(2026, 10, 3, 10, 0, tzinfo=ZoneInfo("Asia/Tokyo")).timestamp()
+    rows = (_trades([1.0], start=wed_830pm, symbol="MITSUBISHISTOCK_USDT")       # Tokyo, open
+            + _trades([2.0], start=wed_830pm, symbol="FASTRETAILSTOCK_USDT")     # Tokyo, open
+            + _trades([-1.0], start=wed_830pm, symbol="GPNSTOCK_USDT")           # New York, closed
+            + _trades([-2.0], start=wed_830pm, symbol="FASTSTOCK_USDT")          # Fastenal: New York
+            + _trades([0.5], start=wed_830pm, symbol="KIMISTOCK_USDT")           # no market yet
+            + _trades([-0.5], start=sat_tokyo_10am, symbol="TOYOTASTOCK_USDT"))  # Tokyo, Saturday
+    for i, r in enumerate(rows):
+        r["trade_id"] = f"M{i // 2}"
+    _write(rows)
+    h = rs.room(ROOM, NOW)["hours"]
+    by = {m["market"]: m for m in h["markets"]}
+    assert list(by) == ["New York", "Tokyo"]
+    assert (by["Tokyo"]["open"]["trades"], by["Tokyo"]["open"]["profit"]) == (2, 3.0)
+    assert (by["Tokyo"]["closed"]["trades"], by["Tokyo"]["closed"]["profit"]) == (1, -0.5)
+    assert (by["New York"]["open"]["trades"], by["New York"]["closed"]["trades"]) == (0, 2)
+    assert h["unlisted"]["trades"] == 1 and h["unlisted_coins"] == ["KIMISTOCK"]
+    assert by["Tokyo"]["hours"] == "9am–3:30pm"
+    # every row the page prints adds back up to the stock trades it counted
+    assert sum(m["open"]["trades"] + m["closed"]["trades"] for m in h["markets"]) \
+        + h["unlisted"]["trades"] == h["stock_trades"] == 6
+
+
+def test_the_coins_the_rooms_traded_are_on_the_right_market():
+    """The list, checked against what the rooms actually traded by Oct 01,
+    2026. MEXC's own "japanstock" tag is not used: it marks FASTSTOCK (50.21,
+    Fastenal) as Japanese and misses RENESAS, NINTENDO and the rest."""
+    tokyo = ["MITSUBISHI", "RENESAS", "AJINOMOTO", "TOYOTA", "PANASONIC", "MUFG", "RECRUIT",
+             "FANUC", "SHINETSU", "NINTENDO", "NEC", "FASTRETAIL", "DISCO"]
+    assert all(rs.home_market(f"{c}STOCK_USDT") == "Tokyo" for c in tokyo)
+    assert rs.home_market("FASTSTOCK_USDT") == "New York"
+    assert rs.home_market("KIMISTOCK_USDT") is None and rs.home_market("YMTCSTOCK_USDT") is None
+    assert rs.home_market("GPNSTOCK_USDT") == "New York"
+    assert rs.home_market("TSMCSTOCK_USDT") == "Taipei" and rs.home_market("TSMSTOCK_USDT") == "New York"
+    assert not set(rs.LISTED_IN) & rs.NOT_LISTED
+    src = (ROOT / "webapp/src/components/forecast/RoomForecasts.tsx").read_text(encoding="utf-8")
+    assert "market hours = 9:30am–4pm New York" not in src, "no coin is timed by one clock"
+    assert "not on any market yet" in src and "(r.hours.markets ?? []).map" in src
+    assert "the project has no rule of its own" not in rs.STOCK_RULE

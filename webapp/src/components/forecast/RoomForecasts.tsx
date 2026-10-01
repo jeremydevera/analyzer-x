@@ -13,7 +13,7 @@
  * since — paged and checked by the server, never filtered here.
  */
 import { Fragment, useCallback, useState } from "react";
-import { api, fmtMoney, fmtWhen, Forecast, Forecasts, ForecastsLive, RoomNow } from "@/lib/api";
+import { api, fmtMoney, fmtWhen, Forecast, Forecasts, ForecastsLive, RoomGroup, RoomNow } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
 
 const roomName = (id: string) => (id === "main" ? "Main" : `#${id}`);
@@ -122,7 +122,7 @@ function Badge({ kind, children }: { kind: "good" | "bad" | "info"; children: Re
   return <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${c}`}>{children}</span>;
 }
 
-function Group({ label, g }: { label: string; g: RoomNow["hours"]["market"] }) {
+function Group({ label, g }: { label: string; g: RoomGroup }) {
   return (
     <tr>
       <td className="py-1 pr-2 text-gray-600 dark:text-gray-300">{label}</td>
@@ -223,8 +223,8 @@ function RoomCard({ r, rules }: { r: RoomNow; rules: ForecastsLive["rules"] }) {
       {more && (
         <div className="flex flex-col gap-3">
           <div>
-            <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">Stock coins: market hours vs nights and weekends</p>
-            <p className="text-[10px] text-gray-400">stock coin = {r.hours.rule}; split by {r.hours.split_by}; market hours = 9:30am–4pm New York, Monday–Friday · {r.hours.stock_trades.toLocaleString()} stock trades, {r.hours.other_trades.toLocaleString()} other trades not counted here</p>
+            <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">Stock coins: while their market was open, and while it was closed</p>
+            <p className="text-[10px] text-gray-400">stock coin = {r.hours.rule}; split by {r.hours.split_by}, Monday–Friday (holidays not taken out){r.hours.listed_abroad != null && `; ${r.hours.listed_abroad.toLocaleString()} stock coins listed outside the US are on this project's list, and any other is timed as a New York stock`} · {r.hours.stock_trades.toLocaleString()} stock trades, {r.hours.other_trades.toLocaleString()} other trades not counted here</p>
             {/* no minimum width: at 390px a forced 420 hid "profit" and "a trade" off the side */}
             <div className="overflow-x-auto">
               <table className="mt-1 w-full text-theme-xs">
@@ -232,8 +232,18 @@ function RoomCard({ r, rules }: { r: RoomNow; rules: ForecastsLive["rules"] }) {
                   {["when it opened", "trades", "won / lost", "win rate", "profit", "a trade"].map((h) => <th key={h} className="py-1 pr-2 text-start font-medium">{h}</th>)}
                 </tr></thead>
                 <tbody>
-                  <Group label="market hours" g={r.hours.market} />
-                  <Group label="nights and weekends" g={r.hours.off} />
+                  {(r.hours.markets ?? []).map((m) => (
+                    <Fragment key={m.market}>
+                      <Group label={`${m.market} · open (${m.hours})`} g={m.open} />
+                      <Group label={`${m.market} · closed (nights and weekends)`} g={m.closed} />
+                    </Fragment>
+                  ))}
+                  {(r.hours.unlisted?.trades ?? 0) > 0 && (
+                    <Group label={`not on any market yet (${(r.hours.unlisted_coins ?? []).join(", ")})`} g={r.hours.unlisted!} />
+                  )}
+                  {r.hours.stock_trades === 0 && (
+                    <tr><td colSpan={6} className="py-1 text-gray-400">no closed stock-coin trade yet</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>

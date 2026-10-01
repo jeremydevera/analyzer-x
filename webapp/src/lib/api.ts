@@ -996,8 +996,12 @@ export type RoomNow = {
   worst_case: { open: number; unpriced: number; up_to: number };
   costs: { matched: number; of: number; total: number; per_trade: number | null;
     without_costs: number | null; with_costs: number | null; note: string };
-  hours: { stock_trades: number; other_trades: number; market: RoomGroup; off: RoomGroup;
-    rule: string; split_by: string };
+  // markets/unlisted/listed_abroad are missing from a server older than the
+  // page (Oct 01, 2026: each stock coin timed by its own market)
+  hours: { stock_trades: number; other_trades: number;
+    markets?: { market: string; hours: string; open: RoomGroup; closed: RoomGroup }[];
+    unlisted?: RoomGroup; unlisted_coins?: string[]; rule: string; split_by: string;
+    listed_abroad?: number };
   losers: (RoomGroup & { coin: string })[];
   daily: { day: string; at: number; profit: number; total: number }[];
   alarms: { kind: "losing_run" | "too_many_open" | "far_below"; text: string }[];

@@ -21,10 +21,16 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 const TF: Record<string, string> = { Min1: "1m", Min15: "15m", Min30: "30m", Min60: "1h", Hour4: "4h", Day1: "1d" };
 
 
+const GRID_PER = 25;
+
 export default function StrategiesGrid() {
   // this panel's own room, even while its tab is not the one on screen
   const { api, tradeApi } = useRoomApis();
   const [rows, setRows] = useState<StrategyDeployRow[]>([]);
+  // PAGES OF GRID_PER (Oct 01, 2026): #4FC03172 runs 2,594 rows, and drawing
+  // all of them twice (phone cards + table) is what made its tab take ~2.5 s
+  // to appear. The totals under the table still add up EVERY row.
+  const [gPage, setGPage] = useState(1);
   const [sizing, setSizing] = useState("");
   const [counts, setCounts] = useState({ real_count: 0, paper_count: 0, idle_count: 0, deployed_count: 0, catalog_count: 0 });
   const [acctCap, setAcctCap] = useState(0);
@@ -286,6 +292,8 @@ export default function StrategiesGrid() {
     </>
   );
 
+  const pageRows = rows.slice((Math.min(gPage, Math.max(1, Math.ceil(rows.length / GRID_PER))) - 1) * GRID_PER,
+                              Math.min(gPage, Math.max(1, Math.ceil(rows.length / GRID_PER))) * GRID_PER);
   return (
     <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="flex flex-wrap items-center gap-3 px-5 pt-4">
@@ -506,8 +514,21 @@ export default function StrategiesGrid() {
           left THIS one out: twelve columns in 390px is ~30px each, so "keltner"
           and "LIVE W/L" broke letter by letter. Below `md` every deployed row
           is one card; the table is untouched at `md` and up. RCA-2026-09-26-A. */}
+      {(() => {
+        const pages = Math.max(1, Math.ceil(rows.length / GRID_PER));
+        const cur = Math.min(gPage, pages);
+        return rows.length > GRID_PER ? (
+          <div className="flex flex-wrap items-center gap-2 px-5 pt-3 text-theme-xs text-gray-500 dark:text-gray-400">
+            <button type="button" disabled={cur <= 1} onClick={() => setGPage(cur - 1)}
+              className="rounded border px-2 py-0.5 disabled:opacity-40 dark:border-gray-700">‹ prev</button>
+            <span>page {cur} of {pages} · rows {(cur - 1) * GRID_PER + 1}–{Math.min(cur * GRID_PER, rows.length)} of {rows.length}</span>
+            <button type="button" disabled={cur >= pages} onClick={() => setGPage(cur + 1)}
+              className="rounded border px-2 py-0.5 disabled:opacity-40 dark:border-gray-700">next ›</button>
+          </div>
+        ) : null;
+      })()}
       <div className="flex flex-col gap-2 p-3 md:hidden">
-        {rows.map((r) => (
+        {pageRows.map((r) => (
           <div key={`m-${r.key}`}
             className="rounded-xl border border-gray-200 p-3 dark:border-white/[0.08]">
             <div className="flex items-start justify-between gap-2">
@@ -646,7 +667,7 @@ export default function StrategiesGrid() {
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-            {rows.map((r) => (
+            {pageRows.map((r) => (
               <TableRow key={r.key}>
                 <TableCell className="px-2 py-1.5 leading-tight">
                   {/* The stable row ID first, hashed from the combination by the

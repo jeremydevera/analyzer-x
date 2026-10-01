@@ -53,7 +53,7 @@ def load_body(src) -> str:
     """Just `load`, so an assertion about it cannot be satisfied by some other
     function that happens to contain the same call."""
     i = src.index("const load = useCallback(")
-    return src[i:src.index("[catalog]);", i)]
+    return src[i:src.index("[catalog, tradeApi]);", i)]
 
 
 # ------------------------------------------- 1. the refresh keeps its hands off

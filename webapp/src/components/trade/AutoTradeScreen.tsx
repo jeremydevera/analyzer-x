@@ -2,7 +2,7 @@
 /** The terminal. The positions table owns its own fetch (it must poll faster
  * than the ribbon and it carries the close control), and a close bumps `tick`
  * so the ribbon's totals re-read instead of showing a position that is gone. */
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { LATE_MS, begin } from "@/lib/loading";
 import LoadingOverlay, { useWaitlist } from "./LoadingCard";
 import SummaryRibbon from "./SummaryRibbon";
@@ -30,6 +30,31 @@ function firstRoom(): string {
   setProfile(id);
   return id;
 }
+
+/** ONE ROOM'S PANELS, redrawn only when ITS props change (Oct 01, 2026). A
+ *  tab click changes `active` on two rooms — the one left and the one opened —
+ *  so the other four, #4FC03172's 2,594 rows among them, are not redrawn. */
+const RoomBody = memo(function RoomBody({ id, active, busy, blurred, tick, bump }: {
+  id: string; active: boolean; busy: boolean; blurred: boolean; tick: number; bump: () => void;
+}) {
+  return (
+    <RoomScope id={id} active={active}>
+      <div data-room={id} hidden={!active} aria-busy={busy}
+           className={`min-w-0 flex-col gap-5 ${active ? "flex" : ""} ${blurred
+             ? "pointer-events-none select-none blur-sm"
+             : ""}`}>
+        <SummaryRibbon key={`ribbon-${tick}`} onChanged={bump} />
+        <PositionsPanel onChanged={bump} />
+        <StrategiesGrid />
+        <WatcherPanel />
+        <CredentialsPanel />
+        <TradeHistory />
+        <PnlPanel />
+        <FeedPanel />
+      </div>
+    </RoomScope>
+  );
+});
 
 export default function AutoTradeScreen() {
   // FOLDER TABS, ONE ROOM EACH (operator, Sep 29, 2026: "when i switch to
@@ -74,7 +99,8 @@ export default function AutoTradeScreen() {
     };
   }, [info]);
   const [tick, setTick] = useState(0);
-  const bump = () => setTick((t) => t + 1);
+  // stable, so a room's memo is not broken by a new function every render
+  const bump = useCallback(() => setTick((t) => t + 1), []);
   // the watch SUBSCRIBES first, begin() fires second — effects run in the
   // order the hooks are declared, and the other order left the screen
   // unblurred for its first second (begin's notify hit zero listeners, so
@@ -151,21 +177,9 @@ export default function AutoTradeScreen() {
           another tab is picked — so a click shows numbers already there, and
           a room behind its tab keeps refreshing (lib/room.tsx BEHIND_MS). */}
       {room && PROFILES.map((p) => (
-        <RoomScope key={p.id} id={p.id} active={p.id === room}>
-          <div hidden={p.id !== room} aria-busy={p.id === room && waitlist.length > 0}
-               className={`min-w-0 flex-col gap-5 ${p.id === room ? "flex" : ""} ${p.id === room && blurred
-                 ? "pointer-events-none select-none blur-sm"
-                 : ""}`}>
-            <SummaryRibbon key={`ribbon-${tick}`} onChanged={bump} />
-            <PositionsPanel onChanged={bump} />
-            <StrategiesGrid />
-            <WatcherPanel />
-            <CredentialsPanel />
-            <TradeHistory />
-            <PnlPanel />
-            <FeedPanel />
-          </div>
-        </RoomScope>
+        <RoomBody key={p.id} id={p.id} active={p.id === room}
+                  busy={p.id === room && waitlist.length > 0}
+                  blurred={p.id === room && blurred} tick={tick} bump={bump} />
       ))}
     </div>
   );

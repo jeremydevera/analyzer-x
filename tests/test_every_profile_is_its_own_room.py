@@ -232,8 +232,10 @@ def test_every_room_stays_loaded_in_its_own_scope():
     screen = _src("webapp/src/components/trade/AutoTradeScreen.tsx")
     assert 'role="tablist" aria-label="Trading rooms"' in screen
     assert "{room && PROFILES.map((p) => (" in screen
-    assert "<RoomScope key={p.id} id={p.id} active={p.id === room}>" in screen
-    assert "hidden={p.id !== room}" in screen
+    assert "<RoomBody key={p.id} id={p.id} active={p.id === room}" in screen
+    assert "const RoomBody = memo(function RoomBody(" in screen, "a click redraws two rooms, not six"
+    assert "<RoomScope id={id} active={active}>" in screen
+    assert "hidden={!active}" in screen
     assert "setProfile(id);" in screen
     for f in ("SummaryRibbon", "PositionsPanel", "StrategiesGrid", "WatcherPanel",
               "CredentialsPanel", "TradeHistory", "PnlPanel", "FeedPanel", "SmartWatcherBox"):

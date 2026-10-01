@@ -340,6 +340,19 @@ def _keep_the_row_index_current() -> None:
                 _time.sleep(600)
 
         _th.Thread(target=_rolling30_loop, name="rolling30", daemon=True).start()
+
+        # THE ROOMS' ERRORS (Backtest -> Errors -> Deployed Tabs, Oct 01, 2026):
+        # the first read of every room's log takes ~30 s on this disk, so it
+        # is done here, behind the start, and the page's first poll is cheap
+        def _room_errors_warm() -> None:
+            try:
+                from tradingagents import room_errors as _re
+
+                _re.report()
+            except Exception as exc:                           # noqa: BLE001
+                print(f"[errors] first read of the room logs failed: {exc!r}", flush=True)
+
+        _th.Thread(target=_room_errors_warm, name="room-errors", daemon=True).start()
         print("[supervisor] watching for crashed jobs", flush=True)
     except Exception as exc:
         # The API must still start -- but SILENTLY skipping this is how
@@ -1123,6 +1136,24 @@ def watcher_status(page: int = 1, per: int = 10) -> dict:
     from tradingagents import strategy_watcher as sw
 
     return sw.status(page, per)
+
+
+@app.get("/api/errors/rooms")
+def room_errors_route(room: str = "", kind: str = "", hours: float = 24.0,
+                      page: int = 1) -> dict:
+    """Backtest -> Errors -> Deployed Tabs (operator, Oct 01, 2026: "can you
+    create a tab called 'Errors' then create a section Named 'Deployed Tabs'
+    there i should see errors"). Filtered and paged HERE, never in the page:
+    a room writes tens of thousands of refusals a day."""
+    from tradingagents import profiles as _pf
+    from tradingagents import room_errors as _re
+
+    if room and room not in _pf.shown():
+        raise HTTPException(404, f"no room {room!r}; the rooms are {_pf.shown()}")
+    if kind and kind not in _re.LABELS:
+        raise HTTPException(400, f"unknown kind {kind!r}; use one of {sorted(_re.LABELS)}")
+    return _re.report(room=room or None, kind=kind or None, hours=max(0.0, hours),
+                      page=page)
 
 
 @app.get("/api/trade/profiles")

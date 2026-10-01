@@ -54,10 +54,17 @@ const navItems: NavItem[] = [
     name: "Candles",
     path: "/candles-v2",
   },
+  // ERRORS LIVES UNDER BACKTEST (operator, Oct 01, 2026: "can you create a
+  // tab called 'Errors' then create a section Named 'Deployed Tabs' there i
+  // should see errors ... i want it under backtest tab"). Backtest opens a
+  // two-item group; the results page is still the first item.
   {
     icon: <TableIcon />,
     name: "Backtest",
-    path: "/backtest-v2",
+    subItems: [
+      { name: "Backtest", path: "/backtest-v2" },
+      { name: "Errors", path: "/errors" },
+    ],
   },
   {
     icon: <ShootingStarIcon />,

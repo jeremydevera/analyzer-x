@@ -900,6 +900,20 @@ export function strategyParams(q: StrategyQuery): URLSearchParams {
   return p;
 }
 
+export type RoomErrors = {
+  rows: { room: string; kind: string; label: string; message: string; count: number;
+          first: number; last: number }[];
+  groups: number;
+  events: number;
+  page: number;
+  pages: number;
+  rooms: { room: string; running: boolean; errors: number; last_error: number | null;
+           safety: Record<string, number>; examined: { from: number | null; to: number | null } }[];
+  kinds: { kind: string; label: string }[];
+  safety_labels: Record<string, string>;
+  filters: { room: string; kind: string; hours: number };
+};
+
 export const api = {
   system: () => get<SysLoad>("/api/system"),
   contracts: () => get<{ rows: string[]; why: string }>("/api/contracts"),
@@ -974,6 +988,16 @@ export const api = {
   watcher: (page = 1) => get<Watcher>(`/api/trade/watcher?page=${page}`),
   /** every trading room and the rules its watcher runs on (the tab "i") */
   profiles: () => get<{ profiles: RoomInfo[] }>("/api/trade/profiles"),
+  // Backtest -> Errors -> Deployed Tabs (Oct 01, 2026): filtered and paged by
+  // the server, never here
+  roomErrors: (q: { room?: string; kind?: string; hours?: number; page?: number }) => {
+    const p = new URLSearchParams();
+    if (q.room) p.set("room", q.room);
+    if (q.kind) p.set("kind", q.kind);
+    p.set("hours", String(q.hours ?? 24));
+    p.set("page", String(q.page ?? 1));
+    return get<RoomErrors>(`/api/errors/rooms?${p}`);
+  },
   watcherSet: (body: { mode?: "off" | "preview" | "act"; live?: boolean; cfg?: Record<string, number | string> }) =>
     post<Watcher>("/api/trade/watcher", body),
   dailyUpdateSwitch: (enabled: boolean) =>

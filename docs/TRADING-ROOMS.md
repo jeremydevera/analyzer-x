@@ -193,6 +193,23 @@ Oct 01, 2026). Behind the scenes:
 On Sep 30, 2026 #DC57174E (223 rows), #CC8DC54C (289) and #B52662ED (2,433)
 were turned off this way: 2,945 practice rows switched off, Main untouched.
 
+## Where to see a room's errors
+
+**Backtest → Errors → Deployed Tabs** (asked Oct 01, 2026). One card per tab
+says whether its runner is running, how many errors it had in the chosen
+window and when the last one was. The table lists each kind of error once,
+with how many times it happened. Example from Sep 30–Oct 01, 2026:
+
+| tab | what | times | when |
+|---|---|---|---|
+| #4FC03172 | MEXC said too many requests | 3 | Sep 30, 2026 10:17pm, 10:45pm, Oct 01, 2026 3:29am |
+| Main | Runner went quiet | 1 | no price check for 39 minutes, Sep 29, 2026 1:48am to 2:27am |
+
+Safety refusals (the runner saying no on purpose: fees too high for the
+target, price already ran away, an old signal) are only COUNTED on each card
+— #4FC03172 had 33,119 cost refusals in the same 14 hours. They are not
+errors.
+
 ## Questions that have already been asked (and the standing answers)
 
 | you say | it always means |
@@ -418,3 +435,20 @@ holding REAL money is never taken off by `retire_room()` — it is listed in
   switched on (TP equal to SL counted before the strict rule).
 * `docs/RCA.md` RCA-2026-09-29-F — why the research only trusts rule sets no
   looser than the data they were written from.
+
+## The errors page (technical)
+
+`tradingagents/room_errors.py` reads each SHOWN room's `auto_trade.log` once
+(at most the last `FIRST_READ_BYTES`, 64 MB) and then only appended bytes
+(`_Tail`); `_restarts` does the same for `runner_start` rows in the trade
+record. `classify()` is the one table: `SAFETY_KINDS` first (cost gate —
+LIQUIDITY and ENTRY —, chase, stale, two timeframes), then `ERROR_KINDS`
+(rate limit 510, unreadable book, no live price, cycle failed, exception,
+other MEXC code), and any other ERROR line is `other_error`. "Went quiet" is
+a gap over `QUIET_S` (10 min) between two SCAN lines, so an idle room is never
+an outage. `GET /api/errors/rooms?room=&kind=&hours=&page=` groups by (room,
+kind, message without numbers) and pages on the server; the API warms the
+first read in a thread at start (~30 s on this disk). Screen:
+`webapp/src/components/errors/DeployedTabsErrors.tsx` at `/errors`, under
+Backtest in `AppSidebar.tsx`. Guard:
+`tests/test_the_errors_tab_shows_each_rooms_errors.py`.

@@ -900,6 +900,27 @@ export function strategyParams(q: StrategyQuery): URLSearchParams {
   return p;
 }
 
+/** One saved room forecast (tradingagents/room_forecasts.py) — Auto Trade ->
+ *  Forecast shows exactly what the forecast prompt saved, nothing derived. */
+export type ForecastRoom = {
+  id: string; retired?: boolean; rules?: string;
+  research?: { profit?: number; wins?: number; losses?: number; trades?: number;
+    worst_run?: number; worst_run_trades?: number };
+  real: { closed: number; wins: number; losses: number; winrate: number; breakeven: number;
+    profit: number; per_trade: number; worst_run: number; worst_run_trades: number;
+    open: number; days: number; first_at?: number };
+};
+export type Forecast = {
+  at: number; pick: string | null; pick_why: string;
+  verdict: "pick" | "too early" | "none proven";
+  rooms: ForecastRoom[]; artifact?: string | null; note?: string;
+};
+export type Forecasts = {
+  forecasts: Forecast[]; total: number; page: number; pages: number; per: number;
+  unreadable: number; file: string; read_at: number;
+  prompts: { title: string; text: string }[];
+};
+
 export type RoomErrors = {
   rows: { room: string; kind: string; label: string; message: string; count: number;
           first: number; last: number }[];
@@ -990,6 +1011,8 @@ export const api = {
   profiles: () => get<{ profiles: RoomInfo[] }>("/api/trade/profiles"),
   // Auto Trade -> Errors -> Deployed Tabs (Oct 01, 2026): filtered and paged by
   // the server, never here
+  // Auto Trade -> Forecast (Oct 01, 2026): the saved forecasts, newest first
+  forecasts: (page = 1) => get<Forecasts>(`/api/forecasts?page=${page}`),
   roomErrors: (q: { room?: string; kind?: string; hours?: number; page?: number }) => {
     const p = new URLSearchParams();
     if (q.room) p.set("room", q.room);

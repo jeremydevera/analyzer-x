@@ -1138,6 +1138,17 @@ def watcher_status(page: int = 1, per: int = 10) -> dict:
     return sw.status(page, per)
 
 
+@app.get("/api/forecasts")
+def forecasts_route(page: int = 1) -> dict:
+    """Auto Trade -> Forecast (operator, Oct 01, 2026: "create a forecast tab,
+    then if i run this prompt make sure it will generate a new forecast").
+    The saved forecasts, newest first, ten a page — read from the one file the
+    forecast prompt appends to (room_forecasts.add); nothing is worked out here."""
+    from tradingagents import room_forecasts as _rf
+
+    return {**_rf.read(page=page), "prompts": _rf.prompts()}
+
+
 @app.get("/api/errors/rooms")
 def room_errors_route(room: str = "", kind: str = "", hours: float = 24.0,
                       page: int = 1) -> dict:

@@ -263,5 +263,88 @@ def test_a_15_day_room_waits_for_the_count_instead_of_losing_a_day(tmp_path, mon
     got = wc._raw_recent({"min_trades": 50, "on_winrate": 70.0, "max_sl": 2.0})
     assert got["not_ready"] and not called, "no pass over the table before the count exists"
     (rows / "VUG-1h.json").write_text(json.dumps([_row("VUG", 50, 36)]))
+    # THE FILES CARRY IT, THE TABLE DOES NOT YET (RCA-2026-10-01-A): the daily
+    # run lands files live, the table is rebuilt only after it comes home.
+    # Searching now would spend the day's pass on an empty table.
+    got = wc._raw_recent({"min_trades": 50, "on_winrate": 70.0, "max_sl": 2.0})
+    assert got["not_ready"] and not called, got
+    assert "not yet in the Backtest v2 table" in got["why"]
+    _file_into_table(tmp_path, rows, with_t15=False)
+    assert wc._raw_recent({"min_trades": 50, "on_winrate": 70.0,
+                           "max_sl": 2.0})["not_ready"], "no column, not ready"
+    _file_into_table(tmp_path, rows, with_t15=True)
     got = wc._raw_recent({"min_trades": 50, "on_winrate": 70.0, "max_sl": 2.0})
     assert not got.get("not_ready") and called
+    # a file written AFTER the table was filed makes it not ready again
+    import os
+    st = (rows / "VUG-1h.json").stat()
+    os.utime(rows / "VUG-1h.json", ns=(st.st_atime_ns, st.st_mtime_ns + 5_000_000_000))
+    assert wc._raw_recent({"min_trades": 50, "on_winrate": 70.0,
+                           "max_sl": 2.0})["not_ready"]
+
+
+def _file_into_table(home, rows, *, with_t15):
+    """A rows.db whose `pairs` table records every pair file at its current
+    mtime/size — what a finished rebuild leaves behind."""
+    db = home / "rows.db"
+    if db.exists():
+        db.unlink()
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE rows (pair TEXT" + (", t15 INTEGER" if with_t15 else "") + ")")
+    con.execute("CREATE TABLE pairs (pair TEXT PRIMARY KEY, mtime REAL, size INTEGER)")
+    for f in rows.glob("*.json"):
+        st = f.stat()
+        con.execute("INSERT INTO pairs VALUES (?,?,?)", (f.stem, st.st_mtime, st.st_size))
+    con.commit()
+    con.close()
+
+
+def test_the_status_line_says_how_many_pass_every_rule(monkeypatch):
+    """RCA-2026-09-30-C: #CC94D9FB printed "1,511 row(s) ... meet the
+    criteria" and switched on 539 — the other 972 had TP equal to SL, which
+    the index is never asked to exclude (it is asked TP >= SL)."""
+    from tradingagents import strategy_watcher as sw
+
+    def row(i, tp, sl):
+        return {"id": f"R{i}", "coin": f"C{i}", "tf": "1h", "signal": "macddiv",
+                "th": 0.0, "tp": tp, "sl": sl, "winrate": 90.0, "trades": 40,
+                "wins": 36, "losses": 4, "profit": 3.0, "gate": "ok"}
+    got = {"rows": [row(1, 1.5, 1.0), row(2, 1.0, 1.0), row(3, 1.2, 1.2)],
+           "why": "3 row(s) pass the floors"}
+    monkeypatch.setattr(sw, "_candidates", lambda cfg, now: got)
+    monkeypatch.setattr(at, "load_settings", lambda: {})
+    monkeypatch.setattr(sw, "_try_picks", lambda *a, **k: None)
+    monkeypatch.setattr(sw, "_as_the_off_check_sees", lambda rows, now, cfg: rows)
+    st: dict = {}
+    cfg = {**sw.wp.DEFAULTS, "tp_rule": ">", "on_winrate": 80.0, "min_trades": 30,
+           "max_sl": 2.0, "raw": True, "max_new_per_day": 0, "max_slots": 0, "max_per_coin": 0}
+    sw._on_pass(0.0, cfg, st, False, [])
+    assert st["last_candidates"] == ("3 row(s) pass the floors — 1 pass every rule on "
+                                     "their own result file (2 fail one, most often TP "
+                                     "is not wider than SL)")
+    src = (ROOT / "tradingagents/watcher_candidates.py").read_text(encoding="utf-8")
+    assert 'meet the criteria"}' not in src
+
+
+def test_switch_on_reads_the_number_switch_off_will_read(monkeypatch):
+    """RCA-2026-10-01-A: #FR34HHN4 DHRSTOCK 15m bb20 went on at 7:57pm from
+    the list's 71.13% (142 trades) and off at 8:30pm from its own file's
+    69.06% (139), then on and off again after midnight. The switch-on now
+    re-reads the file first, so it is never switched on at all."""
+    from tradingagents import strategy_watcher as sw
+    listed = {"id": "FR34HHN4", "coin": "DHRSTOCK", "tf": "15m", "signal": "bb20",
+              "th": 0.0, "sl": 0.3, "tp": 0.4, "trades": 142, "wins": 101,
+              "losses": 41, "winrate": 71.13, "profit": 0.25, "gate": "ok"}
+    in_file = {k: v for k, v in listed.items() if k != "id"}
+    in_file.update(trades=139, wins=96, losses=43, winrate=69.06, profit=-2.36, sizing="flat")
+    monkeypatch.setattr(wc, "matched_rows", lambda coin, tf, wants: {wc._sig(w): in_file for w in wants})
+    monkeypatch.setattr(wc, "_last_ms", lambda coin, tf: 1790775000000.0)
+    monkeypatch.setattr(sw, "_judged", lambda slot, fresh, now, window=30: fresh)
+    cfg = {**sw.wp.DEFAULTS, "tp_rule": ">", "on_winrate": 70.0, "off_winrate": 70.0,
+           "min_trades": 50, "max_sl": 2.0, "raw": True}
+    seen = sw._as_the_off_check_sees([listed], 0.0, cfg)
+    assert [r["winrate"] for r in seen] == [69.06]
+    assert sw.wp.passes_on(seen[0], cfg), "it must not be switched on"
+    assert not sw.wp.passes_on(listed, cfg), "the list alone would have switched it on"
+    monkeypatch.setattr(wc, "matched_rows", lambda coin, tf, wants: {})
+    assert sw._as_the_off_check_sees([listed], 0.0, cfg) == [], "gone from its file: not on"

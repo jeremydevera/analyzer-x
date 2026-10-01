@@ -172,6 +172,65 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-01-A — the 15-day rooms would have spent their first day's switch-on on an empty table
+
+**CEO**
+
+* NEVER HAPPENED YET. Your three 15-day rooms (#55D32617, #B2404C0B,
+  #6B08FF64) were set to start picking strategies today; they would have
+  stayed empty until tomorrow.
+* Why: a room decided "today's counts are here" by looking at the coin
+  files, which arrive minute by minute during the run, but it searches the
+  Backtest v2 table, which only gets those counts about an hour after the
+  run ends — so it would have searched too early, found nothing, and called
+  that its one try of the day.
+* What stops it now: a 15-day room waits until the table itself carries the
+  new counts, checking every 30 minutes, and only then does its pass.
+
+**DEV**
+
+* `watcher_candidates._raw_recent` gated on `recent_measured()` (the tail of
+  the 5 newest v2 PAIR FILES), then ran `rows_index.recent_rows`, which
+  returns `[]` when rows.db has no `t15` column — a normal empty result, so
+  `strategy_watcher._on_pass` returned "" and the day's pass was spent.
+* Invariant broken: **decide readiness on the thing you will read** — the
+  check read the files, the search read the table.
+* Guard: `tests/test_rooms_judge_on_15_days.py::test_a_15_day_room_waits_for_the_count_instead_of_losing_a_day`
+  (files carry t15, table not filed → not ready; column missing → not
+  ready; filed → ready; a file newer than its filing → not ready).
+
+**SAW** — found reviewing docs/TRADING-ROOMS.md for the operator,
+`Oct 01, 2026 6:54am`: v2 rows.db `PRAGMA table_info(rows)` has no `t15`;
+the three 15-day rooms hold 0 rows; today's 9:13am run is the first to
+write the count, and its files land live from ~9:20am while the table is
+rebuilt only after the run's collect.
+
+**TIMELINE**
+
+1. `Sep 30, 2026 7:23pm` — b33e9e385180: the shard writes t15/w15/p15; the
+   15-day rooms read them through `recent_rows`, gated on the pair files.
+2. `Oct 01, 2026 6:54am` — table has no t15 column; rooms at 0 rows.
+3. (would have) `~9:20am` — first live file with t15 → `recent_measured()`
+   True → `recent_rows` [] → day's pass spent → nothing until Oct 02.
+4. Fixed before it fired: `recent_filed()` requires the column and the 5
+   newest pair files filed in `pairs` at their current mtime/size.
+
+**ROOT CAUSE** — readiness checked on the source files, the search run on
+the derived table.
+
+**WHY IT WAS NOT CAUGHT** — the guard test wrote only pair FILES and
+stubbed `recent_rows`, so the table never had to exist for the test to see
+"ready"; the real order of events (files live, table an hour later) was not
+a state the test stood in.
+
+**COST** — none: found before the first real pass.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_rooms_judge_on_15_days.py`.
+
+---
+
 ## RCA-2026-09-30-C — the watcher said "1,511 rows meet the criteria" and switched on 539
 
 **CEO**

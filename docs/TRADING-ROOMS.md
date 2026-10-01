@@ -114,7 +114,8 @@ which of these holds up.
 IF ANYTHING FAILS
 - GitHub's test is late or the PC was off → it runs as soon as the PC is back
   and 24 hours have passed
-- the results list is busy (being rebuilt) → the room waits and tries again
+- the results list is busy (being rebuilt), or a 15-day room's counts are in
+  the coin files but not yet in the table → the room waits and tries again
   every 30 minutes
 - a coin is delisted → its rows are switched off
 - you untick Smart Watcher → nothing is added or removed; trades keep running
@@ -137,9 +138,13 @@ The reverse also holds: a strategy at 70% over 30 days but 95% over its last
 Why the 15-day rooms were empty at first: until Oct 01, 2026 the daily test
 only wrote 30-day numbers. On Sep 30, 2026 it was taught to count the last 15
 days too, so #55D32617, #B2404C0B and #6B08FF64 start picking strategies once
-the Oct 01, 2026 9:13am test has landed. Until then their status line says
-*"no Backtest v2 row carries its last-15-day count yet ... checking again
-every 30 minutes"*.
+the Oct 01, 2026 9:13am test has landed **and the Backtest v2 table has been
+rebuilt with it** (about an hour after the run comes home). Until then their
+status line says *"no Backtest v2 row carries its last-15-day count yet"*,
+then *"... in the coin files but not yet in the Backtest v2 table"* —
+"checking again every 30 minutes" either way. (Before Oct 01, 2026 the room
+looked only at the coin files and would have searched the still-old table,
+found nothing, and lost the whole day — RCA-2026-10-01-A.)
 
 ## Why a room can switch on fewer rows than it found
 
@@ -316,6 +321,10 @@ rows_index.index_pair → _late_columns(con) adds t15/w15/p15 if missing
 watcher: _candidates(cfg) → window_of(cfg) == 15 → raw_candidates → _raw_recent
    1. recent_measured(): do the 5 newest v2 pair files carry "t15"?
       no  → not_ready ("checking again every 30 minutes")
+      recent_filed(): does rows.db have the t15 column AND are those 5
+      newest files filed in `pairs` at their current mtime/size?
+      no  → not_ready (RCA-2026-10-01-A: the daily run lands files live and
+            the table is rebuilt only after its collect)
    2. rows_index.recent_rows(min_trades, min_winrate, max_sl):
       SELECT * FROM rows WHERE t15 >= ? AND w15*100.0 >= ?*t15
         AND tp > sl AND (sizing='flat' OR sizing IS NULL) [AND sl <= ?]

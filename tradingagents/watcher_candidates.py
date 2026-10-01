@@ -214,6 +214,45 @@ def recent_measured(sample: int = 5) -> bool:
     return False
 
 
+def recent_filed(sample: int = 5) -> bool:
+    """Does the TABLE carry the 15-day count yet — not only the pair files?
+
+    RCA-2026-10-01-A. `recent_measured()` reads the newest pair FILES, and
+    the daily run lands those live, an hour or more before its collect
+    rebuilds the Backtest v2 table that `recent_rows` searches. On Oct 01,
+    2026 the table had no `t15` column at all, so the first tick after a file
+    carried the count would have searched it, found nothing, and spent the
+    15-day rooms' one switch-on pass of the day on an empty list.
+
+    Ready = the column exists AND the `sample` newest pair files are filed in
+    the table at their current mtime and size (the `pairs` table that
+    `rows_index.stale_pairs` reads). A few primary-key lookups, never a pass
+    over the rows."""
+    import sqlite3
+
+    try:
+        files = sorted((Path(stores.V2.home) / "rows").glob("*.json"),
+                       key=lambda f: f.stat().st_mtime, reverse=True)[:sample]
+        if not files:
+            return False
+        con = sqlite3.connect(f"file:{stores.V2.rows_db}?mode=ro", uri=True,
+                              timeout=30)
+        try:
+            if "t15" not in {r[1] for r in con.execute("PRAGMA table_info(rows)")}:
+                return False
+            for f in files:
+                st = f.stat()
+                got = con.execute("SELECT mtime, size FROM pairs WHERE pair = ?",
+                                  (f.stem,)).fetchone()
+                if not got or (got[0], got[1]) != (st.st_mtime, st.st_size):
+                    return False
+        finally:
+            con.close()
+    except Exception:                                          # noqa: BLE001
+        return False
+    return True
+
+
 def _raw_recent(cfg: dict) -> dict:
     """RAW on the last 15 days: every row whose own t15/w15 meet the floors.
     Until the daily update has measured the count at all, the pass is NOT
@@ -226,6 +265,12 @@ def _raw_recent(cfg: dict) -> dict:
                 "why": f"no Backtest v2 row carries its last-{br.RECENT_DAYS}-day "
                        f"count yet — the daily update adds it to every row it "
                        f"measures; checking again every 30 minutes"}
+    if not recent_filed():
+        return {"rows": [], "asked": 0, "stale": 0, "gone": 0, "not_ready": True,
+                "why": f"the daily update's last-{br.RECENT_DAYS}-day counts are in "
+                       f"the coin files but not yet in the Backtest v2 table (it is "
+                       f"rebuilt after the run comes home); checking again every "
+                       f"30 minutes"}
     try:
         got = ri.recent_rows(min_trades=int(cfg["min_trades"]),
                              min_winrate=float(cfg["on_winrate"]),

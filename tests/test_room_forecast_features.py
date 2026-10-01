@@ -157,9 +157,11 @@ def test_8_9_3_the_alarms(monkeypatch):
     _write(_trades([-1.6] * 25 + [1.0] * 10))
     _open([{"side": 1, "entry": 100, "sl": 98, "margin": 5, "dry": True}] * 3)
     kinds = {a["kind"]: a["text"] for a in rs.room(ROOM, NOW)["alarms"]}
-    assert "-$40.00 over 25 trades" in kinds["losing_run"] and "-$30.07 over 23" in kinds["losing_run"]
+    assert "-40.00 over 25 trades" in kinds["losing_run"] and "-30.07 over 23" in kinds["losing_run"]
     assert "3 open" in kinds["too_many_open"] and "most at once was 2" in kinds["too_many_open"]
-    assert "+$4,967.44" in kinds["far_below"]
+    # money and win rates spelled the way the card beside them prints them
+    assert "+4967.44 in the research" in kinds["far_below"] and "67.2% wins in September" in kinds["far_below"]
+    assert "$" not in "".join(kinds.values())
 
 
 def test_10_worst_case_books_every_open_trade_at_its_stop():
@@ -447,3 +449,111 @@ def test_a_failing_refresh_never_skips_the_daily_forecast():
     i = src.index("                    _forecast_live_refresh()")
     j = src.index("_rf.daily_tick()", i)
     assert "except Exception" in src[i:j] and "try:" in src[i:j]
+
+
+# ------------------------------------------- found on the running screen, Oct 01
+def test_server_sentences_spell_numbers_the_way_the_page_does(tmp_path):
+    """An alarm said "+$3,597.61" one line under the card's "+3597.61", and
+    "53.3% wins ... against 70.22% wins" in one sentence. The server's words
+    now go through room_stats._money/_pct, held here to the page's own
+    fmtMoney (api.ts) and pct (RoomForecasts.tsx) — the REAL code, lifted
+    and run, over the values where Python and JavaScript round differently."""
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+
+    def lift(path, start):
+        body = (ROOT / path).read_text(encoding="utf-8")
+        i = body.index(start)
+        return (body[i:body.index(";\n", i) + 1].replace("export const", "const")
+                .replace(": number | undefined | null", "").replace(": number | null | undefined", ""))
+
+    money = [0.0, -0.0, 0.125, -0.125, 0.375, 1.005, 2.675, 3597.61, -9.53, 0.004, -0.004,
+             12345.678, -151.92, 4967.44, None]
+    pcts = [70.22, 70.25, 53.3, 0.05, 99.95, 100.0, 67.16, 41.95, None]
+    js = tmp_path / "p.mjs"
+    js.write_text(lift("webapp/src/lib/api.ts", "export const fmtMoney") + "\n"
+                  + lift("webapp/src/components/forecast/RoomForecasts.tsx", "const pct") + "\n"
+                  + "console.log(JSON.stringify([" + json.dumps(money) + ".map(fmtMoney), "
+                  + json.dumps(pcts) + ".map(pct)]));\n", encoding="utf-8")
+    # node writes UTF-8 whatever the console's code page ("—" came back as
+    # three cp1252 letters on this PC)
+    out = subprocess.run([node, str(js)], capture_output=True, encoding="utf-8")
+    assert out.returncode == 0, out.stderr
+    got_money, got_pct = json.loads(out.stdout)
+    assert got_money == [rs._money(v) for v in money]
+    assert got_pct == [rs._pct(v) for v in pcts]
+
+
+def test_a_nan_in_a_trade_record_is_counted_never_carried():
+    """NEVER HAPPENED YET (0 of 147,325 ledger lines on Oct 01, 2026), but
+    Python writes NaN for a float that went wrong, and one NaN in the answer
+    fails it on every request (allow_nan=False)."""
+    rows = _trades([1.0, -1.0, 2.0])
+    rows[3]["pnl_est"] = float("nan")              # the second trade's exit
+    _write(rows)
+    r = rs.room(ROOM, NOW)
+    assert r["unreadable_lines"] == 1 and r["practice"]["closed"] == 2
+    _open([{"side": 1, "entry": float("nan"), "sl": 98, "margin": 5, "dry": True}])
+    json.dumps(rs.room(ROOM, NOW), allow_nan=False)
+
+
+def test_a_forecast_holding_nan_is_refused_and_a_saved_one_is_counted(tmp_path):
+    """A prompt-made forecast written in Python gets NaN from any 0/0 — and a
+    saved one would have failed the saved list for ever."""
+    e = rs.forecast_entry(rs.rooms(NOW), NOW, "prompt")
+    e["rooms"][0]["real"]["winrate"] = float("nan")
+    e["rooms"][0]["research"] = {"profit": float("inf")}
+    bad = rf.problems(e)
+    assert any("rooms[0].real.winrate" in b and "rooms[0].research.profit" in b for b in bad), bad
+    with pytest.raises(ValueError):
+        rf.add(e, path=tmp_path / "f.jsonl")
+    nan_at = dict(rs.forecast_entry(rs.rooms(NOW), NOW, "prompt"), at=float("nan"))
+    assert "'at' must be unix seconds" in rf.problems(nan_at)
+    f = tmp_path / "f.jsonl"
+    f.write_text(json.dumps(e) + "\n", encoding="utf-8")      # written by hand, NaN and all
+    rf.add(rs.forecast_entry(rs.rooms(NOW), NOW, "button"), path=f)
+    got = rf.read(path=f)
+    assert got["total"] == 1 and got["unreadable"] == 1
+    json.dumps(got, allow_nan=False)
+
+
+def test_a_copy_that_cannot_be_sent_is_never_kept(monkeypatch):
+    _write(_trades([1.0]))
+    first = api.forecasts_live_route()
+    monkeypatch.setattr(api, "_forecast_live_payload", lambda: {"rooms": [], "at": float("nan")})
+    monkeypatch.setitem(api._FORECAST_LIVE, "error", "")
+    assert api._forecast_live_refresh() is first, "the last good copy stays"
+    assert "ValueError" in api._FORECAST_LIVE["error"]
+
+
+def test_worst_case_counts_only_the_trades_it_priced():
+    """The label says "if all N open trades hit their stop"; a trade with no
+    stop to price is counted apart, never folded into N."""
+    _write(_trades([1.0]))
+    _open([{"side": 1, "entry": 100.0, "sl": 98.0, "margin": 5.0, "dry": True},
+           {"side": 1, "entry": 100.0, "sl": 0, "margin": 5.0, "dry": True}])
+    w = rs.room(ROOM, NOW)["worst_case"]
+    assert (w["open"], w["unpriced"]) == (1, 1)
+    src = (ROOT / "webapp/src/components/forecast/RoomForecasts.tsx").read_text(encoding="utf-8")
+    assert "with no stop to price are not in it" in src
+
+
+def test_on_a_phone_the_tables_fit_and_a_forecast_opens_from_its_first_column():
+    """At 390px: the coins table's forced 360px hid "profit", the hours
+    table's 420px hid "profit" and "a trade", and "rooms then" sat in the
+    last column of a 720px table, opening its rooms inside the "why" cell
+    off the left of the screen."""
+    src = (ROOT / "webapp/src/components/forecast/RoomForecasts.tsx").read_text(encoding="utf-8")
+    card = src[src.index("function RoomCard"):src.index("function SinceCell")]
+    assert "min-w-" not in card
+    hist = src[src.index("function History"):src.index("export default")]
+    first_cell = hist[hist.index("<Fragment"):hist.index("</td>", hist.index("<Fragment"))]
+    assert "rooms then" in first_cell
+    assert "colSpan={4}" in hist and "<ForecastDetail f={f} />" in hist
+    detail = src[src.index("function ForecastDetail"):src.index("function History")]
+    assert "overflow-x-auto" not in detail          # one sideways scroll, not two
+    assert "{pct(res.winrate)} wins" in src

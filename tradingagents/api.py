@@ -1216,6 +1216,10 @@ def _forecast_live_refresh() -> dict:
         _FORECAST_LIVE["busy"] = True
     try:
         value = _forecast_live_payload()
+        # A COPY THAT CANNOT BE SENT IS NEVER KEPT: the answer is rendered
+        # with allow_nan=False, so one NaN kept here would fail every request
+        # until it was replaced — while the last good copy sat unused
+        json.dumps(value, allow_nan=False)
         _FORECAST_LIVE["value"] = value
         _FORECAST_LIVE["error"] = ""
         return value

@@ -172,6 +172,91 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-01-G — the Forecast tab spelled money two ways on one card, hid columns on a phone, and one bad number could have broken its saved list for good
+
+**CEO**
+
+* On the Forecast tab the same money was printed two ways on one card
+  ("+$3,597.61" in a warning, "+3597.61" beside it), and on a phone the
+  "coins losing the most" list hid its profit column off the side.
+* Why: the warnings are written on the server with their own way of
+  printing money, and the tables were given a minimum width wider than a
+  phone's screen.
+* What stops it now: the server prints money and win rates exactly the way
+  the page does (checked by running both), the tables fit a phone, and a
+  saved forecast or trade line holding a broken number is refused or counted
+  as unreadable instead of breaking the page.
+
+**DEV**
+
+* `room_stats._money` printed `f"{x:,.2f}"` with a `$` while `fmtMoney`
+  (`webapp/src/lib/api.ts:1369`) prints `+3597.61`; research win rates went
+  out raw (`70.22`) beside the room's `53.3`; `RoomForecasts.tsx` gave the
+  card's tables `min-w-[360px]`/`min-w-[420px]` inside a ~318px box; and
+  `room_forecasts.problems` took NaN as a number (`isinstance(nan, float)`)
+  while the API renders JSON with `allow_nan=False`.
+* Invariant broken: **one spelling per number on a screen** — a sentence the
+  server writes goes through the same rule as the page — and **a value that
+  cannot be sent is never stored**.
+* Guard: `test_server_sentences_spell_numbers_the_way_the_page_does` lifts
+  the real `fmtMoney` and `pct` and runs them in node against `_money` /
+  `_pct`; `test_a_forecast_holding_nan_is_refused_and_a_saved_one_is_counted`;
+  `test_a_nan_in_a_trade_record_is_counted_never_carried`;
+  `test_a_copy_that_cannot_be_sent_is_never_kept`;
+  `test_worst_case_counts_only_the_trades_it_priced`;
+  `test_on_a_phone_the_tables_fit_and_a_forecast_opens_from_its_first_column`.
+
+**SAW** — the screenshot pass at `Oct 01, 2026 3:35pm` (1440px and 390px,
+9 room cards, 8 alarms, zero console errors, no sideways page scroll): on
+#B2404C0B the alarm read "+$3,597.61 in the research" and "70.22% wins"
+while the card's own line read "+3597.61 · +0.41 a trade · 70.22% wins";
+at 390px "The coins losing the most" showed "pro" for its profit column
+(SWKSSTOCK's -10.20 off the side), the hours table hid "profit" and
+"a trade", and "rooms then" sat at the far right of a 720px table, opening
+the rooms inside the "why" cell off the left of the screen.
+
+**TIMELINE**
+
+1. `3:24pm` and `3:29pm` — the site restarted (the other session's
+   restarts) carrying 61d50ab9a9e6; `/api/forecasts/live` 0.15-0.36 s.
+2. `3:35pm` — the screenshot pass found the four faults above.
+3. `3:40pm` — fixing them: `problems()` let `float("nan")` through,
+   `add()` would have written `NaN`, and the saved list would then have
+   failed on every request. NEVER HAPPENED YET — 0 NaN or Infinity in
+   147,325 trade-record lines across the 9 rooms, and 1 saved forecast.
+4. `3:45pm` — "up to -69.50 if all 67 open trades hit their stop" counted
+   every open practice trade but priced only those with an entry, a stop and
+   a margin: 0 of 392 unpriced today, so the figure was true; the label now
+   counts what it priced and names the rest.
+5. 7 tests: all 7 red on 1d5ff8e83863's code, green on this commit.
+
+**ROOT CAUSE** — two formatters for one number (the server's sentences and
+the page), table widths picked for a desktop, and a "must be a number" check
+that NaN passes.
+
+**WHY IT WAS NOT CAUGHT** — the build's own alarm test asserted the server's
+spelling (`"+$4,967.44" in kinds["far_below"]`), so it pinned the second
+format instead of comparing it with the page's; the page-source test checked
+that each feature's words were present, never how wide a table was; and the
+first screenshot pass was read for console errors and sideways page scroll —
+both clean — not for a column cut off inside its own scroll box. No sideways
+page scroll is not the same as every column visible.
+
+**COST** — none in money; for ~45 minutes after the build went live the
+phone hid the coins' profit column and the cards spelled money two ways.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_room_forecast_features.py`:
+`test_server_sentences_spell_numbers_the_way_the_page_does`,
+`test_a_forecast_holding_nan_is_refused_and_a_saved_one_is_counted`,
+`test_a_nan_in_a_trade_record_is_counted_never_carried`,
+`test_a_copy_that_cannot_be_sent_is_never_kept`,
+`test_worst_case_counts_only_the_trades_it_priced`,
+`test_on_a_phone_the_tables_fit_and_a_forecast_opens_from_its_first_column`.
+
+---
+
 ## RCA-2026-10-01-F — the Forecast tab's room numbers took 1.9 s on the running site
 
 **CEO**

@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import math
 import os
 import sys
 import time
@@ -67,7 +68,11 @@ def problems(entry: dict) -> list:
     out = []
     if not isinstance(entry, dict):
         return ["a forecast is one JSON object"]
-    if not isinstance(entry.get("at"), (int, float)) or entry["at"] <= 0:
+    bad = _not_finite(entry)
+    if bad:
+        out.append(f"{', '.join(bad[:5])} must be a real number, not NaN or infinity")
+    if (not isinstance(entry.get("at"), (int, float)) or isinstance(entry.get("at"), bool)
+            or not math.isfinite(entry["at"]) or entry["at"] <= 0):
         out.append("'at' must be unix seconds")
     if entry.get("verdict") not in VERDICTS:
         out.append(f"'verdict' must be one of {', '.join(VERDICTS)}")
@@ -113,6 +118,20 @@ def problems(entry: dict) -> list:
     return out
 
 
+def _not_finite(v, where: str = "") -> list:
+    """Every place in a forecast holding NaN or infinity. Saved, one of them
+    would make the Forecast tab's saved list fail to send on every request
+    for ever (the API renders JSON with allow_nan=False) — and a forecast
+    written by a prompt in Python gets NaN from any 0/0."""
+    if isinstance(v, float):
+        return [] if math.isfinite(v) else [where or "a number"]
+    if isinstance(v, dict):
+        return [x for k, val in v.items() for x in _not_finite(val, f"{where}.{k}" if where else str(k))]
+    if isinstance(v, list):
+        return [x for i, val in enumerate(v) for x in _not_finite(val, f"{where}[{i}]")]
+    return []
+
+
 def _known_rooms() -> set:
     """Every room this machine has (profiles.ids), or empty if that cannot
     be read — then the id check is skipped rather than refusing everything."""
@@ -140,7 +159,7 @@ def add(entry: dict, path: Path | None = None) -> dict:
     with p.open("a", encoding="utf-8") as fh:
         portable.lock_exclusive(fh)
         try:
-            fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            fh.write(json.dumps(entry, ensure_ascii=False, allow_nan=False) + "\n")
             fh.flush()
         finally:
             portable.unlock(fh)

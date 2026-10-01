@@ -40,8 +40,10 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import math
 import threading
 import time
+from decimal import ROUND_HALF_UP, Context, Decimal
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -85,10 +87,32 @@ def _paths(room: str) -> tuple[Path, Path]:
 
 
 def _num(v, default=0.0) -> float:
+    """A finite number, or `default`. NaN and infinity are not numbers here:
+    one of them anywhere in the screen's answer makes it fail to send on
+    every request (the API renders JSON with allow_nan=False)."""
     try:
-        return float(v)
+        x = float(v)
     except (TypeError, ValueError):
         return default
+    return x if math.isfinite(x) else default
+
+
+def _no_constant(name: str):
+    raise ValueError(f"{name} is not a number")
+
+
+def _finite_float(text: str) -> float:
+    x = float(text)
+    if not math.isfinite(x):
+        raise ValueError(f"{text} is too big to be a number")
+    return x
+
+
+def loads(text: str):
+    """json.loads that REFUSES NaN and Infinity, which Python's own writer
+    puts out for a float that went wrong. Such a line is counted as one that
+    could not be read — never carried into the screen's answer."""
+    return json.loads(text, parse_constant=_no_constant, parse_float=_finite_float)
 
 
 def ledger(path: Path) -> dict:
@@ -149,7 +173,7 @@ def _take(c: dict, chunk: bytes) -> None:
         if not raw or (b'"exit"' not in raw and b'"enter"' not in raw):
             continue
         try:
-            e = json.loads(raw.decode("utf-8"))
+            e = loads(raw.decode("utf-8"))
         except (UnicodeDecodeError, ValueError):
             c["bad"] += 1
             continue
@@ -423,10 +447,14 @@ def room(room_id: str, now: float | None = None) -> dict:
     # WORST CASE TODAY: every open practice trade booked at its stop, its own
     # charged cost included (the paper exit's own rule: rt_cost less the entry
     # side already inside the fill)
-    worst_case = 0.0
+    # The label says "if all N open trades hit their stop", so N counts only
+    # the trades actually priced: one with no stop, entry or margin to price
+    # is counted apart, never folded into a number that claims it.
+    worst_case, priced = 0.0, 0
     for o in popen:
         if not o["entry"] or not o["sl"] or not o["margin"]:
             continue
+        priced += 1
         mv = (o["sl"] / o["entry"] - 1.0) * (1 if o["side"] > 0 else -1)
         charge = max(o["rt_cost"] - o["book_slippage"], 0.0) if o["rt_cost"] else (
             (cost["per_trade"] or 0.0) / (o["margin"] * at.LEVERAGE))
@@ -450,7 +478,8 @@ def room(room_id: str, now: float | None = None) -> dict:
             "days": days, "too_early": bool(early), "too_early_why": early},
         "real": {**_group(real), "open": len(opens) - len(popen)},
         "research": res,
-        "worst_case": {"open": len(popen), "up_to": round(worst_case, 2)},
+        "worst_case": {"open": priced, "unpriced": len(popen) - priced,
+                       "up_to": round(worst_case, 2)},
         "costs": {k: v for k, v in cost.items() if k != "rows"} | {"note": COST_NOTE},
         "hours": hours_split(prac),
         "losers": losers(prac),
@@ -483,8 +512,8 @@ def alarms(r: dict) -> list[dict]:
             and p["per_trade"] < FAR_BELOW_SHARE * rpt):
         out.append({"kind": "far_below", "text": (
             f"Far below its research: {_money(p['per_trade'])} a trade and "
-            f"{p['winrate']}% wins for real, against {_money(round(rpt, 3))} a trade "
-            f"and {res['winrate']}% wins in September "
+            f"{_pct(p['winrate'])} wins for real, against {_money(rpt)} a trade "
+            f"and {_pct(res['winrate'])} wins in September "
             f"({_money(p['profit'])} so far vs {_money(res['profit'])} in the research)")})
     return out
 
@@ -502,8 +531,8 @@ def ready(r: dict) -> dict:
     if p["breakeven"] is None:
         missing.append("a break-even win rate (not enough trades yet)")
     elif (p["winrate"] or 0) <= p["breakeven"]:
-        missing.append(f"a win rate above break-even ({p['winrate']}% against "
-                       f"{p['breakeven']}%)")
+        missing.append(f"a win rate above break-even ({_pct(p['winrate'])} against "
+                       f"{_pct(p['breakeven'])})")
     if not res:
         missing.append("research to compare its losing run with")
     elif p["worst_run"] < res["worst_run"]:
@@ -518,13 +547,35 @@ def turn_off(r: dict) -> dict:
     ok = (not r["retired"] and p["closed"] >= OFF_TRADES and p["breakeven"] is not None
           and (p["winrate"] or 0) < p["breakeven"])
     return {"ok": ok, "why": (f"still below break-even after {p['closed']:,} closed trades: "
-                              f"{p['winrate']}% wins against {p['breakeven']}% needed")
+                              f"{_pct(p['winrate'])} wins against {_pct(p['breakeven'])} needed")
             if ok else ""}
 
 
+def _fixed(x: float, places: int) -> str:
+    """JavaScript's toFixed, exactly: half AWAY from zero on the exact value
+    (Python's own rounding is half-to-even, so 0.125 would be 0.12 here and
+    0.13 on the card)."""
+    d = Decimal(abs(x)).quantize(Decimal(1).scaleb(-places), rounding=ROUND_HALF_UP,
+                                 context=Context(prec=400))
+    return f"{'-' if x < 0 else ''}{d}"
+
+
 def _money(v) -> str:
-    x = _num(v)
-    return f"{'+' if x >= 0 else '-'}${abs(x):,.2f}"
+    """The web app's fmtMoney, exactly — "+3597.61", "-9.53", "—" for none —
+    so a sentence written here spells a number the way the card beside it
+    does. Found on the running screen, Oct 01, 2026: an alarm said
+    "+$3,597.61" one line under the card's "+3597.61". Held equal to the
+    TypeScript by tests/test_room_forecast_features.py."""
+    x = _num(v, None)
+    return "—" if x is None else f"{'+' if x >= 0 else ''}{_fixed(x, 2)}"
+
+
+def _pct(v) -> str:
+    """The Forecast page's pct(): one decimal, "—" for none. The research
+    keeps two (70.22) and the room's own one (53.3); one sentence printed
+    both."""
+    x = _num(v, None)
+    return "—" if x is None else f"{_fixed(x, 1)}%"
 
 
 def _sort_key(r: dict):
@@ -558,7 +609,7 @@ def verdict(all_rooms: list[dict]) -> dict:
         return {"verdict": "pick", "pick": best["id"], "pick_why": (
             f"{best['name']} makes the most per trade ({_money(p['per_trade'])}) of the "
             f"rooms past {TOO_EARLY_TRADES} trades and {TOO_EARLY_DAYS:g} days that win more "
-            f"often than they need to ({p['winrate']}% against {p['breakeven']}%)")}
+            f"often than they need to ({_pct(p['winrate'])} against {_pct(p['breakeven'])})")}
     traded = [r for r in live if r["practice"]["closed"]]
     if not proven:
         if not traded:
@@ -573,7 +624,7 @@ def verdict(all_rooms: list[dict]) -> dict:
     near = max(proven, key=lambda r: (r["practice"]["vs_breakeven"]
                                       if r["practice"]["vs_breakeven"] is not None else -1e9))
     p = near["practice"]
-    gap = (f"{p['winrate']}% against {p['breakeven']}% needed" if p["breakeven"] is not None
+    gap = (f"{_pct(p['winrate'])} against {_pct(p['breakeven'])} needed" if p["breakeven"] is not None
            else p["breakeven_why"])
     return {"verdict": "none proven", "pick": None, "pick_why": (
         f"{len(proven)} room(s) have enough trades, but none wins more often than it needs "

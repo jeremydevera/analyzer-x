@@ -993,7 +993,7 @@ export type RoomNow = {
   research: { rule_set: string; profit: number; closed: number; wins: number; losses: number;
     winrate: number; worst_run: number; worst_run_trades: number; max_open: number;
     prior_profit: number } | null;
-  worst_case: { open: number; up_to: number };
+  worst_case: { open: number; unpriced: number; up_to: number };
   costs: { matched: number; of: number; total: number; per_trade: number | null;
     without_costs: number | null; with_costs: number | null; note: string };
   hours: { stock_trades: number; other_trades: number; market: RoomGroup; off: RoomGroup;

@@ -12,7 +12,7 @@
  * every forecast, newest first, ten a page, each with what its pick REALLY did
  * since — paged and checked by the server, never filtered here.
  */
-import { useCallback, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 import { api, fmtMoney, fmtWhen, Forecast, Forecasts, ForecastsLive, RoomNow } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
 
@@ -126,11 +126,11 @@ function Group({ label, g }: { label: string; g: RoomNow["hours"]["market"] }) {
   return (
     <tr>
       <td className="py-1 pr-2 text-gray-600 dark:text-gray-300">{label}</td>
-      <td className="py-1 pr-2 text-gray-600 dark:text-gray-300">{g.trades.toLocaleString()}</td>
-      <td className="py-1 pr-2 text-gray-600 dark:text-gray-300">{g.trades ? `${g.wins} / ${g.losses}` : "—"}</td>
-      <td className="py-1 pr-2 text-gray-600 dark:text-gray-300">{pct(g.winrate)}</td>
-      <td className={`py-1 pr-2 font-medium ${tone(g.trades ? g.profit : null)}`}>{g.trades ? fmtMoney(g.profit) : "—"}</td>
-      <td className={`py-1 ${tone(g.per_trade)}`}>{fmtMoney(g.per_trade)}</td>
+      <td className="whitespace-nowrap py-1 pr-2 text-gray-600 dark:text-gray-300">{g.trades.toLocaleString()}</td>
+      <td className="whitespace-nowrap py-1 pr-2 text-gray-600 dark:text-gray-300">{g.trades ? `${g.wins} / ${g.losses}` : "—"}</td>
+      <td className="whitespace-nowrap py-1 pr-2 text-gray-600 dark:text-gray-300">{pct(g.winrate)}</td>
+      <td className={`whitespace-nowrap py-1 pr-2 font-medium ${tone(g.trades ? g.profit : null)}`}>{g.trades ? fmtMoney(g.profit) : "—"}</td>
+      <td className={`whitespace-nowrap py-1 ${tone(g.per_trade)}`}>{fmtMoney(g.per_trade)}</td>
     </tr>
   );
 }
@@ -191,7 +191,10 @@ function RoomCard({ r, rules }: { r: RoomNow; rules: ForecastsLive["rules"] }) {
           <dd className="text-gray-700 dark:text-gray-300">{p.worst_run_trades ? `${fmtMoney(p.worst_run)} over ${p.worst_run_trades} trades` : "none yet"}
             {res && <span className="text-gray-400"> · research {fmtMoney(res.worst_run)} over {res.worst_run_trades}</span>}</dd></div>
         <div><dt className="text-gray-400">worst case today</dt>
-          <dd className={tone(r.worst_case.up_to)}>{r.worst_case.open ? `up to ${fmtMoney(r.worst_case.up_to)} if all ${r.worst_case.open.toLocaleString()} open trades hit their stop now` : "no open trade"}</dd></div>
+          <dd className={tone(r.worst_case.up_to)}>{r.worst_case.open
+            ? `up to ${fmtMoney(r.worst_case.up_to)} if all ${r.worst_case.open.toLocaleString()} open trades hit their stop now`
+            : r.worst_case.unpriced ? "" : "no open trade"}
+            {r.worst_case.unpriced > 0 && <span className="text-gray-400">{r.worst_case.open ? " · " : ""}{r.worst_case.unpriced.toLocaleString()} open trade(s) with no stop to price are not in it</span>}</dd></div>
         <div><dt className="text-gray-400">costs</dt>
           <dd className="text-gray-700 dark:text-gray-300">
             {r.costs.matched ? <>{fmtMoney(-r.costs.total)} in total, {fmtMoney(r.costs.per_trade == null ? null : -r.costs.per_trade)} a trade · <span className={tone(r.costs.without_costs)}>{fmtMoney(r.costs.without_costs)} without costs</span>
@@ -199,7 +202,7 @@ function RoomCard({ r, rules }: { r: RoomNow; rules: ForecastsLive["rules"] }) {
           </dd></div>
         <div><dt className="text-gray-400">September research</dt>
           <dd className="text-gray-700 dark:text-gray-300">{res
-            ? <>{fmtMoney(res.profit)} · {fmtMoney(resPer)} a trade · {res.winrate}% wins · most open {res.max_open.toLocaleString()}</>
+            ? <>{fmtMoney(res.profit)} · {fmtMoney(resPer)} a trade · {pct(res.winrate)} wins · most open {res.max_open.toLocaleString()}</>
             : "not in this research"}</dd></div>
         {(r.real.trades > 0 || r.real.open > 0) && (
           <div className="sm:col-span-2"><dt className="text-gray-400">real money (counted on its own)</dt>
@@ -222,8 +225,9 @@ function RoomCard({ r, rules }: { r: RoomNow; rules: ForecastsLive["rules"] }) {
           <div>
             <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">Stock coins: market hours vs nights and weekends</p>
             <p className="text-[10px] text-gray-400">stock coin = {r.hours.rule}; split by {r.hours.split_by}; market hours = 9:30am–4pm New York, Monday–Friday · {r.hours.stock_trades.toLocaleString()} stock trades, {r.hours.other_trades.toLocaleString()} other trades not counted here</p>
+            {/* no minimum width: at 390px a forced 420 hid "profit" and "a trade" off the side */}
             <div className="overflow-x-auto">
-              <table className="mt-1 w-full min-w-[420px] text-theme-xs">
+              <table className="mt-1 w-full text-theme-xs">
                 <thead><tr className="text-start text-gray-400">
                   {["when it opened", "trades", "won / lost", "win rate", "profit", "a trade"].map((h) => <th key={h} className="py-1 pr-2 text-start font-medium">{h}</th>)}
                 </tr></thead>
@@ -238,7 +242,7 @@ function RoomCard({ r, rules }: { r: RoomNow; rules: ForecastsLive["rules"] }) {
             <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">The coins losing the most</p>
             {r.losers.length ? (
               <div className="overflow-x-auto">
-                <table className="mt-1 w-full min-w-[360px] text-theme-xs">
+                <table className="mt-1 w-full text-theme-xs">
                   <thead><tr className="text-start text-gray-400">
                     {["coin", "trades", "won / lost", "profit"].map((h) => <th key={h} className="py-1 pr-2 text-start font-medium">{h}</th>)}
                   </tr></thead>
@@ -246,9 +250,9 @@ function RoomCard({ r, rules }: { r: RoomNow; rules: ForecastsLive["rules"] }) {
                     {r.losers.map((l) => (
                       <tr key={l.coin}>
                         <td className="py-1 pr-2 font-medium text-gray-700 dark:text-gray-300">{l.coin}</td>
-                        <td className="py-1 pr-2 text-gray-600 dark:text-gray-300">{l.trades}</td>
-                        <td className="py-1 pr-2 text-gray-600 dark:text-gray-300">{l.wins} / {l.losses}</td>
-                        <td className="py-1 text-error-500">{fmtMoney(l.profit)}</td>
+                        <td className="whitespace-nowrap py-1 pr-2 text-gray-600 dark:text-gray-300">{l.trades}</td>
+                        <td className="whitespace-nowrap py-1 pr-2 text-gray-600 dark:text-gray-300">{l.wins} / {l.losses}</td>
+                        <td className="whitespace-nowrap py-1 text-error-500">{fmtMoney(l.profit)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -287,7 +291,9 @@ function SinceCell({ f }: { f: Forecast }) {
 function ForecastDetail({ f }: { f: Forecast }) {
   const rooms = [...f.rooms].sort((a, b) => (b.real.per_trade ?? -1e9) - (a.real.per_trade ?? -1e9));
   return (
-    <div className="mt-2 overflow-x-auto">
+    // no scroll box of its own: it sits in a full-width row of the list's
+    // table, so ONE sideways scroll moves both on a phone
+    <div className="mt-1">
       {f.note && <p className="text-[11px] text-gray-400">{f.note}</p>}
       {f.artifact && <a href={f.artifact} target="_blank" rel="noreferrer" className="text-theme-xs text-brand-500 hover:underline">full table ↗</a>}
       <table className="w-full min-w-[760px] text-theme-xs">
@@ -341,30 +347,34 @@ function History({ d, page, setPage }: { d: Forecasts; page: number; setPage: (n
           <table className="w-full min-w-[720px] text-theme-xs">
             <thead>
               <tr className="text-start text-gray-500 dark:text-gray-400">
-                {["made", "verdict", "why", "the pick since then", ""].map((h, i) => (
-                  <th key={i} className="px-2 py-1.5 text-start font-medium">{h}</th>
+                {["made", "verdict", "why", "the pick since then"].map((h) => (
+                  <th key={h} className="px-2 py-1.5 text-start font-medium">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
               {d.forecasts.map((f, i) => (
-                <tr key={`${f.at}-${i}`} className="align-top">
-                  <td className="px-2 py-1.5 text-gray-600 dark:text-gray-300">
-                    {fmtWhen(f.at)}
-                    <span className="block text-[10px] text-gray-400">{SOURCE[f.source ?? "prompt"] ?? f.source}</span>
-                  </td>
-                  <td className="px-2 py-1.5"><Badge kind={f.verdict === "pick" ? "good" : "info"}>{VERDICT[f.verdict]}{f.pick ? `: ${roomName(f.pick)}` : ""}</Badge></td>
-                  <td className="px-2 py-1.5 text-gray-600 dark:text-gray-300">
-                    {f.pick_why}
-                    {open === i && <ForecastDetail f={f} />}
-                  </td>
-                  <td className="px-2 py-1.5"><SinceCell f={f} /></td>
-                  <td className="px-2 py-1.5">
-                    <button type="button" onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i} className={btn}>
-                      {open === i ? "hide" : "rooms then"}
-                    </button>
-                  </td>
-                </tr>
+                <Fragment key={`${f.at}-${i}`}>
+                  <tr className="align-top">
+                    {/* the button sits in the FIRST column: at 390px the last
+                        column of a 720px table is off the side of the screen */}
+                    <td className="whitespace-nowrap px-2 py-1.5 text-gray-600 dark:text-gray-300">
+                      {fmtWhen(f.at)}
+                      <span className="block text-[10px] text-gray-400">{SOURCE[f.source ?? "prompt"] ?? f.source}</span>
+                      <button type="button" onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i} className={`${btn} mt-1`}>
+                        {open === i ? "hide rooms" : "rooms then"}
+                      </button>
+                    </td>
+                    <td className="px-2 py-1.5"><Badge kind={f.verdict === "pick" ? "good" : "info"}>{VERDICT[f.verdict]}{f.pick ? `: ${roomName(f.pick)}` : ""}</Badge></td>
+                    <td className="px-2 py-1.5 text-gray-600 dark:text-gray-300">{f.pick_why}</td>
+                    <td className="px-2 py-1.5"><SinceCell f={f} /></td>
+                  </tr>
+                  {open === i && (
+                    <tr>
+                      <td colSpan={4} className="px-2 pb-3"><ForecastDetail f={f} /></td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>

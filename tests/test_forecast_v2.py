@@ -479,11 +479,15 @@ def test_the_chain_never_runs_under_a_test():
 def test_a_what_if_answers_at_once_and_starts_behind_the_answer(monkeypatch):
     from tradingagents import forecast_v2_daily as fd
 
-    fd._write({"phase": "done", "replay_run": 5, "end_ms": 1, "start": "2026-07-01", "repo": "x/y"})
+    # a replay still running (6) is never what a what-if measures on: the
+    # last FINISHED data (5) is (bug hunt, round 4)
+    fd._write({"phase": "replay", "replay_run": 6, "end_ms": None, "start": "2026-07-01", "repo": "x/y",
+               "ready": {"replay_run": 5, "end_ms": 1, "start": "2026-07-01", "repo": "x/y"}})
     started = []
     monkeypatch.setattr(fd.threading, "Thread", lambda target, args, name, daemon: type(
         "T", (), {"start": lambda self: started.append(args)})())
     got = fd.whatif({"window_days": 30, "on_winrate": 90, "min_trades": 40, "tp_rule": ">", "max_sl": 2})
     assert got["status"] == "starting" and started and json.loads(started[0][2])["id"] == got["id"]
+    assert started[0][1]["replay_run"] == 5, "measured on the finished replay, not the running one"
     again = fd.whatif({"window_days": 30, "on_winrate": 90, "min_trades": 40, "tp_rule": ">", "max_sl": 2})
     assert again["id"] == got["id"] and len(started) == 1, "asked twice, started once"

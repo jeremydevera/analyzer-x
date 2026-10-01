@@ -370,7 +370,11 @@ def _step(st: dict, now: float) -> None:
                                              "options": st["options_run"]}, keep=True)
         out = _latest()
         st.update(phase="done", done_day=dt.date.fromtimestamp(now).isoformat(), done_at=now,
-                  options_dir=str(art), why=f"made at {fmt_when(now)}")
+                  options_dir=str(art), why=f"made at {fmt_when(now)}",
+                  # what the what-if box measures on: the LAST FINISHED data,
+                  # never a replay still running (bug hunt, round 4)
+                  ready={k: st[k] for k in ("replay_run", "end_ms", "start", "repo",
+                                            "avoid", "families")})
         bell(out, f2.live())
 
 
@@ -463,10 +467,10 @@ def whatif(cfg: dict) -> dict:
                     **{k: cfg.get(k) for k in fr.OPTION_KEYS if cfg.get(k) not in (None, "", False)},
                     **({"coin_slices": int(cfg["coin_slices"])} if cfg.get("coin_slices") else {}))
     rid = fr.rule_id(cfg)
-    st = read()
+    st = read().get("ready") or {}
     if not st.get("replay_run") or not st.get("end_ms"):
         return {"id": rid, "status": "no replay yet",
-                "why": "the daily Forecast v2 has not measured a replay yet — a what-if needs one"}
+                "why": "the daily Forecast v2 has not finished a replay yet — a what-if needs one"}
     w = whatifs()
     have = w.get(rid)
     if have and have.get("end_ms") == st["end_ms"] and have.get("status") in ("done", "working",

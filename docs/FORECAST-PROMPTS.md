@@ -7,6 +7,15 @@ generate a new forecast". Every forecast the first prompt makes is saved with
 `python -m tradingagents.room_forecasts add <file>` and shows on Auto Trade ->
 Forecast. The Forecast tab shows both prompts with a copy button.*
 
+*Since Oct 01, 2026 the tab also makes forecasts itself — the "make a new
+forecast now" button and an automatic one once a day after the daily GitHub
+update is on this PC — from the same numbers it shows
+(`tradingagents/room_stats.py`). Each saved forecast says who made it
+(`source`: "prompt", "button" or "auto"). Prompt 1 below is for a WRITTEN
+forecast with an artifact; it must use the room ids this machine has, and
+every number in it must be a number (the save refuses anything else, naming
+what is wrong).*
+
 ## 1. Make a new forecast
 
 ```
@@ -36,7 +45,7 @@ Then:
 
 Save it so the Forecast tab shows it: write the forecast as one JSON object in the
 shape documented at the top of tradingagents/room_forecasts.py (at, pick, pick_why,
-verdict, rooms with rules/research/real, artifact, note) and run
+verdict, rooms with rules/research/real, artifact, note, source "prompt") and run
 `python -m tradingagents.room_forecasts add <file.json>`. If it refuses, fix what it
 names and run it again; never edit ~/.tradingagents/room_forecasts.jsonl by hand.
 

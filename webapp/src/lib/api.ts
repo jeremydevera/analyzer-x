@@ -904,21 +904,68 @@ export function strategyParams(q: StrategyQuery): URLSearchParams {
  *  Forecast shows exactly what the forecast prompt saved, nothing derived. */
 export type ForecastRoom = {
   id: string; retired?: boolean; rules?: string;
-  research?: { profit?: number; wins?: number; losses?: number; trades?: number;
+  research?: { profit?: number; wins?: number; losses?: number; closed?: number;
     worst_run?: number; worst_run_trades?: number };
-  real: { closed: number; wins: number; losses: number; winrate: number; breakeven: number;
-    profit: number; per_trade: number; worst_run: number; worst_run_trades: number;
-    open: number; days: number; first_at?: number };
+  // winrate / breakeven / per_trade are null while a room has no closed trade
+  // (or too few for a break-even) — never a 0 that reads as a measurement
+  real: { closed: number; wins: number; losses: number; winrate: number | null;
+    breakeven: number | null; profit: number; per_trade: number | null; worst_run: number;
+    worst_run_trades: number; open: number; days: number; first_at?: number | null };
+};
+/** What a saved forecast's pick REALLY did since it was made (room_stats.since). */
+export type ForecastSince = {
+  trades: number; wins: number; losses: number; profit: number; per_trade: number | null;
+  winrate: number | null; days: number; result: "right" | "wrong" | "too early";
 };
 export type Forecast = {
   at: number; pick: string | null; pick_why: string;
   verdict: "pick" | "too early" | "none proven";
   rooms: ForecastRoom[]; artifact?: string | null; note?: string;
+  source?: "prompt" | "button" | "auto"; since?: ForecastSince | null;
 };
 export type Forecasts = {
   forecasts: Forecast[]; total: number; page: number; pages: number; per: number;
   unreadable: number; file: string; read_at: number;
   prompts: { title: string; text: string }[];
+  score: { right: number; judged: number; saved: number; with_pick: number };
+  auto: { why: string; error: string; made_at: number | null };
+};
+/** One room's numbers RIGHT NOW (tradingagents/room_stats.py — the one place
+ *  they are worked out; this screen only prints them). */
+export type RoomGroup = { trades: number; wins: number; losses: number; profit: number;
+  per_trade: number | null; winrate: number | null };
+export type RoomNow = {
+  id: string; name: string; retired: boolean; rules: string;
+  practice: { closed: number; wins: number; losses: number; winrate: number | null;
+    profit: number; per_trade: number | null; avg_win: number | null; avg_loss: number | null;
+    breakeven: number | null; breakeven_why: string; vs_breakeven: number | null;
+    worst_run: number; worst_run_trades: number; open: number; first_at: number | null;
+    days: number | null; too_early: boolean; too_early_why: string[] };
+  real: RoomGroup & { open: number };
+  research: { rule_set: string; profit: number; closed: number; wins: number; losses: number;
+    winrate: number; worst_run: number; worst_run_trades: number; max_open: number;
+    prior_profit: number } | null;
+  worst_case: { open: number; up_to: number };
+  costs: { matched: number; of: number; total: number; per_trade: number | null;
+    without_costs: number | null; with_costs: number | null; note: string };
+  hours: { stock_trades: number; other_trades: number; market: RoomGroup; off: RoomGroup;
+    rule: string; split_by: string };
+  losers: (RoomGroup & { coin: string })[];
+  daily: { day: string; at: number; profit: number; total: number }[];
+  alarms: { kind: "losing_run" | "too_many_open" | "far_below"; text: string }[];
+  ready: { ok: boolean; missing: string[] };
+  turn_off: { ok: boolean; why: string };
+  unreadable_lines: number;
+};
+export type ForecastsLive = {
+  rooms: RoomNow[];
+  verdict: { verdict: Forecast["verdict"]; pick: string | null; pick_why: string };
+  research: { source?: string; graded_from?: string; graded_to?: string;
+    not_in_this_research?: string[]; rule_sets?: number; strategies?: number };
+  rules: { too_early_trades: number; too_early_days: number; breakeven_min: number;
+    ready_trades: number; ready_days: number; off_trades: number; far_below_share: number;
+    far_below_min: number; stock_rule: string; cost_note: string };
+  at: number; took_ms: number;
 };
 
 export type RoomErrors = {
@@ -1013,6 +1060,10 @@ export const api = {
   // the server, never here
   // Auto Trade -> Forecast (Oct 01, 2026): the saved forecasts, newest first
   forecasts: (page = 1) => get<Forecasts>(`/api/forecasts?page=${page}`),
+  forecastsLive: () => get<ForecastsLive>("/api/forecasts/live"),
+  // postDetail: a refusal ("a forecast was just saved at ...") reaches the
+  // screen as its own sentence, not as "HTTP 409"
+  forecastNew: () => postDetail<{ saved: Forecast }>("/api/forecasts/new", {}),
   roomErrors: (q: { room?: string; kind?: string; hours?: number; page?: number }) => {
     const p = new URLSearchParams();
     if (q.room) p.set("room", q.room);

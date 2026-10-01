@@ -172,6 +172,65 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-01-E — three faults the Forecast tab's bug hunt caught before it shipped
+
+**CEO**
+
+* NEVER HAPPENED YET. While building the Forecast tab, the bug hunt and its
+  tests found three faults in the new code; none reached your screen.
+* Why: the screen reads the same files the trading rooms write, and three
+  edge cases (a misspelled room, a rewritten trade record, a $0.00 trade at
+  the end of a losing run) were handled wrongly by the first draft.
+* What stops it now: each one is fixed and has its own test.
+
+**DEV**
+
+* (1) `room_stats._paths` → `profiles.path(...)` MKDIRs the folder of any id
+  it is given (`profiles.py:141`), so a saved forecast naming a room that
+  does not exist would have made a read-only screen create
+  `~/.tradingagents/profiles/<id>/`; (2) `room_stats.ledger` resumed from its
+  old byte offset after a record was rewritten in place to a LONGER size
+  (same file id, bigger) and read the middle of the new content; (3)
+  `worst_run` counted the run's length when its sum first bottomed, so a
+  $0.00 trade ending the run was left out of "over N trades".
+* Invariant broken: **a screen that only reads may never write** (1);
+  **an incremental reader must prove the file is the one it read** (2);
+  **a run is judged with every trade in it** (3).
+* Guard: `tests/test_room_forecast_features.py::test_an_unknown_room_is_never_created_to_answer`,
+  `::test_a_record_rewritten_in_place_to_a_longer_size_is_read_again`,
+  `::test_a_win_is_more_than_zero_and_the_worst_run_is_the_biggest_losing_sum`
+  — the last two red on the first draft.
+
+**SAW** — found by the build's own hunt and tests, `Oct 01, 2026 ~2:50pm`; a
+probe of (1) created an empty `profiles/NOTAROOM/` folder, removed at once.
+
+**TIMELINE**
+
+1. `~2:45pm` — first draft of room_stats.py / room_forecasts additions.
+2. `~2:50pm` — hunt round 1: the unknown-room folder (1); rooms are now
+   checked against `profiles.ids()` before any path is built, and
+   `room_forecasts.add` refuses a forecast naming an unknown room.
+3. `~3:05pm` — tests: (2) and (3) red; fixed — the reader keeps the record's
+   first 4 KB and checks the newline it stopped on; a run is judged when it
+   ends.
+4. Real-data check after the fixes: #4FC03172 461 closed, 194 won, 267
+   lost, -$133.29 — the screen and a direct count of the trade record agree.
+
+**ROOT CAUSE** — new code reading shared files trusted (1) a helper that
+writes, (2) a file that only ever grows, and (3) the moment a sum bottomed.
+
+**WHY IT WAS NOT CAUGHT** — it was: by the hunt and the tests written with
+the feature, before any commit. Recorded so the next reader of these files
+does not repeat them.
+
+**COST** — none.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_room_forecast_features.py` (29).
+
+---
+
 ## RCA-2026-10-01-C — "no heartbeat for 892 min" on a room whose runner was alive the whole time
 
 **CEO**

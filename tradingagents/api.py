@@ -183,6 +183,18 @@ def _keep_the_row_index_current() -> None:
                     _du.tick()
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[daily-update] failed: {exc!r}", flush=True)
+                # THE FORECAST TAB (operator, Oct 01, 2026: "Build ALL 15
+                # Forecast features"): today's automatic forecast once the
+                # daily GitHub update is on this PC, and every room's numbers
+                # kept read so the tab answers at once (a cold first read of
+                # nine trade records off the spinning disk took seconds).
+                try:
+                    from tradingagents import room_forecasts as _rf, room_stats as _rs
+
+                    _rs.rooms()
+                    _rf.daily_tick()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[forecast] failed: {exc!r}", flush=True)
                 # NO AUTOMATIC CANDLE TOP-UP. candle_autopilot.tick() ran here
                 # from 2026-09-06 to 2026-09-09 and started an UPDATE by itself
                 # whenever the store was 3h stale. The operator saw
@@ -1144,9 +1156,65 @@ def forecasts_route(page: int = 1) -> dict:
     then if i run this prompt make sure it will generate a new forecast").
     The saved forecasts, newest first, ten a page — read from the one file the
     forecast prompt appends to (room_forecasts.add); nothing is worked out here."""
-    from tradingagents import room_forecasts as _rf
+    from tradingagents import room_forecasts as _rf, room_stats as _rs
 
-    return {**_rf.read(page=page), "prompts": _rf.prompts()}
+    got = _rf.read(page=page)
+    every, _ = _rf.saved()
+    # WHAT EACH PICK REALLY DID SINCE (feature 4), worked out by room_stats
+    # from the trade records: this page's forecasts, and the score over EVERY
+    # saved forecast — never over the page, which would answer about ten
+    got["forecasts"], _ = _rs.check(got["forecasts"])
+    _, got["score"] = _rs.check(every)
+    got["auto"] = {"why": _rf.AUTO["why"], "error": _rf.AUTO["error"],
+                   "made_at": _rf.AUTO["made_at"] or None}
+    return {**got, "prompts": _rf.prompts()}
+
+
+@app.get("/api/forecasts/live")
+def forecasts_live_route() -> dict:
+    """Every room's numbers RIGHT NOW (features 1-3, 5, 8-15) and what a
+    forecast made now would say — all from room_stats, the one place the
+    numbers are worked out. Read only."""
+    import time as _t
+
+    from tradingagents import room_stats as _rs
+    t0 = _t.perf_counter()
+    rooms = _rs.rooms()
+    return {"rooms": rooms, "verdict": _rs.verdict(rooms),
+            "research": {k: v for k, v in _rs.research().items() if k != "rooms"},
+            "rules": {"too_early_trades": _rs.TOO_EARLY_TRADES,
+                      "too_early_days": _rs.TOO_EARLY_DAYS,
+                      "breakeven_min": _rs.BREAKEVEN_MIN,
+                      "ready_trades": _rs.READY_TRADES, "ready_days": _rs.READY_DAYS,
+                      "off_trades": _rs.OFF_TRADES,
+                      "far_below_share": _rs.FAR_BELOW_SHARE,
+                      "far_below_min": _rs.FAR_BELOW_MIN,
+                      "stock_rule": _rs.STOCK_RULE, "cost_note": _rs.COST_NOTE},
+            "at": int(_t.time()), "took_ms": round(1000 * (_t.perf_counter() - t0))}
+
+
+# A forecast made by the button within this many seconds of the last saved
+# one is refused: a double click must not save the same forecast twice.
+FORECAST_GAP_S = 60
+
+
+@app.post("/api/forecasts/new")
+def forecasts_new_route() -> dict:
+    """The "make a new forecast now" button (feature 6): built from
+    room_stats and saved through room_forecasts.add, like the daily one."""
+    import time as _t
+
+    from tradingagents import room_forecasts as _rf
+    from tradingagents.positions_view import fmt_when as _fw
+    every, _ = _rf.saved()
+    if every and _t.time() - float(every[0]["at"]) < FORECAST_GAP_S:
+        raise HTTPException(409, f"a forecast was just saved at {_fw(every[0]['at'])}; "
+                                 f"wait a minute before making another")
+    try:
+        entry = _rf.make("button")
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return {"saved": entry}
 
 
 @app.get("/api/errors/rooms")

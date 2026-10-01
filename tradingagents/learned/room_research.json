@@ -1,0 +1,92 @@
+{
+ "about": "What each room did in the round-five rules research: picked on Jul 01-Aug 31, 2026 and graded on September, the month it had not seen. Copied from the research page; the Forecast tab compares each room's real practice results with these.",
+ "source": "https://claude.ai/artifact/UUNAie322TPyjJU8MaZtQo",
+ "graded_from": "Sep 01, 2026 12:00am",
+ "graded_to": "Sep 30, 2026 12:00pm",
+ "graded_from_ts": 1788235200,
+ "graded_to_ts": 1790784000,
+ "saved": "Oct 01, 2026",
+ "margin": 5.0,
+ "leverage": 20,
+ "rule_sets": 144,
+ "strategies": 4585414,
+ "not_in_this_research": [
+  "DC57174E",
+  "CC8DC54C",
+  "B52662ED"
+ ],
+ "rooms": {
+  "main": {
+   "rule_set": "52620A69",
+   "profit": 444.37,
+   "closed": 624,
+   "wins": 468,
+   "losses": 156,
+   "winrate": 75.0,
+   "worst_run": -21.47,
+   "worst_run_trades": 15,
+   "max_open": 15,
+   "prior_profit": 108.43
+  },
+  "55D32617": {
+   "rule_set": "55D32617",
+   "profit": 4888.85,
+   "closed": 16226,
+   "wins": 10675,
+   "losses": 5551,
+   "winrate": 65.79,
+   "worst_run": -34.45,
+   "worst_run_trades": 24,
+   "max_open": 97,
+   "prior_profit": 2174.27
+  },
+  "4FC03172": {
+   "rule_set": "4FC03172",
+   "profit": 4967.44,
+   "closed": 15345,
+   "wins": 10305,
+   "losses": 5040,
+   "winrate": 67.16,
+   "worst_run": -30.07,
+   "worst_run_trades": 23,
+   "max_open": 106,
+   "prior_profit": 1623.85
+  },
+  "B2404C0B": {
+   "rule_set": "B2404C0B",
+   "profit": 3597.61,
+   "closed": 8669,
+   "wins": 6087,
+   "losses": 2582,
+   "winrate": 70.22,
+   "worst_run": -24.8,
+   "worst_run_trades": 17,
+   "max_open": 64,
+   "prior_profit": 1737.94
+  },
+  "6B08FF64": {
+   "rule_set": "6B08FF64",
+   "profit": 2687.61,
+   "closed": 5431,
+   "wins": 3839,
+   "losses": 1592,
+   "winrate": 70.69,
+   "worst_run": -23.41,
+   "worst_run_trades": 17,
+   "max_open": 51,
+   "prior_profit": 1639.66
+  },
+  "CC94D9FB": {
+   "rule_set": "CC94D9FB",
+   "profit": 2317.46,
+   "closed": 4623,
+   "wins": 3382,
+   "losses": 1241,
+   "winrate": 73.16,
+   "worst_run": -15.46,
+   "worst_run_trades": 12,
+   "max_open": 47,
+   "prior_profit": 1630.69
+  }
+ }
+}

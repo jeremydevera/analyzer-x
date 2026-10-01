@@ -6360,6 +6360,19 @@ def reconcile_unconfigured(settings: dict, state: dict, *, fx) -> None:
 _SAID: dict = {}
 
 
+def _idle_beat(settings: dict) -> None:
+    """ONE LINE A CYCLE WHEN NOTHING IS SWITCHED ON (Oct 01, 2026). The
+    screen's heartbeat is this log's age (api.supervisor_status), and a cycle
+    with no coin to scan wrote nothing — so #55D32617, #B2404C0B and
+    #6B08FF64, alive and waiting for their first rows, read "no heartbeat
+    for 892 min" from Sep 30, 2026 7:26pm. A cycle comes at most every
+    POLL_SECONDS, so the log is never older than that while the runner is up."""
+    armed = sum(len(coins_for(k, settings) or []) for k in settings.get("strategies") or [])
+    if not armed:
+        logger.info("idle: nothing is switched on in this room — the runner is "
+                    "up and waiting (pid %s)", os.getpid())
+
+
 def _say_once(tag: str, every_s: float) -> bool:
     """True at most once per `every_s` for this tag, per process.
 
@@ -7023,6 +7036,7 @@ def run_forever() -> None:
             # by every slot on it (537 slots on 64 coins, Sep 24, 2026)
             with reads_once_per_cycle():
                 run_cycle()
+            _idle_beat(settings)
             if _stopping["flag"]:
                 append_ledger({"action": "runner_stop", "why": "signal"})
                 break

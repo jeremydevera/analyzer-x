@@ -4912,8 +4912,11 @@ def supervisor_status() -> dict:
         got["last_beat_seconds"] = round(time.time() - beat, 1)
     except OSError:
         got["last_beat_seconds"] = None
+    # an idle cycle comes every POLL_SECONDS (300) and writes one line
+    # (auto_trader._idle_beat), so "stale" needs a minute of slack past it —
+    # at exactly 300 the badge would flicker on every idle wait
     got["stale"] = (got["last_beat_seconds"] is not None
-                    and got["last_beat_seconds"] > 300)
+                    and got["last_beat_seconds"] > at.POLL_SECONDS + 60)
     return got
 
 

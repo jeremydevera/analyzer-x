@@ -172,6 +172,57 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-01-C — "no heartbeat for 892 min" on a room whose runner was alive the whole time
+
+**CEO**
+
+* The 15-day rooms (#55D32617, #B2404C0B, #6B08FF64) showed "no heartbeat
+  for 892 min", which reads as "this room's program died last night".
+* Why: the badge judges "alive" by when the program last wrote to its log,
+  and a room with nothing switched on had nothing to write.
+* What stops it now: an idle room writes one "up and waiting" line every
+  cycle (at most 5 minutes apart), so the badge only appears when a program
+  really stops.
+
+**DEV**
+
+* `api.supervisor_status` sets `stale` from `auto_trade.log`'s mtime;
+  `auto_trader.run_cycle` logs only per-coin `scan` lines, so with
+  `strategies == []` a live loop (`run_forever` → `_wait_for_something`)
+  wrote nothing. Fix: `auto_trader._idle_beat(settings)` after every cycle,
+  and `stale` at `POLL_SECONDS + 60` instead of 300 (an idle cycle is
+  exactly 300 s apart, so 300 would flicker).
+* Invariant broken: **a liveness signal must be written by the thing whose
+  liveness it measures, on every path** — including the path with no work.
+* Guard: `tests/test_an_idle_room_still_has_a_heartbeat.py`.
+
+**SAW** — the operator, `Oct 01, 2026 10:19am`: *"what does no heartbeat for
+892 min mean? is this a bug"*.
+
+**TIMELINE**
+
+1. `Sep 30, 2026 7:26pm` — the three 15-day rooms' runners start (pids 23988,
+   24776, 24788) and log their start line; their logs are 74 bytes.
+2. All night — each loop wakes every 300 s, finds no coin to scan, writes
+   nothing; the processes stay up (checked by pid and run lock).
+3. `Oct 01, 2026 10:19am` — the badge: 892 min since 7:26pm.
+4. Fixed: one `idle:` line per idle cycle; `stale` past 360 s.
+
+**ROOT CAUSE** — the heartbeat was a side effect of scanning, not a signal of
+its own, so "nothing to scan" and "not running" looked the same.
+
+**WHY IT WAS NOT CAUGHT** — Main always had rows, so its log was always
+fresh; the rooms are the first runners ever to run with nothing switched on,
+and no test asked what an idle loop writes.
+
+**COST** — none; a false alarm.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_an_idle_room_still_has_a_heartbeat.py`.
+
+---
+
 ## RCA-2026-10-01-A — the 15-day rooms would have spent their first day's switch-on on an empty table
 
 **CEO**

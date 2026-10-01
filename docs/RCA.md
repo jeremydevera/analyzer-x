@@ -319,7 +319,8 @@ does not repeat them.
   it** (`/contract/ticker` and `/contract/detail` without a symbol return all
   1,215 contracts in 0.38 s), and **a screen switch must not discard data it
   will need again in seconds**.
-* Guards: `tests/test_the_rooms_load_fast.py`,
+* Guards: `tests/test_the_rooms_load_fast.py` (incl.
+  `test_the_30_day_pass_never_parses_a_pair_file_to_learn_nothing_changed`),
   `tests/test_every_profile_is_its_own_room.py::test_every_room_stays_loaded_in_its_own_scope`.
 
 **SAW** — the operator, `Oct 01, 2026`: *"when i click strategy rooms why is
@@ -339,6 +340,16 @@ it loading slow? ... when i switch tabs you forget it"*.
 4. Screen: every room mounted once in its own `RoomScope`, calls bound to it
    (`withProfile` / `roomBound` / `useRoomApis`), rooms behind their tab
    refreshing every 15 s and the visible one first in the request queue.
+5. Browser test of step 4: in 60 s not ONE call for a hidden room went out —
+   the visible room's own refreshes held all four lanes. Two lanes now always
+   serve rooms behind their tabs (`BEHIND_LANES`).
+6. Same test after a restart: Main's tiles 57.7 s, #4FC03172's 57.0 s. The
+   other session's py-spy (1,120 samples): 72% in `rolling30.refresh` →
+   `_stored` → `market_sweep.pair_rows` → `json.loads` — every slot's ~6 MB
+   pair file parsed only to compare its watermark. `refresh` now reads the
+   watermark from the file's tail (`_watermark`) and parses a pair once per
+   pass (`_PAIR_MEMO`, slots walked pair by pair): 4,206 slots checked in
+   2.5 s.
 
 **ROOT CAUSE** — per-coin venue reads in series on a route that serves dozens
 of coins, plus a tab design that reloaded everything on each click.

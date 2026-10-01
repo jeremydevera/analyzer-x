@@ -74,3 +74,19 @@ def test_the_positions_screen_reads_the_shared_list():
     route = route[:route.index("def contract_size")]
     assert "_all = fx.last_prices()" in route
     assert "if symbol in _all:" in route
+
+
+def test_the_30_day_pass_never_parses_a_pair_file_to_learn_nothing_changed(monkeypatch, tmp_path):
+    """After a restart the rolling30 pass parsed every slot's ~6 MB pair file
+    only to compare its watermark: 72% of the API's time (py-spy, Oct 01,
+    2026), /api/health 59-77 s. The watermark is a tail read."""
+    from tradingagents import rolling30 as r30
+
+    settings = {"strategy_coins": {"bb20_15m_sl03tp04": ["VUG_USDT", "KII_USDT"]}}
+    monkeypatch.setattr(r30, "_identity", lambda s, slot: {"coin": slot.split("|")[1][:-5], "tf": "15m"})
+    monkeypatch.setattr(r30, "_watermark", lambda ident: 1790800000000)
+    monkeypatch.setattr(r30, "_load", lambda slot: {"wm": 1790800000000})
+    monkeypatch.setattr(r30, "_stored", lambda ident: (_ for _ in ()).throw(AssertionError("parsed")))
+    monkeypatch.setattr(r30, "rebuild", lambda slot, s: (_ for _ in ()).throw(AssertionError("rebuilt")))
+    got = r30.refresh(settings, pause=0)
+    assert got == {"rebuilt": 0, "errors": {}}

@@ -76,8 +76,32 @@ def _stored(ident: dict) -> tuple[dict | None, int]:
     from tradingagents import watcher_candidates as wc
 
     root = ident["store"].home
-    rows = msw.pair_rows(ident["coin"], ident["tf"], root=root)
+    # THE LAST PAIR FILE PARSED IS KEPT (Oct 01, 2026): refresh() walks the
+    # slots pair by pair, and #4FC03172 alone runs 2,594 rows on 515 pairs —
+    # one parse per pair, not one per slot
+    key = (str(root), ident["coin"], ident["tf"])
+    try:
+        mtime = (Path(root) / "rows" / f"{ident['coin']}-{ident['tf']}.json").stat().st_mtime
+    except OSError:
+        mtime = None
+    hit = _PAIR_MEMO.get("last")
+    if hit and hit[0] == key and hit[1] == mtime and mtime is not None:
+        rows = hit[2]
+    else:
+        rows = msw.pair_rows(ident["coin"], ident["tf"], root=root)
+        _PAIR_MEMO["last"] = (key, mtime, rows)
     return (wc._match(rows, ident), int(msw.pair_watermark(ident["coin"], ident["tf"], root=root) or 0))
+
+
+_PAIR_MEMO: dict = {}
+
+
+def _watermark(ident: dict) -> int:
+    """The pair's watermark alone — a 256-byte tail read
+    (market_sweep.pair_watermark), never a parse of the ~6 MB pair file."""
+    from tradingagents import market_sweep as msw
+
+    return int(msw.pair_watermark(ident["coin"], ident["tf"], root=ident["store"].home) or 0)
 
 
 def _cache_path(slot: str) -> Path:
@@ -193,10 +217,16 @@ def refresh(settings: dict | None = None, *, pause: float = 0.3) -> dict:
     done, errors = 0, {}
     seen: set = set()
     _STATUS["running"] = True
+    # PAIR BY PAIR: slots on one coin and timeframe in a row, so _stored's
+    # memo parses each pair file once (a key names its timeframe, `c` the coin)
+    def _order(kc):
+        k, c = kc
+        tf = next((t for t in ("15m", "30m", "1h", "4h", "1d") if f"_{t}_" in f"_{k}_"), "")
+        return (c, tf, k)
     try:
-        for key, c in [(k, c) for st_ in each
-                       for k, cs in (st_.get("strategy_coins") or {}).items()
-                       for c in cs or []]:
+        for key, c in sorted([(k, c) for st_ in each
+                              for k, cs in (st_.get("strategy_coins") or {}).items()
+                              for c in cs or []], key=_order):
             settings = next(st_ for st_ in each
                             if c in ((st_.get("strategy_coins") or {}).get(key) or []))
             slot = f"{key}|{c}"
@@ -207,7 +237,12 @@ def refresh(settings: dict | None = None, *, pause: float = 0.3) -> dict:
                 ident = _identity(settings, slot)
                 if ident is None:
                     continue
-                _row, wm = _stored(ident)
+                # THE WATERMARK FIRST, from the file's tail (Oct 01, 2026): this
+                # parsed every slot's whole pair file just to compare one
+                # number — 3,000+ slots, ~6 MB each, every pass — and after a
+                # restart that pass held 72% of the API's time (py-spy,
+                # 1,120 samples): /api/health 59-77 s, a room's tiles 57.7 s.
+                wm = _watermark(ident)
                 have = _load(slot)
                 if have and have.get("wm") == wm:
                     continue

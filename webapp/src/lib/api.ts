@@ -42,20 +42,29 @@ export class ApiError extends Error {
 const MAX_LANES = 4;
 let lanes = 0;
 const waiting: (() => void)[] = [];
-// THE ROOM ON SCREEN GOES FIRST (Oct 01, 2026). Every room stays loaded and
-// keeps refreshing behind its tab, so up to six rooms share these four lanes;
-// a call for a room nobody is looking at waits behind the visible room's.
+// THE ROOM ON SCREEN GOES FIRST, BUT NEVER ALONE (Oct 01, 2026). Every room
+// stays loaded and keeps refreshing behind its tab, so up to six rooms share
+// these four lanes. The visible room's calls are served first — and, measured
+// in the browser the first time this ran, its own refreshes then held all
+// four lanes for good: in 60 s not one call for any other room went out. So
+// up to BEHIND_LANES calls for rooms behind their tabs always get a turn.
 const waitingBehind: (() => void)[] = [];
+const BEHIND_LANES = 2;
+let behindNow = 0;
 
 async function takeLane(behind = false): Promise<void> {
-  if (lanes < MAX_LANES) { lanes += 1; return; }
+  if (lanes < MAX_LANES) { lanes += 1; if (behind) behindNow += 1; return; }
   await new Promise<void>((res) => (behind ? waitingBehind : waiting).push(res));
   lanes += 1;
+  if (behind) behindNow += 1;
 }
 
-function freeLane(): void {
+function freeLane(behind = false): void {
   lanes -= 1;
-  (waiting.shift() ?? waitingBehind.shift())?.();
+  if (behind) behindNow -= 1;
+  const next = (waitingBehind.length && (behindNow < BEHIND_LANES || !waiting.length))
+    ? waitingBehind.shift() : (waiting.shift() ?? waitingBehind.shift());
+  next?.();
 }
 
 // WHICH ROOM the Auto Trade screen is showing (trading profiles, Sep 29,
@@ -122,11 +131,12 @@ async function fetchLaned(input: string, init?: RequestInit, room: string = _roo
     init = { ...(init ?? {}), headers };
   }
   // a roomed call for a room that is not on screen waits behind the rest
-  await takeLane(_roomed(input) && room !== _profile);
+  const behind = _roomed(input) && room !== _profile;
+  await takeLane(behind);
   try {
     return await fetch(input, init);
   } finally {
-    freeLane();
+    freeLane(behind);
   }
 }
 

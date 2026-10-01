@@ -25,8 +25,8 @@ STAGES (env STAGE):
   custom   one rule set (CUSTOM, JSON) — the page's what-if box
 
 Out: out/forecast-<SHARD>.npz — per rule set j: j_e / j_x entry and exit
-     (int32 minutes from Jan 01, 2026 UTC), j_p profit (float32), j_r the
-     random draws' totals (BEAT RANDOM); for the base stage also the streaks
+     (int32 minutes from Jan 01, 2026 UTC), j_p profit (float32), j_r / j_rn the
+     random draws' profit and trades (BEAT RANDOM); for the base stage also the streaks
      (st_*) and the follow-through table (ft).
      out/forecast-<SHARD>.json — the rule sets in order (id, cfg, slots),
      the streak rows' text fields, the rooms' breakdowns, counts.
@@ -188,18 +188,25 @@ class Flat:
         np.cumsum(self.cum, out=self.cum)
 
     def sums(self, j, a, z):
+        """(profit, trades) of each book j's trades opened in [a, z)."""
         lo = np.searchsorted(self.keys, (j << SHIFT) | a, "left")
         hi = np.searchsorted(self.keys, (j << SHIFT) | z, "left")
-        return self.cum[hi] - self.cum[lo]
+        return self.cum[hi] - self.cum[lo], hi - lo
 
 
 def beat_random(slots, mask, n_grid, checks, flat, rng, end_ms):
-    """DRAWS totals: every slot's book swapped for a random strategy of the
-    same shape that was trading at the same check (a row existed in the
-    window), over the same on/off stretch. Not limited per coin — random
-    picks rarely crowd one coin."""
+    """DRAWS (profit, trades): every slot's book swapped for a random
+    strategy of the same shape that was trading at the same check (a row
+    existed in the window), over the same on/off stretch.
+
+    COMPARED PER TRADE, never in total (found before the first run, Oct 01,
+    2026): the random picks are not held to the runner's trades per coin or
+    the loss limit, so they make more trades, and against a losing market
+    more trades is a bigger total loss — a total would let a rule set "beat"
+    random by the cap alone. Those limits remove trades first come, first
+    served, not by quality, so profit per trade is a fair yardstick."""
     if not slots:
-        return np.zeros(DRAWS, np.float32)
+        return np.zeros(DRAWS, np.float32), np.zeros(DRAWS, np.int64)
     k_of = {c: k for k, c in enumerate(checks)}
     ks = np.array([k_of[int(s["on_ms"])] for s in slots], dtype=np.int64)
     a = np.array([int(s["on_ms"]) for s in slots], dtype=np.int64)
@@ -209,6 +216,7 @@ def beat_random(slots, mask, n_grid, checks, flat, rng, end_ms):
     for k in np.unique(ks):
         pools[int(k)] = np.nonzero(mask & (n_grid[int(k)] >= 1))[0]
     out = np.zeros(DRAWS, np.float64)
+    cnt = np.zeros(DRAWS, np.int64)
     for d in range(DRAWS):
         j = np.empty(len(slots), np.int64)
         ok = np.ones(len(slots), bool)
@@ -219,8 +227,9 @@ def beat_random(slots, mask, n_grid, checks, flat, rng, end_ms):
                 continue
             j[sel] = pool[rng.integers(0, len(pool), int(sel.sum()))]
         if ok.any():
-            out[d] = float(flat.sums(j[ok], a[ok], z[ok]).sum())
-    return out.astype(np.float32)
+            prof, n = flat.sums(j[ok], a[ok], z[ok])
+            out[d], cnt[d] = float(prof.sum()), int(n.sum())
+    return out.astype(np.float32), cnt
 
 
 # ---------------------------------------------------------------- STREAKS
@@ -390,8 +399,8 @@ def main() -> int:
         if fkey not in flats:
             flats[fkey] = Flat(books, end_ms, cfg if any(fkey) else None)
         rng = np.random.default_rng(seed * 10_007 + j)
-        arrays[f"{j}_r"] = beat_random(slots, mask, grids[int(cfg["window_days"])][0],
-                                       checks, flats[fkey], rng, end_ms)
+        arrays[f"{j}_r"], arrays[f"{j}_rn"] = beat_random(
+            slots, mask, grids[int(cfg["window_days"])][0], checks, flats[fkey], rng, end_ms)
         rid = fr.rule_id(cfg)
         info["sets"].append({"id": rid, "cfg": cfg, "slots": len(slots),
                              "open": int(sum(int((s["trades"][:, 3] == 0).sum())

@@ -462,6 +462,54 @@ does not repeat them.
 
 ---
 
+## RCA-2026-10-01-I — a room told to allow a stop wider than its target could never find one (NEVER HAPPENED YET)
+
+**CEO**
+
+* No room has run into this: every room you have uses "target wider than
+  stop". A room set to "stop wider than target" or "any" would have found only
+  strategies whose target was at least as wide as the stop.
+* Why: the rooms' search always asked the strategy list for "target at least
+  as wide as stop" first, whatever the room's own rule said.
+* What stops it now: each room's search asks for its own rule's shape, and the
+  new "target equal to stop" and "smallest target" rules travel the same way.
+
+**DEV**
+
+* `watcher_candidates._index_page` passed `tp_over_sl=True` (TP >= SL) to
+  `rows_index.query` for every cfg, and `rows_index.recent_rows` hard-coded
+  `tp > sl`; `watcher_policy.passes_on` ran after on rows that could never
+  include TP < SL.
+* Invariant broken: **filter where the data is, with the rule the decision
+  uses** — a prefilter may only ever be looser than the final rule.
+* Guard: `tests/test_research_every_shape.py::test_a_room_that_allows_a_wider_stop_is_shown_one`
+  and `::test_the_15_day_search_follows_the_target_rule`.
+
+**SAW** — nothing on screen. Found Oct 01, 2026 while making prompt 3 ("find
+the best room rules ... sl is greater than tp") copy-and-run ready: a rule set
+from it could be deployed as a room that would then switch nothing on.
+
+**TIMELINE** (NEVER HAPPENED YET — made-up numbers)
+
+1. A room is deployed with "stop wider than target, 70%, 10+ trades".
+2. Its daily switch-on asks the list for TP >= SL rows at 70%+: say 6,000.
+3. `passes_on` keeps only TP < SL among them: 0. The room stays empty for
+   ever and says "0 pass every rule", while thousands of matching rows exist.
+
+**ROOT CAUSE** — a prefilter written for the one shape every room used at the
+time, never revisited when "<" and "any" became rules (Sep 29, 2026).
+
+**WHY IT WAS NOT CAUGHT** — every room ever deployed used ">", and the raw
+path's tests fake `_candidates`, so the query's arguments were never read.
+
+**COST** — none.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_research_every_shape.py`.
+
+---
+
 ## RCA-2026-10-01-D — a room took up to 88 seconds to show its numbers, and forgot them on every tab switch
 
 **CEO**

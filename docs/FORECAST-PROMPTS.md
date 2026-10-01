@@ -101,51 +101,63 @@ Rules for the answer:
 
 ```
 Find the room rules that would have made the most money, testing EVERY shape of
-rule — including the ones earlier research left out: a stop WIDER than the target
-(SL > TP), a target equal to the stop, very wide targets, and rules that need only a
-few trades.
+rule — including the ones earlier research left out: a stop WIDER than the target,
+a target EQUAL to the stop, wide targets, and rules that need only a few trades.
 
-A "room rule" is what a Smart Watcher room switches strategies on and off by:
-the window it looks back over, the win rate to switch on and off at, the fewest
-trades it needs, how the target compares to the stop, and the widest stop and
-target it allows. Test at least this grid, every combination:
+The grid is already built: grid 6 in tradingagents/watcher_research.py
+(scenarios6) — 8,064 rule sets, every combination of:
 - window: last 7, 15 and 30 days
 - switch-on win rate: 40, 50, 60, 70, 80 and 90% (switch off under the same line)
 - fewest trades in the window: 1, 3, 5, 10, 20, 30 and 50
-- target vs stop: any, target wider than stop, target equal to stop, stop wider than target
+- target vs stop: any, target wider, target equal, stop wider
 - widest stop allowed: no cap, 1%, 2%, 3%
 - smallest target allowed: none, 1%, 2%, 3%
-Say how many rule sets that is before starting, and how many strategies each one
-picks from. Never cut the grid quietly — if something cannot run, name it and why.
+Every rule set is raw (no limits) with the runner's 4 open trades per coin, $5 at 20x.
 
-Make it a FAIR test (this is what went wrong before):
-1. The replay data must include every strategy each rule could pick. The last
-   research data only kept strategies with the target wider than the stop and 10+
-   trades, so stop-wider-than-target and few-trade rules found nothing or leaned on
-   hindsight (docs/RCA.md RCA-2026-09-29-F). Re-run the replay on GitHub
-   (.github/workflows/replay.yml) with a write rule no stricter than the loosest rule
-   in the grid (win rate 40, trades 1, target vs stop "any"), then the research
-   (.github/workflows/research.yml). Say how long each will take before starting.
-2. Pick on July–August, grade on September 1 to today — never pick and grade on the
-   same days. Report both periods for every rule set.
-3. Charge all three costs on every trade (entry, exit and holding) and use the
-   runner's own limits (at most 4 open trades per coin, $5 at 20x).
-4. Show each rule set's break-even win rate after costs, never 50%. A stop wider
-   than the target needs a much higher win rate to break even — say how much.
+Run it like this, saying how long each step should take before starting it:
+1. NEW DATA, written loose enough for every rule set (a stricter write rule makes
+   the looser rule sets lean on hindsight — docs/RCA.md RCA-2026-09-29-F):
+   gh workflow run replay.yml -f shards=40 -f start=2026-07-01 -f groups=classic,preset -f write_rule="wr=40,trades=1,tp=any,windows=7|15|30"
+   Wait for it to finish (about 1.5–2 hours). If a machine fails, re-run only that
+   machine, never the whole run.
+2. THE COMMON END: download only the small replay-report-* artifacts of that run,
+   then python -c "from tradingagents import replay_collect as rc; print(rc.common_end(rc.merge_reports('<folder>')['spans']))"
+3. THE RESEARCH, 40 data shards x 4 grid slices = 160 GitHub jobs (each about
+   1–2 hours; measured Oct 01, 2026 at 0.59 s per rule set on one shard of the
+   older, smaller data):
+   gh workflow run research.yml -f source_run=<replay run id> -f shards=40 -f end_ms=<common end> -f scenarios=6 -f chunks=4
+   If a job fails, re-run only the failed jobs.
+4. ADD IT UP on this PC: download every research-* artifact into a folder on G:
+   (never C:), then
+   python -m tradingagents.research_merge s6 <research folder> <folder with the replay reports>
+   It writes ~/.tradingagents/replay/research-s6.json, keeping trade lists for the
+   100 best rule sets on July–August only.
+5. THE PAGE: python -m tradingagents.research_page s6 --split --log-top 100 --data <folder with the replay reports>
+   It writes research-s6.html and research-s6/logs/*.gz.txt (their list is in
+   research-s6/files.json); publish the page with every log file as an artifact.
+
+Make it a FAIR test:
+- Pick on July–August, grade on September 1 to the common end — never pick and
+  grade on the same days. Report both periods for every rule set.
+- Every trade pays all three costs (entry, exit and holding).
+- Show each rule set's break-even win rate after costs, never 50%. A stop wider
+  than the target needs a much higher win rate to break even — say how much.
+- research_page.unfair() must find no rule set looser than the data. If it does,
+  stop and say which.
 
 Then rank:
 - by September profit, but only rule sets that also made money in July–August;
 - show beside each: wins/losses, win rate, break-even win rate, trades, trades a
   day, most open at once, worst losing run (dollars and how many trades), worst day,
   and green days;
-- name the best rule set in each target-vs-stop shape (wider, equal, stop wider) so
-  the shapes can be compared, even if one shape never wins overall.
+- name the best rule set in each target-vs-stop shape (wider, equal, stop wider,
+  any) so the shapes can be compared, even if one shape never wins overall.
 
-Publish it as an artifact: the top 100 rule sets, a stable id per rule set, every
-column above, the margin $5 x 20x stated above the table, a click on a row showing
-its September trades one by one with a total, filters for min win rate, min profit,
-max TP %, max SL %, target-vs-stop shape and window, sortable columns, and the
-number of rule sets tested above the table.
+The artifact: the top rule sets with a stable id per rule set, every column above,
+the margin $5 x 20x stated above the table, a click on a row showing its September
+trades one by one with a total, filters for min win rate, min profit, max TP %,
+max SL %, smallest target, target-vs-stop shape and window, sortable columns, and
+the number of rule sets tested (8,064) above the table.
 
 Rules for the answer:
 - Real numbers from the replay and my own records only; if something cannot be
@@ -155,5 +167,6 @@ Rules for the answer:
   must do, or "No pending for you."
 - Do not create rooms, switch anything on or off, or change any rules unless I say
   "deploy". When I do, each rule set I name becomes its own room, practice only
-  (CLAUDE.md "STANDING SETUP").
+  (CLAUDE.md "STANDING SETUP"); every rule in grid 6, "=" and the smallest target
+  included, is a rule the rooms can run.
 ```

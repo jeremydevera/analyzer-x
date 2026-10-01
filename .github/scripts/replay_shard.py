@@ -96,7 +96,7 @@ def write_rule(text: str) -> dict:
             rule["wr"] = float(v)
         elif k == "trades":
             rule["trades"] = int(v)
-        elif k == "tp" and v in (">", ">=", "<", "any"):
+        elif k == "tp" and v in (">", ">=", "=", "<", "any"):
             # "<" and "any" (Sep 29, 2026: "you can try sl greater than
             # tp"): without them no SL-wider-than-TP row could ever be written
             rule["tp"] = v
@@ -106,12 +106,14 @@ def write_rule(text: str) -> dict:
 
 
 def _tp_written(tp: float, sl: float, rule: str) -> bool:
-    """The write rule's TP-vs-SL shape: ">" wider, ">=" at least, "<"
-    narrower, "any" every barrier pair."""
+    """The write rule's TP-vs-SL shape: ">" wider, ">=" at least, "="
+    equal (Oct 01, 2026), "<" narrower, "any" every barrier pair."""
     if rule == "any":
         return True
     if rule == "<":
         return tp < sl
+    if rule == "=":
+        return abs(tp - sl) < 1e-6
     return tp > sl if rule == ">" else tp >= sl
 
 

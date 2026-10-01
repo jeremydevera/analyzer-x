@@ -66,8 +66,10 @@ export function rules(c: Watcher["cfg"], days: number, live = false): string[] {
     `switch on at ${c.on_winrate}%+ over the last ${days} days`,
     `switch off under ${c.off_winrate}%`,
     `${c.min_trades}+ trades`,
-    c.tp_rule === "any" ? "any TP" : `TP ${c.tp_rule === ">" ? "wider than" : c.tp_rule === "<" ? "narrower than" : "at least"} SL`,
+    c.tp_rule === "any" ? "any TP" : `TP ${c.tp_rule === ">" ? "wider than" : c.tp_rule === "<" ? "narrower than"
+      : c.tp_rule === "=" ? "equal to" : "at least"} SL`,
     ...(c.max_sl ? [`SL no wider than ${c.max_sl}%`] : []),
+    ...(c.min_tp ? [`TP at least ${c.min_tp}%`] : []),
     // RAW (Sep 30, 2026: "i want raw output, dont put any limit"): the
     // criteria above and nothing else
     ...(c.raw ? ["every matching row in the Backtest v2 table, no limit"] : [

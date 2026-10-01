@@ -4046,19 +4046,26 @@ def count_exact(**filters) -> int:
 
 
 RECENT_SQL = ("SELECT * FROM rows WHERE t15 >= ? AND w15 * 100.0 >= ? * t15 "
-              "AND tp > sl AND (sizing = 'flat' OR sizing IS NULL)")
+              "AND (sizing = 'flat' OR sizing IS NULL)")
+# the target-vs-stop rule as SQL (watcher_policy.TP_RULES); "any" adds nothing
+RECENT_TP = {">": " AND tp > sl", ">=": " AND tp >= sl", "<": " AND tp < sl",
+             "=": " AND abs(tp - sl) < 0.000001", "any": ""}
 
 
 def recent_rows(*, min_trades: int, min_winrate: float, max_sl: float = 0,
-                db_path=None) -> list[dict]:
+                tp_rule: str = ">", min_tp: float = 0, db_path=None) -> list[dict]:
     """Every flat row whose LAST 15 DAYS (`t15`/`w15`, backtest_report.
-    RECENT_DAYS) meet the floors, target wider than stop, stop at or under
+    RECENT_DAYS) meet the floors and the target rule (`tp_rule`, `min_tp`), stop at or under
     `max_sl` when given (Sep 30, 2026: the 15-day rooms). A row measured
     before the columns existed has NULL there and is never a match — not
     measured is not a pass. One pass over the table: this is the watcher's
     once-a-day background search, never a screen's query."""
-    sql = RECENT_SQL + (" AND sl <= ?" if max_sl else "")
-    args = [int(min_trades), float(min_winrate)] + ([float(max_sl)] if max_sl else [])
+    if tp_rule not in RECENT_TP:
+        raise ValueError(f"unknown target rule {tp_rule!r}; use one of {sorted(RECENT_TP)}")
+    sql = (RECENT_SQL + RECENT_TP[tp_rule] + (" AND sl <= ?" if max_sl else "")
+           + (" AND tp >= ?" if min_tp else ""))
+    args = ([int(min_trades), float(min_winrate)] + ([float(max_sl)] if max_sl else [])
+            + ([float(min_tp)] if min_tp else []))
     with _open(readonly=True, db_path=db_path) as con:
         have = {r[1] for r in con.execute("PRAGMA table_info(rows)")}
         if "t15" not in have:

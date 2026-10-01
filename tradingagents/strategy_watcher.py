@@ -125,7 +125,9 @@ LIVE_RULES = ("on_winrate", "off_winrate", "min_trades", "tp_rule",
               "max_new_per_day", "cooldown_days", "fresh_hours", "rank", "raw",
               # 15 or the store's 30 (Sep 30, 2026): on 15 a row is judged on
               # its own measured last-15-day count (backtest_report.RECENT_DAYS)
-              "window_days")
+              "window_days",
+              # the smallest target (Oct 01, 2026); tp_rule also takes "="
+              "min_tp")
 
 
 def store_window_days() -> int:
@@ -237,6 +239,8 @@ def set_cfg(partial: dict) -> dict:
             raise ValueError(f"{k} is a replay/research rule the live watcher does not "
                              f"use — it judges every row on the store's own "
                              f"{store_window_days()}-day window")
+        if k == "tp_rule" and v not in wp.TP_RULES:
+            raise ValueError(f"tp_rule must be one of {wp.TP_RULES}")
         if k == "window_days":
             from tradingagents import backtest_report as br
 

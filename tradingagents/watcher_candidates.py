@@ -51,12 +51,18 @@ def _index_page(cfg: dict, limit: int, offset: int) -> list[dict]:
     strict TP > SL is applied after, on the fresh row."""
     from tradingagents import rows_index as ri
 
+    # THE TARGET RULE TRAVELS TO THE QUERY (Oct 01, 2026). This asked TP >= SL
+    # of every room, so a room whose rule is "<" (stop wider than target) or
+    # "any" was never shown one stop-wider-than-target row — the rule was
+    # unreachable from the data. TP >= SL is asked only of the rules it can
+    # never exclude a match for; the exact rule is passes_on's, after.
     got = ri.query(db_path=stores.V2.rows_db, sort="winrate", desc=True,
                    limit=limit, offset=offset, min_trades=int(cfg["min_trades"]),
                    min_winrate=(float(cfg["on_winrate"]) if cfg.get("_at_line")
                                 else max(0.0, float(cfg["on_winrate"]) - NOMINATE_BELOW)),
-                   tp_over_sl=True, sizing="flat",
-                   max_sl=float(cfg.get("max_sl") or 0))
+                   tp_over_sl=str(cfg.get("tp_rule") or ">") in (">", ">=", "="),
+                   sizing="flat", max_sl=float(cfg.get("max_sl") or 0),
+                   min_tp=float(cfg.get("min_tp") or 0))
     return list(got.get("rows") or [])
 
 
@@ -275,6 +281,8 @@ def _raw_recent(cfg: dict) -> dict:
         got = ri.recent_rows(min_trades=int(cfg["min_trades"]),
                              min_winrate=float(cfg["on_winrate"]),
                              max_sl=float(cfg.get("max_sl") or 0),
+                             tp_rule=str(cfg.get("tp_rule") or ">"),
+                             min_tp=float(cfg.get("min_tp") or 0),
                              db_path=stores.V2.rows_db)
     except Exception as exc:                                   # noqa: BLE001
         return {"rows": [], "asked": 0, "stale": 0, "gone": 0, "not_ready": True,

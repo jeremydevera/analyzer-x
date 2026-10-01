@@ -550,7 +550,10 @@ def test_a_row_with_a_stop_wider_than_two_percent_is_never_switched_on():
 def test_the_cap_is_a_live_rule_and_reaches_the_index_query():
     assert "max_sl" in sw.LIVE_RULES and sw.cfg_of({})["max_sl"] == 2.0
     src = open("tradingagents/watcher_candidates.py", encoding="utf-8").read()
-    assert 'max_sl=float(cfg.get("max_sl") or 0))' in src
+    assert 'max_sl=float(cfg.get("max_sl") or 0),' in src
+    # ...and the target rule and floor travel too (Oct 01, 2026)
+    assert 'tp_over_sl=str(cfg.get("tp_rule") or ">") in (">", ">=", "="),' in src
+    assert 'min_tp=float(cfg.get("min_tp") or 0))' in src
     panel = open("webapp/src/components/trade/WatcherPanel.tsx", encoding="utf-8").read()
     assert "SL no wider than ${c.max_sl}%" in panel
 

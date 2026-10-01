@@ -18,7 +18,9 @@ from pathlib import Path
 OUT_DIR = Path(os.path.expanduser("~/.tradingagents")) / "replay"
 DIALS = ("on_winrate", "off_winrate", "min_trades", "tp_rule", "max_sl",
          "window_days", "rank", "max_per_coin", "max_new_per_day",
-         "cooldown_days", "off_streak_live")
+         "cooldown_days", "off_streak_live",
+         # the smallest target (Oct 01, 2026); 0 on every result made before it
+         "min_tp")
 PARTS = ("profit", "closed", "wins", "losses", "winrate", "slots", "open",
          "worst_day", "green_days", "days_n", "max_dd", "worst_run",
          "worst_run_n", "max_open")
@@ -51,6 +53,11 @@ def _from_log(test: dict, log: list, start_ms: int, end_ms: int) -> tuple[dict, 
     return out, days
 
 
+# which target-vs-stop shapes a rule (or a write rule) lets through
+SHAPES = {">": {"wider"}, ">=": {"wider", "equal"}, "=": {"equal"},
+          "<": {"narrower"}, "any": {"wider", "equal", "narrower"}}
+
+
 def unfair(cfg: dict, write: dict) -> str:
     """Why a rule set is NOT a fair test of its data, or "".
 
@@ -70,8 +77,12 @@ def unfair(cfg: dict, write: dict) -> str:
                    f"rows that had {int(write['trades'])}+")
     wt, rt = str(write.get("tp") or ""), str(cfg.get("tp_rule") or "")
     # "any" over data written with TP >= SL IS "at least" — a fair test under
-    # the wrong name, which the page renames; "<" finds nothing at all
-    if (wt in (">", ">=") and rt == "<") or (wt == ">" and rt in ("any", ">=")):
+    # the wrong name, which the page renames; "<" finds nothing at all. Equal
+    # (Oct 01, 2026) is held by ">=" and "any" data only.
+    held = SHAPES.get(wt, SHAPES["any"])
+    wants = SHAPES.get(rt, SHAPES["any"])
+    renamed = wt == ">=" and rt == "any"
+    if wt and not (wants <= held or renamed):
         why.append("its target rule reaches rows this data never held (it was "
                    f"written with TP {wt} SL)")
     return "; ".join(why)
@@ -89,7 +100,7 @@ def payload(res: dict, write: dict | None = None) -> dict:
         if r.get("test_log") is not None:
             te, ted = _from_log(r["test"], r["test_log"], res["test"][0], res["end_ms"])
             r = {**r, "test": {**te, "days": ted}}
-        rows.append({"id": r["id"], "c": [r["cfg"].get(k, 0.0) if k == "max_sl" else r["cfg"][k]
+        rows.append({"id": r["id"], "c": [r["cfg"].get(k, 0.0) if k in ("max_sl", "min_tp") else r["cfg"][k]
                                           for k in DIALS],
                      "tr": [r["train"][k] for k in PARTS], "trd": r["train"]["days"],
                      "te": [r["test"][k] for k in PARTS], "ted": r["test"]["days"],
@@ -175,8 +186,9 @@ def build_split(res: dict, out_dir: Path, write: dict | None = None,
 
 
 def main(argv=None) -> int:
-    """`<name> [--data <folder>]`: --data reads the write rule from the run's
-    own reports, for a result saved before it recorded one."""
+    """`<name> [--data <folder>] [--split [--log-top N]]`: --data reads the
+    write rule from the run's own reports, for a result saved before it
+    recorded one; --split writes each rule set's trades to its own file."""
     argv = list(argv or sys.argv[1:])
     name, write = argv[0], None
     split = "--split" in argv
@@ -187,7 +199,10 @@ def main(argv=None) -> int:
     res = json.loads((OUT_DIR / f"research-{name}.json").read_text(encoding="utf-8"))
     path = OUT_DIR / f"research-{name}.html"
     if split:
-        html, files = build_split(res, OUT_DIR / f"research-{name}", write)
+        # --log-top N: trade lists for the N best rule sets on July-August
+        # only (grid 6 has 8,064; every list would not fit an artifact)
+        top = int(argv[argv.index("--log-top") + 1]) if "--log-top" in argv else None
+        html, files = build_split(res, OUT_DIR / f"research-{name}", write, log_top=top)
         path.write_text(html, encoding="utf-8")
         (OUT_DIR / f"research-{name}" / "files.json").write_text(json.dumps(files), encoding="utf-8")
         print(f"{path} + {len(files)} log files")
@@ -280,8 +295,9 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
   <label>Max Sep worst dip $<input id="f-dd" type="number" min="0" step="1" placeholder="any"></label>
   <label>Min Sep green days<input id="f-gd" type="number" min="0" step="1" placeholder="any"></label>
   <label>Switch on at %<select id="f-on"><option value="">any</option></select></label>
-  <label>TP rule<select id="f-tp"><option value="">all</option><option value=">">wider than SL</option><option value=">=">at least SL</option><option value="<">narrower than SL</option><option value="any">no TP rule</option></select></label>
-  <label>Max SL %<select id="f-sl"><option value="">all</option><option value="2">capped at 2%</option><option value="0">no cap</option></select></label>
+  <label>TP rule<select id="f-tp"><option value="">all</option><option value=">">wider than SL</option><option value=">=">at least SL</option><option value="=">equal to SL</option><option value="<">narrower than SL</option><option value="any">no TP rule</option></select></label>
+  <label>Max SL %<select id="f-sl"><option value="">all</option></select></label>
+  <label>Min TP %<select id="f-mt"><option value="">all</option></select></label>
   <label>Days judged<select id="f-win"><option value="">any</option></select></label>
   <label>Find rule id<input id="f-id" type="text" placeholder="#50B27C00"></label>
   <button class="btn" id="clear" type="button">Clear all</button>
@@ -305,13 +321,13 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const money=(v,sign=true)=>(sign&&v>0?"+":"")+(v<0?"-":"")+"$"+Math.abs(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const P=Object.fromEntries(D.parts.map((p,i)=>[p,i])),C=Object.fromEntries(D.dials.map((d,i)=>[d,i]));
-const state={base:5,te:null,tr:null,wr:null,dd:null,gd:null,on:"",tp:"",sl:"",win:"",id:"",sort:{k:"te_profit",dir:-1},shown:200};
+const state={base:5,te:null,tr:null,wr:null,dd:null,gd:null,on:"",tp:"",sl:"",mt:"",win:"",id:"",sort:{k:"te_profit",dir:-1},shown:200};
 // "any" over data written with TP >= SL means exactly "at least": say so
 const ANY_IS=D.write&&D.write.tp===">="?"at least":"";
-const TPW={">":"wider than",">=":"at least","<":"narrower than","any":ANY_IS?`${ANY_IS} (no narrower target in this data)`:"any"};
+const TPW={">":"wider than",">=":"at least","=":"equal to","<":"narrower than","any":ANY_IS?`${ANY_IS} (no narrower target in this data)`:"any"};
 const k=()=>state.base/D.base;
 const RANK={winrate:"win rate",profit:"profit",trades:"trades"};
-function rulesText(r){const c=r.c;return [`switch on at <b>${c[C.on_winrate]}%+</b>`,`off under <b>${c[C.off_winrate]}%</b>`,`<b>${c[C.min_trades]}+</b> trades`,(c[C.tp_rule]==="any"&&!ANY_IS?`<b>any</b> TP`:`TP <b>${TPW[c[C.tp_rule]]}</b> SL`),(c[C.max_sl]?`SL <b>≤ ${c[C.max_sl]}%</b>`:`<b>no</b> SL cap`),`judged on <b>${c[C.window_days]}</b> days`,`best <b>${RANK[c[C.rank]]}</b> first`,`<b>${c[C.max_per_coin]}</b> per coin`,`<b>${c[C.max_new_per_day]}</b> new a day`,`<b>${c[C.cooldown_days]}</b>-day wait`,c[C.off_streak_live]?`off after <b>${c[C.off_streak_live]}</b> practice losses in a row`:`practice losses never switch off`].map(t=>`<span>${t}</span>`).join("")}
+function rulesText(r){const c=r.c;return [`switch on at <b>${c[C.on_winrate]}%+</b>`,`off under <b>${c[C.off_winrate]}%</b>`,`<b>${c[C.min_trades]}+</b> trades`,(c[C.tp_rule]==="any"&&!ANY_IS?`<b>any</b> TP`:`TP <b>${TPW[c[C.tp_rule]]}</b> SL`),(c[C.max_sl]?`SL <b>≤ ${c[C.max_sl]}%</b>`:`<b>no</b> SL cap`),(c[C.min_tp]?`TP <b>≥ ${c[C.min_tp]}%</b>`:`<b>no</b> TP floor`),`judged on <b>${c[C.window_days]}</b> days`,`best <b>${RANK[c[C.rank]]}</b> first`,`<b>${c[C.max_per_coin]}</b> per coin`,`<b>${c[C.max_new_per_day]}</b> new a day`,`<b>${c[C.cooldown_days]}</b>-day wait`,c[C.off_streak_live]?`off after <b>${c[C.off_streak_live]}</b> practice losses in a row`:`practice losses never switch off`].map(t=>`<span>${t}</span>`).join("")}
 function val(r,key){const [part,f]=key.split("_",2).length>1&&(key.startsWith("te_")||key.startsWith("tr_"))?[key.slice(0,2),key.slice(3)]:[null,key];
  if(part&&f==="per_day"){const n=r[part][P.days_n];return n?r[part][P.closed]/n:0}
  if(part){const v=r[part][P[f]];return ["profit","worst_day","max_dd","worst_run"].includes(f)?v*k():v}
@@ -329,15 +345,17 @@ function filtered(){const want=state.id.replace(/^#+/,"").trim().toUpperCase();
  f(!!state.tp,state.tp==="any"?"no TP rule":`TP ${TPW[state.tp]} SL`,r=>r.c[C.tp_rule]===state.tp);
  f(state.sl!=="",state.sl==="0"?"no SL cap":`SL capped at ${state.sl}%`,r=>String(r.c[C.max_sl]||0)===state.sl);
  f(!!state.win,`judged on ${state.win} days`,r=>String(r.c[C.window_days])===state.win);
+ f(state.mt!=="",state.mt==="0"?"no TP floor":`TP at least ${state.mt}%`,r=>String(r.c[C.min_tp]||0)===state.mt);
  return {rows:out,names,byId:false}}
 
-const COLS=[["id","rule",1],["on_winrate","on %"],["off_winrate","off %"],["min_trades","trades ≥"],["tp_rule","TP vs SL",1],["max_sl","SL cap"],["lev","lev"],["window_days","days"],["rank","first",1],["max_per_coin","per coin"],["max_new_per_day","new/day"],["cooldown_days","wait"],["off_streak_live","loss stop"],
+const COLS=[["id","rule",1],["on_winrate","on %"],["off_winrate","off %"],["min_trades","trades ≥"],["tp_rule","TP vs SL",1],["max_sl","SL cap"],["min_tp","TP floor"],["lev","lev"],["window_days","days"],["rank","first",1],["max_per_coin","per coin"],["max_new_per_day","new/day"],["cooldown_days","wait"],["off_streak_live","loss stop"],
  ["tr_profit","PROFIT $"],["tr_closed","trades"],["tr_wins","W"],["tr_losses","L"],["tr_winrate","win %"],["tr_worst_run","worst run"],
  ["te_profit","PROFIT $"],["te_closed","trades"],["te_per_day","a day"],["te_wins","W"],["te_losses","L"],["te_winrate","win %"],["te_green_days","green days"],["te_worst_day","worst day"],["te_max_dd","worst dip"],["te_worst_run","worst run"],["te_slots","switched on"],["te_max_open","open at once"]];
 function cell(r,key){const v=val(r,key);
  if(key==="id")return `<td class="l id">#${r.id}${r.id===D.current?'<span class="tag mine">yours</span>':""}${r.id===D.best_train?'<span class="tag top">picked</span>':""}${r.unfair?`<span class="tag unfair" title="${esc(r.unfair)}">not a fair test</span>`:""}</td>`;
- if(key==="tp_rule")return `<td class="l">${v===">"?"wider":v==="<"?"narrower":v==="any"?(ANY_IS?"≥ (any*)":"any"):"≥"}</td>`;
+ if(key==="tp_rule")return `<td class="l">${v===">"?"wider":v==="<"?"narrower":v==="="?"equal":v==="any"?(ANY_IS?"≥ (any*)":"any"):"≥"}</td>`;
  if(key==="max_sl")return `<td>${v?`≤ ${v}%`:"none"}</td>`;
+ if(key==="min_tp")return `<td>${v?`≥ ${v}%`:"none"}</td>`;
  if(key==="lev")return `<td>${v}x</td>`;if(key==="rank")return `<td class="l">${RANK[v]}</td>`;
  if(key==="off_streak_live")return `<td>${v||"—"}</td>`;
  if(key.endsWith("_profit")||key.endsWith("worst_day")||key.endsWith("max_dd"))return `<td class="${key.endsWith("max_dd")?(v>0?"neg":""):v>0?"pos":v<0?"neg":""}">${key.endsWith("max_dd")?(v?money(-v):"—"):money(v)}</td>`;
@@ -428,10 +446,12 @@ function tradeLog(r){if(r.lf){setTimeout(()=>fileLog(r,1),0);return '<div id="lo
 
 const num=v=>{const t=String(v).trim();if(t==="")return null;const n=Number(t);return Number.isFinite(n)?n:null};
 for(const [id,key] of [["f-base","base"],["f-te","te"],["f-tr","tr"],["f-wr","wr"],["f-dd","dd"],["f-gd","gd"]])$(id).addEventListener("input",e=>{state[key]=num(e.target.value);if(key==="base"&&!(state.base>0))state.base=D.base;state.shown=200;render()});
-for(const [id,key] of [["f-on","on"],["f-tp","tp"],["f-sl","sl"],["f-win","win"]])$(id).addEventListener("change",e=>{state[key]=e.target.value;state.shown=200;render()});
+for(const v of [...new Set(D.rows.map(r=>r.c[C.max_sl]||0))].sort((a,b)=>a-b))$("f-sl").insertAdjacentHTML("beforeend",`<option value="${v}">${v?`capped at ${v}%`:"no cap"}</option>`);
+for(const v of [...new Set(D.rows.map(r=>r.c[C.min_tp]||0))].sort((a,b)=>a-b))$("f-mt").insertAdjacentHTML("beforeend",`<option value="${v}">${v?`at least ${v}%`:"no floor"}</option>`);
+for(const [id,key] of [["f-on","on"],["f-tp","tp"],["f-sl","sl"],["f-mt","mt"],["f-win","win"]])$(id).addEventListener("change",e=>{state[key]=e.target.value;state.shown=200;render()});
 $("f-id").addEventListener("input",e=>{state.id=e.target.value;render()});
 $("more").onclick=()=>{state.shown+=200;render()};
-$("clear").onclick=()=>{for(const id of ["f-te","f-tr","f-wr","f-dd","f-gd","f-on","f-tp","f-sl","f-win","f-id"])$(id).value="";Object.assign(state,{te:null,tr:null,wr:null,dd:null,gd:null,on:"",tp:"",sl:"",win:"",id:"",shown:200});render()};
+$("clear").onclick=()=>{for(const id of ["f-te","f-tr","f-wr","f-dd","f-gd","f-on","f-tp","f-sl","f-mt","f-win","f-id"])$(id).value="";Object.assign(state,{te:null,tr:null,wr:null,dd:null,gd:null,on:"",tp:"",sl:"",mt:"",win:"",id:"",shown:200});render()};
 for(const v of [...new Set(D.rows.map(r=>r.c[C.on_winrate]))].sort((a,b)=>a-b))$("f-on").insertAdjacentHTML("beforeend",`<option value="${v}">${v}%</option>`);
 for(const v of [...new Set(D.rows.map(r=>r.c[C.window_days]))].sort((a,b)=>a-b))$("f-win").insertAdjacentHTML("beforeend",`<option value="${v}">${v} days</option>`);
 addEventListener("resize",()=>{clearTimeout(window.__rz);window.__rz=setTimeout(render,120)});

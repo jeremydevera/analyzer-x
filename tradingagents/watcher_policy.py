@@ -28,7 +28,19 @@ DEFAULTS = {"on_winrate": 90.0, "off_winrate": 90.0, "min_trades": 20,
             # alone — win rate, trades, TP vs SL, the SL cap — and nothing
             # the watcher added (profit floor, stored cost check, limits,
             # waits). Off for the replay/research, which measured the rest.
-            "raw": False}
+            "raw": False,
+            # THE SMALLEST TARGET (Oct 01, 2026: "currently i think you are
+            # avoiding ... tp that is very high but low trade"): a row whose
+            # TP is under this percent is never switched on; 0 = no floor
+            "min_tp": 0.0}
+
+# "=" (Oct 01, 2026): the target EQUAL to the stop. Percents are stored to
+# three places (backtest_report rounds them), so equal is equal to 1e-6.
+TP_RULES = (">", ">=", "=", "<", "any")
+
+
+def tp_equal(tp: float, sl: float) -> bool:
+    return abs(float(tp) - float(sl)) < 1e-6
 
 
 def break_even(win_usd: float, loss_usd: float) -> float:
@@ -46,6 +58,11 @@ def passes_on(row: dict, cfg: dict) -> str:
     # greater than tp") — it only pays at a high win rate
     if cfg["tp_rule"] == "<" and not tp < sl:
         return f"TP {tp:g}% is not narrower than SL {sl:g}%"
+    if cfg["tp_rule"] == "=" and not tp_equal(tp, sl):
+        return f"TP {tp:g}% is not equal to SL {sl:g}%"
+    floor = float(cfg.get("min_tp") or 0)
+    if floor > 0 and tp < floor - 1e-9:
+        return f"TP {tp:g}% is under {floor:g}%"
     cap = float(cfg.get("max_sl") or 0)
     if cap > 0 and sl > cap:
         return f"SL {sl:g}% is wider than {cap:g}%"

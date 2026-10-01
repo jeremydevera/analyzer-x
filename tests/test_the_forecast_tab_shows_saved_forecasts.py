@@ -90,10 +90,16 @@ def test_the_tab_offers_every_prompt_from_the_one_document():
     # than tp or avoiding tp that is very high but low trade"): every shape is in
     # the grid, and the data is re-collected loose enough to test them fairly
     p3 = got[2]["text"]
-    assert "stop wider than target" in p3 and "1, 3, 5, 10, 20, 30 and 50" in p3
-    assert "smallest target allowed: none, 1%, 2%, 3%" in p3
-    assert "win rate 40, trades 1, target vs stop \"any\"" in p3
+    assert "1, 3, 5, 10, 20, 30 and 50" in p3 and "smallest target allowed: none, 1%, 2%, 3%" in p3
     assert "Pick on July–August, grade on September" in p3
+    # COPY AND RUN (Oct 01, 2026: "i want it ready then"): the commands are
+    # the real ones, and the grid and write rule they name are the code's
+    from tradingagents import watcher_research as rs
+    assert f'write_rule="{rs.SCENARIOS6_WRITE}"' in p3
+    assert "-f scenarios=6 -f chunks=4" in p3
+    assert "python -m tradingagents.research_merge s6" in p3
+    assert "python -m tradingagents.research_page s6 --split --log-top 100" in p3
+    assert f"{len(rs.scenarios6()):,} rule sets" in p3
 
 
 def test_the_route_serves_the_file_and_the_prompts(tmp_path, monkeypatch):

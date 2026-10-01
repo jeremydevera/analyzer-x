@@ -29,8 +29,10 @@ tests/test_watcher_research.py against `simulate` computing them itself.
 """
 from __future__ import annotations
 
+import bisect
 import datetime as dt
 import hashlib
+import heapq
 import itertools
 import json
 import os
@@ -105,7 +107,12 @@ def grid() -> list[dict]:
 
 def rule_id(cfg: dict) -> str:
     """A stable short id for a rule set, hashed from its values (kit H)."""
-    key = json.dumps({k: cfg[k] for k in sorted(CURRENT)}, sort_keys=True)
+    vals = {k: cfg[k] for k in sorted(CURRENT)}
+    # the smallest target (Oct 01, 2026) joins the id only when it is set, so
+    # every id made before it — #55D32617 and the other room names — is unchanged
+    if float(cfg.get("min_tp") or 0) > 0:
+        vals["min_tp"] = float(cfg["min_tp"])
+    key = json.dumps(vals, sort_keys=True)
     return hashlib.sha1(key.encode()).hexdigest()[:8].upper()
 
 
@@ -114,13 +121,17 @@ def loose(grid_: list[dict]) -> dict:
     could ever be a candidate passes it."""
     rules = {c["tp_rule"] for c in grid_}
     caps = [float(c.get("max_sl") or 0) for c in grid_]
+    # the narrowest rule whose shapes cover every rule in the grid
+    # (research_page.SHAPES): "<" with anything else, or "any", is no rule
+    tp = (">" if rules <= {">"} else "=" if rules == {"="} else "<" if rules == {"<"}
+          else ">=" if rules <= {">", ">=", "="} else "any")
     return {**wp.DEFAULTS, "on_winrate": min(c["on_winrate"] for c in grid_),
             "min_trades": min(c["min_trades"] for c in grid_),
-            # "<" and ">" together (or "any") can only be served by no rule
-            "tp_rule": ("any" if "any" in rules or ("<" in rules and len(rules) > 1)
-                        else "<" if rules == {"<"} else ">=" if ">=" in rules else ">"),
+            "tp_rule": tp,
             # 0 = no cap: the loosest cap is none at all if any set has none
             "max_sl": 0.0 if min(caps) <= 0 else max(caps),
+            # and the loosest target floor is the lowest one
+            "min_tp": min(float(c.get("min_tp") or 0) for c in grid_),
             "raw": any(c.get("raw") for c in grid_)}
 
 
@@ -372,12 +383,21 @@ def compact_rows(books: dict, checks: list[int], window_ms: int, lo: dict) -> di
 
 
 def _tp_ok(tp, sl, rule):
-    """`passes_on`'s TP rule over arrays: ">" wider, ">=" at least, "any" none."""
+    """`passes_on`'s TP rule over arrays: ">" wider, ">=" at least, "=" equal,
+    "<" narrower, "any" none."""
     if rule == "any":
         return np.ones(np.shape(tp), bool)
     if rule == "<":
         return tp < sl
+    if rule == "=":
+        return np.abs(np.asarray(tp) - np.asarray(sl)) < 1e-6
     return tp > sl if rule == ">" else tp >= sl
+
+
+def _min_tp_ok(tp, floor):
+    """`passes_on`'s smallest target over arrays; 0 or None is no floor."""
+    floor = float(floor or 0)
+    return np.ones(np.shape(tp), bool) if floor <= 0 else np.asarray(tp) >= floor - 1e-9
 
 
 def _sl_ok(sl, cap):
@@ -526,17 +546,39 @@ def count_grid(books: list, checks: list[int], window_ms: int) -> tuple:
     return N, W
 
 
+_TPSL: dict = {}
+
+
+def _tp_sl(books: list) -> tuple:
+    """(tp, sl) arrays for a book list, made once per list (a grid of rule
+    sets asks for the same list thousands of times)."""
+    key = (id(books), len(books))
+    hit = _TPSL.get(key)
+    if hit is None or hit[0] is not books:
+        hit = (books, np.array([float(b.c["tp"]) for b in books]),
+               np.array([float(b.c["sl"]) for b in books]))
+        _TPSL.clear()
+        _TPSL[key] = hit
+    return hit[1], hit[2]
+
+
 def raw_fast(books: list, grid: tuple, checks: list[int], cfg: dict, end_ms: int) -> dict:
     """simulate() for a RAW rule set, from the (N, W) grid of count_grid."""
     from tradingagents import watcher_replay as wr_
 
     c = {**wp.DEFAULTS, **cfg}
     N, W = grid
+    tp, sl = _tp_sl(books)
+    # ONLY THE ROWS THIS RULE SET CAN EVER PICK (Oct 01, 2026): the target
+    # shape, the stop cap and the target floor never change over time, so the
+    # rest are dropped before the walk — a rule set's cost follows ITS rows,
+    # and a grid of thousands of rule sets fits a GitHub machine's six hours.
+    keep = np.nonzero(_tp_ok(tp, sl, c["tp_rule"]) & _sl_ok(sl, c.get("max_sl"))
+                      & _min_tp_ok(tp, c.get("min_tp")))[0]
+    books = [books[i] for i in keep]
+    N, W = N[:, keep], W[:, keep]
     rate = np.round(100.0 * W / np.maximum(N, 1), 2)
-    tp = np.array([float(b.c["tp"]) for b in books])
-    sl = np.array([float(b.c["sl"]) for b in books])
-    static = _tp_ok(tp, sl, c["tp_rule"]) & _sl_ok(sl, c.get("max_sl"))
-    passon = (N >= int(c["min_trades"])) & (N > 0) & (rate >= float(c["on_winrate"])) & static
+    passon = (N >= int(c["min_trades"])) & (N > 0) & (rate >= float(c["on_winrate"]))
     off = (N == 0) | (rate < float(c["off_winrate"]))
     on = np.zeros(len(books), dtype=bool)
     open_slot = np.full(len(books), -1, dtype=np.int64)
@@ -572,6 +614,182 @@ def raw_fast(books: list, grid: tuple, checks: list[int], cfg: dict, end_ms: int
         wr_._totals(s_)
     return {"days": wr_._days(out, [], checks, end_ms), "slots": out, "events": [],
             "summary": wr_._summary(out, checks, end_ms)}
+
+
+# ---------------------------------------------------------- raw, as arrays
+# THE GRID OF EVERY SHAPE (Oct 01, 2026: "look for best posible room
+# combination ... different winrate, tp sl, number of trades criteria ...
+# currently i think you are avoiding sl is greater than tp or avoiding tp that
+# is very high but low trade"). Thousands of rule sets, each switching on up to
+# hundreds of thousands of strategies on a loose rule: raw_fast spent 38 s of
+# one such rule on Python per switch-on and per trade (cProfile: 14.4 s in
+# cap_per_coin over 3.6M trades, 7.6 s unpacking 325,904 slots). raw_trades
+# is the same answer as arrays - held equal to raw_fast by a test - and only
+# what the GitHub shard needs: every kept trade, its strategy, and the counts.
+
+SPAN = 1 << 31            # every int32 entry second fits below one book's span
+
+
+class Flat:
+    """Every book's trades in one set of arrays, each book's run sorted by
+    entry (stably, so equal entries keep their order), plus the per-book coin
+    and id rank the per-coin limit and the pick order need. Built once per
+    book list."""
+
+    def __init__(self, books: list):
+        lens = np.fromiter((len(b.c.pk[0]) if isinstance(b.c, _PackedMeta) else len(b.c["trades"])
+                            for b in books), dtype=np.int64, count=len(books))
+        self.off = np.concatenate([[0], np.cumsum(lens)]).astype(np.int64)
+        n = int(self.off[-1])
+        self.ent = np.empty(n, np.int32)
+        self.ext = np.empty(n, np.int32)
+        self.pnl = np.empty(n, np.float32)
+        self.closed = np.empty(n, bool)
+        for i, b in enumerate(books):
+            pk = b.c.pk if isinstance(b.c, _PackedMeta) else _pack(b.c["trades"])
+            o = np.argsort(pk[0], kind="stable")
+            a, z = self.off[i], self.off[i + 1]
+            self.ent[a:z], self.ext[a:z] = pk[0][o], pk[1][o]
+            self.pnl[a:z], self.closed[a:z] = pk[2][o], pk[3][o]
+        coins = [b.c["coin"] for b in books]
+        uniq = {c: k for k, c in enumerate(sorted(set(coins)))}
+        self.coin = np.fromiter((uniq[c] for c in coins), dtype=np.int32, count=len(books))
+        ids = [b.c["id"] for b in books]
+        rank = np.empty(len(ids), np.int64)
+        rank[np.argsort(np.array(ids, dtype=object), kind="stable")] = np.arange(len(ids))
+        self.id_rank = rank
+        # one sorted key over every trade, (book, entry), so each switch-on's
+        # trades are found by ONE vectorised search, not a loop per slot
+        self.key = np.repeat(np.arange(len(books), dtype=np.int64), lens) * SPAN + self.ent
+
+
+def _starts(N: np.ndarray, W: np.ndarray, checks: list, c: dict, ids_rank: np.ndarray):
+    """Every switch-on of raw_fast's walk, in its order: (book, on_ms, off_ms
+    or -1). The same state machine - a check first switches off what fell
+    under the off line, then switches on what passes - with the pick order
+    (best win rate, most trades, id) as one sort key."""
+    rate = np.round(100.0 * W / np.maximum(N, 1), 2)
+    passon = (N >= int(c["min_trades"])) & (N > 0) & (rate >= float(c["on_winrate"]))
+    off = (N == 0) | (rate < float(c["off_winrate"]))
+    nb = N.shape[1]
+    on = np.zeros(nb, bool)
+    cur = np.full(nb, -1, np.int64)
+    book, on_ms, k_of, r_of, n_of = [], [], [], [], []
+    count = 0
+    stop_slot, stop_at = [], []
+    for k, at in enumerate(checks):
+        stop = on & off[k]
+        if stop.any():
+            stop_slot.append(cur[stop])
+            stop_at.append(np.full(int(stop.sum()), int(at), np.int64))
+        on &= ~stop
+        start = np.nonzero(~on & passon[k])[0]
+        if len(start):
+            book.append(start)
+            on_ms.append(np.full(len(start), int(at), np.int64))
+            k_of.append(np.full(len(start), k, np.int64))
+            r_of.append(rate[k, start])
+            n_of.append(N[k, start].astype(np.int64))
+            cur[start] = np.arange(count, count + len(start))
+            count += len(start)
+            on[start] = True
+    if not count:
+        z = np.zeros(0, np.int64)
+        return z, z, z
+    book = np.concatenate(book)
+    k_of, r_of, n_of = np.concatenate(k_of), np.concatenate(r_of), np.concatenate(n_of)
+    on_ms = np.concatenate(on_ms)
+    off_ms = np.full(count, -1, np.int64)
+    if stop_slot:                     # a slot is switched off at most once
+        off_ms[np.concatenate(stop_slot)] = np.concatenate(stop_at)
+    order = np.lexsort((ids_rank[book], -n_of, -r_of, k_of))
+    return book[order], on_ms[order], off_ms[order]
+
+
+def _cap(coin: np.ndarray, ent: np.ndarray, ext: np.ndarray, closed: np.ndarray,
+         slot: np.ndarray, n: int) -> np.ndarray:
+    """cap_per_coin over arrays: which candidate trades the runner's `n` open
+    per coin lets through - first come, first served by entry, a tie going to
+    the slot switched on first; a trade still open is open for ever. A coin
+    whose candidates never overlap more than `n` deep keeps all of them
+    without walking it."""
+    keep = np.ones(len(ent), bool)
+    if not len(ent):
+        return keep
+    o = np.lexsort((slot, ent, coin))
+    c_s, e_s = coin[o], ent[o].astype(np.int64)
+    x_s = np.where(closed[o], ext[o].astype(np.int64), np.iinfo(np.int64).max)
+    bounds = np.flatnonzero(np.diff(c_s)) + 1
+    for a, z in zip(np.r_[0, bounds], np.r_[bounds, len(o)]):
+        if z - a <= n:
+            continue
+        # the deepest overlap if every candidate were taken: an exit at the
+        # very moment of an entry is no longer open (x > entry), so exits
+        # sort before entries at a tie
+        ev_t = np.concatenate([e_s[a:z], x_s[a:z]])
+        ev_d = np.concatenate([np.ones(z - a, np.int64), -np.ones(z - a, np.int64)])
+        oo = np.lexsort((ev_d, ev_t))
+        if np.cumsum(ev_d[oo]).max() <= n:
+            continue
+        # FULL MEANS EVERYTHING UNTIL THE FIRST CLOSE IS REFUSED: with `n`
+        # open, every candidate entering before the earliest of their exits is
+        # turned away, so that whole run is skipped in one step (the loop
+        # walked 3.6M refused trades one by one on a loose rule: 13.6 s)
+        es, xs = e_s[a:z].tolist(), x_s[a:z].tolist()
+        heap: list = []
+        j, m = 0, z - a
+        while j < m:
+            e = es[j]
+            while heap and heap[0] <= e:      # closed by now (open means x > e)
+                heapq.heappop(heap)
+            if len(heap) >= n:
+                nxt = bisect.bisect_left(es, heap[0], j)
+                keep[o[a + j:a + nxt]] = False
+                j = nxt
+                continue
+            heapq.heappush(heap, xs[j])
+            j += 1
+    return keep
+
+
+def raw_trades(books: list, flat: "Flat", grid: tuple, checks: list[int], cfg: dict,
+               end_ms: int) -> dict:
+    """raw_fast's answer as arrays: {"book", "ent", "ext", "pnl", "closed"}
+    for every trade the rule set keeps (ms, after the per-coin limit), plus
+    "slots" and "open" as raw_fast's summary counts them."""
+    c = {**wp.DEFAULTS, **cfg}
+    N, W = grid
+    tp, sl = _tp_sl(books)
+    keep = np.nonzero(_tp_ok(tp, sl, c["tp_rule"]) & _sl_ok(sl, c.get("max_sl"))
+                      & _min_tp_ok(tp, c.get("min_tp")))[0]
+    b_sub, on_ms, off_ms = _starts(N[:, keep], W[:, keep], checks, c, flat.id_rank[keep])
+    book = keep[b_sub]
+    empty = {"book": np.zeros(0, np.int64), "ent": np.zeros(0, np.int64),
+             "ext": np.zeros(0, np.int64), "pnl": np.zeros(0), "closed": np.zeros(0, bool),
+             "slots": int(len(book)), "open": 0}
+    if not len(book):
+        return empty
+    # each slot's trades: its book's run, entries in [on, off) — one search
+    # over the (book, entry) key; a slot never switched off runs to the end
+    # of its book's span
+    base = book.astype(np.int64) * SPAN
+    lo = np.searchsorted(flat.key, base + (on_ms // 1000 - T0), "left")
+    hi = np.searchsorted(flat.key, base + np.where(off_ms < 0, SPAN, off_ms // 1000 - T0), "left")
+    cnt = hi - lo
+    tot = int(cnt.sum())
+    if not tot:
+        return {**empty, "slots": int(len(book))}
+    slot_of = np.repeat(np.arange(len(book)), cnt)
+    idx = np.arange(tot) - np.repeat(np.cumsum(cnt) - cnt, cnt) + np.repeat(lo, cnt)
+    n = int(c.get("coin_slices") or 0)
+    ok = (_cap(flat.coin[book][slot_of], flat.ent[idx], flat.ext[idx], flat.closed[idx],
+               slot_of, n) if n > 0 else np.ones(tot, bool))
+    sel = idx[ok]
+    return {"book": book[slot_of[ok]],
+            "ent": (flat.ent[sel].astype(np.int64) + T0) * 1000,
+            "ext": (flat.ext[sel].astype(np.int64) + T0) * 1000,
+            "pnl": flat.pnl[sel].astype(np.float64), "closed": flat.closed[sel],
+            "slots": int(len(book)), "open": int((~flat.closed[sel]).sum())}
 
 
 # ROUND THREE — RAW (operator, Sep 30, 2026: "can you create a strategy
@@ -640,6 +858,42 @@ def scenarios5() -> list[dict]:
     assert len(out) == 144
     assert any(all(c[k] == v for k, v in {**CURRENT, **RAW}.items()) for c in out)
     return out
+
+
+# ROUND SIX — EVERY SHAPE (operator, Oct 01, 2026: "look for best posible
+# room combination ... different winrate, tp sl, number of trades criteria?
+# because currently i think you are avoiding sl is greater than tp or avoiding
+# tp that is very high but low trade"). 3 windows x 6 lines x 7 trade floors x
+# 4 target shapes x 4 stop caps x 4 target floors = 8,064, raw, the runner's
+# 4 per coin. Its data must be written no stricter than its loosest rule
+# (SCENARIOS6_WRITE) or the looser sets lean on hindsight (RCA-2026-09-29-F).
+SCENARIOS6 = {"window_days": [7, 15, 30],
+              "on_winrate": [40.0, 50.0, 60.0, 70.0, 80.0, 90.0],
+              "min_trades": [1, 3, 5, 10, 20, 30, 50],
+              "tp_rule": ["any", ">", "=", "<"],
+              "max_sl": [0.0, 1.0, 2.0, 3.0],
+              "min_tp": [0.0, 1.0, 2.0, 3.0]}
+SCENARIOS6_WRITE = "wr=40,trades=1,tp=any,windows=7|15|30"
+
+
+def scenarios6() -> list[dict]:
+    out = [{**CURRENT, **RAW, "window_days": wd, "on_winrate": on, "off_winrate": on,
+            "min_trades": mt, "tp_rule": tr, "max_sl": cap, "min_tp": ft}
+           for wd in SCENARIOS6["window_days"] for on in SCENARIOS6["on_winrate"]
+           for mt in SCENARIOS6["min_trades"] for tr in SCENARIOS6["tp_rule"]
+           for cap in SCENARIOS6["max_sl"] for ft in SCENARIOS6["min_tp"]]
+    assert len(out) == 8064
+    return out
+
+
+def chunk_of(grid_: list, chunk: int, chunks: int) -> list:
+    """Rule sets `chunk` of `chunks` (0-based), DEALT like cards — every
+    `chunks`-th rule set — so each slice gets the same mix of loose and strict
+    rules. Consecutive runs put grid 6's loosest (40%, 1 trade, measured ~2 s
+    each against a 0.59 s average) all in the first slice. Rule set j of slice
+    c is grid rule j * chunks + c; the merge puts them back in grid order."""
+    k = max(1, int(chunks))
+    return grid_[int(chunk)::k]
 
 
 SCENARIOS_TEXT = {"on_winrate": SCENARIOS["on_winrate"],

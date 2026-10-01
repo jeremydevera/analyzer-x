@@ -19,8 +19,11 @@ on:
         description: "The whole run's common end (epoch ms)"
         required: true
       scenarios:
-        description: "Which rule-set grid: 5 = 144 raw (15|30 days x 50-90% x 10-50 trades x SL cap)"
+        description: "Which rule-set grid: 5 = 144 raw (15|30 days x 50-90% x 10-50 trades x SL cap); 6 = 8,064, every shape (needs replay write wr=40,trades=1,tp=any,windows=7|15|30)"
         default: "5"
+      chunks:
+        description: "Split the grid into this many slices, one job each per shard, so no job passes six hours (grid 6: 8)"
+        default: "1"
 
 permissions:
   contents: read
@@ -31,12 +34,15 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       shards: ${{ steps.mk.outputs.shards }}
+      chunks: ${{ steps.mk.outputs.chunks }}
     steps:
       - id: mk
         run: |
           python3 -c "import json,os;print('shards='+json.dumps(list(range(int(os.environ['N'])))))" >> "$GITHUB_OUTPUT"
+          python3 -c "import json,os;print('chunks='+json.dumps(list(range(max(1,int(os.environ['C']))))))" >> "$GITHUB_OUTPUT"
         env:
           N: ${{ github.event.inputs.shards }}
+          C: ${{ github.event.inputs.chunks }}
 
   research:
     needs: plan
@@ -46,6 +52,7 @@ jobs:
       fail-fast: false
       matrix:
         shard: ${{ fromJson(needs.plan.outputs.shards) }}
+        chunk: ${{ fromJson(needs.plan.outputs.chunks) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -66,10 +73,12 @@ jobs:
           run-id: ${{ github.event.inputs.source_run }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Research shard ${{ matrix.shard }}
+      - name: Research shard ${{ matrix.shard }}, slice ${{ matrix.chunk }}
         env:
           SRC: src
           SHARD: ${{ matrix.shard }}
+          CHUNK: ${{ matrix.chunk }}
+          CHUNKS: ${{ github.event.inputs.chunks }}
           END_MS: ${{ github.event.inputs.end_ms }}
           SCEN: ${{ github.event.inputs.scenarios }}
           # the checks are the OPERATOR's midnights, as the replay's were
@@ -78,7 +87,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: research-${{ matrix.shard }}
+          name: research-${{ matrix.shard }}-${{ matrix.chunk }}
           path: |
             out/research-*.npz
             out/research-*.json

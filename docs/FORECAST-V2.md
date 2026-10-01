@@ -1,0 +1,507 @@
+# Forecast v2
+
+*Auto Trade → Forecast v2 (`/forecast-v2`), built Oct 01, 2026. The first
+Forecast page (`/forecast`, room cards and saved forecasts) is unchanged.*
+
+## What the operator asked for
+
+In their words, in the order they arrived (docs/OPERATOR-ASKS.md):
+
+> when i say forecast, i mean you should be predicting what's the best
+> combination of criteria to be using for deployed rooms, based on overall
+> backtest results
+
+> i want prediction like for example, you are seeing a coin is winning 9
+> streak then inform me that specific coin i want it in a Streak section /
+> then predict what combination of room will be effective, for example: 90%
+> winrate with 40trade, tp is greater than SL will have profit of x this month
+
+> okay run that prompt and create Forecast v2, use harddev skill and make
+> sure to document this
+
+The prompt itself grew over three rounds of "what else do you suggest" and is
+kept below, word for word, as **The build prompt**.
+
+## What the page shows
+
+| section | what it answers | where the numbers come from |
+|---|---|---|
+| A. Streaks | which coins are on a run of wins (or losses) right now, and what happened after past runs that long | practice: each room's trade record; backtest: every strategy in the newest replay |
+| B. Coins to avoid | which coins lose in every room | practice, all rooms together; the same strategies' backtest beside it |
+| C. Where the money goes | costs, win size against loss size, timeframe, signal family, stocks or crypto, the hour a trade opened, fast stop-outs, the worst day, one coin in many rooms | practice beside the rooms' own rules replayed |
+| D. Best room rules this month | which rule set should make the most this month, both as the backtest says it and after the reality check | the forecast research on GitHub, walked forward month by month |
+| E. Daily summary | one bell message a day | the daily chain |
+
+Everything is a NOTE. Nothing on this page switches a room on or off, changes
+a watcher rule or touches real money.
+
+## How it works
+
+```
+ ┌──────────────────────────────────────────────────────────────┐
+ │ 1. PRACTICE HALF (live, every 30 s, in its own API thread)    │
+ │    tradingagents/forecast_v2.py  live()                      │
+ │    each room: trade record · open trades · watcher_slots ·    │
+ │    deployments.jsonl · rolling30's rebuilt backtest trades    │
+ └──────────────────────────────┬───────────────────────────────┘
+                                ▼
+ ┌──────────────────────────────────────────────────────────────┐
+ │ 2. DAILY CHAIN (forecast_v2_daily.tick, its own API thread)   │
+ │    due once the day's GitHub backtest update is on this PC    │
+ │    (the same test as the first Forecast's automatic one)      │
+ └──────────────────────────────┬───────────────────────────────┘
+                                ▼
+ ┌──────────────────────────────────────────────────────────────┐
+ │ 3. REPLAY on GitHub (replay.yml, 20 machines, ~1 hour)        │
+ │    every strategy that could pass the loosest rule set:       │
+ │    wr=70, trades=20, tp=any, windows 15|30, from the 1st of   │
+ │    the month three months back · each machine also uploads    │
+ │    replay-report-<N> (a few KB) so this PC finds the end      │
+ └──────────────────────────────┬───────────────────────────────┘
+                                ▼
+ ┌──────────────────────────────────────────────────────────────┐
+ │ 4. FORECAST base (forecast.yml → forecast_shard.py)           │
+ │    576 base rule sets + the rooms' own rules, 100 random      │
+ │    picks each, every strategy's streak at the end, the rooms' │
+ │    rules split "where the money goes" · measured 260-639 s    │
+ │    a machine, ~15 min a run                                   │
+ └──────────────────────────────┬───────────────────────────────┘
+                                ▼
+ ┌──────────────────────────────────────────────────────────────┐
+ │ 5. MERGE base (its OWN PROCESS: forecast_v2_merge) → pick the │
+ │    20 best base sets + the rooms' rules                       │
+ └──────────────────────────────┬───────────────────────────────┘
+                                ▼
+ ┌──────────────────────────────────────────────────────────────┐
+ │ 6. FORECAST options: 22 options, ONE AT A TIME, on those sets │
+ └──────────────────────────────┬───────────────────────────────┘
+                                ▼
+ ┌──────────────────────────────────────────────────────────────┐
+ │ 7. MERGE all → ~/.tradingagents/forecast_v2/latest.json,      │
+ │    streaks.npz, predictions.jsonl (the month's FIRST one)     │
+ │    → ONE bell message                                         │
+ └──────────────────────────────────────────────────────────────┘
+
+ IF ANYTHING FAILS: the step is named in state.json and on the page
+ ("the base step failed at Oct 02, 2026 3:10pm — tried again after 30
+ minutes: …") and tried again after RETRY_S. GitHub is asked at most every
+ POLL_S. A failed practice refresh keeps serving the last good copy and
+ says so. Nothing runs under pytest against the real files.
+```
+
+The page answers in well under 2 seconds from the copy and the saved files;
+no request ever replays a trade.
+
+## The definitions (one place: `tradingagents/forecast_v2.py`)
+
+* **a win** = profit after all costs > 0. A $0.00 trade is a loss.
+* **a winning streak** = wins in a row ending with the most recent closed
+  trade; **a losing streak** the opposite. Practice: per room and coin (every
+  strategy of that coin in that room, by exit time). Backtest: per stored
+  combination (coin + timeframe + signal + TP + SL, with its #ID).
+* **what followed** a streak of length k: across every strategy in the
+  replay, every time a run reached k or more, how often the next trade won and
+  what the next 10 trades made. Under 30 past cases the page says "not enough
+  past streaks to tell".
+* **break-even win rate** of a strategy = (SL + cost) / (TP + SL), in percent
+  of the trade's size (a win pays TP less the cost, a loss costs SL plus the
+  cost). Of a rule set: average loss / (average win + average loss) over its
+  own trades.
+* **a coin to avoid** = lost money over at least 5 practice trades, all rooms
+  together.
+* **a finding resting on fewer than 30 trades** is marked "too few trades to
+  mean anything".
+
+### The reality check
+
+The same rows over the same hours. For every stretch a row was switched on in
+a room (deployments.jsonl, `watcher_slots`), up to the end of its rebuilt
+backtest (rolling30's cache), the backtest's trades that OPENED in it against
+the practice trades that opened in it. The backtest side keeps the runner's
+own 4 open trades per coin, first come, first served — exactly
+`watcher_replay.cap_per_coin`, the rule the research applies too.
+
+Two numbers come out:
+
+* **took** — of the trades the backtest made, the share practice also made;
+* **gap** — on the trades it did make, how much less practice made per trade
+  than the backtest's average per trade.
+
+A prediction of P over T trades becomes **took × (P − gap × T)**. It is exact
+on the window it was measured on: each room's own backtest numbers there come
+back as its practice result (#4FC03172: backtest +234.52 over 2,259 trades →
+−7.87, its practice −7.87).
+
+Measured Oct 01, 2026 6:10pm over 6,178 rows: practice took **803 of 4,463**
+backtest trades (**18.0%**) and made **0.22 less** on each (backtest +0.03 a
+trade, practice −0.19). So the September research's +4,967.44 for
+#4FC03172's rules becomes about **+279** — and the room's own practice was
+−172.73 by then.
+
+### Beat random
+
+For every rule set, 100 draws in which each switched-on strategy is swapped
+for a random strategy of the same shape that was trading at the same check,
+over the same on/off stretch. Compared **per trade, never in total**: the
+random picks are not held to the runner's per-coin limit or the loss limit,
+so they make more trades, and against a losing market more trades is a
+bigger total loss — on 20,000 strategies of shard 0 the totals said three
+rule sets beat random 100, 97 and 92 times in 100 when per trade they lost
+to it (−0.234 against −0.143). Under 80 in 100 the page says "could be luck".
+
+### The prediction for this month
+
+Each rule set is walked forward day by day with `watcher_research.raw_fast`
+(the rooms' raw rules): at each local midnight a strategy is switched on only
+from the trades that closed before it. Its month is what its switched-on
+strategies made in that month after fees, spread and funding, at $5 × 20x.
+
+* **this month** = the typical complete past month (median), with the range
+  (worst and best month), how many months it rests on, and the same after the
+  reality check. Under 3 past months it is labelled "thin".
+* A month is complete when the data reaches its last day.
+* Ranked by the **worst past month after the reality check**, then the
+  typical one (the still-working rule) — never by the best.
+* **Money needed** = the most trades open at once × $5.
+
+### The rule sets (`tradingagents/forecast_rules.py`)
+
+* **Base grid**, every combination: judged on 15 or 30 days × switch on/off
+  at 70, 75, 80, 85, 90 or 95% × 20, 30, 40 or 50 trades × TP wider than SL,
+  at least 1.5× SL, at least 2× SL, or any × stop 1%, 1.5% or 2% or tighter
+  = **576**.
+* **Options**, each tested one at a time on the 20 best base sets and the
+  rooms' own rules: the coins to avoid skipped · Japanese stocks skipped ·
+  stocks only while their own market is open · cost at most 5, 10 or 15% of
+  the target · one timeframe only (each in turn) · the 5 worst signal families
+  skipped · crypto only · stocks only · no new trades from 9am to noon New
+  York · no new trades that day after losing 10, 20 or 40 (the account loss
+  cap's own rule, realized only) · no stop smaller than the coin's normal
+  15-minute move (its median 15-minute high−low over 30 days) · at most 1, 2
+  or 3 trades per coin.
+* **Ids** are hashed from the rule set's own values (`forecast_rules.rule_id`),
+  e.g. #11823416, so "deploy #11823416" names one exact rule set.
+* **Can a room run it today?** Only base sets with TP wider than SL or any:
+  the watcher has no 1.5× or 2× rule, and no option is a switch a room has
+  (`forecast_rules.deployable`).
+
+## Data limits, said out loud
+
+* The replay settles every exit by the **bar rule** (MEXC sells about 30 days
+  of 1-minute candles, so July and August cannot be settled minute by minute).
+* The first data (replay 36763426504) holds only strategies with **TP wider
+  than SL**, so "any TP" there is the same as "TP wider than SL" — the page
+  says so. The daily chain's replays write every shape (`tp=any`).
+* The replay only writes strategies whose cost is **under 20% of the
+  target** (its own gate), so the cost options are 5, 10 and 15%.
+* **Rooms per coin** is about running several rooms at once; a rule set is
+  one room, so it is shown as section C's overlap warning instead.
+* Market hours: holidays are not taken out; lunch breaks count as open.
+* The reality check covers only rows switched on before their rebuilt
+  backtest ends — on Oct 01, 2026, #4FC03172, #CC94D9FB, Main and the three
+  retired rooms; the three 15-day rooms join after the next daily update.
+
+## First results (Oct 01, 2026)
+
+* Replay 36763426504: **4,585,414 strategies, 731,552,633 trades**, Jul 01 to
+  Sep 30, 2026 12:00pm. Base run 36936689969: 576 rule sets, all 20 machines
+  green; merged in 86-128 s; 189 MB downloaded in 28 s.
+* Best: **#11823416** "70% wins, 50+ trades in 30 days, TP at least 1.5x SL,
+  stop 1% or tighter" — Jul +351.12, Aug +1,193.16, Sep +3,305.21 in the
+  backtest; about **+68.43 a month after the reality check** (+43.59 to
+  +258.45); beat random 100 in 100; won 66.18% against a 47.8% break-even;
+  needs $265.
+* #4FC03172's own rules (#562C0147) rank 490 of 576: about −6.04 a month
+  after the reality check.
+* Streaks: **689,474** strategies on a run of 5+ (33,050 winning, 656,424
+  losing). VUG 15m prank won 25 in a row to Sep 30 (switched on in
+  #4FC03172, #6B08FF64 and #CC94D9FB); after runs that long the next trade
+  won 89.2% of 6,382 times. LUNRSTOCK lost 102 in a row.
+
+## Files
+
+| file | what |
+|---|---|
+| `tradingagents/forecast_v2.py` | the practice half and every definition |
+| `tradingagents/forecast_rules.py` | the grid, options, ids, words, filters, loss limit |
+| `.github/scripts/forecast_shard.py` | one machine's share of the research |
+| `.github/workflows/forecast.yml` | the research run (ten inputs — the most a dispatch may carry) |
+| `.github/workflows/replay.yml` | the replay, now also uploading `replay-report-<N>` |
+| `tradingagents/forecast_v2_merge.py` | the machines added together, scored, saved |
+| `tradingagents/forecast_v2_daily.py` | the daily chain and the what-if box |
+| `tradingagents/forecast_v2_api.py` | the page's answers, filtered and paged |
+| `webapp/src/components/forecast/ForecastV2.tsx` | the page |
+| `tests/test_forecast_v2.py` | the guards, on one timeline |
+
+On disk, beside the store (G:): `~/.tradingagents/forecast_v2/` — `latest.json`,
+`streaks.npz`, `predictions.jsonl`, `state.json`, `whatif.json`,
+`alarms.json`, `merge.log`, `runs/<id>/` (the last 3 downloads).
+
+## Running it by hand
+
+```
+python -m tradingagents.forecast_v2_merge <base dir> [<options dir>] [--runs JSON] [--no-keep]
+gh workflow run forecast.yml --repo jeremydevera/analyzer-x -f source_run=<replay run> \
+  -f end_ms=<common end> -f start=2026-07-01 -f stage=base -f rooms="<ID=w:on:off:trades:tp:cap;...>" \
+  -f avoid=<coins> -f families=<families>
+```
+
+The page's "run it every day" box switches the chain off and on
+(`POST /api/forecast-v2/switch`); off stops it dispatching and nothing else.
+
+## Bug hunt (harddev) rounds
+
+1. **Reality check without the per-coin cap**: the backtest side "made" 7,470
+   trades in fourteen hours on #4FC03172 against practice's 138 (1.8%) —
+   mostly the 4-a-coin rule, which the research already applies. Capped like
+   the research.
+2. **One correction number** ("dollars short per backtest trade") could not
+   tell a rule set practice barely trades from one it trades badly; it became
+   two (took, gap).
+3. **Beat random in total** let the per-coin cap win the comparison
+   (100/97/92 against per-trade 6/1/0). Per trade now — found before the first
+   fleet run, which was cancelled while queued (36936402244).
+4. **A Flat array built from a list of arrays** failed on the PC at 257 MB with
+   5.6 GB free; one allocation each now.
+5. **Streak rows as text** were 287 MB on disk and would have been over a
+   gigabyte as dicts in the API; columns with coded names, 12.6 MB.
+6. **The chain inside the supervisor loop**: downloads and an 86-128 s merge
+   would have held the loop that restarts crashed runners. Its own thread; the
+   merge its own process.
+7. **The reality box** showed live numbers next to a table corrected with the
+   merge-time ones; it shows those, and says when the live ones differ.
+8. **3,868 file stats every refresh** (the queue that made /api/health take
+   60 s); one folder stamp now.
+9. **The month's graded prediction** was kept by the base-only merge; only the
+   final merge keeps it.
+
+## The build prompt
+
+Word for word, as it was run ("okay run that prompt and create Forecast v2").
+The operator asked for it as **Forecast v2**, so it is its own page and the
+first Forecast page keeps its room cards and saved forecasts.
+
+```
+Build the Forecast predictions on Auto Trade -> Forecast: STREAKS, COINS TO AVOID,
+WHERE THE MONEY GOES, BEST ROOM RULES THIS MONTH and a DAILY SUMMARY, and make sure
+there is no bug.
+
+What I mean by forecast: predict, from ALL the backtest results, which coins are hot,
+which coins to stay away from, what is losing the money, and which combination of
+room rules will make the most this month. Put these sections at the top of the
+Forecast page; keep the room cards and saved forecasts below them.
+
+BEFORE WRITING ANY CODE
+- Read CLAUDE.md, docs/OPERATOR-ASKS.md (my own words), docs/TRADING-ROOMS.md,
+  docs/FORECAST-PROMPTS.md, tradingagents/watcher_policy.py, watcher_replay.py,
+  watcher_research.py, replay_collect.py, rolling30.py, room_stats.py,
+  room_forecasts.py, notifications.py, .github/workflows/replay.yml and research.yml,
+  and webapp/src/components/forecast/RoomForecasts.tsx.
+- Say back in 3 lines what already exists (the day-by-day replay, the TRAIN/TEST
+  research that picked my rooms' rules, where every trade of every combination
+  lives) and build ON it. The rules live in ONE place (watcher_policy), and each
+  stock coin's market lives in ONE place (room_stats.home_market / market_open);
+  never write a second copy of either.
+- Run `git status`: other sessions edit this folder. Never `git stash`. Commit only
+  your own files with `python scripts/commit_own.py -F msg.txt <paths>`.
+- Read only on trading: never switch a room on or off, never change watcher rules,
+  never touch real money. Every prediction and warning is a note, never a switch.
+- Every example number below is from my practice trades as of Oct 01, 2026.
+  Re-measure each one before you rely on it.
+
+A. STREAKS ("inform me when a coin is on a streak")
+1. A winning streak = wins in a row, ending with the most recent closed trade (a
+   win = profit after all costs > 0, the same rule as everywhere); a loss ends it.
+   A LOSING streak is the opposite, and a win ends it.
+2. Two sources, each named on screen:
+   - PRACTICE: per room and coin, from each room's own trade record.
+   - BACKTEST: per stored combination (coin + timeframe + signal + TP + SL, with its
+     #ID), from that combination's own trades in the latest backtest.
+3. Two lists:
+   - WINNING: every coin whose current winning streak is at least N (default 9).
+   - LOSING: every coin whose current losing streak is at least M (default 5). For
+     example, DHRSTOCK won 4 and lost 38 practice trades (-38.48) across 5 rooms.
+   Each list has a box to change its number and is sorted longest first. Each row
+   shows: coin, room or #ID, timeframe, signal, TP, SL, streak length, when it
+   started and its last trade (dates), profit during the streak, total trades /
+   wins / losses / win rate, its break-even win rate, and which room has it
+   switched on (or "none").
+4. Turn each streak into a MEASURED prediction: across all past backtest history,
+   after a streak this long, how often did the next trade win, and what did the next
+   10 trades make, with how many past cases. Under 30 past cases, say "not enough
+   past streaks to tell" instead of a number.
+5. Ring the app's bell (notifications.py) ONCE when a coin first reaches a streak
+   (winning or losing); never again for the same streak.
+6. Search EVERY combination on the server, never a top-N page filtered in the
+   browser. Say how many combinations and trades were examined; an empty list says
+   what it examined, never "none exist". Measure streaks where the trades already
+   exist (the GitHub shard or the replay output) and store them. Never re-play
+   millions of trades inside a page request.
+
+B. COINS TO AVOID
+1. Coins that lose across rooms. For example, IGV won only 3 of 47 practice trades
+   (-50.87) across all 9 rooms. For each coin: rooms that traded it, trades,
+   wins / losses, win rate, profit, worst losing run, and its backtest win rate
+   beside its practice win rate.
+2. Every number must equal a direct count of the trade records, and the list is
+   sorted by profit, worst first.
+3. Feed this list into section D as a rule option: "skip the coins to avoid".
+
+C. WHERE THE MONEY GOES (each one measured on practice trades AND on the backtest,
+   side by side, with trades, wins / losses, win rate and profit)
+1. COSTS: profit, costs, and profit without costs, per room and for all rooms.
+   All rooms lost -458.31, and 355.91 of that was costs.
+2. WIN SIZE vs LOSS SIZE: the average win, the average loss, the break-even win
+   rate they make, and the real win rate. An average win paid +0.78 and an average
+   loss cost -1.02, so break-even was 56.6% against 41.2% won.
+3. BY TIMEFRAME (15m, 30m, 1h, 4h, 1d). 1h trades won 32.7% (-41.17 over 104)
+   against 41.7% on 15m.
+4. BY SIGNAL FAMILY. cci20 won 15.9% of 44 trades (-35.04); stoch14 lost -128.12
+   over 539.
+5. STOCKS vs CRYPTO. Stocks: 1,328 trades, 40.7% won, -380.44. Crypto: 326
+   trades, 43.6% won, -76.55.
+6. BY THE HOUR OPENED (New York time). 9am to noon: 642 trades, 33.2% won,
+   -279.89.
+7. FAST STOP-OUTS: trades stopped out within 15 minutes, 15-60 minutes, and after
+   an hour. 201 trades stopped out within 15 minutes (-176.26).
+8. WORST DAY per room. #4FC03172 lost -158.80 on Oct 01, 2026.
+9. SAME COIN IN MANY ROOMS: how many rooms hold each coin right now. VUG was open
+   in 8 rooms at once. Warn about it: with real money, MEXC merges a coin into ONE
+   position across rooms.
+Each finding that looks bad becomes a rule option in section D. The page says
+plainly which findings rest on too few trades to mean anything.
+
+D. BEST ROOM RULES THIS MONTH (e.g. "90% win rate, 40 trades, TP wider than SL
+   will make about +$X this month")
+1. THE MAIN GRID, tested in full:
+   - switch-on/off win rate 70, 75, 80, 85, 90 or 95
+   - minimum trades 20, 30, 40 or 50
+   - TP wider than SL, TP at least 1.5x SL, TP at least 2x SL, or any
+   - stop 1%, 1.5% or 2% or tighter
+   - judged on 15 or 30 days
+   Use the research grid where it already holds these.
+2. EXTRA OPTIONS, each tested ONE AT A TIME on top of the 20 best rule sets and my
+   rooms' current rules (never all combined, which would test luck, not rules):
+   - skip the coins to avoid (section B)
+   - skip Japanese stocks
+   - stocks only while their own market is open (room_stats.home_market /
+     market_open). In #4FC03172, Japanese stocks traded during Tokyo's daytime won
+     25.6% (-21.15 over 43 trades).
+   - cost no more than 20%, 35% or 50% of the target (the same cost the cost gate
+     charges: fee + spread + funding)
+   - one timeframe only (each in turn), and skip the worst signal families
+   - crypto only, or stocks only
+   - no new trades from 9am to noon New York
+   - a daily loss limit per room: no new trades that day after losing 10, 20 or 40
+   - skip rows whose stop is smaller than the coin's normal 15-minute move (its
+     median 15-minute high-low range over the backtest window)
+   - at most 1, 2 or 3 rooms per coin, and at most 1, 2 or 3 trades per coin in a
+     room
+   State above the table how many rule sets and options were tested.
+3. For each, WALK FORWARD month by month with watcher_replay.simulate (no
+   look-ahead): each day the watcher switches rows on using only data from before
+   that day; the month's profit is what those rows really made in it, after fees,
+   spread and funding, at $5 x 20x.
+4. The prediction for THIS calendar month: the typical past month (median) with
+   the range (worst and best past month), how many months it is built on,
+   expected trades, wins/losses, win rate, break-even win rate, worst losing run
+   (dollars and trades). Under 3 past months, label it "thin". Measure the real
+   history depth; never claim a month the data does not hold.
+5. REALITY CHECK on every prediction. The backtest research promised #4FC03172
+   +4967.44 for September, but its practice trades stood at -172.73. For every
+   room, measure how far its real practice results fell short of what its backtest
+   promised for the same days. Show each prediction twice: as the backtest says, and
+   corrected by that measured shortfall. Say exactly how the correction was
+   measured and from how many rooms and trades. Never hide the corrected number
+   behind the raw one.
+6. BEAT RANDOM: for each rule set, switch on the same number of rows picked AT
+   RANDOM (100 draws) and show how often the rule set beat them. Under 80%, label it
+   "could be luck".
+7. MONEY NEEDED: for each rule set, the most trades open at once x $5 = the margin
+   the wallet must hold. #4FC03172 had 138 trades open at once, which is $690. Show
+   it beside the profit, and say it again before anything could ever go to real
+   money.
+8. Rank by the WORST past month after the reality check, not the best (the
+   still-working rule). Show each room's current rules beside it: predicted for
+   this month vs made so far this month.
+9. One plain sentence per rule set on screen, e.g. "90% wins, 40+ trades, TP at
+   least 1.5x SL, stop 2% or tighter, coins to avoid skipped: about +X this month
+   after the reality check (backtest says +Y; past months +a, +b, -c), about T
+   trades, needs $M in the wallet, beat random 92 times in 100".
+10. A WHAT-IF box: I type any rules (everything in items 1 and 2) and see the same
+    prediction for them. It runs in the background, never inside the page request,
+    shows "working…" with progress, and keeps every result so the same rules come
+    back at once.
+11. TRACK THIS MONTH day by day: for my rooms' rules and the top 5 rule sets, a
+    line of real profit so far against the predicted range. Ring the bell once when
+    a room falls below its predicted worst case.
+12. Save each month's predictions so that at month end each one is graded,
+    predicted vs real, and shown as "inside its range X of Y".
+13. Give every rule set the same kind of id the research uses (e.g. #52620A69), so
+    that I can say "deploy #ID" and the standing setup in CLAUDE.md makes it a room.
+14. The table follows CLAUDE.md's results-table rules: profit total, TP rule, SL
+    rule, leverage, margin stated above, wins and losses, worst losing streak with
+    its trade count, trades, rule sets tested above the table, sortable, and the id
+    from item 13 first.
+
+E. DAILY SUMMARY ON THE BELL
+Once a day, after the daily forecast is made, ONE bell message: the longest
+winning streak, the longest losing streak, the worst coin to avoid, and each room's
+month so far against its predicted range. Never more than one a day.
+
+HOW IT MUST BEHAVE
+- Heavy work runs as a job (on GitHub if the research already does, collected
+  like the replay), once a day after the daily GitHub update is collected, never
+  in a page request. The page answers in under 2 seconds from the saved result and
+  prints when it was made and what data it covers.
+- A job that cannot start or fails says so on the page, by name, and the page
+  says whether a job is running.
+- Big files go under ~/.tradingagents (the G: drive), never C:.
+- Every filter and page runs on the server. Every label comes from its data, and
+  rows add up to the totals shown.
+- Dates use fmtWhen / fmt_when only ("Oct 01, 2026 8:03pm"); money uses fmtMoney.
+- Plain words on screen. Phone (390px) and desktop both work, and wide tables
+  scroll inside their own box.
+
+NO-BUG CHECKLIST (do all of it, show the results)
+1. Tests for every definition and every section, with trades and months on ONE
+   timeline; tests for the API routes and the page source.
+2. Real-data check:
+   - for 3 coins, the streak shown equals a direct read of their trades;
+   - for 3 coins to avoid, every number equals a direct count of the trade records;
+   - every number in section C equals a direct count, for 2 rooms and for all;
+   - for 2 rule sets, re-run one past month by hand and compare;
+   - for 2 rooms, re-work the reality-check shortfall by hand.
+3. Bug hunt (harddev), round after round until a round finds nothing; list what
+   each round found.
+4. Run every test file you touched, the date-format guards, ruff, tsc and eslint.
+5. Playwright screenshots at 1440px and 390px with zero console errors; open a
+   streak, a coin to avoid, each part of section C, a rule set, a what-if run, the
+   month tracker and the graded predictions.
+6. Any bug you fix gets its docs/RCA.md entry in the same commit.
+
+FINISH
+- Commit with scripts/commit_own.py and push to both accounts (origin and
+  colleague). Anything GitHub runs from main is pushed at once.
+- Restart the site (warn me first: about 3-5 minutes dark), then check /forecast.
+- Answer me in plain words: what was built, one real example (a real streak, a
+  coin to avoid, or a rule-set prediction with its numbers), then "Pending for
+  you:" with what I must do, or "No pending for you."
+```
+
+### Where the build differs from the prompt, and why
+
+* **Its own page.** The operator asked for "Forecast v2", so `/forecast-v2`;
+  the first Forecast page is untouched.
+* **Cost options 5, 10 and 15%**, not 20, 35 and 50%: the replay only writes a
+  strategy whose cost is under 20% of its target (replay_shard's own gate), so
+  nothing above 20% exists to test.
+* **Rooms per coin** is not a rule-set option — a rule set is one room — and is
+  section C's overlap warning instead. Trades per coin is tested (1, 2, 3).
+* **Walked forward with `watcher_research.raw_fast`**, not `simulate`: the rooms
+  run raw rules, and raw_fast is held equal to simulate trade for trade by
+  tests/test_watcher_research.py (`test_the_fast_raw_path_is_simulate`).
+* **Beat random is per trade** — see "Beat random" above.
+* **The bell for a new streak** is the daily summary's longest runs, not one
+  message per strategy: 689,474 strategies were on a run of 5+ at once, and a
+  bell per strategy would bury every other message.

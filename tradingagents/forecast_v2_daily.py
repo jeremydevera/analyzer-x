@@ -49,6 +49,7 @@ RETRY_S = 30 * 60
 KEEP_RUNS = 3                 # downloaded forecast runs kept beside the store
 WORST_FAMILIES = 5            # the skip-families option skips this many
 _LOCK = threading.Lock()
+_WHATIF_LOCK = threading.Lock()
 
 
 def home() -> Path:
@@ -88,25 +89,35 @@ def slug() -> str:
     return cs.origin_fleet() or cs.repo_slug()
 
 
-def dispatch(workflow: str, inputs: dict, repo: str) -> int:
-    """Start a workflow and return its run id (`gh workflow run` prints none,
-    so wait for a run newer than the last one)."""
-    def last() -> int:
-        got = json.loads(_gh("run", "list", "--repo", repo, "--workflow", workflow,
-                             "--limit", "1", "--json", "databaseId"))
-        return int(got[0]["databaseId"]) if got else 0
+def title_of(workflow: str, inputs: dict) -> str:
+    """The run-name GitHub gives this dispatch (the workflows' own
+    `run-name:` lines) — how a dispatcher finds ITS run (bug hunt, round 3:
+    "the newest run" could be the other session's replay)."""
+    if workflow == REPLAY_WF:
+        return f"Watcher replay · from {inputs['start']} · {inputs['write_rule']}"
+    return (f"Forecast v2 · {inputs['stage']} · replay {inputs['source_run']} "
+            f"{inputs.get('custom') or ''}").rstrip()
 
-    before = last()
+
+def dispatch(workflow: str, inputs: dict, repo: str) -> int:
+    """Start a workflow and return ITS run id: `gh workflow run` prints none,
+    so wait for a new run carrying this dispatch's own title."""
+    def runs() -> list:
+        return json.loads(_gh("run", "list", "--repo", repo, "--workflow", workflow,
+                              "--limit", "10", "--json", "databaseId,displayTitle"))
+
+    before = {int(r["databaseId"]) for r in runs()}
+    want = title_of(workflow, inputs)
     args = ["workflow", "run", workflow, "--repo", repo]
     for k, v in inputs.items():
         args += ["-f", f"{k}={v}"]
     _gh(*args)
-    for _ in range(30):
+    for _ in range(45):
         time.sleep(2)
-        now = last()
-        if now and now != before:
-            return now
-    raise RuntimeError(f"the {workflow} run did not appear within a minute")
+        for r in runs():
+            if int(r["databaseId"]) not in before and str(r["displayTitle"]).strip() == want:
+                return int(r["databaseId"])
+    raise RuntimeError(f"the {workflow} run ({want[:80]}) did not appear within 90 seconds")
 
 
 def run_status(run_id: int, repo: str) -> dict:
@@ -221,8 +232,9 @@ def due(now: float, st: dict) -> tuple[bool, str]:
 
 # ------------------------------------------------------------- one tick
 def tick(now: float | None = None) -> dict:
-    """The supervisor's 30-second call: at most one step of the chain, and
-    the what-if runs' polls."""
+    """The supervisor's 30-second call, in its own thread: at most one step of
+    the chain, the what-if runs' polls, and the bells (a new practice streak,
+    a room under its predicted worst case)."""
     if os.environ.get("PYTEST_CURRENT_TEST"):
         return {"why": "never under a test run"}
     if not _LOCK.acquire(blocking=False):
@@ -238,6 +250,14 @@ def tick(now: float | None = None) -> dict:
             _whatifs(st, now)
         except Exception as exc:                               # noqa: BLE001
             st.setdefault("whatif_error", f"{type(exc).__name__}: {str(exc)[:200]}")
+        try:
+            from tradingagents import forecast_v2_api as f2a
+
+            if f2a._LIVE["value"] is not None:         # never a slow first read here
+                f2a.tracker_alarms(now)
+                streak_bells(f2a._LIVE["value"])
+        except Exception as exc:                               # noqa: BLE001
+            print(f"[forecast v2] the bells failed: {exc!r}", flush=True)
         _write(st)
         return {"phase": st.get("phase"), "why": st.get("why", "")}
     finally:
@@ -269,6 +289,7 @@ def run_merge(base_dir: str, options_dir: str | None, runs: dict, keep: bool) ->
     args += ["--runs", json.dumps(runs)] + ([] if keep else ["--no-keep"])
     with log.open("w", encoding="utf-8") as fh:
         got = subprocess.run(args, stdout=fh, stderr=subprocess.STDOUT, timeout=3600,
+                             cwd=str(Path(__file__).resolve().parents[1]),
                              env={**os.environ, "PYTHONUNBUFFERED": "1"})
     if got.returncode != 0:
         tail = log.read_text(encoding="utf-8", errors="replace").strip().splitlines()[-3:]
@@ -315,10 +336,15 @@ def _step(st: dict, now: float) -> None:
         st["why"] = (f"{phase} run {st[run_key]} is working on GitHub: {s['done']} of "
                      f"{s['machines']} machines done")
         return
-    if s["conclusion"] != "success" and not (phase == "replay" and s["done"] and
-                                             len(s["failed"]) < s["machines"]):
+    # SOME MACHINES FAILED, SOME DID NOT (bug hunt, round 3): a replay or a
+    # forecast with 19 of 20 machines green is used — its missing machines
+    # named in the state and on the page — instead of retried for ever
+    good = s["machines"] - len(s["failed"])
+    if s["conclusion"] != "success" and good <= 0:
         raise RuntimeError(f"{phase} run {st[run_key]} ended {s['conclusion']} "
                            f"({', '.join(s['failed'][:3]) or 'no machine named'})")
+    if s["failed"]:
+        st.setdefault("missing", {})[phase] = {"of": s["machines"], "failed": s["failed"][:40]}
     if phase == "replay":
         rep = download(int(st["replay_run"]), repo, "replay-report-*")
         st["end_ms"] = common_end(rep)
@@ -349,6 +375,40 @@ def _step(st: dict, now: float) -> None:
 
 
 # ------------------------------------------------------------- the bell
+def streak_bells(live: dict) -> list:
+    """ONE bell when a room's coin first reaches a winning run of WIN_N or a
+    losing run of LOSS_M; never again for the same run (its start). The first
+    time this ever runs it only remembers the runs already going, so the day
+    it is switched on is not a burst of old news."""
+    from tradingagents import notifications as nt
+
+    path = home() / "streak_bells.json"
+    try:
+        seen = json.loads(path.read_text(encoding="utf-8"))
+        first = False
+    except (OSError, ValueError):
+        seen, first = {}, True
+    rung = []
+    for s in live.get("streaks") or []:
+        floor = f2.WIN_N if s["kind"] == "win" else f2.LOSS_M
+        if s["length"] < floor:
+            continue
+        key = f"{s['room']}|{s['coin']}|{s['kind']}|{int(s['started_at'] or 0)}"
+        if key in seen:
+            continue
+        seen[key] = time.time()
+        if first:
+            continue
+        word = "won" if s["kind"] == "win" else "lost"
+        nt.record("forecast", f"{s['coin']} has {word} {s['length']} in a row in {s['room_name']}",
+                  detail=(f"{s['coin']} {word} its last {s['length']} practice trades in "
+                          f"{s['room_name']} ({s['profit']:+.2f})"), ok=s["kind"] == "win")
+        rung.append(key)
+    home().mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(seen), encoding="utf-8")
+    return rung
+
+
 def bell(out: dict, live: dict) -> None:
     """ONE message a day: the longest winning and losing streaks, the worst
     coin to avoid, and each room's month so far against its prediction."""
@@ -409,15 +469,34 @@ def whatif(cfg: dict) -> dict:
                 "why": "the daily Forecast v2 has not measured a replay yet — a what-if needs one"}
     w = whatifs()
     have = w.get(rid)
-    if have and have.get("end_ms") == st["end_ms"] and have.get("status") in ("done", "working"):
+    if have and have.get("end_ms") == st["end_ms"] and have.get("status") in ("done", "working",
+                                                                               "starting"):
         return have
-    run = dispatch(FORECAST_WF, _forecast_inputs(
-        st, "custom", {"custom": json.dumps(cfg, separators=(",", ":"))}), st.get("repo") or slug())
-    rec = {"id": rid, "cfg": cfg, "words": fr.words(cfg), "status": "working", "run": run,
-           "end_ms": st["end_ms"], "asked_at": time.time(), "result": None, "why": ""}
+    rec = {"id": rid, "cfg": cfg, "words": fr.words(cfg), "status": "starting", "run": None,
+           "end_ms": st["end_ms"], "asked_at": time.time(), "result": None,
+           "why": "asking GitHub to start it"}
     w[rid] = rec
     _whatif_save(w)
+    # STARTED BEHIND THE ANSWER (bug hunt, round 3): GitHub takes up to a
+    # minute to show a dispatched run, and the page must not wait for it
+    custom = json.dumps({"id": rid, **cfg}, separators=(",", ":"))
+    threading.Thread(target=_start_whatif, args=(rid, st, custom), name="forecast-v2-whatif",
+                     daemon=True).start()
     return rec
+
+
+def _start_whatif(rid: str, st: dict, custom: str) -> None:
+    with _WHATIF_LOCK:
+        w = whatifs()
+        rec = w.get(rid) or {}
+        try:
+            rec["run"] = dispatch(FORECAST_WF, _forecast_inputs(st, "custom", {"custom": custom}),
+                                  st.get("repo") or slug())
+            rec.update(status="working", why="started on GitHub")
+        except Exception as exc:                               # noqa: BLE001
+            rec.update(status="failed", why=f"could not start it: {type(exc).__name__}: {str(exc)[:200]}")
+        w[rid] = rec
+        _whatif_save(w)
 
 
 def _whatifs(st: dict, now: float) -> None:

@@ -414,3 +414,76 @@ def test_the_page_prints_and_works_nothing_out():
     assert ".filter(" not in src.split("function Avoid")[0], "the streak lists are filtered by the server"
     side = (ROOT / "webapp/src/layout/AppSidebar.tsx").read_text(encoding="utf-8")
     assert '{ name: "Forecast v2", path: "/forecast-v2" }' in side
+
+
+# ------------------------------------------------------------ the daily chain
+def test_a_dispatch_finds_its_own_run_by_title_not_the_newest(monkeypatch):
+    """Bug hunt, round 3: two sessions dispatch replay.yml; the newest run
+    can be the other session's."""
+    from tradingagents import forecast_v2_daily as fd
+
+    inputs = {"shards": 20, "timeframes": "15m", "coin_list": "", "start": "2026-07-01",
+              "base": 5, "groups": "all", "write_rule": fd.WRITE_RULE}
+    want = fd.title_of(fd.REPLAY_WF, inputs)
+    calls = {"n": 0}
+
+    def gh(*args, timeout=120):
+        if args[:2] == ("run", "list"):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return json.dumps([{"databaseId": 1, "displayTitle": want}])
+            return json.dumps([{"databaseId": 3, "displayTitle": "Watcher replay · from 2026-07-01 · wr=40,trades=1"},
+                               {"databaseId": 2, "displayTitle": want + " "},
+                               {"databaseId": 1, "displayTitle": want}])
+        return ""
+
+    monkeypatch.setattr(fd, "_gh", gh)
+    monkeypatch.setattr(fd.time, "sleep", lambda s: None)
+    assert fd.dispatch(fd.REPLAY_WF, inputs, "x/y") == 2
+
+
+def test_a_custom_run_carries_its_id_in_the_title():
+    from tradingagents import forecast_v2_daily as fd
+
+    t = fd.title_of(fd.FORECAST_WF, {"stage": "custom", "source_run": 9, "custom": '{"id":"ABC"}'})
+    assert t == 'Forecast v2 · custom · replay 9 {"id":"ABC"}'
+    assert fd.title_of(fd.FORECAST_WF, {"stage": "base", "source_run": 9, "custom": ""}) == \
+        "Forecast v2 · base · replay 9"
+    wf = (ROOT / ".github/workflows/forecast.yml").read_text(encoding="utf-8")
+    assert 'run-name: "Forecast v2 · ${{ inputs.stage }} · replay ${{ inputs.source_run }} ${{ inputs.custom }}"' in wf
+    rp = (ROOT / ".github/workflows/replay.yml").read_text(encoding="utf-8")
+    assert 'run-name: "Watcher replay · from ${{ inputs.start }} · ${{ inputs.write_rule }}"' in rp
+
+
+def test_streak_bells_ring_once_and_never_for_the_runs_already_going(monkeypatch):
+    from tradingagents import forecast_v2_daily as fd
+    from tradingagents import notifications as nt
+
+    rung = []
+    monkeypatch.setattr(nt, "record", lambda *a, **k: rung.append(a[1]))
+    old = {"room": ROOM, "room_name": "#4FC03172", "coin": "KIMISTOCK", "kind": "win",
+           "length": 16, "started_at": NOW - 9 * HOUR, "profit": 6.48}
+    assert fd.streak_bells({"streaks": [old]}) == [] and rung == [], "the first run only remembers"
+    new = {**old, "coin": "VUG", "length": 9, "started_at": NOW - HOUR}
+    assert len(fd.streak_bells({"streaks": [old, new]})) == 1
+    assert rung == ["VUG has won 9 in a row in #4FC03172"]
+    assert fd.streak_bells({"streaks": [old, {**new, "length": 10}]}) == [], "the same run never rings twice"
+
+
+def test_the_chain_never_runs_under_a_test():
+    from tradingagents import forecast_v2_daily as fd
+
+    assert fd.tick()["why"] == "never under a test run"
+
+
+def test_a_what_if_answers_at_once_and_starts_behind_the_answer(monkeypatch):
+    from tradingagents import forecast_v2_daily as fd
+
+    fd._write({"phase": "done", "replay_run": 5, "end_ms": 1, "start": "2026-07-01", "repo": "x/y"})
+    started = []
+    monkeypatch.setattr(fd.threading, "Thread", lambda target, args, name, daemon: type(
+        "T", (), {"start": lambda self: started.append(args)})())
+    got = fd.whatif({"window_days": 30, "on_winrate": 90, "min_trades": 40, "tp_rule": ">", "max_sl": 2})
+    assert got["status"] == "starting" and started and json.loads(started[0][2])["id"] == got["id"]
+    again = fd.whatif({"window_days": 30, "on_winrate": 90, "min_trades": 40, "tp_rule": ">", "max_sl": 2})
+    assert again["id"] == got["id"] and len(started) == 1, "asked twice, started once"

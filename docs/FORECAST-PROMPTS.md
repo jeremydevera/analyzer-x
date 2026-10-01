@@ -16,6 +16,8 @@ forecast with an artifact; it must use the room ids this machine has, and
 every number in it must be a number (the save refuses anything else, naming
 what is wrong).*
 
+*Forecast v2 (Auto Trade -> Forecast v2, Oct 01, 2026) — streaks, coins to avoid, where the money goes and the room rules predicted for this month — has its own page and its own account: docs/FORECAST-V2.md.*
+
 ## 1. Make a new forecast
 
 ```

@@ -74,7 +74,7 @@ def log(msg: str) -> None:
 def rule_sets(stage: str) -> tuple[list[dict], dict]:
     rooms = fr.decode_rooms(os.environ.get("ROOMS", ""))
     if stage == "custom":
-        cfg = json.loads(os.environ["CUSTOM"])
+        cfg = json.loads(os.environ["CUSTOM"])          # {"id": ..., the rule set}
         return [fr.cfg_of(**{k: cfg[k] for k in ("window_days", "on_winrate", "min_trades",
                                                  "tp_rule", "max_sl")},
                           **{k: v for k, v in cfg.items()

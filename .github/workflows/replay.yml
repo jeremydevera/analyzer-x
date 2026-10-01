@@ -1,5 +1,10 @@
 name: Watcher replay (what the watcher would have made)
 
+# WHICH replay a run is (Forecast v2, Oct 01, 2026): two sessions dispatch this
+# workflow, and a dispatcher finds its own run by this title — never by "the
+# newest one", which could be the other session's
+run-name: "Watcher replay · from ${{ inputs.start }} · ${{ inputs.write_rule }}"
+
 # The operator, Sep 28, 2026: "Lets say i deployed this on sept 1 / What is my
 # pnl overall / ... If there is no backtest yet then do backtest for aug",
 # then "Then do the backtest replay so i know the pnl for every day to know if

@@ -1210,6 +1210,45 @@ their runners keep going only to finish the practice trades still open.
 
 Guard: `tests/test_rooms_judge_on_15_days.py`.
 
+## Forecast v2 predicts; it never switches anything (MANDATORY — 2026-10-01)
+
+The operator: *"when i say forecast, i mean you should be predicting what's
+the best combination of criteria to be using for deployed rooms, based on
+overall backtest results"*, *"you are seeing a coin is winning 9 streak then
+inform me that specific coin"*, then *"okay run that prompt and create
+Forecast v2, use harddev skill and make sure to document this"*. Full account,
+the build prompt word for word and the measured first run:
+`docs/FORECAST-V2.md`. Auto Trade → Forecast v2 (`/forecast-v2`); the first
+Forecast page is unchanged.
+
+* **One place for every number.** Practice: `forecast_v2.py`. Rule sets and
+  options: `forecast_rules.py`. The GitHub research is
+  `.github/workflows/forecast.yml` → `.github/scripts/forecast_shard.py` on a
+  `replay.yml` run, added up by `forecast_v2_merge.py`. The page's lists are
+  filtered and paged by `forecast_v2_api.py`, never in the browser.
+* **THE REALITY CHECK is two numbers, never one.** Over the same rows and the
+  same hours (each switch-on to the end of its rolling30 backtest, the
+  backtest side capped at the runner's 4 trades per coin): `took` = the share
+  of the backtest's trades practice also made, `gap` = how much less it made
+  on each. A prediction P over T trades becomes `took × (P − gap × T)` —
+  exact on the window it was measured on. Uncapped, practice looked like it
+  took 1.8% of the trades when it was the 4-a-coin rule.
+* **BEAT RANDOM is per trade, never in total**: the random picks are not
+  capped per coin, so a total lets the cap win the comparison (shard 0: 100,
+  97, 92 in 100 in total against 6, 1, 0 per trade).
+* **The chain runs in its own thread and the merge in its own process.** It
+  downloads hundreds of MB and the merge peaks over a gigabyte (689,474
+  streak rows); neither may hold the supervisor loop that restarts runners.
+* **A dispatch finds its run by its title** (`run-name` on both workflows),
+  never "the newest run": two sessions dispatch `replay.yml`.
+* **Every prediction and warning is a note.** Nothing in Forecast v2 switches
+  a room, changes a watcher rule or touches real money; "deploy #ID" goes
+  through the STANDING SETUP like any other rule set, and a rule set that
+  needs a switch a room does not have (TP at least 1.5x/2x SL, any option)
+  says so.
+
+Guard: `tests/test_forecast_v2.py` (25, on one timeline).
+
 ## Backtest v2 is the v1 engine in its own folder (MANDATORY — 2026-09-17)
 
 The operator: *"lets do a v2 of candles tab, when i download candles ... it

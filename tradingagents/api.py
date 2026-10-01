@@ -210,8 +210,7 @@ def _keep_the_row_index_current() -> None:
                 # waits for GitHub — neither may hold this loop, which is what
                 # restarts a crashed runner. Each skips while one is running.
                 try:
-                    from tradingagents import forecast_v2_api as _f2a
-                    from tradingagents import forecast_v2_daily as _f2d
+                    from tradingagents import forecast_v2_api as _f2a, forecast_v2_daily as _f2d
 
                     for _name, _fn in (("forecast-v2-live", _f2a.live_refresh),
                                        ("forecast-v2-chain", _f2d.tick)):
@@ -219,12 +218,8 @@ def _keep_the_row_index_current() -> None:
                             _th.Thread(target=_fn, name=_name, daemon=True).start()
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[forecast v2] could not start its threads: {exc!r}", flush=True)
-                try:
-                    from tradingagents import forecast_v2_api as _f2a
-
-                    _f2a.tracker_alarms()
-                except Exception as exc:                       # noqa: BLE001
-                    print(f"[forecast v2] the month alarm failed: {exc!r}", flush=True)
+                # (the month alarm and the streak bells ride the chain's
+                # thread: forecast_v2_daily.tick)
                 # NO AUTOMATIC CANDLE TOP-UP. candle_autopilot.tick() ran here
                 # from 2026-09-06 to 2026-09-09 and started an UPDATE by itself
                 # whenever the store was 3h stale. The operator saw

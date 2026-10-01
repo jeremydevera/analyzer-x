@@ -429,7 +429,11 @@ def test_the_saved_route_checks_every_pick_and_scores_them_all(monkeypatch, tmp_
     rf.add(rs.forecast_entry(rs.rooms(NOW), NOW - 60, "prompt"), path=f)
     got = api.forecasts_route(page=1)
     assert got["total"] == 1 and "since" in got["forecasts"][0]
-    assert got["score"]["saved"] == 1 and "auto" in got and len(got["prompts"]) == 2
+    # every "## N." prompt in docs/FORECAST-PROMPTS.md, however many there are
+    # (a third arrived Oct 01, 2026 6:00pm; a hardcoded 2 went red)
+    assert got["score"]["saved"] == 1 and "auto" in got
+    assert [p["title"][:2] for p in got["prompts"]] == [
+        f"{i}." for i in range(1, len(got["prompts"]) + 1)] and len(got["prompts"]) >= 2
 
 
 def test_the_page_prints_every_feature_and_works_nothing_out():

@@ -227,7 +227,11 @@ def _take(c: dict, chunk: bytes) -> None:
                 "side": str(e.get("side") or ""), "symbol": str(e.get("symbol") or ""),
                 "trade_id": str(e.get("trade_id") or ""),
                 "opened_at": _num(e.get("opened_at") or e.get("entry_ts"), None),
-                "dry": bool(e.get("dry_run"))})
+                "dry": bool(e.get("dry_run")),
+                # Forecast v2 (forecast_v2.py) reads these three: which
+                # strategy, why it closed, and how long it was held
+                "key": str(e.get("strategy") or ""), "why": str(e.get("why") or ""),
+                "held": _num(e.get("held_s"), None)})
 
 
 def open_trades(path: Path) -> list[dict]:

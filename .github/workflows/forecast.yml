@@ -1,0 +1,120 @@
+name: Forecast v2 (room rule predictions, streaks, split by coin)
+
+# Operator, Oct 01, 2026: "then predict what combination of room will be
+# effective, for example: 90% winrate with 40trade, tp is greater than SL will
+# have profit of x this month", "you are seeing a coin is winning 9 streak then
+# inform me that specific coin", then "okay run that prompt and create
+# Forecast v2" (docs/FORECAST-V2.md).
+#
+# Each machine takes one replay shard (whole coins) of an earlier replay run
+# (.github/workflows/replay.yml), replays every rule set on it the way the
+# rooms run them, and uploads its closed trades, its random-pick totals and —
+# in the base stage — every strategy's streak at the data's end. The PC adds
+# the machines together and scores the sum (tradingagents/forecast_v2_merge.py).
+# Nothing here writes the market grid's rows, saved positions or any room.
+
+run-name: "Forecast v2 · ${{ inputs.stage }} · replay ${{ inputs.source_run }}"
+
+on:
+  workflow_dispatch:
+    # TEN inputs is the most workflow_dispatch allows — anything further must
+    # replace one of these, never be added (CLAUDE.md, Backtest v2 on GitHub)
+    inputs:
+      source_run:
+        description: "The replay run whose replay-<N> artifacts to read"
+        required: true
+      shards:
+        description: "How many replay shards that run had"
+        default: "20"
+      end_ms:
+        description: "The whole replay's common end (epoch ms)"
+        required: true
+      start:
+        description: "The replay's first daily check, YYYY-MM-DD"
+        default: "2026-07-01"
+      stage:
+        description: "base (576 rule sets + rooms + streaks) | options (one option at a time on BASES) | custom (one rule set, CUSTOM)"
+        default: "base"
+      bases:
+        description: "options stage: the base rule sets, `window:on:off:trades:tp:stopcap` joined by ;"
+        default: ""
+      rooms:
+        description: "The rooms' own rules, `ID=window:on:off:trades:tp:stopcap` joined by ;"
+        default: ""
+      avoid:
+        description: "The coins to avoid, comma-separated (the skip-coins option)"
+        default: ""
+      families:
+        description: "The worst signal families, comma-separated (the skip-families option)"
+        default: ""
+      custom:
+        description: "custom stage: one rule set as JSON (the page's what-if box)"
+        default: ""
+
+permissions:
+  contents: read
+  actions: read          # to download the replay run's artifacts
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.mk.outputs.shards }}
+    steps:
+      - id: mk
+        run: |
+          python3 -c "import json,os;print('shards='+json.dumps(list(range(int(os.environ['N'])))))" >> "$GITHUB_OUTPUT"
+        env:
+          N: ${{ github.event.inputs.shards }}
+
+  forecast:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false            # one bad machine must not bin the others
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests numpy
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: replay-${{ matrix.shard }}
+          path: src
+          run-id: ${{ github.event.inputs.source_run }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Forecast shard ${{ matrix.shard }}
+        env:
+          SRC: src
+          SHARD: ${{ matrix.shard }}
+          END_MS: ${{ github.event.inputs.end_ms }}
+          START: ${{ github.event.inputs.start }}
+          STAGE: ${{ github.event.inputs.stage }}
+          BASES: ${{ github.event.inputs.bases }}
+          ROOMS: ${{ github.event.inputs.rooms }}
+          AVOID: ${{ github.event.inputs.avoid }}
+          FAMILIES: ${{ github.event.inputs.families }}
+          CUSTOM: ${{ github.event.inputs.custom }}
+          # the checks are the OPERATOR's midnights, as the replay's were
+          TZ: America/New_York
+        run: python .github/scripts/forecast_shard.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forecast-${{ matrix.shard }}
+          path: |
+            out/forecast-*.npz
+            out/forecast-*.json
+          retention-days: 14

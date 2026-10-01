@@ -1,0 +1,571 @@
+"""Forecast v2 — what is hot, what loses, where the money goes, and which room
+rules will make the most this month.
+
+Operator, Oct 01, 2026: *"when i say forecast, i mean you should be predicting
+what's the best combination of criteria to be using for deployed rooms, based
+on overall backtest results"*, *"i want prediction like for example, you are
+seeing a coin is winning 9 streak then inform me that specific coin i want it
+in a Streak section / then predict what combination of room will be
+effective, for example: 90% winrate with 40trade, tp is greater than SL will
+have profit of x this month"*, then *"okay run that prompt and create
+Forecast v2"* (the prompt: docs/FORECAST-V2.md, "The build prompt").
+
+THE ONE PLACE for every Forecast v2 number. Two halves:
+
+* LIVE — the PRACTICE half, worked out here from each room's own files:
+  its trade record (room_stats.ledger, read incrementally), its open trades,
+  its switched-on rows (auto_trade.json `watcher_slots`), its switch-on and
+  switch-off history (deployments.jsonl) and the rebuilt backtest trades of
+  those rows (rolling30's cache). Cheap; the API makes a copy in the
+  background (`live()`).
+* MEASURED ON GITHUB — the BACKTEST half: the replay of every strategy that
+  could pass (.github/workflows/replay.yml) and the forecast research over it
+  (.github/workflows/forecast.yml -> .github/scripts/forecast_shard.py),
+  merged by forecast_v2_merge.py into ~/.tradingagents/forecast_v2/latest.json
+  and only READ here.
+
+READ ONLY on trading: nothing here switches a room on or off, changes a
+watcher rule or touches real money. Every prediction and warning is a note.
+
+THE DEFINITIONS (the same as everywhere else in the project):
+* a win = profit after all costs > 0; everything else is a loss.
+* a WINNING streak = wins in a row ending with the most recent closed trade,
+  a LOSING streak the opposite; a practice streak is per room and coin (every
+  strategy of that coin in that room, by exit time), a backtest streak per
+  stored combination (coin + timeframe + signal + TP + SL).
+* break-even win rate of a strategy = (SL + cost) / (TP + SL), all in percent
+  of the trade's size: a win pays TP less the cost, a loss costs SL plus the
+  cost (CLAUDE.md rule 11). For a group of trades, the average over them.
+* a coin to avoid = lost money over at least AVOID_MIN_TRADES practice trades,
+  all rooms together.
+* a finding resting on fewer than THIN trades is "too few trades to mean
+  anything", and the screen says so.
+* REALITY CHECK: the same rows over the same hours — every row a room
+  switched on, from its switch-on to the end of its rebuilt backtest
+  (rolling30), its BACKTEST trades against its PRACTICE trades. The money the
+  backtest made that practice did not, per backtest trade, is the shortfall
+  every prediction is corrected by.
+"""
+from __future__ import annotations
+
+import datetime as dt
+import json
+import math
+import re
+import threading
+import time
+from functools import lru_cache
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+from tradingagents import room_stats as rs
+
+NY = ZoneInfo("America/New_York")
+WIN_N = 9                     # the winning streak shown by default
+LOSS_M = 5                    # the losing streak shown by default
+AVOID_MIN_TRADES = 5          # a coin to avoid has lost over at least this many trades
+THIN = 30                     # fewer trades than this: too few to mean anything
+OVERLAP_WARN = 3              # rooms holding one coin at once before it is flagged
+TFS = ("15m", "30m", "1h", "4h", "1d")
+# when the trade OPENED, New York time — the buckets the money is split by
+HOURS = ((0, 6, "12am to 6am"), (6, 9, "6am to 9am"), (9, 12, "9am to noon"),
+         (12, 16, "noon to 4pm"), (16, 20, "4pm to 8pm"), (20, 24, "8pm to midnight"))
+# how long a stopped-out trade was held
+HELD = ((0, 900, "within 15 minutes"), (900, 3600, "15 to 60 minutes"),
+        (3600, math.inf, "after an hour"))
+
+
+# ------------------------------------------------------------------ helpers
+def _home() -> Path:
+    """Beside the rest of the app's state (a test's sandbox moves it)."""
+    from tradingagents import auto_trader as at
+
+    return Path(at.STATE_DIR) / "forecast_v2"
+
+
+def pct_decode(code: str) -> float | None:
+    """strategy_keys.pct_code backwards: '03' -> 0.3, '15' -> 1.5, '2' -> 2,
+    '125' -> 1.25, '12p5' -> 12.5."""
+    code = str(code or "")
+    if not code or not re.fullmatch(r"[0-9p]+", code):
+        return None
+    if "p" in code:
+        return float(code.replace("p", "."))
+    return float(code[0] + ("." + code[1:] if len(code) > 1 else ""))
+
+
+@lru_cache(maxsize=20_000)
+def spec_of(key: str) -> dict:
+    """timeframe, signal, threshold, TP and SL (percent) of a strategy key —
+    from the runner's own recipe when it has one, else read off the key the
+    way strategy_keys.key_for wrote it."""
+    from tradingagents import auto_trader as at, strategy_keys as sk
+    from tradingagents.local_history import _sig_of
+
+    key = str(key or "")
+    out = {"tf": None, "signal": _sig_of(key) if key else "", "th": 0.0,
+           "tp": None, "sl": None}
+    m = re.search(r"_(15m|30m|1h|4h|1d)(?:_|$)", key)
+    if m:
+        out["tf"] = m.group(1)
+    spec = at.STRATEGY_SPECS.get(key)
+    if spec:
+        tf = {v[0]: k for k, v in sk.TF_SPEC.items()}.get(spec.get("interval"))
+        out["tf"] = tf or out["tf"]
+        out["tp"] = round(float(spec["tp"]) * 100, 3)
+        out["sl"] = round(float(spec["sl"]) * 100, 3)
+        if out["signal"] in sk.THRESHOLD_SIGNALS:
+            out["th"] = round(float(spec.get("threshold") or 0) * 100, 3)
+        return out
+    m = re.search(r"_sl([0-9p]+)tp([0-9p]+)$", key)
+    if m:
+        out["sl"], out["tp"] = pct_decode(m.group(1)), pct_decode(m.group(2))
+    m = re.search(r"_t([0-9p]+)_", key)
+    if m and out["signal"] in sk.THRESHOLD_SIGNALS:
+        out["th"] = pct_decode(m.group(1)) or 0.0
+    return out
+
+
+def family(signal: str) -> str:
+    """A signal's family: the learned models and formulas are one family each
+    (they are one per coin), every other signal is its own."""
+    s = str(signal or "")
+    if s.startswith("ml_"):
+        return "ml (learned models)"
+    if s.startswith("lx_"):
+        return "lx (learned formulas)"
+    return s or "unknown"
+
+
+def break_even(tp: float | None, sl: float | None, cost_pct: float) -> float | None:
+    """(SL + cost) / (TP + SL), in percent — the win rate a strategy needs."""
+    if not tp or not sl or tp + sl <= 0:
+        return None
+    return 100.0 * (float(sl) + max(float(cost_pct), 0.0)) / (float(tp) + float(sl))
+
+
+def _hour_bucket(ts: float) -> str:
+    h = dt.datetime.fromtimestamp(ts, NY).hour
+    return next(label for lo, hi, label in HOURS if lo <= h < hi)
+
+
+def _group(rows: list[dict]) -> dict:
+    g = rs._group(rows)
+    g["thin"] = g["trades"] < THIN
+    return g
+
+
+def _worst_run(pnls: list[float]) -> tuple[float, int]:
+    return rs.worst_run(pnls)
+
+
+# ------------------------------------------------------------- one room
+def _settings(pid: str) -> dict:
+    """The room's own settings file, read without the runner's defaults
+    (load_settings writes nothing either, but this must not depend on it)."""
+    from tradingagents import auto_trader as at, profiles
+
+    try:
+        p = Path(profiles.path(at.SETTINGS_PATH, pid))
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _intervals(pid: str, now_s: float) -> dict:
+    """{slot: [(on_s, off_s or now_s), ...]} — every stretch a row was
+    switched on in this room, from its deploy log (deployed / disarmed), and
+    the room's current `watcher_slots` for a row whose deploy line is
+    missing."""
+    from tradingagents import local_history as lh, profiles
+
+    out: dict = {}
+    try:
+        with profiles.using(pid):
+            path = Path(lh._deploy_log())
+        lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    except Exception:                                          # noqa: BLE001
+        lines = []
+    open_at: dict = {}
+    for line in lines:
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        slot, act, at_s = e.get("strategy_key"), e.get("action"), rs._num(e.get("changed_at"), None)
+        if not slot or at_s is None:
+            continue
+        if act == "deployed":
+            open_at.setdefault(slot, at_s)
+        elif act == "disarmed" and slot in open_at:
+            out.setdefault(slot, []).append((open_at.pop(slot), at_s))
+    for slot, at_s in open_at.items():
+        out.setdefault(slot, []).append((at_s, now_s))
+    for slot, v in (_settings(pid).get("watcher_slots") or {}).items():
+        on = rs._num(v.get("on_at"), None)
+        if on is not None and slot not in out:
+            out[slot] = [(on, now_s)]
+    return out
+
+
+def room_data(pid: str, now_s: float) -> dict:
+    """Everything Forecast v2 reads about one room."""
+    from tradingagents import profiles
+
+    ledger_path, state_path = rs._paths(pid)
+    led = rs.ledger(ledger_path)
+    exits = [e for e in led["exits"] if e["dry"]]
+    exits.sort(key=lambda e: (e["ts"], e["trade_id"]))
+    costs = rs.costs(exits, led["enters"])
+    cost_pct = {r["trade_id"]: 100.0 * r["cost"] / r["size"] for r in costs["rows"] if r["size"]}
+    settings = _settings(pid)
+    return {"id": pid, "name": "Main" if pid == profiles.MAIN else f"#{pid}",
+            "retired": profiles.retired(pid), "exits": exits, "enters": led["enters"],
+            "costs": costs, "cost_pct": cost_pct,
+            "avg_cost_pct": (sum(cost_pct.values()) / len(cost_pct)) if cost_pct else 0.0,
+            "open": [o for o in rs.open_trades(state_path) if o["dry"]],
+            "slots": settings.get("watcher_slots") or {},
+            "coins_on": {c for cs in (settings.get("strategy_coins") or {}).values()
+                         for c in (cs or [])},
+            "intervals": _intervals(pid, now_s), "unreadable": led["bad"],
+            "cap": _coin_cap(settings)}
+
+
+def _coin_cap(settings: dict) -> int:
+    """How many practice trades the room's runner holds on one coin at once —
+    the runner's own rule (auto_trader.max_slices, 4 unless set)."""
+    from tradingagents import auto_trader as at
+
+    return at.max_slices(settings) if at.partial_on(settings, True) else 1
+
+
+def _trade_be(e: dict, room: dict) -> float | None:
+    sp = spec_of(e["key"])
+    return break_even(sp["tp"], sp["sl"], room["cost_pct"].get(e["trade_id"], room["avg_cost_pct"]))
+
+
+# ------------------------------------------------------------- A. streaks
+def streak_of(trades: list[dict]) -> dict | None:
+    """The run at the END of `trades` (sorted by exit time): wins in a row
+    (a loss ends it) or losses in a row (a win ends it)."""
+    if not trades:
+        return None
+    won = trades[-1]["pnl"] > 0
+    n = 0
+    for t in reversed(trades):
+        if (t["pnl"] > 0) != won:
+            break
+        n += 1
+    run = trades[-n:]
+    return {"kind": "win" if won else "loss", "length": n,
+            "started_at": run[0].get("opened_at") or run[0]["ts"], "last_at": run[-1]["ts"],
+            "profit": round(sum(t["pnl"] for t in run), 2),
+            "keys": sorted({t["key"] for t in run if t["key"]})}
+
+
+def practice_streaks(rooms: list[dict]) -> list[dict]:
+    """Every room and coin's current streak, longest first."""
+    out = []
+    for r in rooms:
+        by: dict = {}
+        for e in r["exits"]:
+            by.setdefault(e["symbol"], []).append(e)
+        for sym, trades in by.items():
+            s = streak_of(trades)
+            if s is None:
+                continue
+            wins = sum(1 for t in trades if t["pnl"] > 0)
+            bes = [b for b in (_trade_be(t, r) for t in trades) if b is not None]
+            one = s["keys"][0] if len(s["keys"]) == 1 else None
+            sp = spec_of(one) if one else {}
+            slot = f"{one}|{sym}" if one else None
+            row_id = (r["slots"].get(slot) or {}).get("id") if slot else None
+            out.append({**s, "source": "practice", "room": r["id"], "room_name": r["name"],
+                        "coin": sym.replace("_USDT", ""), "id": row_id,
+                        "strategies": len(s["keys"]), "tf": sp.get("tf"),
+                        "signal": sp.get("signal"), "tp": sp.get("tp"), "sl": sp.get("sl"),
+                        "trades": len(trades), "wins": wins, "losses": len(trades) - wins,
+                        "winrate": round(100 * wins / len(trades), 1),
+                        "break_even": round(sum(bes) / len(bes), 1) if bes else None,
+                        "switched_on": sym in r["coins_on"]})
+    out.sort(key=lambda x: (-x["length"], x["room"], x["coin"]))
+    return out
+
+
+# ------------------------------------------------------- B. coins to avoid
+def _bt_of_slots(slots: set) -> dict:
+    """The rebuilt backtest trades (rolling30) of these rows: their last 30
+    days up to each one's own last candle."""
+    n = w = 0
+    have = 0
+    for slot in slots:
+        rec = _rolling(slot)
+        if rec is None:
+            continue
+        have += 1
+        for t in rec["trades"]:
+            n += 1
+            w += t[2] > 0
+    return {"rows": have, "of": len(slots), "trades": n, "wins": w,
+            "winrate": round(100 * w / n, 1) if n else None}
+
+
+def coins_to_avoid(rooms: list[dict]) -> dict:
+    """Coins that lost money over AVOID_MIN_TRADES+ practice trades, all rooms
+    together, worst first."""
+    by: dict = {}
+    for r in rooms:
+        for e in r["exits"]:
+            c = by.setdefault(e["symbol"], {"rooms": set(), "trades": [], "slots": set()})
+            c["rooms"].add(r["id"])
+            c["trades"].append(e)
+            if e["key"]:
+                c["slots"].add(f"{e['key']}|{e['symbol']}")
+    out = []
+    for sym, c in by.items():
+        trades = sorted(c["trades"], key=lambda e: (e["ts"], e["trade_id"]))
+        n = len(trades)
+        wins = sum(1 for t in trades if t["pnl"] > 0)
+        profit = round(sum(t["pnl"] for t in trades), 2)
+        if n < AVOID_MIN_TRADES or profit >= 0:
+            continue
+        run, run_n = _worst_run([t["pnl"] for t in trades])
+        out.append({"coin": sym.replace("_USDT", ""), "symbol": sym,
+                    "rooms": sorted(c["rooms"]), "trades": n, "wins": wins, "losses": n - wins,
+                    "winrate": round(100 * wins / n, 1), "profit": profit,
+                    "worst_run": run, "worst_run_trades": run_n,
+                    "backtest": _bt_of_slots(c["slots"])})
+    out.sort(key=lambda x: (x["profit"], x["coin"]))
+    return {"rule": f"lost money over at least {AVOID_MIN_TRADES} practice trades, all rooms together",
+            "coins": out, "examined": len(by)}
+
+
+# ------------------------------------------------ C. where the money goes
+def money(rooms: list[dict]) -> dict:
+    """Practice trades split every way the prompt asks; each group carries
+    `thin` when it rests on too few trades to mean anything."""
+    all_exits = [(r, e) for r in rooms for e in r["exits"]]
+    pnls = [e["pnl"] for _, e in all_exits]
+    wins = [p for p in pnls if p > 0]
+    losses = [-p for p in pnls if p <= 0]
+    avg_w = sum(wins) / len(wins) if wins else None
+    avg_l = sum(losses) / len(losses) if losses else None
+    per_room = []
+    for r in rooms:
+        c = r["costs"]
+        profit = round(sum(e["pnl"] for e in r["exits"]), 2)
+        days: dict = {}
+        for e in r["exits"]:
+            days[rs._day(e["ts"])] = days.get(rs._day(e["ts"]), 0.0) + e["pnl"]
+        worst = min(days.items(), key=lambda kv: kv[1]) if days else None
+        per_room.append({"room": r["id"], "name": r["name"], "retired": r["retired"],
+                         "trades": len(r["exits"]), "profit": profit,
+                         "costs": c["total"] if c["matched"] else 0.0,
+                         "matched": c["matched"], "without_costs": round(profit + (c["total"] or 0), 2),
+                         "worst_day": ({"day": worst[0], "profit": round(worst[1], 2)} if worst else None)})
+
+    def split(fn) -> list[dict]:
+        groups: dict = {}
+        for r, e in all_exits:
+            k = fn(r, e)
+            if k is not None:
+                groups.setdefault(k, []).append(e)
+        out = [{"group": k, **_group(v)} for k, v in groups.items()]
+        out.sort(key=lambda g: (g["profit"], str(g["group"])))
+        return out
+
+    tf_ix = {t: i for i, t in enumerate(TFS)}
+    by_tf = split(lambda r, e: spec_of(e["key"])["tf"] or "unknown")
+    by_tf.sort(key=lambda g: tf_ix.get(g["group"], 99))
+    hours_ix = {label: i for i, (_lo, _hi, label) in enumerate(HOURS)}
+    by_hour = split(lambda r, e: _hour_bucket(e.get("opened_at") or e["ts"]))
+    by_hour.sort(key=lambda g: hours_ix[g["group"]])
+    stops: dict = {label: [] for _lo, _hi, label in HELD}
+    for _r, e in all_exits:
+        if e["why"] != "SL" or e["held"] is None:
+            continue
+        stops[next(label for lo, hi, label in HELD if lo <= e["held"] < hi)].append(e)
+    total_cost = round(sum(p["costs"] for p in per_room), 2)
+    total_profit = round(sum(pnls), 2)
+    return {
+        "costs": {"rooms": per_room, "profit": total_profit, "costs": total_cost,
+                  "without_costs": round(total_profit + total_cost, 2)},
+        "sizes": {"avg_win": round(avg_w, 2) if avg_w is not None else None,
+                  "avg_loss": round(-avg_l, 2) if avg_l is not None else None,
+                  "break_even": (round(100 * avg_l / (avg_w + avg_l), 1)
+                                 if avg_w is not None and avg_l is not None else None),
+                  "winrate": round(100 * len(wins) / len(pnls), 1) if pnls else None,
+                  "trades": len(pnls), "wins": len(wins), "losses": len(losses)},
+        "by_tf": by_tf,
+        "by_family": split(lambda r, e: family(spec_of(e["key"])["signal"])),
+        "by_kind": split(lambda r, e: "stocks" if rs.is_stock(e["symbol"]) else "crypto"),
+        "by_hour": by_hour,
+        "stop_outs": [{"group": k, **_group(v)} for k, v in stops.items()],
+        "overlap": overlap(rooms),
+        "thin_below": THIN,
+    }
+
+
+def overlap(rooms: list[dict]) -> list[dict]:
+    """How many rooms hold each coin RIGHT NOW (practice). With real money
+    MEXC merges a coin into ONE position across rooms (CLAUDE.md, every
+    trading profile is its own room)."""
+    by: dict = {}
+    for r in rooms:
+        for o in r["open"]:
+            c = by.setdefault(o["symbol"], {"rooms": set(), "trades": 0})
+            c["rooms"].add(r["id"])
+            c["trades"] += 1
+    out = [{"coin": s.replace("_USDT", ""), "rooms": sorted(v["rooms"]), "count": len(v["rooms"]),
+            "trades": v["trades"], "flag": len(v["rooms"]) >= OVERLAP_WARN}
+           for s, v in by.items()]
+    out.sort(key=lambda x: (-x["count"], -x["trades"], x["coin"]))
+    return out
+
+
+# --------------------------------------------------------- the reality check
+_ROLL: dict = {}
+_ROLL_LOCK = threading.Lock()
+
+
+def _rolling(slot: str) -> dict | None:
+    """rolling30's rebuilt backtest of one row, re-read when its file changes."""
+    from tradingagents import rolling30 as r30
+
+    p = r30._cache_path(slot)
+    try:
+        st = p.stat()
+    except OSError:
+        return None
+    stamp = (st.st_mtime_ns, st.st_size)
+    with _ROLL_LOCK:
+        got = _ROLL.get(slot)
+        if got and got[0] == stamp:
+            return got[1]
+    try:
+        rec = rs.loads(p.read_text(encoding="utf-8"))
+        rec = {"end_ms": int(rec["end_ms"]), "trades": [[float(a), float(b), float(c)]
+                                                       for a, b, c in rec.get("trades") or []]}
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    with _ROLL_LOCK:
+        _ROLL[slot] = (stamp, rec)
+    return rec
+
+
+def reality(rooms: list[dict]) -> dict:
+    """THE SAME ROWS OVER THE SAME HOURS. For every stretch a row was switched
+    on in a room, up to the end of its rebuilt backtest: the backtest's trades
+    that OPENED in it against the practice trades that opened in it (both
+    closed by that end). Rows with no rebuilt backtest are counted apart.
+
+    THE BACKTEST SIDE KEEPS THE RUNNER'S PER-COIN LIMIT (found in the bug hunt,
+    Oct 01, 2026): uncapped, #4FC03172's 2,592 rows "made" 7,470 trades in
+    fourteen hours against practice's 138, and the gap read as practice
+    failing when it was mostly the 4-a-coin rule — the same rule the research
+    applies (coin_slices), so a prediction corrected by an uncapped gap would
+    count that rule twice. First come, first served in entry order, exactly
+    watcher_replay.cap_per_coin. The runner's other rule (no slice against an
+    open one) cannot be applied: a backtest trade does not record its side."""
+    from tradingagents import watcher_replay as wr
+
+    out_rooms = []
+    tot = {"bt_trades": 0, "bt_wins": 0, "bt_profit": 0.0,
+           "pr_trades": 0, "pr_wins": 0, "pr_profit": 0.0, "rows": 0, "bt_uncapped": 0}
+    for r in rooms:
+        by_slot: dict = {}
+        for e in r["exits"]:
+            if e["key"]:
+                by_slot.setdefault(f"{e['key']}|{e['symbol']}", []).append(e)
+        t = {"bt_trades": 0, "bt_wins": 0, "bt_profit": 0.0,
+             "pr_trades": 0, "pr_wins": 0, "pr_profit": 0.0, "rows": 0,
+             "no_backtest": 0, "after_backtest": 0, "first": None, "last": None,
+             "bt_uncapped": 0}
+        capped: list = []                  # one slot per row, for cap_per_coin
+        for slot, spans in r["intervals"].items():
+            rec = _rolling(slot)
+            if rec is None:
+                t["no_backtest"] += 1
+                continue
+            end_s = rec["end_ms"] / 1000
+            usable = [(a, min(b, end_s)) for a, b in spans if a < end_s]
+            if not usable:
+                t["after_backtest"] += 1
+                continue
+            t["rows"] += 1
+            mine = []
+            for a, b in usable:
+                t["first"] = a if t["first"] is None else min(t["first"], a)
+                t["last"] = b if t["last"] is None else max(t["last"], b)
+                mine += [[en, ex, p, 1.0] for en, ex, p in rec["trades"]
+                         if a * 1000 <= en < b * 1000 and ex <= rec["end_ms"]]
+                for e in by_slot.get(slot, []):
+                    opened = e.get("opened_at") or e["ts"]
+                    if a <= opened < b and e["ts"] * 1000 <= rec["end_ms"]:
+                        t["pr_trades"] += 1
+                        t["pr_wins"] += e["pnl"] > 0
+                        t["pr_profit"] += e["pnl"]
+            t["bt_uncapped"] += len(mine)
+            capped.append({"coin": slot.split("|", 1)[1], "trades": sorted(mine)})
+        wr.cap_per_coin(capped, r["cap"])
+        for c in capped:
+            for _en, _ex, p, _closed in c["trades"]:
+                t["bt_trades"] += 1
+                t["bt_wins"] += p > 0
+                t["bt_profit"] += p
+        for k in tot:
+            tot[k] += t[k]
+        out_rooms.append({"room": r["id"], "name": r["name"], "cap": r["cap"],
+                          **_reality_numbers(t)})
+    return {"rooms": out_rooms, "all": _reality_numbers(tot),
+            "rule": ("the same rows over the same hours: from each switch-on to the end of "
+                     "its rebuilt backtest, the backtest's trades against the practice trades")}
+
+
+def _reality_numbers(t: dict) -> dict:
+    """TWO measured numbers carry the correction (the bug hunt, Oct 01, 2026:
+    one "dollars short per backtest trade" figure could not tell a rule set
+    practice barely trades from one it trades badly):
+    * took — of the trades the backtest made, the share practice also made
+      (the runner refuses many: the cost check at entry, a stale candle, a
+      coin already full);
+    * gap — on the trades it did make, how much less practice made per trade
+      than the backtest made per trade."""
+    n, m = t["bt_trades"], t["pr_trades"]
+    out = {k: (round(v, 2) if isinstance(v, float) else v) for k, v in t.items()}
+    out["bt_winrate"] = round(100 * t["bt_wins"] / n, 1) if n else None
+    out["pr_winrate"] = round(100 * t["pr_wins"] / m, 1) if m else None
+    out["bt_per_trade"] = round(t["bt_profit"] / n, 4) if n else None
+    out["pr_per_trade"] = round(t["pr_profit"] / m, 4) if m else None
+    out["took"] = round(m / n, 4) if n else None
+    out["gap"] = (round(out["bt_per_trade"] - out["pr_per_trade"], 4)
+                  if n and m else None)
+    return out
+
+
+def corrected(profit: float, trades: int, r: dict) -> float | None:
+    """A backtest prediction after the reality check: practice makes `took` of
+    its trades, each `gap` worse than the backtest's average — so P over T
+    trades becomes took x (P - gap x T). Exact on the window it was measured
+    on: the backtest's own numbers there come back as practice's."""
+    if r.get("took") is None or r.get("gap") is None:
+        return None
+    return round(float(r["took"]) * (float(profit) - float(r["gap"]) * int(trades)), 2)
+
+
+# ------------------------------------------------------------ the live copy
+def live(now: float | None = None) -> dict:
+    """Every practice-side number of Forecast v2, RIGHT NOW."""
+    from tradingagents import profiles
+
+    now = time.time() if now is None else float(now)
+    t0 = time.perf_counter()
+    rooms = [room_data(pid, now) for pid in profiles.ids()]
+    return {"at": int(now), "rooms": [{"id": r["id"], "name": r["name"], "retired": r["retired"],
+                                       "trades": len(r["exits"]), "unreadable": r["unreadable"]}
+                                      for r in rooms],
+            "streaks": practice_streaks(rooms), "avoid": coins_to_avoid(rooms),
+            "money": money(rooms), "reality": reality(rooms),
+            "defaults": {"win_n": WIN_N, "loss_m": LOSS_M, "avoid_min_trades": AVOID_MIN_TRADES,
+                         "thin": THIN, "overlap_warn": OVERLAP_WARN},
+            "took_ms": round(1000 * (time.perf_counter() - t0))}

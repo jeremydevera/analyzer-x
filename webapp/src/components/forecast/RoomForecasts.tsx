@@ -447,6 +447,9 @@ export default function RoomForecasts() {
               numbers read {fmtWhen(live.at)} in {live.took_ms.toLocaleString()} ms · refreshed every 15 seconds
               {live.research.graded_from ? ` · research: graded ${live.research.graded_from} to ${live.research.graded_to}` : ""}
             </p>
+            {live.refresh_error && (
+              <p className="mt-1 text-[11px] text-error-500">the newest numbers {live.refresh_error} — these are from {fmtWhen(live.at)}</p>
+            )}
           </div>
         )}
       </div>

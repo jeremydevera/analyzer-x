@@ -966,6 +966,8 @@ export type ForecastsLive = {
     ready_trades: number; ready_days: number; off_trades: number; far_below_share: number;
     far_below_min: number; stock_rule: string; cost_note: string };
   at: number; took_ms: number;
+  /** set when the last background refresh failed — these numbers are older */
+  refresh_error?: string;
 };
 
 export type RoomErrors = {

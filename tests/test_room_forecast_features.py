@@ -33,6 +33,8 @@ def sandbox(tmp_path, monkeypatch):
     monkeypatch.setattr(rs, "research", lambda: {"rooms": {}})
     rs._LEDGERS.clear()
     rs._STATES.clear()
+    monkeypatch.setitem(api._FORECAST_LIVE, "value", None)    # the background copy too
+    monkeypatch.setitem(api._FORECAST_LIVE, "error", "")
     yield tmp_path
     rs._LEDGERS.clear()
     rs._STATES.clear()
@@ -375,6 +377,37 @@ def test_the_live_route_answers_every_room_with_every_feature():
     json.dumps(got)
 
 
+def test_the_live_numbers_are_served_from_a_background_copy(monkeypatch):
+    """Measured Oct 01, 2026 3:10pm: worked out inside the request, the
+    numbers waited 1.9 s for Python's lock behind the Auto Trade polls."""
+    _write(_trades([1.0]))
+    first = api.forecasts_live_route()                  # nothing yet: made now
+    assert api.forecasts_live_route() is first          # fresh: the same copy, at once
+    made = []
+    monkeypatch.setattr(api, "_forecast_live_refresh", lambda: made.append(1) or first)
+    monkeypatch.setitem(first, "at", first["at"] - 10 * api.FORECAST_LIVE_FRESH_S)
+    assert api.forecasts_live_route() is first          # stale: still served at once...
+    time.sleep(0.2)
+    assert made, "...and a new copy is started behind it"
+
+
+def test_a_failed_refresh_is_named_and_the_last_copy_still_served(monkeypatch):
+    _write(_trades([1.0]))
+    first = api.forecasts_live_route()
+
+    def boom():
+        raise RuntimeError("disk said no")
+
+    monkeypatch.setattr(api, "_forecast_live_payload", boom)
+    monkeypatch.setitem(api._FORECAST_LIVE, "error", "")
+    assert api._forecast_live_refresh() is first
+    got = api.forecasts_live_route()
+    assert "disk said no" in got["refresh_error"] and got["rooms"] == first["rooms"]
+    monkeypatch.setitem(api._FORECAST_LIVE, "value", None)
+    with pytest.raises(RuntimeError):            # nothing to serve: the failure itself
+        api.forecasts_live_route()
+
+
 def test_the_button_refuses_a_double_click(monkeypatch, tmp_path):
     f = tmp_path / "f.jsonl"
     monkeypatch.setattr(rf, "FILE", f)
@@ -405,3 +438,12 @@ def test_the_page_prints_every_feature_and_works_nothing_out():
     # dates through fmtWhen only, never a hand-built one
     assert "toLocale" not in src.replace("toLocaleString()", "")
     assert "new Date(" not in src
+
+
+def test_a_failing_refresh_never_skips_the_daily_forecast():
+    """Both run in the supervisor's 30-second tick; each has its own guard."""
+    import inspect
+    src = inspect.getsource(api)
+    i = src.index("                    _forecast_live_refresh()")
+    j = src.index("_rf.daily_tick()", i)
+    assert "except Exception" in src[i:j] and "try:" in src[i:j]

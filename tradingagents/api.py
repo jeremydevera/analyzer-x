@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
 import time as _time
 from pathlib import Path
 
@@ -188,13 +189,18 @@ def _keep_the_row_index_current() -> None:
                 # daily GitHub update is on this PC, and every room's numbers
                 # kept read so the tab answers at once (a cold first read of
                 # nine trade records off the spinning disk took seconds).
+                # TWO GUARDS, not one: a refresh that fails must not take
+                # the day's forecast down with it (found in the bug hunt)
                 try:
-                    from tradingagents import room_forecasts as _rf, room_stats as _rs
+                    _forecast_live_refresh()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[forecast] the room numbers failed: {exc!r}", flush=True)
+                try:
+                    from tradingagents import room_forecasts as _rf
 
-                    _rs.rooms()
                     _rf.daily_tick()
                 except Exception as exc:                       # noqa: BLE001
-                    print(f"[forecast] failed: {exc!r}", flush=True)
+                    print(f"[forecast] the daily forecast failed: {exc!r}", flush=True)
                 # NO AUTOMATIC CANDLE TOP-UP. candle_autopilot.tick() ran here
                 # from 2026-09-06 to 2026-09-09 and started an UPDATE by itself
                 # whenever the store was 3h stale. The operator saw
@@ -1170,11 +1176,19 @@ def forecasts_route(page: int = 1) -> dict:
     return {**got, "prompts": _rf.prompts()}
 
 
-@app.get("/api/forecasts/live")
-def forecasts_live_route() -> dict:
-    """Every room's numbers RIGHT NOW (features 1-3, 5, 8-15) and what a
-    forecast made now would say — all from room_stats, the one place the
-    numbers are worked out. Read only."""
+# THE FORECAST TAB ANSWERS FROM A COPY MADE IN THE BACKGROUND. Measured
+# Oct 01, 2026 3:10pm: worked out inside a request, every room's numbers took
+# 1.9 s — not their own cost (0.04 s alone) but the wait for Python's one lock
+# while the Auto Trade screen's polls re-read 17 MB trade records — and
+# /api/health itself took 60 s. The supervisor's 30-second tick makes the
+# copy; a request older than FORECAST_LIVE_FRESH_S gets the copy at once and
+# starts a new one; only the very first request after a start waits.
+FORECAST_LIVE_FRESH_S = 15
+_FORECAST_LIVE: dict = {"value": None, "busy": False, "error": ""}
+_FORECAST_LIVE_LOCK = threading.Lock()
+
+
+def _forecast_live_payload() -> dict:
     import time as _t
 
     from tradingagents import room_stats as _rs
@@ -1191,6 +1205,51 @@ def forecasts_live_route() -> dict:
                       "far_below_min": _rs.FAR_BELOW_MIN,
                       "stock_rule": _rs.STOCK_RULE, "cost_note": _rs.COST_NOTE},
             "at": int(_t.time()), "took_ms": round(1000 * (_t.perf_counter() - t0))}
+
+
+def _forecast_live_refresh() -> dict:
+    """Make a fresh copy unless one is being made; never raises into a caller
+    that has a copy to serve."""
+    with _FORECAST_LIVE_LOCK:
+        if _FORECAST_LIVE["busy"]:
+            return _FORECAST_LIVE["value"] or {}
+        _FORECAST_LIVE["busy"] = True
+    try:
+        value = _forecast_live_payload()
+        _FORECAST_LIVE["value"] = value
+        _FORECAST_LIVE["error"] = ""
+        return value
+    except Exception as exc:                                   # noqa: BLE001
+        # NAMED, never silent: kept for the screen and printed once; a caller
+        # with no copy at all gets the failure itself
+        from tradingagents.positions_view import fmt_when as _fw
+
+        why = f"{type(exc).__name__}: {str(exc)[:200]}"
+        if why not in _FORECAST_LIVE["error"]:
+            print(f"[forecast] the room numbers could not be worked out: {why}", flush=True)
+        _FORECAST_LIVE["error"] = f"could not be worked out at {_fw(_time.time())}: {why}"
+        if _FORECAST_LIVE["value"] is None:
+            raise
+        return _FORECAST_LIVE["value"]
+    finally:
+        _FORECAST_LIVE["busy"] = False
+
+
+@app.get("/api/forecasts/live")
+def forecasts_live_route() -> dict:
+    """Every room's numbers (features 1-3, 5, 8-15) and what a forecast made
+    now would say — all from room_stats, the one place the numbers are worked
+    out. Read only. Served from the background copy (its own "at" says when
+    it was read); a stale copy is served while a new one is made."""
+    import time as _t
+
+    have = _FORECAST_LIVE["value"]
+    if have is None:
+        return _forecast_live_refresh()
+    if _t.time() - have["at"] > FORECAST_LIVE_FRESH_S and not _FORECAST_LIVE["busy"]:
+        threading.Thread(target=_forecast_live_refresh, name="forecast-live",
+                         daemon=True).start()
+    return {**have, "refresh_error": _FORECAST_LIVE["error"]} if _FORECAST_LIVE["error"] else have
 
 
 # A forecast made by the button within this many seconds of the last saved

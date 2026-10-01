@@ -76,6 +76,14 @@ BUILTIN[1:1] = [
 def retired(pid: str) -> bool:
     return bool((get(pid) or {}).get("retired"))
 
+
+def shown() -> list[str]:
+    """The rooms that get a TAB. A retired room gets none (operator, Oct 01,
+    2026: "if i say off you should completely remoev the tab"); it stays in
+    BUILTIN only so its runner can finish the practice trades still open and
+    its record stays on disk."""
+    return [p["id"] for p in BUILTIN if not p.get("retired")]
+
 _CURRENT: contextvars.ContextVar[str] = contextvars.ContextVar(
     "ta_profile", default=os.environ.get("TA_PROFILE") or MAIN)
 

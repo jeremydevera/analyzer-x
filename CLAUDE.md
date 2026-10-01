@@ -1150,6 +1150,35 @@ should be included"*. Plan: `docs/superpowers/plans/2026-09-29-trading-profiles.
 Guards: `tests/test_every_profile_is_its_own_room.py` (19) and the profile
 tests in `tests/test_the_strategy_watcher.py`.
 
+**STANDING SETUP — DO NOT ASK ANY OF THIS AGAIN (operator, Oct 01, 2026:
+*"what you configured now document it so you wont ask the same thing next
+time"*).**
+
+| they say | it means, always |
+|---|---|
+| "deploy the table" / "deploy these" (research rule sets) | ONE ROOM PER RULE SET, named by its id (`#55D32617`), its watcher seeded with that row's exact rules, Smart Watcher ON, raw (no limits) |
+| which money? | PRACTICE only. Real money only when THEY tick that room's "Watcher trades real money" box. Never ask. |
+| "undeploy my current" | every row in every room except Main switched off (`retire_room()`), watcher off |
+| "off" (a room) | **NO TAB AT ALL** (*"if i say off you should completely remoev the tab"*). `retired: True` in `profiles.BUILTIN`, left out of `PROFILES` in `webapp/src/lib/api.ts` and of `/api/trade/profiles` (`profiles.shown()`). It stays in `BUILTIN` only so its runner finishes the practice trades still open; its folder is kept. |
+| Main | untouched unless they name it |
+
+The rooms as configured Oct 01, 2026 (all TP wider than SL, stop 2% or
+tighter, raw, practice, $5 x 20x):
+
+| room | judged on | switch on / off at | min trades |
+|---|---|---|---|
+| Main | 30 days | 90% | 20 |
+| #55D32617 | 15 days | 70% | 50 |
+| #4FC03172 | 30 days | 70% | 50 |
+| #B2404C0B | 15 days | 75% | 50 |
+| #6B08FF64 | 15 days | 80% | 30 |
+| #CC94D9FB | 30 days | 80% | 30 |
+| #DC57174E, #CC8DC54C, #B52662ED | retired, no tab | — | — |
+
+A new room needs its runner started once (`at.start_runner()` under
+`profiles.using(id)`) after the API runs the code that lists it; the
+supervisor keeps it up from then on.
+
 **THE TABLE BECAME ROOMS (Sep 30, 2026):** *"undeploy my current live then
 deploy the table you mentined"* — and, asked where and with which money,
 *"why are you asking again, you should have documented this, refer to my

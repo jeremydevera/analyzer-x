@@ -61,19 +61,16 @@ function freeLane(): void {
 // which have no rooms. Main sends nothing, exactly as before.
 // Sep 30, 2026: "undeploy my current live then deploy the table you
 // mentined" — the five rule sets of the round-five research became rooms, and
-// the three before them were switched off. Those stay as RETIRED tabs: their
-// runners finish the practice trades still open, and their history is kept.
-// Held equal to tradingagents/profiles.BUILTIN by a test.
-export const PROFILES: readonly { id: string; name: string; retired?: boolean }[] = [
+// the three before them were switched off. OFF MEANS NO TAB (Oct 01, 2026:
+// "if i say off you should completely remoev the tab"): a retired room is not
+// listed here at all. Held equal to profiles.shown() by a test.
+export const PROFILES: readonly { id: string; name: string }[] = [
   { id: "main", name: "Main" },
   { id: "55D32617", name: "#55D32617" },
   { id: "4FC03172", name: "#4FC03172" },
   { id: "B2404C0B", name: "#B2404C0B" },
   { id: "6B08FF64", name: "#6B08FF64" },
   { id: "CC94D9FB", name: "#CC94D9FB" },
-  { id: "DC57174E", name: "#DC57174E", retired: true },
-  { id: "CC8DC54C", name: "#CC8DC54C", retired: true },
-  { id: "B52662ED", name: "#B52662ED", retired: true },
 ];
 let _profile = "main";
 export function setProfile(id: string): void { _profile = id; }

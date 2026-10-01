@@ -1136,7 +1136,8 @@ def trade_profiles() -> dict:
     from tradingagents import strategy_watcher as sw
 
     out = []
-    for pid in _pf.ids():
+    # the rooms that HAVE a tab: a retired one has none (Oct 01, 2026)
+    for pid in _pf.shown():
         with _pf.using(pid):
             st = sw._read()
             cfg = sw.cfg_of(st)

@@ -111,7 +111,6 @@ export default function AutoTradeScreen() {
                 ? "text-brand-600 dark:text-brand-400"
                 : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"}`}>
               {p.name}
-              {p.retired && <span className="ml-1 text-[10px] uppercase text-gray-400">off</span>}
             </button>
             <button type="button" onClick={() => openInfo(p.id)}
               aria-label={`What ${p.name} switches on and off`} aria-expanded={info === p.id}

@@ -53,6 +53,10 @@ def world(tmp_path, monkeypatch):
     monkeypatch.setattr(sw, "_fresh_row", lambda meta, now, cfg: (
         w["fresh"].get(meta["id"], R6 if meta["id"] == "77Y3BPFG" else None),
         w["readable"]))
+    # the switch-on re-reads each candidate as the switch-off will
+    # (RCA-2026-10-01-A) — from the same fake files, never this PC's
+    monkeypatch.setattr(sw, "_as_the_off_check_sees", lambda rows, now, cfg: [
+        w["fresh"].get(r["id"], r) for r in rows])
     monkeypatch.setattr(sw, "_register", lambda key, spec, persist=True:
                         (w["registered"].append((key, persist)), "added")[1])
     monkeypatch.setattr(sw, "_sig_of", lambda key: key.split("_")[0])

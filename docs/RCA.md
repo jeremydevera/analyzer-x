@@ -231,6 +231,70 @@ a state the test stood in.
 
 ---
 
+## RCA-2026-10-01-A — rows were switched on from one number and off from another, so 341 of them flipped on and off every day
+
+**CEO**
+
+* In #4FC03172 and #CC94D9FB, 341 strategies were switched on, then
+  switched off within about half an hour, then switched on again after
+  midnight and off again. They opened 33 practice trades they should never
+  have opened: 29 closed, 8 won, 21 lost, **−$14.39**.
+* Why: the switch-on check read the strategy list, which was a few hours
+  behind; the switch-off check read each strategy's newer result file. A row
+  at 71% in the list and 69% in its file passed one check and failed the
+  other.
+* What stops it now: the switch-on reads the same result file the switch-off
+  reads, so a row that would be switched off is never switched on.
+
+**DEV**
+
+* `strategy_watcher._on_pass` judged `watcher_candidates.raw_candidates`
+  rows (index figures, `measured_ms 0`); `_off_pass` judges
+  `_fresh_row` (pair file) then `_judged` (rolling30). Fix:
+  `_as_the_off_check_sees()` re-reads every candidate through the same
+  `matched_rows` → `_fresh` → `_judged`, one parse per pair.
+* Invariant broken: **one decision, one number** — the rule that switches
+  on and the rule that switches off must read the same figure, or the line
+  between them becomes a revolving door.
+* Guard: `tests/test_rooms_judge_on_15_days.py::test_switch_on_reads_the_number_switch_off_will_read`.
+
+**SAW** — not reported by the operator; found when they asked *"could you
+check if there is existing bug on it now"*, `Oct 01, 2026 6:53am`: #4FC03172
+at 2,605 rows (2,878 switched on the evening before), #CC94D9FB at 479 (539).
+
+**TIMELINE** (#FR34HHN4 DHRSTOCK 15m bb20, TP 0.4% / SL 0.3%, line 70%)
+
+1. `Sep 30, 2026 7:57pm` — switched ON: the list read 71.13% over 142 trades.
+2. `8:30pm` — switched OFF: its result file read 69.06% over 139 trades.
+3. `Oct 01, 2026 12:01am` — the new day's pass: ON again from the same 71.13%.
+4. `12:33am` — OFF again at 69.06%.
+5. Across both rooms: 275 + 62 rows flipped; 26 + 7 practice entries from
+   them; closed −$12.94 (#4FC03172, 6 won / 19 lost) and −$1.45
+   (#CC94D9FB, 2 / 2).
+6. Measured after the fix on #4FC03172's real list: 6,398 candidates over
+   515 pairs re-read in 143.7 s; **2,550** pass on their own file against
+   2,878 on the list.
+
+**ROOT CAUSE** — the raw switch-on took "the table's own figures" literally,
+and the table (the index) lags its pair files by hours, while the switch-off
+had always read the pair files.
+
+**WHY IT WAS NOT CAUGHT** — the watcher tests fake `_candidates` and
+`_fresh_row` separately and give both the SAME row, so the two sources could
+never disagree in a test; and the raw path was added (Sep 30, 2026) as
+"search the table and deploy it", without asking what the switch-off reads.
+
+**COST** — −$14.39 of practice money; no real money (every room is
+practice-only).
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_rooms_judge_on_15_days.py::test_switch_on_reads_the_number_switch_off_will_read`;
+the watcher fixture now routes `_as_the_off_check_sees` through the same fake
+files as `_fresh_row`.
+
+---
+
 ## RCA-2026-09-30-C — the watcher said "1,511 rows meet the criteria" and switched on 539
 
 **CEO**

@@ -817,7 +817,13 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     ws = settings.get("watcher_slots") or {}
     running = [{"id": m["id"], "coin": m["coin"]} for m in ws.values()]
     cooling = st.get("cooling") or {}
-    rows = [r for r in got["rows"] if not wp.passes_on(r, cfg)]
+    # JUDGED ON THE NUMBER THE SWITCH-OFF WILL READ (RCA-2026-10-01-A): the
+    # list nominates, the row's own result file (and its 30/15-day record,
+    # once it has one) decides — the same `_fresh` + `_judged` the hourly
+    # check applies. #FR34HHN4 went on at 71.13% from the list and off 33
+    # minutes later at 69.06% from its file, twice in five hours.
+    cands = _as_the_off_check_sees(got["rows"], now, cfg)
+    rows = [r for r in cands if not wp.passes_on(r, cfg)]
     arm = []
     refused: set = set()
     # A REFUSED PICK DOES NOT USE UP A PLACE: the day's 20 new are 20 that
@@ -854,11 +860,46 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     # the count that passes EVERY rule, beside the one the list was asked for
     # (RCA-2026-09-30-C): "1,511 meet the criteria" over 539 switched on read
     # as 972 rows lost
-    st["last_candidates"] = (f"{got.get('why', '')} — {len(rows):,} pass every rule"
-                             + (f" ({len(got['rows']) - len(rows):,} fail one, most often "
-                                f"{_top_fail(got['rows'], cfg)})"
-                                if len(got["rows"]) > len(rows) else ""))
+    gone = len(got["rows"]) - len(cands)
+    st["last_candidates"] = (f"{got.get('why', '')} — {len(rows):,} pass every rule "
+                             f"on their own result file"
+                             + (f" ({len(cands) - len(rows):,} fail one, most often "
+                                f"{_top_fail(cands, cfg)})"
+                                if len(cands) > len(rows) else "")
+                             + (f" · {gone:,} could not be read from their file"
+                                if gone else ""))
     return ""
+
+
+def _as_the_off_check_sees(rows: list, now: float, cfg: dict) -> list:
+    """Each candidate as `_off_pass` would judge it: its row in its pair
+    file (one parse per pair), then `_judged` over the room's window. A
+    candidate whose file is missing, unreadable or no longer holds it is
+    dropped — the switch-off would remove it at once."""
+    from tradingagents import watcher_candidates as wc
+
+    by_pair: dict = {}
+    for r in rows:
+        by_pair.setdefault((r["coin"], r["tf"]), []).append(r)
+    out = []
+    window = int(cfg.get("window_days") or 30)
+    for (coin, tf), want in by_pair.items():
+        have = wc.matched_rows(coin, tf, want) or {}
+        if not have:
+            continue
+        last = wc._last_ms(coin, tf) or 0.0
+        for r in want:
+            got = have.get(wc._sig(r))
+            if got is None:
+                continue
+            fresh = wc._fresh(coin, tf, got, last, wc.window_of(cfg))
+            try:
+                slot = f"{sk.key_for(fresh)}|{coin}_USDT"
+            except ValueError:
+                out.append(fresh)          # refused by name in _try_picks
+                continue
+            out.append(_judged(slot, fresh, now, window) or fresh)
+    return out
 
 
 def _top_fail(rows: list, cfg: dict) -> str:

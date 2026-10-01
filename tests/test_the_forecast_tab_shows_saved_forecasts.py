@@ -78,13 +78,22 @@ def test_ten_a_page(tmp_path):
     assert p1["forecasts"][0]["at"] == 1790800022
 
 
-def test_the_tab_offers_both_prompts_from_the_one_document():
+def test_the_tab_offers_every_prompt_from_the_one_document():
     got = rf.prompts()
     assert [p["title"] for p in got] == ["1. Make a new forecast",
-                                         "2. Look across every saved forecast"]
+                                         "2. Look across every saved forecast",
+                                         "3. Find the best room rules (every shape, nothing left out)"]
     # prompt 1 saves through the checked door, so every run makes a new forecast
     assert "python -m tradingagents.room_forecasts add" in got[0]["text"]
     assert "room_forecasts.jsonl" in got[1]["text"]
+    # prompt 3 (Oct 01, 2026: "currently i think you are avoiding sl is greater
+    # than tp or avoiding tp that is very high but low trade"): every shape is in
+    # the grid, and the data is re-collected loose enough to test them fairly
+    p3 = got[2]["text"]
+    assert "stop wider than target" in p3 and "1, 3, 5, 10, 20, 30 and 50" in p3
+    assert "smallest target allowed: none, 1%, 2%, 3%" in p3
+    assert "win rate 40, trades 1, target vs stop \"any\"" in p3
+    assert "Pick on July–August, grade on September" in p3
 
 
 def test_the_route_serves_the_file_and_the_prompts(tmp_path, monkeypatch):
@@ -93,7 +102,7 @@ def test_the_route_serves_the_file_and_the_prompts(tmp_path, monkeypatch):
     monkeypatch.setattr(rf, "FILE", f)
     got = api.forecasts_route(page=1)
     assert got["total"] == 1 and got["forecasts"][0]["pick"] == "4FC03172"
-    assert len(got["prompts"]) == 2
+    assert len(got["prompts"]) == 3
 
 
 def test_the_tab_is_under_auto_trade():

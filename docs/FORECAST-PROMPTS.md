@@ -96,3 +96,64 @@ Rules for the answer:
   "Pending for you:" with what I must do, or "No pending for you."
 - Do not switch any room on or off, and do not change any rules, unless I ask.
 ```
+
+## 3. Find the best room rules (every shape, nothing left out)
+
+```
+Find the room rules that would have made the most money, testing EVERY shape of
+rule — including the ones earlier research left out: a stop WIDER than the target
+(SL > TP), a target equal to the stop, very wide targets, and rules that need only a
+few trades.
+
+A "room rule" is what a Smart Watcher room switches strategies on and off by:
+the window it looks back over, the win rate to switch on and off at, the fewest
+trades it needs, how the target compares to the stop, and the widest stop and
+target it allows. Test at least this grid, every combination:
+- window: last 7, 15 and 30 days
+- switch-on win rate: 40, 50, 60, 70, 80 and 90% (switch off under the same line)
+- fewest trades in the window: 1, 3, 5, 10, 20, 30 and 50
+- target vs stop: any, target wider than stop, target equal to stop, stop wider than target
+- widest stop allowed: no cap, 1%, 2%, 3%
+- smallest target allowed: none, 1%, 2%, 3%
+Say how many rule sets that is before starting, and how many strategies each one
+picks from. Never cut the grid quietly — if something cannot run, name it and why.
+
+Make it a FAIR test (this is what went wrong before):
+1. The replay data must include every strategy each rule could pick. The last
+   research data only kept strategies with the target wider than the stop and 10+
+   trades, so stop-wider-than-target and few-trade rules found nothing or leaned on
+   hindsight (docs/RCA.md RCA-2026-09-29-F). Re-run the replay on GitHub
+   (.github/workflows/replay.yml) with a write rule no stricter than the loosest rule
+   in the grid (win rate 40, trades 1, target vs stop "any"), then the research
+   (.github/workflows/research.yml). Say how long each will take before starting.
+2. Pick on July–August, grade on September 1 to today — never pick and grade on the
+   same days. Report both periods for every rule set.
+3. Charge all three costs on every trade (entry, exit and holding) and use the
+   runner's own limits (at most 4 open trades per coin, $5 at 20x).
+4. Show each rule set's break-even win rate after costs, never 50%. A stop wider
+   than the target needs a much higher win rate to break even — say how much.
+
+Then rank:
+- by September profit, but only rule sets that also made money in July–August;
+- show beside each: wins/losses, win rate, break-even win rate, trades, trades a
+  day, most open at once, worst losing run (dollars and how many trades), worst day,
+  and green days;
+- name the best rule set in each target-vs-stop shape (wider, equal, stop wider) so
+  the shapes can be compared, even if one shape never wins overall.
+
+Publish it as an artifact: the top 100 rule sets, a stable id per rule set, every
+column above, the margin $5 x 20x stated above the table, a click on a row showing
+its September trades one by one with a total, filters for min win rate, min profit,
+max TP %, max SL %, target-vs-stop shape and window, sortable columns, and the
+number of rule sets tested above the table.
+
+Rules for the answer:
+- Real numbers from the replay and my own records only; if something cannot be
+  measured, say so.
+- In chat: the best rule set in one plain sentence with its id and September profit,
+  the best one in each shape in one line each, then "Pending for you:" with what I
+  must do, or "No pending for you."
+- Do not create rooms, switch anything on or off, or change any rules unless I say
+  "deploy". When I do, each rule set I name becomes its own room, practice only
+  (CLAUDE.md "STANDING SETUP").
+```

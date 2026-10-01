@@ -817,7 +817,7 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     ws = settings.get("watcher_slots") or {}
     running = [{"id": m["id"], "coin": m["coin"]} for m in ws.values()]
     cooling = st.get("cooling") or {}
-    # JUDGED ON THE NUMBER THE SWITCH-OFF WILL READ (RCA-2026-10-01-A): the
+    # JUDGED ON THE NUMBER THE SWITCH-OFF WILL READ (RCA-2026-10-01-B): the
     # list nominates, the row's own result file (and its 30/15-day record,
     # once it has one) decides — the same `_fresh` + `_judged` the hourly
     # check applies. #FR34HHN4 went on at 71.13% from the list and off 33

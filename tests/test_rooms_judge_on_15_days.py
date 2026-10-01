@@ -263,7 +263,7 @@ def test_a_15_day_room_waits_for_the_count_instead_of_losing_a_day(tmp_path, mon
     got = wc._raw_recent({"min_trades": 50, "on_winrate": 70.0, "max_sl": 2.0})
     assert got["not_ready"] and not called, "no pass over the table before the count exists"
     (rows / "VUG-1h.json").write_text(json.dumps([_row("VUG", 50, 36)]))
-    # THE FILES CARRY IT, THE TABLE DOES NOT YET (RCA-2026-10-01-A): the daily
+    # THE FILES CARRY IT, THE TABLE DOES NOT YET (RCA-2026-10-01-B): the daily
     # run lands files live, the table is rebuilt only after it comes home.
     # Searching now would spend the day's pass on an empty table.
     got = wc._raw_recent({"min_trades": 50, "on_winrate": 70.0, "max_sl": 2.0})
@@ -327,7 +327,7 @@ def test_the_status_line_says_how_many_pass_every_rule(monkeypatch):
 
 
 def test_switch_on_reads_the_number_switch_off_will_read(monkeypatch):
-    """RCA-2026-10-01-A: #FR34HHN4 DHRSTOCK 15m bb20 went on at 7:57pm from
+    """RCA-2026-10-01-B: #FR34HHN4 DHRSTOCK 15m bb20 went on at 7:57pm from
     the list's 71.13% (142 trades) and off at 8:30pm from its own file's
     69.06% (139), then on and off again after midnight. The switch-on now
     re-reads the file first, so it is never switched on at all."""

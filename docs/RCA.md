@@ -231,7 +231,7 @@ a state the test stood in.
 
 ---
 
-## RCA-2026-10-01-A — rows were switched on from one number and off from another, so 341 of them flipped on and off every day
+## RCA-2026-10-01-B — rows were switched on from one number and off from another, so 341 of them flipped on and off every day
 
 **CEO**
 

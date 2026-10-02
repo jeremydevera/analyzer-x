@@ -382,7 +382,7 @@ Round 6 (Oct 01, 2026 7:40pm-8:10pm, the chain's first night):
 29. **A missing key could stop a finished day reaching "done"**, re-running
     the merge every 30 minutes; it reads with `.get`.
 
-Round 7 (8:20pm, against the build prompt's section E word for word):
+Round 7 (by 8:22pm, against the build prompt's section E word for word):
 
 30. **The daily bell had no rooms**: section E asks for "each room's month so
     far against its predicted range" and the bell's own docstring promised
@@ -395,7 +395,7 @@ Round 7 (8:20pm, against the build prompt's section E word for word):
 32. **"working — waiting in GitHub's queue … not started yet"**: a run with
     an id prints only its own words.
 
-Round 8 (8:30pm, Windows): 33. **Every Forecast v2 file was one bare
+Round 8 (by 8:22pm, Windows): 33. **Every Forecast v2 file was one bare
 `os.replace`**, and the page reads them every 30 s; `forecast_v2.publish` /
 `replace_retry` give each save db_jobs' 3-second budget (RCA-2026-09-18-B),
 and a dispatch's attempt is on disk BEFORE the dispatch, so a lost save can
@@ -407,17 +407,17 @@ whose shape changed (`switch.json`, `latest.json`'s `by_day`,
 automatic replay → base step (run 36940719775 was dispatched from
 cdd516295e46, whose replay.yml uploads `replay-report-<N>`) checked clean.
 
-Round 10 (8:40pm, reading the files the restarted site wrote): 34. **An
+Round 10 (8:26pm, reading the files the restarted site wrote): 34. **An
 "off" saved in `state.json` before the box got its own file** would have
 come back "on" at the first save — on another machine after `git pull`.
 This PC's chain was on; the old value is carried over now.
 
-Round 11 (8:45pm, the page's own words): 35. the streaks card still said
+Round 11 (8:27pm, the page's own words): 35. the streaks card still said
 "the bell rings once when a coin first reaches one" — every new run is named
 once, in at most one bell an hour; 36. "last error" stayed on the page after
 the retry that fixed it — a step that gets through clears it.
 
-Round 12 (8:55pm, what tonight's bigger replay asks of the machines — the
+Round 12 (8:32pm, what tonight's bigger replay asks of the machines — the
 first replay was 20 files, 2.77 GB zipped, the largest 192 MB, 1.3-1.4 GB
 unpacked each, an hour on GitHub; both accounts are public, so a machine has
 16 GB): 37. **one run red on every machine stopped the chain for good** — it

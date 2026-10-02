@@ -242,23 +242,23 @@ screen.
       in #4FC03172" (−6.45); none since;
    9. **a finished day never "done"** — `st[k]` on a missing key after the
       final merge would re-run the merge every 30 minutes.
-4. `8:20pm` — round 7: 10. **the daily bell had no rooms** — section E's
+4. by `8:22pm` — round 7: 10. **the daily bell had no rooms** — section E's
    "each room's month so far against its predicted range", promised in its
    own docstring; 11. **the bell lost its count** — `notifications.record`
    keeps 500 characters, so "and 34 more on the Forecast v2 page" was cut
    first; 12. **"working — … not started yet"** — the status word beside the
    new words still said working (on screen, 8:16pm).
-5. `8:30pm` — round 8: 13. **a refused swap** — every Forecast v2 file was
+5. by `8:22pm` — round 8: 13. **a refused swap** — every Forecast v2 file was
    one bare `os.replace`; on Windows a reader holding the file (the page,
    every 30 s; `np.load` for the whole read) refuses it, and on the tick that
    dispatched a run the lost save meant the next tick dispatched it again.
    Fixed with `forecast_v2.replace_retry` (db_jobs' 3 s budget,
    RCA-2026-09-18-B) and the attempt saved before the dispatch.
-6. `8:40pm` — round 10: 14. **an "off" lost in the move** — the box moved to
+6. `8:26pm` — round 10: 14. **an "off" lost in the move** — the box moved to
    `switch.json`, and the first save without it in `state.json` would have
    turned a chain switched off before the update (on another machine, after
    `git pull`) back on. This PC's was on. Carried over now.
-7. `8:55pm` — round 12, measuring what tonight's bigger replay asks of the
+7. `8:32pm` — round 12, measuring what tonight's bigger replay asks of the
    machines (the first: 20 files, 2.77 GB zipped, 192 MB the largest, 1.3-1.4
    GB unpacked each, an hour on GitHub; tonight's holds every TP shape):
    15. **one bad run stopped it for good** — a run red on EVERY machine
@@ -355,10 +355,10 @@ after the reality check"* and *"Main has made -7.29 this month; its rules
    keys stamped 7:25pm). The six floors: Main −0.01, #55D32617 −1.94,
    #4FC03172 −0.90, #B2404C0B +0.74, #6B08FF64 +0.36, #CC94D9FB +0.87 — each
    the month's worst after the reality check ÷ 31.
-2. `7:45pm` — bug hunt round 6 checks #4FC03172's "−169.11 this month"
+2. During round 6 (`7:40pm`-`8:13pm`) — #4FC03172's "−169.11 this month" checked
    against its trade record: 576 practice exits since midnight (first
    12:07am, last 7:14pm), 242 won, −169.11. Real.
-3. `8:05pm` — the same day measured from the backtest, after the reality
+3. After the `7:57pm` re-merge — the same day measured from the backtest, after the reality
    check (took 0.1799, gap 0.2225): the worst end of day 1 across Jul, Aug
    and Sep is Main +0.00, #55D32617 −4.12, #4FC03172 −2.39, #B2404C0B +0.00,
    #6B08FF64 +0.24, #CC94D9FB +0.00. All six rooms are under those too, so

@@ -750,10 +750,14 @@ def test_only_the_days_final_merge_keeps_the_months_prediction(monkeypatch, tmp_
     monkeypatch.setattr(fd, "room_rules", lambda: {})
     monkeypatch.setattr(fd, "bell", lambda out, live: None)
     monkeypatch.setattr(fd.f2, "live", lambda: {})
+    # a base step that failed an hour ago and is now tried again
     st = {"phase": "base", "on": True, "repo": "x/y", "replay_run": 5, "base_run": 6,
-          "end_ms": 1, "start": "2026-07-01"}
+          "end_ms": 1, "start": "2026-07-01", "error": "base: RuntimeError: download cut",
+          "failed_at": NOW - HOUR}
     fd._step(st, NOW)
     assert st["phase"] == "options" and merges == [(True, False)], "the base-only merge keeps nothing"
+    # bug hunt, round 11: a step that got through clears the error it was retried for
+    assert st["error"] == "" and st["failed_at"] == 0
     fd._step(st, NOW + 600)
     assert st["phase"] == "done" and merges[-1] == (False, True), "the day's final merge keeps the month"
     assert st["ready"]["replay_run"] == 5

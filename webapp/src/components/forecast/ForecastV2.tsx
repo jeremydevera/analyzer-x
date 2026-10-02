@@ -599,7 +599,7 @@ export default function ForecastV2() {
         <>
           <div className={card}>
             <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Streaks</h3>
-            <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">wins (or losses) in a row ending with the most recent closed trade; the bell rings once when a coin first reaches one · practice: {s.streak_counts.practice.win.toLocaleString()} winning and {s.streak_counts.practice.loss.toLocaleString()} losing runs now{s.streak_counts.backtest ? ` · backtest: ${s.streak_counts.backtest.win.toLocaleString()} winning and ${s.streak_counts.backtest.loss.toLocaleString()} losing runs of ${s.streak_counts.backtest.floor}+` : ""}</p>
+            <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">wins (or losses) in a row ending with the most recent closed trade; each coin is named once on the bell when it first reaches one, in at most one bell an hour · practice: {s.streak_counts.practice.win.toLocaleString()} winning and {s.streak_counts.practice.loss.toLocaleString()} losing runs now{s.streak_counts.backtest ? ` · backtest: ${s.streak_counts.backtest.win.toLocaleString()} winning and ${s.streak_counts.backtest.loss.toLocaleString()} losing runs of ${s.streak_counts.backtest.floor}+` : ""}</p>
             <div className="mt-3 grid min-w-0 gap-6 2xl:grid-cols-2 [&>*]:min-w-0">
               <StreakList kind="win" initial={s.defaults.win_n} />
               <StreakList kind="loss" initial={s.defaults.loss_m} />

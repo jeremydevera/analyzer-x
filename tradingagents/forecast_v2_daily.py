@@ -455,7 +455,10 @@ def _step(st: dict, now: float) -> None:
         st["base_run"] = dispatch(FORECAST_WF, _forecast_inputs(st, "base"), repo,
                                   since=_tried(st, f"base {st['replay_run']}", now))
         st.pop("tried", None)
-        st.update(phase="base", why=f"forecast run {st['base_run']} (base) started on GitHub")
+        # a step that got through clears the error a retry was for (bug hunt,
+        # round 11: "last error" stayed on the page after the retry worked)
+        st.update(phase="base", error="", failed_at=0,
+                  why=f"forecast run {st['base_run']} (base) started on GitHub")
         return
     if phase == "base":
         art = download(int(st["base_run"]), repo, "forecast-*")
@@ -469,7 +472,7 @@ def _step(st: dict, now: float) -> None:
             st, "options", {"bases": ";".join(fr.encode(c) for c in bases)}), repo,
             since=_tried(st, f"options {st['replay_run']}", now))
         st.pop("tried", None)
-        st.update(phase="options", base_dir=str(art),
+        st.update(phase="options", base_dir=str(art), error="", failed_at=0,
                   why=f"forecast run {st['options_run']} (options) started on GitHub")
         return
     if phase == "options":
@@ -478,6 +481,7 @@ def _step(st: dict, now: float) -> None:
                                              "options": st["options_run"]}, keep=True)
         out = _latest()
         st.update(phase="done", done_day=dt.date.fromtimestamp(now).isoformat(), done_at=now,
+                  error="", failed_at=0,
                   options_dir=str(art), why=f"made at {fmt_when(now)}",
                   # what the what-if box measures on: the LAST FINISHED data,
                   # never a replay still running (bug hunt, round 4)

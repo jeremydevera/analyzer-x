@@ -172,6 +172,118 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: thirteen faults caught by the bug hunt, one of them on screen
+
+**CEO**
+
+* On its first night the daily Forecast v2 job had thirteen faults that could
+  start the same GitHub run twice, lose a what-if, undo the "off" box, ring
+  46 bells in a day, or say "working" about a run that had not started — the
+  last one was on your screen at 8:16pm.
+* Why: the job was tested one step at a time, and nothing tested what happens
+  when two of its pieces run at once, when GitHub is slow, or when Windows
+  holds a file open.
+* What stops it now: each fault has a test that fails on the old code, and
+  the job saves what it is about to do before it does it.
+
+**DEV**
+
+* `tradingagents/forecast_v2_daily.py` — `tick` read the state, could spend
+  minutes in `_step` (download + merge), then `_write` it whole (the switch
+  undone); `_whatifs` saved its own copy of `whatif.json` after a download (a
+  what-if asked meanwhile lost); `dispatch` raised on a late listing and the
+  retry started a new run; `_write` was a bare `os.replace` at the tick's end
+  (a refused swap lost a dispatch's run id). Also `due` (finish day),
+  `run_status` words, `_start_whatif` (no recovery), `streak_bells` (one bell
+  per run), `bell` (no rooms), the 500-character cut.
+* Invariant broken: **a step that talks to GitHub records what it is about
+  to do BEFORE it does it, and every shared file is written one record at a
+  time over a fresh read** — state kept only in memory across a slow call is
+  state another thread, a restart or a refused save can lose.
+* Guards: 15 tests in `tests/test_forecast_v2.py` (rounds 6-8), each red on
+  the code before it — e.g. `test_a_dispatch_is_on_disk_before_it_is_made`
+  (`KeyError: 'tried'`), `test_a_what_if_asked_while_another_is_polled_is_kept`.
+
+**SAW** — at `Oct 01, 2026 8:16pm` the what-if row read *"working — waiting in
+GitHub's queue since Oct 01, 2026 7:26pm, not started yet"*; before round 6
+it read *"working on GitHub: 0 of 0 machines done"* while run 36940791960
+sat QUEUED behind the daily replay's 20 machines. The other twelve never
+reached a screen.
+
+**TIMELINE**
+
+1. `Oct 01, 2026 7:25pm` — the chain's first automatic run: replay
+   36940719775 dispatched (20 machines). `7:26pm` — what-if #2F39EAEC asked;
+   its run 36940791960 queued, its plan job waiting for a free machine.
+2. `7:40pm` — the page: "working on GitHub: 0 of 0 machines done" (fault 1).
+3. `7:40-8:10pm` — round 6 reads the chain line by line against the states
+   the site runs in. Found (NEVER HAPPENED YET unless said):
+   2. **"off" undone** — a tick reads state, merges ~120 s, writes it back;
+   3. **a what-if lost** — asked during another's download, gone from the
+      file the poll saved whole;
+   4. **a second replay** — a dispatch that raised on a late GitHub listing
+      retried 30 minutes later as a NEW run (20 machines, ~1 hour);
+   5. **"starting" for ever** — a restart between "starting" and GitHub's
+      answer, and asking again returned the stuck answer;
+   6. **the next day's update held back** — "one a day" counted the day a
+      chain FINISHED, so a chain done after midnight blocked the following
+      update until the midnight after;
+   7. **two reality checks** — a what-if corrected with the live numbers, the
+      table with the merge-time ones (took 0.1799, gap 0.2225);
+   8. **46 bells a day** — measured: 46 practice runs reached the streak line
+      on Oct 01, 2026 (4 of 9 wins, 42 of 5 losses, 25 in #4FC03172), one bell
+      each, two of them in rooms that are off (no tab); would have started
+      ringing at the chain's next tick;
+   9. **a finished day never "done"** — `st[k]` on a missing key after the
+      final merge would re-run the merge every 30 minutes.
+4. `8:20pm` — round 7: 10. **the daily bell had no rooms** — section E's
+   "each room's month so far against its predicted range", promised in its
+   own docstring; 11. **the bell lost its count** — `notifications.record`
+   keeps 500 characters, so "and 34 more on the Forecast v2 page" was cut
+   first; 12. **"working — … not started yet"** — the status word beside the
+   new words still said working (on screen, 8:16pm).
+5. `8:30pm` — round 8: 13. **a refused swap** — every Forecast v2 file was
+   one bare `os.replace`; on Windows a reader holding the file (the page,
+   every 30 s; `np.load` for the whole read) refuses it, and on the tick that
+   dispatched a run the lost save meant the next tick dispatched it again.
+   Fixed with `forecast_v2.replace_retry` (db_jobs' 3 s budget,
+   RCA-2026-09-18-B) and the attempt saved before the dispatch.
+
+**ROOT CAUSE** — state held in memory across slow calls (GitHub, a download,
+a two-minute merge) and written back whole at the end, by a job whose
+pieces run in three threads and whose saves can be refused.
+
+**WHY IT WAS NOT CAUGHT** — the 25 tests of the first build drove each step
+alone, with GitHub answering at once and every save succeeding. None ran two
+of the job's pieces against each other (the poll and a request; the tick and
+the switch), none made GitHub slow or a save fail, and none asked what a
+restart in the middle leaves behind. Round 3 had already taught "find your
+run by its title", and its test covered the title only — not a title that
+appears late.
+
+**COST** — none in money (Forecast v2 switches nothing). One wrong status on
+screen for ~50 minutes. Avoided: a duplicate replay (20 machines for an
+hour), 46 bells a day, a forecast stuck re-merging.
+
+**FIX** — round 6 in f1112b4bd13d; rounds 7-8 in this commit.
+
+**GUARD** — `tests/test_forecast_v2.py`: `test_off_stays_off_when_a_busy_tick_writes_the_state_back`,
+`test_a_what_if_asked_while_another_is_polled_is_kept`,
+`test_a_run_github_listed_late_is_adopted_never_started_twice`,
+`test_a_queued_run_says_it_is_waiting_not_working`,
+`test_a_cut_title_still_finds_its_run`,
+`test_a_what_if_cut_off_by_a_restart_is_asked_again_and_its_run_adopted`,
+`test_a_chain_that_ran_past_midnight_does_not_hold_back_the_next_update`,
+`test_a_what_if_is_corrected_with_the_tables_own_numbers`,
+`test_streak_bells_ring_once_and_never_for_the_runs_already_going` (widened),
+`test_only_the_days_final_merge_keeps_the_months_prediction`,
+`test_the_daily_bell_names_each_rooms_month_against_its_range`,
+`test_a_long_bell_keeps_its_count_of_the_rest`,
+`test_a_refused_swap_is_retried_not_lost`,
+`test_a_dispatch_is_on_disk_before_it_is_made`.
+
+---
+
 ## RCA-2026-10-01-J — Forecast v2's "worst case by today" was a whole month's worst case divided by 31, a number no real month ever made
 
 **CEO**

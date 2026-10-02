@@ -400,7 +400,7 @@ def tracker_alarms(now: float | None = None) -> list:
             out.append(key)
     if out:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(rung), encoding="utf-8")
+        f2.publish(path, json.dumps(rung))
     return out
 
 

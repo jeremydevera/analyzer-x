@@ -336,12 +336,13 @@ def _save(out: dict, streak_rows: dict, keep: bool = True) -> None:
     month's FIRST prediction kept for grading."""
     d = home()
     d.mkdir(parents=True, exist_ok=True)
-    tmp = d / "latest.json.tmp"
-    tmp.write_text(json.dumps(out, separators=(",", ":"), allow_nan=False), encoding="utf-8")
-    tmp_npz = d / "streaks.tmp.npz"
+    text = json.dumps(out, separators=(",", ":"), allow_nan=False)
+    tmp_npz = d / f"streaks.{os.getpid()}.tmp.npz"
     np.savez_compressed(tmp_npz, **streak_rows)
-    os.replace(tmp_npz, d / "streaks.npz")
-    os.replace(tmp, d / "latest.json")
+    # each swap retried while the page reads the file it replaces (bug hunt,
+    # round 8): np.load holds streaks.npz open for the whole read
+    f2.replace_retry(tmp_npz, d / "streaks.npz")
+    f2.publish(d / "latest.json", text)
     if keep:
         # only the FINAL merge of a day: the base-only merge in between has
         # no option rule sets, and the month's first saved prediction is the

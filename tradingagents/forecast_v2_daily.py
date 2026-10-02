@@ -90,11 +90,8 @@ def read() -> dict:
 
 
 def _write(st: dict) -> None:
-    home().mkdir(parents=True, exist_ok=True)
-    tmp = _state_path().with_suffix(".tmp")
     keep = {k: v for k, v in st.items() if k != "on"}     # the switch has its own file
-    tmp.write_text(json.dumps(keep, separators=(",", ":"), allow_nan=False), encoding="utf-8")
-    os.replace(tmp, _state_path())
+    f2.publish(_state_path(), json.dumps(keep, separators=(",", ":"), allow_nan=False))
 
 
 # -------------------------------------------------------------- GitHub
@@ -388,6 +385,10 @@ def _tried(st: dict, what: str, now: float) -> float | None:
     was = st.get("tried") or {}
     since = was.get("at") if was.get("what") == what else None
     st["tried"] = {"what": what, "at": since or now}
+    # ON DISK BEFORE THE DISPATCH (bug hunt, round 8): the tick writes its
+    # state at its end, so a dispatch whose tick then failed to save left no
+    # trace, and the next tick started the same run a second time
+    _write(st)
     return since
 
 
@@ -527,22 +528,54 @@ def streak_bells(live: dict, now: float | None = None) -> list:
         else:
             wins = sum(1 for w in waiting if w["win"])
             title = (f"{len(waiting)} new streaks: {wins} winning, {len(waiting) - wins} losing")
-            named = "; ".join(w["text"] for w in waiting[:STREAK_BELL_NAMES])
-            more = len(waiting) - STREAK_BELL_NAMES
-            detail = named + (f"; and {more} more on the Forecast v2 page" if more > 0 else "")
-        nt.record("forecast", title, detail=detail[:900], ok=all(w["win"] for w in waiting))
+            detail = fit([w["text"] for w in waiting[:STREAK_BELL_NAMES]],
+                         left=len(waiting) - min(len(waiting), STREAK_BELL_NAMES))
+        nt.record("forecast", title, detail=detail, ok=all(w["win"] for w in waiting))
         rung = [w["key"] for w in waiting]
         saved.update(waiting=[], rung_at=now)
-    home().mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(saved), encoding="utf-8")
+    f2.publish(path, json.dumps(saved))
     return rung
 
 
-def bell(out: dict, live: dict) -> None:
-    """ONE message a day: the longest winning and losing streaks, the worst
-    coin to avoid, and each room's month so far against its prediction."""
+BELL_CHARS = 500                  # notifications.record keeps this much of a detail
+
+
+def fit(parts: list[str], left: int = 0, limit: int = BELL_CHARS) -> str:
+    """`parts` joined by "; " in order, within what the bell keeps (bug hunt,
+    round 7): notifications.record cuts a detail at 500 characters, so a
+    longer one lost its end — "and 34 more on the Forecast v2 page" first. A
+    part that does not fit is left out WHOLE and counted with `left`, and the
+    count always fits."""
+    def text(shown: list[str], more: int) -> str:
+        return "; ".join(shown + ([f"and {more} more on the Forecast v2 page"] if more else []))
+
+    shown: list[str] = []
+    for i, p in enumerate(parts):
+        if len(text(shown + [p], left + len(parts) - i - 1)) > limit:
+            return text(shown, left + len(parts) - i)[:limit]
+        shown.append(p)
+    return text(shown, left)[:limit]
+
+
+def bell(out: dict, live: dict, rooms: list | None = None) -> None:
+    """ONE message a day, in the build prompt's own order (section E): the
+    longest winning and losing streaks, the worst coin to avoid, and each
+    room's month so far against its predicted range — then the best rule set.
+
+    Bug hunt, round 7: this said "and each room's month so far" while the
+    code never added the rooms. `rooms` are the month tracker's rows
+    (forecast_v2_api.tracker): the practice month against what the room's
+    own rules made by the end of the same day of each past month."""
     from tradingagents import notifications as nt
 
+    if rooms is None:
+        from tradingagents import forecast_v2_api as f2a
+
+        try:
+            rooms = f2a.tracker()["rooms"]
+        except Exception as exc:                               # noqa: BLE001
+            print(f"[forecast v2] the bell has no month tracker: {exc!r}", flush=True)
+            rooms = []
     st = live["streaks"]
     win = next((s for s in st if s["kind"] == "win"), None)
     loss = next((s for s in st if s["kind"] == "loss"), None)
@@ -554,14 +587,21 @@ def bell(out: dict, live: dict) -> None:
         parts.append(f"longest losing run: {loss['coin']} in {loss['room_name']}, {loss['length']} in a row")
     if worst:
         parts.append(f"worst coin: {worst['coin']} {worst['profit']:+.2f} over {worst['trades']} trades")
+    for r in rooms:
+        b = r.get("so_far") or {}
+        lo, hi = b.get("corrected_low"), b.get("corrected_high")
+        rng = (f"its rules made {lo:+.2f} to {hi:+.2f} by day {b['day']}" if lo is not None
+               else "no range yet")
+        parts.append(f"{r['name']} {r['month']['profit']:+.2f} this month"
+                     f"{', UNDER its worst' if r.get('below') else ''} ({rng})")
     top = out["sets"][0] if out["sets"] else None
     if top and top["predicted"]:
         p = top["predicted"]
         c = p.get("corrected")
-        parts.append(f"best rule set #{top['id']}: about {c:+.2f} this month after the reality check"
+        parts.append(f"best rule set #{top['id']}: about {c:+.2f} a month after the reality check"
                      if c is not None else f"best rule set #{top['id']}: about {p['profit']:+.2f}")
-    nt.record("forecast", "Forecast v2 is ready", detail="; ".join(parts)[:500], ok=True,
-              meta={"made_at": out["made_at"]})
+    nt.record("forecast", "Forecast v2 is ready", detail=fit(parts),
+              ok=not any(r.get("below") for r in rooms), meta={"made_at": out["made_at"]})
 
 
 # ------------------------------------------------------------- what-if
@@ -577,10 +617,7 @@ def whatifs() -> dict:
 
 
 def _whatif_save(d: dict) -> None:
-    home().mkdir(parents=True, exist_ok=True)
-    tmp = _whatif_path().with_suffix(".tmp")
-    tmp.write_text(json.dumps(d, separators=(",", ":"), allow_nan=False), encoding="utf-8")
-    os.replace(tmp, _whatif_path())
+    f2.publish(_whatif_path(), json.dumps(d, separators=(",", ":"), allow_nan=False))
 
 
 _STARTING: set = set()            # what-if ids this process is asking GitHub for right now
@@ -728,8 +765,5 @@ def _whatifs(st: dict, now: float) -> None:
 def switch(on: bool) -> dict:
     """The page's on/off box. Off stops the chain dispatching; nothing else.
     Written to its own file, which nothing else writes (see is_on)."""
-    home().mkdir(parents=True, exist_ok=True)
-    tmp = _switch_path().with_suffix(".tmp")
-    tmp.write_text(json.dumps({"on": bool(on), "at": time.time()}), encoding="utf-8")
-    os.replace(tmp, _switch_path())
+    f2.publish(_switch_path(), json.dumps({"on": bool(on), "at": time.time()}))
     return read()

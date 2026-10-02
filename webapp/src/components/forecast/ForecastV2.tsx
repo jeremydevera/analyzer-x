@@ -458,7 +458,8 @@ function WhatIf({ s }: { s: F2Summary }) {
       const got = await api.forecastV2WhatIf(cfg);
       // the server's own words for where the run is — a queued run behind the
       // daily replay can wait an hour, so no fixed estimate is printed here
-      setNote(got.status === "done" ? `#${got.id} is measured — below` : `#${got.id} ${got.status}: ${got.why}`);
+      setNote(got.status === "done" ? `#${got.id} is measured — below`
+        : got.status === "working" ? `#${got.id}: ${got.why}` : `#${got.id} ${got.status}: ${got.why}`);
       load();
     } catch (e) { setNote(`not asked — ${String((e as Error)?.message ?? e)}`); }
   };
@@ -502,7 +503,9 @@ function WhatIf({ s }: { s: F2Summary }) {
               <tr key={w.id}>
                 <td className={td}>{w.asked_at ? fmtWhen(w.asked_at) : "—"}</td>
                 <td className="py-1.5 pr-3 text-gray-700 dark:text-gray-300">#{w.id} {w.words}</td>
-                <td className={td}>{w.status}{w.why ? ` — ${w.why}` : ""}</td>
+                {/* a run with an id says where it is in its own words — "working —
+                    waiting in GitHub's queue, not started yet" read as two answers */}
+                <td className={td}>{w.status === "working" && w.why ? w.why : `${w.status}${w.why ? ` — ${w.why}` : ""}`}</td>
                 <td className={`${td} ${tone(w.result?.predicted?.corrected)}`}>{w.result ? corrRange(w.result.predicted) : "—"}</td>
                 <td className={td}>{w.result ? range(w.result.predicted) : "—"}</td>
               </tr>))}

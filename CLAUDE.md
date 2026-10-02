@@ -1260,13 +1260,18 @@ Forecast page is unchanged.
   no bell for a room that is off, one daily summary.
 * **The on/off box has its own file** (`switch.json`): a tick that read the
   state, merged for two minutes and wrote it back would otherwise undo it.
+* **Every Forecast v2 file is written through `forecast_v2.publish`** (a temp
+  unique to the call, the swap retried for 3 s — the page reads these files
+  every 30 s and Windows refuses a swap under a reader), and **a dispatch's
+  attempt is saved BEFORE the dispatch**, so a lost save can never start the
+  same GitHub run twice. RCA-2026-10-01-L.
 * **Every prediction and warning is a note.** Nothing in Forecast v2 switches
   a room, changes a watcher rule or touches real money; "deploy #ID" goes
   through the STANDING SETUP like any other rule set, and a rule set that
   needs a switch a room does not have (TP at least 1.5x/2x SL, any option)
   says so.
 
-Guard: `tests/test_forecast_v2.py` (35, on one timeline).
+Guard: `tests/test_forecast_v2.py` (39, on one timeline).
 
 ## Backtest v2 is the v1 engine in its own folder (MANDATORY — 2026-09-17)
 

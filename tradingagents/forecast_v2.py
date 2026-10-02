@@ -48,9 +48,11 @@ THE DEFINITIONS (the same as everywhere else in the project):
 """
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
 import json
 import math
+import os
 import re
 import threading
 import time
@@ -81,6 +83,42 @@ def _home() -> Path:
     from tradingagents import auto_trader as at
 
     return Path(at.STATE_DIR) / "forecast_v2"
+
+
+# how long a finished file keeps trying to swap into place — db_jobs'
+# WRITE_REPLACE_BUDGET_S, for the same reason (RCA-2026-09-18-B)
+REPLACE_BUDGET_S = 3.0
+
+
+def replace_retry(tmp: Path, path: Path) -> None:
+    """`tmp` swapped into place, the swap retried for REPLACE_BUDGET_S: on
+    Windows a reader holding the destination open refuses it for
+    milliseconds — and on Sep 17, 2026 longer than 0.2 s, which ended a 96%
+    finished backtest. Forecast v2's files are read by the page every 30
+    seconds (bug hunt, round 8)."""
+    deadline = time.monotonic() + REPLACE_BUDGET_S
+    pause = 0.005
+    while True:
+        try:
+            tmp.replace(path)
+            return
+        except PermissionError:
+            if time.monotonic() >= deadline:
+                with contextlib.suppress(OSError):
+                    tmp.unlink()
+                raise
+            time.sleep(pause)
+            pause = min(pause * 1.5, 0.1)
+
+
+def publish(path: Path, text: str) -> None:
+    """A file written WHOLE: a temp file unique to this call (two threads
+    never share one), then `replace_retry`."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.{time.monotonic_ns()}.tmp")
+    tmp.write_text(text, encoding="utf-8")
+    replace_retry(tmp, path)
 
 
 def pct_decode(code: str) -> float | None:

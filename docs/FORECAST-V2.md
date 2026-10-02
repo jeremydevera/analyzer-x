@@ -382,6 +382,32 @@ Round 6 (Oct 01, 2026 7:40pm-8:10pm, the chain's first night):
 29. **A missing key could stop a finished day reaching "done"**, re-running
     the merge every 30 minutes; it reads with `.get`.
 
+Round 7 (8:20pm, against the build prompt's section E word for word):
+
+30. **The daily bell had no rooms**: section E asks for "each room's month so
+    far against its predicted range" and the bell's own docstring promised
+    it. Now in the prompt's order — longest winning run, longest losing run,
+    worst coin, each room against what its rules made by the same day — then
+    the best rule set.
+31. **A long bell lost its count**: `notifications.record` keeps 500
+    characters, so "and 34 more on the Forecast v2 page" was cut first.
+    `forecast_v2_daily.fit` leaves a part out whole and counts it.
+32. **"working — waiting in GitHub's queue … not started yet"**: a run with
+    an id prints only its own words.
+
+Round 8 (8:30pm, Windows): 33. **Every Forecast v2 file was one bare
+`os.replace`**, and the page reads them every 30 s; `forecast_v2.publish` /
+`replace_retry` give each save db_jobs' 3-second budget (RCA-2026-09-18-B),
+and a dispatch's attempt is on disk BEFORE the dispatch, so a lost save can
+never start the same run twice.
+
+Round 9 found nothing new in rounds 7-8's code: the readers of every file
+whose shape changed (`switch.json`, `latest.json`'s `by_day`,
+`streak_bells.json`, `whatif.json`'s `tried_at`) and tonight's first
+automatic replay → base step (run 36940719775 was dispatched from
+cdd516295e46, whose replay.yml uploads `replay-report-<N>`) checked clean.
+All rounds that did find something: RCA-2026-10-01-J, -K and -L.
+
 ## The build prompt
 
 Word for word, as it was run ("okay run that prompt and create Forecast v2").

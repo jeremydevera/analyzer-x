@@ -757,3 +757,120 @@ def test_only_the_days_final_merge_keeps_the_months_prediction(monkeypatch, tmp_
     fd._step(st, NOW + 600)
     assert st["phase"] == "done" and merges[-1] == (False, True), "the day's final merge keeps the month"
     assert st["ready"]["replay_run"] == 5
+
+
+# ------------------------------------------------------ bug hunt, round 7
+def test_the_daily_bell_names_each_rooms_month_against_its_range(monkeypatch):
+    """Bug hunt, round 7: the build prompt's section E asks for "the longest
+    winning streak, the longest losing streak, the worst coin to avoid, and
+    each room's month so far against its predicted range"; the bell said so
+    in its docstring and never added the rooms."""
+    from tradingagents import forecast_v2_daily as fd, notifications as nt
+
+    rung = []
+    monkeypatch.setattr(nt, "record", lambda kind, title, **k: rung.append((title, k)))
+    live = {"streaks": [{"kind": "win", "coin": "KIMISTOCK", "room_name": "#CC94D9FB", "length": 16},
+                        {"kind": "loss", "coin": "DHRSTOCK", "room_name": "#4FC03172", "length": 13}],
+            "avoid": {"coins": [{"coin": "IGV", "profit": -50.87, "trades": 47}]}}
+
+    def room(name, made, lo, hi, below):
+        return {"name": name, "month": {"profit": made}, "below": below,
+                "so_far": {"corrected_low": lo, "corrected_high": hi, "day": 1}}
+
+    rooms = [room("Main", -5.51, 0.0, 0.64, True), room("#4FC03172", -173.83, -2.39, 4.65, True),
+             room("#6B08FF64", 1.0, 0.24, 5.14, False)]
+    out = {"made_at": 1, "sets": [{"id": "A8CD8C72", "predicted": {"profit": 1018.99, "corrected": 92.17}}]}
+    fd.bell(out, live, rooms)
+    title, k = rung[0]
+    d = k["detail"]
+    assert title == "Forecast v2 is ready" and len(d) <= fd.BELL_CHARS
+    order = ["longest winning run: KIMISTOCK in #CC94D9FB, 16 in a row",
+             "longest losing run: DHRSTOCK in #4FC03172, 13 in a row",
+             "worst coin: IGV -50.87 over 47 trades",
+             "Main -5.51 this month, UNDER its worst (its rules made +0.00 to +0.64 by day 1)",
+             "#4FC03172 -173.83 this month, UNDER its worst (its rules made -2.39 to +4.65 by day 1)",
+             "#6B08FF64 +1.00 this month (its rules made +0.24 to +5.14 by day 1)"]
+    assert [d.find(x) for x in order] == sorted(d.find(x) for x in order) and min(d.find(x) for x in order) == 0
+    assert k["ok"] is False, "a room under its worst case is not an all-clear"
+
+
+def test_a_long_bell_keeps_its_count_of_the_rest(monkeypatch):
+    """Bug hunt, round 7: notifications.record keeps 500 characters of a
+    detail, so twelve names and "and 34 more on the Forecast v2 page" lost
+    the count first. A part that does not fit is left out whole and counted."""
+    from tradingagents import forecast_v2_daily as fd, notifications as nt
+
+    texts = [f"C{i:02d}STOCK has lost 5 in a row in #4FC03172" for i in range(46)]
+    d = fd.fit(texts[:12], left=34)
+    assert len(d) <= 500 and d.endswith("more on the Forecast v2 page")
+    shown = d.count("has lost 5 in a row")
+    assert d.endswith(f"and {46 - shown} more on the Forecast v2 page") and shown < 12
+    assert fd.fit(["a", "b"]) == "a; b" and fd.fit(["x" * 600]) == "and 1 more on the Forecast v2 page"
+    # the streak bell itself, 46 new runs in one hour
+    rung = []
+    monkeypatch.setattr(nt, "record", lambda kind, title, **k: rung.append((title, k["detail"])))
+    base = {"room": ROOM, "room_name": "#4FC03172", "kind": "loss", "length": 5, "profit": -5.0}
+    assert fd.streak_bells({"streaks": []}, NOW) == []                     # the first run only remembers
+    runs = [{**base, "coin": f"C{i:02d}STOCK", "started_at": NOW + i} for i in range(46)]
+    assert len(fd.streak_bells({"streaks": runs}, NOW + 10)) == 46
+    title, d = rung[-1]
+    assert title == "46 new streaks: 0 winning, 46 losing" and len(d) <= 500
+    assert d.endswith(f"and {46 - d.count('in a row')} more on the Forecast v2 page")
+
+
+# ------------------------------------------------------ bug hunt, round 8
+def test_a_refused_swap_is_retried_not_lost(tmp_path, monkeypatch):
+    """Bug hunt, round 8: on Windows a reader holding a file open refuses the
+    swap that replaces it — the page reads state.json and whatif.json every
+    30 seconds, and a refused swap once ended a 96%-finished backtest
+    (RCA-2026-09-18-B). Every Forecast v2 file swaps through replace_retry."""
+    real = Path.replace
+    refused = {"n": 0}
+
+    def flaky(self, target):
+        if refused["n"] < 3:
+            refused["n"] += 1
+            raise PermissionError(13, "the page is reading it")
+        return real(self, target)
+
+    monkeypatch.setattr(Path, "replace", flaky)
+    f2.publish(tmp_path / "state.json", '{"phase":"base"}')
+    assert refused["n"] == 3 and (tmp_path / "state.json").read_text(encoding="utf-8") == '{"phase":"base"}'
+    # past the budget it raises, and leaves no temp file behind
+    monkeypatch.setattr(f2, "REPLACE_BUDGET_S", 0.05)
+    monkeypatch.setattr(Path, "replace", lambda self, target: (_ for _ in ()).throw(PermissionError(13, "held")))
+    with pytest.raises(PermissionError):
+        f2.publish(tmp_path / "state.json", '{"phase":"options"}')
+    assert not [p.name for p in tmp_path.iterdir() if p.name.endswith(".tmp")]
+    for src in ("forecast_v2_daily.py", "forecast_v2_api.py", "forecast_v2_merge.py"):
+        code = (ROOT / "tradingagents" / src).read_text(encoding="utf-8")
+        assert "os.replace(" not in code and ".write_text(json.dumps" not in code, src
+
+
+def test_a_dispatch_is_on_disk_before_it_is_made(monkeypatch):
+    """Bug hunt, round 8: the tick saved its state only at its end, so a tick
+    that dispatched a replay and then failed to save left no trace — and the
+    next tick started the same 20-machine run again. The attempt is saved
+    BEFORE the dispatch, and the next tick adopts what it started."""
+    from tradingagents import forecast_v2_daily as fd, room_forecasts as rf
+
+    monkeypatch.setattr(fd, "due", lambda now, st: (True, "the update is on this PC"))
+    monkeypatch.setattr(fd, "skip_lists", lambda: ([], []))
+    monkeypatch.setattr(rf, "_update", lambda: {"runs": [1], "collected": [1], "when": NOW - HOUR})
+    sinces = []
+
+    def dispatch(wf, inputs, repo, since=None):
+        sinces.append(since)
+        if len(sinces) == 1:
+            raise RuntimeError("GitHub took it but did not list it within 90 seconds")
+        return 41
+
+    monkeypatch.setattr(fd, "dispatch", dispatch)
+    st = {"phase": "idle", "on": True, "repo": "x/y"}
+    with pytest.raises(RuntimeError):
+        fd._step(st, NOW)                      # this tick never reaches its own save
+    fresh = fd.read()                           # the next tick reads only what is on disk
+    assert fresh["tried"]["what"].startswith("replay ") and fresh["tried"]["at"] == NOW
+    fd._step(fresh, NOW + 1800)
+    assert sinces == [None, NOW], "the retry looks for the run the first try started"
+    assert fresh["phase"] == "replay" and fresh["replay_run"] == 41 and "tried" not in fresh

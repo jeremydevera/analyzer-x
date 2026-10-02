@@ -101,6 +101,8 @@ def kept() -> list[dict]:
     hit = _KEPT.get(str(path))
     if hit and hit[0] == st.st_mtime and hit[1] == st.st_size:
         return hit[2]
+    import numpy as np
+
     first: dict = {}
     latest: dict = {}
     order: list = []
@@ -109,6 +111,10 @@ def kept() -> list[dict]:
             w = json.loads(line)
         except ValueError:
             continue
+        # TRADES AS ONE ARRAY, never lists of lists: round 1 kept 673 winners
+        # holding 2,427,758 trades, ~400 MB of Python objects inside the API
+        # process against ~58 MB as (n, 3) float64
+        w["trades"] = np.asarray(w.get("trades") or [], dtype=np.float64).reshape(-1, 3)
         if w["id"] not in first:
             first[w["id"]] = w.get("found_at")
             order.append(w["id"])
@@ -405,23 +411,21 @@ def _max_open(t) -> int:
     return int(np.cumsum(ev[:, 1]).max())
 
 
-def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: float | None = None,
-          window: int = 0, deployable: str = "", find: str = "", sort: str = "worst_month",
-          page: int = 1, per: int = 25) -> dict:
-    """Every kept winner, RE-MEASURED over exactly [from_s, to_s] from its own
-    stored trades (never a month scaled up or down), filtered and paged here."""
+_TABLE: dict = {}         # (from, to, store, reality) -> every kept winner measured
+_TABLE_KEPT = 8
+
+
+def _measured(from_s: float, to_s: float, reality: dict) -> list[dict]:
+    """Every kept winner re-measured over [from_s, to_s], unfiltered."""
     import numpy as np
 
     from tradingagents import forecast_v2 as f2
 
-    reality = f2.live()["reality"]["all"]
-    rows, total = [], 0
+    rows = []
     lo, hi = from_s * 1000, to_s * 1000
     for w in kept():
-        total += 1
-        if find and w["id"] != find.strip().lstrip("#").upper():
-            continue
-        t = np.asarray(w.get("trades") or [], dtype=np.float64).reshape(-1, 3)
+        t = np.asarray(w.get("trades") if w.get("trades") is not None else [],
+                       dtype=np.float64).reshape(-1, 3)
         t = t[(t[:, 1] >= lo) & (t[:, 1] <= hi)] if len(t) else t
         n = len(t)
         p = t[:, 2] if n else np.zeros(0)
@@ -459,6 +463,40 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
                "worst_month": min((m["corrected"] for m in months if m["corrected"] is not None),
                                   default=None),
                "still_works": (w["p4"]["last15"]["corrected"] or 0) > 0}
+        rows.append(row)
+    return rows
+
+
+def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: float | None = None,
+          window: int = 0, deployable: str = "", find: str = "", sort: str = "worst_month",
+          page: int = 1, per: int = 25) -> dict:
+    """Every kept winner, RE-MEASURED over exactly [from_s, to_s] from its own
+    stored trades (never a month scaled up or down), filtered and paged here.
+    The measuring is remembered per date range until the store or the reality
+    check changes: the page asks again every minute, and 2.4 million trades
+    do not need walking again to answer the same question."""
+    from tradingagents import forecast_v2 as f2
+
+    reality = f2.live()["reality"]["all"]
+    path = store_path()
+    try:
+        st = path.stat()
+        sig = (str(path), st.st_mtime, st.st_size)
+    except OSError:
+        sig = (str(path), None, None)
+    ck = (float(from_s), float(to_s), sig, reality.get("took"), reality.get("gap"))
+    measured = _TABLE.get(ck)
+    if measured is None:
+        measured = _measured(from_s, to_s, reality)
+        while len(_TABLE) >= _TABLE_KEPT:
+            _TABLE.pop(next(iter(_TABLE)))
+        _TABLE[ck] = measured
+    total = len(measured)
+    want = find.strip().lstrip("#").upper() if find else ""
+    rows = []
+    for row in measured:
+        if want and row["id"] != want:
+            continue
         if row["winrate"] is not None and row["winrate"] < min_winrate:
             continue
         if min_profit is not None and row["profit"] < min_profit:

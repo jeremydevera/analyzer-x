@@ -35,8 +35,10 @@ def ms(y, m, d, h=12):
 def store(tmp_path, monkeypatch):
     monkeypatch.setenv("ROOM_STRATEGIES_HOME", str(tmp_path / "store"))
     rst._KEPT.clear()
+    rst._TABLE.clear()
     yield tmp_path / "store"
     rst._KEPT.clear()
+    rst._TABLE.clear()
 
 
 def test_every_shape_and_window_is_a_dial_and_old_ids_hold():
@@ -249,3 +251,27 @@ def test_the_round_finds_the_replays_own_reports_by_itself(tmp_path, monkeypatch
                                            encoding="utf-8")
     assert rst._reports_dir("37007971331") == tmp_path / "reports-37007971331"
     assert rst.check_complete(str(tmp_path / "art"), "37007971331")["shards"] == [1]
+
+
+def test_the_table_is_remembered_until_the_store_changes(store, monkeypatch):
+    """The page asks every minute; round 1 kept 673 winners holding 2,427,758
+    trades. The same dates are measured once — and a new winner is on the
+    very next ask."""
+    from tradingagents import forecast_v2 as f2
+    monkeypatch.setattr(f2, "live", lambda *a, **k: {"reality": {"all": REAL}})
+    calls = []
+    real = rst._measured
+    monkeypatch.setattr(rst, "_measured", lambda *a: calls.append(a) or real(*a))
+    t = _trades([(2026, 9, 1, 1.0), (2026, 9, 21, 1.0)])
+
+    def win(c):
+        return {"id": rst.sid(c), "cfg": c, "words": fr.words(c), "deployable": True,
+                "deploy_why": "", "p4": rst.measure(t, END, REAL), "trades": t}
+    rst.keep([win(rst.cfg(30, 80, 20, ">", 2.0))], "r1", "RUN", now=1000)
+    a, b = ms(2026, 9, 1, 0) / 1000, ms(2026, 9, 30, 23) / 1000
+    first = rst.table(a, b)
+    again = rst.table(a, b, sort="profit")
+    assert first["kept"] == again["kept"] == 1 and len(calls) == 1, "measured once"
+    assert isinstance(rst.kept()[0]["trades"], np.ndarray), "trades held as one array"
+    rst.keep([win(rst.cfg(15, 75, 30, ">", 2.0))], "r2", "RUN", now=2000)
+    assert rst.table(a, b)["kept"] == 2 and len(calls) == 2, "a new winner shows at once"

@@ -60,7 +60,7 @@ def _side(pnls: list) -> dict:
             "profit": round(sum(pnls), 2), "worst_run": w, "worst_run_trades": wn}
 
 
-_LEDGER: dict = {}          # path -> (size, exits by slot, refusals by slot)
+_LEDGER: dict = {}          # path -> (size, exits, refusals, refused candles; by slot)
 
 # WHY THE PRACTICE ACCOUNT DID NOT TAKE A BACKTEST TRADE: the refusal it wrote
 # into its trade record while that trade's entry bar was open
@@ -72,10 +72,11 @@ REASONS = {"gate_blocked": "fees too high for the target (cost check)",
            "blocked": "the coin was taken by another strategy"}
 
 
-def _practice_exits(pid: str) -> dict:
-    """({slot: [(exit_s, entry_s, pnl, why)]}, {slot: [(ts, refusal)]}) -
-    every closed PRACTICE trade and every refusal in the room's trade record,
-    read again only when the file has grown."""
+def _practice_exits(pid: str) -> tuple:
+    """({slot: [(exit_s, entry_s, pnl, why)]}, {slot: [(ts, refusal)]},
+    {slot: {signal candle open}}) - every closed PRACTICE trade, every refusal
+    in the room's trade record and every candle the cost check is recorded as
+    refusing, read again only when the file has grown."""
     from tradingagents import auto_trader as at
 
     with profiles.using(pid):
@@ -83,12 +84,13 @@ def _practice_exits(pid: str) -> dict:
     try:
         size = path.stat().st_size
     except OSError:
-        return {}
+        return {}, {}, {}
     hit = _LEDGER.get(str(path))
     if hit and hit[0] == size:
-        return hit[1], hit[2]
+        return hit[1], hit[2], hit[3]
     out: dict = {}
     refused: dict = {}
+    candles: dict = {}
     with path.open(encoding="utf-8", errors="replace") as fh:
         for line in fh:
             try:
@@ -101,11 +103,18 @@ def _practice_exits(pid: str) -> dict:
                 out.setdefault(slot, []).append((float(r.get("ts") or 0), float(r.get("entry_ts") or 0),
                                                  float(r.get("pnl_est") or 0.0), str(r.get("why") or "")))
             elif act in REASONS and r.get("dry_run", True):
-                refused.setdefault(slot, []).append((float(r.get("ts") or 0), act))
+                # EVERY CANDLE THE COST CHECK REFUSED is in a row's `bars`
+                # since Oct 02, 2026 (RCA-2026-10-02-C) - the exact answer. A
+                # `late` row is written two hours after its last candle, so
+                # its own time is no moment of refusal
+                if act == "gate_blocked":
+                    candles.setdefault(slot, set()).update(int(b) for b in r.get("bars") or [])
+                if not r.get("late"):
+                    refused.setdefault(slot, []).append((float(r.get("ts") or 0), act))
     for v in refused.values():
         v.sort()
-    _LEDGER[str(path)] = (size, out, refused)
-    return out, refused
+    _LEDGER[str(path)] = (size, out, refused, candles)
+    return out, refused, candles
 
 
 # THE COST CHECK WRITES ONE REFUSAL AN HOUR (auto_trader._GATE_LOG_EVERY):
@@ -146,7 +155,7 @@ def compare(room: str, from_s: float, to_s: float, *, sort: str = "gap",
         settings = at.load_settings()
     ws = settings.get("watcher_slots") or {}
     slots = [(k, c) for k, cs in (settings.get("strategy_coins") or {}).items() for c in cs or []]
-    exits, refused = _practice_exits(room)
+    exits, refused, refused_candles = _practice_exits(room)
     # WHEN EACH STRATEGY WAS SWITCHED ON: the watcher's own stamp, else the
     # deploy record (rows added by hand). The backtest is counted from then -
     # before it, the room was not trading that strategy at all
@@ -200,11 +209,15 @@ def compare(room: str, from_s: float, to_s: float, *, sort: str = "gap",
         only_b = 0
         mine = refused.get(slot, [])
         ts_list = [x[0] for x in mine]
+        gone = refused_candles.get(slot) or set()
         for t in bt:
             if int(t[0]) in used:
                 continue
             only_b += 1
-            reasons[_reason(mine, ts_list, t[0] / 1000, bar_s)] += 1
+            # the cost check's own record of refusing this trade's signal
+            # candle (the backtest entry less one bar) is the exact reason
+            reasons["gate_blocked" if int(t[0]) // 1000 - bar_s in gone
+                    else _reason(mine, ts_list, t[0] / 1000, bar_s)] += 1
         for k_, v in (("same", same), ("different", diff), ("practice_only", only_p),
                       ("backtest_only", only_b), ("after_backtest", after)):
             match[k_] += v

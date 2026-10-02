@@ -172,6 +172,114 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-02-C — the trade record kept one cost-check refusal an hour, so a refused 15-minute strategy left no trace for three candles in four
+
+**CEO**
+
+* On Sep 30, 2026 at 9:00pm the practice account skipped 18 FASTSTOCK sells
+  that the backtest counted as winners (+$18.66), and your trade record showed
+  no reason at all — nor for 6,254 more skipped backtest trades in #4FC03172
+  that night.
+* Why: the cost check refused them, rightly (getting in and out of FASTSTOCK
+  cost 3.71% at 9:00pm against a 2% target), but the record wrote down only
+  one refusal per strategy, coin and hour, so most refusals left nothing.
+* What stops it now: every refusal row counts and lists each candle refused
+  since the one before, and the record does not grow.
+
+**DEV**
+
+* `auto_trader._process_slot` runs `_edge_gate_cached` BEFORE the signal; on a
+  refusal the `gate_blocked` `append_ledger` sat inside
+  `if _gate_should_log(symbol, key, dry)` (`_GATE_LOG_EVERY = 3600`), so the
+  row was rate-limited together with the log line. Now
+  `_count_refused_candle` / `_take_refused` put `candles` and `bars` on the
+  hourly row, counting into the slot's SAVED state (`gate_pending`) — a stop
+  on Windows is an instant kill, and a count kept in memory died with it;
+  `_flush_stale_refusals` (in `run_cycle`, before `save_state`) writes one
+  `late` row for candles still waiting when nothing has refused that
+  strategy for two hours; `_settle_on_pass` takes back a candle refused only
+  for an unreadable book when its retry is let through; `feedcheck.report`
+  counts candles; `room_backtest._practice_exits` reads every row's `bars`
+  (a missed backtest trade whose signal candle was counted is "fees too
+  high" for certain) and never takes a `late` row's own time for a refusal.
+* Invariant broken: **a rate limit on a LINE never limits the COUNT** —
+  CLAUDE.md already said "rate-limit it (`_say_once`) and count it somewhere
+  the operator reads"; the count was inside the limit.
+* Guard: `tests/test_every_refusal_is_counted.py` (6), driven through
+  `process_symbol` on one fake clock — red on d870bf96ceca's runner
+  (`[None, None] == [1, 4, 1]`) and on the room page before this commit
+  (`{'gate_blocked': 2, 'gate_blocked_quiet': 2}`).
+
+**SAW** — another session, Oct 02, 2026 ~4am: *"of #4FC03172's backtest trades
+from switch-on to Oct 01 8:00am, 3,462 have no practice trade and no refusal"*
+(its "Backtest a room" page said "the live program saw no signal" —
+RCA-2026-10-02-B); the operator: *"find out why"*, then *"yes fix it"*.
+
+**TIMELINE**
+
+1. `Sep 30, 2026 8:21pm` — 20 FASTSTOCK prank_15m strategies switched on in
+   #4FC03172, practice.
+2. `8:25pm` — the cost check refuses them: round trip 4.456% against a 2%
+   target, the gap between buy and sell 4.258% (US market closed). Written:
+   log line and record row.
+3. `8:52pm-9:04pm` — the runner's own book readings (`book_readings.jsonl`):
+   round trip 3.71%-4.24%; **3.71% at 9:00pm** (gap 3.512%).
+4. `8:55pm` — FASTSTOCK jumps 50.17 → 51.49; the 8:45pm candle closes at
+   51.34, above all 100 closes before it: prank says SELL.
+5. `9:00pm` — the cost check refuses again, before the signal is ever worked
+   out; the candle is marked seen. No line, no row: the hour's row was 8:25pm.
+6. `9:27pm` — the next hourly row (round trip 3.309%).
+7. Later — rolling30's rebuilt backtest, charging the row's stored round trip
+   and no night-time gap, books 18 sells at 9:00pm, all winners, +$18.66.
+8. `Oct 02, 2026` — counted over switch-on → Oct 01 8:00am: **6,612**
+   rebuilt-backtest trades, **33** made in practice, **6,254** within an hour
+   after a written refusal of the same strategy on the same coin, 191 with
+   another written refusal, 134 unexplained.
+9. Measured away on the way, before this cause was found: MEXC serving an
+   unfinished candle (final at +0.0 s at 6:30am and 7:00am Oct 02 on 5 coins
+   whose prices moved in the last 5 minutes), the PC clock (0.71 s BEHIND
+   MEXC), two runners for one room (one, pid 25096). The first of those had
+   already been passed to the operator as a lead, and was corrected.
+10. After — the same day's refusals as rows: #4FC03172 writes ~42,191
+    refusal rows a day either way; one row per candle would have been
+    ~160,829, so the count rides on the hourly row instead.
+
+**ROOT CAUSE** — `append_ledger({"action": "gate_blocked", ...})` indented
+under `if _gate_should_log(symbol, key, dry):`.
+
+**WHY IT WAS NOT CAUGHT** — the hourly limit was added against noise (a
+`gate_blocked` line every cycle, 4,177 rows), and every test of it counted
+lines and rows going DOWN; none asked how many refusals the remaining rows
+stood for. A row per pair per hour reads like a row per refusal unless
+someone counts candles, and a missed backtest trade had nowhere else to look.
+
+**COST** — none in money: every refusal was right (3.71% to get in and out of
+a 2% target cannot win). Two sessions' time, and one wrong lead put to the
+operator before it was measured away.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_every_refusal_is_counted.py`:
+`test_every_refused_candle_lands_in_exactly_one_row`,
+`test_the_count_survives_a_restart`,
+`test_a_candle_refused_only_for_an_unreadable_book_is_taken_back`,
+`test_a_switched_off_strategy_loses_no_count_and_old_entries_go`,
+`test_the_feed_check_counts_candles_not_rows` — all five red on the runner
+before this commit — and `test_backtest_a_room_reads_the_counted_candles`,
+which feeds the runner's own rows to Forecast → Backtest a room: red on the
+page before this commit, which called the trade entering beside a `late`
+row "fees too high" and found the two candles that row names only by its
+within-an-hour guess (`gate_blocked_quiet`).
+
+**What is not fixed, stated plainly** — the rebuilt backtest still charges a
+row's stored round trip, never the night-time gap, so it keeps booking trades
+the cost check refuses after US market hours (all 18 of these). Forecast v2's
+reality check counts them as trades practice did not make (took 0.1799); the
+backtest itself has no history of the gap to charge before
+`book_readings.jsonl` (Sep 23, 2026).
+
+---
+
 ## RCA-2026-10-02-B — "Backtest a room" called 3,462 refused trades "the live program saw no signal"
 
 **CEO**

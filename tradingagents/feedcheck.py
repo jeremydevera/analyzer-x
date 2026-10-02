@@ -133,7 +133,10 @@ def report(now: float | None = None) -> dict:
             why = str(r.get("why") or "")[:70]
             label = (f"{r.get('action')}: {why}" if why
                      else str(r.get("action")))
-            refused[label] += 1
+            # a cost-check row stands for every candle it counted — one row an
+            # hour per strategy and coin, so a row count said a quarter of a
+            # 15-minute strategy's refusals (RCA-2026-10-02-C)
+            refused[label] += max(1, int(r.get("candles") or 1))
     return {
         "since": since,
         "now": now,

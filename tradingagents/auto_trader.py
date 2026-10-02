@@ -3176,6 +3176,111 @@ def _record_book_reading(symbol: str, round_trip: float, m: dict) -> None:
 _GATE_LOGGED: dict = {}
 _GATE_LOG_EVERY = 3600    # one loud line per pair per hour, not per candle
 
+# EVERY REFUSED CANDLE IS COUNTED; only the LINE is rate-limited (RCA-2026-
+# 10-02-C). The `gate_blocked` row used to sit inside the hourly log limit, so
+# a 15-minute strategy refused all hour left one row for four candles: at Sep
+# 30, 2026 9:00pm #4FC03172's FASTSTOCK prank_15m sells were refused (round
+# trip 3.71% against a 2% target) with no row at all, and 6,254 of the room's
+# 6,612 missed backtest trades that night looked like "no trade, no refusal".
+# The hourly row now carries `candles` and `bars` — every candle refused since
+# the row before. The count lives in the slot's SAVED STATE (`gate_pending`),
+# written every cycle, because a runner stop on Windows is an instant kill and
+# a count kept only in memory would die with it. The trade record does not
+# grow: still one row per strategy, coin and book an hour, plus one `late` row
+# for candles still waiting when nothing has refused that strategy for 2 hours.
+REFUSED_STATE_KEEP_S = 86400  # a counted candle older than this is forgotten
+
+
+def _gate_tally(st: dict, key: str) -> dict:
+    """This strategy's refused candles in its slot's saved state."""
+    return st.setdefault("gate_pending", {}).setdefault(
+        key, {"bars": [], "unread": [], "why": "", "last": 0})
+
+
+def _count_refused_candle(st: dict, key: str, symbol: str, dry: bool,
+                          bar_ts: int | None, unreadable: bool, why: str) -> None:
+    """Count one refused candle ONCE: a gate re-refuses the same candle every
+    cycle (the check runs before the "already considered" test), and only a
+    candle the strategy could have traded is a refusal worth counting."""
+    if bar_ts is None:
+        return
+    e = _gate_tally(st, key)
+    if int(bar_ts) <= int(e.get("last") or 0):
+        return
+    e["last"] = int(bar_ts)
+    e["bars"].append(int(bar_ts))
+    if unreadable:
+        e["unread"].append(int(bar_ts))
+    e.update(why=str(why or ""), symbol=symbol, dry=bool(dry))
+
+
+def _take_refused(st: dict, key: str) -> dict:
+    """The refused candles not yet written, as fields for a `gate_blocked`
+    row — and cleared, so no candle is counted in two rows. `last` is kept:
+    it is what stops the same candle being counted again."""
+    e = (st.get("gate_pending") or {}).get(key)
+    if not e or not e.get("bars"):
+        return {}
+    out = {"candles": len(e["bars"]), "bars": list(e["bars"])}
+    unread = len(set(e.get("unread") or []) & set(e["bars"]))
+    if unread:
+        out["unreadable_candles"] = unread
+    e["bars"], e["unread"] = [], []
+    return out
+
+
+def _write_late(st: dict, key: str, ending: str) -> bool:
+    """The candles still waiting for one strategy, in a row of their own. Its
+    `why` carries no cost figure — the account replay reads a cost out of a
+    refusal's `why`, and this one would be hours old."""
+    e = (st.get("gate_pending") or {}).get(key)
+    if not e or not e.get("bars"):
+        return False
+    last_why, symbol, dry = e.get("why"), e.get("symbol"), bool(e.get("dry"))
+    tally = _take_refused(st, key)
+    append_ledger({"symbol": symbol, "action": "gate_blocked", "strategy": key,
+                   "why": f"the cost check refused {tally['candles']} candle(s) {ending}",
+                   "late": True, "refused_why": last_why, **tally, "dry_run": dry})
+    return True
+
+
+def _settle_on_pass(st: dict, key: str, bar_ts: int | None) -> None:
+    """The check let this strategy through. A candle refused only because the
+    book could not be READ is not marked seen — the next cycle tries it again
+    — so when that next try lets it through, the candle is taken back out: it
+    was never refused in the end. Nothing is WRITTEN here: a coin whose cost
+    hovers at the line would otherwise write a row nearly every candle, the
+    growth the hourly row exists to avoid; the waiting candles go in its next
+    refusal row, or `_flush_stale_refusals` writes them."""
+    e = (st.get("gate_pending") or {}).get(key)
+    if e and e.get("bars") and bar_ts is not None and e["bars"][-1] == int(bar_ts) \
+            and int(bar_ts) in (e.get("unread") or []):
+        e["bars"].pop()
+        e["unread"].remove(int(bar_ts))
+        e["last"] = int(bar_ts) - 1             # refused again, it is counted again
+
+
+def _flush_stale_refusals(state: dict, now: float) -> list:
+    """Refused candles still waiting when nothing has refused that strategy
+    for two hours — its refusals stopped, it was switched off, or its coin is
+    no longer checked — are written; an entry with nothing waiting and a day
+    old is forgotten. Returns the slots it changed, for the save."""
+    changed = []
+    for slot_key, st in state.items():
+        gp = st.get("gate_pending") if isinstance(st, dict) else None
+        if not gp:
+            continue
+        for key, e in list(gp.items()):
+            if e.get("bars") and now - max(e["bars"]) > 2 * _GATE_LOG_EVERY:
+                _write_late(st, key, "since its last refusal row")
+                changed.append(slot_key)
+            elif not e.get("bars") and now - float(e.get("last") or 0) > REFUSED_STATE_KEEP_S:
+                del gp[key]
+                changed.append(slot_key)
+        if not gp:
+            st.pop("gate_pending", None)
+    return changed
+
 
 def gate_refuses(gate: dict) -> bool:
     """Does this gate result forbid the order? BLOCK and UNKNOWN both do.
@@ -5625,27 +5730,44 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
         # liquidity gate and the chase guard entirely, and would have shown a
         # tidy profit on a BDX-class contract live would never have touched.)
         if True:
+            # the candle this strategy would trade now — a refusal is counted
+            # against it once, however many cycles re-refuse it
+            # (RCA-2026-10-02-C)
+            _gspec = STRATEGY_SPECS.get(key) or {}
+            _gdf = frames.get(_gspec.get("interval"))
+            _gbar = (int(_gdf["Date"].iloc[-1].timestamp())
+                     if _gdf is not None and len(_gdf) else None)
             gate = _edge_gate_cached(key, symbol, margin_for(key, settings),
                                      fx=fx)
             if gate_refuses(gate):
                 unreadable = _unknown_gate(gate)
+                _count_refused_candle(st, key, symbol, dry, _gbar, unreadable,
+                                      gate.get("reason"))
                 if _gate_should_log(symbol, key, dry):
+                    _tally = _take_refused(st, key)
+                    _more = int(_tally.get("candles") or 0) - 1
                     logger.error(
                         "LIQUIDITY GATE: refusing %s on %s — %s. No order "
-                        "placed. %s", key, symbol,
+                        "placed. %s%s", key, symbol,
                         (f"the order book could not be read ({gate.get('reason')})"
                          if unreadable else gate.get("reason")),
                         ("Retrying next cycle — an unreadable book is never "
                          "treated as permission to trade (rule 12)."
                          if unreadable else
                          "Pick a deeper-book contract or a strategy with a "
-                         "wider target."))
+                         "wider target."),
+                        (f" ({_more} earlier candle(s) refused since the last "
+                         f"line, each counted in this row)" if _more > 0 else ""))
                     # An unknown used to leave NO log line and NO ledger row:
                     # the live order was the only evidence it had happened.
+                    # The row carries EVERY candle refused since the last one
+                    # (`candles`, `bars`) — the line is rate-limited, the
+                    # count never is (RCA-2026-10-02-C).
                     append_ledger({"symbol": symbol, "action": "gate_blocked",
                                    "strategy": key,
                                    "why": gate.get("reason"),
                                    "unreadable_book": unreadable,
+                                   **_tally,
                                    "dry_run": dry})
                 # A REFUSED bar has still been EXAMINED. Leaving it unmarked
                 # made the runner re-read the same candle every cycle until it
@@ -5670,6 +5792,9 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                         st["last_ts"][_spec["interval"]] = int(
                             _df["Date"].iloc[-1].timestamp())
                 continue
+            # let through: a candle refused only for an unreadable book is
+            # taken back (RCA-2026-10-02-C)
+            _settle_on_pass(st, key, _gbar)
         spec = STRATEGY_SPECS[key]
         df = frames.get(spec["interval"])
         if df is None:
@@ -6640,6 +6765,15 @@ def run_cycle(*, fx=None) -> None:
             # happened before the pass for exactly that reason. It must still
             # come after `process_symbol` to see a slot the pass created.
             touched.extend(book_slots(state, symbol, dry))
+    # refused candles still waiting two hours on (refusals stopped, switched
+    # off, coin gone) are written — BEFORE the save, so the save holds them
+    # cleared and a restart cannot write them twice; never able to break the
+    # cycle (RCA-2026-10-02-C)
+    try:
+        touched.extend(_flush_stale_refusals(state, time.time()))
+    except Exception as exc:                                   # noqa: BLE001
+        if _say_once("stale-refusals", 3600):
+            logger.warning("could not write the refused-candle counts: %s", exc)
     save_state(state, keys=touched)
     _feed_follow(state)
 

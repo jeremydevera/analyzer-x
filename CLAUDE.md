@@ -925,6 +925,16 @@ And nothing raised a hand for nine hours: cycles ran, the ledger filled with
 identical refusals, and no alarm anywhere says *"the runner is up and has taken
 no action"*. A refusal repeated every cycle is a silence, not a message —
 rate-limit it (`_say_once`) and count it somewhere the operator reads.
+**The LINE may be rate-limited, the COUNT never** (RCA-2026-10-02-C): the
+cost check's `gate_blocked` row once sat inside its hourly log limit, so a
+15-minute strategy refused all night left one row for every four candles and
+6,254 of #4FC03172's missed backtest trades read as "no trade, no refusal".
+The hourly row now carries every candle refused since the one before
+(`candles`, `bars`), counted in the slot's SAVED state (a runner stop on
+Windows is an instant kill), and a `late` row writes what is still waiting
+when nothing has refused the strategy for two hours — never one row per
+candle (or per let-through: a coin at the line would flip every candle),
+which would have been ~160,829 rows a day in that room alone.
 
 ## The runner waits for the venue, it does not poll a clock (MANDATORY — 2026-09-14)
 

@@ -406,7 +406,15 @@ whose shape changed (`switch.json`, `latest.json`'s `by_day`,
 `streak_bells.json`, `whatif.json`'s `tried_at`) and tonight's first
 automatic replay → base step (run 36940719775 was dispatched from
 cdd516295e46, whose replay.yml uploads `replay-report-<N>`) checked clean.
-All rounds that did find something: RCA-2026-10-01-J, -K and -L.
+
+Round 10 (8:40pm, reading the files the restarted site wrote): 34. **An
+"off" saved in `state.json` before the box got its own file** would have
+come back "on" at the first save — on another machine after `git pull`.
+This PC's chain was on; the old value is carried over now.
+
+Streak bells under the old code, before 8:15pm: two, one per run —
+ABNBSTOCK at 7:59pm and NECSTOCK at 8:04pm, both 6 losses in a row in
+#4FC03172. All rounds that did find something: RCA-2026-10-01-J, -K and -L.
 
 ## The build prompt
 

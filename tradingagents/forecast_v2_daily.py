@@ -90,6 +90,16 @@ def read() -> dict:
 
 
 def _write(st: dict) -> None:
+    if not _switch_path().exists() and _state_path().exists():
+        # CARRIED OVER, never dropped (bug hunt, round 10): before the box had
+        # its own file it lived in this one — the first save without it
+        # would have turned an "off" into the default "on"
+        try:
+            was = json.loads(_state_path().read_text(encoding="utf-8")).get("on")
+        except (OSError, ValueError, AttributeError):
+            was = None
+        if was is False:
+            f2.publish(_switch_path(), json.dumps({"on": False, "at": time.time(), "from": "state.json"}))
     keep = {k: v for k, v in st.items() if k != "on"}     # the switch has its own file
     f2.publish(_state_path(), json.dumps(keep, separators=(",", ":"), allow_nan=False))
 

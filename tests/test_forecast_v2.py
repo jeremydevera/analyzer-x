@@ -874,3 +874,20 @@ def test_a_dispatch_is_on_disk_before_it_is_made(monkeypatch):
     fd._step(fresh, NOW + 1800)
     assert sinces == [None, NOW], "the retry looks for the run the first try started"
     assert fresh["phase"] == "replay" and fresh["replay_run"] == 41 and "tried" not in fresh
+
+
+def test_an_off_saved_before_the_box_had_its_own_file_stays_off():
+    """Bug hunt, round 10: the box used to live in state.json; the first
+    save after the switch got its own file dropped it, so a chain switched
+    off on another machine would have come back on after `git pull`."""
+    from tradingagents import forecast_v2_daily as fd
+
+    fd.home().mkdir(parents=True, exist_ok=True)
+    fd._state_path().write_text('{"phase":"done","on":false}', encoding="utf-8")
+    assert not fd._switch_path().exists() and fd.read()["on"] is False
+    fd._write(fd.read())                       # the first save by the new code
+    assert fd.read()["on"] is False and fd.is_on() is False
+    assert "on" not in json.loads(fd._state_path().read_text(encoding="utf-8"))
+    fd.switch(True)
+    fd._write(fd.read())
+    assert fd.read()["on"] is True, "once the box has its own file, it alone decides"

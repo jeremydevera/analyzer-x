@@ -172,14 +172,15 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
-## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: thirteen faults caught by the bug hunt, one of them on screen
+## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: fourteen faults caught by the bug hunt, two of them seen
 
 **CEO**
 
-* On its first night the daily Forecast v2 job had thirteen faults that could
+* On its first night the daily Forecast v2 job had fourteen faults that could
   start the same GitHub run twice, lose a what-if, undo the "off" box, ring
-  46 bells in a day, or say "working" about a run that had not started — the
-  last one was on your screen at 8:16pm.
+  46 bells in a day, or say "working" about a run that had not started. Two
+  reached you: the "working" line on the page, and two streak bells (7:59pm
+  and 8:04pm) of the 46 a day it would have rung.
 * Why: the job was tested one step at a time, and nothing tested what happens
   when two of its pieces run at once, when GitHub is slow, or when Windows
   holds a file open.
@@ -207,8 +208,10 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 **SAW** — at `Oct 01, 2026 8:16pm` the what-if row read *"working — waiting in
 GitHub's queue since Oct 01, 2026 7:26pm, not started yet"*; before round 6
 it read *"working on GitHub: 0 of 0 machines done"* while run 36940791960
-sat QUEUED behind the daily replay's 20 machines. The other twelve never
-reached a screen.
+sat QUEUED behind the daily replay's 20 machines. And on the bell, one per
+run: *"ABNBSTOCK has lost 6 in a row in #4FC03172"* (7:59pm), *"NECSTOCK has
+lost 6 in a row in #4FC03172"* (8:04pm). The other twelve never reached a
+screen.
 
 **TIMELINE**
 
@@ -232,8 +235,10 @@ reached a screen.
       table with the merge-time ones (took 0.1799, gap 0.2225);
    8. **46 bells a day** — measured: 46 practice runs reached the streak line
       on Oct 01, 2026 (4 of 9 wins, 42 of 5 losses, 25 in #4FC03172), one bell
-      each, two of them in rooms that are off (no tab); would have started
-      ringing at the chain's next tick;
+      each, two of them in rooms that are off (no tab). HAPPENED: two rang
+      before the fix was loaded at 8:15pm — `7:59pm` "ABNBSTOCK has lost 6 in
+      a row in #4FC03172" (−5.78) and `8:04pm` "NECSTOCK has lost 6 in a row
+      in #4FC03172" (−6.45); none since;
    9. **a finished day never "done"** — `st[k]` on a missing key after the
       final merge would re-run the merge every 30 minutes.
 4. `8:20pm` — round 7: 10. **the daily bell had no rooms** — section E's
@@ -248,6 +253,10 @@ reached a screen.
    dispatched a run the lost save meant the next tick dispatched it again.
    Fixed with `forecast_v2.replace_retry` (db_jobs' 3 s budget,
    RCA-2026-09-18-B) and the attempt saved before the dispatch.
+6. `8:40pm` — round 10: 14. **an "off" lost in the move** — the box moved to
+   `switch.json`, and the first save without it in `state.json` would have
+   turned a chain switched off before the update (on another machine, after
+   `git pull`) back on. This PC's was on. Carried over now.
 
 **ROOT CAUSE** — state held in memory across slow calls (GitHub, a download,
 a two-minute merge) and written back whole at the end, by a job whose
@@ -262,10 +271,12 @@ run by its title", and its test covered the title only — not a title that
 appears late.
 
 **COST** — none in money (Forecast v2 switches nothing). One wrong status on
-screen for ~50 minutes. Avoided: a duplicate replay (20 machines for an
-hour), 46 bells a day, a forecast stuck re-merging.
+screen for ~50 minutes and two streak bells one an hour would have folded.
+Avoided: a duplicate replay (20 machines for an hour), 46 bells a day, a
+forecast stuck re-merging.
 
-**FIX** — round 6 in f1112b4bd13d; rounds 7-8 in this commit.
+**FIX** — round 6 in f1112b4bd13d; rounds 7-8 in 29e0e618d2be; round 10 in
+this commit.
 
 **GUARD** — `tests/test_forecast_v2.py`: `test_off_stays_off_when_a_busy_tick_writes_the_state_back`,
 `test_a_what_if_asked_while_another_is_polled_is_kept`,
@@ -280,7 +291,9 @@ hour), 46 bells a day, a forecast stuck re-merging.
 `test_the_daily_bell_names_each_rooms_month_against_its_range`,
 `test_a_long_bell_keeps_its_count_of_the_rest`,
 `test_a_refused_swap_is_retried_not_lost`,
-`test_a_dispatch_is_on_disk_before_it_is_made`.
+`test_a_dispatch_is_on_disk_before_it_is_made`,
+`test_an_off_saved_before_the_box_had_its_own_file_stays_off` (red on
+29e0e618d2be: `assert (True is False)`).
 
 ---
 

@@ -1271,7 +1271,7 @@ Forecast page is unchanged.
   needs a switch a room does not have (TP at least 1.5x/2x SL, any option)
   says so.
 
-Guard: `tests/test_forecast_v2.py` (39, on one timeline).
+Guard: `tests/test_forecast_v2.py` (40, on one timeline).
 
 ## Backtest v2 is the v1 engine in its own folder (MANDATORY — 2026-09-17)
 

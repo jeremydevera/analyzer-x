@@ -27,6 +27,9 @@ on:
       output:
         description: "full = every trade (the page's logs); daily = each rule set's day-by-day totals only (prompt 4's search rounds)"
         default: "full"
+      source_repo:
+        description: "The repo whose run holds the replay (blank = this one) — so the second account's 20 machines can research the first account's replay"
+        default: ""
 
 permissions:
   contents: read
@@ -52,7 +55,10 @@ jobs:
           N: ${{ github.event.inputs.shards }}
           C: ${{ github.event.inputs.chunks }}
           SRC_RUN: ${{ github.event.inputs.source_run }}
-          REPO: ${{ github.repository }}
+          # the replay's own repo: the operator has two accounts, 20 machines
+          # each (Oct 02, 2026: "dont i have 40 machines?"), and the replay's
+          # artifacts live on the account that ran it
+          REPO: ${{ github.event.inputs.source_repo || github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   research:
@@ -81,6 +87,7 @@ jobs:
         with:
           name: replay-${{ matrix.shard }}
           path: src
+          repository: ${{ github.event.inputs.source_repo || github.repository }}
           run-id: ${{ github.event.inputs.source_run }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 

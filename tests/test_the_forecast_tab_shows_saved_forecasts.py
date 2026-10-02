@@ -85,14 +85,15 @@ def test_the_tab_offers_every_prompt_from_the_one_document():
     assert [p["title"] for p in got][:4] == ["1. Make a new forecast",
                                              "2. Look across every saved forecast",
                                              "3. Find the best room rules (every shape, nothing left out)",
-                                             "4. Find new room strategies for this month and the next 15 days"]
+                                             "4. Find new winning room strategies and keep them in Best room rules"]
     assert [p["title"].split(".")[0] for p in got] == [str(i) for i in range(1, len(got) + 1)]
-    # prompt 4 (Oct 02, 2026: "what i want for #4 is you will always find a new
-    # set combination that is best for this month and for the next 15 days /
-    # its like combining the two"): prompt 3's every-shape search with Forecast
-    # v2's two horizons, 15-day stretches MEASURED (never a month halved,
-    # RCA-2026-10-01-J), every find kept in "Room Strategies" inside "Best room
-    # rules this month". The numbers and rules it names are the code's own.
+    # prompt 4 (Oct 02, 2026: "when i run prompt 4 i want it to find out winning
+    # strategy and store it in Best room this month", then "i want it to be
+    # flexible where i can select a between date range instead of hard cap 1
+    # month only"): prompt 3's every-shape search, every winner kept as a row of
+    # "Best room rules", and that section a FROM-TO date range re-measured over
+    # the exact dates (never a month scaled, RCA-2026-10-01-J). The numbers and
+    # rules it names are the code's own.
     from tradingagents import (
         backtest_report as br,
         forecast_rules as fr,
@@ -101,8 +102,9 @@ def test_the_tab_offers_every_prompt_from_the_one_document():
     )
 
     p4 = " ".join(got[3]["text"].split())        # the phrases, whatever the line breaks
-    assert "Never a month divided by 2" in p4 and "RCA-2026-10-01-J" in p4
-    assert '"Room Strategies"' in p4 and '"Best room rules this month"' in p4
+    assert "never a month scaled up or down" in p4 and "RCA-2026-10-01-J" in p4
+    assert 'rename it from "Best room rules this month" to "Best room rules"' in p4
+    assert "FROM and TO dates" in p4 and "re-measured over exactly the chosen dates" in p4
     assert f'write_rule "{rs.SCENARIOS6_WRITE}"' in p4, "the same loose data as prompt 3"
     assert f"grid 6 ({len(rs.scenarios6()):,})" in p4
     assert f"{len(fr.OPTIONS)} options (forecast_rules.OPTIONS)" in p4

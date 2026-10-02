@@ -175,16 +175,26 @@ Rules for the answer:
   30-day rule set beside it as the one that can be deployed today.
 ```
 
-## 4. Find new room strategies for this month and the next 15 days
+## 4. Find new winning room strategies and keep them in Best room rules
 
 ```
-Find NEW room strategies that should make the most THIS MONTH and over the NEXT 15
-DAYS, testing every shape of rule, and keep every one found in "Room Strategies"
-inside Auto Trade -> Forecast v2 -> "Best room rules this month". A room strategy
-and a row of that table are the same thing — one set of room rules and what it
-should make — so they live in one place. Every run must look further than the
-last: it starts from everything already stored and tries combinations never tried
-before on that data.
+Find NEW winning room strategies, testing every shape of rule, and keep every
+winner in Auto Trade -> Forecast v2 -> "Best room rules": a winner is a row in
+that table, marked with the day this prompt found it, never deleted. Every run
+must look further than the last one: it starts from everything already in the
+table and tries combinations no run has tried before on that data.
+
+And make that section a DATE RANGE instead of one month: rename it from "Best
+room rules this month" to "Best room rules" and give it FROM and TO dates (any
+days inside the data, with quick picks for the last 15 days, the last 30 days and
+each calendar month — they are only ranges). Every number in the table is
+re-measured over exactly the chosen dates, on the server, never a month scaled up
+or down: trades, wins and losses, win rate, profit straight and after the reality
+check, worst day, worst losing run, most open at once. Beside them, "a stretch
+this long usually makes": the median, worst and best of every past stretch of the
+same length, measured, after the reality check. The ranking follows the chosen
+dates. (A month divided by 31 once printed a worst case no month ever made —
+docs/RCA.md RCA-2026-10-01-J.)
 
 A room strategy is one set of room rules, every one of these varied:
 - judged on the last 7, 15 or 30 days
@@ -197,60 +207,52 @@ A room strategy is one set of room rules, every one of these varied:
 Every one raw, with the runner's 4 open trades per coin, $5 at 20x, all three
 costs charged (entry, exit and holding).
 
-The two horizons — measure each one, never scale one into the other:
-- THIS MONTH = the median complete past month, the worst and the best, and the
-  same after the reality check (forecast_v2.corrected: took x (profit - gap x
-  trades)).
-- NEXT 15 DAYS = the same on complete 15-day stretches counted back from the last
-  complete day of the data. Never a month divided by 2 (docs/RCA.md
-  RCA-2026-10-01-J).
-
 Run it like this, saying how long each step should take before starting it:
 1. DATA loose enough for every rule set tried (a stricter write rule makes the
    looser ones lean on hindsight, docs/RCA.md RCA-2026-09-29-F): use a replay
    written today with write_rule "wr=40,trades=1,tp=any,windows=7|15|30" if
    there is one, otherwise start it the way prompt 3's step 1 does. Say its run
    id, its end, and what it covered (signal groups, coins, strategies).
-2. ROUND 1, the known: every strategy already in Room Strategies, the rooms' own
+2. ROUND 1, the known: every strategy already in Best room rules, the rooms' own
    rules, Forecast v2's daily grid and grid 6 (8,064). Walk each one forward day
    by day on GitHub (forecast.yml / forecast_shard.py, or research.yml, whichever
-   reads this replay; add a stage that takes a list of rule sets if neither can),
-   adding up per month and per 15-day stretch.
-3. NEW ROUNDS: around the 20 best of each horizon, try what was never tried — one
-   step on every dial, each option, then pairs of options on the 10 best — until
-   a round beats nothing already stored, or 5 rounds. Say per round how many rule
-   sets were tried and how many were new. Keep the id of every rule set tried on
-   this data (on G:, beside ~/.tradingagents/forecast_v2/) so the next run never
+   reads this replay; add a stage that takes a list of rule sets if neither can).
+3. NEW ROUNDS: around the 20 best, try what was never tried — one step on every
+   dial, each option, then pairs of options on the 10 best — until a round beats
+   nothing already in the table, or 5 rounds. Say per round how many rule sets
+   were tried and how many were new. Keep the id of every rule set tried on this
+   data (on G:, beside ~/.tradingagents/forecast_v2/) so the next run never
    repeats one and always reaches new ones.
-4. A FAIR PICK: a strategy is kept as a WINNER only when it would have been
-   picked without the newest month AND it still made money in the newest month
-   and the newest 15 days, which the pick never saw. Rank by the WORST past month
-   (or stretch) after the reality check, then the typical one — never by the
-   best. Show how often it beat random picks (per trade); under 80 in 100 say
-   "could be luck".
+4. WINNING, by A FAIR PICK: a strategy is a winner only when it would have been
+   picked without the newest month AND, after the reality check, it made money
+   in every complete month and in the newest 15 days, which the pick never saw.
+   Rank by the WORST complete month after the reality check, then the worst
+   15-day stretch — never by the best. Show how often it beat random picks (per
+   trade); under 80 in 100 say "could be luck".
 
-Room Strategies — what is kept, and how it shows:
-- Every winner of every run, never deleted: its id (forecast_rules.rule_id), the
-  rules in words, the date and run that found it, and both horizons with their
-  ranges, straight and after the reality check.
-- Kept current: the daily Forecast v2 run re-measures every stored strategy it
-  can measure fairly (its replay is written at 70% / 20 trades / 15 or 30 days),
-  so those carry fresh numbers every day. A looser one shows the date it was last
-  measured and is re-measured on every run of this prompt. Measure what keeping
-  the looser ones current every day would cost (a looser daily replay: how much
-  longer the daily job takes) and tell me; change nothing until I choose.
-- On the page, inside "Best room rules this month": a "this month | next 15 days"
-  choice for the whole table, and a "Room Strategies" list holding every stored
-  one with: the id first; the rules in words; found on; predicted profit and its
-  range for both horizons; wins and losses; win rate; break-even win rate after
-  costs (never 50%); trades and trades a day; worst losing run (dollars and how
-  many trades); most open at once; money needed; beat random; last 15 days and
-  last 30 days; still working or not; can a room run it today, or which switch it
-  needs. Margin $5 x 20x and the number of rule sets tested stated above it;
-  filters done by the server; a find-by-id box; a click on a row shows its trades
-  one by one with a TOTAL.
-- A stored strategy whose newest month or newest 15 days loses stays in the list,
-  marked "stopped working on <date>" — never removed.
+What is kept for every winner: its id (forecast_rules.rule_id), the rules in
+words, the day and run that found it, and its trades — so any date range can be
+re-measured — plus whether it still works. A winner whose newest month or newest
+15 days loses stays in the table, marked "stopped working on <date>".
+Kept current: the daily Forecast v2 run re-measures every winner it can measure
+fairly (its replay is written at 70% / 20 trades / 15 or 30 days), so those carry
+fresh numbers every day; a looser one shows the date it was last measured and is
+re-measured on every run of this prompt. Measure what keeping the looser ones
+current every day would cost (a looser daily replay: how much longer the daily
+job takes) and tell me; change nothing until I choose.
+
+The table, whatever dates are chosen: the id first; the rules in words; found by
+(the daily grid, or this prompt on <date>); the range's trades and trades a day,
+wins and losses, win rate, break-even win rate after costs (never 50%), profit
+straight and after the reality check, worst day, worst losing run (dollars and
+how many trades), most open at once, money needed; "a stretch this long usually
+makes"; beat random; can a room run it today, or which switch it needs. Margin
+$5 x 20x and the number of rule sets tested stated above it; filters done by the
+server (min win rate, min profit, the TP rule, stop at most %, judged on 7, 15 or
+30 days, found by, a room can run it today); a find-by-id box; a click on a row
+shows its trades in the range one by one with a TOTAL. The what-if box answers for
+the chosen dates too, and the month tracker and the month's graded prediction keep
+working.
 
 Build it with the harddev skill; tests on one timeline in tests/test_forecast_v2.py,
 at least one red on the old code; update docs/FORECAST-V2.md; an RCA entry for any
@@ -262,10 +264,10 @@ me (about 1-5 minutes dark), never while the daily chain is starting a GitHub ru
 Rules for the answer:
 - Real numbers from the replay and my own trade records only; if something cannot
   be measured, say so.
-- In chat: one plain sentence naming the new best strategy for this month and the
-  new best for the next 15 days, each with its id and its prediction after the
-  reality check, and how many new strategies this run kept; then "Pending for
-  you:" with what I must do, or "No pending for you."
+- In chat: one plain sentence naming the best new winner with its id and what it
+  made over the newest 30 days after the reality check (or that nothing new beat
+  the table), and how many new winners this run kept; then "Pending for you:"
+  with what I must do, or "No pending for you."
 - Read only on trading: create no rooms, switch nothing on or off and change no
   rules unless I say "deploy". When I do, each strategy I name becomes its own
   room, practice only (CLAUDE.md "STANDING SETUP"); one that needs a switch a

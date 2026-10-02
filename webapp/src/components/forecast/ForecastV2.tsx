@@ -499,7 +499,7 @@ function WhatIf({ s }: { s: F2Summary }) {
       {rows.length > 0 && (
         <div className="mt-2 overflow-x-auto">
           <table className="w-full text-theme-xs">
-            <thead><tr>{["asked", "rule set", "status", "this month after the reality check", "backtest says"].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
+            <thead><tr>{["asked", "rule set", "status", "measured on", "this month after the reality check", "backtest says"].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
             <tbody>{rows.map((w) => (
               <tr key={w.id}>
                 <td className={td}>{w.asked_at ? fmtWhen(w.asked_at) : "—"}</td>
@@ -507,6 +507,9 @@ function WhatIf({ s }: { s: F2Summary }) {
                 {/* a run with an id says where it is in its own words — "working —
                     waiting in GitHub's queue, not started yet" read as two answers */}
                 <td className={td}>{w.status === "working" && w.why ? w.why : `${w.status}${w.why ? ` — ${w.why}` : ""}`}</td>
+                {/* WHICH DATA (bug hunt, round 13): after a daily run the table is
+                    measured on a newer replay than an older what-if */}
+                <td className={td}>{w.end_ms ? `data to ${fmtWhenMs(w.end_ms)}` : "—"}{w.end_ms && s.backtest && w.end_ms !== s.backtest.data.end_ms ? " — older than the table's; ask again to measure it on the newest" : ""}</td>
                 <td className={`${td} ${tone(w.result?.predicted?.corrected)}`}>{w.result ? corrRange(w.result.predicted) : "—"}</td>
                 <td className={td}>{w.result ? range(w.result.predicted) : "—"}</td>
               </tr>))}

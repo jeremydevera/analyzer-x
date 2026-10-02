@@ -172,11 +172,11 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
-## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: sixteen faults caught by the bug hunt, two of them seen
+## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: seventeen faults caught by the bug hunt, two of them seen
 
 **CEO**
 
-* On its first night the daily Forecast v2 job had sixteen faults that could
+* On its first night the daily Forecast v2 job had seventeen faults that could
   start the same GitHub run twice, lose a what-if, undo the "off" box, ring
   46 bells in a day, stop for good after one bad GitHub run, or say
   "working" about a run that had not started. Two
@@ -270,6 +270,13 @@ screen.
    machine, ranking rule sets measured on different coins against each
    other. Both stages now merge over the machines they share, and the page
    prints "PART OF THE MARKET … N of 20 machines" and "used without: …".
+8. `8:36pm` — round 13, with the chain's own first step landed (the replay
+   ended Oct 01, 2026 4:00pm, the hand-made table's data Sep 30, 2026
+   12:00pm): 17. **a what-if never said which data it was measured on** —
+   once tonight's merge lands, #2F39EAEC's answer (Sep 30 data) would sit
+   under a table measured to Oct 01 with nothing to tell them apart. The row
+   prints "data to …" and, when older than the table's, says so and that
+   asking again measures it on the newest.
 
 **ROOT CAUSE** — state held in memory across slow calls (GitHub, a download,
 a two-minute merge) and written back whole at the end, by a job whose
@@ -289,7 +296,8 @@ Avoided: a duplicate replay (20 machines for an hour), 46 bells a day, a
 forecast stuck re-merging.
 
 **FIX** — round 6 in f1112b4bd13d; rounds 7-8 in 29e0e618d2be; round 10 in
-c791235f8ba8; round 11 in e7eb75714d53; round 12 in this commit.
+c791235f8ba8; round 11 in e7eb75714d53; round 12 in 0c4ae6323fe5; round 13
+in this commit.
 
 **GUARD** — `tests/test_forecast_v2.py`: `test_off_stays_off_when_a_busy_tick_writes_the_state_back`,
 `test_a_what_if_asked_while_another_is_polled_is_kept`,
@@ -310,7 +318,7 @@ c791235f8ba8; round 11 in e7eb75714d53; round 12 in this commit.
 `test_a_run_red_on_every_machine_is_started_again_once_then_the_day_is_given_up`,
 `test_both_stages_are_merged_over_the_same_machines`,
 `test_the_page_names_the_machines_a_run_was_used_without` (all three red on
-e7eb75714d53).
+e7eb75714d53), `test_a_what_if_says_which_data_it_was_measured_on`.
 
 ---
 

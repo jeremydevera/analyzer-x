@@ -1022,7 +1022,8 @@ export type F2RuleQuery = { sort?: string; page?: number; base?: string; deploya
 export type F2WhatIfCfg = { window_days: number; on_winrate: number; min_trades: number;
   tp_rule: string; max_sl: number; coin_slices?: number } & Record<string, unknown>;
 export type F2WhatIf = { id: string; words?: string; status: string; why: string; run?: number;
-  asked_at?: number; result?: F2Rule | null };
+  /** the end of the replay it was measured on — the table's may be newer */
+  asked_at?: number; end_ms?: number; result?: F2Rule | null };
 export type F2Breakdown = { id: string; tf: Record<string, [number, number, number]>;
   family: Record<string, [number, number, number]>; kind: Record<string, [number, number, number]>;
   hour: Record<string, [number, number, number]>; stops: Record<string, [number, number, number]>;

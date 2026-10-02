@@ -429,6 +429,12 @@ could each miss a different one — both stages now merge over the machines
 they share, and the page prints "PART OF THE MARKET: the coins of N of the
 run's 20 machines" and the chain line "used without: …".
 
+Round 13 (8:36pm, the chain's first step landed — replay 36940719775 to
+Oct 01, 2026 4:00pm): 39. **a what-if never said which data it was measured
+on**; after tonight's merge #2F39EAEC's answer (Sep 30, 2026 12:00pm data)
+would sit under a table measured to Oct 01. The row prints "data to …" and
+says when it is older than the table's.
+
 Streak bells under the old code, before 8:15pm: two, one per run —
 ABNBSTOCK at 7:59pm and NECSTOCK at 8:04pm, both 6 losses in a row in
 #4FC03172. All rounds that did find something: RCA-2026-10-01-J, -K and -L.

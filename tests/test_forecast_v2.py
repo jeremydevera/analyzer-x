@@ -958,3 +958,31 @@ def test_the_page_names_the_machines_a_run_was_used_without(monkeypatch):
     assert f2a.summary()["chain"]["missing"] == gone
     src = (ROOT / "webapp/src/components/forecast/ForecastV2.tsx").read_text(encoding="utf-8")
     assert "PART OF THE MARKET" in src and "used without:" in src
+
+
+def test_a_what_if_says_which_data_it_was_measured_on():
+    """Bug hunt, round 13: once the daily run lands, the table is measured on
+    a newer replay (tonight's ends Oct 01, 2026 4:00pm) than a what-if asked
+    the day before (Sep 30, 2026 12:00pm), and the row never said which."""
+    from tradingagents import forecast_v2_daily as fd
+
+    src = (ROOT / "webapp/src/components/forecast/ForecastV2.tsx").read_text(encoding="utf-8")
+    assert '"measured on"' in src and "data to ${fmtWhenMs(w.end_ms)}" in src
+    assert "older than the table's; ask again to measure it on the newest" in src
+    # and asking again really does measure it on the newest data
+    fd._write({"phase": "done", "ready": {"replay_run": 9, "end_ms": 2, "start": "2026-07-01", "repo": "x/y"}})
+    cfg = {"window_days": 30, "on_winrate": 85, "min_trades": 30, "tp_rule": ">", "max_sl": 2}
+    rid = fr.rule_id(fr.cfg_of(30, 85.0, 30, ">", 2.0))
+    fd._whatif_save({rid: {"id": rid, "status": "done", "run": 4, "end_ms": 1, "result": {}}})
+    import threading as _t
+
+    started = []
+    real = _t.Thread
+    try:
+        fd.threading.Thread = lambda target, args, name, daemon: type(
+            "T", (), {"start": lambda self: started.append(args)})()
+        got = fd.whatif(cfg)
+    finally:
+        fd.threading.Thread = real
+        fd._STARTING.discard(rid)
+    assert got["status"] == "starting" and got["end_ms"] == 2 and started[0][1]["replay_run"] == 9

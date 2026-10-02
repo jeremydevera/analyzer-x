@@ -84,9 +84,16 @@ a watcher rule or touches real money.
 
  IF ANYTHING FAILS: the step is named in state.json and on the page
  ("the base step failed at Oct 02, 2026 3:10pm — tried again after 30
- minutes: …") and tried again after RETRY_S. GitHub is asked at most every
- POLL_S. A failed practice refresh keeps serving the last good copy and
- says so. Nothing runs under pytest against the real files.
+ minutes: …") and tried again after RETRY_S; a step that then gets through
+ clears it. A run red on SOME machines is used and says so ("PART OF THE
+ MARKET … N of 20 machines", "used without: …"), both stages merged over
+ the machines they share. A run red on EVERY machine is started again once,
+ then the day is given up by name and the next daily update starts fresh —
+ the last finished data stays on the page. A dispatch is saved before it is
+ made, so a retry adopts the run GitHub took instead of starting a second.
+ GitHub is asked at most every POLL_S. A failed practice refresh keeps
+ serving the last good copy and says so. Nothing runs under pytest against
+ the real files.
 ```
 
 The page answers in well under 2 seconds from the copy and the saved files;
@@ -441,6 +448,11 @@ month after the reality check (+21.02 to +115.57), beat random 100 in 100,
 needs $120, a room can run it today. 40. **its download stayed on disk**: an
 open .npz cannot be deleted on Windows and `ignore_errors` hid it; the files
 are closed before the delete.
+
+Round 15 (8:42pm, watching the base step land): 41. **"working on GitHub:
+18 of 20 machines done" stayed through the download and merge** of a run
+that had finished green — the tick saves at its end; a slow step now says
+what it is doing, on disk, before it starts.
 
 Streak bells under the old code, before 8:15pm: two, one per run —
 ABNBSTOCK at 7:59pm and NECSTOCK at 8:04pm, both 6 losses in a row in

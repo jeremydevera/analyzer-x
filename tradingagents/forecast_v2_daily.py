@@ -391,6 +391,18 @@ def _latest() -> dict:
     return json.loads((home() / "latest.json").read_text(encoding="utf-8"))
 
 
+def _say(st: dict, why: str) -> None:
+    """Where the chain is, ON DISK before a slow step (bug hunt, round 15):
+    the tick saves at its end, so through a download and a merge of minutes
+    the page still said "working on GitHub: 18 of 20 machines done" about a
+    run that had finished."""
+    st["why"] = why
+    try:
+        _write(st)
+    except OSError as exc:                 # a status line never stops the step
+        print(f"[forecast v2] could not save the status: {exc!r}", flush=True)
+
+
 def _tried(st: dict, what: str, now: float) -> float | None:
     """When an earlier attempt at THIS dispatch was made, or None; and mark
     this attempt — kept in the state, so a retry after a failure can adopt a
@@ -497,6 +509,8 @@ def _step(st: dict, now: float) -> None:
                   why=f"forecast run {st['base_run']} (base) started on GitHub")
         return
     if phase == "base":
+        _say(st, f"base run {st['base_run']} finished on GitHub — downloading and adding it up on "
+                 f"this PC (a few minutes)")
         art = download(int(st["base_run"]), repo, "forecast-*")
         run_merge(str(art), None, {"replay": st["replay_run"], "base": st["base_run"],
                                    "shards": SHARDS, "missing": st.get("missing") or {}}, keep=False)
@@ -513,6 +527,8 @@ def _step(st: dict, now: float) -> None:
                   why=f"forecast run {st['options_run']} (options) started on GitHub")
         return
     if phase == "options":
+        _say(st, f"options run {st['options_run']} finished on GitHub — downloading and adding up "
+                 f"both runs on this PC (a few minutes)")
         art = download(int(st["options_run"]), repo, "forecast-*")
         run_merge(st["base_dir"], str(art), {"replay": st["replay_run"], "base": st["base_run"],
                                              "options": st["options_run"], "shards": SHARDS,

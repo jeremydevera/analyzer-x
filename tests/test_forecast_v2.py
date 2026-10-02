@@ -754,10 +754,16 @@ def test_only_the_days_final_merge_keeps_the_months_prediction(monkeypatch, tmp_
     st = {"phase": "base", "on": True, "repo": "x/y", "replay_run": 5, "base_run": 6,
           "end_ms": 1, "start": "2026-07-01", "error": "base: RuntimeError: download cut",
           "failed_at": NOW - HOUR}
+    said = []
+    monkeypatch.setattr(fd, "run_merge", lambda base, opts, runs, keep: (
+        said.append(fd.read()["why"]), merges.append((opts is None, keep))))
     fd._step(st, NOW)
     assert st["phase"] == "options" and merges == [(True, False)], "the base-only merge keeps nothing"
     # bug hunt, round 11: a step that got through clears the error it was retried for
     assert st["error"] == "" and st["failed_at"] == 0
+    # bug hunt, round 15: through the merge the page says the run FINISHED,
+    # never "working on GitHub" — said on disk before the slow part
+    assert said == ["base run 6 finished on GitHub — downloading and adding it up on this PC (a few minutes)"]
     fd._step(st, NOW + 600)
     assert st["phase"] == "done" and merges[-1] == (False, True), "the day's final merge keeps the month"
     assert st["ready"]["replay_run"] == 5

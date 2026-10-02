@@ -172,11 +172,11 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
-## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: eighteen faults caught by the bug hunt, three of them seen
+## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: nineteen faults caught by the bug hunt, four of them seen
 
 **CEO**
 
-* On its first night the daily Forecast v2 job had eighteen faults that could
+* On its first night the daily Forecast v2 job had nineteen faults that could
   start the same GitHub run twice, lose a what-if, undo the "off" box, ring
   46 bells in a day, stop for good after one bad GitHub run, or say
   "working" about a run that had not started. Two
@@ -284,6 +284,13 @@ screen.
    the 20 .npz files were not, because they were still open and Windows
    refuses to delete an open file; `ignore_errors` hid it. HAPPENED (96 KB,
    removed by hand); the files are closed before the delete now.
+10. `8:42pm` — round 15, watching the base step land: 19. **"working on
+    GitHub: 18 of 20 machines done" through the merge** — base run
+    36946533025 finished green on all 20 machines; from `8:39pm` the chain
+    downloaded it and merged it in its own process (143 s of CPU by 8:42pm,
+    1.15 GB at its peak), and the page kept the line from the poll before,
+    because the tick saves at its end. HAPPENED; a slow step now says what it
+    is doing, on disk, before it starts.
 
 **ROOT CAUSE** — state held in memory across slow calls (GitHub, a download,
 a two-minute merge) and written back whole at the end, by a job whose
@@ -304,7 +311,7 @@ forecast stuck re-merging.
 
 **FIX** — round 6 in f1112b4bd13d; rounds 7-8 in 29e0e618d2be; round 10 in
 c791235f8ba8; round 11 in e7eb75714d53; round 12 in 0c4ae6323fe5; round 13
-in 5eb6cba64cf4; round 14 in this commit.
+in 5eb6cba64cf4; round 14 in 6042900d6db2; round 15 in this commit.
 
 **GUARD** — `tests/test_forecast_v2.py`: `test_off_stays_off_when_a_busy_tick_writes_the_state_back`,
 `test_a_what_if_asked_while_another_is_polled_is_kept`,
@@ -326,7 +333,9 @@ in 5eb6cba64cf4; round 14 in this commit.
 `test_both_stages_are_merged_over_the_same_machines`,
 `test_the_page_names_the_machines_a_run_was_used_without` (all three red on
 e7eb75714d53), `test_a_what_if_says_which_data_it_was_measured_on`,
-`test_a_what_ifs_download_is_gone_once_it_is_read` (red on 5eb6cba64cf4).
+`test_a_what_ifs_download_is_gone_once_it_is_read` (red on 5eb6cba64cf4),
+`test_only_the_days_final_merge_keeps_the_months_prediction` (widened in
+round 15: the status on disk during the merge).
 
 ---
 

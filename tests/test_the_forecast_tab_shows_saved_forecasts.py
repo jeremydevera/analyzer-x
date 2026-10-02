@@ -154,5 +154,11 @@ def test_the_tab_is_under_auto_trade():
     assert (ROOT / "webapp/src/app/(admin)/forecast/page.tsx").exists()
     v2 = (ROOT / "webapp/src/app/(admin)/forecast-v2/page.tsx").read_text(encoding="utf-8")
     assert "<ForecastV2 />" in v2 and "<RoomsAndBacktest />" in v2
+    # ...and the prompts' copy buttons came with it: prompt 4 is half of what
+    # the operator said matters on this page
+    rf_src = (ROOT / "webapp/src/components/forecast/RoomForecasts.tsx").read_text(encoding="utf-8")
+    merged = rf_src[rf_src.index("export function RoomsAndBacktest"):]
+    assert "api.forecasts(1)" in merged and "saved.prompts.map((p) => <PromptBox" in merged
+    assert "<RoomBacktestPanel rooms={live.rooms} />" in merged
     panel = (ROOT / "webapp/src/components/forecast/RoomForecasts.tsx").read_text(encoding="utf-8")
     assert "api.forecasts(page)" in panel and "fmtWhen(f.at)" in panel

@@ -347,7 +347,7 @@ The page's "run it every day" box switches the chain off and on
 For NEW winning room strategies — prompt 3's every-shape search (7, 15 or 30
 days, 40-95% wins, 1-50 trades, every target-vs-stop shape, stop and target
 caps, this page's 22 options) — paste prompt 4 of `docs/FORECAST-PROMPTS.md`
-(Auto Trade → Forecast shows it with a copy button). Every winner becomes a row
+(Auto Trade → Forecast shows it with a copy button, under Forecast v2 since the Oct 02, 2026 merge). Every winner becomes a row
 of this page's rule-set table, never deleted, and each run tries combinations
 no run tried before. The same prompt turns that section from "Best room rules
 this month" into "Best room rules" with FROM and TO dates, every number

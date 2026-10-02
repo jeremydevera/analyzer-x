@@ -1218,8 +1218,12 @@ overall backtest results"*, *"you are seeing a coin is winning 9 streak then
 inform me that specific coin"*, then *"okay run that prompt and create
 Forecast v2, use harddev skill and make sure to document this"*. Full account,
 the build prompt word for word and the measured first run:
-`docs/FORECAST-V2.md`. Auto Trade → Forecast v2 (`/forecast-v2`); the first
-Forecast page is unchanged.
+`docs/FORECAST-V2.md`. Auto Trade → Forecast (`/forecast-v2`, ONE page since
+Oct 02, 2026: *"can i merge forecast to forecast v2 ... what matters to me is this
+prompt and ability to backtest a room strategy"*) — Forecast v2, then the prompts
+with their copy buttons, Backtest a room and the Rooms table
+(`RoomForecasts.RoomsAndBacktest`). The first Forecast page is off the menu,
+still at `/forecast`.
 
 * **One place for every number.** Practice: `forecast_v2.py`. Rule sets and
   options: `forecast_rules.py`. The GitHub research is

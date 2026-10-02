@@ -728,17 +728,33 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
  *  Forecast v2; this reads the rooms itself so it needs nothing from the page. */
 export function RoomsAndBacktest() {
   const [live, setLive] = useState<ForecastsLive | null>(null);
+  const [saved, setSaved] = useState<Forecasts | null>(null);
   const [err, setErr] = useState("");
   const load = useCallback(() => api.forecastsLive()
     .then((d) => { setLive(d); setErr(""); })
     .catch((e) => setErr(String(e?.message ?? e))), []);
   useLiveRefresh(load, 15_000);
-  if (err && !live) return <p className="text-theme-xs text-error-500">could not read the rooms — {err}</p>;
-  if (!live) return <p className="text-theme-xs text-gray-400">reading every room&apos;s trade record…</p>;
+  // THE PROMPTS WITH THEIR COPY BUTTONS — prompt 4, "Find new winning room
+  // strategies", is one of the two things the operator said matter here
+  const loadPrompts = useCallback(() => api.forecasts(1).then(setSaved).catch(() => {}), []);
+  useLiveRefresh(loadPrompts, 300_000);
   return (
     <>
-      <RoomBacktestPanel rooms={live.rooms} />
-      <RoomTable rooms={live.rooms} rules={live.rules} />
+      {saved && saved.prompts.length > 0 && (
+        <div className={card}>
+          <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Prompts</h3>
+          <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
+            Copy one and paste it to Claude. Prompt 4 finds new winning room strategies and keeps them in Best room rules above.
+          </p>
+          <div className="mt-3 grid items-start gap-3 lg:grid-cols-2">
+            {saved.prompts.map((p) => <PromptBox key={p.title} title={p.title} text={p.text} />)}
+          </div>
+        </div>
+      )}
+      {err && !live && <p className="text-theme-xs text-error-500">could not read the rooms — {err}</p>}
+      {!live && !err && <p className="text-theme-xs text-gray-400">reading every room&apos;s trade record…</p>}
+      {live && <RoomBacktestPanel rooms={live.rooms} />}
+      {live && <RoomTable rooms={live.rooms} rules={live.rules} />}
     </>
   );
 }

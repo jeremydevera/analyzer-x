@@ -1258,6 +1258,23 @@ def _forecast_live_refresh() -> dict:
         _FORECAST_LIVE["busy"] = False
 
 
+@app.get("/api/forecasts/room-backtest")
+def room_backtest_route(room: str, from_s: float, to_s: float, sort: str = "gap",
+                        page: int = 1) -> dict:
+    """Forecast -> Backtest a room (operator, Oct 02, 2026: "i want ability to
+    backtest room in forecast v1, i want option to filter date range to
+    backtest so i can see if the deployed tabs attached matches the
+    backtest"). Filtered, sorted and paged here (tradingagents/room_backtest.py)."""
+    from tradingagents import room_backtest as _rb
+
+    if to_s < from_s:
+        raise HTTPException(400, "the end of the range is before its start")
+    try:
+        return _rb.compare(room, from_s, to_s, sort=sort, page=page)
+    except ValueError as exc:
+        raise HTTPException(404 if "no room" in str(exc) else 400, str(exc)) from exc
+
+
 @app.get("/api/forecasts/live")
 def forecasts_live_route() -> dict:
     """Every room's numbers (features 1-3, 5, 8-15) and what a forecast made

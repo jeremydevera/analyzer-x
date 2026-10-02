@@ -1105,6 +1105,32 @@ export type RoomNow = {
   turn_off: { ok: boolean; why: string };
   unreadable_lines: number;
 };
+/** The VALUE of an <input type="date"> — YYYY-MM-DD, `daysBack` days before
+ *  today, in local time. A box's value, never a printed date: every date the
+ *  project PRINTS goes through fmtWhen (CLAUDE.md, "Date format"). */
+export function dateBoxValue(daysBack = 0): string {
+  const d = new Date();
+  d.setDate(d.getDate() - daysBack);
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+}
+
+export type RoomBtSide = { trades: number; wins: number; losses: number; winrate: number | null;
+  profit: number; worst_run: number; worst_run_trades: number };
+export type RoomBacktest = {
+  room: string; from: number; to: number; now: number;
+  slots: number; no_backtest: number; traded: number;
+  backtest_end_ms: number | null; backtest_end_latest_ms: number | null;
+  backtest: RoomBtSide; practice: RoomBtSide;
+  match: { same: number; different: number; practice_only: number; backtest_only: number; after_backtest: number };
+  reasons: Record<string, number>; reason_labels: Record<string, string>;
+  margin: number; leverage: number;
+  rows: { slot: string; id: string; coin: string; key: string; tf: string; signal: string;
+    tp: number | null; sl: number | null; backtest: RoomBtSide; practice: RoomBtSide;
+    same: number; different: number; practice_only: number; backtest_only: number;
+    after_backtest: number; has_backtest: boolean; on_at: number | null; gap: number }[];
+  page: number; pages: number; sort: string;
+};
 export type ForecastsLive = {
   rooms: RoomNow[];
   verdict: { verdict: Forecast["verdict"]; pick: string | null; pick_why: string };
@@ -1211,6 +1237,10 @@ export const api = {
   // Auto Trade -> Forecast (Oct 01, 2026): the saved forecasts, newest first
   forecasts: (page = 1) => get<Forecasts>(`/api/forecasts?page=${page}`),
   forecastsLive: () => get<ForecastsLive>("/api/forecasts/live"),
+  // Forecast -> Backtest a room (Oct 02, 2026): sorted and paged by the server
+  roomBacktest: (q: { room: string; from_s: number; to_s: number; sort?: string; page?: number }) =>
+    get<RoomBacktest>(`/api/forecasts/room-backtest?room=${encodeURIComponent(q.room)}`
+      + `&from_s=${Math.floor(q.from_s)}&to_s=${Math.floor(q.to_s)}&sort=${q.sort ?? "gap"}&page=${q.page ?? 1}`),
   // postDetail: a refusal ("a forecast was just saved at ...") reaches the
   // screen as its own sentence, not as "HTTP 409"
   forecastNew: () => postDetail<{ saved: Forecast }>("/api/forecasts/new", {}),

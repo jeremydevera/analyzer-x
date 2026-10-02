@@ -527,9 +527,9 @@ function RoomTable({ rooms, rules }: { rooms: RoomNow[]; rules: ForecastsLive["r
                 <Fragment key={r.id}>
                   <tr onClick={() => setOpen(open === r.id ? null : r.id)} aria-expanded={open === r.id}
                     className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03] ${r.retired ? "opacity-70" : ""}`}>
-                    <td className={td}>
+                    <td className="min-w-[200px] max-w-[260px] px-2 py-1.5">
                       <span className="font-semibold text-gray-800 dark:text-white/90">{r.name}</span>
-                      <span className="ml-1 inline-flex flex-wrap gap-1 align-middle">
+                      <span className="mt-0.5 flex flex-wrap gap-1">
                         {r.retired && <Badge kind="info">turned off</Badge>}
                         {p.too_early && <Badge kind="info">too early</Badge>}
                         {r.ready.ok && <Badge kind="good">ready for real money</Badge>}
@@ -639,7 +639,7 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
         <>
           <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
             {name(d.room)} · {fmtWhen(d.from)} to {fmtWhen(d.to)} · {d.slots.toLocaleString()} strategies switched on,
-            {" "}{d.traded.toLocaleString()} with a trade in the range · $ {d.margin} a trade at {d.leverage}x
+            {" "}{d.traded.toLocaleString()} with a trade in the range · ${d.margin} a trade at {d.leverage}x
             {d.backtest_end_ms ? ` · backtest up to ${fmtWhen(d.backtest_end_ms / 1000)}` : ""}
             {d.no_backtest ? ` · ${d.no_backtest.toLocaleString()} strategies have no backtest yet` : ""}
           </p>

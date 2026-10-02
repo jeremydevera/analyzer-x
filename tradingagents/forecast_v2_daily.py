@@ -799,11 +799,19 @@ def _whatifs(st: dict, now: float) -> None:
             art = download(run, repo, "forecast-*")
             try:
                 metas, packs = fm.load(art)
-                start = metas[0]["start"]
-                start_ms = int(dt.datetime(*map(int, start.split("-"))).timestamp() * 1000)
-                months, complete = fm.months_of(start_ms, int(metas[0]["end_ms"]))
-                result = fm.summarize(0, metas, packs, start_ms, int(metas[0]["end_ms"]), months,
-                                      complete, _reality_of_table())
+                try:
+                    start = metas[0]["start"]
+                    start_ms = int(dt.datetime(*map(int, start.split("-"))).timestamp() * 1000)
+                    months, complete = fm.months_of(start_ms, int(metas[0]["end_ms"]))
+                    result = fm.summarize(0, metas, packs, start_ms, int(metas[0]["end_ms"]),
+                                          months, complete, _reality_of_table())
+                finally:
+                    # CLOSED BEFORE THE DELETE (bug hunt, round 14): an open
+                    # .npz cannot be deleted on Windows, and ignore_errors hid
+                    # it — #2F39EAEC's 20 .npz files stayed on disk at 8:35pm
+                    # while its .json files went
+                    for pk in packs:
+                        pk.close()
             finally:
                 shutil.rmtree(art, ignore_errors=True)
             _whatif_edit(r["id"], {"result": result, "status": "done", "why": "", "done_at": now},

@@ -1276,7 +1276,7 @@ Forecast page is unchanged.
   some machines red says so on the page, and base and options merge over
   the machines they share (a machine is a share of the coins).
 
-Guard: `tests/test_forecast_v2.py` (44, on one timeline).
+Guard: `tests/test_forecast_v2.py` (45, on one timeline).
 
 ## Backtest v2 is the v1 engine in its own folder (MANDATORY — 2026-09-17)
 

@@ -172,11 +172,11 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
-## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: seventeen faults caught by the bug hunt, two of them seen
+## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: eighteen faults caught by the bug hunt, three of them seen
 
 **CEO**
 
-* On its first night the daily Forecast v2 job had seventeen faults that could
+* On its first night the daily Forecast v2 job had eighteen faults that could
   start the same GitHub run twice, lose a what-if, undo the "off" box, ring
   46 bells in a day, stop for good after one bad GitHub run, or say
   "working" about a run that had not started. Two
@@ -277,6 +277,13 @@ screen.
    under a table measured to Oct 01 with nothing to tell them apart. The row
    prints "data to …" and, when older than the table's, says so and that
    asking again measures it on the newest.
+9. `8:38pm` — round 14, reading what the first finished what-if left: #2F39EAEC
+   measured (about +98.04 a month after the reality check, +21.02 to
+   +115.57, beat random 100 in 100, needs $120, a room can run it today) —
+   and 18. **its download stayed on disk**: the 20 .json files were deleted,
+   the 20 .npz files were not, because they were still open and Windows
+   refuses to delete an open file; `ignore_errors` hid it. HAPPENED (96 KB,
+   removed by hand); the files are closed before the delete now.
 
 **ROOT CAUSE** — state held in memory across slow calls (GitHub, a download,
 a two-minute merge) and written back whole at the end, by a job whose
@@ -297,7 +304,7 @@ forecast stuck re-merging.
 
 **FIX** — round 6 in f1112b4bd13d; rounds 7-8 in 29e0e618d2be; round 10 in
 c791235f8ba8; round 11 in e7eb75714d53; round 12 in 0c4ae6323fe5; round 13
-in this commit.
+in 5eb6cba64cf4; round 14 in this commit.
 
 **GUARD** — `tests/test_forecast_v2.py`: `test_off_stays_off_when_a_busy_tick_writes_the_state_back`,
 `test_a_what_if_asked_while_another_is_polled_is_kept`,
@@ -318,7 +325,8 @@ in this commit.
 `test_a_run_red_on_every_machine_is_started_again_once_then_the_day_is_given_up`,
 `test_both_stages_are_merged_over_the_same_machines`,
 `test_the_page_names_the_machines_a_run_was_used_without` (all three red on
-e7eb75714d53), `test_a_what_if_says_which_data_it_was_measured_on`.
+e7eb75714d53), `test_a_what_if_says_which_data_it_was_measured_on`,
+`test_a_what_ifs_download_is_gone_once_it_is_read` (red on 5eb6cba64cf4).
 
 ---
 

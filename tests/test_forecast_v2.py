@@ -986,3 +986,24 @@ def test_a_what_if_says_which_data_it_was_measured_on():
         fd.threading.Thread = real
         fd._STARTING.discard(rid)
     assert got["status"] == "starting" and got["end_ms"] == 2 and started[0][1]["replay_run"] == 9
+
+
+def test_a_what_ifs_download_is_gone_once_it_is_read(tmp_path, monkeypatch):
+    """Bug hunt, round 14: the what-if's download was deleted while its .npz
+    files were still open, which Windows refuses; ignore_errors hid it, and
+    #2F39EAEC's 20 .npz files stayed on disk at Oct 01, 2026 8:35pm while its
+    .json files went. (On Windows this test is red on the old code.)"""
+    from tradingagents import forecast_v2_daily as fd
+
+    cfg = fr.cfg_of(30, 85, 30, ">", 2.0)
+    art = _fake_run(tmp_path / "w", [(cfg, [(_ms(2026, 8, 5), _ms(2026, 8, 5, 13), 4.0)])])
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: {
+        "status": "completed", "conclusion": "success", "machines": 2, "done": 2, "failed": [],
+        "created": None})
+    monkeypatch.setattr(fd, "download", lambda run, repo, pattern: art)
+    monkeypatch.setattr(fd, "_reality_of_table", lambda: {"took": 0.5, "gap": 1.0})
+    fd._whatif_save({"W": {"id": "W", "status": "working", "run": 5, "end_ms": 1, "asked_at": NOW}})
+    fd._whatifs({"repo": "x/y"}, NOW)
+    w = fd.whatifs()["W"]
+    assert w["status"] == "done" and w["result"]["total"]["profit"] == 4.0
+    assert not art.exists(), "the download is gone once it is read"

@@ -435,6 +435,13 @@ on**; after tonight's merge #2F39EAEC's answer (Sep 30, 2026 12:00pm data)
 would sit under a table measured to Oct 01. The row prints "data to …" and
 says when it is older than the table's.
 
+Round 14 (8:38pm, the first finished what-if): #2F39EAEC "85% wins, 30+
+trades in 30 days, TP wider than SL, stop 2% or tighter" — about +98.04 a
+month after the reality check (+21.02 to +115.57), beat random 100 in 100,
+needs $120, a room can run it today. 40. **its download stayed on disk**: an
+open .npz cannot be deleted on Windows and `ignore_errors` hid it; the files
+are closed before the delete.
+
 Streak bells under the old code, before 8:15pm: two, one per run —
 ABNBSTOCK at 7:59pm and NECSTOCK at 8:04pm, both 6 losses in a row in
 #4FC03172. All rounds that did find something: RCA-2026-10-01-J, -K and -L.

@@ -13,7 +13,9 @@ import PnlPanel from "./PnlPanel";
 import FeedPanel from "./FeedPanel";
 import CredentialsPanel from "./CredentialsPanel";
 import TradeHistory from "./TradeHistory";
-import { api, PROFILES, RoomInfo, setProfile } from "@/lib/api";
+import { api, fmtWhen, PROFILES, RoomInfo, setProfile } from "@/lib/api";
+import { useLiveRefresh } from "@/lib/live";
+import CopyableId from "./CopyableId";
 import { rules } from "./WatcherPanel";
 import { RoomScope } from "@/lib/room";
 
@@ -78,11 +80,17 @@ export default function AutoTradeScreen() {
   const [info, setInfo] = useState<string | null>(null);
   const [rooms, setRooms] = useState<RoomInfo[] | null>(null);
   const [infoErr, setInfoErr] = useState("");
+  // LOADED ONCE WHEN AUTO TRADE OPENS, then every minute (Oct 02, 2026: "when
+  // i click i icons its very slow why? you are only loading a text"). The
+  // answer takes 0.35 s, but asked at the click it queued behind six rooms'
+  // refreshes in the four request lanes; read ahead, the popup opens at once.
+  const loadRooms = useCallback(() => api.profiles()
+    .then((d) => { setRooms(d.profiles); setInfoErr(""); })
+    .catch((e) => setInfoErr(String(e))), []);
+  useLiveRefresh(loadRooms, 60_000);
   const openInfo = (id: string) => {
     if (info === id) { setInfo(null); return; }
     setInfo(id);
-    setInfoErr("");
-    api.profiles().then((d) => setRooms(d.profiles)).catch((e) => setInfoErr(String(e)));
   };
   useEffect(() => {
     if (!info) return;
@@ -148,7 +156,11 @@ export default function AutoTradeScreen() {
             {info === p.id && (
               <div role="dialog" aria-label={`${p.name} rules`}
                 className="absolute left-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white p-4 text-theme-xs shadow-lg dark:border-gray-700 dark:bg-gray-900">
-                <p className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">{p.name} — its rules</p>
+                <p className="flex items-center gap-1 text-theme-sm font-semibold text-gray-800 dark:text-white/90">
+                  {/* the room's id with a copy button (Oct 02, 2026) */}
+                  {p.id === "main" ? p.name : <CopyableId id={p.id} prefix="#" />}
+                  <span>— its rules</span>
+                </p>
                 {infoErr && <p className="mt-2 text-error-500">{infoErr}</p>}
                 {!r && !infoErr && <p className="mt-2 text-gray-400">reading…</p>}
                 {r && (
@@ -161,6 +173,10 @@ export default function AutoTradeScreen() {
                     <ul className="mt-2 flex list-disc flex-col gap-1 pl-4 text-gray-700 dark:text-gray-300">
                       {rules(r.cfg, r.window_days, r.live).map((t) => <li key={t}>{t}</li>)}
                     </ul>
+                    {/* when the room was deployed: its trade record's first runner start */}
+                    <p className="mt-3 border-t border-gray-100 pt-2 text-[11px] text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                      {r.deployed_at ? <>deployed {fmtWhen(r.deployed_at)}</> : "deployed: not started yet"}
+                    </p>
                   </>
                 )}
               </div>

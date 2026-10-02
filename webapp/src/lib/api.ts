@@ -1691,6 +1691,8 @@ export interface RoomInfo {
   window_days: number;
   running: number;
   rows: number;
+  /** when the room was deployed: its trade record's first runner start (s) */
+  deployed_at?: number | null;
 }
 
 /** A row's last 30 days, from tradingagents/rolling30.py. */

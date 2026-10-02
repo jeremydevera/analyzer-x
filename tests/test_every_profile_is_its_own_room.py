@@ -310,3 +310,24 @@ def test_the_popup_and_the_panel_say_the_rules_with_one_function():
     assert "export function rules(c: Watcher[\"cfg\"], days: number, live = false)" in panel
     assert 'live ? "practice AND real money" : "practice account only"' in panel
     assert "aria-label={`What ${p.name} switches on and off`}" in screen
+
+
+def test_the_i_popup_is_read_ahead_copies_the_id_and_says_when_deployed(tmp_path):
+    """Oct 02, 2026: "when i click i icons its very slow why? ... i want copy
+    icon option where i can copy the id then also display the date when it was
+    deployed". The answer took 0.35 s; asked at the click it queued behind six
+    rooms' refreshes. It is read when Auto Trade opens, every minute after."""
+    from tradingagents import api
+    screen = _src("webapp/src/components/trade/AutoTradeScreen.tsx")
+    assert "useLiveRefresh(loadRooms, 60_000);" in screen
+    open_info = screen[screen.index("const openInfo = (id: string) => {"):]
+    open_info = open_info[:open_info.index("};")]
+    assert "api.profiles()" not in open_info, "the click must not wait for a request"
+    assert '<CopyableId id={p.id} prefix="#" />' in screen
+    assert "deployed {fmtWhen(r.deployed_at)}" in screen
+    led = tmp_path / "ledger.jsonl"
+    led.write_text('{"ts": 1790810794, "action": "runner_start"}\n{"ts": 1790900000, "action": "runner_start"}\n',
+                   encoding="utf-8")
+    api._ROOM_STARTED.clear()
+    assert api._room_started(led) == 1790810794, "the FIRST start is the deploy"
+    assert api._room_started(tmp_path / "missing.jsonl") is None

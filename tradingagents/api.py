@@ -1420,8 +1420,38 @@ def trade_profiles() -> dict:
                         "cfg": {k: cfg[k] for k in sw.LIVE_RULES},
                         "window_days": cfg["window_days"],
                         "running": len(s.get("watcher_slots") or {}),
-                        "rows": sum(len(v or []) for v in (s.get("strategy_coins") or {}).values())})
+                        "rows": sum(len(v or []) for v in (s.get("strategy_coins") or {}).values()),
+                        # WHEN THE ROOM WAS DEPLOYED (Oct 02, 2026: "display the date
+                        # when it was deployed on the bottom of pop up"): its trade
+                        # record's first runner start, read from the top of the file
+                        "deployed_at": _room_started(at._pp(at.LEDGER_PATH))})
     return {"profiles": out}
+
+
+_ROOM_STARTED: dict = {}
+
+
+def _room_started(path) -> float | None:
+    """The first `runner_start` in a room's trade record, or None. It is the
+    record's first line in practice, so only the top is read, and the answer
+    is kept (a room is deployed once)."""
+    key = str(path)
+    if key in _ROOM_STARTED:
+        return _ROOM_STARTED[key]
+    got = None
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            for n, line in enumerate(fh):
+                if n > 200:
+                    break
+                if '"runner_start"' in line:
+                    got = float(json.loads(line).get("ts") or 0) or None
+                    break
+    except (OSError, ValueError):
+        return None
+    if got:
+        _ROOM_STARTED[key] = got
+    return got
 
 
 @app.post("/api/trade/watcher")

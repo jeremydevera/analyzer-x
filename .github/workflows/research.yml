@@ -22,7 +22,7 @@ on:
         description: "Which rule-set grid: 5 = 144 raw; 6 = 8,064, every shape (needs replay write wr=40,trades=1,tp=any,windows=7|15|30); file:research/p4/<name>.json = a list (prompt 4's rounds)"
         default: "5"
       chunks:
-        description: "Split the grid into this many slices, one job each per shard, so no job passes six hours (grid 6: 8)"
+        description: "Split the grid into this many slices, one job each per shard that holds coins, so no job passes six hours (grid 6: 8; shards x chunks must stay within 256)"
         default: "1"
       output:
         description: "full = every trade (the page's logs); daily = each rule set's day-by-day totals only (prompt 4's search rounds)"
@@ -39,13 +39,21 @@ jobs:
       shards: ${{ steps.mk.outputs.shards }}
       chunks: ${{ steps.mk.outputs.chunks }}
     steps:
+      - uses: actions/checkout@v4
+      # ONLY THE SHARDS THAT HOLD COINS (Oct 02, 2026): the replay hands its
+      # coins out first come, first served, so run 37007971331 put all 1,098
+      # of them on 19 of its 40 machines and 21 uploaded ~600 bytes. A job on
+      # an empty shard measures nothing, and GitHub refuses a matrix past 256
+      # jobs — the slices a big round needs only fit without them.
+      # .github/scripts/research_plan.py names every shard it leaves out.
       - id: mk
-        run: |
-          python3 -c "import json,os;print('shards='+json.dumps(list(range(int(os.environ['N'])))))" >> "$GITHUB_OUTPUT"
-          python3 -c "import json,os;print('chunks='+json.dumps(list(range(max(1,int(os.environ['C']))))))" >> "$GITHUB_OUTPUT"
+        run: python3 .github/scripts/research_plan.py >> "$GITHUB_OUTPUT"
         env:
           N: ${{ github.event.inputs.shards }}
           C: ${{ github.event.inputs.chunks }}
+          SRC_RUN: ${{ github.event.inputs.source_run }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   research:
     needs: plan

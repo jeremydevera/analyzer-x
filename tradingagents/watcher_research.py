@@ -36,6 +36,7 @@ import heapq
 import itertools
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -354,6 +355,81 @@ def load_lean(folders: list[str], lazy: bool = False, packed: bool = True,
                 books[c["id"]] = ArrBook(c, t, src=(str(f), off, end) if lazy else None,
                                          packed=packed and not lazy)
     return {"books": books, "end": end, "totals": got_tot}
+
+
+# BATCHES OF WHOLE COINS (prompt 4, Oct 02, 2026): replay run 37007971331
+# was written at 40% / 1 trade / any TP, and its shard 8 held 1,574,489
+# combinations and 206,094,384 trades. load_lean's books (~33 bytes a
+# trade), Flat (~21) and a loose rule set's walk (~100+ bytes for every trade
+# it keeps — the loosest keeps nearly all of them) went past a GitHub
+# machine's 16 GB, and the runner was shut down mid-run. A raw rule set never
+# looks across coins (no slot, daily or total cap; the 4-per-coin limit is
+# inside one coin), so a shard measured coin batch by coin batch adds up to
+# exactly the shard measured at once — tests/test_research_every_shape.py
+# holds the two equal.
+_HEAD = re.compile(rb'^\{"id":"([^"]*)","coin":"([^"]*)"')
+
+
+def coin_batches(folders: list[str], max_bytes: int) -> list[list[tuple[str, int]]]:
+    """The combination lines of `folders` as batches of WHOLE coins, each
+    about `max_bytes` of text (a coin bigger than that is a batch of its
+    own): the (file, byte offset) of every id's FIRST line, the one load_lean
+    keeps. One pass that reads each line's id and coin only."""
+    seen: set = set()
+    by_coin: dict = {}
+    for f in rc.combo_files(folders):
+        with open(f, "rb") as fh:
+            off = 0
+            for line in fh:
+                n = len(line)
+                if line.strip():
+                    m = _HEAD.match(line)
+                    if m:
+                        cid, coin = m.group(1).decode(), m.group(2).decode()
+                    else:
+                        c = json.loads(line)
+                        cid, coin = c["id"], c["coin"]
+                    if cid not in seen:
+                        seen.add(cid)
+                        e = by_coin.setdefault(coin, [[], 0])
+                        e[0].append((f, off))
+                        e[1] += n
+                off += n
+    batches: list = []
+    cur: list = []
+    size = 0
+    for coin in sorted(by_coin):
+        locs, n = by_coin[coin]
+        if cur and size + n > max_bytes:
+            batches.append(cur)
+            cur, size = [], 0
+        cur.extend(locs)
+        size += n
+    if cur:
+        batches.append(cur)
+    return batches
+
+
+def load_batch(locs: list[tuple[str, int]], end_ms: int, packed: bool = True) -> list:
+    """The ArrBooks of one coin_batches batch, each cut to `end_ms` exactly
+    as load_lean cuts it."""
+    books = []
+    handles: dict = {}
+    try:
+        for f, off in locs:
+            fh = handles.get(f)
+            if fh is None:
+                fh = handles[f] = open(f, "rb")
+            fh.seek(off)
+            c = json.loads(fh.readline())
+            t = _cut_trades(np.asarray(c.pop("trades") or [], dtype=np.float64).reshape(-1, 4),
+                            int(end_ms))
+            c.setdefault("group", rc.group_of(c["signal"]))
+            books.append(ArrBook(c, t, packed=packed))
+    finally:
+        for fh in handles.values():
+            fh.close()
+    return books
 
 
 def compact_rows(books: dict, checks: list[int], window_ms: int, lo: dict) -> dict:
@@ -721,7 +797,14 @@ def _cap(coin: np.ndarray, ent: np.ndarray, ext: np.ndarray, closed: np.ndarray,
     keep = np.ones(len(ent), bool)
     if not len(ent):
         return keep
-    o = np.lexsort((slot, ent, coin))
+    if (len(slot) < 2 or bool((slot[1:] >= slot[:-1]).all())) and int(ent.min()) >= 0 \
+            and int(ent.max()) < 2 ** 32:
+        # raw_trades hands the candidates over slot by slot, so one STABLE
+        # sort on (coin, entry) leaves a tie in slot order — lexsort's answer
+        # in one pass instead of three (entries are int32 seconds, >= 0)
+        o = np.argsort((coin.astype(np.int64) << 32) | ent.astype(np.int64), kind="stable")
+    else:
+        o = np.lexsort((slot, ent, coin))
     c_s, e_s = coin[o], ent[o].astype(np.int64)
     x_s = np.where(closed[o], ext[o].astype(np.int64), np.iinfo(np.int64).max)
     bounds = np.flatnonzero(np.diff(c_s)) + 1
@@ -757,18 +840,44 @@ def _cap(coin: np.ndarray, ent: np.ndarray, ext: np.ndarray, closed: np.ndarray,
     return keep
 
 
+def starts_key(cfg: dict) -> tuple:
+    """What _starts depends on besides the grid: rule sets that differ only
+    in their target shape, stop cap or target floor share one walk."""
+    c = {**wp.DEFAULTS, **cfg}
+    return (int(c["window_days"]), int(c["min_trades"]), float(c["on_winrate"]),
+            float(c["off_winrate"]))
+
+
+def all_starts(flat: "Flat", grid: tuple, checks: list[int], cfg: dict) -> tuple:
+    """_starts over EVERY book, for raw_trades(starts=): each book's
+    switch-ons depend on its own counts only (a raw rule set has no cap that
+    links books), so a rule set's slots are these, filtered to the books its
+    target shape, stop cap and target floor allow — in the same order."""
+    c = {**wp.DEFAULTS, **cfg}
+    N, W = grid
+    return _starts(N, W, checks, c, flat.id_rank)
+
+
 def raw_trades(books: list, flat: "Flat", grid: tuple, checks: list[int], cfg: dict,
-               end_ms: int) -> dict:
+               end_ms: int, starts: tuple | None = None) -> dict:
     """raw_fast's answer as arrays: {"book", "ent", "ext", "pnl", "closed"}
     for every trade the rule set keeps (ms, after the per-coin limit), plus
-    "slots" and "open" as raw_fast's summary counts them."""
+    "slots" and "open" as raw_fast's summary counts them. `starts` is
+    all_starts() for this grid and starts_key(cfg), shared by every rule set
+    with that key (research_shard: 8,568 rule sets, 288 keys)."""
     c = {**wp.DEFAULTS, **cfg}
     N, W = grid
     tp, sl = _tp_sl(books)
-    keep = np.nonzero(_tp_ok(tp, sl, c["tp_rule"]) & _sl_ok(sl, c.get("max_sl"))
-                      & _min_tp_ok(tp, c.get("min_tp")))[0]
-    b_sub, on_ms, off_ms = _starts(N[:, keep], W[:, keep], checks, c, flat.id_rank[keep])
-    book = keep[b_sub]
+    allow = (_tp_ok(tp, sl, c["tp_rule"]) & _sl_ok(sl, c.get("max_sl"))
+             & _min_tp_ok(tp, c.get("min_tp")))
+    if starts is None:
+        keep = np.nonzero(allow)[0]
+        b_sub, on_ms, off_ms = _starts(N[:, keep], W[:, keep], checks, c, flat.id_rank[keep])
+        book = keep[b_sub]
+    else:
+        b_all, on_all, off_all = starts
+        m = allow[b_all] if len(b_all) else np.zeros(0, bool)
+        book, on_ms, off_ms = b_all[m], on_all[m], off_all[m]
     empty = {"book": np.zeros(0, np.int64), "ent": np.zeros(0, np.int64),
              "ext": np.zeros(0, np.int64), "pnl": np.zeros(0), "closed": np.zeros(0, bool),
              "slots": int(len(book)), "open": 0}

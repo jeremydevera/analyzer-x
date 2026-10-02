@@ -241,3 +241,142 @@ def test_the_merge_puts_slices_back_in_order_and_logs_only_the_top(tmp_path, mon
     assert out["combos"] == 201
     assert all(r["test"]["closed"] == 2 for r in out["rows"]), "both shards' trades added"
     assert sum(1 for r in out["rows"] if r.get("test_log")) == 1, "only the top rule set's list"
+
+
+# ------------------------------------- a shard measured coin batch by batch
+def _write_shard(folder, books, dup=None):
+    """The replay's own line shape: id, then coin, first."""
+    d = folder / "replay-0"
+    d.mkdir(parents=True)
+    with open(d / "replay-0.jsonl", "w", encoding="utf-8") as fh:
+        for b in books:
+            c = {k: b.c[k] for k in ("id", "coin", "tf", "signal", "th", "tp", "sl", "group")}
+            fh.write(json.dumps({**c, "trades": b.c["trades"].tolist()}) + "\n")
+            if dup is not None and b.c["id"] == dup:
+                # a later line for the same id: load_lean keeps the FIRST
+                fh.write(json.dumps({**c, "trades": b.c["trades"][:1].tolist()}) + "\n")
+    return d
+
+
+def test_coin_batches_hold_whole_coins_and_the_first_line_of_every_id(tmp_path):
+    """Shard 8 of replay run 37007971331 (206,094,384 trades) was loaded whole
+    and the GitHub machine was shut down; a batch of whole coins must load
+    exactly the books the one pass loaded."""
+    books = _books()
+    _write_shard(tmp_path, books, dup="B0007")
+    end = int(dt.datetime(2026, 12, 1).timestamp() * 1000)
+    batches = rs.coin_batches([str(tmp_path)], 2000)
+    assert len(batches) > 3, "the fixture must be split"
+    got = [rs.load_batch(b, end) for b in batches]
+    coins = [{b.c["coin"] for b in g} for g in got]
+    assert all(not (a & b) for i, a in enumerate(coins) for b in coins[i + 1:]), "a coin in two batches"
+    flat = {b.c["id"]: b for g in got for b in g}
+    assert sorted(flat) == sorted(b.c["id"] for b in books), "every id once"
+    for b in books:
+        assert np.array_equal(flat[b.c["id"]].exits, b.exits), b.c["id"]
+    assert len(rs.coin_batches([str(tmp_path)], 10 ** 9)) == 1
+
+
+@pytest.mark.parametrize("out", ["daily", "full"])
+def test_a_shard_in_batches_adds_up_to_the_shard_at_once(tmp_path, monkeypatch, out):
+    """research_shard with one coin a batch against one batch for the lot,
+    through main() itself: every day total, every trade, every count."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("research_shard_t", ROOT / ".github/scripts/research_shard.py")
+    sh = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sh)
+    books = _books(seed=5, n=200)
+    src = _write_shard(tmp_path / "src", books)
+    sets = [dict(window_days=15, on_winrate=40.0, min_trades=1, tp_rule="any", max_sl=0.0, min_tp=0.0),
+            dict(window_days=7, on_winrate=50.0, min_trades=3, tp_rule="=", max_sl=0.0, min_tp=1.0),
+            dict(window_days=30, on_winrate=60.0, min_trades=5, tp_rule="<", max_sl=2.0, min_tp=0.0),
+            dict(window_days=15, on_winrate=70.0, min_trades=2, tp_rule=">", max_sl=3.0, min_tp=2.0)]
+    rf = tmp_path / "round.json"
+    rf.write_text(json.dumps(sets), encoding="utf-8")
+    end = int(dt.datetime(2026, 9, 30, 12).timestamp() * 1000)
+    res = {}
+    for mb in ("0", "100000"):
+        run = tmp_path / f"run{mb}"
+        run.mkdir()
+        monkeypatch.chdir(run)
+        for k, v in dict(SRC=str(src.parent), SHARD="0", CHUNK="0", CHUNKS="1", OUT=out,
+                         END_MS=str(end), SCEN=f"file:{rf}", BATCH_MB=mb).items():
+            monkeypatch.setenv(k, v)
+        assert sh.main() == 0
+        res[mb] = (np.load(run / "out/research-0.npz"),
+                   json.loads((run / "out/research-0.json").read_text(encoding="utf-8")))
+    (A, am), (B, bm) = res["0"], res["100000"]
+    assert am["batches"] == 9 and bm["batches"] == 1, "one batch a coin (C0..C8) against one"
+    assert (am["books"], am["trades"]) == (bm["books"], bm["trades"]) == (200, am["trades"])
+    assert [(r["cfg"], r["train"], r["test"]) for r in am["rules"]] == \
+        [(r["cfg"], r["train"], r["test"]) for r in bm["rules"]]
+    assert set(A.files) == set(B.files)
+    kept = 0
+    for j in range(len(sets)):
+        for part in ("train", "test"):
+            if out == "daily":
+                assert np.array_equal(A[f"{j}_{part}_dn"], B[f"{j}_{part}_dn"])
+                assert np.array_equal(A[f"{j}_{part}_dw"], B[f"{j}_{part}_dw"])
+                assert np.allclose(A[f"{j}_{part}_dp"], B[f"{j}_{part}_dp"], atol=1e-4)
+                kept += int(A[f"{j}_{part}_dn"].sum())
+                continue
+            ta = sorted(zip(A[f"{j}_{part}_e"].tolist(), A[f"{j}_{part}_x"].tolist(),
+                            np.round(A[f"{j}_{part}_p"], 4).tolist()))
+            tb = sorted(zip(B[f"{j}_{part}_e"].tolist(), B[f"{j}_{part}_x"].tolist(),
+                            np.round(B[f"{j}_{part}_p"], 4).tolist()))
+            assert ta == tb, (j, part)
+            kept += len(ta)
+        if out == "full":
+            sa = sorted(am["strategies"][i][0] for i in A[f"{j}_test_s"].tolist())
+            sb = sorted(bm["strategies"][i][0] for i in B[f"{j}_test_s"].tolist())
+            assert sa == sb, j
+    assert kept > 100, "the fixture must keep trades"
+
+
+@pytest.mark.parametrize("cfg", [
+    dict(window_days=15, on_winrate=40.0, min_trades=1, tp_rule="any", max_sl=0.0, min_tp=0.0),
+    dict(window_days=7, on_winrate=50.0, min_trades=3, tp_rule="=", max_sl=0.0, min_tp=1.0),
+    dict(window_days=30, on_winrate=60.0, min_trades=5, tp_rule="<", max_sl=2.0, min_tp=0.0),
+    dict(window_days=15, on_winrate=70.0, min_trades=2, tp_rule=">", max_sl=3.0, min_tp=2.0),
+])
+def test_one_shared_walk_gives_each_rule_set_its_own_answer(cfg):
+    """research_shard walks the switch-ons once per (window, trades, line)
+    and filters them per rule set: same trades, same order, same counts."""
+    books = _books(seed=9, n=220)
+    flat = rs.Flat(books)
+    checks = wr.local_midnights(int(dt.datetime(2026, 8, 1).timestamp() * 1000),
+                                int(dt.datetime(2026, 9, 25).timestamp() * 1000))
+    end = checks[-1] + D
+    c = {**rs.CURRENT, **rs.RAW, **cfg, "off_winrate": cfg["on_winrate"]}
+    grid = rs.count_grid(books, checks, c["window_days"] * D)
+    alone = rs.raw_trades(books, flat, grid, checks, c, end)
+    shared = rs.raw_trades(books, flat, grid, checks, c, end, starts=rs.all_starts(flat, grid, checks, c))
+    for k in ("book", "ent", "ext", "pnl", "closed"):
+        assert np.array_equal(alone[k], shared[k]), k
+    assert (alone["slots"], alone["open"]) == (shared["slots"], shared["open"])
+    other = {**c, "tp_rule": "any", "max_sl": 0.0, "min_tp": 0.0}
+    assert rs.starts_key(other) == rs.starts_key(c), "shape, cap and floor do not change the walk"
+
+
+def test_the_one_pass_sort_is_the_three_key_sort():
+    """_cap sorts (coin, entry) once when the candidates arrive slot by
+    slot; a tie must still go to the slot switched on first."""
+    rng = np.random.default_rng(4)
+    for _ in range(30):
+        n = int(rng.integers(5, 400))
+        slot = np.sort(rng.integers(0, 40, n))
+        coin = rng.integers(0, 3, n).astype(np.int32)
+        ent = rng.integers(0, 60, n).astype(np.int32)          # many ties ACROSS slots
+        # one slot is one book's run: it never holds two entries at once
+        _, first = np.unique(slot.astype(np.int64) * 1000 + ent, return_index=True)
+        first = np.sort(first)
+        slot, coin, ent = slot[first], coin[first], ent[first]
+        n = len(slot)
+        ext = ent + rng.integers(1, 30, n).astype(np.int32)
+        closed = rng.random(n) < 0.9
+        fast = rs._cap(coin, ent, ext, closed, slot, 2)
+        shuffled = rng.permutation(n)                          # not slot order: lexsort path
+        slow = np.empty(n, bool)
+        slow[shuffled] = rs._cap(coin[shuffled], ent[shuffled], ext[shuffled], closed[shuffled],
+                                 slot[shuffled], 2)
+        assert np.array_equal(fast, slow)

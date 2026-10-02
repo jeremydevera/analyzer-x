@@ -191,3 +191,44 @@ def test_the_daily_totals_give_the_same_months_as_the_trades():
     assert 'daily = os.environ.get("OUT", "full").strip() == "daily"' in src
     wf = (ROOT / ".github/workflows/research.yml").read_text(encoding="utf-8")
     assert "OUT: ${{ github.event.inputs.output }}" in wf and wf.count("description:") <= 10
+
+
+def test_a_round_with_a_missing_job_is_never_scored(tmp_path):
+    """Replay run 37007971331 put its 1,098 coins on 20 of 40 machines; the
+    research plan leaves the 20 empty ones out. A job that is MISSING from
+    the coins' shards would add up to a smaller number with nothing saying
+    so — the round must refuse, naming it."""
+    import pytest
+    rep = tmp_path / "reports"
+    for shard, coins in ((0, 0), (1, 45), (2, 65)):
+        d = rep / f"replay-report-{shard}"
+        d.mkdir(parents=True)
+        (d / f"replay-report-{shard}.json").write_text(json.dumps({"coins_done": coins}), encoding="utf-8")
+    art = tmp_path / "art"
+
+    def job(shard, chunk, books):
+        d = art / f"research-{shard}-{chunk}"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / f"research-{shard}-{chunk}.json").write_text(json.dumps(
+            {"shard": str(shard), "chunk": chunk, "chunks": 2, "books": books}), encoding="utf-8")
+
+    job(1, 0, 900), job(1, 1, 900), job(2, 0, 1200)
+    with pytest.raises(ValueError, match=r"1 job\(s\) missing .*\(2, 1\)"):
+        rst.check_complete(str(art), "x", reports=str(rep))
+    job(2, 1, 1100)
+    with pytest.raises(ValueError, match=r"shard 2 read \[1100, 1200\] combinations"):
+        rst.check_complete(str(art), "x", reports=str(rep))
+    job(2, 1, 1200)
+    got = rst.check_complete(str(art), "x", reports=str(rep))
+    assert got == {"shards": [1, 2], "chunks": 2, "combinations": 2100}, "the empty shard 0 is not asked for"
+
+
+def test_the_plan_leaves_out_only_the_shards_with_no_coins():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("research_plan", ROOT / ".github/scripts/research_plan.py")
+    rp_ = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rp_)
+    sizes = {"replay-0": 618, "replay-1": 597_955_220, "replay-2": 622, "replay-report-0": 496}
+    # replay-3 is not listed at all: KEPT, so its download fails by name
+    assert rp_.pick(4, sizes) == ([1, 3], [0, 2])
+    assert rp_.pick(4, None) == ([0, 1, 2, 3], []), "an unreadable listing keeps every shard"

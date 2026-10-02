@@ -301,6 +301,48 @@ def tried(replay_run: str) -> set:
 
 
 # ------------------------------------------------------------ one round
+def _reports_dir(replay_run: str) -> Path:
+    from tradingagents import market_sweep as msw
+
+    return Path(msw.HOME) / "replay" / f"reports-{replay_run}"
+
+
+def check_complete(art_dir: str, replay_run: str, reports: str | None = None) -> dict:
+    """Refuse to score a round with a hole in it. Every replay shard that
+    measured coins (its report says so) must be back from EVERY slice, with
+    the same combinations in each — a missing job would otherwise just add up
+    to a smaller number, and a rule set would look worse (or better) than it
+    is with nothing on the page to say so. The research plan leaves the empty
+    shards out on purpose (.github/scripts/research_plan.py)."""
+    rep = Path(reports) if reports else _reports_dir(replay_run)
+    want = set()
+    for f in sorted(rep.rglob("replay-report-*.json")):
+        d = json.loads(f.read_text(encoding="utf-8"))
+        if int(d.get("coins_done") or 0) > 0:
+            want.add(int(f.stem.rsplit("-", 1)[1]))
+    if not want:
+        raise ValueError(f"no replay report with coins under {rep}: cannot tell what a whole round is")
+    got: dict = {}
+    chunks = None
+    for f in sorted(Path(art_dir).rglob("research-*.json")):
+        m = json.loads(f.read_text(encoding="utf-8"))
+        chunks = int(m.get("chunks") or 1)
+        got.setdefault(int(m.get("chunk") or 0), {})[int(m["shard"])] = int(m.get("books") or 0)
+    if chunks is None:
+        raise ValueError(f"no research results under {art_dir}")
+    missing = [(s, c) for c in range(chunks) for s in sorted(want) if s not in got.get(c, {})]
+    if missing:
+        raise ValueError(f"{len(missing)} job(s) missing from {art_dir} — (shard, slice) {missing[:12]}"
+                         f"{' ...' if len(missing) > 12 else ''}; redo them before scoring")
+    for s in sorted(want):
+        books = {got[c][s] for c in range(chunks)}
+        if len(books) != 1 or 0 in books:
+            raise ValueError(f"shard {s} read {sorted(books)} combinations across its slices; "
+                             "every slice must read the whole shard")
+    return {"shards": sorted(want), "chunks": chunks,
+            "combinations": sum(got[0][s] for s in want)}
+
+
 def finish(name: str, art_dir: str, data_dir: str, replay_run: str) -> dict:
     """Add up a round's GitHub research, keep its winners, remember every rule
     set it tried, and write the next round's list (neighbours of the 20 best
@@ -311,6 +353,7 @@ def finish(name: str, art_dir: str, data_dir: str, replay_run: str) -> dict:
     from tradingagents import forecast_v2 as f2
     from tradingagents import research_merge as rmg
 
+    whole = check_complete(art_dir, replay_run, reports=data_dir)
     reality = f2.live()["reality"]["all"]
     path = rmg.merge(name, art_dir, data_dir, log_top=100, reality=reality)
     res = json.loads(path.read_text(encoding="utf-8"))
@@ -340,6 +383,7 @@ def finish(name: str, art_dir: str, data_dir: str, replay_run: str) -> dict:
     nxt = neighbours([r["cfg"] for r in ranked[:TOP]], tried(replay_run))
     nxt_path = write_round(f"{name}-next", nxt) if nxt else None
     return {"round": name, "rule_sets": len(rows), "tried_total": n_tried,
+            "shards": whole["shards"], "combinations": whole["combinations"],
             "winners": len(winners), "kept_new": new,
             "best": [{"id": sid(r["cfg"]), "words": fr.words(r["cfg"]),
                       "worst_month": rank_key(r["p4"])[0], "winner": r["p4"]["winner"]}
@@ -484,6 +528,7 @@ def finish_daily(name: str, art_dir: str, replay_run: str) -> dict:
     from tradingagents import forecast_rules as fr
     from tradingagents import forecast_v2 as f2
 
+    whole = check_complete(art_dir, replay_run)
     reality = f2.live()["reality"]["all"]
     arts = sorted(Path(art_dir).rglob("research-*.json"))
     metas = [json.loads(a.read_text(encoding="utf-8")) for a in arts]
@@ -518,6 +563,7 @@ def finish_daily(name: str, art_dir: str, replay_run: str) -> dict:
     nxt = neighbours([r["cfg"] for r in ranked[:TOP]], tried(replay_run))
     nxt_path = write_round(f"{name}-next", nxt) if nxt else None
     out = {"round": name, "rule_sets": len(rows), "tried_total": n_tried, "winners": len(winners),
+           "shards": whole["shards"], "combinations": whole["combinations"],
            "best": [{"id": r["id"], "words": r["words"], "worst_month": rank_key(r["p4"])[0],
                      "worst15": r["p4"]["worst15"], "last15": r["p4"]["last15"]["corrected"],
                      "winner": r["p4"]["winner"], "why": r["p4"]["why"]} for r in ranked[:10]],

@@ -32,6 +32,19 @@ from tradingagents import watcher_replay as wr  # noqa: E402
 from tradingagents import watcher_research as rs  # noqa: E402
 
 T0_MIN = 1_767_225_600 // 60          # Jan 01, 2026 00:00 UTC, in minutes
+# lines of one coin batch (rs.coin_batches): ~40 bytes a trade, so ~26M
+# trades — measured to stay well inside a runner's 16 GB
+BATCH_MB = 1000
+
+
+def peak_mb() -> int:
+    """The process's peak memory so far (Linux, where the runner is; 0 on
+    Windows), printed per batch so a run shows how near 16 GB it came."""
+    try:
+        import resource
+        return int(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss) // 1024
+    except Exception:  # noqa: BLE001
+        return 0
 
 
 def ms(s: str) -> int:
@@ -57,27 +70,24 @@ def main() -> int:
     out = Path("out")
     out.mkdir(exist_ok=True)
     t0 = time.time()
-    L = rs.load_lean([src], end_ms=end_ms)
-    books = list(L["books"].values())
-    # every trade as one set of arrays, for raw_trades (raw_fast's answer, held
-    # equal to it by tests/test_research_every_shape.py, 15x faster on a loose rule)
-    flat = rs.Flat(books)
-    ids = [b.c["id"] for b in books]
-    # the packed copies are Flat's now: raw_trades never asks a book for its
-    # trades, and on unfiltered replay data the two copies together would not
-    # fit a runner's memory
-    for b_ in books:
-        if isinstance(b_.c, rs._PackedMeta):
-            b_.c.pk = ()
-    print(f"shard {shard} chunk {chunk + 1}/{chunks}: {len(books):,} combinations, "
-          f"{len(flat.ent):,} trades loaded in {time.time() - t0:.0f}s; {len(grid)} rule sets",
-          flush=True)
+    # COIN BATCH BY COIN BATCH (Oct 02, 2026): shard 8 of replay run
+    # 37007971331 — 1,574,489 combinations, 206,094,384 trades — loaded whole
+    # and walked by a loose rule set passed the machine's 16 GB and the runner
+    # was shut down. A raw rule set never looks across coins, so the shard is
+    # read and measured a batch of whole coins at a time and the batches are
+    # added up (rs.coin_batches; held equal to one pass by
+    # tests/test_research_every_shape.py).
+    batch_mb = int(os.environ.get("BATCH_MB") or BATCH_MB)
+    batches = rs.coin_batches([src], batch_mb * 2 ** 20)
+    print(f"shard {shard} chunk {chunk + 1}/{chunks}: {sum(map(len, batches)):,} combinations in "
+          f"{len(batches)} batch(es) of whole coins (up to {batch_mb} MB of lines each); "
+          f"{len(grid)} rule sets", flush=True)
     periods = {"train": (ms(os.environ.get("TRAIN_START", "2026-07-01")),
                          ms(os.environ.get("TRAIN_END", "2026-09-01")) - 1),
                "test": (ms(os.environ.get("TEST_START", "2026-09-01")), end_ms)}
     arrays: dict = {}
     meta = {"shard": shard, "chunk": chunk, "chunks": chunks, "end_ms": end_ms,
-            "books": len(books), "rules": [], "strategies": []}
+            "books": 0, "trades": 0, "batches": len(batches), "rules": [], "strategies": []}
     # OUT=daily (prompt 4, Oct 02, 2026): per rule set and part, the closed
     # trades, wins and profit of every LOCAL day — ~1.5 KB a rule set where the
     # trade lists of 8,568 rule sets over 40 shards were ~75 GB to bring home.
@@ -89,56 +99,119 @@ def main() -> int:
         edges = np.asarray(mids + nxt[:1], dtype=np.int64)
         meta["day_edges"] = [int(x) for x in edges]
         n_days = len(edges) - 1
+    # per (rule set, part), over every batch: [slots, open], and the day sums
+    # (daily) or the trade pieces (full)
+    counts: dict = {}
+    acc: dict = {}
     strat_ix: dict = {}
-    for part, (a, b) in periods.items():
-        checks = wr.local_midnights(a, b)
-        grids = {wd: rs.count_grid(books, checks, wd * wr.DAY_MS)
-                 for wd in sorted({c["window_days"] for c in grid})}
-        for j, cfg in enumerate(grid):
-            r = rs.raw_trades(books, flat, grids[cfg["window_days"]], checks, cfg, b)
-            m = r["closed"] & (r["ext"] <= b)
+    base = 0
+    for bi, locs in enumerate(batches):
+        books = rs.load_batch(locs, end_ms)
+        # every trade as one set of arrays, for raw_trades (raw_fast's answer,
+        # held equal to it by tests/test_research_every_shape.py)
+        flat = rs.Flat(books)
+        # the packed copies are Flat's now: raw_trades never asks a book for
+        # its trades
+        for b_ in books:
+            if isinstance(b_.c, rs._PackedMeta):
+                b_.c.pk = ()
+        meta["trades"] += len(flat.ent)
+        print(f"  batch {bi + 1} of {len(batches)}: {len(books):,} combinations, "
+              f"{len(flat.ent):,} trades, loaded by {time.time() - t0:.0f}s", flush=True)
+        for part, (a, b) in periods.items():
+            checks = wr.local_midnights(a, b)
+            grids = {wd: rs.count_grid(books, checks, wd * wr.DAY_MS)
+                     for wd in sorted({c["window_days"] for c in grid})}
+            # ONE switch-on walk per (window, trades, line), shared by every
+            # rule set that differs only in its target shape, stop cap or
+            # target floor (rs.all_starts): the rule sets are visited key by
+            # key, and each answer still lands under its own j
+            walk_key, walk = None, None
+            for done, j in enumerate(sorted(range(len(grid)), key=lambda i: rs.starts_key(grid[i]))):
+                cfg = grid[j]
+                if rs.starts_key(cfg) != walk_key:
+                    walk_key = rs.starts_key(cfg)
+                    walk = rs.all_starts(flat, grids[cfg["window_days"]], checks, cfg)
+                r = rs.raw_trades(books, flat, grids[cfg["window_days"]], checks, cfg, b, starts=walk)
+                m = r["closed"] & (r["ext"] <= b)
+                n_ = counts.setdefault((j, part), [0, 0])
+                n_[0] += r["slots"]
+                n_[1] += r["open"]
+                if daily:
+                    k = np.searchsorted(edges, r["ext"][m], "right") - 1
+                    ok = (k >= 0) & (k < n_days)
+                    pv = r["pnl"][m][ok]
+                    # the types are fixed here: bincount over NO trades
+                    # answers whole numbers even with weights, and the add
+                    # into the running float sum then refuses
+                    day = (np.bincount(k[ok], minlength=n_days).astype(np.int64),
+                           np.bincount(k[ok], weights=(pv > 0).astype(np.float64),
+                                       minlength=n_days).astype(np.float64),
+                           np.bincount(k[ok], weights=pv.astype(np.float64),
+                                       minlength=n_days).astype(np.float64))
+                    s = acc.get((j, part))
+                    if s is None:
+                        acc[(j, part)] = list(day)
+                    else:
+                        for q in range(3):
+                            s[q] += day[q]
+                else:
+                    si = None
+                    if part == "test":
+                        si = np.empty(int(m.sum()), np.int32)
+                        for n2, lb in enumerate(r["book"][m]):
+                            g = base + int(lb)
+                            k2 = strat_ix.get(g)
+                            if k2 is None:
+                                c_ = books[int(lb)].c
+                                k2 = strat_ix[g] = len(meta["strategies"])
+                                meta["strategies"].append([c_["id"], c_["coin"], c_["tf"], c_["signal"],
+                                                           float(c_.get("th", 0.0)), float(c_["tp"]),
+                                                           float(c_["sl"])])
+                            si[n2] = k2
+                    acc.setdefault((j, part), []).append(
+                        ((r["ent"][m] // 60_000 - T0_MIN).astype(np.int32),
+                         (r["ext"][m] // 60_000 - T0_MIN).astype(np.int32),
+                         r["pnl"][m].astype(np.float32), si))
+                if (done + 1) % 500 == 0:
+                    print(f"    batch {bi + 1}, {part}: {done + 1} of {len(grid)} by {time.time() - t0:.0f}s",
+                          flush=True)
+            del grids, walk
+            print(f"  batch {bi + 1}, {part}: {len(grid)} rule sets by {time.time() - t0:.0f}s, "
+                  f"peak memory {peak_mb():,} MB", flush=True)
+        base += len(books)
+        # free the batch before the next one loads: the (tp, sl) cache holds
+        # the book list until another list asks
+        del books, flat
+        rs._TPSL.clear()
+    meta["books"] = base
+    for j, cfg in enumerate(grid):
+        rule = {"cfg": cfg}
+        for part in periods:
+            slots, open_ = counts.get((j, part), (0, 0))
+            rule[part] = {"slots": int(slots), "open": int(open_)}
+            got = acc.get((j, part))
             if daily:
-                k = np.searchsorted(edges, r["ext"][m], "right") - 1
-                ok = (k >= 0) & (k < n_days)
-                pv = r["pnl"][m][ok]
-                arrays[f"{j}_{part}_dn"] = np.bincount(k[ok], minlength=n_days).astype(np.int32)
-                arrays[f"{j}_{part}_dw"] = np.bincount(k[ok], weights=(pv > 0).astype(np.float64),
-                                                       minlength=n_days).astype(np.int32)
-                arrays[f"{j}_{part}_dp"] = np.bincount(k[ok], weights=pv,
-                                                       minlength=n_days).astype(np.float32)
-                if part == "train":
-                    meta["rules"].append({"cfg": cfg})
-                meta["rules"][j][part] = {"slots": r["slots"], "open": r["open"]}
-                if (j + 1) % 100 == 0:
-                    print(f"    {part}: {j + 1} of {len(grid)} in {time.time() - t0:.0f}s", flush=True)
+                dn, dw, dp = got if got else (np.zeros(n_days, np.int64), np.zeros(n_days), np.zeros(n_days))
+                arrays[f"{j}_{part}_dn"] = dn.astype(np.int32)
+                arrays[f"{j}_{part}_dw"] = np.rint(dw).astype(np.int32)
+                arrays[f"{j}_{part}_dp"] = dp.astype(np.float32)
                 continue
-            arrays[f"{j}_{part}_e"] = (r["ent"][m] // 60_000 - T0_MIN).astype(np.int32)
-            arrays[f"{j}_{part}_x"] = (r["ext"][m] // 60_000 - T0_MIN).astype(np.int32)
-            arrays[f"{j}_{part}_p"] = r["pnl"][m].astype(np.float32)
+            got = got or []
+            arrays[f"{j}_{part}_e"] = np.concatenate([g[0] for g in got]) if got else np.zeros(0, np.int32)
+            arrays[f"{j}_{part}_x"] = np.concatenate([g[1] for g in got]) if got else np.zeros(0, np.int32)
+            arrays[f"{j}_{part}_p"] = np.concatenate([g[2] for g in got]) if got else np.zeros(0, np.float32)
             if part == "test":
-                si = np.empty(int(m.sum()), np.int32)
-                for n_, bi in enumerate(r["book"][m]):
-                    k = strat_ix.get(int(bi))
-                    if k is None:
-                        c_ = books[int(bi)].c
-                        k = strat_ix[int(bi)] = len(meta["strategies"])
-                        meta["strategies"].append([ids[int(bi)], c_["coin"], c_["tf"], c_["signal"],
-                                                   float(c_.get("th", 0.0)), float(c_["tp"]),
-                                                   float(c_["sl"])])
-                    si[n_] = k
-                arrays[f"{j}_{part}_s"] = si
-            if part == "train":
-                meta["rules"].append({"cfg": cfg})
-            meta["rules"][j][part] = {"slots": r["slots"], "open": r["open"]}
-            if (j + 1) % 100 == 0:
-                print(f"    {part}: {j + 1} of {len(grid)} in {time.time() - t0:.0f}s", flush=True)
-        print(f"  {part}: {len(grid)} rule sets in {time.time() - t0:.0f}s", flush=True)
+                arrays[f"{j}_{part}_s"] = (np.concatenate([g[3] for g in got]) if got
+                                           else np.zeros(0, np.int32))
+        meta["rules"].append(rule)
     name = f"research-{shard}" + (f"-{chunk}" if chunks > 1 else "")
     np.savez_compressed(out / f"{name}.npz", **arrays)
     (out / f"{name}.json").write_text(json.dumps(meta), encoding="utf-8")
-    print(f"shard {shard} done in {time.time() - t0:.0f}s", flush=True)
+    meta["peak_mb"] = peak_mb()
+    print(f"shard {shard} done in {time.time() - t0:.0f}s: {meta['books']:,} combinations, "
+          f"{meta['trades']:,} trades, peak memory {meta['peak_mb']:,} MB", flush=True)
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

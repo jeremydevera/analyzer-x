@@ -172,6 +172,89 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-02-E — prompt 4's first round died on GitHub: one machine was handed 206 million trades at once and ran out of memory
+
+**CEO**
+
+* On Oct 02, 2026 at 11:25am the first real job of prompt 4's search (round
+  1, run 37025704954) was shut down by GitHub after loading its share of the
+  data, so the round that fills Room strategies could not finish; it was
+  stopped before it used the rest of the machines.
+* Why: each machine loaded ALL of its coins and then let the loosest rule set
+  pick nearly every trade at once — 206 million trades on the biggest share,
+  past the 16 GB a GitHub machine has.
+* What stops it now: each machine reads its coins in batches of about 26
+  million trades and adds the batches up, which gives exactly the same totals
+  (checked against the old code on 5,473,072 real trades: 0 differences).
+  A round is also refused if any machine's result is missing.
+
+**DEV**
+
+* `.github/scripts/research_shard.py:main` called `rs.load_lean([src])`
+  (books ~33 B/trade) then `rs.Flat(books)` (~21 B/trade), and per rule set
+  `rs.raw_trades` built `slot_of`/`idx`/`_cap` arrays over every candidate
+  trade (~100+ B each); the loosest rule (`7 days, 40%, 1 trade, any`) keeps
+  nearly all 206,094,384 of shard 8's trades.
+* Invariant broken: **a job's memory is bounded by a batch, never by its
+  input** — and a raw rule set never looks across coins, so a shard measured
+  coin batch by coin batch IS the shard measured at once
+  (`rs.coin_batches` / `rs.load_batch`).
+* Guards: `tests/test_research_every_shape.py::test_a_shard_in_batches_adds_up_to_the_shard_at_once`
+  (daily and full, through `main()`; red with the batch sum replaced by the
+  last batch, red with coins split across batches) and
+  `tests/test_prompt4_room_strategies.py::test_a_round_with_a_missing_job_is_never_scored`.
+
+**SAW** — the operator asked for *"status"*; the answer was that round 1 had
+been stopped twice. The first stop (run 37018857950, `11:13am`) was a misread
+by this session, not a fault: two jobs finished in seconds because 20 of the
+replay's 40 machines got no coins (the replay hands coins out first come,
+first served), and they looked like a failure. The second was real.
+
+**TIMELINE**
+
+1. `Oct 02, 2026 9:49am` — replay run 37007971331 finishes: 1,098 coins on
+   20 of 40 machines, written at 40% / 1 trade / any target, 23,494,334
+   combinations kept. Round five's data had been 4,585,414.
+2. `11:10am` — round 1 (8,568 rule sets, 40 shards x 4 slices, daily totals)
+   starts; `11:13am` it is cancelled after two empty-shard jobs (shards 0
+   and 14) finish in 20 and 29 seconds with `0 combinations, 0 trades`.
+3. `11:15am` — dispatched again as run 37025704954.
+4. `11:16am` — `research (8, 3)` starts; `shard 8 chunk 4/4: 1,574,489
+   combinations, 206,094,384 trades loaded in 363s`.
+5. `11:25am` — `The runner has received a shutdown signal` on that job,
+   before a single rule set was reported; the run is cancelled at once.
+6. Measured on replay 36648844400's shard 4 (31,861 combinations,
+   5,473,072 trades), 120 rule sets: old code peak 1.05 GB, coin batches
+   0.45 GB, **0 differences** in day totals, trade lists and counts.
+
+**ROOT CAUSE** — `research_shard.main` held a whole shard and walked every
+rule set over all of it; memory grew with the shard and with how loose the
+rule was, and nothing capped either.
+
+**WHY IT WAS NOT CAUGHT** — every research run before this one read data
+written at a strict line (70% / 20 trades, then 50% / 10): the biggest share
+was a few million trades and the loosest rule could not pick more than the
+data held. Prompt 4 asked for every shape, so its data was written at the
+loosest line there is, five times the combinations — and the only tests of
+the shard used 160-book fixtures, where memory is never the question. Nobody
+measured the size before calling it "one machine's share".
+
+**COST** — none in money; about 15 minutes of GitHub machines and the start
+of round 1 delayed by about an hour.
+
+**FIX** — this commit: coin batches (`BATCH_MB = 1000`), one switch-on walk
+shared by every rule set that differs only in target shape, stop cap or
+floor (156 walks for 8,568 rule sets), a one-pass sort in `_cap`, a research
+plan that leaves out the shards with no coins
+(`.github/scripts/research_plan.py`), and `room_strategies.check_complete`
+before any round is scored.
+
+**GUARD** — `tests/test_research_every_shape.py` (the batch, walk and sort
+tests) and `tests/test_prompt4_room_strategies.py` (the missing-job and plan
+tests).
+
+---
+
 ## RCA-2026-10-02-D — after the live price connection dropped and came back, the runner stopped hearing candles close until it was restarted
 
 **CEO**

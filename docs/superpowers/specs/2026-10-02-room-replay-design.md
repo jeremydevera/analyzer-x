@@ -80,3 +80,25 @@ over 68 trades in the last 30 days" for a 15-day count. Derive the words from `w
 CLAUDE.md: commit via `python scripts/commit_own.py -F msg.txt <paths>` (other sessions share
 the tree), push, RCA entry with any bug fix, dates via fmt_when/fmtWhen, big files on G, nothing
 below `if __name__ == "__main__":`, test the path the real caller takes, harddev loop.
+
+## Peer constraints (Oct 02, 2026 — sessions "Forecast" and "Merge to Forecast v2"; their tests hold these)
+
+1. `room_backtest._practice_exits` returns a 3-tuple since 8a382f0de009 — (exits, timestamped
+   refusals, {slot: set of refused SIGNAL-candle opens}) read from every `gate_blocked` row's
+   `bars`; a row with `"late": true` is left out of the timestamped list; a row repeating a 4-hour
+   candle carries `candles: 0, bars: []`. Count refusals by `bars`/`candles`, never by rows
+   (RCA-2026-10-02-C). The no-trade-record path returns three empties. Guards:
+   tests/test_every_refusal_is_counted.py::test_backtest_a_room_reads_the_counted_candles and
+   ::test_backtest_a_room_answers_for_a_room_with_no_trade_record_yet. Keep or move on purpose.
+2. Every list on the Forecast pages pages TEN at a time with
+   `webapp/src/components/common/PageButtons` (`per=_f2a.PER_PAGE`, forecast_v2_api.PER_PAGE = 10;
+   `<PageButtons ... what="room backtest" />`). Guard: tests/test_forecast_pages_like_auto_trade.py
+   (also fails on any "‹ prev"/"next ›"/"newer"/"older"/"back" button text in RoomForecasts.tsx).
+3. The panel renders on /forecast AND on the merged /forecast-v2 page (RoomsAndBacktest).
+4. RoomForecasts.tsx also holds Room strategies (RoomStrategiesTable) and the route
+   /api/forecasts/room-strategies — leave both as they are (tests/test_prompt4_room_strategies.py
+   calls api.room_strategies_route).
+5. The Forecast-page tests ban `new Date(` in RoomForecasts.tsx; use `dateBoxValue` from api.ts.
+6. If the replay ever wants a rule set's trades from Room strategies, read them through
+   `room_strategies.kept()` (numpy, cached by file stamp) — never parse
+   ~/.tradingagents/backtest/forecast_v2/room_strategies.jsonl directly.

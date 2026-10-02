@@ -23,13 +23,26 @@ EMPTY_BYTES = 4096       # a shard with coins is megabytes; an empty one ~600 B
 MATRIX_MAX = 256         # GitHub's own ceiling for one matrix
 
 
-def pick(n: int, sizes: dict | None) -> tuple[list[int], list[int]]:
-    """(shards to research, shards left out as empty) of `n`, from the
-    source run's artifact sizes ({name: bytes}, None = unreadable)."""
+def wanted(raw: str) -> list[int]:
+    """The `shards` input: a COUNT ("40" = shards 0..39), or a LIST of shard
+    numbers ("1,4,9") — the operator's two accounts each research their
+    share of one replay (Oct 02, 2026: "moving forward i want 40 machines to
+    be used always"; room_strategies.dispatch splits the shards)."""
+    raw = str(raw).strip()
+    if "," in raw or raw.startswith("["):
+        return sorted({int(x) for x in raw.strip("[]").split(",") if x.strip()})
+    return list(range(int(raw)))
+
+
+def pick(n, sizes: dict | None) -> tuple[list[int], list[int]]:
+    """(shards to research, shards left out as empty) of `n` — a count or a
+    list of shard numbers — from the source run's artifact sizes
+    ({name: bytes}, None = unreadable)."""
+    want = list(range(n)) if isinstance(n, int) else list(n)
     if sizes is None:
-        return list(range(n)), []
+        return want, []
     keep, empty = [], []
-    for i in range(n):
+    for i in want:
         got = sizes.get(f"replay-{i}")
         (empty if got is not None and got <= EMPTY_BYTES else keep).append(i)
     return keep, empty
@@ -59,12 +72,12 @@ def artifact_sizes(repo: str, run: str, token: str) -> dict | None:
 
 
 def main() -> int:
-    n = int(os.environ["N"])
+    want = wanted(os.environ["N"])
     chunks = max(1, int(os.environ.get("C") or 1))
     sizes = artifact_sizes(os.environ["REPO"], os.environ["SRC_RUN"], os.environ.get("GH_TOKEN", ""))
-    keep, empty = pick(n, sizes)
+    keep, empty = pick(want, sizes)
     if empty:
-        print(f"left out {len(empty)} empty shard(s) of {n} (no coins): {empty}", file=sys.stderr)
+        print(f"left out {len(empty)} empty shard(s) of {len(want)} (no coins): {empty}", file=sys.stderr)
     print(f"researching {len(keep)} shard(s) x {chunks} slice(s) = {len(keep) * chunks} jobs",
           file=sys.stderr)
     if len(keep) * chunks > MATRIX_MAX:

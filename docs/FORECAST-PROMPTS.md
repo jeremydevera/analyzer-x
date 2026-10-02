@@ -286,9 +286,9 @@ so the next one can say how long each step takes before starting it:
 |---|---|---|
 | data | a replay written at `wr=40,trades=1,tp=any,windows=7\|15\|30` | run 37007971331: 1,098 coins on **20 of 40** machines (the replay hands coins out first come, first served — an empty shard is normal), 23,494,320 combinations, 3,139,117,865 trades, end Oct 02, 2026 8:00am |
 | round 1 list | `python -m tradingagents.room_strategies round1 round1` | 8,568 rule sets, 156 switch-on walks |
-| round 1 | `gh workflow run research.yml -f source_run=<replay> -f shards=40 -f end_ms=<end> -f scenarios=file:research/p4/round1.json -f chunks=4 -f output=daily` | run 37033893955: the plan keeps the 20 shards with coins, 80 jobs, **2 h 13 min**, peak memory ~3.3 GB a machine (16 GB there) |
+| round 1 | `python -m tradingagents.room_strategies dispatch research/p4/round1.json daily 4 <replay> <replay repo> <end ms>` — **both accounts, 40 machines** (CLAUDE.md, Oct 02, 2026); then `... fetch <folder on G:> <repo>:<run> <repo>:<run>` | first run (one account, before that rule): run 37033893955, the 20 shards with coins x 4 slices = 80 jobs, **2 h 13 min**, peak memory ~3.3 GB a machine (16 GB there) |
 | score | `python -m tradingagents.room_strategies daily round1 <downloaded folder> <replay>` | 458 s; refuses a round with any job missing (`check_complete`); 673 winners, writes `round1-confirm.json` and `round1-next.json` |
-| confirm | the same dispatch with `scenarios=file:research/p4/round1-confirm.json -f chunks=1 -f output=full` | run 37050144154, ~15 min |
+| confirm | `... dispatch research/p4/round1-confirm.json full 1 <replay> <replay repo> <end ms>`, then `fetch` | run 37050144154, ~15 min |
 | keep | `python -m tradingagents.room_strategies finish round1c <folder> ~/.tradingagents/replay/reports-<replay> <replay>` | 75 s; 662 kept (2,381,217 trades, 83 MB on G:) |
 | new rounds | `daily` on `round<N>-next.json`, then its confirm, until a round beats nothing or 5 rounds | round 2: 92 rule sets, ~20 min, 56 winners |
 

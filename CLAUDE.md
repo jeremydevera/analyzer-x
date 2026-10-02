@@ -138,6 +138,35 @@ saw "no changes" on GitHub and was right to.
 DO NOT commit the operator's private notes (`.obsidian/`, `*.md` scratch files
 in the repo root) — those are theirs, not the project's.
 
+## Every GitHub job uses ALL 40 machines — both accounts (MANDATORY — Oct 02, 2026)
+
+The operator, `Oct 02, 2026 3:52pm`: *"moving forward i want 40 machines to be
+used always , i want this setting to be remembered"* — right after *"dont i
+have 40 machines?"*: prompt 4's round 2 confirm run and round 3 sat queued
+behind another session's replay on `jeremydevera` while `jeremydvera`'s 20
+machines were idle. First asked `Sep 21, 2026`: *"i want 40"*.
+
+* **Two accounts, 20 machines each:** `jeremydevera/analyzer-x` (remote
+  `origin`) and `jeremydvera/analyzer-x` (remote `colleague`, a fork that
+  runs its own copy of every workflow — push every commit to BOTH).
+  `cloud_sweep.fleets()` / `usable_fleets()` name them.
+* **Never dispatch to one account while the other can run it.** Split the work
+  and send each account its share. An account that refuses (no workflow, no
+  access) is named, and the other still runs.
+* Where it is done:
+
+| job | how it uses both |
+|---|---|
+| BACKTEST, UPDATE ALL BACKTESTS (v1 and v2), the daily update | `cloud_sweep.dispatch_across` — the coins are dealt |
+| resolve the pending, the hand-off | `dispatch_across`, the board named from the store (Oct 02, 2026) |
+| prompt 4 / research rounds | `python -m tradingagents.room_strategies dispatch ...` deals the replay's shards by size (`research.yml` takes `shards=[..]` and `source_repo`); `... fetch` downloads every account's share into one folder; `check_complete` refuses a round with a share missing |
+| learn.yml, ml.yml | started by hand — start one on each account |
+| **NOT YET: Forecast v2's daily chain** (`replay.yml` then `forecast.yml`, `forecast_v2_daily`) | one account; must be split like research |
+
+* A new workflow or dispatch path follows this from its first commit.
+  `tests/test_forty_machines_across_two_accounts.py::test_every_cloud_press_goes_through_the_splitter`
+  fails if the API starts a sweep on one account (`cs.dispatch(` in `api.py`).
+
 ## A failed coin is redone alone (MANDATORY — 2026-08-25)
 
 **If a coin fails: delete that coin's backtest, then redo THAT job — never the

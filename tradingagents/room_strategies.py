@@ -624,6 +624,115 @@ def _rel(p: Path | None) -> str | None:
     return str(p.relative_to(ROOT)).replace("\\", "/") if p else None
 
 
+# ------------------------------------------------- every account's machines
+# Operator, Oct 02, 2026 3:52pm: "moving forward i want 40 machines to be used
+# always, i want this setting to be remembered" — two GitHub accounts, 20
+# machines each (cloud_sweep.fleets). Round 2's confirm run and round 3 had
+# sat queued behind another session's replay on one account while the other
+# account's 20 were idle. A round is therefore always split: the replay's
+# shards that hold coins are dealt between every account that can run the
+# workflow, balanced by their size, and each account researches its share
+# (research.yml `shards` takes a list, `source_repo` names the replay's repo).
+EMPTY_SHARD_BYTES = 4096
+
+
+def replay_shard_sizes(run: str, repo: str) -> dict[int, int]:
+    """{shard: bytes} of a replay run's replay-<N> artifacts that hold coins."""
+    from tradingagents import cloud_sweep as cs
+
+    raw = cs._gh("api", f"repos/{repo}/actions/runs/{run}/artifacts?per_page=100", "--paginate",
+                 "--jq", '.artifacts[] | select(.expired | not) | "\\(.name) \\(.size_in_bytes)"')
+    out: dict = {}
+    for line in raw.splitlines():
+        name, _, size = line.strip().partition(" ")
+        if name.startswith("replay-") and name[7:].isdigit() and int(size) > EMPTY_SHARD_BYTES:
+            out[int(name[7:])] = int(size)
+    return out
+
+
+def split_shards(sizes: dict[int, int], n: int) -> list[list[int]]:
+    """Deal the shards between `n` accounts, biggest first to the lightest
+    load, so both finish at about the same time. Every shard once."""
+    loads = [[0, i, []] for i in range(max(1, n))]
+    for shard in sorted(sizes, key=lambda s: (-sizes[s], s)):
+        tgt = min(loads, key=lambda x: (x[0], x[1]))
+        tgt[0] += sizes[shard]
+        tgt[2].append(shard)
+    return [sorted(x[2]) for x in loads]
+
+
+def dispatch(round_file: str, output: str, chunks: int, replay_run: str, replay_repo: str,
+             end_ms: int, fleets: list | None = None) -> list[dict]:
+    """Start research.yml on EVERY account that can run it, each with its
+    share of the replay's shards. Returns [{repo, run, shards}] — download
+    them all into one folder and `daily`/`finish` score the whole round
+    (check_complete refuses it while any account's share is missing)."""
+    from tradingagents import cloud_sweep as cs
+
+    if fleets is None:
+        fleets, refused = cs.usable_fleets()
+        for why in refused:
+            print(f"account left out: {why}")
+    if not fleets:
+        raise ValueError("no GitHub account can run research.yml")
+    sizes = replay_shard_sizes(replay_run, replay_repo)
+    if not sizes:
+        raise ValueError(f"replay run {replay_run} on {replay_repo} has no shard with coins")
+    out = []
+    for slug, share in zip(fleets, split_shards(sizes, len(fleets))):
+        if not share:
+            continue
+        shards = "[" + ",".join(map(str, share)) + "]"
+        before = {r["databaseId"] for r in json.loads(cs._gh(
+            "run", "list", "--repo", slug, "--workflow", "research.yml", "--limit", "20",
+            "--json", "databaseId"))}
+        cs._gh("workflow", "run", "research.yml", "--repo", slug,
+               "-f", f"source_run={replay_run}", "-f", f"source_repo={replay_repo}",
+               "-f", f"shards={shards}", "-f", f"end_ms={int(end_ms)}",
+               "-f", f"scenarios=file:{round_file}", "-f", f"chunks={int(chunks)}",
+               "-f", f"output={output}")
+        run = None
+        for _ in range(30):
+            time.sleep(2)
+            new = [r["databaseId"] for r in json.loads(cs._gh(
+                "run", "list", "--repo", slug, "--workflow", "research.yml", "--limit", "20",
+                "--json", "databaseId")) if r["databaseId"] not in before]
+            if new:
+                run = max(new)
+                break
+        out.append({"repo": slug, "run": run, "shards": share,
+                    "bytes": sum(sizes[s] for s in share)})
+    return out
+
+
+def fetch(dest: str, runs: list[str]) -> Path:
+    """Download every account's share ("<repo>:<run>") into one folder on the
+    store's drive."""
+    from tradingagents import cloud_sweep as cs
+
+    import os
+
+    d = Path(dest)
+    d.mkdir(parents=True, exist_ok=True)
+    # gh stages each zip in TMP — the SYSTEM drive unless told otherwise
+    # (a round is ~345 MB); point it at the store's own scratch
+    old = {k: os.environ.get(k) for k in ("TMP", "TEMP")}
+    tmp = cs._scratch()
+    try:
+        if tmp:
+            os.environ["TMP"] = os.environ["TEMP"] = tmp
+        for spec in runs:
+            repo, _, run = spec.rpartition(":")
+            cs._gh("run", "download", run, "--repo", repo, "-D", str(d), timeout=3600)
+    finally:
+        for k, v in old.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+    return d
+
+
 def main(argv: list | None = None) -> int:
     import sys
     args = list(sys.argv[1:] if argv is None else argv)
@@ -637,8 +746,19 @@ def main(argv: list | None = None) -> int:
         p = write_round(args[1], round1())
         print(p, len(json.loads(p.read_text(encoding="utf-8"))), "rule sets")
         return 0
+    if len(args) == 7 and args[0] == "dispatch":
+        # dispatch <round file> <daily|full> <chunks> <replay run> <replay repo> <end ms>
+        print(json.dumps(dispatch(args[1], args[2], int(args[3]), args[4], args[5], int(args[6])),
+                         indent=1))
+        return 0
+    if len(args) >= 3 and args[0] == "fetch":
+        # fetch <folder> <repo>:<run> [<repo>:<run> ...]
+        print(fetch(args[1], args[2:]))
+        return 0
     print("usage: room_strategies round1 <name> | daily <name> <research folder> <replay run id> "
-          "| finish <name> <research folder> <replay folder> <replay run id>")
+          "| finish <name> <research folder> <replay folder> <replay run id> "
+          "| dispatch <round file> <daily|full> <chunks> <replay run> <replay repo> <end ms> "
+          "| fetch <folder> <repo>:<run> ...")
     return 2
 
 

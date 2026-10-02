@@ -253,10 +253,18 @@ def test_every_cloud_press_goes_through_the_splitter():
 
     for fn, what in ((api_mod.cloud_dispatch, "the BACKTEST button"),
                      (dj._run_btupdate, "UPDATE ALL BACKTESTS"),
-                     (dj._run_btupdate_v2, "UPDATE on Backtest v2")):
+                     (dj._run_btupdate_v2, "UPDATE on Backtest v2"),
+                     # Oct 02, 2026: "moving forward i want 40 machines to be
+                     # used always" — the last two one-account presses
+                     (api_mod.backtest_pending_resolve, "resolve the pending")):
         src = inspect.getsource(fn)
         assert "dispatch_across(" in src, what
         assert "stored_symbols(" in src, f"{what} must NAME the board"
+    # the hand-off names the coins the PC never reached, so it splits them
+    assert "dispatch_across(" in inspect.getsource(api_mod._finish_handoff)
+    # and nothing in the API starts a sweep on ONE account any more
+    src = inspect.getsource(api_mod)
+    assert "cs.dispatch(" not in src, "a sweep dispatched to one account"
 
 
 def test_the_v2_press_names_the_v2_store():

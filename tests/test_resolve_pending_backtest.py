@@ -76,6 +76,11 @@ def client(monkeypatch, _own_ledger):
     monkeypatch.setattr(cs, "remember", lambda run: None)
     monkeypatch.setattr(fx, "_get_public",
                         lambda url: {"data": [{"symbol": "AAA_USDT", "state": 0}]})
+    # the press goes across every account now (Oct 02, 2026: "i want 40
+    # machines to be used always"); ONE account here, so a test sees one run,
+    # and nothing is pushed to a real repo
+    monkeypatch.setattr(cs, "usable_fleets", lambda cwd=None: (["me/repo"], []))
+    monkeypatch.setattr(cs, "sync_fleet", lambda slug: None)
     return TestClient(api_mod.app)
 
 
@@ -311,3 +316,21 @@ def test_a_failure_is_pending_even_when_the_pair_was_measured_before(
     assert got["dispatched"] is True, got
     assert sent["timeframes"] == "1h"
     assert got["pending"] == 1
+
+
+
+def test_the_press_deals_the_board_across_both_accounts(client, monkeypatch):
+    """Operator, Oct 02, 2026: "moving forward i want 40 machines to be used
+    always". With two accounts the store's coins are named and dealt, one run
+    on each — never twenty machines on one account."""
+    from tradingagents import db_jobs as dj
+    sent: list = []
+    monkeypatch.setattr(cs, "usable_fleets", lambda cwd=None: (["a/repo", "b/repo"], []))
+    monkeypatch.setattr(dj, "stored_symbols", lambda store="v1": [f"C{i}_USDT" for i in range(10)])
+    monkeypatch.setattr(cs, "dispatch", lambda **kw: sent.append(kw) or {"id": 40 + len(sent)})
+    got = client.post("/api/backtest/pending/resolve").json()
+    assert got["dispatched"] is True
+    assert sorted(k["slug"] for k in sent) == ["a/repo", "b/repo"]
+    coins = [c for k in sent for c in k["coin_list"]]
+    assert sorted(coins) == sorted(f"C{i}" for i in range(10)), "every coin once, across both"
+    assert len(got["run"]["runs"]) == 2

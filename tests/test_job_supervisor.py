@@ -281,6 +281,11 @@ def test_the_handoff_waits_for_the_local_job_to_stand_down(monkeypatch):
     # gh is checked before dispatching now: a failed dispatch must not clear
     # the request, so the completer refuses when GitHub is unusable
     monkeypatch.setattr(cs, "available", lambda: (True, ""))
+    # the hand-off goes across every account now (Oct 02, 2026: "i want 40
+    # machines to be used always"): ONE account here, and no real `gh repo
+    # sync` from a test
+    monkeypatch.setattr(cs, "usable_fleets", lambda cwd=None: (["me/repo"], []))
+    monkeypatch.setattr(cs, "sync_fleet", lambda slug: "")
 
     monkeypatch.setattr(dj, "status", lambda kind: {"running": True})
     api._finish_handoff()

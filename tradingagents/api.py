@@ -89,18 +89,24 @@ def _finish_handoff() -> None:
     # the whole point of a hand-off — and until Sep 10, 2026 it sent only how
     # MANY, so the fleet measured the top of its own alphabetical board and the
     # missed coins stayed missed.
-    run = cs.dispatch(shards=20, coins=0, coin_list=left,
-                      timeframes=",".join(tfs),
-                      min_days=0,      # every contract — never the 365 default nobody chose
-                      # and the HANDED-OVER job's own stake and window, or the
-                      # two halves of one sweep are two different measurements
-                      days=int(spec.get("days") or _sweep_days()),
-                      base=float(spec.get("base") or 5.0))
+    # EVERY ACCOUNT (operator, Oct 02, 2026: "moving forward i want 40
+    # machines to be used always"): the named coins are dealt between the two
+    # accounts, 20 machines each, exactly as the BACKTEST button does
+    got = cs.dispatch_across(shards=20, coins=0, coin_list=left,
+                             timeframes=",".join(tfs),
+                             min_days=0,      # every contract — never the 365 default nobody chose
+                             # and the HANDED-OVER job's own stake and window, or the
+                             # two halves of one sweep are two different measurements
+                             days=int(spec.get("days") or _sweep_days()),
+                             base=float(spec.get("base") or 5.0), mode="full")
+    runs = got.get("runs") or []
+    run = {**(runs[0] if runs else {}), "runs": runs, "why": got.get("why")}
     cs.remember(run)
     dj.clear_handoff(kind)              # the cloud has it; the request is served
-    named = len(run.get("coins_named") or [])
-    print(f"[handoff] {len(left)} coins the Mac never reached -> GitHub run "
-          f"{run.get('id')}"
+    named = sum(len(r.get("coins_named") or []) for r in runs)
+    ids = ", ".join(f"{r.get('id')} ({r.get('repo')})" for r in runs)
+    print(f"[handoff] {len(left)} coins the Mac never reached -> GitHub run(s) "
+          f"{ids}"
           + (", named one by one" if named == len(left) and named else "")
           # a list too long for one command line measures the whole board:
           # more work than asked for, and it must not be discovered later
@@ -2200,11 +2206,19 @@ def backtest_pending_resolve() -> dict:
     # in the store on these frames — the whole board IS the ask here, not the
     # dropped pick that the other four dispatch paths had (fixed Sep 10, 2026;
     # this one was read with them and left alone deliberately).
-    run = cs.dispatch(shards=cap.CLOUD_RUNNERS, coins=0,
-                      timeframes=",".join(frames), min_days=0,
-                      # the operator's own window and stake, not a default
-                      days=int(spec.get("days") or _sweep_days()),
-                      base=float(spec.get("base") or 5.0))
+    # EVERY ACCOUNT (operator, Oct 02, 2026: "moving forward i want 40
+    # machines to be used always"). The whole board is still the ask — but an
+    # unnamed board cannot be split (cloud_sweep.dispatch_across), so it is
+    # NAMED from the store, the same list each machine would have worked out,
+    # as the BACKTEST button names it
+    board = [c.replace("_USDT", "") for c in dj.stored_symbols(store="v1")]
+    got = cs.dispatch_across(shards=cap.CLOUD_RUNNERS, coins=0, coin_list=board,
+                             timeframes=",".join(frames), min_days=0,
+                             # the operator's own window and stake, not a default
+                             days=int(spec.get("days") or _sweep_days()),
+                             base=float(spec.get("base") or 5.0), mode="full")
+    runs = got.get("runs") or []
+    run = {**(runs[0] if runs else {}), "runs": runs, "why": got.get("why")}
     cs.remember(run)
     reach = pend.get("measurable", 0)
     rest = []

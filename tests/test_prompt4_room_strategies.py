@@ -291,3 +291,42 @@ def test_the_route_uses_the_forecast_pages_own_reality_check(store, monkeypatch)
     monkeypatch.setattr(f2a, "live", lambda: {"reality": {"all": REAL}, "at": 0})
     got = api.room_strategies_route(ms(2026, 9, 1, 0) / 1000, ms(2026, 9, 30, 23) / 1000)
     assert got["reality"] == REAL and got["kept"] == 0
+
+
+def test_a_round_is_dealt_across_every_account(monkeypatch):
+    """Operator, Oct 02, 2026: "moving forward i want 40 machines to be used
+    always". Two accounts, 20 machines each: each gets a share of the
+    replay's shards, balanced by size, every shard once — and a list the
+    plan can never read as a count."""
+    import importlib.util
+    from tradingagents import cloud_sweep as cs
+    sizes = {1: 597, 2: 613, 3: 549, 8: 788, 11: 851, 15: 779, 30: 434, 39: 541}
+    a, b = rst.split_shards(sizes, 2)
+    assert sorted(a + b) == sorted(sizes) and not set(a) & set(b)
+    assert abs(sum(sizes[s] for s in a) - sum(sizes[s] for s in b)) <= max(sizes.values())
+    spec = importlib.util.spec_from_file_location("research_plan", ROOT / ".github/scripts/research_plan.py")
+    rp_ = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rp_)
+    assert rp_.wanted("40") == list(range(40))
+    assert rp_.wanted("[5]") == [5], "one shard sent as a list, never read as a count of 5"
+    assert rp_.wanted("1,4,9") == [1, 4, 9]
+    calls = []
+
+    def gh(*args, **kw):
+        calls.append(args)
+        if args[:2] == ("api", "repos/jeremydevera/analyzer-x/actions/runs/37007971331/artifacts?per_page=100"):
+            return "\n".join(f"replay-{s} {n * 2 ** 20}" for s, n in sizes.items()) + "\nreplay-0 618\n"
+        if args[:2] == ("run", "list"):
+            n = sum(1 for c in calls if c[:2] == ("workflow", "run") and args[3] in c)
+            return json.dumps([{"databaseId": 100 + i} for i in range(n)])
+        return ""
+    monkeypatch.setattr(cs, "_gh", gh)
+    monkeypatch.setattr(rst.time, "sleep", lambda s: None)
+    got = rst.dispatch("research/p4/round9.json", "daily", 4, "37007971331", "jeremydevera/analyzer-x",
+                       1790942400000, fleets=["jeremydvera/analyzer-x", "jeremydevera/analyzer-x"])
+    assert [g["repo"] for g in got] == ["jeremydvera/analyzer-x", "jeremydevera/analyzer-x"]
+    assert sorted(got[0]["shards"] + got[1]["shards"]) == sorted(sizes), "the empty shard 0 is left out"
+    runs = [c for c in calls if c[:2] == ("workflow", "run")]
+    assert len(runs) == 2 and all("source_repo=jeremydevera/analyzer-x" in c for c in runs)
+    assert all(any(x.startswith("shards=[") for x in c) for c in runs)
+    assert all(g["run"] is not None for g in got)

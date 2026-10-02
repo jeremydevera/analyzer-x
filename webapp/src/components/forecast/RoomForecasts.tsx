@@ -15,6 +15,7 @@
 import { Fragment, useCallback, useState } from "react";
 import { api, dateBoxValue, fmtMoney, fmtWhen, Forecast, Forecasts, ForecastsLive, RoomBacktest, RoomGroup, RoomNow, RoomStrategies } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
+import PageButtons from "@/components/common/PageButtons";
 
 const roomName = (id: string) => (id === "main" ? "Main" : `#${id}`);
 const pct = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(1)}%`);
@@ -339,7 +340,7 @@ function ForecastDetail({ f }: { f: Forecast }) {
   );
 }
 
-function History({ d, page, setPage }: { d: Forecasts; page: number; setPage: (n: number) => void }) {
+function History({ d, setPage }: { d: Forecasts; setPage: (n: number) => void }) {
   const [open, setOpen] = useState<number | null>(null);
   return (
     <div className={card}>
@@ -390,13 +391,8 @@ function History({ d, page, setPage }: { d: Forecasts; page: number; setPage: (n
           </table>
         </div>
       )}
-      {d.pages > 1 && (
-        <div className="mt-3 flex items-center gap-2 text-theme-xs text-gray-600 dark:text-gray-300">
-          <button type="button" disabled={page <= 1} onClick={() => { setPage(page - 1); setOpen(null); }} className={`${btn} disabled:opacity-40`}>newer</button>
-          <span>page {d.page} of {d.pages}</span>
-          <button type="button" disabled={page >= d.pages} onClick={() => { setPage(page + 1); setOpen(null); }} className={`${btn} disabled:opacity-40`}>older</button>
-        </div>
-      )}
+      {/* newest first: page 1 is the newest ten */}
+      <PageButtons cur={d.page} pages={d.pages} goto={(n) => { setPage(n); setOpen(null); }} what="saved forecasts" />
     </div>
   );
 }
@@ -478,7 +474,7 @@ export default function RoomForecasts() {
       {live && <RoomBacktestPanel rooms={live.rooms} />}
 
       {err && <p className="text-theme-xs text-error-500">could not read the saved forecasts — {err}</p>}
-      {d && <History d={d} page={page} setPage={setPage} />}
+      {d && <History d={d} setPage={setPage} />}
 
       {d && (
         <div className={card}>
@@ -582,14 +578,13 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
   const [from, setFrom] = useState(dateBoxValue(7));
   const [to, setTo] = useState(dateBoxValue(0));
   const [sort, setSort] = useState("gap");
-  const [page, setPage] = useState(1);
   const [d, setD] = useState<RoomBacktest | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const run = (pg = 1, so = sort) => {
     setBusy(true); setErr("");
     api.roomBacktest({ room, from_s: dayStart(from), to_s: dayStart(to) + 86_399, sort: so, page: pg })
-      .then((x) => { setD(x); setPage(x.page); })
+      .then((x) => setD(x))
       .catch((e) => setErr(String(e?.message ?? e)))
       .finally(() => setBusy(false));
   };
@@ -679,9 +674,7 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
               <option value="backtest">most backtest trades</option>
               <option value="different">most different results</option>
             </select>
-            <span className="ml-auto">page {d.page} of {d.pages} · {d.traded.toLocaleString()} strategies</span>
-            <button type="button" className={btn} disabled={busy || d.page <= 1} onClick={() => run(page - 1)}>‹ prev</button>
-            <button type="button" className={btn} disabled={busy || d.page >= d.pages} onClick={() => run(page + 1)}>next ›</button>
+            <span className="ml-auto">{d.traded.toLocaleString()} strategies with a trade in the range</span>
           </div>
           <div className="mt-2 overflow-x-auto">
             <table className="w-full min-w-[900px] text-theme-xs">
@@ -715,6 +708,8 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
               </tbody>
             </table>
           </div>
+          {/* each page is measured afresh, so the buttons wait while it is */}
+          <PageButtons cur={d.page} pages={d.pages} goto={(n) => run(n)} busy={busy} what="room backtest" />
         </>
       )}
     </div>
@@ -863,13 +858,7 @@ function RoomStrategiesTable() {
               </table>
             </div>
           )}
-          {d.pages > 1 && (
-            <div className="mt-2 flex items-center gap-2 text-theme-xs text-gray-500">
-              <button type="button" className={btn} disabled={d.page <= 1} onClick={() => setPage(d.page - 1)}>‹ prev</button>
-              <span>page {d.page} of {d.pages}</span>
-              <button type="button" className={btn} disabled={d.page >= d.pages} onClick={() => setPage(d.page + 1)}>next ›</button>
-            </div>
-          )}
+          <PageButtons cur={d.page} pages={d.pages} goto={setPage} what="room strategies" />
         </>
       )}
     </div>

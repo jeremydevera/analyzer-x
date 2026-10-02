@@ -1277,6 +1277,13 @@ still at `/forecast`.
   `.github/workflows/forecast.yml` → `.github/scripts/forecast_shard.py` on a
   `replay.yml` run, added up by `forecast_v2_merge.py`. The page's lists are
   filtered and paged by `forecast_v2_api.py`, never in the browser.
+* **Every list pages TEN at a time under Auto Trade's own buttons**
+  (operator, Oct 02, 2026: *"in forecast, make it paginated just like in auto
+  trade"*): `forecast_v2_api.PER_PAGE = 10`, the size Positions and the
+  Watcher use, passed by the routes to Backtest a room and Room strategies
+  too, and one pager, `components/common/PageButtons` (prev · 1 2 … N · next
+  · of N). A new list on the page uses both — no "back/next", no scroll box,
+  no top-N cut. Guard: `tests/test_forecast_pages_like_auto_trade.py`.
 * **THE REALITY CHECK is two numbers, never one.** Over the same rows and the
   same hours (each switch-on to the end of its rolling30 backtest, the
   backtest side capped at the runner's 4 trades per coin): `took` = the share

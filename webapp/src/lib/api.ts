@@ -1026,6 +1026,12 @@ export type F2Universe = { write?: { wr: number; trades: number; tp: string; win
 export type F2WhatIf = { id: string; words?: string; status: string; why: string; run?: number;
   /** the end of the replay it was measured on — the table's may be newer */
   asked_at?: number; end_ms?: number; result?: F2Rule | null };
+/** one page of a Forecast page list, paged by the server (forecast_v2_api._page) */
+export type F2Page<T> = { rows: T[]; total: number; page: number; pages: number; per: number };
+export type F2AvoidPage = F2Page<F2Avoid> & { examined: number; rule: string };
+/** a signal family with the rooms' backtest beside it, [trades, wins, profit];
+ *  `has_backtest` false = no backtest at all, so the column reads — not 0 */
+export type F2FamilyPage = F2Page<F2Group & { bt: [number, number, number] | null }> & { has_backtest: boolean };
 export type F2Breakdown = { id: string; tf: Record<string, [number, number, number]>;
   family: Record<string, [number, number, number]>; kind: Record<string, [number, number, number]>;
   hour: Record<string, [number, number, number]>; stops: Record<string, [number, number, number]>;
@@ -1286,7 +1292,11 @@ export const api = {
     return get<F2RulePage>(`/api/forecast-v2/rules?${p}`);
   },
   forecastV2WhatIf: (cfg: F2WhatIfCfg) => postDetail<F2WhatIf>("/api/forecast-v2/whatif", { cfg }),
-  forecastV2WhatIfs: () => get<{ rows: F2WhatIf[]; total: number }>("/api/forecast-v2/whatif"),
+  // ten a page, like every list on the Forecast page (Oct 02, 2026: "make it
+  // paginated just like in auto trade")
+  forecastV2WhatIfs: (page = 1) => get<F2Page<F2WhatIf>>(`/api/forecast-v2/whatif?page=${page}`),
+  forecastV2Avoid: (page = 1) => get<F2AvoidPage>(`/api/forecast-v2/avoid?page=${page}`),
+  forecastV2Families: (page = 1) => get<F2FamilyPage>(`/api/forecast-v2/families?page=${page}`),
   forecastV2Switch: (on: boolean) => postDetail<{ on: boolean }>("/api/forecast-v2/switch", { on }),
   roomErrors: (q: { room?: string; kind?: string; hours?: number; page?: number }) => {
     const p = new URLSearchParams();

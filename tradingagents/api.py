@@ -1266,14 +1266,16 @@ def room_strategies_route(from_s: float, to_s: float, min_winrate: float = 0,
     """Forecast -> Room strategies: every winner prompt 4 kept, RE-MEASURED over
     exactly the chosen dates from its own stored trades (operator, Oct 02, 2026:
     "when i run that prompt i want you to look for all kinds of combination
-    then add it in room strategy"). Filtered, sorted and paged here."""
-    from tradingagents import room_strategies as _rst
+    then add it in room strategy"). Filtered, sorted and paged here, ten a
+    page like every list on the Forecast page (forecast_v2_api.PER_PAGE)."""
+    from tradingagents import forecast_v2_api as _f2a, room_strategies as _rst
 
     if to_s < from_s:
         raise HTTPException(400, "the end of the range is before its start")
     try:
         return _rst.table(from_s, to_s, min_winrate=min_winrate, min_profit=min_profit,
-                          window=window, deployable=deployable, find=find, sort=sort, page=page)
+                          window=window, deployable=deployable, find=find, sort=sort, page=page,
+                          per=_f2a.PER_PAGE)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 
@@ -1284,13 +1286,14 @@ def room_backtest_route(room: str, from_s: float, to_s: float, sort: str = "gap"
     """Forecast -> Backtest a room (operator, Oct 02, 2026: "i want ability to
     backtest room in forecast v1, i want option to filter date range to
     backtest so i can see if the deployed tabs attached matches the
-    backtest"). Filtered, sorted and paged here (tradingagents/room_backtest.py)."""
-    from tradingagents import room_backtest as _rb
+    backtest"). Filtered, sorted and paged here (tradingagents/room_backtest.py),
+    ten a page like every list on the Forecast page (forecast_v2_api.PER_PAGE)."""
+    from tradingagents import forecast_v2_api as _f2a, room_backtest as _rb
 
     if to_s < from_s:
         raise HTTPException(400, "the end of the range is before its start")
     try:
-        return _rb.compare(room, from_s, to_s, sort=sort, page=page)
+        return _rb.compare(room, from_s, to_s, sort=sort, page=page, per=_f2a.PER_PAGE)
     except ValueError as exc:
         raise HTTPException(404 if "no room" in str(exc) else 400, str(exc)) from exc
 
@@ -1339,11 +1342,25 @@ def forecasts_new_route() -> dict:
 # ------------------------------------------------------------ Forecast v2
 @app.get("/api/forecast-v2")
 def forecast_v2_route() -> dict:
-    """Auto Trade -> Forecast v2: everything but the two big lists, which
-    page on their own routes (tradingagents/forecast_v2_api.py)."""
+    """Auto Trade -> Forecast v2: everything but the lists, which page on
+    their own routes (tradingagents/forecast_v2_api.py)."""
     from tradingagents import forecast_v2_api as _f2a
 
     return _f2a.summary()
+
+
+@app.get("/api/forecast-v2/avoid")
+def forecast_v2_avoid_route(page: int = 1) -> dict:
+    from tradingagents import forecast_v2_api as _f2a
+
+    return _f2a.avoid(page)
+
+
+@app.get("/api/forecast-v2/families")
+def forecast_v2_families_route(page: int = 1) -> dict:
+    from tradingagents import forecast_v2_api as _f2a
+
+    return _f2a.families(page)
 
 
 @app.get("/api/forecast-v2/streaks")
@@ -1385,11 +1402,10 @@ def forecast_v2_whatif_route(body: dict) -> dict:
 
 
 @app.get("/api/forecast-v2/whatif")
-def forecast_v2_whatifs_route() -> dict:
-    from tradingagents import forecast_v2_daily as _f2d
+def forecast_v2_whatifs_route(page: int = 1) -> dict:
+    from tradingagents import forecast_v2_api as _f2a
 
-    rows = sorted(_f2d.whatifs().values(), key=lambda r: -float(r.get("asked_at") or 0))
-    return {"rows": rows[:20], "total": len(rows)}
+    return _f2a.whatifs(page)
 
 
 @app.post("/api/forecast-v2/switch")

@@ -399,8 +399,11 @@ def test_the_lists_are_filtered_and_paged_by_the_server():
     for i in range(30):
         write(trades([1.0] * (10 + i % 3), symbol=f"C{i:02d}STOCK_USDT", start=NOW - 30 * HOUR + i * 60))
     got = f2a.streaks("practice", "win", 11, page=1)
-    assert got["total"] == 20 and got["of"] == 30 and len(got["rows"]) == f2a.PER_PAGE - 5
+    assert got["total"] == 20 and got["of"] == 30 and len(got["rows"]) == min(20, f2a.PER_PAGE)
     assert all(r["length"] >= 11 for r in got["rows"])
+    # the last page holds what is left, never a page cut in the browser
+    last = f2a.streaks("practice", "win", 11, page=got["pages"])
+    assert got["pages"] == -(-20 // f2a.PER_PAGE) and len(last["rows"]) == 20 - (got["pages"] - 1) * f2a.PER_PAGE
     assert "every room and coin" in got["examined"]["what"]
     with pytest.raises(ValueError):
         f2a.streaks("everything", "win")

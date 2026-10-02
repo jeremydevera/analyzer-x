@@ -21,7 +21,13 @@ from pathlib import Path
 from tradingagents import forecast_rules as fr, forecast_v2 as f2
 
 LIVE_FRESH_S = 30
-PER_PAGE = 25
+# TEN A PAGE, THE AUTO TRADE SIZE (operator, Oct 02, 2026: "in forecast, make
+# it paginated just like in auto trade" — Positions and the Watcher there page
+# ten rows at a time under numbered buttons). Every list on the Forecast page
+# pages at this size: the streaks, the rule sets, the coins to avoid, the
+# signal families and the what-ifs here, and Backtest a room and Room
+# strategies through their routes in api.py.
+PER_PAGE = 10
 _LIVE: dict = {"value": None, "busy": False, "error": ""}
 _LIVE_LOCK = threading.Lock()
 _FILES: dict = {}
@@ -207,6 +213,47 @@ def streaks(source: str = "practice", kind: str = "win", min_len: int | None = N
         r["follow"] = _follow_for(kind, r["length"])
     out.update(source=source, kind=kind, min=n, of=len(every), examined=examined, note=note)
     return out
+
+
+def avoid(page: int = 1) -> dict:
+    """Coins to avoid, worst first as forecast_v2.coins_to_avoid ranks them,
+    paged here — the whole list used to sit in one scroll box (46 coins on
+    Oct 02, 2026)."""
+    a = live().get("avoid") or {}
+    out = _page(list(a.get("coins") or []), page)
+    out.update(examined=a.get("examined", 0), rule=a.get("rule", ""))
+    return out
+
+
+def families(page: int = 1) -> dict:
+    """Where the money goes, by signal family, worst first: EVERY family,
+    paged here — the page used to cut it to the 15 that lost the most (15 of
+    33 on Oct 02, 2026). Each row carries the rooms' backtest beside it,
+    [trades, wins, profit] summed over the rooms' breakdowns, the same sum
+    the page makes for the other splits; `has_backtest` says whether a
+    backtest exists at all, so a family it never traded reads 0, not —."""
+    rows = list((live().get("money") or {}).get("by_family") or [])
+    rooms = (latest() or {}).get("rooms") or {}
+    sums: dict = {}
+    for r in rooms.values():
+        for k, v in (r.get("family") or {}).items():
+            c = sums.get(k, (0, 0, 0.0))
+            sums[k] = (c[0] + v[0], c[1] + v[1], c[2] + v[2])
+    out = _page(rows, page)
+    # new dicts: the rows belong to the shared practice copy every request reads
+    out["rows"] = [{**g, "bt": list(sums[g["group"]]) if g["group"] in sums else None}
+                   for g in out["rows"]]
+    out["has_backtest"] = bool(rooms)
+    return out
+
+
+def whatifs(page: int = 1) -> dict:
+    """Every what-if asked, newest first, paged here — the route used to send
+    the newest 20 and nothing older."""
+    from tradingagents import forecast_v2_daily as fd
+
+    rows = sorted(fd.whatifs().values(), key=lambda r: -float(r.get("asked_at") or 0))
+    return _page(rows, page)
 
 
 SORTS = {"rank": lambda s: s["rank"],
@@ -413,8 +460,10 @@ def tracker_alarms(now: float | None = None) -> list:
 
 
 def summary(now: float | None = None) -> dict:
-    """Everything on the page except the two big lists (streaks, rule sets),
-    which page on their own routes."""
+    """Everything on the page except the lists that page on their own routes
+    (streaks, rule sets, coins to avoid, signal families, what-ifs). `avoid`
+    and `money` still carry their whole lists for the counts and the small
+    splits; the page reads the long ones a page at a time."""
     from tradingagents import forecast_v2_daily as fd
 
     lv = live()

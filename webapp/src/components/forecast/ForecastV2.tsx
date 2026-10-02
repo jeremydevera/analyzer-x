@@ -10,13 +10,16 @@
  *  "okay run that prompt and create Forecast v2" (docs/FORECAST-V2.md).
  *
  *  Every number is worked out on the server (tradingagents/forecast_v2*.py);
- *  every list is filtered, sorted and paged there. This file only prints. */
+ *  every list is filtered, sorted and paged there, ten a page under the Auto
+ *  Trade buttons (Oct 02, 2026: "in forecast, make it paginated just like in
+ *  auto trade"). This file only prints. */
 import { Fragment, useCallback, useState } from "react";
 import {
-  api, fmtMoney, fmtWhen, fmtWhenMs, F2Group, F2Rule, F2RulePage, F2RuleQuery, F2Streak,
-  F2StreakPage, F2Summary, F2WhatIf, F2WhatIfCfg,
+  api, fmtMoney, fmtWhen, fmtWhenMs, F2AvoidPage, F2FamilyPage, F2Group, F2Page, F2Rule, F2RulePage,
+  F2RuleQuery, F2Streak, F2StreakPage, F2Summary, F2WhatIf, F2WhatIfCfg,
 } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
+import PageButtons from "@/components/common/PageButtons";
 
 const roomName = (id: string) => (id === "main" ? "Main" : `#${id}`);
 const pct = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(1)}%`);
@@ -50,17 +53,6 @@ function Badge({ kind, children }: { kind: "good" | "bad" | "info"; children: Re
     : kind === "bad" ? "bg-error-50 text-error-600 dark:bg-error-500/15"
     : "bg-gray-100 text-gray-600 dark:bg-white/[0.06] dark:text-gray-300";
   return <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${c}`}>{children}</span>;
-}
-
-function Pager({ page, pages, set }: { page: number; pages: number; set: (n: number) => void }) {
-  if (pages <= 1) return null;
-  return (
-    <div className="mt-2 flex items-center gap-2 text-theme-xs text-gray-600 dark:text-gray-300">
-      <button type="button" className={btn} disabled={page <= 1} onClick={() => set(page - 1)}>back</button>
-      <span>page {page} of {pages}</span>
-      <button type="button" className={btn} disabled={page >= pages} onClick={() => set(page + 1)}>next</button>
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------- A. streaks
@@ -136,23 +128,35 @@ function StreakList({ kind, initial }: { kind: "win" | "loss"; initial: number }
           </table>
         </div>
       )}
-      {d && <Pager page={d.page} pages={d.pages} set={setPage} />}
+      {d && <PageButtons cur={d.page} pages={d.pages} goto={setPage} what={`${kind} streak`} />}
     </div>
   );
 }
 
 // -------------------------------------------------------- B. coins to avoid
 function Avoid({ s }: { s: F2Summary }) {
-  // the WHOLE list, as the server sent it — never a page cut in the browser
-  const rows = s.avoid.coins;
+  // TEN A PAGE FROM THE SERVER (Oct 02, 2026: "make it paginated just like
+  // in auto trade") — the whole list used to sit in one scroll box
+  const [page, setPage] = useState(1);
+  const [d, setD] = useState<F2AvoidPage | null>(null);
+  const [err, setErr] = useState("");
+  const load = useCallback(() => {
+    api.forecastV2Avoid(page).then((r) => { setD(r); setErr(""); })
+      .catch((e) => setErr(String(e?.message ?? e)));
+  }, [page]);
+  useLiveRefresh(load, 30_000, [load]);
+  const rows = d?.rows ?? [];
   return (
     <div className={card}>
       <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Coins to avoid</h3>
-      <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-        {s.avoid.coins.length.toLocaleString()} of {s.avoid.examined.toLocaleString()} coins traded in practice {s.avoid.rule} · the backtest column is the same strategies&apos; last 30 days
-      </p>
-      {rows.length ? (
-        <div className="mt-2 max-h-[480px] overflow-auto">
+      {err && <p className="mt-1 text-theme-xs text-error-500">could not read the coins to avoid — {err}</p>}
+      {d && (
+        <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+          {d.total.toLocaleString()} of {d.examined.toLocaleString()} coins traded in practice {d.rule} · the backtest column is the same strategies&apos; last 30 days
+        </p>
+      )}
+      {d && (rows.length ? (
+        <div className="mt-2 overflow-x-auto">
           <table className="w-full text-theme-xs">
             <thead><tr>{["coin", "rooms", "trades", "won / lost", "win rate", "profit", "worst losing run", "backtest win rate"].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
@@ -171,13 +175,16 @@ function Avoid({ s }: { s: F2Summary }) {
             </tbody>
           </table>
         </div>
-      ) : <p className="mt-2 text-theme-xs text-gray-400">no coin has lost money over {s.defaults.avoid_min_trades}+ practice trades in the {s.avoid.examined} coins examined</p>}
+      ) : <p className="mt-2 text-theme-xs text-gray-400">no coin has lost money over {s.defaults.avoid_min_trades}+ practice trades in the {d.examined} coins examined</p>)}
+      {d && <PageButtons cur={d.page} pages={d.pages} goto={setPage} what="coins to avoid" />}
     </div>
   );
 }
 
 // --------------------------------------------------- C. where the money goes
-function sumBreakdown(s: F2Summary, key: "tf" | "family" | "kind" | "hour" | "stops") {
+// the small splits only — the signal families are summed by the server and
+// paged there (Families)
+function sumBreakdown(s: F2Summary, key: "tf" | "kind" | "hour" | "stops") {
   const out: Record<string, [number, number, number]> = {};
   const rooms = s.backtest?.rooms ?? {};
   for (const r of Object.values(rooms)) {
@@ -189,8 +196,12 @@ function sumBreakdown(s: F2Summary, key: "tf" | "family" | "kind" | "hour" | "st
   return out;
 }
 
-function SideBySide({ title, rows, bt, note }: { title: string; rows: F2Group[]; bt: Record<string, [number, number, number]>; note?: string }) {
-  const hasBt = Object.keys(bt).length > 0;
+function SideBySide({ title, rows, bt, note, backtest }: {
+  title: string; rows: F2Group[]; bt: Record<string, [number, number, number]>; note?: string;
+  /** whether any backtest exists — a paged list cannot tell from its own rows */
+  backtest?: boolean;
+}) {
+  const hasBt = backtest ?? Object.keys(bt).length > 0;
   return (
     <div>
       <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">{title}</p>
@@ -270,11 +281,32 @@ function Money({ s }: { s: F2Summary }) {
         <SideBySide title="By the hour it opened (New York time)" rows={m.by_hour} bt={sumBreakdown(s, "hour")} />
         <SideBySide title="Stop-outs: how long a losing trade lasted" rows={m.stop_outs} bt={sumBreakdown(s, "stops")}
           note="practice: trades closed by their stop · backtest: every losing trade" />
-        <div className="lg:col-span-2">
-          <SideBySide title="By signal family (worst first)" rows={m.by_family.slice(0, 15)} bt={sumBreakdown(s, "family")}
-            note={`${m.by_family.length} families traded; the 15 that lost the most are shown`} />
-        </div>
+        <Families />
       </div>
+    </div>
+  );
+}
+
+/** By signal family, worst first: EVERY family, ten a page from the server
+ *  (it used to show the 15 that lost the most and nothing else), each row
+ *  with the rooms' backtest the server summed beside it. */
+function Families() {
+  const [page, setPage] = useState(1);
+  const [d, setD] = useState<F2FamilyPage | null>(null);
+  const [err, setErr] = useState("");
+  const load = useCallback(() => {
+    api.forecastV2Families(page).then((r) => { setD(r); setErr(""); })
+      .catch((e) => setErr(String(e?.message ?? e)));
+  }, [page]);
+  useLiveRefresh(load, 30_000, [load]);
+  const bt: Record<string, [number, number, number]> = {};
+  for (const g of d?.rows ?? []) if (g.bt) bt[g.group] = g.bt;
+  return (
+    <div className="lg:col-span-2">
+      {err && <p className="text-theme-xs text-error-500">could not read the signal families — {err}</p>}
+      {d && <SideBySide title="By signal family (worst first)" rows={d.rows} bt={bt} backtest={d.has_backtest}
+        note={`${d.total.toLocaleString()} families traded, worst first`} />}
+      {d && <PageButtons cur={d.page} pages={d.pages} goto={setPage} what="signal family" />}
     </div>
   );
 }
@@ -439,7 +471,7 @@ function Rules({ s }: { s: F2Summary }) {
           </table>
         </div>
       )}
-      {d && <Pager page={d.page} pages={d.pages} set={(n) => setQ((x) => ({ ...x, page: n }))} />}
+      {d && <PageButtons cur={d.page} pages={d.pages} goto={(n) => setQ((x) => ({ ...x, page: n }))} what="rule set" />}
       <WhatIf s={s} />
     </div>
   );
@@ -448,11 +480,15 @@ function Rules({ s }: { s: F2Summary }) {
 function WhatIf({ s }: { s: F2Summary }) {
   const [cfg, setCfg] = useState<F2WhatIfCfg>({ window_days: 30, on_winrate: 90, min_trades: 40, tp_rule: ">", max_sl: 2 });
   const [note, setNote] = useState("");
-  const [rows, setRows] = useState<F2WhatIf[]>([]);
+  // every what-if asked, newest first, ten a page from the server (it used to
+  // send the newest 20 and nothing older)
+  const [page, setPage] = useState(1);
+  const [asked, setAsked] = useState<F2Page<F2WhatIf> | null>(null);
   const load = useCallback(() => {
-    api.forecastV2WhatIfs().then((r) => setRows(r.rows)).catch(() => { /* the list is a convenience */ });
-  }, []);
+    api.forecastV2WhatIfs(page).then(setAsked).catch(() => { /* the list is a convenience */ });
+  }, [page]);
   useLiveRefresh(load, 30_000, [load]);
+  const rows = asked?.rows ?? [];
   const ask = async () => {
     setNote("asking…");
     try {
@@ -461,7 +497,9 @@ function WhatIf({ s }: { s: F2Summary }) {
       // daily replay can wait an hour, so no fixed estimate is printed here
       setNote(got.status === "done" ? `#${got.id} is measured — below`
         : got.status === "working" ? `#${got.id}: ${got.why}` : `#${got.id} ${got.status}: ${got.why}`);
-      load();
+      // the newest is on page 1; moving there loads it, and only one request
+      // is in flight, so an older page's answer cannot land on top of it
+      if (page === 1) load(); else setPage(1);
     } catch (e) { setNote(`not asked — ${String((e as Error)?.message ?? e)}`); }
   };
   const opt = (key: string, value: unknown) => setCfg((c) => {
@@ -496,6 +534,9 @@ function WhatIf({ s }: { s: F2Summary }) {
         {note && <span className="text-theme-xs text-gray-600 dark:text-gray-300">{note}</span>}
         {!s.backtest && <span className="text-theme-xs text-gray-400">needs the first daily run first</span>}
       </div>
+      {asked && asked.total > 0 && (
+        <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">{asked.total.toLocaleString()} asked, newest first</p>
+      )}
       {rows.length > 0 && (
         <div className="mt-2 overflow-x-auto">
           <table className="w-full text-theme-xs">
@@ -517,6 +558,7 @@ function WhatIf({ s }: { s: F2Summary }) {
           </table>
         </div>
       )}
+      {asked && <PageButtons cur={asked.page} pages={asked.pages} goto={setPage} what="what-if" />}
     </div>
   );
 }

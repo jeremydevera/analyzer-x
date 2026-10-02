@@ -344,11 +344,17 @@ gh workflow run forecast.yml --repo jeremydevera/analyzer-x -f source_run=<repla
 The page's "run it every day" box switches the chain off and on
 (`POST /api/forecast-v2/switch`); off stops it dispatching and nothing else.
 
-For the best rule sets this month AND for the next 15 days — measured on
-15-day stretches of the same trades, and kept on this page every day after —
-paste prompt 4 of `docs/FORECAST-PROMPTS.md` (Auto Trade → Forecast shows it
-with a copy button). It needs no new GitHub run: the daily run's downloads in
-`~/.tradingagents/forecast_v2/runs/` already hold every rule set's trades.
+For NEW room strategies — prompt 3's every-shape search (7, 15 or 30 days,
+40-95% wins, 1-50 trades, every target-vs-stop shape, stop and target caps,
+this page's 22 options) walked forward with this page's two horizons, THIS
+MONTH and the NEXT 15 DAYS measured on 15-day stretches — paste prompt 4 of
+`docs/FORECAST-PROMPTS.md` (Auto Trade → Forecast shows it with a copy
+button). Every winner it finds is kept in "Room Strategies" inside "Best room
+rules this month" (the same kind of thing: one set of room rules and what it
+should make), never deleted, and each run tries combinations no run tried
+before. It needs prompt 3's loose replay (`wr=40,trades=1,tp=any,windows=7|15|30`):
+the daily replay here is written at 70% / 20 trades, so it can keep only the
+strategies at or above that line current every day.
 
 ## Bug hunt (harddev) rounds
 

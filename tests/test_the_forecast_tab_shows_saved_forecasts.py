@@ -85,19 +85,32 @@ def test_the_tab_offers_every_prompt_from_the_one_document():
     assert [p["title"] for p in got][:4] == ["1. Make a new forecast",
                                              "2. Look across every saved forecast",
                                              "3. Find the best room rules (every shape, nothing left out)",
-                                             "4. Best room rules this month and for the next 15 days"]
+                                             "4. Find new room strategies for this month and the next 15 days"]
     assert [p["title"].split(".")[0] for p in got] == [str(i) for i in range(1, len(got) + 1)]
-    # prompt 4 (Oct 02, 2026: "create me a prompt that will loook for Best room
-    # rules this month and 15 days"): 15-day stretches MEASURED, never a month
-    # halved (RCA-2026-10-01-J), from the trades the daily run already left on
-    # this PC — the folder and the functions it names are the code's own
-    from tradingagents import forecast_v2_daily as f2d, forecast_v2_merge as f2m
+    # prompt 4 (Oct 02, 2026: "what i want for #4 is you will always find a new
+    # set combination that is best for this month and for the next 15 days /
+    # its like combining the two"): prompt 3's every-shape search with Forecast
+    # v2's two horizons, 15-day stretches MEASURED (never a month halved,
+    # RCA-2026-10-01-J), every find kept in "Room Strategies" inside "Best room
+    # rules this month". The numbers and rules it names are the code's own.
+    from tradingagents import (
+        backtest_report as br,
+        forecast_rules as fr,
+        watcher_policy as wp,
+        watcher_research as rs,
+    )
 
-    p4 = got[3]["text"]
+    p4 = " ".join(got[3]["text"].split())        # the phrases, whatever the line breaks
     assert "Never a month divided by 2" in p4 and "RCA-2026-10-01-J" in p4
-    assert "~/.tradingagents/forecast_v2/runs/<base run>" in p4
-    assert f2d.home().name == "forecast_v2" and (f2d.home() / "runs").parent == f2d.home()
-    assert callable(f2m.load) and callable(f2m.trades_of) and "forecast_v2_merge.load and trades_of" in p4
+    assert '"Room Strategies"' in p4 and '"Best room rules this month"' in p4
+    assert f'write_rule "{rs.SCENARIOS6_WRITE}"' in p4, "the same loose data as prompt 3"
+    assert f"grid 6 ({len(rs.scenarios6()):,})" in p4
+    assert f"{len(fr.OPTIONS)} options (forecast_rules.OPTIONS)" in p4
+    assert "never repeats one" in p4 and "A FAIR PICK" in p4
+    # what a room cannot run yet is named as a switch it needs: the watcher takes
+    # a 15- or 30-day window only, and none of Forecast v2's 1.5x / 2x rules
+    assert br.RECENT_DAYS == 15 and "1.5x" not in wp.TP_RULES and "=" in wp.TP_RULES
+    assert "a 7-day window" in p4 and "TP at least 1.5x or 2x SL" in p4
     assert "Read only on trading" in p4 and "never `git stash`" in p4
     # prompt 1 saves through the checked door, so every run makes a new forecast
     assert "python -m tradingagents.room_forecasts add" in got[0]["text"]

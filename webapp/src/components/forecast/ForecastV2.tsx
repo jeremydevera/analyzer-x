@@ -369,6 +369,7 @@ function Rules({ s }: { s: F2Summary }) {
           backtest months {bt.data.complete.map(monthName).join(", ")} (to {fmtWhenMs(bt.data.end_ms)}) · each rule set walked forward day by day, switching strategies on with data from before that day only, all three costs charged ·
           replay of {bt.data.strategies.toLocaleString()} strategies that could pass {bt.data.write ? `${bt.data.write.wr}% / ${bt.data.write.trades} trades / TP ${bt.data.write.tp}` : ""}
           {bt.data.write && bt.data.write.tp === ">" ? " — so \"any TP\" here is the same as TP wider than SL" : ""} · made {fmtWhen(bt.made_at)}
+          {bt.data.of && bt.data.machines < bt.data.of ? <b> · PART OF THE MARKET: the coins of {bt.data.machines} of the run&apos;s {bt.data.of} machines — the others failed on GitHub</b> : null}
         </p>
       ) : <p className="mt-1 text-theme-xs text-gray-400">no rule set has been measured yet — the daily Forecast v2 run on GitHub makes the first one ({s.chain.why || "waiting"})</p>}
       <div className="mt-3 rounded-xl border border-gray-200 p-3 text-theme-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
@@ -588,6 +589,7 @@ export default function ForecastV2() {
             <p>practice numbers read {fmtWhen(s.at)} in {s.took_ms.toLocaleString()} ms{s.refresh_error ? ` · the newest ${s.refresh_error}` : ""}</p>
             <p>
               daily GitHub run: {c?.on === false ? "switched off" : c?.why || "waiting"}{c?.error ? ` · last error: ${c.error}` : ""}
+              {c?.missing && Object.keys(c.missing).length > 0 && ` · used without: ${Object.entries(c.missing).map(([step, m]) => `${step} ${m.failed.length} of ${m.of} machines (${m.failed.slice(0, 4).join(", ")}${m.failed.length > 4 ? ", …" : ""})`).join("; ")}`}
               <label className="ml-2 inline-flex items-center gap-1">
                 <input type="checkbox" checked={c?.on !== false} disabled={busy} onChange={(e) => toggle(e.target.checked)} /> run it every day
               </label>

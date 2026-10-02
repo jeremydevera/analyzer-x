@@ -412,6 +412,23 @@ Round 10 (8:40pm, reading the files the restarted site wrote): 34. **An
 come back "on" at the first save — on another machine after `git pull`.
 This PC's chain was on; the old value is carried over now.
 
+Round 11 (8:45pm, the page's own words): 35. the streaks card still said
+"the bell rings once when a coin first reaches one" — every new run is named
+once, in at most one bell an hour; 36. "last error" stayed on the page after
+the retry that fixed it — a step that gets through clears it.
+
+Round 12 (8:55pm, what tonight's bigger replay asks of the machines — the
+first replay was 20 files, 2.77 GB zipped, the largest 192 MB, 1.3-1.4 GB
+unpacked each, an hour on GitHub; both accounts are public, so a machine has
+16 GB): 37. **one run red on every machine stopped the chain for good** — it
+re-read the same failed run every 30 minutes, never back to idle; it is
+started again once (`STAGE_RETRIES`), then the day is given up by name and
+the next daily update starts fresh, the last finished data still on the
+page. 38. **missing machines were never on the page**, and base and options
+could each miss a different one — both stages now merge over the machines
+they share, and the page prints "PART OF THE MARKET: the coins of N of the
+run's 20 machines" and the chain line "used without: …".
+
 Streak bells under the old code, before 8:15pm: two, one per run —
 ABNBSTOCK at 7:59pm and NECSTOCK at 8:04pm, both 6 losses in a row in
 #4FC03172. All rounds that did find something: RCA-2026-10-01-J, -K and -L.

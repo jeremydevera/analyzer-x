@@ -303,7 +303,10 @@ def due(now: float, st: dict) -> tuple[bool, str]:
     started = st.get("started_day") or (dt.date.fromtimestamp(float(st["started_at"])).isoformat()
                                         if st.get("started_at") else None)
     if started == today:
-        return False, f"today's Forecast v2 was made at {fmt_when(st.get('done_at') or now)}"
+        if st.get("phase") == "done":
+            return False, f"today's Forecast v2 was made at {fmt_when(st.get('done_at') or now)}"
+        return False, ("today's Forecast v2 was given up (the last error says why) — the next "
+                       "daily update starts a new one")
     up = rf._update()
     if not up["runs"] or not up["when"]:
         return False, "waiting for the first daily GitHub update to go out"
@@ -402,6 +405,40 @@ def _tried(st: dict, what: str, now: float) -> float | None:
     return since
 
 
+STAGE_RETRIES = 1     # a run red on EVERY machine is started again this many times
+
+
+def _replay_inputs(start: str) -> dict:
+    return {"shards": SHARDS, "timeframes": "15m,30m,1h,4h,1d", "coin_list": "", "start": start,
+            "base": 5, "groups": "all", "write_rule": WRITE_RULE}
+
+
+def _redo(st: dict, phase: str, run_key: str, s: dict, repo: str, now: float) -> None:
+    """A run red on EVERY machine (bug hunt, round 12). Raising here re-read
+    the same failed run every RETRY_S for ever: never started again, never
+    back to idle, so no later day ran either. It is started again
+    STAGE_RETRIES times; then the day is given up, named, and the next daily
+    update starts a fresh chain — the last finished data stays on the page."""
+    why = (f"{phase} run {st[run_key]} ended {s['conclusion']} on every machine "
+           f"({', '.join(s['failed'][:3]) or 'no machine named'})")
+    redo = st.setdefault("redo", {})
+    if redo.get(phase, 0) < STAGE_RETRIES:
+        wf, inputs = ((REPLAY_WF, _replay_inputs(st["start"])) if phase == "replay" else
+                      (FORECAST_WF, _forecast_inputs(st, phase, {"bases": st.get("bases") or ""}
+                                                     if phase == "options" else None)))
+        run = dispatch(wf, inputs, repo, since=_tried(st, f"redo {phase} {st[run_key]}", now))
+        st.pop("tried", None)
+        redo[phase] = redo.get(phase, 0) + 1
+        st[run_key] = run
+        st["why"] = f"{why} — started again as run {run} (try {redo[phase] + 1} of {STAGE_RETRIES + 1})"
+        print(f"[forecast v2] {st['why']}", flush=True)
+        return
+    st.update(phase="idle", failed_at=0, redo={},
+              error=f"{phase}: {why}, on every try — today's Forecast v2 is given up")
+    st["why"] = f"{st['error']}; the next daily update starts a new one"
+    print(f"[forecast v2] {st['why']}", flush=True)
+
+
 def _step(st: dict, now: float) -> None:
     from tradingagents.positions_view import fmt_when
 
@@ -420,9 +457,7 @@ def _step(st: dict, now: float) -> None:
         from tradingagents import room_forecasts as rf
 
         start = first_check(now)
-        run = dispatch(REPLAY_WF, {"shards": SHARDS, "timeframes": "15m,30m,1h,4h,1d",
-                                   "coin_list": "", "start": start, "base": 5,
-                                   "groups": "all", "write_rule": WRITE_RULE}, repo,
+        run = dispatch(REPLAY_WF, _replay_inputs(start), repo,
                        since=_tried(st, f"replay {start}", now))
         avoid, fams = skip_lists()
         st.pop("tried", None)
@@ -430,7 +465,8 @@ def _step(st: dict, now: float) -> None:
                   started_day=dt.date.fromtimestamp(now).isoformat(),
                   last_update=rf._update()["when"], avoid=avoid, families=fams,
                   base_run=None, options_run=None, error="", failed_at=0, polled_at=0,
-                  missing={}, why=f"replay {run} started on GitHub at {fmt_when(now)} (about an hour)")
+                  missing={}, redo={}, bases="",
+                  why=f"replay {run} started on GitHub at {fmt_when(now)} (about an hour)")
         return
     if now - float(st.get("polled_at") or 0) < POLL_S:
         return
@@ -445,8 +481,8 @@ def _step(st: dict, now: float) -> None:
     # named in the state and on the page — instead of retried for ever
     good = s["machines"] - len(s["failed"])
     if s["conclusion"] != "success" and good <= 0:
-        raise RuntimeError(f"{phase} run {st[run_key]} ended {s['conclusion']} "
-                           f"({', '.join(s['failed'][:3]) or 'no machine named'})")
+        _redo(st, phase, run_key, s, repo, now)
+        return
     if s["failed"]:
         st.setdefault("missing", {})[phase] = {"of": s["machines"], "failed": s["failed"][:40]}
     if phase == "replay":
@@ -462,15 +498,16 @@ def _step(st: dict, now: float) -> None:
         return
     if phase == "base":
         art = download(int(st["base_run"]), repo, "forecast-*")
-        run_merge(str(art), None, {"replay": st["replay_run"], "base": st["base_run"]}, keep=False)
+        run_merge(str(art), None, {"replay": st["replay_run"], "base": st["base_run"],
+                                   "shards": SHARDS, "missing": st.get("missing") or {}}, keep=False)
         out = _latest()
         bases = [s_["cfg"] for s_ in out["sets"] if s_["base"]][:fr.TOP_FOR_OPTIONS]
         rooms = room_rules()
         have = {fr.rule_id(c) for c in bases}
         bases += [c for c in rooms.values() if fr.rule_id(c) not in have]
-        st["options_run"] = dispatch(FORECAST_WF, _forecast_inputs(
-            st, "options", {"bases": ";".join(fr.encode(c) for c in bases)}), repo,
-            since=_tried(st, f"options {st['replay_run']}", now))
+        st["bases"] = ";".join(fr.encode(c) for c in bases)
+        st["options_run"] = dispatch(FORECAST_WF, _forecast_inputs(st, "options", {"bases": st["bases"]}),
+                                     repo, since=_tried(st, f"options {st['replay_run']}", now))
         st.pop("tried", None)
         st.update(phase="options", base_dir=str(art), error="", failed_at=0,
                   why=f"forecast run {st['options_run']} (options) started on GitHub")
@@ -478,7 +515,8 @@ def _step(st: dict, now: float) -> None:
     if phase == "options":
         art = download(int(st["options_run"]), repo, "forecast-*")
         run_merge(st["base_dir"], str(art), {"replay": st["replay_run"], "base": st["base_run"],
-                                             "options": st["options_run"]}, keep=True)
+                                             "options": st["options_run"], "shards": SHARDS,
+                                             "missing": st.get("missing") or {}}, keep=True)
         out = _latest()
         st.update(phase="done", done_day=dt.date.fromtimestamp(now).isoformat(), done_at=now,
                   error="", failed_at=0,

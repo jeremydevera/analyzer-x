@@ -422,8 +422,11 @@ def summary(now: float | None = None) -> dict:
                 "made_at": lt["made_at"], "runs": lt["runs"], "data": lt["data"],
                 "tested": lt["tested"], "reality": lt["reality"], "rooms": lt["rooms"],
                 "follow": lt["follow"]},
+            # the machines a run was used WITHOUT, named (bug hunt, round 12: the
+            # chain said "named on the page" and the page was never sent them)
             "chain": {k: st.get(k) for k in ("phase", "why", "error", "on", "done_at",
-                                             "replay_run", "base_run", "options_run", "repo")},
+                                             "replay_run", "base_run", "options_run", "repo",
+                                             "missing")},
             "tracker": tracker(now) if lt else None, "grading": grading() if lt else None,
             "options": [{"key": k, "value": v, "words": w} for k, v, w in fr.OPTIONS],
             "grid": fr.BASE}

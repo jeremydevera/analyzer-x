@@ -1044,16 +1044,19 @@ export type F2Summary = {
   reality: { rooms: (F2Reality & { room: string; name: string; cap: number })[]; all: F2Reality; rule: string };
   defaults: { win_n: number; loss_m: number; avoid_min_trades: number; thin: number; overlap_warn: number };
   streak_counts: { practice: { win: number; loss: number }; backtest: { count: number; win: number; loss: number; floor: number } | null };
-  backtest: null | { made_at: number; runs: Record<string, number>; reality: F2Reality;
+  backtest: null | { made_at: number; runs: Record<string, unknown>; reality: F2Reality;
     data: { start: string; end_ms: number; months: string[]; complete: string[];
       write: { wr: number; trades: number; tp: string; windows: number[] } | null;
-      machines: number; strategies: number; trades: number };
+      /** machines whose coins are in the numbers, of how many the run had */
+      machines: number; of?: number; shards?: number[]; strategies: number; trades: number };
     tested: { base: number; options: number; total: number };
     rooms: Record<string, F2Breakdown>;
     follow: { win?: { k: number; cases: number; next_win: number; cases10: number; pnl10: number }[];
       loss?: { k: number; cases: number; next_win: number; cases10: number; pnl10: number }[] } };
   chain: { phase?: string; why?: string; error?: string; on?: boolean; done_at?: number;
-    replay_run?: number; base_run?: number; options_run?: number; repo?: string };
+    replay_run?: number; base_run?: number; options_run?: number; repo?: string;
+    /** per step, the machines its run was used without */
+    missing?: Record<string, { of: number; failed: string[] }> | null };
   tracker: null | { month: string; day: number; days: number;
     rooms: { room: string; name: string; id: string | null; words: string | null; below: boolean;
       month: { trades: number; wins: number; losses: number; profit: number; days: { day: string; total: number }[] };

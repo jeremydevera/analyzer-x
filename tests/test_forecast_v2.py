@@ -895,3 +895,66 @@ def test_an_off_saved_before_the_box_had_its_own_file_stays_off():
     fd.switch(True)
     fd._write(fd.read())
     assert fd.read()["on"] is True, "once the box has its own file, it alone decides"
+
+
+# ----------------------------------------------------- bug hunt, round 12
+def test_a_run_red_on_every_machine_is_started_again_once_then_the_day_is_given_up(monkeypatch):
+    """Bug hunt, round 12: a run that failed on every machine raised, and the
+    retry 30 minutes later read the SAME failed run again — for ever: never
+    started again, never back to idle, so no later day ran either."""
+    from tradingagents import forecast_v2_daily as fd
+
+    red = {"status": "completed", "conclusion": "failure", "machines": 20, "done": 20,
+           "failed": [f"forecast ({i})" for i in range(20)], "created": None}
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: red)
+    monkeypatch.setattr(fd, "room_rules", lambda: {})
+    started = []
+    monkeypatch.setattr(fd, "dispatch", lambda wf, inputs, repo, since=None: started.append(
+        (wf, inputs["stage"])) or 88)
+    ready = {"replay_run": 5, "end_ms": 1, "start": "2026-07-01", "repo": "x/y"}
+    st = {"phase": "base", "on": True, "repo": "x/y", "replay_run": 6, "base_run": 7, "end_ms": 2,
+          "start": "2026-07-01", "started_day": "2026-10-01", "ready": ready}
+    fd._step(st, NOW)
+    assert started == [(fd.FORECAST_WF, "base")] and st["base_run"] == 88 and st["phase"] == "base"
+    assert st["why"].endswith("started again as run 88 (try 2 of 2)")
+    fd._step(st, NOW + 600)                     # the second run is red on every machine too
+    assert len(started) == 1 and st["phase"] == "idle", "started again ONCE, then the day is given up"
+    assert st["error"].startswith("base: base run 88 ended failure on every machine")
+    assert st["ready"] == ready, "the last finished data stays on the page"
+    ok, why = fd.due(NOW + 700, st)
+    assert not ok and why.startswith("today's Forecast v2 was given up")
+
+
+def test_both_stages_are_merged_over_the_same_machines(tmp_path):
+    """Bug hunt, round 12: a run is used with some machines red, and a
+    machine is a share of the coins — base without one machine and options
+    without another would rank rule sets measured on different markets."""
+    good = fr.cfg_of(30, 90, 40, ">", 2.0)
+    opt = {**good, "skip_jp": True}
+    t = [(_ms(2026, 7, 5), _ms(2026, 7, 5, 13), 10.0), (_ms(2026, 8, 5), _ms(2026, 8, 5, 13), 20.0),
+         (_ms(2026, 9, 5), _ms(2026, 9, 5, 13), 30.0)]
+    base = _fake_run(tmp_path / "base", [(good, t)], shards=3)
+    opts = _fake_run(tmp_path / "opts", [(opt, t)], shards=3)
+    import shutil
+
+    shutil.rmtree(opts / "forecast-2")          # the options run's machine 2 failed
+    out = fm.merge(base, opts, runs={"shards": 3}, reality={"took": 0.5, "gap": 1.0}, keep=False)
+    assert (out["data"]["machines"], out["data"]["of"], out["data"]["shards"]) == (2, 3, [0, 1])
+    by = {s["id"]: s for s in out["sets"]}
+    # trade j of 3 sits on machine j % 3: machine 2 held September's +30
+    assert by[fr.rule_id(good)]["total"]["profit"] == 30.0, "the base set lost machine 2 as well"
+    assert by[fr.rule_id(opt)]["total"]["profit"] == 30.0
+
+
+def test_the_page_names_the_machines_a_run_was_used_without(monkeypatch):
+    """Bug hunt, round 12: the chain's own comment said the missing machines
+    were "named in the state and on the page" — the page was never sent them."""
+    from tradingagents import forecast_v2_daily as fd
+
+    monkeypatch.setattr(f2a, "live", lambda: {"at": 1, "took_ms": 1, "rooms": [], "avoid": {}, "money": {},
+                                              "reality": {}, "defaults": {}, "streaks": []})
+    gone = {"base": {"of": 20, "failed": ["forecast (3)"]}}
+    fd._write({"phase": "options", "missing": gone})
+    assert f2a.summary()["chain"]["missing"] == gone
+    src = (ROOT / "webapp/src/components/forecast/ForecastV2.tsx").read_text(encoding="utf-8")
+    assert "PART OF THE MARKET" in src and "used without:" in src

@@ -172,13 +172,14 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
-## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: fourteen faults caught by the bug hunt, two of them seen
+## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: sixteen faults caught by the bug hunt, two of them seen
 
 **CEO**
 
-* On its first night the daily Forecast v2 job had fourteen faults that could
+* On its first night the daily Forecast v2 job had sixteen faults that could
   start the same GitHub run twice, lose a what-if, undo the "off" box, ring
-  46 bells in a day, or say "working" about a run that had not started. Two
+  46 bells in a day, stop for good after one bad GitHub run, or say
+  "working" about a run that had not started. Two
   reached you: the "working" line on the page, and two streak bells (7:59pm
   and 8:04pm) of the 46 a day it would have rung.
 * Why: the job was tested one step at a time, and nothing tested what happens
@@ -257,6 +258,18 @@ screen.
    `switch.json`, and the first save without it in `state.json` would have
    turned a chain switched off before the update (on another machine, after
    `git pull`) back on. This PC's was on. Carried over now.
+7. `8:55pm` — round 12, measuring what tonight's bigger replay asks of the
+   machines (the first: 20 files, 2.77 GB zipped, 192 MB the largest, 1.3-1.4
+   GB unpacked each, an hour on GitHub; tonight's holds every TP shape):
+   15. **one bad run stopped it for good** — a run red on EVERY machine
+   raised, and each retry re-read the same failed run, so the chain never
+   started it again, never went back to idle, and no later day ran; it is
+   started again once, then the day is given up by name; 16. **"named on the
+   page" was not** — a run used with some machines red named them only in
+   `state.json`, and the base and options stages could each miss a different
+   machine, ranking rule sets measured on different coins against each
+   other. Both stages now merge over the machines they share, and the page
+   prints "PART OF THE MARKET … N of 20 machines" and "used without: …".
 
 **ROOT CAUSE** — state held in memory across slow calls (GitHub, a download,
 a two-minute merge) and written back whole at the end, by a job whose
@@ -276,7 +289,7 @@ Avoided: a duplicate replay (20 machines for an hour), 46 bells a day, a
 forecast stuck re-merging.
 
 **FIX** — round 6 in f1112b4bd13d; rounds 7-8 in 29e0e618d2be; round 10 in
-this commit.
+c791235f8ba8; round 11 in e7eb75714d53; round 12 in this commit.
 
 **GUARD** — `tests/test_forecast_v2.py`: `test_off_stays_off_when_a_busy_tick_writes_the_state_back`,
 `test_a_what_if_asked_while_another_is_polled_is_kept`,
@@ -293,7 +306,11 @@ this commit.
 `test_a_refused_swap_is_retried_not_lost`,
 `test_a_dispatch_is_on_disk_before_it_is_made`,
 `test_an_off_saved_before_the_box_had_its_own_file_stays_off` (red on
-29e0e618d2be: `assert (True is False)`).
+29e0e618d2be: `assert (True is False)`),
+`test_a_run_red_on_every_machine_is_started_again_once_then_the_day_is_given_up`,
+`test_both_stages_are_merged_over_the_same_machines`,
+`test_the_page_names_the_machines_a_run_was_used_without` (all three red on
+e7eb75714d53).
 
 ---
 

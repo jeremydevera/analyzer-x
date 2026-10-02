@@ -229,6 +229,18 @@ def merge(base_dir: str | Path, options_dir: str | Path | None = None, *,
     if reality is None:
         reality = f2.live()["reality"]["all"]
     metas, packs = load(base_dir)
+    om = op = None
+    if options_dir:
+        om, op = load(options_dir)
+        # BOTH STAGES OVER THE SAME COINS (bug hunt, round 12): a machine is a
+        # share of the coins, and a run is used with some machines red — base
+        # without machine 3 and options without machine 7 would rank rule sets
+        # measured on different markets against each other
+        common = {m["shard"] for m in metas} & {m["shard"] for m in om}
+        metas, packs = _only(metas, packs, common)
+        om, op = _only(om, op, common)
+        if not metas:
+            raise ValueError("the base and options runs share no machine")
     end_ms, start = int(metas[0]["end_ms"]), metas[0]["start"]
     start_ms = int(dt.datetime(*map(int, start.split("-"))).timestamp() * 1000)
     months, complete = months_of(start_ms, end_ms)
@@ -238,8 +250,7 @@ def merge(base_dir: str | Path, options_dir: str | Path | None = None, *,
                       days=metas[0]["sets"][j]["id"] in room_ids)
             for j in range(len(metas[0]["sets"]))]
     tested = {"base": len(sets), "options": 0}
-    if options_dir:
-        om, op = load(options_dir)
+    if om:
         if int(om[0]["end_ms"]) != end_ms:
             raise ValueError("the options run read a different replay end from the base run")
         have = {s["id"] for s in sets}
@@ -265,6 +276,10 @@ def merge(base_dir: str | Path, options_dir: str | Path | None = None, *,
     out = {"made_at": int(now), "runs": runs or {}, "reality": reality,
            "data": {"start": start, "end_ms": end_ms, "months": months, "complete": complete,
                     "write": metas[0].get("write"), "machines": len(metas),
+                    # of how many: the chain says (runs["shards"]); the page
+                    # prints "N of 20" whenever a machine is missing
+                    "of": int((runs or {}).get("shards") or len(metas)),
+                    "shards": sorted(int(m["shard"]) for m in metas),
                     "strategies": sum(int(m["books"]) for m in metas),
                     "trades": sum(int(m["trades"]) for m in metas)},
            "tested": {**tested, "total": len(sets)}, "sets": sets, "rooms": rooms,
@@ -275,6 +290,12 @@ def merge(base_dir: str | Path, options_dir: str | Path | None = None, *,
                        "floor": 5}}
     _save(out, streak_rows, keep)
     return out
+
+
+def _only(metas: list, packs: list, shards: set) -> tuple[list, list]:
+    """The machines whose shard is in `shards`, in order."""
+    keep = [(m, p) for m, p in zip(metas, packs, strict=True) if m["shard"] in shards]
+    return [m for m, _ in keep], [p for _, p in keep]
 
 
 def _rooms(metas: list) -> dict:

@@ -135,8 +135,11 @@ def report(now: float | None = None) -> dict:
                      else str(r.get("action")))
             # a cost-check row stands for every candle it counted — one row an
             # hour per strategy and coin, so a row count said a quarter of a
-            # 15-minute strategy's refusals (RCA-2026-10-02-C)
-            refused[label] += max(1, int(r.get("candles") or 1))
+            # 15-minute strategy's refusals (RCA-2026-10-02-C); 0 is a row
+            # repeating a candle an earlier row counted (a 4-hour candle is
+            # refused for four hours), and a row from before the counts
+            # stands for one
+            refused[label] += int(r["candles"]) if "candles" in r else 1
     return {
         "since": since,
         "now": now,

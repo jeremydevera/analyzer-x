@@ -27,7 +27,8 @@ from tradingagents import feedcheck, portfolio_replay
 KEY, SYM = "fade15_15m", "WIDE_USDT"
 SETTINGS = {"strategies": [KEY], "strategy_coins": {KEY: [SYM]},
             "strategy_margins": {KEY: 5.0}}
-T0 = 1790812800          # Sep 30, 2026 8:00pm New York, on a 15-minute line
+T0 = 1790812800          # Sep 30, 2026 8:00pm New York, on a 15-minute line (and a 4-hour one)
+STEP = {"Min15": 900, "Min30": 1800, "Min60": 3600, "Hour4": 14400, "Day1": 86400}
 
 
 class Clock:
@@ -39,15 +40,17 @@ class Clock:
 
 
 class FX:
-    """Flat 15-minute candles up to the clock (the forming one included, as
-    MEXC sends it), and a book that is wide (refused) or tight (let through)."""
+    """Flat candles of the asked size up to the clock (the forming one
+    included, as MEXC sends it), and a book that is wide (refused) or tight
+    (let through)."""
 
     def __init__(self, clock):
         self.clock, self.wide = clock, True
 
     def klines(self, symbol, interval, n):
-        last = int(self.clock()) // 900 * 900
-        opens = [last - 900 * i for i in range(n)][::-1]
+        step = STEP.get(interval, 900)
+        last = int(self.clock()) // step * step
+        opens = [last - step * i for i in range(n)][::-1]
         return pd.DataFrame({"Date": pd.to_datetime(opens, unit="s"), "Open": 50.0,
                              "High": 50.0, "Low": 50.0, "Close": 50.0, "Volume": 10.0})
 
@@ -61,6 +64,10 @@ class FX:
     def last_price(self, symbol):
         return 50.0
 
+    def funding_now(self, symbol):
+        # read, so a 4-hour hold is refused for the gap, never for an unknown rate
+        return {"per_day": 0.0003, "cycle_h": 8}
+
     def book_cost(self, symbol, notional_usd=200.0):
         # 3.5% gap at night, like FASTSTOCK's 3.512% at Sep 30, 2026 9:00pm
         return ({"spread": 0.035, "slippage": 0.001, "book_exhausted": False} if self.wide
@@ -72,14 +79,14 @@ class Runner:
         self.clock = Clock(T0 + 10)
         monkeypatch.setattr(time, "time", self.clock)
         monkeypatch.setattr(at, "LEDGER_PATH", tmp_path / "ledger.jsonl")
-        for name in ("_GATE_CACHE", "_GATE_LOGGED", "_BAR_CACHE"):
+        for name in ("_GATE_CACHE", "_GATE_LOGGED", "_BAR_CACHE", "_FUNDING_CACHE"):
             monkeypatch.setattr(at, name, {}, raising=False)
         self.path = tmp_path / "ledger.jsonl"
         self.fx, self.state = FX(self.clock), {}
 
-    def cycle(self, t):
+    def cycle(self, t, settings=SETTINGS):
         self.clock.t = float(t)
-        at.process_symbol(SYM, SETTINGS, self.state, fx=self.fx, dry=True)
+        at.process_symbol(SYM, settings, self.state, fx=self.fx, dry=True)
 
     def restart(self):
         """An instant kill and a fresh start: only what was SAVED survives."""
@@ -177,6 +184,24 @@ def test_a_switched_off_strategy_loses_no_count_and_old_entries_go(runner):
 
     src = inspect.getsource(at.run_cycle)
     assert src.index("_flush_stale_refusals(state, time.time())") < src.index("save_state(state, keys=touched)")
+
+
+def test_a_4h_candle_refused_all_evening_is_one_refusal(runner, monkeypatch):
+    """A 4-hour candle stays the newest for four hours, so three hourly rows
+    in four repeat a candle an earlier row counted. A repeat says 0 — with no
+    count at all it read as a row from before the counts, which stands for
+    one (Oct 02, 2026: 27 such rows by 3:45pm, every one a 4h strategy)."""
+    key = "ibs_4h_sl03tp04"
+    four = {"strategies": [key], "strategy_coins": {key: [SYM]}, "strategy_margins": {key: 5.0}}
+    for h in range(5):               # 8:00pm .. midnight, a cycle an hour
+        runner.cycle(T0 + 10 + 3600 * h, four)
+    got = runner.refusals()
+    # 8:00pm: the 4pm-8pm candle; 9, 10, 11pm: the same candle again; midnight: 8pm-12am
+    assert [r.get("candles") for r in got] == [1, 0, 0, 0, 1], got
+    assert [b for r in got for b in r["bars"]] == [T0 - 14400, T0]
+    monkeypatch.setattr(feedcheck, "load_rows", runner.rows)
+    monkeypatch.setattr(feedcheck, "window_since_last_run", lambda r, now=None: 0.0)
+    assert feedcheck.report(now=T0 + 5 * 3600)["refused_total"] == 2, "two candles, five rows"
 
 
 def test_the_feed_check_counts_candles_not_rows(runner, monkeypatch):

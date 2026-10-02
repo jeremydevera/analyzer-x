@@ -5789,7 +5789,13 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                 _count_refused_candle(st, key, symbol, dry, _gbar, unreadable,
                                       gate.get("reason"))
                 if _gate_should_log(symbol, key, dry):
-                    _tally = _take_refused(st, key)
+                    # nothing new to count: the candle in force was counted in
+                    # an earlier row — a 4-hour candle is refused for four
+                    # hours, so three hourly rows in four repeat it. Saying 0
+                    # keeps a repeat from reading as a row from before the
+                    # counts, which stands for one (Oct 02, 2026: 27 such
+                    # rows by 3:45pm, every one a 4h strategy)
+                    _tally = _take_refused(st, key) or {"candles": 0, "bars": []}
                     _more = int(_tally.get("candles") or 0) - 1
                     logger.error(
                         "LIQUIDITY GATE: refusing %s on %s — %s. No order "

@@ -535,6 +535,26 @@ shown on Oct 02, 2026 already had a record, so it never fired. Fixed in
 `test_backtest_a_room_answers_for_a_room_with_no_trade_record_yet`, red on
 b25206343f78's page with exactly that error.
 
+**Found after it shipped, and fixed (Oct 02, 2026 3:45pm)** — a status check
+counted the rows since the restarts: 14,131 refusal rows standing for 30,334
+refused candles, 7,504 of them hourly rows for several candles, 2,915 `late`
+rows — and **27** rows written after the runners' 10:02am restart with no
+count at all: Main 8, #4FC03172 2, #CC94D9FB 17, every one a 4-hour strategy
+(`ibs_4h_sl03tp04` on AUDIO at 10:03am, 11:05am, 12:11pm and 1:14pm). A
+4-hour candle stays the newest for four hours, so three hourly rows in four
+repeat a candle an earlier row already counted, and the fix wrote those
+repeats with no `candles` field — which reads exactly like a row from
+before the counts, standing for one. Nothing was lost (each candle is in
+exactly one row's `bars`), but the feed check would have said 5 refusals
+for 2 candles. A repeat now says `candles: 0, bars: []`, and the feed check
+takes `candles` as written when the field is there and 1 only when it is
+not. WHY IT WAS NOT CAUGHT: every test drove a 15-minute strategy, whose
+candle changes four times inside the hourly limit, so no test had a candle
+LONGER than the limit — the same shape as the 4-hour gap this entry is
+about, one level down. Guard: `test_a_4h_candle_refused_all_evening_is_one_refusal`
+(`[1, None, None, None, 1]` on the runner before the fix, `[1, 0, 0, 0, 1]`
+after; the feed check 2, not 5). Cost: none.
+
 **What is not fixed, stated plainly** — the rebuilt backtest still charges a
 row's stored round trip, never the night-time gap, so it keeps booking trades
 the cost check refuses after US market hours (all 18 of these). Forecast v2's

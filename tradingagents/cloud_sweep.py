@@ -36,9 +36,13 @@ class CloudError(RuntimeError):
 
 
 def _gh(*args: str, timeout: int = 120) -> str:
+    # UTF-8, ALWAYS (RCA-2026-10-02-G): gh writes UTF-8, and `text=True` alone
+    # decodes with the locale — cp1252 on this PC unless the process runs in
+    # Python's UTF-8 mode, which only the app's own start sets. Outside it a
+    # run title's "·" read as "Â·", so a dispatch never found its own run.
     try:
         out = subprocess.run(("gh",) + args, capture_output=True, text=True,
-                             timeout=timeout)
+                             encoding="utf-8", errors="replace", timeout=timeout)
     except FileNotFoundError as exc:
         raise CloudError("the GitHub CLI (gh) is not installed") from exc
     except subprocess.TimeoutExpired as exc:

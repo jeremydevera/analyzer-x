@@ -172,6 +172,84 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-02-G — outside the app, GitHub's run titles were read in the wrong alphabet, so a dispatch could never find the run it had just started (NEVER HAPPENED YET in the app)
+
+**CEO**
+
+* Nothing you saw: the daily Forecast v2 and every button run inside the app,
+  which reads GitHub correctly. A live check I ran by hand at 4:30pm hit it:
+  the second account's runs started on time, and my check said they "did not
+  appear".
+* Why: GitHub's tool writes its answers in UTF-8, and our helper read them in
+  Windows' own codepage, so "Forecast v2 · base" came back as "Forecast v2 Â·
+  base" and matched no title. I first blamed GitHub for listing the run late,
+  wrote that into a pushed commit and made the wait longer — that was wrong.
+* What stops it now: the helper always reads GitHub as UTF-8, and a test
+  sends a real title through a real pipe.
+
+**DEV**
+
+* `cloud_sweep._gh` ran `subprocess.run(("gh",) + args, capture_output=True,
+  text=True)` — no `encoding`, so the locale's cp1252 decoded gh's UTF-8;
+  `forecast_v2_daily.dispatch` → `_runs` → `same_title` then compared
+  "Forecast v2 Â· base · replay 37060968220" (0xc2 0xb7) with its own title
+  (0xb7) and raised "did not appear within 90 seconds".
+* Invariant broken: **text from another program is decoded in the encoding
+  that program writes, never the locale** — the app was only right because
+  start.py starts it with `PYTHONUTF8=1`.
+* Guard: `tests/test_gh_text_is_utf8.py` — a child process writes the title's
+  UTF-8 bytes through a real pipe; `_gh` must return it exactly and pass
+  `encoding="utf-8"`, and `dispatch` must find run 37061908183 by it. Both red
+  on the helper before this commit.
+
+**SAW** — my own live check of the two-account chain, Oct 02, 2026: *"the
+replay.yml run (Watcher replay · from 2026-09-20 · …) did not appear within 90
+seconds"* — and, after I lengthened the wait, the same for the forecast run
+"within 3 minutes".
+
+**TIMELINE**
+
+1. `Oct 02, 2026 4:30pm` — a smoke check (a plain `python` script, so not in
+   UTF-8 mode) dispatches a 2-coin replay to jeremydvera. GitHub creates run
+   37060968220 at 4:30:01pm; `dispatch` gives up 90 seconds later.
+2. I read it as GitHub listing a fork's runs late, raised the wait to 3
+   minutes and said so in the code and in commit dab3981ea170 ("the second
+   account's first replay ever … was listed later than that") — pushed.
+3. `4:38:45pm` — the forecast run 37061908183 is created on the fork; this
+   time `dispatch` gives up after 3 minutes, while the run had already
+   finished green.
+4. `4:44pm` — `_runs` by hand: the run is listed, and `same_title` is False;
+   character by character the listed title holds 0xc2 0xb7 where the wanted
+   one holds 0xb7 — UTF-8 read as cp1252.
+5. The app has never hit it: start.py starts it with `PYTHONUTF8=1`, and the
+   runners and jobs inherit it — today's chain dispatched replay 37051918240,
+   base 37059433445 and options 37061183470 from inside it without a miss.
+
+**What it would have done, NEVER HAPPENED YET:** any dispatch made from a
+process without UTF-8 mode — a CLI, a script — raises "did not appear"; its
+retry (`find_run`, matching titles the same broken way) misses the run it
+started and dispatches again: a second 20-machine replay for an hour.
+
+**ROOT CAUSE** — `text=True` without `encoding=` in `cloud_sweep._gh`.
+
+**WHY IT WAS NOT CAUGHT** — every test of the chain fakes `_gh` or `dispatch`
+and hands back Python strings, so the one place bytes become text — the pipe
+— was never in a test; and every production caller ran in UTF-8 mode, so the
+locale never mattered there. The first symptom then read like a plausible
+GitHub delay, and I explained it before I measured it — the
+"read the emitter, not the label" rule, broken by me.
+
+**COST** — none in money or runs. A wrong explanation in pushed commit
+dab3981ea170 and a 3-minute wait it did not need; both corrected in this
+commit (the wait is 90 seconds again).
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_gh_text_is_utf8.py::test_gh_reads_a_run_title_as_utf8_through_a_real_pipe`
+and `::test_a_dispatch_finds_its_run_by_a_title_gh_sends_as_utf8`.
+
+---
+
 ## RCA-2026-10-02-F — Room strategies took 122 seconds to answer, and would have walked 2.4 million trades every minute
 
 **CEO**

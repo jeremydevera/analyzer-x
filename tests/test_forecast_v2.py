@@ -1155,10 +1155,9 @@ def test_the_replay_is_dealt_between_both_accounts(monkeypatch):
 
 
 def test_an_account_refusing_the_replay_never_stops_the_other(monkeypatch):
-    """A refusal is usually GitHub listing a run late (Oct 02, 2026 4:30pm: the
-    second account's first replay, 37060968220, took more than 90 seconds), so
-    the refused account is asked again with the SAME pile — never the started
-    one again — and only an account refusing twice is left out, named."""
+    """A refusal can be a passing GitHub error: the refused account is asked
+    again with the SAME pile — never the started one again — and only an
+    account refusing twice is left out, named."""
     fd = _two(monkeypatch)
     asked = []
 

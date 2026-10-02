@@ -270,14 +270,12 @@ def dispatch(workflow: str, inputs: dict, repo: str, since: float | None = None)
     for k, v in inputs.items():
         args += ["-f", f"{k}={v}"]
     _gh(*args)
-    # THREE MINUTES (Oct 02, 2026): the second account listed its first replay
-    # (37060968220) more than 90 seconds after the dispatch
-    for _ in range(90):
+    for _ in range(45):
         time.sleep(2)
         for r in _runs(workflow, repo, 10):
             if int(r["databaseId"]) not in before and same_title(r["displayTitle"], want):
                 return int(r["databaseId"])
-    raise RuntimeError(f"the {workflow} run ({want[:80]}) did not appear within 3 minutes")
+    raise RuntimeError(f"the {workflow} run ({want[:80]}) did not appear within 90 seconds")
 
 
 def run_status(run_id: int, repo: str) -> dict:
@@ -554,13 +552,12 @@ def _dispatch_replays(st: dict, start: str, now: float) -> tuple[dict, dict, lis
     so both piles carry the same mix of stock tokens and young contracts).
 
     THE DEAL IS SAVED BEFORE THE FIRST DISPATCH and kept until the chain
-    starts (`plan`). A refusal is usually GitHub listing a run late — on
-    Oct 02, 2026 4:30pm the second account's first replay ever (37060968220)
-    took more than the 90 seconds `dispatch` waited — so a refused account
-    is asked again on the next try, with the SAME pile (a market listed again
-    could deal differently while the other account's run holds its old one),
-    and a run GitHub listed late is adopted. Only an account refusing
-    STAGE_RETRIES + 1 times is left out, its coins named as lost. Returns
+    starts (`plan`). A refusal can be a passing GitHub error, and losing an
+    account's half of the market for the day over one is a high price — so a
+    refused account is asked again on the next try, with the SAME pile (a
+    market listed again could deal differently while the other account's run
+    holds its old one), and a run GitHub did take is adopted. Only an account
+    refusing STAGE_RETRIES + 1 times is left out, its coins named as lost. Returns
     ({account: run}, {account: coins}, lost, a note), or None when every
     account refused (the day is given up)."""
     from tradingagents import cloud_sweep as cs

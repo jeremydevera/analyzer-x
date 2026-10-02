@@ -634,6 +634,11 @@ def _rel(p: Path | None) -> str | None:
 # workflow, balanced by their size, and each account researches its share
 # (research.yml `shards` takes a list, `source_repo` names the replay's repo).
 EMPTY_SHARD_BYTES = 4096
+# machines one free account runs at once. A round with ONE slice on 20 shards
+# that hold coins kept 10 machines busy on each account and 10 idle
+# (round 5's confirm, Oct 02, 2026 4:45pm: 37062305761 + 37062320182), so the
+# slices are raised until every account has at least this many jobs
+MACHINES_PER_ACCOUNT = 20
 
 
 def replay_shard_sizes(run: str, repo: str) -> dict[int, int]:
@@ -678,8 +683,13 @@ def dispatch(round_file: str, output: str, chunks: int, replay_run: str, replay_
     sizes = replay_shard_sizes(replay_run, replay_repo)
     if not sizes:
         raise ValueError(f"replay run {replay_run} on {replay_repo} has no shard with coins")
+    shares = split_shards(sizes, len(fleets))
+    # EVERY MACHINE BUSY: the same slice count on every account (the round is
+    # scored slice by slice), raised until the smallest share fills its 20
+    smallest = min((len(x) for x in shares if x), default=1)
+    chunks = max(int(chunks), -(-MACHINES_PER_ACCOUNT // smallest))
     out = []
-    for slug, share in zip(fleets, split_shards(sizes, len(fleets))):
+    for slug, share in zip(fleets, shares):
         if not share:
             continue
         shards = "[" + ",".join(map(str, share)) + "]"
@@ -700,8 +710,8 @@ def dispatch(round_file: str, output: str, chunks: int, replay_run: str, replay_
             if new:
                 run = max(new)
                 break
-        out.append({"repo": slug, "run": run, "shards": share,
-                    "bytes": sum(sizes[s] for s in share)})
+        out.append({"repo": slug, "run": run, "shards": share, "chunks": chunks,
+                    "jobs": len(share) * chunks, "bytes": sum(sizes[s] for s in share)})
     return out
 
 

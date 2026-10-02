@@ -330,3 +330,7 @@ def test_a_round_is_dealt_across_every_account(monkeypatch):
     assert len(runs) == 2 and all("source_repo=jeremydevera/analyzer-x" in c for c in runs)
     assert all(any(x.startswith("shards=[") for x in c) for c in runs)
     assert all(g["run"] is not None for g in got)
+    # 8 shards dealt 4 a side, asked for 4 slices: 16 jobs an account would
+    # leave 4 of its 20 machines idle — raised to 5 slices, the same on both
+    assert {g["chunks"] for g in got} == {5} and all(g["jobs"] >= 20 for g in got)
+    assert all("chunks=5" in c for c in runs)

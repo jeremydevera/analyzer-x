@@ -159,7 +159,7 @@ machines were idle. First asked `Sep 21, 2026`: *"i want 40"*.
 |---|---|
 | BACKTEST, UPDATE ALL BACKTESTS (v1 and v2), the daily update | `cloud_sweep.dispatch_across` — the coins are dealt |
 | resolve the pending, the hand-off | `dispatch_across`, the board named from the store (Oct 02, 2026) |
-| prompt 4 / research rounds | `python -m tradingagents.room_strategies dispatch ...` deals the replay's shards by size (`research.yml` takes `shards=[..]` and `source_repo`); `... fetch` downloads every account's share into one folder; `check_complete` refuses a round with a share missing |
+| prompt 4 / research rounds | `python -m tradingagents.room_strategies dispatch ...` deals the replay's shards by size (`research.yml` takes `shards=[..]` and `source_repo`); `... fetch` downloads every account's share into one folder; `check_complete` refuses a round with a share missing; the slices are raised until each account has at least 20 jobs (`MACHINES_PER_ACCOUNT`) — 20 shards with coins at one slice left 10 machines idle on each |
 | learn.yml, ml.yml | started by hand — start one on each account |
 | Forecast v2's daily chain and its what-ifs (`replay.yml` then `forecast.yml`, `forecast_v2_daily`) | `_dispatch_replays` names the market (`market()`, sweep_shard.eligible's rule) and deals it with `split_coins` — each account's claim board is in its own repo, so two unnamed runs would measure every coin twice; each account's base, options and what-if runs read ITS OWN replay; the merge numbers account i's machine k as i*100 + k (`forecast_v2_merge.folders`); an account refusing or red twice is dropped and named (Oct 02, 2026) |
 

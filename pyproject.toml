@@ -5,32 +5,19 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tradingagents"
 version = "0.3.0"
-description = "TradingAgents: Multi-Agents LLM Financial Trading Framework"
+description = "TradingAgents: MEXC futures trading runner, backtests and forecasts"
 readme = "README.md"
 requires-python = ">=3.10"
+# Only what the remaining code imports. The LLM framework's packages
+# (langchain-*, langgraph*, backtrader, parsel, questionary, redis, rich,
+# typer, stockstats, yfinance, requests, pytz, tqdm, typing-extensions) went
+# with the New Crypto, Analysis and LLM Models screens on Oct 02, 2026:
+# "remove the new crypto, analysis and llm models completly, i will not use
+# them anymore". No module left in the repo imports any of them.
 dependencies = [
-    "langchain-core>=0.3.81",
-    "backtrader>=1.9.78.123",
-    "langchain-anthropic>=0.3.15",
-    "langchain-experimental>=0.3.4",
-    "langchain-google-genai>=4.0.0",
-    "langchain-openai>=0.3.23",
-    "langgraph>=0.4.8",
-    "langgraph-checkpoint-sqlite>=2.0.0",
     "pandas>=2.3.0",
-    "parsel>=1.10.0",
     "python-dotenv>=1.0.0",
-    "pytz>=2025.2",
-    "questionary>=2.1.0",
-    "redis>=6.2.0",
-    "requests>=2.32.4",
-    "rich>=14.0.0",
-    "typer>=0.21.0",
     "setuptools>=80.9.0",
-    "stockstats>=0.6.5",
-    "tqdm>=4.67.1",
-    "typing-extensions>=4.14.0",
-    "yfinance>=1.4.1",
 ]
 
 [project.optional-dependencies]
@@ -48,32 +35,11 @@ dev = [
     "pytest>=8.0",
     "pytest-subtests>=0.13",
     "tradingagents[api]",
-    # `tests/test_webapp.py` execs app.py, the retired Streamlit screen, and
-    # app.py imports streamlit at line 29. Declared nowhere, so CI failed with
-    # `ModuleNotFoundError: No module named 'streamlit'` 424 times a run across
-    # four Python versions — the bulk of every "CI: Some jobs were not
-    # successful" email, and enough noise to bury the ~28 real failures under
-    # it. Same fix, and the same reason, as `fastapi` above.
-    #
-    # It goes when app.py goes. Twenty of that file's 65 tests exec app.py; the
-    # rest read webapp/*.tsx and never needed streamlit at all, so they belong
-    # in a module that does not import it.
-    "streamlit>=1.40",
+    # streamlit went when app.py went (Oct 02, 2026), as this said it would
 ]
-# Amazon Bedrock support (AWS SigV4 auth + boto3). Optional so the core install
-# stays lean: pip install "tradingagents[bedrock]".
-bedrock = [
-    "langchain-aws>=1.5.0",
-]
-
-[project.scripts]
-tradingagents = "cli.main:app"
 
 [tool.setuptools.packages.find]
-include = ["tradingagents*", "cli*"]
-
-[tool.setuptools.package-data]
-cli = ["static/*"]
+include = ["tradingagents*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -112,17 +78,10 @@ ignore = ["E501"]
 # enforced here and was fixed rather than silenced.
 "tests/**" = ["SIM115", "SIM117", "SIM105", "SIM102", "SIM113",
               "E402", "E741", "E702", "E701"]
-# app.py and spx_bot.py are the retired Streamlit screens. The UI they served
-# now lives in webapp/; they are kept only until the last helper is ported, so
-# reformatting them buys nothing and risks the parts still imported.
-"app.py" = ["E402", "E741", "E702", "E701", "SIM115", "SIM117", "SIM105",
-            "SIM102"]
-# same Streamlit render path, same reason: the nested `if`s carry the comment
-# explaining why the inner condition exists, and collapsing them loses it
-"crypto_screener.py" = ["SIM102"]
+# spx_bot.py is a retired Streamlit-era bot, kept for its runner logic.
 "spx_bot.py" = ["E402", "E741", "E702", "E701", "SIM115", "SIM117"]
 
 [tool.ruff.lint.isort]
 # Keep multiple aliased names from one module in a single combined import block
-# (e.g. the vendor re-exports in interface.py) instead of one statement per name.
+# instead of one statement per name.
 combine-as-imports = true

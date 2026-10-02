@@ -496,11 +496,6 @@ def test_backtest_dirs_match_the_live_signal():
                 "sweep_1h", "sweep_rt", "sweep30_4h")
     stateless = [m for m in mismatches if m[0] not in stateful]
     {m[0] for m in mismatches}
-    import app as _app
-    for _k, *_ in _app.AUTO_STRATEGIES:
-        if _k in stateful:
-            continue
-        assert _k in at.STRATEGY_ORDER, f"{_k} not covered by this test"
     assert not stateless, f"{len(stateless)} live/backtest mismatches: {stateless[:5]}"
 
 

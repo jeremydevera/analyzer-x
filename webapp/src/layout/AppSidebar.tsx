@@ -8,9 +8,6 @@ import {
   DollarLineIcon,
   DownloadIcon,
   HorizontaLDots,
-  PieChartIcon,
-  PlugInIcon,
-  ShootingStarIcon,
   TableIcon,
 } from "../icons/index";
 
@@ -24,10 +21,11 @@ type NavItem = {
 // Every destination had the same grid glyph, so the rail was six identical
 // squares and the icons carried no information at all — you had to read the
 // label to know where you were. Each icon now says what its page DOES:
-// money at work, a grid of measured rows, a download, a new arrival, a
-// chart, and what plugs in behind the models.
+// money at work, a grid of measured rows, a download. (New Crypto, Analysis
+// and LLM Models were removed on Oct 02, 2026: "remove the new crypto,
+// analysis and llm models completly, i will not use them anymore".)
 //
-// All six are FILLED glyphs from the shipped set. bolt.svg was the obvious
+// All of them are FILLED glyphs from the shipped set. bolt.svg was the obvious
 // pick for the runner and is the one icon in this family drawn as a 1.5px
 // STROKE, so beside five filled shapes it read as a thinner, lighter icon —
 // which is the same "these don't look like a set" complaint in a new form.
@@ -71,21 +69,6 @@ const navItems: NavItem[] = [
     icon: <TableIcon />,
     name: "Backtest",
     path: "/backtest-v2",
-  },
-  {
-    icon: <ShootingStarIcon />,
-    name: "New Crypto",
-    path: "/new-crypto",
-  },
-  {
-    icon: <PieChartIcon />,
-    name: "Analysis",
-    path: "/analysis",
-  },
-  {
-    icon: <PlugInIcon />,
-    name: "LLM Models",
-    path: "/models",
   },
 ];
 

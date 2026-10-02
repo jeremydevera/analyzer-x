@@ -31,7 +31,7 @@ const has = (k) => process.argv.includes(`--${k}`);
 const UI = arg("ui", "http://127.0.0.1:8503");
 const API = arg("api", "http://127.0.0.1:8787");
 const OUT = arg("out", "findings.json");
-const PAGES = arg("pages", "backtest,trade,candles,analysis,models,new-crypto")
+const PAGES = arg("pages", "backtest,trade,candles")
   .split(",").map((s) => s.trim()).filter(Boolean);
 const CHROME = arg("chrome",
   "C:/Program Files/Google/Chrome/Application/chrome.exe");

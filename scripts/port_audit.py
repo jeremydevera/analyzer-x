@@ -92,38 +92,9 @@ CHECKS = {
     "stored strategies filters": ["profitable only"],
     "trade viewer": ["PAST TRADES", "trades ·", "trades}"],
   },
-  "Analysis": {
-    "ticker (curated)": ["ta-tickers"],
-    "date": ['type="date"'],
-    "analysts": ["ANALYSTS ="],
-    "debate rounds": ["debate rounds"],
-    "risk rounds": ["risk rounds"],
-    "model": ["setModel"],
-    "parallel mode": ["parallel — compare models"],
-    "models multiselect": ["models to compare"],
-    "social source": ["where the Sentiment Analyst reads posts"],
-    "X keywords": ["extra X search terms"],
-    "Stop run": ["analysisApi.stop", "STOP<"],
-    "Download .md": ["DOWNLOAD .md"],
-  },
-  "New Crypto": {
-    "scan / refresh": ["FRESH SWEEP"],
-    "watch for new listings": ["watch for new listings"],
-    "alert sound": ["test sound"],
-    "loop the alarm": ["loop the alarm"],
-    "age from/to + units": ["age from", "age to"],
-    "min volume": ["min volume $"],
-    "show all (incl. dust)": ["show all (incl. dust)"],
-    "Analyze a coin": ["ANALYZE THIS COIN"],
-    "candlestick chart": ["CoinChart"],
-    "upcoming listings": ["Announced, not trading yet"],
-  },
-  "LLM Models": {
-    "add model": ["ADD MODEL"], "provider preset": ["presets"],
-    "base url": ["openai-compatible only"], "key env": ["KEY_ENV_VAR"],
-    "remove": ["remove"], "test one": [">test<"], "test all": ["TEST ALL"],
-    "health %": ["% {h.status}", "h.pct"],
-  },
+  # "Analysis", "New Crypto" and "LLM Models" were REMOVED on Oct 02, 2026
+  # ("remove the new crypto, analysis and llm models completly, i will not
+  # use them anymore"), so their controls are no longer owed to anyone.
   "Behaviour (not just presence)": {
     "REAL and PAPER positions in SEPARATE boxes":
       ["REAL — MONEY AT RISK", "PAPER — DEMO, NOT REAL MONEY"],
@@ -170,7 +141,7 @@ CHECKS = {
   },
   "Global": {
     "night mode": ["ThemeToggleButton"],
-    "nav to every screen": ["/new-crypto"],
+    "nav to every screen": ["/backtest-v2"],
   },
 }
 

@@ -55,7 +55,6 @@ GUARDED = [
 # on any path NOT in it, so the list can only shrink. Sandbox one, delete its
 # line here.
 NOT_YET_SANDBOXED = {
-    "tradingagents.analysis_jobs.RUN_DIR",
     "tradingagents.candle_autopilot.STATE",
     "tradingagents.cloud_autopilot.STATE",
     "tradingagents.cloud_sweep.STATE_RUNS_FILE",

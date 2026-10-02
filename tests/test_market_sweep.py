@@ -108,23 +108,6 @@ def test_state_without_rows_is_re_measured_not_skipped():
     assert "states, last_ms = {}, 0" in src
 
 
-def test_the_tab_exists_and_is_wired():
-    """Backtest 2 replaced the V1 Back Test page (operator, 2026-08-20).
-    The sweep ENGINE stays — UPDATE BACKTEST continues through run_pair —
-    but the old page must be gone, not half-wired."""
-    import app
-
-    assert "Backtest 2" in app.PAGES
-    assert "Back Test" not in app.PAGES
-    assert hasattr(app, "render_backtest2_tab")
-    assert not hasattr(app, "render_backtest_tab")
-    # utf-8 on purpose: app.py holds em dashes and arrows, and Windows' default
-    # cp1252 read died on byte 0x90 — a red that was never about the tab
-    src = open("app.py", encoding="utf-8").read()
-    assert 'page == "Backtest 2"' in src
-    assert 'page == "Back Test"' not in src
-
-
 def test_the_store_keeps_losing_rows_too(monkeypatch, tmp_path):
     """"i want everything stored" — a loser is a measurement, not noise. The
     trade floor still applies; profitability must not."""

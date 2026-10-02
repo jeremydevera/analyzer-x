@@ -78,7 +78,7 @@ def test_the_nav_offers_no_v1_screen():
     but each points at the v2 page."""
     nav = (REPO / "webapp" / "src" / "layout" / "AppSidebar.tsx").read_text(
         encoding="utf-8")
-    block = nav[:nav.index("New Crypto")]
+    block = nav[:nav.index("const AppSidebar")]
     assert '"/candles-v2"' in block and '"/backtest-v2"' in block
     assert '    path: "/candles",' not in block, "v1 candles is still on the nav"
     assert '    path: "/backtest",' not in block, "v1 backtest is still on the nav"

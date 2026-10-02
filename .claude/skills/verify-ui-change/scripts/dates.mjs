@@ -1,7 +1,7 @@
 import {chromium} from 'playwright';
 const b=await chromium.launch(); const p=await b.newPage({viewport:{width:1500,height:1200}});
 const bad=[], good=new Set();
-for (const path of ['/trade','/backtest','/new-crypto']) {
+for (const path of ['/trade','/backtest','/backtest-v2']) {
   // NEVER networkidle: these pages poll
   await p.goto('http://localhost:8503'+path,{waitUntil:'domcontentloaded',timeout:120000});
   await p.waitForTimeout(7000);

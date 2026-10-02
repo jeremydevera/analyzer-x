@@ -42,8 +42,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install .
           # Catches undeclared runtime deps (e.g. #994 python-dotenv): a bare
-          # install must import the package and the CLI module.
-          python -c "import tradingagents, cli.main; print('clean-install import OK')"
+          # install must import the package and its core modules. (The LLM
+          # CLI this used to import was removed on Oct 02, 2026.)
+          python -c "import tradingagents, tradingagents.backtest_report, tradingagents.dataflows.mexc_futures; print('clean-install import OK')"
 
   lint:
     name: ruff (strict, full repo)

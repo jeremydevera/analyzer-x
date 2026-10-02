@@ -171,7 +171,7 @@ finding rather than a click.
 ### How it runs
 
 ```bash
-node .claude/skills/press-and-watch/scripts/watch_ui.mjs      --pages backtest,trade,candles,analysis,models,new-crypto      --settle 12000 --out findings.json
+node .claude/skills/press-and-watch/scripts/watch_ui.mjs      --pages backtest,trade,candles      --settle 12000 --out findings.json
 ```
 
 Exit **1** means it found something; **0** means the walk was clean. On a

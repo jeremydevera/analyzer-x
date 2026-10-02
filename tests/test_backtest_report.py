@@ -301,8 +301,9 @@ def test_every_deployed_combination_is_quoted_by_its_real_code():
     """
     import pathlib
 
-    src = "\n".join(pathlib.Path(f).read_text(encoding="utf-8")
-                    for f in ("app.py", "tradingagents/auto_trader.py"))
+    # app.py (the retired Streamlit screen) was removed Oct 02, 2026; every
+    # code below is also quoted in auto_trader.py, so nothing was lost
+    src = pathlib.Path("tradingagents/auto_trader.py").read_text(encoding="utf-8")
     deployed = [
         ("APEX", "1h", "sweep30", 0.0, 3.0, 3.0, "martingale"),
         ("APEX", "1h", "sweep30", 0.0, 3.0, 3.0, "flat"),

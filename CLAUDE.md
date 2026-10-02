@@ -161,7 +161,7 @@ machines were idle. First asked `Sep 21, 2026`: *"i want 40"*.
 | resolve the pending, the hand-off | `dispatch_across`, the board named from the store (Oct 02, 2026) |
 | prompt 4 / research rounds | `python -m tradingagents.room_strategies dispatch ...` deals the replay's shards by size (`research.yml` takes `shards=[..]` and `source_repo`); `... fetch` downloads every account's share into one folder; `check_complete` refuses a round with a share missing |
 | learn.yml, ml.yml | started by hand — start one on each account |
-| **NOT YET: Forecast v2's daily chain** (`replay.yml` then `forecast.yml`, `forecast_v2_daily`) | one account; must be split like research |
+| Forecast v2's daily chain and its what-ifs (`replay.yml` then `forecast.yml`, `forecast_v2_daily`) | `_dispatch_replays` names the market (`market()`, sweep_shard.eligible's rule) and deals it with `split_coins` — each account's claim board is in its own repo, so two unnamed runs would measure every coin twice; each account's base, options and what-if runs read ITS OWN replay; the merge numbers account i's machine k as i*100 + k (`forecast_v2_merge.folders`); an account refusing or red twice is dropped and named (Oct 02, 2026) |
 
 * A new workflow or dispatch path follows this from its first commit.
   `tests/test_forty_machines_across_two_accounts.py::test_every_cloud_press_goes_through_the_splitter`
@@ -1369,7 +1369,7 @@ still at `/forecast`.
   (write rule, signal groups, coins, strategies) so a grade over other
   strategies says so.
 
-Guard: `tests/test_forecast_v2.py` (48, on one timeline).
+Guard: `tests/test_forecast_v2.py` (56, on one timeline; the two-account chain from `test_the_replay_is_dealt_between_both_accounts` on).
 
 ## Backtest v2 is the v1 engine in its own folder (MANDATORY — 2026-09-17)
 

@@ -11,13 +11,21 @@ every step's state kept in ~/.tradingagents/forecast_v2/state.json:
            test the v1 automatic forecast uses, room_forecasts._update)
   replay   .github/workflows/replay.yml from the first day of the month
            MONTHS_BACK months ago to now, every strategy that could pass the
-           loosest rule set (WRITE_RULE) — about an hour on 20 machines
-  base     .github/workflows/forecast.yml, stage base, on that replay; the
-           common end comes from the machines' replay-report-<N> artifacts
+           loosest rule set (WRITE_RULE) — about an hour, on EVERY GitHub
+           account at once: the market's coins dealt between them, 20
+           machines each (CLAUDE.md, "Every GitHub job uses ALL 40 machines")
+  base     .github/workflows/forecast.yml, stage base, each account on ITS
+           OWN replay run (a run reads artifacts of its own repository); the
+           common end comes from every account's replay-report-<N> artifacts
   options  the same, stage options, on the TOP_FOR_OPTIONS best base sets and
            the rooms' own rules
-  done     merged into latest.json (forecast_v2_merge), the month's first
-           prediction kept, ONE bell message for the day
+  done     every account's machines merged into latest.json
+           (forecast_v2_merge, account i's machine k numbered i*100 + k), the
+           month's first prediction kept, ONE bell message for the day
+
+  An account that refuses a dispatch, or whose run is red on every machine
+  twice, is dropped and NAMED; the others go on and the page says the
+  numbers cover part of the market.
 
 A failure is NAMED in the state and on the page, and that step is tried again
 after RETRY_S — never every tick, never silently. GitHub is asked at most
@@ -45,7 +53,8 @@ MONTHS_BACK = 3
 WRITE_RULE = "wr=70,trades=20,tp=any,windows=15|30"      # the loosest base rule set, every shape
 REPLAY_WF = "replay.yml"
 FORECAST_WF = "forecast.yml"
-SHARDS = 20
+SHARDS = 20                   # machines per ACCOUNT: a free GitHub account runs 20 at once
+RUN_KEYS = {"replay": "replay_runs", "base": "base_runs", "options": "options_runs"}
 POLL_S = 120
 RETRY_S = 30 * 60
 KEEP_RUNS = 3                 # downloaded forecast runs kept beside the store
@@ -112,11 +121,95 @@ def _gh(*args: str, timeout: int = 120) -> str:
 
 
 def slug() -> str:
-    """The account every run of one chain goes to: a forecast run can only
-    read a replay run's artifacts in the SAME repository."""
+    """The account a chain from before the accounts were dealt ran on
+    (`origin`) — how a state, a `ready` or a what-if with no account is read."""
     from tradingagents import cloud_sweep as cs
 
     return cs.origin_fleet() or cs.repo_slug()
+
+
+def fleets_now() -> tuple[list, list]:
+    """`(ready, refused)`: every GitHub account that can run a job now, the
+    operator's own (`origin`) first so account 0 is where a one-account chain
+    always ran (operator, Oct 02, 2026 3:49pm: "moving forward i want 40
+    machines to be used always , i want this setting to be remembered")."""
+    from tradingagents import cloud_sweep as cs
+
+    ready, refused = cs.usable_fleets()
+    origin = cs.origin_fleet()
+    return sorted(ready, key=lambda s: s != origin), refused
+
+
+def market() -> list:
+    """The coins a replay given no list measures (sweep_shard.eligible): every
+    `_USDT` contract MEXC is trading now, sorted. Named HERE so the accounts
+    can be dealt them — each account's claim board lives in its own
+    repository, so two runs left to work the coins out would both measure
+    every coin and call it forty machines (cloud_sweep.dispatch_across)."""
+    from tradingagents.dataflows import mexc_futures as fx
+
+    raw = fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data") or []
+    return sorted(x["symbol"] for x in raw
+                  if str(x.get("symbol", "")).endswith("_USDT") and int(x.get("state", 1)) == 0)
+
+
+def owner(repo: str) -> str:
+    """"jeremydvera/analyzer-x" -> "jeremydvera", the name the page prints."""
+    return str(repo).split("/")[0]
+
+
+def _on(st: dict, repo: str) -> str:
+    """" on <account>" when the chain runs on more than one, else "": a
+    one-account chain says exactly what it always said."""
+    return f" on {owner(repo)}" if len(st.get("fleets") or []) > 1 else ""
+
+
+def _ready_of(r: dict) -> dict:
+    """A `ready` (the last finished replay) in the per-account shape — one
+    kept before the accounts were dealt had one `repo` and `replay_run`."""
+    r = dict(r or {})
+    if r.get("replay_run") and not r.get("replay_runs"):
+        repo = r.pop("repo", None) or slug()
+        r["replay_runs"] = {repo: int(r.pop("replay_run"))}
+        r.setdefault("fleets", [repo])
+    r.pop("repo", None)
+    r.pop("replay_run", None)
+    return r
+
+
+def _normalize(st: dict) -> dict:
+    """A chain state from before the accounts were dealt — one `repo`,
+    `replay_run` / `base_run` / `options_run` and `base_dir` — read as a
+    one-account chain, so a chain that was running when this code arrived
+    (Oct 02, 2026: replay 37051918240, started 3:06pm) carries on."""
+    repo = st.pop("repo", None)
+    old = [k for k in ("replay_run", "base_run", "options_run", "base_dir", "options_dir") if k in st]
+    if repo or old:
+        repo = repo or slug()
+        for was, now_key in (("replay_run", "replay_runs"), ("base_run", "base_runs"),
+                             ("options_run", "options_runs"), ("base_dir", "base_dirs"),
+                             ("options_dir", "options_dirs")):
+            v = st.pop(was, None)
+            if v and not st.get(now_key):
+                st[now_key] = {repo: int(v) if now_key.endswith("runs") else v}
+        if not st.get("fleets"):
+            st["fleets"] = [repo]
+        # a retry count kept per phase becomes that phase's count for the one account
+        st["redo"] = {p: (n if isinstance(n, dict) else {repo: int(n)})
+                      for p, n in (st.get("redo") or {}).items()}
+    if st.get("ready"):
+        st["ready"] = _ready_of(st["ready"])
+    return st
+
+
+def _dirs_arg(st: dict, dirs: dict) -> str:
+    """{account: folder} as forecast_v2_merge reads it: "0=<dir>;1=<dir>",
+    each account by its place in the chain's `fleets` — the place, never the
+    order the folders came in, so an account dropped between the base and the
+    options run cannot shift the other's machine numbers."""
+    order = list(st.get("fleets") or []) or list(dirs)
+    return ";".join(f"{order.index(repo) if repo in order else len(order) + i}={d}"
+                    for i, (repo, d) in enumerate(dirs.items()))
 
 
 def title_of(workflow: str, inputs: dict) -> str:
@@ -177,12 +270,14 @@ def dispatch(workflow: str, inputs: dict, repo: str, since: float | None = None)
     for k, v in inputs.items():
         args += ["-f", f"{k}={v}"]
     _gh(*args)
-    for _ in range(45):
+    # THREE MINUTES (Oct 02, 2026): the second account listed its first replay
+    # (37060968220) more than 90 seconds after the dispatch
+    for _ in range(90):
         time.sleep(2)
         for r in _runs(workflow, repo, 10):
             if int(r["databaseId"]) not in before and same_title(r["displayTitle"], want):
                 return int(r["databaseId"])
-    raise RuntimeError(f"the {workflow} run ({want[:80]}) did not appear within 90 seconds")
+    raise RuntimeError(f"the {workflow} run ({want[:80]}) did not appear within 3 minutes")
 
 
 def run_status(run_id: int, repo: str) -> dict:
@@ -228,7 +323,10 @@ def _prune_runs(keep: set) -> None:
     if not root.exists():
         return
     st = read()
-    keep = set(keep) | {str(st.get(k)) for k in ("base_run", "options_run") if st.get(k)}
+    # EVERY ACCOUNT'S base and options runs of the chain under way: the
+    # options merge reads every account's base folder
+    keep = set(keep) | {str(st.get(k)) for k in ("base_run", "options_run") if st.get(k)} \
+        | {str(r) for k in ("base_runs", "options_runs") for r in (st.get(k) or {}).values()}
     dirs = sorted((d for d in root.iterdir() if d.is_dir()), key=lambda d: d.stat().st_mtime,
                   reverse=True)
     for d in dirs[KEEP_RUNS:]:
@@ -236,13 +334,13 @@ def _prune_runs(keep: set) -> None:
             shutil.rmtree(d, ignore_errors=True)
 
 
-def common_end(report_dir: Path) -> int:
+def common_end(report_dir) -> int:
     """The earliest last intraday bar over every machine — the one moment
     every coin reached (replay_collect.common_end, the research's own rule)."""
     return int(read_reports(report_dir)["end_ms"])
 
 
-def read_reports(report_dir: Path) -> dict:
+def read_reports(report_dir) -> dict:
     """The replay's common end and WHAT IT COVERED — its write rule, signal
     groups, coins and strategies (bug hunt, round 16): the same rule set
     walked forward on two replays gave #562C0147 1,703 July trades on the
@@ -251,7 +349,9 @@ def read_reports(report_dir: Path) -> dict:
     measured over the same strategies, so each one carries this."""
     from tradingagents import replay_collect as rc
 
-    tot = rc.merge_reports([str(report_dir)])
+    # one folder, or one per account — the common end is over EVERY machine
+    dirs = report_dir if isinstance(report_dir, (list, tuple)) else [report_dir]
+    tot = rc.merge_reports([str(d) for d in dirs])
     end = rc.common_end(tot["spans"])
     if not end:
         raise RuntimeError("the replay's reports name no measured pair")
@@ -295,10 +395,12 @@ def first_check(now: float) -> str:
     return d.isoformat()
 
 
-def _forecast_inputs(st: dict, stage: str, extra: dict | None = None) -> dict:
+def _forecast_inputs(st: dict, stage: str, repo: str, extra: dict | None = None) -> dict:
+    """One account's forecast run: on THAT account's replay run (a run reads
+    the artifacts of its own repository), with the whole chain's common end."""
     rooms = room_rules()
     avoid, fams = st.get("avoid") or [], st.get("families") or []
-    return {"source_run": st["replay_run"], "shards": SHARDS, "end_ms": st["end_ms"],
+    return {"source_run": st["replay_runs"][repo], "shards": SHARDS, "end_ms": st["end_ms"],
             "start": st["start"], "stage": stage, "bases": "", "rooms": fr.encode_rooms(rooms),
             "avoid": ",".join(avoid), "families": ",".join(fams), "custom": "",
             **(extra or {})}
@@ -419,10 +521,16 @@ def _say(st: dict, why: str) -> None:
 def _tried(st: dict, what: str, now: float) -> float | None:
     """When an earlier attempt at THIS dispatch was made, or None; and mark
     this attempt — kept in the state, so a retry after a failure can adopt a
-    run GitHub took but listed late (dispatch's `since`)."""
+    run GitHub took but listed late (dispatch's `since`). ONE RECORD PER
+    DISPATCH (Oct 02, 2026): a step now starts a run on every account, and a
+    single record let the second account's attempt overwrite the first's, so
+    a tick that died between them would have started the first account's
+    20-machine run again."""
     was = st.get("tried") or {}
-    since = was.get("at") if was.get("what") == what else None
-    st["tried"] = {"what": what, "at": since or now}
+    if "what" in was:                       # the one-attempt shape kept before
+        was = {str(was["what"]): was.get("at")}
+    since = was.get(what)
+    st["tried"] = {**was, what: since or now}
     # ON DISK BEFORE THE DISPATCH (bug hunt, round 8): the tick writes its
     # state at its end, so a dispatch whose tick then failed to save left no
     # trace, and the next tick started the same run a second time
@@ -433,35 +541,184 @@ def _tried(st: dict, what: str, now: float) -> float | None:
 STAGE_RETRIES = 1     # a run red on EVERY machine is started again this many times
 
 
-def _replay_inputs(start: str) -> dict:
-    return {"shards": SHARDS, "timeframes": "15m,30m,1h,4h,1d", "coin_list": "", "start": start,
-            "base": 5, "groups": "all", "write_rule": WRITE_RULE}
+def _replay_inputs(start: str, coins: list | None = None) -> dict:
+    """`coins` — the account's pile; empty is the whole market, which ONE
+    account works out for itself (two never may: see `market`)."""
+    return {"shards": SHARDS, "timeframes": "15m,30m,1h,4h,1d", "coin_list": ",".join(coins or []),
+            "start": start, "base": 5, "groups": "all", "write_rule": WRITE_RULE}
 
 
-def _redo(st: dict, phase: str, run_key: str, s: dict, repo: str, now: float) -> None:
-    """A run red on EVERY machine (bug hunt, round 12). Raising here re-read
-    the same failed run every RETRY_S for ever: never started again, never
-    back to idle, so no later day ran either. It is started again
-    STAGE_RETRIES times; then the day is given up, named, and the next daily
-    update starts a fresh chain — the last finished data stays on the page."""
-    why = (f"{phase} run {st[run_key]} ended {s['conclusion']} on every machine "
+def _dispatch_replays(st: dict, start: str, now: float) -> tuple[dict, dict, list, str] | None:
+    """The day's replay on EVERY account that can run it, each on its own
+    pile of the market's coins, dealt round robin (cloud_sweep.split_coins,
+    so both piles carry the same mix of stock tokens and young contracts).
+
+    THE DEAL IS SAVED BEFORE THE FIRST DISPATCH and kept until the chain
+    starts (`plan`). A refusal is usually GitHub listing a run late — on
+    Oct 02, 2026 4:30pm the second account's first replay ever (37060968220)
+    took more than the 90 seconds `dispatch` waited — so a refused account
+    is asked again on the next try, with the SAME pile (a market listed again
+    could deal differently while the other account's run holds its old one),
+    and a run GitHub listed late is adopted. Only an account refusing
+    STAGE_RETRIES + 1 times is left out, its coins named as lost. Returns
+    ({account: run}, {account: coins}, lost, a note), or None when every
+    account refused (the day is given up)."""
+    from tradingagents import cloud_sweep as cs
+
+    # A DEAL IS TODAY'S: a plan left by a day whose dispatch never got
+    # through (the PC off overnight) is never reused — its runs are that
+    # day's replays, and the title carries only the month
+    day = dt.date.fromtimestamp(now).isoformat()
+    plan = st.get("plan") or {}
+    if plan.get("start") != start or plan.get("day") != day or not plan.get("piles"):
+        ready, refused = fleets_now()
+        if not ready:
+            raise RuntimeError("no GitHub account can run the replay: "
+                               + ("; ".join(refused) or "no GitHub remote found"))
+        if len(ready) == 1:
+            piles = {ready[0]: []}           # one account works the whole market out itself
+        else:
+            coins = market()
+            if not coins:
+                raise RuntimeError("MEXC listed no live contract to deal between the accounts")
+            piles = dict(zip(ready, cs.split_coins(coins, len(ready)), strict=False))
+        plan = {"start": start, "day": day, "piles": piles, "runs": {}, "tries": {}, "lost": [],
+                "refused": refused}
+        st["plan"] = plan
+        _write(st)
+    runs, errors = plan["runs"], []
+    for repo, pile in plan["piles"].items():
+        if repo in runs or plan["tries"].get(repo, 0) > STAGE_RETRIES:
+            continue
+        try:
+            # THE SAME CODE ON EVERY ACCOUNT, or the halves are not comparable
+            drift = cs.sync_fleet(repo)
+            if drift:
+                print(f"[forecast v2] {drift}", flush=True)
+            runs[repo] = dispatch(REPLAY_WF, _replay_inputs(start, pile), repo,
+                                  since=_tried(st, f"replay {day} {start} {repo}", now))
+            _write(st)                       # started: on disk before the next account is asked
+        except Exception as exc:                               # noqa: BLE001
+            why = f"{type(exc).__name__}: {str(exc)[:160]}"
+            plan["tries"][repo] = plan["tries"].get(repo, 0) + 1
+            _write(st)                       # the count survives a tick that never saves
+            if plan["tries"][repo] > STAGE_RETRIES:
+                plan["lost"].append({"repo": repo, "phase": "replay", "coins": len(pile), "why": why})
+                print(f"[forecast v2] {repo} refused the replay {plan['tries'][repo]} times ({why}) — "
+                      f"its {len(pile)} coin(s) are not in today's Forecast v2", flush=True)
+            else:
+                errors.append(f"{owner(repo)}: {why}")
+    if errors:
+        raise RuntimeError(f"the replay was refused — tried again in {RETRY_S // 60} minutes "
+                           f"({'; '.join(errors)})")
+    if not runs:
+        return None
+    note = "".join(f" — not on {r}" for r in plan.get("refused") or [])
+    note += "".join(f" — {owner(d['repo'])} refused it ({d['why'][:80]}), its {d['coins']} coins left out"
+                    for d in plan["lost"])
+    return dict(runs), dict(plan["piles"]), list(plan["lost"]), note
+
+
+def _named_runs(st: dict, runs: dict) -> str:
+    """"37051918240" for one account; "37051918240 on jeremydevera and
+    37051918241 on jeremydvera" for two."""
+    return " and ".join(f"{run}{_on(st, repo)}" for repo, run in runs.items())
+
+
+def _drop(st: dict, phase: str, repo: str, why: str) -> None:
+    """An account given up for the rest of the chain: its runs taken off every
+    later stage, and NAMED — the page says the numbers cover part of the
+    market (forecast_v2_merge's `machines` against `of`)."""
+    order = list(RUN_KEYS)                    # replay, base, options
+    for p in order[order.index(phase):]:      # this stage and every one after it
+        (st.get(RUN_KEYS[p]) or {}).pop(repo, None)
+    st.setdefault("lost", []).append({"repo": repo, "phase": phase, "why": why,
+                                      "coins": int((st.get("coins") or {}).get(repo) or 0)})
+
+
+def _redo(st: dict, phase: str, repo: str, s: dict, now: float) -> bool:
+    """One account's run red on EVERY machine (bug hunt, round 12). Raising
+    here re-read the same failed run every RETRY_S for ever: never started
+    again, never back to idle, so no later day ran either. It is started
+    again STAGE_RETRIES times — that account alone; then the account is
+    dropped and named (True: started again, wait for it)."""
+    key = RUN_KEYS[phase]
+    run = st[key][repo]
+    why = (f"{phase} run {run}{_on(st, repo)} ended {s['conclusion']} on every machine "
            f"({', '.join(s['failed'][:3]) or 'no machine named'})")
-    redo = st.setdefault("redo", {})
-    if redo.get(phase, 0) < STAGE_RETRIES:
-        wf, inputs = ((REPLAY_WF, _replay_inputs(st["start"])) if phase == "replay" else
-                      (FORECAST_WF, _forecast_inputs(st, phase, {"bases": st.get("bases") or ""}
+    redo = st.setdefault("redo", {}).setdefault(phase, {})
+    if redo.get(repo, 0) < STAGE_RETRIES:
+        wf, inputs = ((REPLAY_WF, _replay_inputs(st["start"], (st.get("piles") or {}).get(repo)))
+                      if phase == "replay" else
+                      (FORECAST_WF, _forecast_inputs(st, phase, repo, {"bases": st.get("bases") or ""}
                                                      if phase == "options" else None)))
-        run = dispatch(wf, inputs, repo, since=_tried(st, f"redo {phase} {st[run_key]}", now))
+        new = dispatch(wf, inputs, repo, since=_tried(st, f"redo {phase} {run}", now))
         st.pop("tried", None)
-        redo[phase] = redo.get(phase, 0) + 1
-        st[run_key] = run
-        st["why"] = f"{why} — started again as run {run} (try {redo[phase] + 1} of {STAGE_RETRIES + 1})"
+        redo[repo] = redo.get(repo, 0) + 1
+        st[key][repo] = new
+        st["why"] = f"{why} — started again as run {new} (try {redo[repo] + 1} of {STAGE_RETRIES + 1})"
         print(f"[forecast v2] {st['why']}", flush=True)
-        return
-    st.update(phase="idle", failed_at=0, redo={},
+        return True
+    _drop(st, phase, repo, f"{why}, on every try")
+    st["last_why"] = why
+    return False
+
+
+def _dispatch_stage(st: dict, stage: str, now: float, extra: dict | None = None) -> None:
+    """The base or options run on every account still in the chain, each on
+    its own replay. A refusal is usually GitHub being slow to list the run,
+    and that account's replay is an hour of twenty machines — so it RAISES,
+    the step is tried again after RETRY_S, a run already started is kept (and
+    one GitHub listed late is adopted), and only an account refusing
+    STAGE_RETRIES + 1 times is dropped and named."""
+    key = RUN_KEYS[stage]
+    st.setdefault(key, {})
+    tries = st.setdefault("refused", {}).setdefault(stage, {})
+    errors = []
+    for repo in list(st.get("replay_runs") or {}):
+        if repo in st[key] or tries.get(repo, 0) > STAGE_RETRIES:
+            continue                          # started on an earlier try, or dropped from it
+        if stage == "options" and repo not in (st.get("base_runs") or {}):
+            continue                          # no base results from that account to build on
+        try:
+            st[key][repo] = dispatch(FORECAST_WF, _forecast_inputs(st, stage, repo, extra), repo,
+                                     since=_tried(st, f"{stage} {st['replay_runs'][repo]}", now))
+        except Exception as exc:                               # noqa: BLE001
+            why = f"{type(exc).__name__}: {str(exc)[:160]}"
+            tries[repo] = tries.get(repo, 0) + 1
+            _write(st)                       # the count survives a tick that never saves
+            if tries[repo] > STAGE_RETRIES:
+                _drop(st, stage, repo, f"refused the {stage} run {tries[repo]} times: {why}")
+            else:
+                errors.append(f"{owner(repo)}: {why}")
+    if errors:
+        raise RuntimeError(f"the {stage} run was refused — tried again in {RETRY_S // 60} minutes "
+                           f"({'; '.join(errors)})")
+
+
+def _give_up(st: dict, phase: str, why: str) -> None:
+    """Today's chain ends, NAMED; the last finished data stays on the page and
+    the next daily update starts a fresh chain."""
+    st.update(phase="idle", failed_at=0, redo={}, refused={},
               error=f"{phase}: {why}, on every try — today's Forecast v2 is given up")
     st["why"] = f"{st['error']}; the next daily update starts a new one"
     print(f"[forecast v2] {st['why']}", flush=True)
+
+
+def _downloads(st: dict, phase: str, pattern: str) -> dict:
+    """{account: folder} — every account's run of this phase, downloaded."""
+    return {repo: download(int(run), repo, pattern) for repo, run in (st.get(RUN_KEYS[phase]) or {}).items()}
+
+
+def _merge_runs(st: dict) -> dict:
+    """What the merge files under latest.json["runs"]: every account's runs,
+    and `shards` = the machines DEALT — every account's twenty, a dropped one
+    included — so a chain that lost an account prints "PART OF THE MARKET"."""
+    return {"replay": st.get("replay_runs") or {}, "base": st.get("base_runs") or {},
+            "options": st.get("options_runs") or {}, "fleets": st.get("fleets") or [],
+            "shards": SHARDS * max(1, len(st.get("fleets") or [])), "per_account": SHARDS,
+            "missing": st.get("missing") or {}, "lost": st.get("lost") or [],
+            "universe": st.get("universe") or {}}
 
 
 def _step(st: dict, now: float) -> None:
@@ -472,8 +729,8 @@ def _step(st: dict, now: float) -> None:
         return
     if st.get("failed_at") and now - float(st["failed_at"]) < RETRY_S:
         return
+    _normalize(st)
     phase = st.get("phase") or "idle"
-    repo = st.get("repo") or slug()
     if phase in ("idle", "done"):
         ok, why = due(now, st)
         st["why"] = why
@@ -482,73 +739,98 @@ def _step(st: dict, now: float) -> None:
         from tradingagents import room_forecasts as rf
 
         start = first_check(now)
-        run = dispatch(REPLAY_WF, _replay_inputs(start), repo,
-                       since=_tried(st, f"replay {start}", now))
+        got = _dispatch_replays(st, start, now)
+        if got is None:
+            st["started_day"] = dt.date.fromtimestamp(now).isoformat()     # one try a day
+            _give_up(st, "replay", "every account refused the replay")
+            st.pop("plan", None)
+            return
+        runs, piles, lost, note = got
         avoid, fams = skip_lists()
         st.pop("tried", None)
-        st.update(phase="replay", repo=repo, replay_run=run, start=start, started_at=now,
-                  started_day=dt.date.fromtimestamp(now).isoformat(),
+        st.pop("plan", None)
+        st.update(phase="replay", fleets=list(piles), replay_runs=runs, piles=piles,
+                  coins={r: len(p) for r, p in piles.items()}, lost=lost, start=start,
+                  started_at=now, started_day=dt.date.fromtimestamp(now).isoformat(),
                   last_update=rf._update()["when"], avoid=avoid, families=fams,
-                  base_run=None, options_run=None, error="", failed_at=0, polled_at=0,
-                  missing={}, redo={}, bases="",
-                  why=f"replay {run} started on GitHub at {fmt_when(now)} (about an hour)")
+                  base_runs={}, options_runs={}, base_dirs={}, error="", failed_at=0, polled_at=0,
+                  missing={}, redo={}, refused={}, bases="",
+                  why=f"replay {_named_runs(st | {'fleets': list(piles)}, runs)} started on GitHub at "
+                      f"{fmt_when(now)} (about an hour){note}")
         return
     if now - float(st.get("polled_at") or 0) < POLL_S:
         return
     st["polled_at"] = now
-    run_key = {"replay": "replay_run", "base": "base_run", "options": "options_run"}[phase]
-    s = run_status(int(st[run_key]), repo)
-    if s["status"] != "completed":
-        st["why"] = f"{phase} run {st[run_key]}: {run_words(s)}"
+    key = RUN_KEYS[phase]
+    runs = dict(st.get(key) or {})
+    stat = {repo: run_status(int(run), repo) for repo, run in runs.items()}
+    if any(s["status"] != "completed" for s in stat.values()):
+        st["why"] = "; ".join(f"{phase} run {runs[repo]}{_on(st, repo)}: "
+                              + ("finished" if s["status"] == "completed" else run_words(s))
+                              for repo, s in stat.items())
         return
-    # SOME MACHINES FAILED, SOME DID NOT (bug hunt, round 3): a replay or a
-    # forecast with 19 of 20 machines green is used — its missing machines
-    # named in the state and on the page — instead of retried for ever
-    good = s["machines"] - len(s["failed"])
-    if s["conclusion"] != "success" and good <= 0:
-        _redo(st, phase, run_key, s, repo, now)
+    # EVERY ACCOUNT'S RUN OF THIS PHASE FINISHED. SOME MACHINES FAILED, SOME
+    # DID NOT (bug hunt, round 3): a run with 19 of 20 machines green is used —
+    # its missing machines named in the state and on the page — instead of
+    # retried for ever; a run red on EVERY machine is started again, that
+    # account alone, then dropped (bug hunt, round 12)
+    again = False
+    for repo, s in stat.items():                   # every red account in this one round
+        if s["conclusion"] != "success" and s["machines"] - len(s["failed"]) <= 0:
+            again = _redo(st, phase, repo, s, now) or again
+    if again:
         return
-    if s["failed"]:
-        st.setdefault("missing", {})[phase] = {"of": s["machines"], "failed": s["failed"][:40]}
+    if not st.get(key):
+        _give_up(st, phase, st.pop("last_why", f"every account's {phase} run ended red"))
+        return
+    st.pop("last_why", None)
+    used = {repo: s for repo, s in stat.items() if repo in st[key]}
+    failed = [f"{owner(repo)}: {n}" if len(st.get("fleets") or []) > 1 else n
+              for repo, s in used.items() for n in s["failed"]]
+    if failed:
+        st.setdefault("missing", {})[phase] = {"of": sum(s["machines"] for s in used.values()),
+                                               "failed": failed[:40]}
     if phase == "replay":
-        rep = download(int(st["replay_run"]), repo, "replay-report-*")
-        got = read_reports(rep)
+        got = read_reports(list(_downloads(st, "replay", "replay-report-*").values()))
         st["end_ms"], st["universe"] = got["end_ms"], got["universe"]
-        st["base_run"] = dispatch(FORECAST_WF, _forecast_inputs(st, "base"), repo,
-                                  since=_tried(st, f"base {st['replay_run']}", now))
+        _dispatch_stage(st, "base", now)
+        if not st["base_runs"]:
+            _give_up(st, "base", "every account refused the base run")
+            return
         st.pop("tried", None)
         # a step that got through clears the error a retry was for (bug hunt,
         # round 11: "last error" stayed on the page after the retry worked)
         st.update(phase="base", error="", failed_at=0,
-                  why=f"forecast run {st['base_run']} (base) started on GitHub")
+                  why=f"forecast run {_named_runs(st, st['base_runs'])} (base) started on GitHub")
         return
     if phase == "base":
-        _say(st, f"base run {st['base_run']} finished on GitHub — downloading and adding it up on "
-                 f"this PC (a few minutes)")
-        art = download(int(st["base_run"]), repo, "forecast-*")
-        run_merge(str(art), None, {"replay": st["replay_run"], "base": st["base_run"],
-                                   "shards": SHARDS, "missing": st.get("missing") or {},
-                                   "universe": st.get("universe") or {}}, keep=False)
+        _say(st, f"base run {_named_runs(st, st['base_runs'])} finished on GitHub — downloading and "
+                 f"adding it up on this PC (a few minutes)")
+        dirs = {repo: str(d) for repo, d in _downloads(st, "base", "forecast-*").items()}
+        run_merge(_dirs_arg(st, dirs), None, _merge_runs(st), keep=False)
         out = _latest()
         bases = [s_["cfg"] for s_ in out["sets"] if s_["base"]][:fr.TOP_FOR_OPTIONS]
         rooms = room_rules()
         have = {fr.rule_id(c) for c in bases}
         bases += [c for c in rooms.values() if fr.rule_id(c) not in have]
         st["bases"] = ";".join(fr.encode(c) for c in bases)
-        st["options_run"] = dispatch(FORECAST_WF, _forecast_inputs(st, "options", {"bases": st["bases"]}),
-                                     repo, since=_tried(st, f"options {st['replay_run']}", now))
+        st["base_dirs"] = dirs
+        _dispatch_stage(st, "options", now, {"bases": st["bases"]})
+        if not st["options_runs"]:
+            _give_up(st, "options", "every account refused the options run")
+            return
         st.pop("tried", None)
-        st.update(phase="options", base_dir=str(art), error="", failed_at=0,
-                  why=f"forecast run {st['options_run']} (options) started on GitHub")
+        st.update(phase="options", error="", failed_at=0,
+                  why=f"forecast run {_named_runs(st, st['options_runs'])} (options) started on GitHub")
         return
     if phase == "options":
-        _say(st, f"options run {st['options_run']} finished on GitHub — downloading and adding up "
-                 f"both runs on this PC (a few minutes)")
-        art = download(int(st["options_run"]), repo, "forecast-*")
-        run_merge(st["base_dir"], str(art), {"replay": st["replay_run"], "base": st["base_run"],
-                                             "options": st["options_run"], "shards": SHARDS,
-                                             "missing": st.get("missing") or {},
-                                             "universe": st.get("universe") or {}}, keep=True)
+        _say(st, f"options run {_named_runs(st, st['options_runs'])} finished on GitHub — downloading "
+                 f"and adding up both runs on this PC (a few minutes)")
+        dirs = {repo: str(d) for repo, d in _downloads(st, "options", "forecast-*").items()}
+        # BOTH STAGES OVER THE SAME ACCOUNTS: the merge keeps the machines the
+        # two runs share, and the folders carry each account's place
+        base = {repo: d for repo, d in (st.get("base_dirs") or {}).items() if repo in dirs}
+        run_merge(_dirs_arg(st, base), _dirs_arg(st, dirs), _merge_runs(st), keep=True)
         out = _latest()
         # THE MERGE'S OWN STAMP (bug hunt, rounds 16-17): "made at 8:49pm" was
         # the tick's start while the card under it said "made 8:54pm" — one
@@ -556,13 +838,15 @@ def _step(st: dict, now: float) -> None:
         made = float(out.get("made_at") or time.time())
         st.update(phase="done", done_day=dt.date.fromtimestamp(made).isoformat(), done_at=made,
                   error="", failed_at=0,
-                  options_dir=str(art), why=f"made at {fmt_when(made)}",
+                  options_dirs=dirs, why=f"made at {fmt_when(made)}",
                   # what the what-if box measures on: the LAST FINISHED data,
-                  # never a replay still running (bug hunt, round 4)
+                  # never a replay still running (bug hunt, round 4) — every
+                  # account whose replay finished
                   # .get: a key missing here must never stop a finished day
                   # reaching "done", or the merge re-runs every RETRY_S
-                  ready={k: st.get(k) for k in ("replay_run", "end_ms", "start", "repo",
-                                                "avoid", "families")})
+                  ready={"replay_runs": dict(st.get("replay_runs") or {}),
+                         "fleets": list(st.get("fleets") or []),
+                         **{k: st.get(k) for k in ("end_ms", "start", "avoid", "families")}})
         bell(out, f2.live())
 
 
@@ -715,16 +999,26 @@ def _whatif_save(d: dict) -> None:
 _STARTING: set = set()            # what-if ids this process is asking GitHub for right now
 
 
-def _whatif_edit(rid: str, fields: dict, run: int | None = None) -> None:
+def _whatif_runs(rec: dict) -> dict:
+    """{account: run} of a what-if — one asked before the accounts were dealt
+    kept a single `run`, on `origin`."""
+    if rec.get("runs"):
+        return {k: int(v) for k, v in rec["runs"].items()}
+    return {slug(): int(rec["run"])} if rec.get("run") else {}
+
+
+def _whatif_edit(rid: str, fields: dict, run=None) -> None:
     """ONE what-if's fields saved over a FRESH read, under the lock (bug hunt,
     round 6): the poll held its own copy of the file across a download of
     minutes and saved it whole, so a what-if asked meanwhile vanished from
-    the file while its run went on on GitHub. `run` — only if the record
-    still belongs to that run (it may have been asked again since)."""
+    the file while its run went on on GitHub. `run` — its run (or its
+    {account: run}): only if the record still belongs to it (it may have been
+    asked again since)."""
     with _WHATIF_LOCK:
         w = whatifs()
         rec = w.get(rid)
-        if rec is None or (run is not None and rec.get("run") != run):
+        if rec is None or (run is not None and (rec.get("runs") if isinstance(run, dict)
+                                                else rec.get("run")) != run):
             return
         rec.update(fields)
         _whatif_save(w)
@@ -739,8 +1033,8 @@ def whatif(cfg: dict) -> dict:
                     **{k: cfg.get(k) for k in fr.OPTION_KEYS if cfg.get(k) not in (None, "", False)},
                     **({"coin_slices": int(cfg["coin_slices"])} if cfg.get("coin_slices") else {}))
     rid = fr.rule_id(cfg)
-    st = read().get("ready") or {}
-    if not st.get("replay_run") or not st.get("end_ms"):
+    st = _ready_of(read().get("ready") or {})
+    if not st.get("replay_runs") or not st.get("end_ms"):
         return {"id": rid, "status": "no replay yet",
                 "why": "the daily Forecast v2 has not finished a replay yet — a what-if needs one"}
     with _WHATIF_LOCK:
@@ -769,13 +1063,23 @@ def whatif(cfg: dict) -> dict:
 
 
 def _start_whatif(rid: str, st: dict, custom: str, since: float | None = None) -> None:
+    """One custom run on EVERY account the finished replay ran on, each on
+    its own replay — a what-if over one account's coins would answer about
+    half the market. An account refusing fails the what-if, named; asking
+    again adopts every run that did start."""
+    runs, refused = {}, []
     try:
-        run = dispatch(FORECAST_WF, _forecast_inputs(st, "custom", {"custom": custom}),
-                       st.get("repo") or slug(), since=since)
-        _whatif_edit(rid, {"run": run, "status": "working", "why": "started on GitHub"})
-    except Exception as exc:                                   # noqa: BLE001
-        _whatif_edit(rid, {"status": "failed",
-                           "why": f"could not start it: {type(exc).__name__}: {str(exc)[:200]}"})
+        for repo in (st.get("replay_runs") or {}):
+            try:
+                runs[repo] = dispatch(FORECAST_WF, _forecast_inputs(st, "custom", repo, {"custom": custom}),
+                                      repo, since=since)
+            except Exception as exc:                           # noqa: BLE001
+                refused.append(f"{owner(repo)}: {type(exc).__name__}: {str(exc)[:160]}")
+        if refused:
+            _whatif_edit(rid, {"status": "failed", "runs": runs or None,
+                               "why": f"could not start it on {'; '.join(refused)}"})
+        else:
+            _whatif_edit(rid, {"runs": runs, "status": "working", "why": "started on GitHub"})
     finally:
         _STARTING.discard(rid)
 
@@ -818,27 +1122,33 @@ def _whatifs(st: dict, now: float) -> None:
 
     _cut_starts(now)
     w = whatifs()
-    busy = [r for r in w.values() if r.get("status") == "working" and r.get("run")]
+    busy = [r for r in w.values() if r.get("status") == "working" and (r.get("runs") or r.get("run"))]
     if not busy or now - float(st.get("whatif_polled") or 0) < POLL_S:
         return
     st["whatif_polled"] = now
-    repo = st.get("repo") or slug()
     chain = st.get("phase") in ("replay", "base", "options")
     also = (f" — the daily Forecast v2's {st.get('phase')} run is on GitHub too" if chain else "")
     for r in busy:
-        run = int(r["run"])
+        runs = _whatif_runs(r)
+        if not r.get("runs") and st.get("repo"):
+            runs = {st["repo"]: int(r["run"])}          # a one-account chain's own record
+        mark = r.get("runs") or r.get("run")             # the guard: still this record's run(s)
         try:
-            s = run_status(run, repo)
-            if s["status"] != "completed":
-                _whatif_edit(r["id"], {"why": run_words(s, also)}, run=run)
+            stat = {repo: run_status(run, repo) for repo, run in runs.items()}
+            waiting = [s for s in stat.values() if s["status"] != "completed"]
+            if waiting:
+                _whatif_edit(r["id"], {"why": run_words(waiting[0], also)}, run=mark)
                 continue
-            if s["conclusion"] != "success":
-                _whatif_edit(r["id"], {"status": "failed", "why": f"the run ended {s['conclusion']}"},
-                             run=run)
+            red = [f"{owner(repo)} {s['conclusion']}" if len(runs) > 1 else str(s["conclusion"])
+                   for repo, s in stat.items() if s["conclusion"] != "success"]
+            if red:
+                _whatif_edit(r["id"], {"status": "failed", "why": f"the run ended {', '.join(red)}"},
+                             run=mark)
                 continue
-            art = download(run, repo, "forecast-*")
+            # every account's machines, account i's machine k numbered i*100 + k
+            arts = [(i, download(run, repo, "forecast-*")) for i, (repo, run) in enumerate(runs.items())]
             try:
-                metas, packs = fm.load(art)
+                metas, packs = fm.load(arts)
                 try:
                     start = metas[0]["start"]
                     start_ms = int(dt.datetime(*map(int, start.split("-"))).timestamp() * 1000)
@@ -853,13 +1163,14 @@ def _whatifs(st: dict, now: float) -> None:
                     for pk in packs:
                         pk.close()
             finally:
-                shutil.rmtree(art, ignore_errors=True)
+                for _i, art in arts:
+                    shutil.rmtree(art, ignore_errors=True)
             _whatif_edit(r["id"], {"result": result, "status": "done", "why": "", "done_at": now},
-                         run=run)
+                         run=mark)
         except Exception as exc:                               # noqa: BLE001
             # one what-if GitHub could not answer never stops the others
             _whatif_edit(r["id"], {"why": f"could not read it from GitHub at this check: "
-                                          f"{type(exc).__name__}: {str(exc)[:160]}"}, run=run)
+                                          f"{type(exc).__name__}: {str(exc)[:160]}"}, run=mark)
 
 
 def switch(on: bool) -> dict:

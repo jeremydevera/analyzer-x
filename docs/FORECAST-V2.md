@@ -52,15 +52,18 @@ a watcher rule or touches real money.
  └──────────────────────────────┬───────────────────────────────┘
                                 ▼
  ┌──────────────────────────────────────────────────────────────┐
- │ 3. REPLAY on GitHub (replay.yml, 20 machines, ~1 hour)        │
- │    every strategy that could pass the loosest rule set:       │
- │    wr=70, trades=20, tp=any, windows 15|30, from the 1st of   │
- │    the month three months back · each machine also uploads    │
- │    replay-report-<N> (a few KB) so this PC finds the end      │
+ │ 3. REPLAY on GitHub (replay.yml) on BOTH accounts, ~1 hour:   │
+ │    the market's ~1,100 coins dealt round robin between them,  │
+ │    20 machines each = 40 (CLAUDE.md, "Every GitHub job uses   │
+ │    ALL 40 machines") · every strategy that could pass the     │
+ │    loosest rule set: wr=70, trades=20, tp=any, windows 15|30, │
+ │    from the 1st of the month three months back · each machine │
+ │    also uploads replay-report-<N> (a few KB) for the end      │
  └──────────────────────────────┬───────────────────────────────┘
                                 ▼
  ┌──────────────────────────────────────────────────────────────┐
- │ 4. FORECAST base (forecast.yml → forecast_shard.py)           │
+ │ 4. FORECAST base (forecast.yml → forecast_shard.py), each     │
+ │    account on ITS OWN replay run (a run reads its own repo)   │
  │    576 base rule sets + the rooms' own rules, 100 random      │
  │    picks each, every strategy's streak at the end, the rooms' │
  │    rules split "where the money goes" · measured 260-639 s    │
@@ -68,8 +71,9 @@ a watcher rule or touches real money.
  └──────────────────────────────┬───────────────────────────────┘
                                 ▼
  ┌──────────────────────────────────────────────────────────────┐
- │ 5. MERGE base (its OWN PROCESS: forecast_v2_merge) → pick the │
- │    20 best base sets + the rooms' rules                       │
+ │ 5. MERGE base (its OWN PROCESS: forecast_v2_merge) over every │
+ │    account's machines (account i's machine k = i*100 + k)     │
+ │    → pick the 20 best base sets + the rooms' rules            │
  └──────────────────────────────┬───────────────────────────────┘
                                 ▼
  ┌──────────────────────────────────────────────────────────────┐
@@ -86,9 +90,12 @@ a watcher rule or touches real money.
  ("the base step failed at Oct 02, 2026 3:10pm — tried again after 30
  minutes: …") and tried again after RETRY_S; a step that then gets through
  clears it. A run red on SOME machines is used and says so ("PART OF THE
- MARKET … N of 20 machines", "used without: …"), both stages merged over
- the machines they share. A run red on EVERY machine is started again once,
- then the day is given up by name and the next daily update starts fresh —
+ MARKET … N of 40 machines", "used without: …"), both stages merged over
+ the machines they share. An account that refuses a dispatch, or whose run
+ is red on EVERY machine twice, is dropped and named, and the other account
+ goes on. A run red on EVERY machine is started again once (that account
+ alone); when no account is left the day is given up by name and the next
+ daily update starts fresh —
  the last finished data stays on the page. A dispatch is saved before it is
  made, so a retry adopts the run GitHub took instead of starting a second.
  GitHub is asked at most every POLL_S. A failed practice refresh keeps

@@ -77,12 +77,44 @@ def months_of(start_ms: int, end_ms: int) -> tuple[list[str], list[str]]:
 
 
 # ----------------------------------------------------------------- reading
-def load(art_dir: str | Path) -> tuple[list[dict], list]:
-    """Every machine's meta and arrays, in shard order."""
-    arts = sorted(Path(art_dir).rglob("forecast-*.json"),
-                  key=lambda p: int(p.stem.split("-")[1]))
-    metas = [json.loads(a.read_text(encoding="utf-8")) for a in arts]
-    packs = [np.load(a.with_suffix(".npz")) for a in arts]
+# MACHINES ACROSS ACCOUNTS (Oct 02, 2026: "moving forward i want 40 machines
+# to be used always"): each GitHub account runs its own machines 0..19, so
+# account i's machine k is numbered i * ACCOUNT_STEP + k — two accounts'
+# machine 3 stay two machines, and the base and options runs are matched
+# machine by machine on the same numbers.
+ACCOUNT_STEP = 100
+
+
+def folders(art) -> list[tuple[int, Path]]:
+    """[(account, folder)] from one folder, from "0=<dir>;1=<dir>" (the
+    chain's command line) or from a list of (account, folder)."""
+    if isinstance(art, (list, tuple)):
+        return [(int(i), Path(d)) for i, d in art]
+    s = str(art)
+    if "=" in s:
+        out = []
+        for part in s.split(";"):
+            if part.strip():
+                i, d = part.split("=", 1)
+                out.append((int(i), Path(d)))
+        return out
+    return [(0, Path(s))]
+
+
+def load(art_dir) -> tuple[list[dict], list]:
+    """Every machine's meta and arrays, in machine order, over every
+    account's folder (`folders`)."""
+    found = []
+    for i, d in folders(art_dir):
+        for a in d.rglob("forecast-*.json"):
+            found.append((i * ACCOUNT_STEP + int(a.stem.split("-")[1]), a))
+    found.sort(key=lambda x: x[0])
+    metas, packs = [], []
+    for n, a in found:
+        m = json.loads(a.read_text(encoding="utf-8"))
+        m["shard"] = n                       # its number across every account
+        metas.append(m)
+        packs.append(np.load(a.with_suffix(".npz")))
     if not metas:
         raise FileNotFoundError(f"no forecast-<N>.json under {art_dir}")
     ids = [s["id"] for s in metas[0]["sets"]]
@@ -400,9 +432,10 @@ def keep_prediction(out: dict, path: Path | None = None) -> bool:
 
 def main(argv=None) -> int:
     """`<base dir> [<options dir>] [--runs JSON] [--keep]` — run by the
-    daily chain as its OWN PROCESS: adding up 20 machines' streaks peaks
-    over a gigabyte, which must never happen inside the API. `--keep` keeps
-    the month's first prediction; only the chain's final merge passes it."""
+    daily chain as its OWN PROCESS: adding up the machines' streaks peaks
+    over a gigabyte, which must never happen inside the API. A dir may be
+    one folder or every account's, "0=<dir>;1=<dir>" (`folders`). `--keep`
+    keeps the month's first prediction; only the chain's final merge passes it."""
     argv = list(argv or sys.argv[1:])
     runs = {}
     if "--runs" in argv:

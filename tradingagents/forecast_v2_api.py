@@ -481,9 +481,12 @@ def summary(now: float | None = None) -> dict:
                 "follow": lt["follow"]},
             # the machines a run was used WITHOUT, named (bug hunt, round 12: the
             # chain said "named on the page" and the page was never sent them)
+            # and, since Oct 02, 2026, every ACCOUNT's runs and any account
+            # dropped (CLAUDE.md, "Every GitHub job uses ALL 40 machines")
             "chain": {k: st.get(k) for k in ("phase", "why", "error", "on", "done_at",
                                              "replay_run", "base_run", "options_run", "repo",
-                                             "missing")},
+                                             "missing", "fleets", "replay_runs", "base_runs",
+                                             "options_runs", "lost")},
             "tracker": tracker(now) if lt else None, "grading": grading() if lt else None,
             "options": [{"key": k, "value": v, "words": w} for k, v, w in fr.OPTIONS],
             "grid": fr.BASE}

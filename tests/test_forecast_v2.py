@@ -520,7 +520,7 @@ def test_a_what_if_answers_at_once_and_starts_behind_the_answer(monkeypatch):
         "T", (), {"start": lambda self: started.append(args)})())
     got = fd.whatif({"window_days": 30, "on_winrate": 90, "min_trades": 40, "tp_rule": ">", "max_sl": 2})
     assert got["status"] == "starting" and started and json.loads(started[0][2])["id"] == got["id"]
-    assert started[0][1]["replay_run"] == 5, "measured on the finished replay, not the running one"
+    assert started[0][1]["replay_runs"] == {"x/y": 5}, "measured on the finished replay, not the running one"
     again = fd.whatif({"window_days": 30, "on_winrate": 90, "min_trades": 40, "tp_rule": ">", "max_sl": 2})
     assert again["id"] == got["id"] and len(started) == 1, "asked twice, started once"
 
@@ -770,7 +770,7 @@ def test_only_the_days_final_merge_keeps_the_months_prediction(monkeypatch, tmp_
     assert said == ["base run 6 finished on GitHub — downloading and adding it up on this PC (a few minutes)"]
     fd._step(st, NOW + 600)
     assert st["phase"] == "done" and merges[-1] == (False, True), "the day's final merge keeps the month"
-    assert st["ready"]["replay_run"] == 5
+    assert st["ready"]["replay_runs"] == {"x/y": 5}
     # bug hunt, rounds 16-17: "made at" is the merge's own stamp — the time
     # the card under it prints — never the tick's start
     assert st["done_at"] == 1.0 and st["why"].startswith("made at ")
@@ -888,14 +888,19 @@ def test_a_dispatch_is_on_disk_before_it_is_made(monkeypatch):
         return 41
 
     monkeypatch.setattr(fd, "dispatch", dispatch)
+    # one account here (the two-account chain: tests/test_forecast_v2_on_both_accounts.py)
+    monkeypatch.setattr(fd, "fleets_now", lambda: (["x/y"], []))
+    from tradingagents import cloud_sweep as cs
+
+    monkeypatch.setattr(cs, "sync_fleet", lambda slug, source="": "")
     st = {"phase": "idle", "on": True, "repo": "x/y"}
     with pytest.raises(RuntimeError):
         fd._step(st, NOW)                      # this tick never reaches its own save
     fresh = fd.read()                           # the next tick reads only what is on disk
-    assert fresh["tried"]["what"].startswith("replay ") and fresh["tried"]["at"] == NOW
+    assert fresh["tried"] == {"replay 2026-10-01 2026-07-01 x/y": NOW}, fresh.get("tried")
     fd._step(fresh, NOW + 1800)
     assert sinces == [None, NOW], "the retry looks for the run the first try started"
-    assert fresh["phase"] == "replay" and fresh["replay_run"] == 41 and "tried" not in fresh
+    assert fresh["phase"] == "replay" and fresh["replay_runs"] == {"x/y": 41} and "tried" not in fresh
 
 
 def test_an_off_saved_before_the_box_had_its_own_file_stays_off():
@@ -933,12 +938,12 @@ def test_a_run_red_on_every_machine_is_started_again_once_then_the_day_is_given_
     st = {"phase": "base", "on": True, "repo": "x/y", "replay_run": 6, "base_run": 7, "end_ms": 2,
           "start": "2026-07-01", "started_day": "2026-10-01", "ready": ready}
     fd._step(st, NOW)
-    assert started == [(fd.FORECAST_WF, "base")] and st["base_run"] == 88 and st["phase"] == "base"
+    assert started == [(fd.FORECAST_WF, "base")] and st["base_runs"] == {"x/y": 88} and st["phase"] == "base"
     assert st["why"].endswith("started again as run 88 (try 2 of 2)")
     fd._step(st, NOW + 600)                     # the second run is red on every machine too
     assert len(started) == 1 and st["phase"] == "idle", "started again ONCE, then the day is given up"
     assert st["error"].startswith("base: base run 88 ended failure on every machine")
-    assert st["ready"] == ready, "the last finished data stays on the page"
+    assert st["ready"] == fd._ready_of(ready), "the last finished data stays on the page"
     ok, why = fd.due(NOW + 700, st)
     assert not ok and why.startswith("today's Forecast v2 was given up")
 
@@ -1003,7 +1008,7 @@ def test_a_what_if_says_which_data_it_was_measured_on():
     finally:
         fd.threading.Thread = real
         fd._STARTING.discard(rid)
-    assert got["status"] == "starting" and got["end_ms"] == 2 and started[0][1]["replay_run"] == 9
+    assert got["status"] == "starting" and got["end_ms"] == 2 and started[0][1]["replay_runs"] == {"x/y": 9}
 
 
 def test_a_what_ifs_download_is_gone_once_it_is_read(tmp_path, monkeypatch):
@@ -1107,3 +1112,245 @@ def test_a_grade_says_when_it_covers_other_strategies():
     assert not g["differs"] and g["now"] is None
     src = (ROOT / "webapp/src/components/forecast/ForecastV2.tsx").read_text(encoding="utf-8")
     assert "the newest data covers" in src
+
+
+# ------------------------------------- every GitHub account (Oct 02, 2026)
+# Operator, Oct 02, 2026 3:49pm: "moving forward i want 40 machines to be used
+# always , i want this setting to be remembered" — the daily replay ran on one
+# account's 20 machines while the other account's 20 sat idle.
+ME, FORK = "jeremydevera/analyzer-x", "jeremydvera/analyzer-x"
+DONE = {"status": "completed", "conclusion": "success", "machines": 20, "done": 20, "failed": [], "created": None}
+
+
+def _two(monkeypatch, coins=("A_USDT", "B_USDT", "C_USDT", "D_USDT", "E_USDT")):
+    """Two accounts that can run the chain, the market's coins, and no sync."""
+    from tradingagents import cloud_sweep as cs, forecast_v2_daily as fd, room_forecasts as rf
+
+    monkeypatch.setattr(fd, "fleets_now", lambda: ([ME, FORK], []))
+    monkeypatch.setattr(fd, "market", lambda: list(coins))
+    monkeypatch.setattr(cs, "sync_fleet", lambda slug, source="": "")
+    monkeypatch.setattr(fd, "skip_lists", lambda: ([], []))
+    monkeypatch.setattr(fd, "due", lambda now, st: (True, "the update is on this PC"))
+    monkeypatch.setattr(fd, "room_rules", lambda: {})
+    monkeypatch.setattr(rf, "_update", lambda: {"runs": [1], "collected": [1], "when": NOW - HOUR})
+    return fd
+
+
+def test_the_replay_is_dealt_between_both_accounts(monkeypatch):
+    """Each account its own pile of the market: each account's claim board
+    lives in its own repository, so two runs left to work the coins out would
+    both measure every coin and call it forty machines."""
+    fd = _two(monkeypatch)
+    sent = []
+    monkeypatch.setattr(fd, "dispatch", lambda wf, inputs, repo, since=None: sent.append(
+        (wf, repo, inputs)) or (11 if repo == ME else 12))
+    st = {"phase": "idle", "on": True}
+    fd._step(st, NOW)
+    assert st["phase"] == "replay" and st["replay_runs"] == {ME: 11, FORK: 12} and st["fleets"] == [ME, FORK]
+    piles = {repo: inputs["coin_list"].split(",") for _wf, repo, inputs in sent}
+    assert piles == {ME: ["A_USDT", "C_USDT", "E_USDT"], FORK: ["B_USDT", "D_USDT"]}, "round robin, none twice"
+    assert {wf for wf, *_x in sent} == {fd.REPLAY_WF} and all(i["shards"] == 20 for *_x, i in sent)
+    assert st["why"].startswith("replay 11 on jeremydevera and 12 on jeremydvera started on GitHub")
+    assert fd._merge_runs(st)["shards"] == 40
+
+
+def test_an_account_refusing_the_replay_never_stops_the_other(monkeypatch):
+    """A refusal is usually GitHub listing a run late (Oct 02, 2026 4:30pm: the
+    second account's first replay, 37060968220, took more than 90 seconds), so
+    the refused account is asked again with the SAME pile — never the started
+    one again — and only an account refusing twice is left out, named."""
+    fd = _two(monkeypatch)
+    asked = []
+
+    def dispatch(wf, inputs, repo, since=None):
+        asked.append((repo, inputs["coin_list"], since))
+        if repo == FORK:
+            raise RuntimeError("HTTP 403: Resource not accessible by integration")
+        return 11
+
+    monkeypatch.setattr(fd, "dispatch", dispatch)
+    st = {"phase": "idle", "on": True}
+    with pytest.raises(RuntimeError, match="the replay was refused — tried again in 30 minutes"):
+        fd._step(st, NOW)
+    fresh = fd.read()                                   # what the next try reads
+    assert fresh["phase"] == "idle" and fresh["plan"]["runs"] == {ME: 11}
+    monkeypatch.setattr(fd, "market", lambda: ["Z_USDT"])   # listed again it deals differently...
+    fd._step(fresh, NOW + 1800)
+    assert [r for r, *_x in asked] == [ME, FORK, FORK], "the started account is never asked twice"
+    assert asked[2][1] == "B_USDT,D_USDT" and asked[2][2] == NOW, "...the SAME pile, adopting a late run"
+    assert fresh["phase"] == "replay" and fresh["replay_runs"] == {ME: 11} and fresh["fleets"] == [ME, FORK]
+    assert fresh["lost"] == [{"repo": FORK, "phase": "replay", "coins": 2,
+                              "why": "RuntimeError: HTTP 403: Resource not accessible by integration"}]
+    assert "jeremydvera refused it" in fresh["why"] and "its 2 coins left out" in fresh["why"]
+    assert "plan" not in fresh and "tried" not in fresh
+    assert fd._merge_runs(fresh)["shards"] == 40, "dealt to two: the page says it covers part of the market"
+
+
+def test_each_account_forecasts_its_own_replay_and_the_merge_reads_both(tmp_path, monkeypatch):
+    """A run reads the artifacts of its OWN repository: each account's
+    forecast is on its own replay run, every one with the common end over
+    BOTH accounts' machines, and the PC merges every account's folder."""
+    fd = _two(monkeypatch)
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: DONE)
+
+    def download(run, repo, pattern):
+        d = tmp_path / "dl" / str(run)
+        if pattern == "replay-report-*":
+            rep = d / "replay-report-0"
+            rep.mkdir(parents=True, exist_ok=True)
+            end = _ms(2026, 10, 1, 16) if repo == ME else _ms(2026, 10, 1, 15)
+            coin = "A_USDT" if repo == ME else "B_USDT"
+            (rep / "replay-report-0.json").write_text(json.dumps({
+                "kept": 10, "tested": 100, "start": "2026-07-01", "write": {"wr": 70}, "groups": ["classic"],
+                "spans": {f"{coin} 15m": [1, end]}}), encoding="utf-8")
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    monkeypatch.setattr(fd, "download", download)
+    sent, merged = [], []
+    monkeypatch.setattr(fd, "dispatch", lambda wf, inputs, repo, since=None: sent.append((repo, inputs))
+                        or 20 + len(sent))
+    monkeypatch.setattr(fd, "run_merge", lambda base, opts, runs, keep: merged.append((base, opts, runs, keep)))
+    monkeypatch.setattr(fd, "_latest", lambda: {"made_at": 7, "sets": [
+        {"base": True, "cfg": fr.cfg_of(30, 90, 40, ">", 2.0)}]})
+    monkeypatch.setattr(fd, "bell", lambda out, live: None)
+    monkeypatch.setattr(fd.f2, "live", lambda: {})
+    st = {"phase": "replay", "on": True, "fleets": [ME, FORK], "replay_runs": {ME: 11, FORK: 12},
+          "start": "2026-07-01", "started_day": "2026-10-01", "coins": {ME: 3, FORK: 2}}
+    fd._step(st, NOW)
+    assert st["phase"] == "base" and st["end_ms"] == _ms(2026, 10, 1, 15), "the common end over BOTH"
+    assert st["universe"]["coins"] == 2
+    assert [(r, i["source_run"], i["stage"], i["end_ms"]) for r, i in sent] == \
+        [(ME, 11, "base", st["end_ms"]), (FORK, 12, "base", st["end_ms"])], "each account on its own replay"
+    base = dict(st["base_runs"])
+    fd._step(st, NOW + 600)
+    assert st["phase"] == "options" and merged[0][3] is False
+    assert merged[0][0] == f"0={tmp_path / 'dl' / str(base[ME])};1={tmp_path / 'dl' / str(base[FORK])}"
+    assert merged[0][2]["shards"] == 40 and merged[0][2]["base"] == base
+    assert [(r, i["stage"], i["source_run"]) for r, i in sent[2:]] == [(ME, "options", 11), (FORK, "options", 12)]
+    fd._step(st, NOW + 1200)
+    assert st["phase"] == "done" and merged[-1][3] is True
+    assert merged[-1][0] == merged[0][0] and merged[-1][1].startswith("0=") and ";1=" in merged[-1][1]
+    assert st["ready"]["replay_runs"] == {ME: 11, FORK: 12} and st["ready"]["fleets"] == [ME, FORK]
+
+
+def test_two_accounts_machines_are_numbered_apart_and_matched_by_account(tmp_path):
+    """Each account runs its own machines 0..19: account i's machine k is
+    i*100 + k, so two machine 1s stay two, and a machine missing from one
+    account's options run takes out THAT account's base machine only."""
+    good = fr.cfg_of(30, 90, 40, ">", 2.0)
+    t = [(_ms(2026, 7, 5), _ms(2026, 7, 5, 13), 10.0), (_ms(2026, 8, 5), _ms(2026, 8, 5, 13), 20.0)]
+    t2 = [(_ms(2026, 7, 6), _ms(2026, 7, 6, 13), 1.0), (_ms(2026, 8, 6), _ms(2026, 8, 6, 13), 2.0)]
+    a = _fake_run(tmp_path / "a", [(good, t)])
+    b = _fake_run(tmp_path / "b", [(good, t2)])
+    out = fm.merge(f"0={a};1={b}", runs={"shards": 4}, reality={"took": 0.5, "gap": 1.0}, keep=False)
+    assert (out["data"]["machines"], out["data"]["of"], out["data"]["shards"]) == (4, 4, [0, 1, 100, 101])
+    assert out["sets"][0]["total"]["profit"] == 33.0, "both accounts' trades, none counted twice"
+    opt = {**good, "skip_jp": True}
+    oa, ob = _fake_run(tmp_path / "oa", [(opt, t)]), _fake_run(tmp_path / "ob", [(opt, t2)])
+    import shutil
+
+    shutil.rmtree(ob / "forecast-1")                # account 1's machine 1 failed in options
+    out = fm.merge(f"0={a};1={b}", f"0={oa};1={ob}", runs={"shards": 4},
+                   reality={"took": 0.5, "gap": 1.0}, keep=False)
+    assert out["data"]["shards"] == [0, 1, 100]
+    by = {s["id"]: s for s in out["sets"]}
+    assert by[fr.rule_id(good)]["total"]["profit"] == 31.0, "account 1's August +2 out, account 0's +20 in"
+
+
+def test_a_red_account_is_started_again_alone_then_dropped_and_named(monkeypatch):
+    fd = _two(monkeypatch)
+    red = {**DONE, "conclusion": "failure", "failed": [f"forecast ({i})" for i in range(20)]}
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: red if repo == FORK else DONE)
+    sent = []
+    monkeypatch.setattr(fd, "dispatch", lambda wf, inputs, repo, since=None: sent.append(
+        (repo, inputs["stage"])) or 90 + len(sent))
+    st = {"phase": "base", "on": True, "fleets": [ME, FORK], "replay_runs": {ME: 11, FORK: 12},
+          "base_runs": {ME: 21, FORK: 22}, "coins": {ME: 3, FORK: 2}, "end_ms": 2,
+          "start": "2026-07-01", "started_day": "2026-10-01"}
+    fd._step(st, NOW)
+    assert sent == [(FORK, "base")] and st["base_runs"] == {ME: 21, FORK: 91}, "the red account alone"
+    assert st["why"].endswith("started again as run 91 (try 2 of 2)")
+    merged = []
+    monkeypatch.setattr(fd, "download", lambda run, repo, pattern: Path(f"dl{run}"))
+    monkeypatch.setattr(fd, "run_merge", lambda base, opts, runs, keep: merged.append((base, runs)))
+    monkeypatch.setattr(fd, "_latest", lambda: {"made_at": 7, "sets": []})
+    fd._step(st, NOW + 600)                         # red again: dropped, named, the other goes on
+    assert st["phase"] == "options" and st["base_runs"] == {ME: 21}
+    lost = st["lost"][0]
+    assert (lost["repo"], lost["phase"], lost["coins"]) == (FORK, "base", 2)
+    assert lost["why"].startswith("base run 91 on jeremydvera ended failure on every machine")
+    assert merged[0][0] == "0=dl21" and merged[0][1]["shards"] == 40, "the page says part of the market"
+    assert sent[-1] == (ME, "options"), "options only where base results exist"
+
+
+def test_a_what_if_runs_on_every_account_and_reads_both(tmp_path, monkeypatch):
+    fd = _two(monkeypatch)
+    fd._write({"phase": "done", "ready": {"replay_runs": {ME: 11, FORK: 12}, "fleets": [ME, FORK],
+                                          "end_ms": 2, "start": "2026-07-01"}})
+    sent = []
+    monkeypatch.setattr(fd, "dispatch", lambda wf, inputs, repo, since=None: sent.append(
+        (repo, inputs["source_run"], inputs["stage"])) or (31 if repo == ME else 32))
+    monkeypatch.setattr(fd.threading, "Thread", lambda target, args, name, daemon: type(
+        "T", (), {"start": lambda self: target(*args)})())
+    got = fd.whatif({"window_days": 30, "on_winrate": 85, "min_trades": 30, "tp_rule": ">", "max_sl": 2})
+    rid = got["id"]
+    assert sent == [(ME, 11, "custom"), (FORK, 12, "custom")], "each account on its own replay"
+    assert fd.whatifs()[rid]["runs"] == {ME: 31, FORK: 32} and fd.whatifs()[rid]["status"] == "working"
+    good = fr.cfg_of(30, 85, 30, ">", 2.0)
+    arts = {31: _fake_run(tmp_path / "w31", [(good, [(_ms(2026, 8, 5), _ms(2026, 8, 5, 13), 4.0)])], shards=1),
+            32: _fake_run(tmp_path / "w32", [(good, [(_ms(2026, 8, 6), _ms(2026, 8, 6, 13), 3.0)])], shards=1)}
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: {**DONE, "machines": 1, "done": 1})
+    monkeypatch.setattr(fd, "download", lambda run, repo, pattern: arts[run])
+    monkeypatch.setattr(fd, "_reality_of_table", lambda: {"took": 0.5, "gap": 1.0})
+    fd._whatifs({"phase": "done"}, NOW)
+    w = fd.whatifs()[rid]
+    assert w["status"] == "done" and w["result"]["total"]["profit"] == 7.0, "both accounts' machine 0"
+
+
+def test_a_chain_from_before_the_accounts_carries_on(monkeypatch):
+    """The chain running when this arrived (Oct 02, 2026: replay 37051918240 on
+    jeremydevera, started 3:06pm) kept one `repo` and `replay_run`: it carries
+    on as a one-account chain and says what it always said."""
+    fd = _two(monkeypatch)
+    polled = []
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: polled.append((run, repo)) or {
+        **DONE, "status": "in_progress", "conclusion": None, "done": 3})
+    st = {"phase": "replay", "on": True, "repo": ME, "replay_run": 37051918240, "start": "2026-07-01",
+          "started_day": "2026-10-02", "redo": {"replay": 0}}
+    fd._step(st, NOW)
+    assert polled == [(37051918240, ME)] and st["replay_runs"] == {ME: 37051918240} and st["fleets"] == [ME]
+    assert st["why"] == "replay run 37051918240: working on GitHub: 3 of 20 machines done"
+    assert "repo" not in st and "replay_run" not in st and st["redo"] == {"replay": {ME: 0}}
+
+
+def test_the_market_is_named_the_way_the_replay_names_it_and_origin_comes_first(monkeypatch):
+    from tradingagents import cloud_sweep as cs, forecast_v2_daily as fd
+    from tradingagents.dataflows import mexc_futures as fx
+
+    monkeypatch.setattr(fx, "_get_public", lambda url: {"data": [
+        {"symbol": "B_USDT", "state": 0}, {"symbol": "A_USDT", "state": 0},
+        {"symbol": "C_USDT", "state": 1}, {"symbol": "D_USDC", "state": 0}]})
+    assert fd.market() == ["A_USDT", "B_USDT"]
+    src = (ROOT / ".github/scripts/sweep_shard.py").read_text(encoding="utf-8")
+    assert 'endswith("_USDT")' in src and 'int(x.get("state", 1)) == 0' in src, "sweep_shard.eligible's rule"
+    monkeypatch.setattr(cs, "usable_fleets", lambda cwd=None: ([FORK, ME], ["x/z: no workflow"]))
+    monkeypatch.setattr(cs, "origin_fleet", lambda: ME)
+    assert fd.fleets_now() == ([ME, FORK], ["x/z: no workflow"]), "account 0 is the operator's own"
+
+
+def test_a_deal_left_by_an_earlier_day_is_never_reused(monkeypatch):
+    """The PC off overnight between a refused try and the next: the saved deal
+    holds YESTERDAY's run on the first account — the title carries only the
+    month, so reusing it would forecast on yesterday's replay."""
+    fd = _two(monkeypatch)
+    sent = []
+    monkeypatch.setattr(fd, "dispatch", lambda wf, inputs, repo, since=None: sent.append((repo, since))
+                        or (61 if repo == ME else 62))
+    st = {"phase": "idle", "on": True,
+          "plan": {"start": "2026-07-01", "day": "2026-09-30", "piles": {ME: ["A_USDT"], FORK: ["B_USDT"]},
+                   "runs": {ME: 5}, "tries": {FORK: 1}, "lost": [], "refused": []},
+          "tried": {"replay 2026-09-30 2026-07-01 jeremydvera/analyzer-x": NOW - 24 * HOUR}}
+    fd._step(st, NOW)
+    assert st["replay_runs"] == {ME: 61, FORK: 62}, "a fresh deal, both accounts asked today"
+    assert sent == [(ME, None), (FORK, None)], "nothing adopted from yesterday's attempts"

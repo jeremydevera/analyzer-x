@@ -193,8 +193,6 @@ def test_backtest_a_room_reads_the_counted_candles(runner, monkeypatch):
     trade whose signal candle the cost check counted is "fees too high" for
     certain, and a `late` row's own time — two hours after its candles — is
     never taken for a refusal of the trade entering then."""
-    from tradingagents import local_history as lh, rolling30 as r30, room_backtest as rb
-
     runner.cycle(T0 + 10)            # row: the 7:45pm candle
     runner.cycle(T0 + 910)           # the 8:00 candle, waiting
     runner.cycle(T0 + 1810)          # the 8:15 candle, waiting
@@ -204,9 +202,30 @@ def test_backtest_a_room_reads_the_counted_candles(runner, monkeypatch):
     runner.clock.t = late_at         # 10:15:01pm: the waiting two, in a late row
     at._flush_stale_refusals(runner.state, late_at)
     assert [r.get("late", False) for r in runner.refusals()] == [False, True]
+    entries = [T0, T0 + 900, T0 + 1800, late_at // 900 * 900]   # signal candle + one bar
+    d = _backtest_the_room(monkeypatch, runner.path, entries)
+    got = {k: v for k, v in d["reasons"].items() if v}
+    assert got == {"gate_blocked": 3, "none": 1}, got
+
+
+def test_backtest_a_room_answers_for_a_room_with_no_trade_record_yet(tmp_path, monkeypatch):
+    """A room deployed a minute ago has no trade record file until its runner
+    writes its first line. The page read that as ONE empty answer where it
+    unpacked two, so it would have shown "not enough values to unpack
+    (expected 2, got 0)" instead of the room's backtest (NEVER HAPPENED YET:
+    every room shown on Oct 02, 2026 had a trade record; RCA-2026-10-02-C)."""
+    d = _backtest_the_room(monkeypatch, tmp_path / "not-written-yet.jsonl", [T0])
+    assert d["backtest"]["trades"] == 1 and d["practice"]["trades"] == 0
+    assert {k: v for k, v in d["reasons"].items() if v} == {"none": 1}
+
+
+def _backtest_the_room(monkeypatch, ledger, entries):
+    """Forecast -> Backtest a room over one strategy on one coin, its trade
+    record at `ledger`, its backtest trades entering at `entries`."""
+    from tradingagents import local_history as lh, rolling30 as r30, room_backtest as rb
+
     slot = f"{KEY}|{SYM}"
     ms = lambda s: int(s * 1000)     # noqa: E731
-    entries = [T0, T0 + 900, T0 + 1800, late_at // 900 * 900]   # signal candle + one bar
     rec = {"slot": slot, "bar_s": 900, "end_ms": ms(T0 + 43200),
            "trades": [[ms(e), ms(e + 900), 0.3] for e in entries]}
     settings = {"strategies": [KEY], "strategy_coins": {KEY: [SYM]},
@@ -215,13 +234,11 @@ def test_backtest_a_room_reads_the_counted_candles(runner, monkeypatch):
     monkeypatch.setattr(rb.profiles, "valid", lambda pid: True)
     monkeypatch.setattr(rb.profiles, "get", lambda pid: {"id": pid, "name": pid})
     monkeypatch.setattr(at, "load_settings", lambda: settings)
-    monkeypatch.setattr(at, "_pp", lambda p: runner.path if p == at.LEDGER_PATH else p)
+    monkeypatch.setattr(at, "_pp", lambda p: ledger if p == at.LEDGER_PATH else p)
     monkeypatch.setattr(lh, "deployed_at", lambda: {})
     monkeypatch.setattr(r30, "_load", lambda s: rec if s == slot else None)
     rb._LEDGER.clear()
     try:
-        d = rb.compare("TESTROOM", T0 - 3600, T0 + 43200)
+        return rb.compare("TESTROOM", T0 - 3600, T0 + 43200)
     finally:
         rb._LEDGER.clear()
-    got = {k: v for k, v in d["reasons"].items() if v}
-    assert got == {"gate_blocked": 3, "none": 1}, got

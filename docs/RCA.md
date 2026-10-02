@@ -205,10 +205,11 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 * Invariant broken: **a rate limit on a LINE never limits the COUNT** —
   CLAUDE.md already said "rate-limit it (`_say_once`) and count it somewhere
   the operator reads"; the count was inside the limit.
-* Guard: `tests/test_every_refusal_is_counted.py` (6), driven through
+* Guard: `tests/test_every_refusal_is_counted.py` (7), driven through
   `process_symbol` on one fake clock — red on d870bf96ceca's runner
-  (`[None, None] == [1, 4, 1]`) and on the room page before this commit
-  (`{'gate_blocked': 2, 'gate_blocked_quiet': 2}`).
+  (`[None, None] == [1, 4, 1]`) and on the room page before 8a382f0de009
+  (`{'gate_blocked': 2, 'gate_blocked_quiet': 2}`; for a room with no trade
+  record yet, `ValueError: not enough values to unpack (expected 2, got 0)`).
 
 **SAW** — another session, Oct 02, 2026 ~4am: *"of #4FC03172's backtest trades
 from switch-on to Oct 01 8:00am, 3,462 have no practice trade and no refusal"*
@@ -240,9 +241,24 @@ RCA-2026-10-02-B); the operator: *"find out why"*, then *"yes fix it"*.
    whose prices moved in the last 5 minutes), the PC clock (0.71 s BEHIND
    MEXC), two runners for one room (one, pid 25096). The first of those had
    already been passed to the operator as a lead, and was corrected.
-10. After — the same day's refusals as rows: #4FC03172 writes ~42,191
-    refusal rows a day either way; one row per candle would have been
-    ~160,829, so the count rides on the hourly row instead.
+10. Designed against — the same day's refusals as rows: #4FC03172 writes
+    ~42,191 refusal rows a day either way; one row per candle would have
+    been ~160,829, so the count rides on the hourly row instead.
+11. `Oct 02, 2026 8:39am-8:41am` — all 9 rooms restarted on 8a382f0de009,
+    one at a time, each checked practice-money-only first.
+12. After, measured at `9:24am`: **4,154** refusal rows since the restarts,
+    every one carrying its count (4,154 candles), and **8,655** more refused
+    candles counted in the rooms' saved records and waiting for their hourly
+    row, 5,068 of them in #4FC03172. Before the fix not one of those 8,655
+    would have been written down.
+13. `9:40am` — the first hourly rows written by the fix: by `9:41am`
+    #4FC03172 had written **255** rows standing for **896** refused candles.
+    One of them: FASTSTOCK `cf_obretest_15m_sl03tp04`, `candles: 4` — the
+    8:30am, 8:45am, 9:00am and 9:15am candles, each refused (round trip
+    0.219% against a 0.40% target, 55% of it). Before the fix that row stood
+    for one refusal, and the 8:30am, 8:45am and 9:00am candles left nothing.
+    The counts cost room in the saved record: 1.01 MB of #4FC03172's 1.46 MB
+    (half of it the reason sentence each strategy keeps), 21 ms to load.
 
 **ROOT CAUSE** — `append_ledger({"action": "gate_blocked", ...})` indented
 under `if _gate_should_log(symbol, key, dry):`.
@@ -257,7 +273,10 @@ someone counts candles, and a missed backtest trade had nowhere else to look.
 a 2% target cannot win). Two sessions' time, and one wrong lead put to the
 operator before it was measured away.
 
-**FIX** — this commit.
+**FIX** — 8a382f0de009, live in every room since the runners restarted on it
+at `8:39am-8:41am`. Its Backtest a room half (the counted candles read
+exactly, `late` rows never read as a moment) runs once the app restarts: the
+app was 1 commit behind at `8:42am`.
 
 **GUARD** — `tests/test_every_refusal_is_counted.py`:
 `test_every_refused_candle_lands_in_exactly_one_row`,
@@ -269,7 +288,20 @@ before this commit — and `test_backtest_a_room_reads_the_counted_candles`,
 which feeds the runner's own rows to Forecast → Backtest a room: red on the
 page before this commit, which called the trade entering beside a `late`
 row "fees too high" and found the two candles that row names only by its
-within-an-hour guess (`gate_blocked_quiet`).
+within-an-hour guess (`gate_blocked_quiet`) — and
+`test_backtest_a_room_answers_for_a_room_with_no_trade_record_yet` (below).
+
+**Found beside it — NEVER HAPPENED YET** — Backtest a room read a room with
+no trade record file as ONE empty answer where it unpacked two. A room's
+record file appears with its runner's first line, so the first look at a
+room deployed minutes earlier would have shown *"not enough values to unpack
+(expected 2, got 0)"* where its backtest should be. What it would have done:
+a rule set deployed as a new room at 10:00am, Forecast → Backtest a room
+opened for it at 10:01am, that sentence in place of the table. Every room
+shown on Oct 02, 2026 already had a record, so it never fired. Fixed in
+8a382f0de009 (three empty answers now); guard:
+`test_backtest_a_room_answers_for_a_room_with_no_trade_record_yet`, red on
+b25206343f78's page with exactly that error.
 
 **What is not fixed, stated plainly** — the rebuilt backtest still charges a
 row's stored round trip, never the night-time gap, so it keeps booking trades
@@ -12087,6 +12119,15 @@ needs to be written differently:
    directions: false red on a refactor, false green when the thing moves. Name
    the parts, read the file that declares the behaviour, and assert every caller
    uses it. This is pattern 1 with the sign flipped.
+6. **A missing line is not "nothing happened" unless every path writes
+   one.** Twice in two days a screen read a silence as a fact. A room's
+   heartbeat was written only while it scanned, so a room with nothing
+   switched on read as dead for 892 minutes (RCA-2026-10-01-C); a cost-check
+   refusal was written once an hour, so 6,254 refused backtest trades read as
+   "no trade and no refusal" (RCA-2026-10-02-B and -C). Before a reader
+   treats a missing record as a fact, list every path the writer takes and
+   check each one writes; a rate limit goes on the LINE, never on the COUNT.
+   Test what a limit KEPT, not only the noise it took away.
 
 ---
 

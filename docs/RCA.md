@@ -798,6 +798,61 @@ does not repeat them.
 
 ---
 
+## RCA-2026-10-02-B — "Backtest a room" called 3,462 refused trades "the live program saw no signal"
+
+**CEO**
+
+* The new Backtest-a-room page said 3,462 of #4FC03172's backtest trades were
+  missed because the live program saw no signal, and I passed on a guess that
+  it read a candle too early. Both were wrong.
+* Why: the fee check writes its refusal only once an hour and refuses quietly
+  in between, so those trades looked like they had no record at all.
+* What stops it now: a trade within the hour after a written fee refusal is
+  labelled "fees too high (written once an hour)"; only 87 are left unexplained.
+
+**DEV**
+
+* `room_backtest.compare` matched a backtest-only trade to a refusal written
+  inside its own entry bar only; `auto_trader._process_slot` runs
+  `_edge_gate_cached` before the signal and writes `gate_blocked` through
+  `_gate_should_log` (`_GATE_LOG_EVERY = 3600`), so most refusals have no row.
+* Invariant broken: **label-must-match-data** — "saw no signal" was a claim
+  about the runner that the data (no row) could not support.
+* Guard: `tests/test_backtest_a_room.py::test_a_quiet_cost_check_refusal_is_named_not_called_no_signal`.
+
+**SAW** — the page, `Oct 02, 2026`: "3,462 — no trade and no refusal
+recorded: the live program saw no signal on that candle"; and my reply that
+the likely cause was "the 8:45pm candle read a moment before it was final".
+
+**TIMELINE**
+
+1. `Sep 30, 2026 8:25pm` — #4FC03172's FASTSTOCK prank_15m_sl15tp2 refused
+   by the cost check (round trip 4.456% against a 2% target), written.
+2. `9:00pm` — the backtest enters 18 FASTSTOCK prank strategies; the live
+   cost check refuses them silently (next written refusal 9:27pm).
+3. `Oct 02, 2026` — the page labels them "saw no signal"; I suggest a candle
+   read too early. The other session measured MEXC serving the closed bar
+   final at +1 s and found the hourly logging: 6,254 of 6,612 backtest trades
+   sit within an hour after a written gate_blocked for the same key and coin.
+4. Fixed: `_reason()` names those `gate_blocked_quiet`; on the last 7 days of
+   #4FC03172: 3,060 written fee refusals, 3,359 quiet ones, 314 coin full,
+   160 price ran away, 9 old signal, 87 unexplained.
+
+**ROOT CAUSE** — the page assumed every refusal leaves a row; the runner
+deliberately writes one an hour.
+
+**WHY IT WAS NOT CAUGHT** — the test fixture wrote a refusal for every refused
+trade, so the hourly silence never appeared; and the label was written as an
+explanation instead of as what the data shows.
+
+**COST** — none in money; a wrong reason on screen and a wrong guess in chat.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_backtest_a_room.py::test_a_quiet_cost_check_refusal_is_named_not_called_no_signal`.
+
+---
+
 ## RCA-2026-10-01-I — a room told to allow a stop wider than its target could never find one (NEVER HAPPENED YET)
 
 **CEO**

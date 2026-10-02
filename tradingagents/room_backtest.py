@@ -108,6 +108,30 @@ def _practice_exits(pid: str) -> dict:
     return out, refused
 
 
+# THE COST CHECK WRITES ONE REFUSAL AN HOUR (auto_trader._GATE_LOG_EVERY):
+# it runs BEFORE the signal and refuses silently for the next hour after a
+# written refusal, so a refused trade usually has NO line of its own. Found
+# Oct 02, 2026 by the other session: 6,254 of #4FC03172's 6,612 backtest
+# trades sat within an hour after a written gate_blocked for the same strategy
+# and coin; this page had called them "the live program saw no signal".
+GATE_QUIET_S = 3600
+
+
+def _reason(mine: list, ts_list: list, entry_s: float, bar_s: int) -> str:
+    """Why practice did not take the backtest trade entering at `entry_s`: a
+    refusal written while its entry bar was open, else a cost-check refusal
+    written in the hour before it (the check stays quiet that long)."""
+    i = bisect.bisect_left(ts_list, entry_s - 120)
+    if i < len(mine) and mine[i][0] <= entry_s + bar_s:
+        return mine[i][1]
+    j = bisect.bisect_right(ts_list, entry_s + bar_s) - 1
+    while j >= 0 and ts_list[j] >= entry_s - GATE_QUIET_S - bar_s:
+        if mine[j][1] == "gate_blocked":
+            return "gate_blocked_quiet"
+        j -= 1
+    return "none"
+
+
 def compare(room: str, from_s: float, to_s: float, *, sort: str = "gap",
             page: int = 1, per: int = PER_PAGE, now: float | None = None) -> dict:
     from tradingagents import auto_trader as at
@@ -130,6 +154,7 @@ def compare(room: str, from_s: float, to_s: float, *, sort: str = "gap",
     with profiles.using(room):
         deployed = lh.deployed_at()
     reasons: dict = {k: 0 for k in REASONS}
+    reasons["gate_blocked_quiet"] = 0
     reasons["none"] = 0
     lo_ms, hi_ms = from_s * 1000, to_s * 1000
     rows = []
@@ -179,11 +204,7 @@ def compare(room: str, from_s: float, to_s: float, *, sort: str = "gap",
             if int(t[0]) in used:
                 continue
             only_b += 1
-            # a refusal written while this trade's entry bar was open
-            a = t[0] / 1000 - 120
-            i = bisect.bisect_left(ts_list, a)
-            hit = mine[i][1] if i < len(mine) and mine[i][0] <= t[0] / 1000 + bar_s else None
-            reasons[hit or "none"] += 1
+            reasons[_reason(mine, ts_list, t[0] / 1000, bar_s)] += 1
         for k_, v in (("same", same), ("different", diff), ("practice_only", only_p),
                       ("backtest_only", only_b), ("after_backtest", after)):
             match[k_] += v
@@ -214,7 +235,10 @@ def compare(room: str, from_s: float, to_s: float, *, sort: str = "gap",
             "backtest": _side([p for _, p in sorted(tot_bt)]),
             "practice": _side([p for _, p in sorted(tot_pr)]),
             "match": match, "reasons": reasons,
-            "reason_labels": {**REASONS, "none": "no trade and no refusal recorded: the live program saw no signal on that candle"},
+            "reason_labels": {**REASONS,
+                              "gate_blocked_quiet": "fees too high for the target (cost check, "
+                                                    "which writes its refusal once an hour)",
+                              "none": "no trade and no refusal recorded"},
             "margin": 5.0, "leverage": at.LEVERAGE,
             "rows": traded[(page - 1) * per: page * per], "page": page, "pages": pages,
             "sort": sort}

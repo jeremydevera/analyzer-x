@@ -102,3 +102,16 @@ def test_the_screen_has_the_table_and_the_backtest_and_asks_the_server():
     assert 'type="date"' in src and "fmtWhen" in src
     api_py = (ROOT / "tradingagents/api.py").read_text(encoding="utf-8")
     assert '@app.get("/api/forecasts/room-backtest")' in api_py
+
+
+def test_a_quiet_cost_check_refusal_is_named_not_called_no_signal(room):
+    """The cost check writes one refusal an hour and refuses silently in
+    between (auto_trader._GATE_LOG_EVERY). A backtest trade 40 minutes after
+    a written gate_blocked was refused by it — this page called 3,462 such
+    trades "the live program saw no signal" (RCA-2026-10-02-B)."""
+    mine = [(ON + 1000, "gate_blocked")]
+    ts = [x[0] for x in mine]
+    assert rb._reason(mine, ts, ON + 1000 + 2400, BAR) == "gate_blocked_quiet"
+    assert rb._reason(mine, ts, ON + 1000 - 30, BAR) == "gate_blocked", "written inside its own entry bar"
+    assert rb._reason(mine, ts, ON + 1000 + 3600 + BAR + 60, BAR) == "none", "past the quiet hour"
+    assert rb._reason([(ON, "chase_skip")], [ON], ON + 2400, BAR) == "none", "only the cost check is quiet"

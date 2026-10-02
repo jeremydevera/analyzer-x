@@ -39,13 +39,11 @@ const navItems: NavItem[] = [
     subItems: [
       { name: "Auto Trade", path: "/trade" },
       { name: "Errors", path: "/errors" },
-      // Auto Trade -> Forecast (operator, Oct 01, 2026: "create a forecast
-      // tab"): the saved forecasts of which trading room is best
-      { name: "Forecast", path: "/forecast" },
-      // Auto Trade -> Forecast v2 (Oct 01, 2026: "okay run that prompt and
-      // create Forecast v2"): streaks, coins to avoid, where the money goes,
-      // and the room rules predicted for this month
-      { name: "Forecast v2", path: "/forecast-v2" },
+      // Auto Trade -> Forecast: ONE page since Oct 02, 2026 ("can i merge
+      // forecast to forecast v2 since they are almost the same?") — Forecast
+      // v2 with the first Forecast's Backtest a room and Rooms table under
+      // it. The first page (/forecast) is off the menu, still at its address.
+      { name: "Forecast", path: "/forecast-v2" },
     ],
   },
   // v1 IS OFF THE NAV (Sep 24, 2026). The operator, three times:

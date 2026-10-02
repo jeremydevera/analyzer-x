@@ -145,7 +145,14 @@ def test_the_route_serves_the_file_and_the_prompts(tmp_path, monkeypatch):
 
 def test_the_tab_is_under_auto_trade():
     side = (ROOT / "webapp/src/layout/AppSidebar.tsx").read_text(encoding="utf-8")
-    assert '{ name: "Forecast", path: "/forecast" }' in side
+    # MERGED Oct 02, 2026 ("can i merge forecast to forecast v2 ... what
+    # matters to me is this prompt and ability to backtest a room strategy"):
+    # one Forecast item, opening Forecast v2 with Backtest a room under it;
+    # the first page stays at its address, off the menu
+    assert '{ name: "Forecast", path: "/forecast-v2" }' in side
+    assert 'path: "/forecast" }' not in side
     assert (ROOT / "webapp/src/app/(admin)/forecast/page.tsx").exists()
+    v2 = (ROOT / "webapp/src/app/(admin)/forecast-v2/page.tsx").read_text(encoding="utf-8")
+    assert "<ForecastV2 />" in v2 and "<RoomsAndBacktest />" in v2
     panel = (ROOT / "webapp/src/components/forecast/RoomForecasts.tsx").read_text(encoding="utf-8")
     assert "api.forecasts(page)" in panel and "fmtWhen(f.at)" in panel

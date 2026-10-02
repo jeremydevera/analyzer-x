@@ -429,7 +429,8 @@ def test_the_page_prints_and_works_nothing_out():
     assert "shared out over the days" not in src and "pastMonths(t.rooms)" in src
     assert "10-15 minutes" not in src
     side = (ROOT / "webapp/src/layout/AppSidebar.tsx").read_text(encoding="utf-8")
-    assert '{ name: "Forecast v2", path: "/forecast-v2" }' in side
+    # ONE Forecast item since Oct 02, 2026 (the merge): it opens this page
+    assert '{ name: "Forecast", path: "/forecast-v2" }' in side
 
 
 # ------------------------------------------------------------ the daily chain

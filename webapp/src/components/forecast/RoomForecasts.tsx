@@ -720,3 +720,25 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
     </div>
   );
 }
+
+/** BACKTEST A ROOM AND THE ROOMS TABLE, on their own (operator, Oct 02, 2026:
+ *  "can i merge forecast to forecast v2 since they are almost the same? ...
+ *  what matters to me is this prompt and ability to backtest a room
+ *  strategy"). The merged Forecast page (/forecast-v2) shows these under
+ *  Forecast v2; this reads the rooms itself so it needs nothing from the page. */
+export function RoomsAndBacktest() {
+  const [live, setLive] = useState<ForecastsLive | null>(null);
+  const [err, setErr] = useState("");
+  const load = useCallback(() => api.forecastsLive()
+    .then((d) => { setLive(d); setErr(""); })
+    .catch((e) => setErr(String(e?.message ?? e))), []);
+  useLiveRefresh(load, 15_000);
+  if (err && !live) return <p className="text-theme-xs text-error-500">could not read the rooms — {err}</p>;
+  if (!live) return <p className="text-theme-xs text-gray-400">reading every room&apos;s trade record…</p>;
+  return (
+    <>
+      <RoomBacktestPanel rooms={live.rooms} />
+      <RoomTable rooms={live.rooms} rules={live.rules} />
+    </>
+  );
+}

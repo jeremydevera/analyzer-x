@@ -275,3 +275,19 @@ def test_the_table_is_remembered_until_the_store_changes(store, monkeypatch):
     assert isinstance(rst.kept()[0]["trades"], np.ndarray), "trades held as one array"
     rst.keep([win(rst.cfg(15, 75, 30, ">", 2.0))], "r2", "RUN", now=2000)
     assert rst.table(a, b)["kept"] == 2 and len(calls) == 2, "a new winner shows at once"
+
+
+def test_the_route_uses_the_forecast_pages_own_reality_check(store, monkeypatch):
+    """Working the reality check out again took 14 s a request (122 s on the
+    first after a restart, Oct 02, 2026) while the page asks every minute;
+    the route hands in the Forecast page's kept copy instead."""
+    from tradingagents import api
+    from tradingagents import forecast_v2 as f2
+    from tradingagents import forecast_v2_api as f2a
+
+    def boom(*a, **k):
+        raise AssertionError("worked the reality check out again")
+    monkeypatch.setattr(f2, "live", boom)
+    monkeypatch.setattr(f2a, "live", lambda: {"reality": {"all": REAL}, "at": 0})
+    got = api.room_strategies_route(ms(2026, 9, 1, 0) / 1000, ms(2026, 9, 30, 23) / 1000)
+    assert got["reality"] == REAL and got["kept"] == 0

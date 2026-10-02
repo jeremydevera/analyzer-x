@@ -469,15 +469,19 @@ def _measured(from_s: float, to_s: float, reality: dict) -> list[dict]:
 
 def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: float | None = None,
           window: int = 0, deployable: str = "", find: str = "", sort: str = "worst_month",
-          page: int = 1, per: int = 25) -> dict:
+          page: int = 1, per: int = 25, reality: dict | None = None) -> dict:
     """Every kept winner, RE-MEASURED over exactly [from_s, to_s] from its own
     stored trades (never a month scaled up or down), filtered and paged here.
     The measuring is remembered per date range until the store or the reality
     check changes: the page asks again every minute, and 2.4 million trades
-    do not need walking again to answer the same question."""
-    from tradingagents import forecast_v2 as f2
+    do not need walking again to answer the same question. `reality` is
+    the reality check to use — the API hands in the Forecast page's own copy
+    (forecast_v2_api.live), because working it out took 14 s a request (122 s
+    on the first after a restart) while the page asks every minute."""
+    if reality is None:
+        from tradingagents import forecast_v2 as f2
 
-    reality = f2.live()["reality"]["all"]
+        reality = f2.live()["reality"]["all"]
     path = store_path()
     try:
         st = path.stat()

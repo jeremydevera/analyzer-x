@@ -1273,9 +1273,12 @@ def room_strategies_route(from_s: float, to_s: float, min_winrate: float = 0,
     if to_s < from_s:
         raise HTTPException(400, "the end of the range is before its start")
     try:
+        # the Forecast page's own reality check, kept fresh in the background —
+        # never worked out again per request (14 s each, 122 s after a restart)
+        reality = ((_f2a.live() or {}).get("reality") or {}).get("all")
         return _rst.table(from_s, to_s, min_winrate=min_winrate, min_profit=min_profit,
                           window=window, deployable=deployable, find=find, sort=sort, page=page,
-                          per=_f2a.PER_PAGE)
+                          per=_f2a.PER_PAGE, reality=reality)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 

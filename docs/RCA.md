@@ -172,6 +172,70 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-02-F — Room strategies took 122 seconds to answer, and would have walked 2.4 million trades every minute
+
+**CEO**
+
+* On Oct 02, 2026 at 2:58pm, right after a server restart, the Room
+  strategies list took 122 seconds to answer while it still held no winner
+  at all, and 14 seconds on every later ask; the page asks every minute.
+* Why: each ask worked out the reality check again from every room's trade
+  record, instead of using the copy the Forecast page already keeps fresh;
+  and once round 1's 673 winners were kept it would also have re-measured
+  all 2,427,758 of their trades on every ask, holding them as about 400 MB
+  inside the server.
+* What stops it now: the list uses the Forecast page's own copy, measures a
+  date range once until a new winner lands, and keeps the trades in a
+  compact form (about 58 MB).
+
+**DEV**
+
+* `api.room_strategies_route` → `room_strategies.table` called
+  `forecast_v2.live()` (every room's `room_data`, `reality`) on every
+  request, then `np.asarray(w["trades"])` over lists of lists from `kept()`
+  and a Python loop over every trade, for every kept winner, every minute
+  (`RoomForecasts.tsx` `useLiveRefresh(load, 60_000)`).
+* Invariant broken: **a screen that refreshes reuses what is already kept
+  fresh** — the Forecast page's practice copy lives in `forecast_v2_api.live()`
+  for exactly this; a route never rebuilds it per request.
+* Guards: `tests/test_prompt4_room_strategies.py::test_the_route_uses_the_forecast_pages_own_reality_check`
+  (fails if `forecast_v2.live` is called) and
+  `::test_the_table_is_remembered_until_the_store_changes`.
+
+**SAW** — nothing yet: found by timing the route after the API-only restart
+that loaded the array change, before round 1's winners were kept.
+
+**TIMELINE**
+
+1. `Oct 02, 2026 morning` — Room strategies ships (52eeed7a), calling
+   `forecast_v2.live()` per request; the store is empty, so nobody waits on
+   the trades yet.
+2. `2:49pm` — round 1 is scored: 673 winners, 2,427,758 trades, waiting for
+   the confirm run to keep them.
+3. `2:57pm` — API restarted alone (4 s) to load bf420a5b (trades as arrays,
+   one measure per range).
+4. `2:58pm` — `GET /api/forecasts/room-strategies` (empty store): no answer
+   in 80 s; again with a longer wait, **122.7 s**. A second ask: **14.4 s**.
+   `/api/health` 0.25 s and `/api/trade/profiles` 0.04 s at the same time.
+5. After this fix: the route reads `forecast_v2_api.live()`'s kept copy.
+
+**ROOT CAUSE** — `reality = f2.live()["reality"]["all"]` at the top of
+`room_strategies.table`, run on every request.
+
+**WHY IT WAS NOT CAUGHT** — the table's tests stub `forecast_v2.live` with an
+instant lambda, so the one expensive call in the route cost nothing in every
+test; and the store was empty, so the page looked instant-ish in use. Nobody
+timed the route against the real server.
+
+**COST** — none in money; the page would have been blank for two minutes
+after every restart and cost the server 14 s of work a minute while open.
+
+**FIX** — this commit (and bf420a5b for the arrays and the per-range memory).
+
+**GUARD** — the two tests above.
+
+---
+
 ## RCA-2026-10-02-E — prompt 4's first round died on GitHub: one machine was handed 206 million trades at once and ran out of memory
 
 **CEO**

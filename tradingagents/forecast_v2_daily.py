@@ -24,8 +24,10 @@ after RETRY_S — never every tick, never silently. GitHub is asked at most
 every POLL_S. Never under pytest against the real files.
 
 WHAT-IF: a rule set the operator types is one `custom` forecast run on the
-newest replay the chain used; its answer is kept by rule id with the data it
-was measured on, so asking again returns at once.
+last FINISHED replay (`ready`); its answer is kept by rule id with the data it
+was measured on, so asking again returns at once. Every save of whatif.json is
+one record over a fresh read, under one lock; a start a restart cut off is
+marked so it can be asked again, and the re-ask adopts any run it made.
 """
 from __future__ import annotations
 
@@ -60,17 +62,38 @@ def _state_path() -> Path:
     return home() / "state.json"
 
 
+def _switch_path() -> Path:
+    return home() / "switch.json"
+
+
+def is_on() -> bool:
+    """The page's on/off box, kept in ITS OWN FILE (bug hunt, round 6): the
+    chain's tick reads the state, may spend minutes downloading and merging,
+    then writes the whole state back — a switch saved into that same file
+    meanwhile was written over, and "off" came back "on"."""
+    try:
+        return json.loads(_switch_path().read_text(encoding="utf-8"))["on"] is not False
+    except (OSError, ValueError, KeyError, TypeError):
+        try:            # never switched since the box got its own file
+            return json.loads(_state_path().read_text(encoding="utf-8")).get("on", True) is not False
+        except (OSError, ValueError, AttributeError):
+            return True
+
+
 def read() -> dict:
     try:
-        return json.loads(_state_path().read_text(encoding="utf-8"))
+        st = json.loads(_state_path().read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return {"phase": "idle", "on": True}
+        st = {"phase": "idle"}
+    st["on"] = is_on()
+    return st
 
 
 def _write(st: dict) -> None:
     home().mkdir(parents=True, exist_ok=True)
     tmp = _state_path().with_suffix(".tmp")
-    tmp.write_text(json.dumps(st, separators=(",", ":"), allow_nan=False), encoding="utf-8")
+    keep = {k: v for k, v in st.items() if k != "on"}     # the switch has its own file
+    tmp.write_text(json.dumps(keep, separators=(",", ":"), allow_nan=False), encoding="utf-8")
     os.replace(tmp, _state_path())
 
 
@@ -99,34 +122,85 @@ def title_of(workflow: str, inputs: dict) -> str:
             f"{inputs.get('custom') or ''}").rstrip()
 
 
-def dispatch(workflow: str, inputs: dict, repo: str) -> int:
-    """Start a workflow and return ITS run id: `gh workflow run` prints none,
-    so wait for a new run carrying this dispatch's own title."""
-    def runs() -> list:
-        return json.loads(_gh("run", "list", "--repo", repo, "--workflow", workflow,
-                              "--limit", "10", "--json", "databaseId,displayTitle"))
+def same_title(shown: str, want: str) -> bool:
+    """A run's title is this dispatch's own — or GitHub's cut of it: a
+    what-if's title carries its whole rule set, and a cut title still holds
+    the rule id within its first 60 characters."""
+    shown = str(shown).strip()
+    if shown == want:
+        return True
+    cut = shown.rstrip(".…").rstrip()
+    return len(cut) >= 60 and want.startswith(cut)
 
-    before = {int(r["databaseId"]) for r in runs()}
+
+def _ts(iso: str) -> float:
+    return dt.datetime.fromisoformat(str(iso).replace("Z", "+00:00")).timestamp()
+
+
+def _runs(workflow: str, repo: str, limit: int = 20) -> list:
+    return json.loads(_gh("run", "list", "--repo", repo, "--workflow", workflow,
+                          "--limit", str(limit), "--json", "databaseId,displayTitle,createdAt"))
+
+
+def find_run(workflow: str, title: str, repo: str, since: float) -> int | None:
+    """A run of this exact title made at or after `since` (less two minutes
+    of clock difference): the run an earlier, failed-looking attempt really
+    did start."""
+    for r in _runs(workflow, repo):
+        if same_title(r["displayTitle"], title) and _ts(r["createdAt"]) >= float(since) - 120:
+            return int(r["databaseId"])
+    return None
+
+
+def dispatch(workflow: str, inputs: dict, repo: str, since: float | None = None) -> int:
+    """Start a workflow and return ITS run id: `gh workflow run` prints none,
+    so wait for a new run carrying this dispatch's own title.
+
+    `since` — when an earlier attempt at THIS dispatch raised, the time it was
+    made: GitHub may have taken the run and only been slow to list it, so a
+    run of this title made since then is adopted, never started twice (bug
+    hunt, round 6: a second replay is 20 machines for an hour)."""
     want = title_of(workflow, inputs)
+    if since:
+        got = find_run(workflow, want, repo, since)
+        if got:
+            return got
+    before = {int(r["databaseId"]) for r in _runs(workflow, repo, 10)}
     args = ["workflow", "run", workflow, "--repo", repo]
     for k, v in inputs.items():
         args += ["-f", f"{k}={v}"]
     _gh(*args)
     for _ in range(45):
         time.sleep(2)
-        for r in runs():
-            if int(r["databaseId"]) not in before and str(r["displayTitle"]).strip() == want:
+        for r in _runs(workflow, repo, 10):
+            if int(r["databaseId"]) not in before and same_title(r["displayTitle"], want):
                 return int(r["databaseId"])
     raise RuntimeError(f"the {workflow} run ({want[:80]}) did not appear within 90 seconds")
 
 
 def run_status(run_id: int, repo: str) -> dict:
     d = json.loads(_gh("run", "view", str(run_id), "--repo", repo, "--json",
-                       "status,conclusion,jobs,url"))
+                       "status,conclusion,jobs,url,createdAt"))
     jobs = [j for j in d.get("jobs", []) if j.get("name") != "plan"]
     return {"status": d.get("status"), "conclusion": d.get("conclusion"), "url": d.get("url"),
+            "created": _ts(d["createdAt"]) if d.get("createdAt") else None,
             "machines": len(jobs), "done": sum(1 for j in jobs if j.get("status") == "completed"),
             "failed": [j["name"] for j in jobs if j.get("conclusion") not in (None, "success")]}
+
+
+def run_words(s: dict, also: str = "") -> str:
+    """Where a run that has not finished really is (bug hunt, round 6): a run
+    GitHub has not given machines yet read "working on GitHub: 0 of 0
+    machines done" — a what-if asked at 7:26pm sat QUEUED behind the daily
+    replay's 20 machines while the page said it was working."""
+    from tradingagents.positions_view import fmt_when
+
+    if s.get("status") in ("queued", "waiting", "pending", "requested"):
+        when = f" since {fmt_when(s['created'])}" if s.get("created") else ""
+        return f"waiting in GitHub's queue{when}, not started yet{also}"
+    if not s.get("machines"):
+        return "GitHub is starting it"
+    return f"working on GitHub: {s['done']} of {s['machines']} machines done"
 
 
 def download(run_id: int, repo: str, pattern: str) -> Path:
@@ -216,7 +290,12 @@ def due(now: float, st: dict) -> tuple[bool, str]:
     from tradingagents.positions_view import fmt_when
 
     today = dt.date.fromtimestamp(now).isoformat()
-    if st.get("done_day") == today:
+    # ONE CHAIN STARTED A DAY, counted by the day it STARTED (bug hunt, round
+    # 6): counted by the day it finished, a chain that ran past midnight held
+    # the next day's update back until the midnight after it
+    started = st.get("started_day") or (dt.date.fromtimestamp(float(st["started_at"])).isoformat()
+                                        if st.get("started_at") else None)
+    if started == today:
         return False, f"today's Forecast v2 was made at {fmt_when(st.get('done_at') or now)}"
     up = rf._update()
     if not up["runs"] or not up["when"]:
@@ -248,8 +327,10 @@ def tick(now: float | None = None) -> dict:
             _fail(st, now, f"{type(exc).__name__}: {str(exc)[:300]}")
         try:
             _whatifs(st, now)
+            st.pop("whatif_error", None)
         except Exception as exc:                               # noqa: BLE001
-            st.setdefault("whatif_error", f"{type(exc).__name__}: {str(exc)[:200]}")
+            # the newest failure, never the first one kept for ever
+            st["whatif_error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
         try:
             from tradingagents import forecast_v2_api as f2a
 
@@ -300,6 +381,16 @@ def _latest() -> dict:
     return json.loads((home() / "latest.json").read_text(encoding="utf-8"))
 
 
+def _tried(st: dict, what: str, now: float) -> float | None:
+    """When an earlier attempt at THIS dispatch was made, or None; and mark
+    this attempt — kept in the state, so a retry after a failure can adopt a
+    run GitHub took but listed late (dispatch's `since`)."""
+    was = st.get("tried") or {}
+    since = was.get("at") if was.get("what") == what else None
+    st["tried"] = {"what": what, "at": since or now}
+    return since
+
+
 def _step(st: dict, now: float) -> None:
     from tradingagents.positions_view import fmt_when
 
@@ -320,12 +411,15 @@ def _step(st: dict, now: float) -> None:
         start = first_check(now)
         run = dispatch(REPLAY_WF, {"shards": SHARDS, "timeframes": "15m,30m,1h,4h,1d",
                                    "coin_list": "", "start": start, "base": 5,
-                                   "groups": "all", "write_rule": WRITE_RULE}, repo)
+                                   "groups": "all", "write_rule": WRITE_RULE}, repo,
+                       since=_tried(st, f"replay {start}", now))
         avoid, fams = skip_lists()
+        st.pop("tried", None)
         st.update(phase="replay", repo=repo, replay_run=run, start=start, started_at=now,
+                  started_day=dt.date.fromtimestamp(now).isoformat(),
                   last_update=rf._update()["when"], avoid=avoid, families=fams,
                   base_run=None, options_run=None, error="", failed_at=0, polled_at=0,
-                  why=f"replay {run} started on GitHub at {fmt_when(now)} (about an hour)")
+                  missing={}, why=f"replay {run} started on GitHub at {fmt_when(now)} (about an hour)")
         return
     if now - float(st.get("polled_at") or 0) < POLL_S:
         return
@@ -333,8 +427,7 @@ def _step(st: dict, now: float) -> None:
     run_key = {"replay": "replay_run", "base": "base_run", "options": "options_run"}[phase]
     s = run_status(int(st[run_key]), repo)
     if s["status"] != "completed":
-        st["why"] = (f"{phase} run {st[run_key]} is working on GitHub: {s['done']} of "
-                     f"{s['machines']} machines done")
+        st["why"] = f"{phase} run {st[run_key]}: {run_words(s)}"
         return
     # SOME MACHINES FAILED, SOME DID NOT (bug hunt, round 3): a replay or a
     # forecast with 19 of 20 machines green is used — its missing machines
@@ -348,7 +441,9 @@ def _step(st: dict, now: float) -> None:
     if phase == "replay":
         rep = download(int(st["replay_run"]), repo, "replay-report-*")
         st["end_ms"] = common_end(rep)
-        st["base_run"] = dispatch(FORECAST_WF, _forecast_inputs(st, "base"), repo)
+        st["base_run"] = dispatch(FORECAST_WF, _forecast_inputs(st, "base"), repo,
+                                  since=_tried(st, f"base {st['replay_run']}", now))
+        st.pop("tried", None)
         st.update(phase="base", why=f"forecast run {st['base_run']} (base) started on GitHub")
         return
     if phase == "base":
@@ -360,7 +455,9 @@ def _step(st: dict, now: float) -> None:
         have = {fr.rule_id(c) for c in bases}
         bases += [c for c in rooms.values() if fr.rule_id(c) not in have]
         st["options_run"] = dispatch(FORECAST_WF, _forecast_inputs(
-            st, "options", {"bases": ";".join(fr.encode(c) for c in bases)}), repo)
+            st, "options", {"bases": ";".join(fr.encode(c) for c in bases)}), repo,
+            since=_tried(st, f"options {st['replay_run']}", now))
+        st.pop("tried", None)
         st.update(phase="options", base_dir=str(art),
                   why=f"forecast run {st['options_run']} (options) started on GitHub")
         return
@@ -373,43 +470,71 @@ def _step(st: dict, now: float) -> None:
                   options_dir=str(art), why=f"made at {fmt_when(now)}",
                   # what the what-if box measures on: the LAST FINISHED data,
                   # never a replay still running (bug hunt, round 4)
-                  ready={k: st[k] for k in ("replay_run", "end_ms", "start", "repo",
-                                            "avoid", "families")})
+                  # .get: a key missing here must never stop a finished day
+                  # reaching "done", or the merge re-runs every RETRY_S
+                  ready={k: st.get(k) for k in ("replay_run", "end_ms", "start", "repo",
+                                                "avoid", "families")})
         bell(out, f2.live())
 
 
 # ------------------------------------------------------------- the bell
-def streak_bells(live: dict) -> list:
-    """ONE bell when a room's coin first reaches a winning run of WIN_N or a
-    losing run of LOSS_M; never again for the same run (its start). The first
-    time this ever runs it only remembers the runs already going, so the day
-    it is switched on is not a burst of old news."""
-    from tradingagents import notifications as nt
+STREAK_BELL_GAP_S = 3600          # at most one streak bell an hour, every new run named in it
+STREAK_BELL_NAMES = 12            # runs named in one bell; the rest counted
 
+
+def streak_bells(live: dict, now: float | None = None) -> list:
+    """Every room's coin that first reaches a winning run of WIN_N or a losing
+    run of LOSS_M is announced ONCE (the build prompt's A5); never again for
+    the same run (its start). The first time this ever runs it only remembers
+    the runs already going, so switching it on is not a burst of old news.
+
+    AT MOST ONE BELL AN HOUR (bug hunt, round 6): one bell per run would have
+    been 46 bells on Oct 01, 2026 — 4 runs of 9 wins and 42 of 5 losses,
+    25 of them in #4FC03172 alone — burying every other message on the bell.
+    A run that reaches the line inside the hour waits for the next bell and
+    is named in it. A room that is off (no tab) never rings."""
+    from tradingagents import notifications as nt, profiles
+
+    now = time.time() if now is None else float(now)
     path = home() / "streak_bells.json"
     try:
-        seen = json.loads(path.read_text(encoding="utf-8"))
+        saved = json.loads(path.read_text(encoding="utf-8"))
         first = False
     except (OSError, ValueError):
-        seen, first = {}, True
-    rung = []
+        saved, first = {}, True
+    if "seen" not in saved:                       # the first file kept the keys at its top level
+        saved = {"seen": saved, "waiting": [], "rung_at": 0.0}
+    seen, waiting = saved["seen"], saved["waiting"]
     for s in live.get("streaks") or []:
         floor = f2.WIN_N if s["kind"] == "win" else f2.LOSS_M
-        if s["length"] < floor:
+        if s["length"] < floor or profiles.retired(s["room"]):
             continue
         key = f"{s['room']}|{s['coin']}|{s['kind']}|{int(s['started_at'] or 0)}"
         if key in seen:
             continue
-        seen[key] = time.time()
-        if first:
-            continue
-        word = "won" if s["kind"] == "win" else "lost"
-        nt.record("forecast", f"{s['coin']} has {word} {s['length']} in a row in {s['room_name']}",
-                  detail=(f"{s['coin']} {word} its last {s['length']} practice trades in "
-                          f"{s['room_name']} ({s['profit']:+.2f})"), ok=s["kind"] == "win")
-        rung.append(key)
+        seen[key] = now
+        if not first:
+            word = "won" if s["kind"] == "win" else "lost"
+            waiting.append({"key": key, "win": s["kind"] == "win", "length": s["length"],
+                            "text": f"{s['coin']} has {word} {s['length']} in a row in {s['room_name']}",
+                            "detail": (f"{s['coin']} {word} its last {s['length']} practice trades in "
+                                       f"{s['room_name']} ({s['profit']:+.2f})")})
+    rung = []
+    if waiting and now - float(saved.get("rung_at") or 0) >= STREAK_BELL_GAP_S:
+        waiting.sort(key=lambda w: (not w["win"], -w["length"]))
+        if len(waiting) == 1:
+            title, detail = waiting[0]["text"], waiting[0]["detail"]
+        else:
+            wins = sum(1 for w in waiting if w["win"])
+            title = (f"{len(waiting)} new streaks: {wins} winning, {len(waiting) - wins} losing")
+            named = "; ".join(w["text"] for w in waiting[:STREAK_BELL_NAMES])
+            more = len(waiting) - STREAK_BELL_NAMES
+            detail = named + (f"; and {more} more on the Forecast v2 page" if more > 0 else "")
+        nt.record("forecast", title, detail=detail[:900], ok=all(w["win"] for w in waiting))
+        rung = [w["key"] for w in waiting]
+        saved.update(waiting=[], rung_at=now)
     home().mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(seen), encoding="utf-8")
+    path.write_text(json.dumps(saved), encoding="utf-8")
     return rung
 
 
@@ -458,6 +583,24 @@ def _whatif_save(d: dict) -> None:
     os.replace(tmp, _whatif_path())
 
 
+_STARTING: set = set()            # what-if ids this process is asking GitHub for right now
+
+
+def _whatif_edit(rid: str, fields: dict, run: int | None = None) -> None:
+    """ONE what-if's fields saved over a FRESH read, under the lock (bug hunt,
+    round 6): the poll held its own copy of the file across a download of
+    minutes and saved it whole, so a what-if asked meanwhile vanished from
+    the file while its run went on on GitHub. `run` — only if the record
+    still belongs to that run (it may have been asked again since)."""
+    with _WHATIF_LOCK:
+        w = whatifs()
+        rec = w.get(rid)
+        if rec is None or (run is not None and rec.get("run") != run):
+            return
+        rec.update(fields)
+        _whatif_save(w)
+
+
 def whatif(cfg: dict) -> dict:
     """Ask for one rule set. An answer measured on the newest data returns at
     once; otherwise a custom forecast run is started (or the one already
@@ -471,70 +614,122 @@ def whatif(cfg: dict) -> dict:
     if not st.get("replay_run") or not st.get("end_ms"):
         return {"id": rid, "status": "no replay yet",
                 "why": "the daily Forecast v2 has not finished a replay yet — a what-if needs one"}
-    w = whatifs()
-    have = w.get(rid)
-    if have and have.get("end_ms") == st["end_ms"] and have.get("status") in ("done", "working",
-                                                                               "starting"):
-        return have
-    rec = {"id": rid, "cfg": cfg, "words": fr.words(cfg), "status": "starting", "run": None,
-           "end_ms": st["end_ms"], "asked_at": time.time(), "result": None,
-           "why": "asking GitHub to start it"}
-    w[rid] = rec
-    _whatif_save(w)
+    with _WHATIF_LOCK:
+        w = whatifs()
+        have = w.get(rid)
+        same = bool(have) and have.get("end_ms") == st["end_ms"]
+        if same and (have.get("status") in ("done", "working")
+                     or (have.get("status") == "starting" and rid in _STARTING)):
+            return have
+        # an earlier start that failed, or was cut off by a restart, may
+        # still have reached GitHub: its run is adopted, never asked twice
+        since = (have.get("tried_at") or have.get("asked_at")) if same and not have.get("run") else None
+        now = time.time()
+        rec = {"id": rid, "cfg": cfg, "words": fr.words(cfg), "status": "starting", "run": None,
+               "end_ms": st["end_ms"], "asked_at": now, "tried_at": since or now, "result": None,
+               "why": "asking GitHub to start it"}
+        w[rid] = rec
+        _whatif_save(w)
+        _STARTING.add(rid)
     # STARTED BEHIND THE ANSWER (bug hunt, round 3): GitHub takes up to a
     # minute to show a dispatched run, and the page must not wait for it
     custom = json.dumps({"id": rid, **cfg}, separators=(",", ":"))
-    threading.Thread(target=_start_whatif, args=(rid, st, custom), name="forecast-v2-whatif",
-                     daemon=True).start()
+    threading.Thread(target=_start_whatif, args=(rid, st, custom, since),
+                     name="forecast-v2-whatif", daemon=True).start()
     return rec
 
 
-def _start_whatif(rid: str, st: dict, custom: str) -> None:
+def _start_whatif(rid: str, st: dict, custom: str, since: float | None = None) -> None:
+    try:
+        run = dispatch(FORECAST_WF, _forecast_inputs(st, "custom", {"custom": custom}),
+                       st.get("repo") or slug(), since=since)
+        _whatif_edit(rid, {"run": run, "status": "working", "why": "started on GitHub"})
+    except Exception as exc:                                   # noqa: BLE001
+        _whatif_edit(rid, {"status": "failed",
+                           "why": f"could not start it: {type(exc).__name__}: {str(exc)[:200]}"})
+    finally:
+        _STARTING.discard(rid)
+
+
+def _cut_starts(now: float) -> list:
+    """A what-if left "starting" with no thread of this process asking GitHub
+    for it — the site restarted mid-ask — is marked so it can be asked again,
+    instead of answering "starting" for ever. Checked UNDER the lock that
+    `whatif` adds to _STARTING under, so a start a second old is never cut."""
+    cut = []
     with _WHATIF_LOCK:
         w = whatifs()
-        rec = w.get(rid) or {}
-        try:
-            rec["run"] = dispatch(FORECAST_WF, _forecast_inputs(st, "custom", {"custom": custom}),
-                                  st.get("repo") or slug())
-            rec.update(status="working", why="started on GitHub")
-        except Exception as exc:                               # noqa: BLE001
-            rec.update(status="failed", why=f"could not start it: {type(exc).__name__}: {str(exc)[:200]}")
-        w[rid] = rec
-        _whatif_save(w)
+        for r in w.values():
+            if r.get("status") == "starting" and r.get("id") not in _STARTING \
+                    and now - float(r.get("asked_at") or 0) > 60:
+                r.update(status="failed", why=(
+                    "the start was cut off (the site restarted while asking GitHub) — ask "
+                    "again: a run it did start is picked up, never started twice"))
+                cut.append(r["id"])
+        if cut:
+            _whatif_save(w)
+    return cut
+
+
+def _reality_of_table() -> dict:
+    """The reality-check numbers the rule-set table was corrected with, so a
+    what-if's "after the reality check" can be read beside it (bug hunt,
+    round 6: it used the live numbers, which move every refresh)."""
+    try:
+        r = _latest().get("reality") or {}
+        if r.get("took") is not None:
+            return r
+    except (OSError, ValueError):
+        pass
+    return f2.live()["reality"]["all"]
 
 
 def _whatifs(st: dict, now: float) -> None:
     from tradingagents import forecast_v2_merge as fm
 
+    _cut_starts(now)
     w = whatifs()
-    busy = [r for r in w.values() if r.get("status") == "working"]
+    busy = [r for r in w.values() if r.get("status") == "working" and r.get("run")]
     if not busy or now - float(st.get("whatif_polled") or 0) < POLL_S:
         return
     st["whatif_polled"] = now
     repo = st.get("repo") or slug()
+    chain = st.get("phase") in ("replay", "base", "options")
+    also = (f" — the daily Forecast v2's {st.get('phase')} run is on GitHub too" if chain else "")
     for r in busy:
-        s = run_status(int(r["run"]), repo)
-        if s["status"] != "completed":
-            r["why"] = f"working on GitHub: {s['done']} of {s['machines']} machines done"
-            continue
-        if s["conclusion"] != "success":
-            r.update(status="failed", why=f"the run ended {s['conclusion']}")
-            continue
-        art = download(int(r["run"]), repo, "forecast-*")
-        metas, packs = fm.load(art)
-        start = metas[0]["start"]
-        start_ms = int(dt.datetime(*map(int, start.split("-"))).timestamp() * 1000)
-        months, complete = fm.months_of(start_ms, int(metas[0]["end_ms"]))
-        r["result"] = fm.summarize(0, metas, packs, start_ms, int(metas[0]["end_ms"]), months,
-                                   complete, f2.live()["reality"]["all"])
-        r.update(status="done", why="", done_at=now)
-        shutil.rmtree(art, ignore_errors=True)
-    _whatif_save(w)
+        run = int(r["run"])
+        try:
+            s = run_status(run, repo)
+            if s["status"] != "completed":
+                _whatif_edit(r["id"], {"why": run_words(s, also)}, run=run)
+                continue
+            if s["conclusion"] != "success":
+                _whatif_edit(r["id"], {"status": "failed", "why": f"the run ended {s['conclusion']}"},
+                             run=run)
+                continue
+            art = download(run, repo, "forecast-*")
+            try:
+                metas, packs = fm.load(art)
+                start = metas[0]["start"]
+                start_ms = int(dt.datetime(*map(int, start.split("-"))).timestamp() * 1000)
+                months, complete = fm.months_of(start_ms, int(metas[0]["end_ms"]))
+                result = fm.summarize(0, metas, packs, start_ms, int(metas[0]["end_ms"]), months,
+                                      complete, _reality_of_table())
+            finally:
+                shutil.rmtree(art, ignore_errors=True)
+            _whatif_edit(r["id"], {"result": result, "status": "done", "why": "", "done_at": now},
+                         run=run)
+        except Exception as exc:                               # noqa: BLE001
+            # one what-if GitHub could not answer never stops the others
+            _whatif_edit(r["id"], {"why": f"could not read it from GitHub at this check: "
+                                          f"{type(exc).__name__}: {str(exc)[:160]}"}, run=run)
 
 
 def switch(on: bool) -> dict:
-    """The page's on/off box. Off stops the chain dispatching; nothing else."""
-    st = read()
-    st["on"] = bool(on)
-    _write(st)
-    return st
+    """The page's on/off box. Off stops the chain dispatching; nothing else.
+    Written to its own file, which nothing else writes (see is_on)."""
+    home().mkdir(parents=True, exist_ok=True)
+    tmp = _switch_path().with_suffix(".tmp")
+    tmp.write_text(json.dumps({"on": bool(on), "at": time.time()}), encoding="utf-8")
+    os.replace(tmp, _switch_path())
+    return read()

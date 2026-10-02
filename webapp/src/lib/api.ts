@@ -1057,8 +1057,11 @@ export type F2Summary = {
   tracker: null | { month: string; day: number; days: number;
     rooms: { room: string; name: string; id: string | null; words: string | null; below: boolean;
       month: { trades: number; wins: number; losses: number; profit: number; days: { day: string; total: number }[] };
-      predicted: F2Predicted; share: number;
-      so_far: Record<"low" | "profit" | "high" | "corrected_low" | "corrected" | "corrected_high", number | null> | null }[];
+      predicted: F2Predicted;
+      /** what the room's own rules made by the END of this day of each past
+       *  month — measured, never a month divided by its days (RCA-2026-10-01-J) */
+      so_far: (Record<"low" | "profit" | "high" | "corrected_low" | "corrected" | "corrected_high", number | null>
+        & { day: number; months: string[] }) | null }[];
     tops: { id: string; words: string; predicted: F2Predicted; month: F2Months | null }[] };
   grading: null | { months: { month: string; made_at: number; graded: boolean; why?: string; inside?: number; judged?: number }[] };
   options: { key: string; value: unknown; words: string }[];

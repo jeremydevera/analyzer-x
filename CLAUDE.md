@@ -1240,14 +1240,33 @@ Forecast page is unchanged.
   downloads hundreds of MB and the merge peaks over a gigabyte (689,474
   streak rows); neither may hold the supervisor loop that restarts runners.
 * **A dispatch finds its run by its title** (`run-name` on both workflows),
-  never "the newest run": two sessions dispatch `replay.yml`.
+  never "the newest run": two sessions dispatch `replay.yml`. A retry after
+  a dispatch that raised ADOPTS a run of that title made since the first try
+  (`dispatch(since=)`) — GitHub can take a run and list it late, and a second
+  replay is 20 machines for an hour.
+* **"By today" is MEASURED, never a month divided by its days.** The month
+  tracker and its bell hold day N against what the room's own rules made by
+  the end of day N of each past month (`forecast_v2_merge.by_day`). The
+  divided figure was printed in six bells on Oct 01, 2026 — "+0.87 by today"
+  for #CC94D9FB when no past month made that — and parts from the measured
+  one as the month goes on (#CC94D9FB day 20: +17.30 against −0.47).
+  RCA-2026-10-01-J.
+* **A fix that changes what a STORE keeps checks what the old code already
+  wrote.** The base-only merge kept October's prediction (576 of 1,148 rule
+  sets) before the round-2 fix, and the fix left that line in place.
+  RCA-2026-10-01-K.
+* **The bell is a summary, never a feed**: at most one streak bell an hour,
+  every new run named in it once (46 runs reached the line on Oct 01, 2026),
+  no bell for a room that is off, one daily summary.
+* **The on/off box has its own file** (`switch.json`): a tick that read the
+  state, merged for two minutes and wrote it back would otherwise undo it.
 * **Every prediction and warning is a note.** Nothing in Forecast v2 switches
   a room, changes a watcher rule or touches real money; "deploy #ID" goes
   through the STANDING SETUP like any other rule set, and a rule set that
   needs a switch a room does not have (TP at least 1.5x/2x SL, any option)
   says so.
 
-Guard: `tests/test_forecast_v2.py` (25, on one timeline).
+Guard: `tests/test_forecast_v2.py` (35, on one timeline).
 
 ## Backtest v2 is the v1 engine in its own folder (MANDATORY — 2026-09-17)
 

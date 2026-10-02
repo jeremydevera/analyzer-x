@@ -106,7 +106,11 @@ def trades_of(packs: list, j: int) -> np.ndarray:
 
 # ----------------------------------------------------------------- one set
 def summarize(j: int, metas: list, packs: list, start_ms: int, end_ms: int,
-              months: list[str], complete: list[str], reality: dict) -> dict:
+              months: list[str], complete: list[str], reality: dict,
+              days: bool = False) -> dict:
+    """One rule set scored; `days` adds what it made by the end of each day
+    of every past month (by_day) — kept for the rooms' own rule sets, which
+    the month tracker reads."""
     cfg = metas[0]["sets"][j]["cfg"]
     t = trades_of(packs, j)
     by = {m: [0, 0, 0.0] for m in months}
@@ -147,7 +151,8 @@ def summarize(j: int, metas: list, packs: list, start_ms: int, end_ms: int,
     rpt = rp / np.maximum(rn, 1)
     beat = int((own > rpt[rn > 0]).sum()) if own is not None and (rn > 0).any() else None
     ok, why = fr.deployable(cfg)
-    return {"id": fr.rule_id(cfg), "cfg": cfg, "words": fr.words(cfg),
+    extra = {"by_day": by_day(t, complete)} if days else {}
+    return {**extra, "id": fr.rule_id(cfg), "cfg": cfg, "words": fr.words(cfg),
             "options": fr.options_of(cfg), "base": not fr.options_of(cfg) and
             str(cfg.get("tp_rule")) in fr.BASE["tp_rule"],
             "deployable": ok, "deploy_why": why,
@@ -161,6 +166,34 @@ def summarize(j: int, metas: list, packs: list, start_ms: int, end_ms: int,
                        "per_trade": round(float(np.median(rpt[rn > 0])), 4) if (rn > 0).any() else None},
             "luck": beat is not None and beat < LUCK_LINE,
             "slots": res["summary"]["slots"]}
+
+
+def by_day(t: np.ndarray, complete: list[str]) -> dict:
+    """For each COMPLETE past month, the running profit and trade count at the
+    end of every day of it — what "by today" really was in that month.
+
+    Bug hunt, round 6 (RCA-2026-10-01-J): the month tracker divided a month's
+    worst case by the days in the month, so on Oct 01, 2026 Main's −7.29 was
+    held against a "worst case by today" of −0.01 and all six rooms rang. A
+    day of a month is compared with the same day of past months, measured."""
+    out = {}
+    for m in complete:
+        y, mo = map(int, m.split("-"))
+        first = dt.datetime(y, mo, 1)
+        nxt = (first.replace(day=28) + dt.timedelta(days=4)).replace(day=1)
+        edges = np.asarray([int((first + dt.timedelta(days=i)).timestamp() * 1000)
+                            for i in range((nxt - first).days)]
+                           + [int(nxt.timestamp() * 1000)], dtype=np.int64)
+        days = len(edges) - 1
+        if len(t):
+            k = np.searchsorted(edges, t[:, 1].astype(np.int64), "right") - 1
+            ok = (k >= 0) & (k < days)
+            p = np.bincount(k[ok], weights=t[ok, 2], minlength=days).cumsum()
+            n = np.bincount(k[ok], minlength=days).cumsum()
+        else:
+            p, n = np.zeros(days), np.zeros(days, dtype=np.int64)
+        out[m] = {"p": [round(float(v), 2) for v in p], "n": [int(v) for v in n]}
+    return out
 
 
 def _days(t: np.ndarray, start: int, end: int) -> list:
@@ -199,7 +232,10 @@ def merge(base_dir: str | Path, options_dir: str | Path | None = None, *,
     end_ms, start = int(metas[0]["end_ms"]), metas[0]["start"]
     start_ms = int(dt.datetime(*map(int, start.split("-"))).timestamp() * 1000)
     months, complete = months_of(start_ms, end_ms)
-    sets = [summarize(j, metas, packs, start_ms, end_ms, months, complete, reality)
+    rooms = _rooms(metas)
+    room_ids = {v["id"]: k for k, v in rooms.items()}
+    sets = [summarize(j, metas, packs, start_ms, end_ms, months, complete, reality,
+                      days=metas[0]["sets"][j]["id"] in room_ids)
             for j in range(len(metas[0]["sets"]))]
     tested = {"base": len(sets), "options": 0}
     if options_dir:
@@ -207,15 +243,14 @@ def merge(base_dir: str | Path, options_dir: str | Path | None = None, *,
         if int(om[0]["end_ms"]) != end_ms:
             raise ValueError("the options run read a different replay end from the base run")
         have = {s["id"] for s in sets}
-        extra = [summarize(j, om, op, start_ms, end_ms, months, complete, reality)
+        extra = [summarize(j, om, op, start_ms, end_ms, months, complete, reality,
+                           days=om[0]["sets"][j]["id"] in room_ids)
                  for j in range(len(om[0]["sets"]))]
         sets += [s for s in extra if s["id"] not in have]
         tested["options"] = len(extra)
     sets.sort(key=rank_key)
     for i, s in enumerate(sets):
         s["rank"] = i + 1
-    rooms = _rooms(metas)
-    room_ids = {v["id"]: k for k, v in rooms.items()}
     for s in sets:
         s["room"] = room_ids.get(s["id"])
     streak_rows = streak_arrays([r for m in metas for r in m.get("streaks", [])])

@@ -164,6 +164,38 @@ strategies made in that month after fees, spread and funding, at $5 × 20x.
   typical one (the still-working rule) — never by the best.
 * **Money needed** = the most trades open at once × $5.
 
+### The month so far (the tracker and its bell)
+
+Each room's practice month so far is held against **what its own rule set
+made by the END of the same day of each past month** in the backtest
+(`forecast_v2_merge.by_day`, kept for the rooms' own rule sets), straight and
+after the reality check. Day 31 of a 30-day month is that whole month. The
+bell rings once a room a month, when the room falls under the worst of those.
+
+Never a month's range divided by its days — the first build did that, and its
+"worst case by today" was a number no past month produced (RCA-2026-10-01-J).
+Measured Oct 01, 2026, the two part as the month goes on:
+
+| room's rules | day 1: divided / measured | day 20: divided / measured |
+|---|---|---|
+| #4FC03172 (#562C0147) | −0.90 / −2.39 | −18.04 / −47.02 |
+| #CC94D9FB (#C2B0F302) | +0.87 / +0.00 | +17.30 / −0.47 |
+| #B2404C0B (#95E851AB) | +0.74 / +0.00 | +14.75 / −0.39 |
+
+On Oct 01, 2026 all six rooms were under the measured day-1 floor too
+(#4FC03172 −169.11 over 576 practice trades against −2.39), so the six bells
+that rang at 7:25pm were right; the numbers printed in them were not.
+
+### The bells
+
+* **A practice streak**: every run that first reaches 9 wins or 5 losses in a
+  row is named ONCE, in at most one bell an hour — 46 runs reached the line on
+  Oct 01, 2026 (4 winning, 42 losing, 25 of them in #4FC03172), which as one
+  bell each would bury every other message. A room that is off (no tab) never
+  rings. The first run only remembers the runs already going.
+* **A room under its worst case**: once a room a month (above).
+* **The daily summary**: one message when the day's Forecast v2 is made.
+
 ### The rule sets (`tradingagents/forecast_rules.py`)
 
 * **Base grid**, every combination: judged on 15 or 30 days × switch on/off
@@ -205,14 +237,28 @@ strategies made in that month after fees, spread and funding, at $5 × 20x.
 
 * Replay 36763426504: **4,585,414 strategies, 731,552,633 trades**, Jul 01 to
   Sep 30, 2026 12:00pm. Base run 36936689969: 576 rule sets, all 20 machines
-  green; merged in 86-128 s; 189 MB downloaded in 28 s.
-* Best: **#11823416** "70% wins, 50+ trades in 30 days, TP at least 1.5x SL,
-  stop 1% or tighter" — Jul +351.12, Aug +1,193.16, Sep +3,305.21 in the
-  backtest; about **+68.43 a month after the reality check** (+43.59 to
-  +258.45); beat random 100 in 100; won 66.18% against a 47.8% break-even;
-  needs $265.
-* #4FC03172's own rules (#562C0147) rank 490 of 576: about −6.04 a month
-  after the reality check.
+  green; merged in 86-128 s; 189 MB downloaded in 28 s. Options run
+  36938530506: 572 more, all 20 machines green; both merged in 111-120 s.
+* Best of **1,148**: **#A8CD8C72** "70% wins, 50+ trades in 30 days, TP at
+  least 1.5x SL, stop 1% or tighter, no stop smaller than the coin's normal
+  15-minute move" — Jul +341.68, Aug +1,018.99, Sep +2,972.52 in the backtest;
+  about **+92.17 a month after the reality check** (+47.98 to +281.70); beat
+  random 100 in 100; won 68.04% against a 47.1% break-even; needs $240. Needs
+  a new switch before a room can run it.
+* Best base set: **#11823416** (the same without the option) ranks 8: about
+  +68.43 after the reality check (+43.59 to +258.45), needs $265.
+* The rooms' own rules after the reality check: #CC94D9FB's (#C2B0F302) rank
+  272, about +118.52 (+26.82 to +223.56); #4FC03172's (#562C0147) rank 1,023,
+  about −6.04 (−27.96 to +258.22).
+* **Checked by hand** (Oct 01, 2026 7:32pm): August re-run on replay shard 0
+  with the research's ORIGINAL path, `watcher_replay.simulate`, against what
+  GitHub's machine 0 reported — #562C0147 158 trades, 70 won, −32.20 both
+  ways; #C2B0F302 22, 13, +1.11 both ways. **On Windows, never set
+  `TZ=America/New_York` for a check**: the C runtime does not read that
+  name, so its midnights are not New York's (`datetime(2026, 7, 1)` gave
+  1782860400 instead of 1782878400) and the first re-run disagreed, 168
+  trades against 158. This PC's own clock is New York's; GitHub's Linux
+  machines read the TZ variable correctly.
 * Streaks: **689,474** strategies on a run of 5+ (33,050 winning, 656,424
   losing). VUG 15m prank won 25 in a row to Sep 30 (switched on in
   #4FC03172, #6B08FF64 and #CC94D9FB); after runs that long the next trade
@@ -234,8 +280,9 @@ strategies made in that month after fees, spread and funding, at $5 × 20x.
 | `tests/test_forecast_v2.py` | the guards, on one timeline |
 
 On disk, beside the store (G:): `~/.tradingagents/forecast_v2/` — `latest.json`,
-`streaks.npz`, `predictions.jsonl`, `state.json`, `whatif.json`,
-`alarms.json`, `merge.log`, `runs/<id>/` (the last 3 downloads).
+`streaks.npz`, `predictions.jsonl`, `state.json`, `switch.json` (the on/off
+box, written by nothing else), `whatif.json`, `alarms.json`,
+`streak_bells.json`, `merge.log`, `runs/<id>/` (the last 3 downloads).
 
 ## Running it by hand
 
@@ -273,7 +320,67 @@ The page's "run it every day" box switches the chain off and on
 8. **3,868 file stats every refresh** (the queue that made /api/health take
    60 s); one folder stamp now.
 9. **The month's graded prediction** was kept by the base-only merge; only the
-   final merge keeps it.
+   final merge keeps it. (The line it had already written stayed until round
+   6 — RCA-2026-10-01-K.)
+
+Round 3 (before the site ran the chain):
+
+10. **A dispatch took "the newest run"** as its own; the other session
+    dispatches replay.yml too. Both workflows carry a `run-name`, and the
+    chain finds its run by that title.
+11. **A run with some machines red** raised and was retried for ever; it is
+    used when any machine is green, the missing ones named.
+12. **The what-if button waited for GitHub** inside the request (up to a
+    minute); it answers "starting" at once and dispatches behind the answer.
+13. **The month alarm ran in the supervisor loop**; it rides the chain's
+    thread, only once a practice copy exists.
+14. **A new practice streak rang nothing**; it rings (round 6 made it at most
+    one bell an hour), and the first run only remembers the runs going.
+
+Round 4: 15. **A what-if asked while a replay ran** would have been sent to a
+replay whose artifacts did not exist yet; the chain keeps `ready`, the last
+FINISHED data, and the what-if box reads only that.
+
+Round 5 (the Playwright passes, Oct 01, 2026 7:26pm and 7:35pm):
+
+16. **1,590px wide at 1,440** and **489px at 390**: cards and grid children
+    kept their content's width; every card and grid child may shrink
+    (`min-w-0`) and a wide table scrolls in its own box.
+17. **A 4,848px rules card**: the words column keeps 300-460px.
+18. **The worst day printed "2026-10-01"**; it prints through fmtWhen.
+
+Round 6 (Oct 01, 2026 7:40pm-8:10pm, the chain's first night):
+
+19. **"By today" was a month divided by its days** — RCA-2026-10-01-J.
+20. **October's prediction held 576 of 1,148 rule sets** — RCA-2026-10-01-K;
+    replaced from the same data, the old file kept as
+    `predictions.jsonl.before-repair`.
+21. **A queued run read "working on GitHub: 0 of 0 machines done"**: the
+    what-if #2F39EAEC, asked 7:26pm, sat QUEUED behind the daily replay's 20
+    machines. A run GitHub has not started says "waiting in GitHub's queue
+    since …"; the page prints the server's words, never "about 10-15
+    minutes".
+22. **"Off" could come back "on"**: the tick wrote back a state it read
+    before a two-minute merge. The box has its own file.
+23. **A what-if asked during another's download vanished** from the file the
+    poll saved whole; every save is one record over a fresh read, under one
+    lock.
+24. **A slow listing could start a second replay**: a dispatch that raised
+    because GitHub listed its run late was retried 30 minutes later as a new
+    one. A retry adopts the run made since the first try; a GitHub-cut title
+    still matches on its first 60 characters.
+25. **A what-if cut off by a restart stayed "starting" for ever**, and asking
+    again returned that answer; it is marked so it can be asked again, and the
+    re-ask adopts any run the cut-off start made.
+26. **"One a day" counted the day a chain FINISHED**, so a chain done after
+    midnight held the next day's update back until the following midnight;
+    it counts the day it started.
+27. **A what-if was corrected with the live numbers**, the table with the
+    merge-time ones; both use the table's.
+28. **46 streak bells in a day** (Oct 01, 2026) — at most one an hour, every
+    new run named once, none for a room that is off.
+29. **A missing key could stop a finished day reaching "done"**, re-running
+    the merge every 30 minutes; it reads with `.get`.
 
 ## The build prompt
 
@@ -502,6 +609,8 @@ FINISH
   run raw rules, and raw_fast is held equal to simulate trade for trade by
   tests/test_watcher_research.py (`test_the_fast_raw_path_is_simulate`).
 * **Beat random is per trade** — see "Beat random" above.
-* **The bell for a new streak** is the daily summary's longest runs, not one
-  message per strategy: 689,474 strategies were on a run of 5+ at once, and a
-  bell per strategy would bury every other message.
+* **The bell for a new streak** is the daily summary's longest runs for the
+  BACKTEST, not one message per strategy: 689,474 strategies were on a run of
+  5+ at once, and a bell per strategy would bury every other message. For
+  PRACTICE every new run is named once, in at most one bell an hour (46 runs
+  reached the line on Oct 01, 2026).

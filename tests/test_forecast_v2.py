@@ -322,14 +322,19 @@ def test_beat_random_is_per_trade():
 
 
 # --------------------------------------------------------------- the merge
-def _fake_run(tmp, sets_trades, shards=2):
+def _fake_run(tmp, sets_trades, shards=2, rooms=None):
     """Forecast artifacts as the shard writes them: per shard and rule set,
-    entry/exit minutes and profit, plus random draws."""
+    entry/exit minutes and profit, plus random draws; `rooms` {room: cfg} are
+    the rooms' own rules, replayed in the base stage."""
     start = "2026-07-01"
     end_ms = int(dt.datetime(2026, 9, 30, 12, 0, tzinfo=NY).timestamp() * 1000)
+    blank = {"tf": {}, "family": {}, "kind": {}, "hour": {}, "stops": {}, "sizes": [0, 0.0, 0, 0.0],
+             "costs": 0.0, "trades": 0, "profit": 0.0}
     for sh in range(shards):
         arrays, info = {}, {"shard": str(sh), "stage": "base", "end_ms": end_ms, "start": start,
-                            "books": 10, "trades": 100, "sets": [], "rooms": {}, "write": {"wr": 70}}
+                            "books": 10, "trades": 100, "sets": [],
+                            "rooms": {r: {**blank, "id": fr.rule_id(c)} for r, c in (rooms or {}).items()},
+                            "write": {"wr": 70}}
         for j, (cfg, tr) in enumerate(sets_trades):
             mine = tr[sh::shards]
             e = np.array([a for a, _x, _p in mine], dtype=np.int64)
@@ -418,6 +423,11 @@ def test_the_page_prints_and_works_nothing_out():
     # every card and grid column may shrink: a wide table scrolls inside its
     # own box instead of widening the page (1,590px at 1,440; 489px at 390)
     assert 'const card = "min-w-0 ' in src and src.count("[&>*]:min-w-0") >= 2
+    # the month tracker is measured by the day, never a month shared out
+    # (RCA-2026-10-01-J), and a what-if prints the server's own words for
+    # where its run is, never a fixed "about 10-15 minutes" (bug hunt, round 6)
+    assert "shared out over the days" not in src and "pastMonths(t.rooms)" in src
+    assert "10-15 minutes" not in src
     side = (ROOT / "webapp/src/layout/AppSidebar.tsx").read_text(encoding="utf-8")
     assert '{ name: "Forecast v2", path: "/forecast-v2" }' in side
 
@@ -462,8 +472,7 @@ def test_a_custom_run_carries_its_id_in_the_title():
 
 
 def test_streak_bells_ring_once_and_never_for_the_runs_already_going(monkeypatch):
-    from tradingagents import forecast_v2_daily as fd
-    from tradingagents import notifications as nt
+    from tradingagents import forecast_v2_daily as fd, notifications as nt
 
     rung = []
     monkeypatch.setattr(nt, "record", lambda *a, **k: rung.append(a[1]))
@@ -471,9 +480,22 @@ def test_streak_bells_ring_once_and_never_for_the_runs_already_going(monkeypatch
            "length": 16, "started_at": NOW - 9 * HOUR, "profit": 6.48}
     assert fd.streak_bells({"streaks": [old]}) == [] and rung == [], "the first run only remembers"
     new = {**old, "coin": "VUG", "length": 9, "started_at": NOW - HOUR}
-    assert len(fd.streak_bells({"streaks": [old, new]})) == 1
+    assert len(fd.streak_bells({"streaks": [old, new]}, NOW)) == 1
     assert rung == ["VUG has won 9 in a row in #4FC03172"]
-    assert fd.streak_bells({"streaks": [old, {**new, "length": 10}]}) == [], "the same run never rings twice"
+    assert fd.streak_bells({"streaks": [old, {**new, "length": 10}]}, NOW + 60) == [], \
+        "the same run never rings twice"
+    # AT MOST ONE BELL AN HOUR (bug hunt, round 6: one per run would have been
+    # 46 bells on Oct 01, 2026); a run inside the hour waits and is named in it,
+    # and a room that is off never rings
+    loss = {**old, "coin": "DHRSTOCK", "kind": "loss", "length": 5, "started_at": NOW - 600, "profit": -5.1}
+    win = {**old, "coin": "CAVASTOCK", "length": 9, "started_at": NOW - 300}
+    gone = {**loss, "room": "DC57174E", "room_name": "#DC57174E", "coin": "IGV"}
+    assert profiles.retired("DC57174E")
+    assert fd.streak_bells({"streaks": [old, new, loss, gone]}, NOW + 600) == []
+    assert fd.streak_bells({"streaks": [old, new, loss, win, gone]}, NOW + 1800) == []
+    got = fd.streak_bells({"streaks": [old, new, loss, win, gone]}, NOW + HOUR + 1)
+    assert len(got) == 2 and rung[-1] == "2 new streaks: 1 winning, 1 losing"
+    assert len(rung) == 2 and not any("IGV" in k for k in got)
 
 
 def test_the_chain_never_runs_under_a_test():
@@ -497,3 +519,241 @@ def test_a_what_if_answers_at_once_and_starts_behind_the_answer(monkeypatch):
     assert started[0][1]["replay_run"] == 5, "measured on the finished replay, not the running one"
     again = fd.whatif({"window_days": 30, "on_winrate": 90, "min_trades": 40, "tp_rule": ">", "max_sl": 2})
     assert again["id"] == got["id"] and len(started) == 1, "asked twice, started once"
+
+
+# ------------------------------------------------------ bug hunt, round 6
+def test_the_month_tracker_holds_a_day_against_the_same_day_of_past_months(tmp_path, monkeypatch):
+    """RCA-2026-10-01-J: the "worst case by today" was a month's worst case
+    divided by its days. On Oct 01, 2026 at 7:25pm all six rooms rang — Main
+    for -7.29 against "-0.01 by today". A day is held against what the
+    room's own rules made by the end of that same day of each past month."""
+    from tradingagents import notifications as nt
+
+    rule = fr.cfg_of(30, 90, 20, ">", 2.0)
+    # ONE TIMELINE: each past month opens with a losing first day (mid-day,
+    # so it is the same calendar day in any zone) and is won back later
+    t = [(_ms(2026, 7, 1, 10), _ms(2026, 7, 1, 13), -9.0), (_ms(2026, 7, 20), _ms(2026, 7, 20, 13), 30.0),
+         (_ms(2026, 8, 1, 10), _ms(2026, 8, 1, 13), -4.0), (_ms(2026, 8, 20), _ms(2026, 8, 20, 13), 25.0),
+         (_ms(2026, 9, 1, 10), _ms(2026, 9, 1, 13), -6.0), (_ms(2026, 9, 2, 10), _ms(2026, 9, 2, 13), -2.0),
+         (_ms(2026, 9, 29, 10), _ms(2026, 9, 29, 11), 20.0)]
+    out = fm.merge(_fake_run(tmp_path / "art", [(rule, t)], rooms={"main": rule}),
+                   reality={"took": 0.5, "gap": 1.0}, keep=False)
+    s = out["sets"][0]
+    bd = s["by_day"]
+    assert sorted(bd) == ["2026-07", "2026-08", "2026-09"]
+    assert [len(bd[m]["p"]) for m in sorted(bd)] == [31, 31, 30], "every day of each past month"
+    assert bd["2026-09"]["p"][:2] == [-6.0, -8.0] and bd["2026-09"]["n"][:2] == [1, 2]
+    assert bd["2026-09"]["p"][-1] == 12.0 and bd["2026-07"]["p"][-1] == 21.0
+    # day 1, after the reality check took x (profit - gap x trades):
+    # Jul 0.5 x (-9 - 1) = -5.0, Aug -2.5, Sep -3.5
+    band = f2a.band_on(s, 1, out["reality"])
+    assert (band["corrected_low"], band["corrected"], band["corrected_high"]) == (-5.0, -3.5, -2.5)
+    assert (band["low"], band["high"], band["day"]) == (-9.0, -4.0, 1)
+    # a day past a month's end is that whole month: day 31 of September is its 30th
+    assert f2a.band_on(s, 31, out["reality"])["high"] == 21.0
+    assert f2a.band_on({"id": "old"}, 1, out["reality"]) is None, "no days kept: no guess"
+
+    rung = []
+    monkeypatch.setattr(nt, "record", lambda *a, **k: rung.append((a[1], k.get("detail"))))
+
+    def room(made):
+        return {"rooms": [{"id": "main", "name": "Main", "retired": False,
+                           "month": {"trades": 3, "wins": 0, "losses": 3, "profit": made, "days": []}}]}
+
+    # -4.00 on day 1 is inside what past day 1s did (worst -5.00): no bell —
+    # the old rule held it against this month's worst 4.50 / 31 = +0.15 and rang
+    monkeypatch.setattr(f2a, "live", lambda: room(-4.0))
+    tr = f2a.tracker(NOW)
+    assert tr["day"] == 1 and tr["rooms"][0]["so_far"]["corrected_low"] == -5.0
+    assert not tr["rooms"][0]["below"] and f2a.tracker_alarms(NOW) == [] and rung == []
+    # Main's real -7.29 is under it: one bell, naming the months and the day
+    monkeypatch.setattr(f2a, "live", lambda: room(-7.29))
+    assert f2a.tracker_alarms(NOW) == ["2026-10|main"]
+    assert rung == [("Main is under its predicted worst case",
+                     f"Main has made -7.29 this month; in Jul, Aug and Sep 2026 its rules "
+                     f"#{fr.rule_id(rule)} made at worst -5.00 by the end of day 1, after the "
+                     f"reality check")]
+    assert f2a.tracker_alarms(NOW) == [], "once a room a month"
+
+
+def test_off_stays_off_when_a_busy_tick_writes_the_state_back():
+    """Bug hunt, round 6: a tick reads the state, can spend minutes in a
+    download and a merge, then writes the whole state back — a switch saved
+    into the same file meanwhile came back "on"."""
+    from tradingagents import forecast_v2_daily as fd
+
+    fd._write({"phase": "replay", "replay_run": 6})
+    st = fd.read()                              # the tick reads ...
+    assert st["on"] is True
+    fd.switch(False)                            # ... the box is switched off mid-merge ...
+    fd._write(st)                               # ... and the tick writes back what it read
+    assert fd.read()["on"] is False and fd.is_on() is False
+    assert "on" not in json.loads(fd._state_path().read_text(encoding="utf-8"))
+    fd.switch(True)
+    assert fd.read()["on"] is True
+
+
+def test_a_what_if_asked_while_another_is_polled_is_kept(monkeypatch):
+    """Bug hunt, round 6: the poll saved its own copy of the what-if file
+    after minutes at GitHub, and a what-if asked meanwhile vanished from it
+    while its run went on."""
+    from tradingagents import forecast_v2_daily as fd
+
+    fd._whatif_save({"A": {"id": "A", "status": "working", "run": 5, "end_ms": 1,
+                           "asked_at": NOW - HOUR}})
+
+    def status(run, repo):
+        # while the poll is out at GitHub, the operator asks B
+        with fd._WHATIF_LOCK:
+            w = fd.whatifs()
+            w["B"] = {"id": "B", "status": "working", "run": 9, "end_ms": 1, "asked_at": NOW}
+            fd._whatif_save(w)
+        return {"status": "queued", "machines": 0, "done": 0, "failed": [], "created": None}
+
+    monkeypatch.setattr(fd, "run_status", status)
+    fd._whatifs({"repo": "x/y", "phase": "replay"}, NOW)
+    w = fd.whatifs()
+    assert set(w) == {"A", "B"}, "the what-if asked meanwhile is still there"
+    # a QUEUED what-if names the chain's run beside it — what it waits behind
+    assert w["A"]["why"] == ("waiting in GitHub's queue, not started yet — the daily Forecast v2's "
+                             "replay run is on GitHub too")
+
+
+def test_a_run_github_listed_late_is_adopted_never_started_twice(monkeypatch):
+    """Bug hunt, round 6: a dispatch that raised because GitHub listed its
+    run late was tried again 30 minutes later — and started a SECOND replay,
+    20 machines for an hour. A retry adopts the run made since the first try."""
+    from tradingagents import forecast_v2_daily as fd
+
+    inputs = {"shards": 20, "timeframes": "15m", "coin_list": "", "start": "2026-07-01",
+              "base": 5, "groups": "all", "write_rule": fd.WRITE_RULE}
+    want = fd.title_of(fd.REPLAY_WF, inputs)
+
+    def iso(s):
+        return dt.datetime.fromtimestamp(s, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    calls, shown = [], {"late": False}
+
+    def gh(*args, timeout=120):
+        calls.append(args[:2])
+        if args[:2] == ("run", "list"):
+            rows = [{"databaseId": 1, "displayTitle": want, "createdAt": iso(NOW - 24 * HOUR)}]
+            if shown["late"]:
+                rows.insert(0, {"databaseId": 7, "displayTitle": want, "createdAt": iso(NOW + 30)})
+            return json.dumps(rows)
+        return ""
+
+    monkeypatch.setattr(fd, "_gh", gh)
+    monkeypatch.setattr(fd.time, "sleep", lambda s: None)
+    st = {}
+    with pytest.raises(RuntimeError):
+        fd.dispatch(fd.REPLAY_WF, inputs, "x/y", since=fd._tried(st, "replay 2026-07-01", NOW))
+    shown["late"] = True                       # GitHub had taken it after all
+    assert fd.dispatch(fd.REPLAY_WF, inputs, "x/y",
+                       since=fd._tried(st, "replay 2026-07-01", NOW + 1800)) == 7
+    assert calls.count(("workflow", "run")) == 1, "the run GitHub took is adopted, never started twice"
+    assert fd._tried({"tried": {"what": "base 5", "at": NOW}}, "options 5", NOW + 9) is None, \
+        "another dispatch's attempt is not this one's"
+
+
+def test_a_queued_run_says_it_is_waiting_not_working():
+    """Bug hunt, round 6: a what-if asked at 7:26pm sat QUEUED behind the
+    daily replay's 20 machines while the page said "working on GitHub: 0 of
+    0 machines done"."""
+    from tradingagents import forecast_v2_daily as fd
+    from tradingagents.positions_view import fmt_when
+
+    assert fd.run_words({"status": "queued", "machines": 0, "done": 0, "created": NOW}) == \
+        f"waiting in GitHub's queue since {fmt_when(NOW)}, not started yet"
+    assert fd.run_words({"status": "in_progress", "machines": 0, "done": 0}) == "GitHub is starting it"
+    assert fd.run_words({"status": "in_progress", "machines": 20, "done": 3}) == \
+        "working on GitHub: 3 of 20 machines done"
+
+
+def test_a_cut_title_still_finds_its_run():
+    from tradingagents import forecast_v2_daily as fd
+
+    want = ('Forecast v2 · custom · replay 36763426504 {"id":"2F39EAEC","on_winrate":85.0,'
+            '"off_winrate":85.0,"min_trades":30,"tp_rule":">","window_days":30}')
+    assert fd.same_title(want, want) and fd.same_title(want + " ", want)
+    assert fd.same_title(want[:70] + "…", want), "GitHub's cut of a long title"
+    assert not fd.same_title(want[:40], want), "too short to hold the rule id"
+    assert not fd.same_title(want.replace("2F39EAEC", "AAAAAAAA")[:70], want)
+
+
+def test_a_what_if_cut_off_by_a_restart_is_asked_again_and_its_run_adopted(monkeypatch):
+    """Bug hunt, round 6: a site restart between "starting" and GitHub's
+    answer left the what-if "starting" for ever — and asking again returned
+    that same stuck answer."""
+    from tradingagents import forecast_v2_daily as fd
+
+    monkeypatch.setattr(fd, "_STARTING", set())
+    fd._write({"phase": "idle", "ready": {"replay_run": 5, "end_ms": 1, "start": "2026-07-01", "repo": "x/y"}})
+    started = []
+    monkeypatch.setattr(fd.threading, "Thread", lambda target, args, name, daemon: type(
+        "T", (), {"start": lambda self: started.append(args)})())
+    cfg = {"window_days": 30, "on_winrate": 85, "min_trades": 30, "tp_rule": ">", "max_sl": 2}
+    got = fd.whatif(cfg)
+    assert fd._cut_starts(got["asked_at"] + 61) == [], "a start this process is still making is never cut"
+    fd._STARTING.clear()                        # the site restarted: nothing is asking GitHub for it
+    assert fd._cut_starts(got["asked_at"] + 30) == [], "a second-old start is never cut"
+    assert fd._cut_starts(got["asked_at"] + 61) == [got["id"]]
+    assert fd.whatifs()[got["id"]]["status"] == "failed"
+    again = fd.whatif(cfg)
+    assert again["status"] == "starting" and len(started) == 2
+    assert started[1][3] == got["tried_at"], "the re-ask adopts a run the cut-off start made"
+
+
+def test_a_chain_that_ran_past_midnight_does_not_hold_back_the_next_update(monkeypatch):
+    """Bug hunt, round 6: "one a day" counted by the day the chain FINISHED,
+    so a chain started Sep 30 11pm and done Oct 01 1:30am held Oct 01's
+    update back until the midnight after it."""
+    from tradingagents import forecast_v2_daily as fd, room_forecasts as rf
+
+    monkeypatch.setattr(rf, "_update", lambda: {"runs": [1], "collected": [1], "when": NOW - 5 * HOUR})
+    st = {"phase": "done", "started_day": "2026-09-30", "started_at": NOW - 15 * HOUR,
+          "done_day": "2026-10-01", "done_at": NOW - 12.5 * HOUR, "last_update": NOW - 48 * HOUR}
+    ok, why = fd.due(NOW, st)
+    assert ok, why
+    ok, why = fd.due(NOW, {**st, "started_day": "2026-10-01"})
+    assert not ok and why.startswith("today's Forecast v2 was made at")
+    # a state from before started_day was kept counts the day it started at
+    ok, _why = fd.due(NOW, {k: v for k, v in st.items() if k != "started_day"})
+    assert ok
+
+
+def test_a_what_if_is_corrected_with_the_tables_own_numbers():
+    from tradingagents import forecast_v2_daily as fd
+
+    fd.home().mkdir(parents=True, exist_ok=True)
+    (fd.home() / "latest.json").write_text(json.dumps({"reality": {"took": 0.1799, "gap": 0.2225}}),
+                                           encoding="utf-8")
+    assert fd._reality_of_table() == {"took": 0.1799, "gap": 0.2225}
+
+
+def test_only_the_days_final_merge_keeps_the_months_prediction(monkeypatch, tmp_path):
+    """RCA-2026-10-01-K: October's graded prediction was kept at Oct 01, 2026
+    6:59pm by the base-only merge — 576 rule sets, without the 572 with an
+    option or the best of all, #A8CD8C72. The chain's base merge keeps
+    nothing; only the day's final merge keeps the month."""
+    from tradingagents import forecast_v2_daily as fd
+
+    merges = []
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: {
+        "status": "completed", "conclusion": "success", "machines": 20, "done": 20, "failed": [],
+        "created": None})
+    monkeypatch.setattr(fd, "download", lambda run, repo, pattern: tmp_path / str(run))
+    monkeypatch.setattr(fd, "run_merge", lambda base, opts, runs, keep: merges.append((opts is None, keep)))
+    monkeypatch.setattr(fd, "_latest", lambda: {"made_at": 1, "sets": [
+        {"base": True, "cfg": fr.cfg_of(30, 90, 40, ">", 2.0)}]})
+    monkeypatch.setattr(fd, "dispatch", lambda wf, inputs, repo, since=None: 77)
+    monkeypatch.setattr(fd, "room_rules", lambda: {})
+    monkeypatch.setattr(fd, "bell", lambda out, live: None)
+    monkeypatch.setattr(fd.f2, "live", lambda: {})
+    st = {"phase": "base", "on": True, "repo": "x/y", "replay_run": 5, "base_run": 6,
+          "end_ms": 1, "start": "2026-07-01"}
+    fd._step(st, NOW)
+    assert st["phase"] == "options" and merges == [(True, False)], "the base-only merge keeps nothing"
+    fd._step(st, NOW + 600)
+    assert st["phase"] == "done" and merges[-1] == (False, True), "the day's final merge keeps the month"
+    assert st["ready"]["replay_run"] == 5

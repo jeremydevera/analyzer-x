@@ -172,6 +172,148 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-01-J — Forecast v2's "worst case by today" was a whole month's worst case divided by 31, a number no real month ever made
+
+**CEO**
+
+* At 7:25pm all six rooms rang "under its predicted worst case". Each bell was
+  right — every room really had a worse first day than any of July, August
+  and September — but the number in it was invented: #CC94D9FB's said "+0.87
+  by today" when its rules' worst real first day was 0.00.
+* Why: the screen took the worst whole month and divided it by the days in
+  the month; later in a month that line parts from what really happened
+  (#CC94D9FB, day 20: +17.30 by the old rule, −0.47 in fact), so it would have
+  rung for ordinary days.
+* What stops it now: each day is held against what the same rules made by
+  the end of that same day in every past month, measured from the backtest.
+
+**DEV**
+
+* `forecast_v2_api.tracker` (`tradingagents/forecast_v2_api.py`) built
+  `so_far` as `predicted[k] * today.day / days_in`, and `tracker_alarms` rang
+  on `made < so_far["corrected_low"]`. Now `forecast_v2_merge.by_day` keeps the
+  running profit and trade count at the end of every day of each complete
+  month for the rooms' own rule sets, and `band_on(s, day, reality)` reads
+  them, corrected with the table's own reality numbers.
+* Invariant broken: **a "by today" figure is measured at that day, never
+  scaled from a whole period** — a range of monthly totals is not a range of
+  partial months (label-must-match-data).
+* Guard: `test_the_month_tracker_holds_a_day_against_the_same_day_of_past_months`,
+  red on 55bfee04b7f9's code (`KeyError: 'by_day'`).
+
+**SAW** — six bells at `Oct 01, 2026 7:25pm`, e.g. *"#CC94D9FB has made
+-45.25 this month; its rules #C2B0F302 were predicted at worst +0.87 by today
+after the reality check"* and *"Main has made -7.29 this month; its rules
+#09439DC2 were predicted at worst -0.01 by today"*.
+
+**TIMELINE**
+
+1. `Oct 01, 2026 7:25pm` — the restart starts the chain's thread; its first
+   tick runs `tracker_alarms` and rings all six rooms (`alarms.json`, six
+   keys stamped 7:25pm). The six floors: Main −0.01, #55D32617 −1.94,
+   #4FC03172 −0.90, #B2404C0B +0.74, #6B08FF64 +0.36, #CC94D9FB +0.87 — each
+   the month's worst after the reality check ÷ 31.
+2. `7:45pm` — bug hunt round 6 checks #4FC03172's "−169.11 this month"
+   against its trade record: 576 practice exits since midnight (first
+   12:07am, last 7:14pm), 242 won, −169.11. Real.
+3. `8:05pm` — the same day measured from the backtest, after the reality
+   check (took 0.1799, gap 0.2225): the worst end of day 1 across Jul, Aug
+   and Sep is Main +0.00, #55D32617 −4.12, #4FC03172 −2.39, #B2404C0B +0.00,
+   #6B08FF64 +0.24, #CC94D9FB +0.00. All six rooms are under those too, so
+   all six bells stand and `alarms.json` is left as it is.
+4. Where the two lines part, measured: day 10 #B2404C0B +7.37 divided against
+   +0.03 real; day 20 #CC94D9FB +17.30 against −0.47 and #4FC03172 −18.04
+   against −47.02. Made-up example: #CC94D9FB at +5.00 on Oct 20 would have
+   rung under the old line while its rules' worst real day 20 was −0.47.
+
+**ROOT CAUSE** — `band = {k: p[k] * share}` with `share = today.day /
+days_in`: a month's range shared out evenly over its days.
+
+**WHY IT WAS NOT CAUGHT** — the tracker had no test of its own figures: the
+25 tests checked the merge's monthly numbers and the API's paging, and the
+screenshot pass checked that the tracker table drew. A range scaled by a
+fraction prints a believable number every day; only putting it beside what a
+real day of a real month made shows it was never measured. The six bells
+then sat unread for twenty minutes, until round 6.
+
+**COST** — none in money (Forecast v2 switches nothing); six bells carrying a
+"worst case" no backtest month produced. Their conclusion was right.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_forecast_v2.py`:
+`test_the_month_tracker_holds_a_day_against_the_same_day_of_past_months` —
+red on 55bfee04b7f9's code.
+
+---
+
+## RCA-2026-10-01-K — October's Forecast v2 prediction was kept from the half-finished merge: 576 of 1,148 rule sets, without the best one
+
+**CEO**
+
+* The prediction kept to grade October at the month's end held only half the
+  rule sets (576 of 1,148), and not the best one, #A8CD8C72.
+* Why: it was saved at 6:59pm by the first half of the merge, six minutes
+  before the code was changed to save only after the second half; the change
+  stopped it happening again but left the half-saved one in place, and a
+  month's prediction is never overwritten.
+* What stops it now: October's prediction was replaced from the same data
+  (all 1,148, nothing from October in it), and a test holds that only the
+  day's final merge may keep the month.
+
+**DEV**
+
+* `forecast_v2_merge._save` → `keep_prediction(out)` ran on the base-only
+  merge at `Oct 01, 2026 6:59pm` (`python -m tradingagents.forecast_v2_merge
+  <base dir>`, keep on by default). 78dbb38f99e7 (7:05pm) gave the chain's
+  base merge `--no-keep`; `keep_prediction` is first-write-wins, so the
+  576-set line was permanent.
+* Invariant broken: **a fix that changes what a store keeps checks what the
+  old code already wrote** — first-write-wins turned a one-time slip into a
+  permanent record.
+* Guard: `test_only_the_days_final_merge_keeps_the_months_prediction` drives
+  `forecast_v2_daily._step` through base → options and asserts keep off, then
+  on. The repair is a one-off; the old file is kept as
+  `~/.tradingagents/forecast_v2/predictions.jsonl.before-repair`.
+
+**SAW** — nothing on screen yet: the grading reads "the month is not over in
+the newest data yet" until November. Found in round 6 reading
+`predictions.jsonl`: `2026-10 Oct 01, 2026 6:59pm 576 sets`.
+
+**TIMELINE**
+
+1. `Oct 01, 2026 6:56pm` — base run 36936689969 downloaded beside the store.
+2. `6:59pm` — merged by hand with the module's default: October kept with
+   576 base rule sets, first #11823416.
+3. `7:05pm` — 78dbb38f99e7: round 2's "the month's graded prediction was kept
+   by the base-only merge" fixed in the chain; the line on disk not looked at.
+4. `7:20pm` — the final merge (1,148 sets, best #A8CD8C72 about +92.17 a month
+   after the reality check) called `keep_prediction`, which refused: October
+   was already kept.
+5. `7:57pm` — repaired from the re-merge's `latest.json`: the same data (to
+   `Sep 30, 2026 12:00pm`), the same reality (took 0.1799, gap 0.2225), 1,148
+   sets with #A8CD8C72 in them, the 576 base predictions unchanged.
+
+**ROOT CAUSE** — a first-write-wins record fed by a merge that should never
+keep, and a fix that did not revisit the record already written.
+
+**WHY IT WAS NOT CAUGHT** — the round-2 fix was checked by reading the code
+path (the chain's base merge passes `--no-keep`), never by reading the file
+the slip had already written; and no test drove the chain's base → options
+steps to pin which merge keeps. The one test that did exist,
+`test_a_months_first_prediction_is_kept_and_never_overwritten`, holds
+first-write-wins — the very property that made the slip permanent.
+
+**COST** — none in money; October would have been graded on half the rule
+sets, the best one missing.
+
+**FIX** — this commit, and the one-off repair at 7:57pm.
+
+**GUARD** — `tests/test_forecast_v2.py`:
+`test_only_the_days_final_merge_keeps_the_months_prediction`.
+
+---
+
 ## RCA-2026-10-01-H — the Forecast tab timed every stock coin by New York, so Japanese stocks traded in Tokyo's daytime were booked as "night"
 
 **CEO**

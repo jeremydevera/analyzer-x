@@ -263,16 +263,60 @@ def rules(sort: str = "rank", page: int = 1, base: str = "", deployable: bool = 
 
 
 # ------------------------------------------------- the month, and grading
+def band_on(s: dict | None, day: int, reality: dict) -> dict | None:
+    """What a rule set made by the END of day `day` in each past month
+    (forecast_v2_merge.by_day), as a range — straight and after the reality
+    check. A month shorter than `day` gives its whole month. None when the
+    set carries no days (a latest.json from before they were kept): the
+    tracker then says nothing rather than guess (RCA-2026-10-01-J — a month's
+    worst case divided by 31 rang six bells on day 1)."""
+    import statistics
+
+    bd = (s or {}).get("by_day") or {}
+    prof, corr = [], []
+    for m in sorted(bd):
+        v = bd[m]
+        k = min(int(day), len(v["p"])) - 1
+        if k < 0:
+            continue
+        prof.append(float(v["p"][k]))
+        c = f2.corrected(v["p"][k], v["n"][k], reality)
+        if c is not None:
+            corr.append(c)
+    if not prof:
+        return None
+    return {"low": round(min(prof), 2), "profit": round(statistics.median(prof), 2),
+            "high": round(max(prof), 2),
+            "corrected_low": round(min(corr), 2) if corr else None,
+            "corrected": round(statistics.median(corr), 2) if corr else None,
+            "corrected_high": round(max(corr), 2) if corr else None,
+            "day": int(day), "months": sorted(bd)}
+
+
+def _month_names(keys: list[str]) -> str:
+    """["2026-07", "2026-08", "2026-09"] -> "Jul, Aug and Sep 2026" — month
+    LABELS, which keep their own form (CLAUDE.md, date format)."""
+    if not keys:
+        return ""
+    names = [f"{_MONTHS[int(k[5:7]) - 1]} {k[:4]}" for k in keys]
+    if len({k[:4] for k in keys}) == 1:
+        names = [n[:3] for n in names[:-1]] + names[-1:]
+    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
+
+
+_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
 def tracker(now: float | None = None) -> dict:
-    """Each room's practice month so far against its own rule set's
-    predicted range, both straight and after the reality check, the range
-    shared out over the days of the month."""
+    """Each room's practice month so far against what its own rule set made
+    by the same day of each past month, straight and after the reality
+    check."""
     now = time.time() if now is None else float(now)
     lt = latest() or {}
     by = _by_id()
     today = dt.date.fromtimestamp(now)
     days_in = calendar.monthrange(today.year, today.month)[1]
-    share = today.day / days_in
+    reality = lt.get("reality") or {}
     out = []
     lv = live()
     for r in lv["rooms"]:
@@ -281,15 +325,12 @@ def tracker(now: float | None = None) -> dict:
         rid = ((lt.get("rooms") or {}).get(r["id"]) or {}).get("id")
         s = by.get(rid) if rid else None
         p = (s or {}).get("predicted") or {}
-        band = None
-        if p:
-            band = {k: (round(p[k] * share, 2) if p.get(k) is not None else None)
-                    for k in ("low", "profit", "high", "corrected_low", "corrected", "corrected_high")}
+        band = band_on(s, today.day, reality)
         made = r["month"]["profit"]
         below = band is not None and band.get("corrected_low") is not None and made < band["corrected_low"]
         out.append({"room": r["id"], "name": r["name"], "id": rid, "words": (s or {}).get("words"),
                     "month": r["month"], "predicted": p or None, "so_far": band,
-                    "share": round(share, 3), "below": below})
+                    "below": below})
     tops = list(lt.get("sets") or [])[:5]
     cur = dt.datetime.fromtimestamp(now).strftime("%Y-%m")
     top_rows = []
@@ -349,10 +390,12 @@ def tracker_alarms(now: float | None = None) -> list:
     for r in t["rooms"]:
         key = f"{t['month']}|{r['room']}"
         if r["below"] and key not in rung:
+            b = r["so_far"]
             nt.record("forecast", f"{r['name']} is under its predicted worst case",
-                      detail=(f"{r['name']} has made {r['month']['profit']:+.2f} this month; its rules "
-                              f"#{r['id']} were predicted at worst {r['so_far']['corrected_low']:+.2f} "
-                              f"by today after the reality check"), ok=False)
+                      detail=(f"{r['name']} has made {r['month']['profit']:+.2f} this month; in "
+                              f"{_month_names(b['months'])} its rules #{r['id']} made at worst "
+                              f"{b['corrected_low']:+.2f} by the end of day {b['day']}, after the "
+                              f"reality check"), ok=False)
             rung[key] = time.time()
             out.append(key)
     if out:

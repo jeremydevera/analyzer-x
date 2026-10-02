@@ -34,6 +34,16 @@ const monthName = (key: string) => {
   const [y, m] = key.split("-");
   return `${MONTH[Number(m) - 1] ?? m} ${y}`;
 };
+/** the past months a tracker band was measured on, "Jul, Aug and Sep 2026" —
+ *  read off the rows, never a literal (label-must-match-data) */
+const pastMonths = (rows: { so_far: { months: string[] } | null }[]) => {
+  const keys = rows.find((r) => r.so_far?.months?.length)?.so_far?.months ?? [];
+  if (!keys.length) return "past months";
+  const names = keys.map(monthName);
+  const oneYear = new Set(keys.map((k) => k.slice(0, 4))).size === 1;
+  const shown = oneYear ? [...names.slice(0, -1).map((n) => n.slice(0, 3)), names[names.length - 1]] : names;
+  return shown.length === 1 ? shown[0] : `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`;
+};
 
 function Badge({ kind, children }: { kind: "good" | "bad" | "info"; children: React.ReactNode }) {
   const c = kind === "good" ? "bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-400"
@@ -446,7 +456,9 @@ function WhatIf({ s }: { s: F2Summary }) {
     setNote("asking…");
     try {
       const got = await api.forecastV2WhatIf(cfg);
-      setNote(got.status === "done" ? `#${got.id} is measured — below` : got.status === "working" ? `#${got.id} is being measured on GitHub (about 10-15 minutes)` : `${got.status}: ${got.why}`);
+      // the server's own words for where the run is — a queued run behind the
+      // daily replay can wait an hour, so no fixed estimate is printed here
+      setNote(got.status === "done" ? `#${got.id} is measured — below` : `#${got.id} ${got.status}: ${got.why}`);
       load();
     } catch (e) { setNote(`not asked — ${String((e as Error)?.message ?? e)}`); }
   };
@@ -508,10 +520,10 @@ function Tracker({ s }: { s: F2Summary }) {
   return (
     <div className={card}>
       <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">This month so far — {monthName(t.month)}, day {t.day} of {t.days}</h3>
-      <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">each room&apos;s practice month against its own rules&apos; predicted range shared out over the days so far; the bell rings once if a room falls under its worst case after the reality check</p>
+      <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">each room&apos;s practice month against what its own rules made by the end of day {t.day} of {pastMonths(t.rooms)} in the backtest; the bell rings once a month if a room falls under the worst of those after the reality check</p>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full text-theme-xs">
-          <thead><tr>{["room", "its rules", "made so far", "trades", "predicted by today (after the reality check)", "predicted by today (backtest)"].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
+          <thead><tr>{["room", "its rules", "made so far", "trades", `by the end of day ${t.day} (after the reality check)`, `by the end of day ${t.day} (backtest)`].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
           <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
             {t.rooms.map((r) => (
               <tr key={r.room}>

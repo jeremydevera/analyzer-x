@@ -33,6 +33,7 @@ import json as _json
 import logging
 import os
 import pathlib as _pathlib
+import random as _random
 import threading
 import time
 import urllib.error
@@ -116,6 +117,8 @@ class MexcFuturesThrottled(MexcFuturesError):
     """The venue refused because we asked too often — retryable, unlike a
     rejection on the merits. MEXC sends this as HTTP 200 with `code: 510` in
     the BODY, so it never reaches the HTTP-status retry list."""
+
+    code = None                    # the venue's own code (510, 1002, 1004)
 
 
 class MexcFuturesAuthFailed(MexcFuturesError):
@@ -333,6 +336,69 @@ _RETRY_BODY_CODES = frozenset({510, 1002, 1004})
 _retry_sleep = time.sleep
 _clock = time.monotonic
 
+# ONE PAUSE FOR EVERY PROCESS ON THIS PC (Oct 02, 2026). Six trading rooms are
+# six runner processes on one internet line, and MEXC rate-limits the LINE:
+# 64 refusals in 24 hours, spread over every room. A room that is told "too
+# frequent" backs off by itself (`_PUBLIC_BACKOFF`), but the other five kept
+# asking in the same second and were refused too. So the one that hears it
+# writes "quiet until now + PUBLIC_PAUSE_S" here, and every OTHER process's
+# keyless call waits for it first — never longer than PUBLIC_PAUSE_MAX_WAIT_S,
+# so a wrong or stuck file can only ever cost one short wait. Its own process
+# is not held: its retry already waits longer than the pause.
+#
+# KEYLESS ONLY. `_request` (signed: orders, stops, positions) never reads or
+# writes this — a second order submit is a second order, and a real exit must
+# never queue behind a practice room's price check.
+PUBLIC_PAUSE_PATH = (_pathlib.Path.home() / ".tradingagents" / "shared"
+                     / "public_pause.json")
+PUBLIC_PAUSE_S = 2.0
+PUBLIC_PAUSE_MAX_WAIT_S = 3.0
+PUBLIC_PAUSE_JITTER_S = 0.5
+_pause_sleep = time.sleep
+
+
+def _note_rate_limit() -> None:
+    """Tell every other process on this PC to hold its keyless calls."""
+    try:
+        now = time.time()
+        PUBLIC_PAUSE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = PUBLIC_PAUSE_PATH.with_name(
+            f"{PUBLIC_PAUSE_PATH.name}.{os.getpid()}."
+            f"{threading.get_ident()}.tmp")
+        tmp.write_text(_json.dumps({"until": now + PUBLIC_PAUSE_S,
+                                    "pid": os.getpid(), "at": now}),
+                       encoding="utf-8")
+        for _ in range(20):
+            try:
+                os.replace(tmp, PUBLIC_PAUSE_PATH)
+                return
+            except PermissionError:       # a reader has it open (Windows)
+                time.sleep(0.01)
+        tmp.unlink()
+    except Exception as exc:                                    # noqa: BLE001
+        logger.debug("could not write the shared pause: %s", exc)
+
+
+def _honour_shared_pause() -> float:
+    """Wait out another process's rate-limit pause. Returns seconds waited."""
+    try:
+        with open(PUBLIC_PAUSE_PATH, encoding="utf-8") as fh:
+            d = _json.load(fh)
+        if int(d.get("pid") or 0) == os.getpid():
+            return 0.0
+        left = float(d.get("until") or 0.0) - time.time()
+    except Exception:                                           # noqa: BLE001
+        return 0.0                 # no file, half a file, a locked file
+    if left <= 0:
+        return 0.0
+    # A LITTLE JITTER, so the rooms that all waited for one pause do not all
+    # ask again in the same millisecond it ends — that is the burst that
+    # earned the pause.
+    wait = min(left + _random.uniform(0.0, PUBLIC_PAUSE_JITTER_S),
+               PUBLIC_PAUSE_MAX_WAIT_S)
+    _pause_sleep(wait)
+    return wait
+
 
 def _no_more_tries(attempt: int, t0: float) -> bool:
     """Was that the last attempt — by count, or by wall-clock spent?"""
@@ -353,6 +419,7 @@ def _get_public(url: str):
     req = urllib.request.Request(url, headers={"User-Agent": _UA})
     t0 = _clock()
     for attempt in range(1, _PUBLIC_RETRIES + 1):
+        _honour_shared_pause()
         try:
             with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
                 raw = resp.read()
@@ -362,12 +429,16 @@ def _get_public(url: str):
             got = _body(raw, url)
             if not isinstance(got, MexcFuturesThrottled):
                 return got
+            if getattr(got, "code", None) == 510:
+                _note_rate_limit()
             if _no_more_tries(attempt, t0):
                 raise got
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", "replace")
             if exc.code == 403 and ("Access Denied" in body or "<HTML" in body.upper()):
                 raise MexcFuturesEdgeBlocked(url) from exc
+            if exc.code == 429:
+                _note_rate_limit()
             if exc.code not in _RETRY_STATUSES or _no_more_tries(attempt, t0):
                 raise MexcFuturesError(f"{exc.code}: {body[:200]}") from exc
         except (OSError, urllib.error.URLError, http.client.HTTPException) as exc:
@@ -389,7 +460,9 @@ def _body(raw, url: str):
         code = payload.get("code")
         msg = payload.get("message") or payload.get("msg") or "rejected"
         if code in _RETRY_BODY_CODES:
-            return MexcFuturesThrottled(f"code {code}: {msg}")
+            err = MexcFuturesThrottled(f"code {code}: {msg}")
+            err.code = code
+            return err
         raise MexcFuturesError(f"code {code}: {msg}")
     return payload
 

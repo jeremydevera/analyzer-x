@@ -83,6 +83,22 @@ BACKOFF_S = (1.0, 2.0, 5.0, 10.0, 30.0)
 # is now event-driven and can be minutes apart.
 STATUS_PATH = Path(os.path.expanduser("~/.tradingagents/live_price.json"))
 STATUS_EVERY_S = 2.0
+# ONE-MINUTE BARS FOR THE PRACTICE EXIT (Oct 02, 2026). The demo exit walks the
+# one-minute ranges since the order went out, and every room fetched those
+# from MEXC every cycle for every open practice trade - the call behind most
+# of the 64 rate-limit refusals in the 24 hours to Oct 02, 2026 8:00am. MEXC
+# already PUSHES every one-minute bar on this socket, so the feed keeps them:
+# `MINUTE_KEEP` of them per coin, as many as the REST read asks for (300) and
+# a little more.
+MINUTE_KEEP = 320
+# A socket silent this long may have dropped pushes without dropping the
+# connection; every minute kept is forgotten and coverage starts again. Ping
+# is every 15 s and MEXC answers it, so a healthy socket is never this quiet.
+MINUTE_GAP_S = 30.0
+# At most this many coins' one-minute streams per socket (the runner puts the
+# coins holding a practice trade first). Measured Oct 02, 2026: one socket
+# carried 120 coins x (ticker + deal + a strategy bar + Min1) = 480 streams.
+MINUTE_COINS_MAX = 120
 
 
 class PriceFeed:
@@ -123,6 +139,13 @@ class PriceFeed:
         self._creds: tuple | None = None
         self._logged_in = False
         self._personal: list = []
+        # coin -> {minute open (s): [high, low]} built from MEXC's own Min1
+        # pushes (and widened by every deal printed inside the minute). A
+        # RECORDER like the ticks: `minute_bars` hands them to the runner,
+        # `auto_trader._dry_fill` still decides every exit.
+        self._want_minutes: set[str] = set()
+        self._minutes: dict[str, dict[int, list]] = {}
+        self._minute_stats = {"served": 0, "fell_back": 0}
 
     # ------------------------------------------------------------- control
     def start(self) -> bool:
@@ -169,6 +192,22 @@ class PriceFeed:
             if want == self._want_klines:
                 return
             self._want_klines = want
+        self._nudge()
+
+    def track_minutes(self, symbols) -> None:
+        """The coins whose one-minute bars the practice exit will need -
+        every coin a practice trade holds or may open on. RECORD ONLY: a
+        minute closing never wakes the cycle (that would be a cycle a minute
+        per coin, and the cycle makes REST calls)."""
+        want = {str(s) for s in symbols if s}
+        with self._lock:
+            if want == self._want_minutes:
+                return
+            # a coin dropped and picked up again has a hole where it was not
+            # subscribed; forget it so the hole can never look covered
+            for gone in self._want_minutes - want:
+                self._minutes.pop(gone, None)
+            self._want_minutes = want
         self._nudge()
 
     def arm(self, slot_key: str, symbol: str, side: int, tp: float,
@@ -271,6 +310,58 @@ class PriceFeed:
             logger.debug("ticks_since(%s) failed: %s", symbol, exc)
             return None
 
+    def minute_bars(self, symbol: str, since_ts: float, *, now=None,
+                    limit: int = 300):
+        """[(minute open, high, low)] for EVERY closed minute the runner's
+        REST read would walk - or None, meaning "fetch it".
+
+        The window is the REST one exactly: `fx.klines(symbol, "Min1", limit)`
+        reaches back `limit` minutes, `auto_trader._closed_bars` keeps the
+        minutes that opened at least 60 s ago, and `_bars_exposed_to` keeps
+        those still running when the order went out. So this answers from the
+        minute `since_ts` fell in (or `limit` minutes back, whichever is
+        later) through the newest closed minute, and ONLY when every one of
+        them is here:
+
+        * a minute is final when MEXC has pushed the NEXT one - the same
+          "`t` moved on" rule `_on_kline` closes strategy bars by;
+        * one missing minute anywhere is None, never a shorter list: a
+          reconnect, a quiet coin with no push, or a coin subscribed after
+          the order went out all mean the REST read decides.
+
+        An empty list is a real answer: the order went out inside the minute
+        still forming, so there is nothing closed to walk - as REST would say.
+        """
+        try:
+            if self.stale() or not since_ts or since_ts <= 0:
+                return None
+            now = time.time() if now is None else float(now)
+            last_closed = int((now - 60) // 60 * 60)
+            first = max(int(float(since_ts) // 60 * 60),
+                        int((now - 60 * int(limit)) // 60 * 60))
+            if first > last_closed:
+                return []
+            with self._lock:
+                store = self._minutes.get(symbol)
+                if not store or max(store) <= last_closed:
+                    return None     # the newest closed minute is not final yet
+                out = []
+                for t in range(first, last_closed + 1, 60):
+                    bar = store.get(t)
+                    if bar is None:
+                        return None
+                    out.append((t, bar[0], bar[1]))
+            return out
+        except Exception as exc:                                # noqa: BLE001
+            logger.debug("minute_bars(%s) failed: %s", symbol, exc)
+            return None
+
+    def note_minutes(self, served: bool) -> None:
+        """Count who answered the practice exit's minutes - the feed or REST
+        - so the status says whether this is working, in numbers."""
+        with self._lock:
+            self._minute_stats["served" if served else "fell_back"] += 1
+
     def extremes_since(self, symbol: str, since_ts: float):
         """(high, low) over `ticks_since`, or None. Same tail caveat."""
         rows = self.ticks_since(symbol, since_ts)
@@ -311,7 +402,15 @@ class PriceFeed:
                 "tracking": want, "subscribed": subbed, "ticks": counts,
                 "messages": self._msgs, "connects": self._connects,
                 "seconds_since_message": None if age is None else round(age, 1),
+                "minutes": self._minutes_status(),
                 "last_error": self._last_error}
+
+    def _minutes_status(self) -> dict:
+        with self._lock:
+            return {"tracking": len(self._want_minutes),
+                    "coins_with_bars": sum(1 for v in self._minutes.values()
+                                           if v),
+                    **self._minute_stats}
 
     # --------------------------------------------------------------- engine
     def _record(self, symbol: str, price: float, ts_ms) -> None:
@@ -365,12 +464,24 @@ class PriceFeed:
                                               close_timeout=5) as ws:
                     self._connected = True
                     self._connects += 1
+                    # pushes missed while disconnected are gone for good, so
+                    # no minute from before this socket may count as covered
+                    self._forget_minutes()
                     logger.info(
                         "live price feed connected to %s — the demo book now "
                         "fills on prints, not on a 60-second look", self.url)
                     self._last_msg_at = time.time()
+                    # A NEW SOCKET HOLDS NO SUBSCRIPTION AT ALL. Only the
+                    # ticker/deal set was forgotten here, so after a drop the
+                    # candle streams and the private login were never sent
+                    # again: Main reconnected at Oct 02, 2026 12:40am and
+                    # logged its last "candle closed" wake at 12:30am, eight
+                    # hours of entries found by the backstop timer instead
+                    # (RCA-2026-10-02-D).
                     with self._lock:
                         self._subscribed = set()
+                        self._subbed_klines = set()
+                        self._logged_in = False
                     attempt = 0
                     await self._pump(ws)
             except Exception as exc:                            # noqa: BLE001
@@ -384,10 +495,16 @@ class PriceFeed:
             attempt += 1
             await asyncio.sleep(delay)
 
+    def _forget_minutes(self) -> None:
+        with self._lock:
+            self._minutes = {}
+
     async def _sync_subs(self, ws) -> None:
         with self._lock:
             want, have = set(self._want), set(self._subscribed)
-            kwant, khave = set(self._want_klines), set(self._subbed_klines)
+            strategy_bars = set(self._want_klines)
+            kwant = strategy_bars | {(s, "Min1") for s in self._want_minutes}
+            khave = set(self._subbed_klines)
             creds, logged = self._creds, self._logged_in
         for sym in sorted(want - have):
             for method in ("sub.ticker", "sub.deal"):
@@ -398,7 +515,11 @@ class PriceFeed:
                 with _quiet():
                     await ws.send(json.dumps({"method": method,
                                               "param": {"symbol": sym}}))
-        for sym, iv in sorted(kwant - khave):
+        # the strategies' own bars FIRST: they wake entries. The practice
+        # exit's minutes are a saving and go last, so if the venue ever caps
+        # what one socket may hold, it is a saving that is refused.
+        for sym, iv in sorted(kwant - khave,
+                              key=lambda k: (k not in strategy_bars, k)):
             await ws.send(json.dumps({"method": "sub.kline",
                                       "param": {"symbol": sym,
                                                 "interval": iv}}))
@@ -441,6 +562,8 @@ class PriceFeed:
                 raw = await asyncio.wait_for(ws.recv(), timeout=1.0)
             except asyncio.TimeoutError:
                 continue
+            if time.time() - self._last_msg_at > MINUTE_GAP_S:
+                self._forget_minutes()      # a silence may have hidden pushes
             self._last_msg_at = time.time()
             self._msgs += 1
             try:
@@ -457,6 +580,7 @@ class PriceFeed:
             for r in rows:
                 if isinstance(r, dict):
                     self._record(sym, _num(r.get("p")), r.get("t"))
+                    self._widen_minute(sym, _num(r.get("p")), r.get("t"))
         elif ch == "push.ticker" and sym and isinstance(data, dict):
             self._record(sym, _num(data.get("lastPrice")), m.get("ts"))
         elif ch == "push.kline" and sym and isinstance(data, dict):
@@ -500,6 +624,10 @@ class PriceFeed:
         except (TypeError, ValueError):
             return
         key = (symbol, iv)
+        if iv == "Min1":
+            self._record_minute(symbol, t, d)
+            if key not in self._want_klines:
+                return              # the practice exit's minutes never wake
         with self._lock:
             prev = self._kline_at.get(key)
             self._kline_at[key] = t
@@ -508,6 +636,41 @@ class PriceFeed:
                 self._closed_bars.add(key)
         if fresh_bar:
             self.wake.set()
+
+    def _record_minute(self, symbol: str, t: int, d: dict) -> None:
+        """Keep MEXC's own high and low for minute `t`. Its pushes carry the
+        bar's range SO FAR (the venue's own, from the minute's first trade),
+        so a later push for a minute only ever widens it."""
+        hi, lo = _num(d.get("h")), _num(d.get("l"))
+        if hi <= 0 or lo <= 0 or t % 60:
+            return
+        with self._lock:
+            if symbol not in self._want_minutes:
+                return
+            store = self._minutes.setdefault(symbol, {})
+            bar = store.get(t)
+            if bar is None:
+                store[t] = [hi, lo]
+            else:
+                bar[0], bar[1] = max(bar[0], hi), min(bar[1], lo)
+            if len(store) > MINUTE_KEEP:
+                for old in sorted(store)[:len(store) - MINUTE_KEEP]:
+                    store.pop(old, None)
+
+    def _widen_minute(self, symbol: str, price: float, ts_ms) -> None:
+        """A deal printed inside a minute the feed already holds widens that
+        minute's range - a print between two kline pushes is still a print a
+        resting order would have filled on."""
+        if not price or price <= 0 or not ts_ms:
+            return
+        try:
+            t = int(float(ts_ms) / 1000.0) // 60 * 60
+        except (TypeError, ValueError):
+            return
+        with self._lock:
+            bar = (self._minutes.get(symbol) or {}).get(t)
+            if bar is not None:
+                bar[0], bar[1] = max(bar[0], price), min(bar[1], price)
 
     def _check_barriers(self, symbol: str, price: float, ts: float) -> None:
         """Trigger only - see `arm`."""
@@ -551,6 +714,7 @@ class PriceFeed:
                     "klines": kl, "armed": armed, "last": last,
                     "messages": self._msgs, "connects": self._connects,
                     "last_message_at": self._last_msg_at,
+                    "minutes": self._minutes_status(),
                     "url": self.url, "written_at": time.time(),
                     "last_error": self._last_error}
             STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)

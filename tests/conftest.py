@@ -322,6 +322,19 @@ def _isolate_kline_disk_cache(tmp_path, monkeypatch):
     from tradingagents.dataflows import mexc_futures as _fx
 
     monkeypatch.setattr(_fx, "KLINE_DISK_DIR", tmp_path / "kline_cache")
+    # THE SHARED PRICE BOARD, CANDLES AND RATE-LIMIT PAUSE (Oct 02, 2026) are
+    # read by every trading room on the PC: a test writing them would hand
+    # its fake prices to the operator's six running rooms, and a fake 510
+    # would pause them. Sharing starts OFF in every test.
+    monkeypatch.setattr(_fx, "PUBLIC_PAUSE_PATH",
+                        tmp_path / "shared" / "public_pause.json")
+    from tradingagents import shared_market as _sm
+
+    monkeypatch.setattr(_sm, "SHARED_DIR", tmp_path / "shared")
+    monkeypatch.setattr(_sm, "_ENABLED", [False])
+    monkeypatch.setattr(_sm, "_BOARD_FAILED_AT", [0.0])
+    _sm._MEMO.clear()
     _fx._KLINE_CACHE.clear()
     yield
     _fx._KLINE_CACHE.clear()
+    _sm._MEMO.clear()

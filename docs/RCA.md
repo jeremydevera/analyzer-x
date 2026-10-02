@@ -172,6 +172,81 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-02-D — after the live price connection dropped and came back, the runner stopped hearing candles close until it was restarted
+
+**CEO**
+
+* On Oct 02, 2026 at 12:40am Main's live price connection to MEXC dropped
+  and came straight back; from then until the 8:40am restart it was never
+  again told that a candle had closed, and room #B2404C0B heard only one
+  coin of its whole list for 15 hours after its own drop on Oct 01 at 5:26pm.
+* Why: a new connection starts with nothing switched on, and only the price
+  part was switched on again — the candle part believed it was still on.
+* What stops it now: every reconnect switches everything on again (prices,
+  candles, the one-minute bars and the account login), and a test drops a
+  connection and checks.
+
+**DEV**
+
+* `live_price.PriceFeed._serve` reset only `self._subscribed` on connect;
+  `self._subbed_klines` and `self._logged_in` survived from the dead socket,
+  so `_sync_subs` computed `kwant - khave` = nothing and never re-sent
+  `sub.kline` (nor `login`) on the new one. Only keys armed AFTER the drop
+  were ever subscribed (DHRSTOCK Min30 in #B2404C0B).
+* Invariant broken: **a new socket holds no subscription at all** — state
+  that describes a connection dies with the connection, every field of it,
+  not the one somebody remembered.
+* Guard: `tests/test_every_room_shares_one_board.py::test_a_reconnect_forgets_every_minute_and_resubscribes`
+  drives the real `_serve` loop over two fake sockets (the first drops) and
+  asserts both carry every `sub.kline` and the `login`; red with the two
+  resets removed.
+
+**SAW** — found by this session's bug hunt while building the shared price
+board (operator, Oct 02, 2026: *"1+2 together"*): the one-minute bars the
+practice exit now reads off the socket would have stopped for good after the
+first drop, so every room would have quietly gone back to asking MEXC.
+
+**TIMELINE**
+
+1. `Oct 01, 2026 5:26pm` — #B2404C0B: `live price feed reconnecting: no close
+   frame received or sent`, connected again the same minute. In the 4.7 hours
+   before, 36 "candle closed" wakes; in the 15 hours after, 18 — every one of
+   them `DHRSTOCK_USDT Min30`, the coin armed after the drop.
+2. `Oct 02, 2026 12:30am` — Main's last "candle closed" wake (`XLI_USDT Min30`).
+3. `Oct 02, 2026 12:40am` — Main reconnects. From here to `8:40am`: **0**
+   candle wakes, 2 barrier wakes (prices were re-subscribed; candles were
+   not).
+4. Earlier, the same shape: Main `Sep 29, 2026 7:43pm` → `Sep 30 9:11am`, 0
+   candle wakes; #B52662ED `Sep 30, 2026 12:29pm` → `Oct 01 6:23am`, 0 candle
+   wakes beside 133 barrier wakes; #CC8DC54C `Sep 30, 2026 1:21am` → `9:11am`, 0.
+5. `Oct 02, 2026 8:39-8:45am` — every room restarted by another session for
+   RCA-2026-10-02-C; each restart is a fresh socket, which is why it always
+   "came back".
+
+**ROOT CAUSE** — `with self._lock: self._subscribed = set()` in
+`PriceFeed._serve`, with `_subbed_klines` and `_logged_in` left out.
+
+**WHY IT WAS NOT CAUGHT** — every feed test builds a `PriceFeed`, sets
+`_connected = True` and feeds `_on_message` by hand; none ever ran `_serve`
+across a SECOND connection, so "what the new socket is told" had no test at
+all, and the only state reset on reconnect was the one the first draft
+needed. And nothing on screen said it: the backstop timer
+(`next_sleep_seconds`) lands on every bar close plus `ENTRY_LAG_SECONDS`, so
+entries kept being found and a dead candle stream looked like a quiet one.
+
+**COST** — none measured in money: the timer found the entries the push would
+have woken (Main wrote 491 cost-check refusals and 1 entry, `MNT_USDT` at
+`Oct 02, 2026 1:00am`, in the eight hours after the drop, against 504 in the
+eight before). It cost the realtime wake the operator asked for on
+Sep 14, 2026, and would have cost every room the new feed-fed practice exits.
+
+**FIX** — this commit (`_serve` now resets `_subscribed`, `_subbed_klines`
+and `_logged_in` together, and forgets the one-minute bars).
+
+**GUARD** — `tests/test_every_room_shares_one_board.py::test_a_reconnect_forgets_every_minute_and_resubscribes`.
+
+---
+
 ## RCA-2026-10-02-C — the trade record kept one cost-check refusal an hour, so a refused 15-minute strategy left no trace for three candles in four
 
 **CEO**

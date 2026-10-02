@@ -976,6 +976,43 @@ cycle — each verified against the real venue before it was relied on:
 Guards: `tests/test_the_runner_waits_on_the_venue.py` (25) and
 `tests/test_demo_exits_on_the_live_tick.py` (19).
 
+## Every room asks MEXC once, not once each (MANDATORY — 2026-10-02)
+
+The operator: *"1+2 together"*, after six rooms (six runner processes, one
+internet line) drew **64** "too many requests" (code 510) answers in the 24
+hours to `Oct 02, 2026 8:00am` — Main 4, #55D32617 6, #4FC03172 10,
+#B2404C0B 17, #6B08FF64 12, #CC94D9FB 15 — nearly all on PRACTICE exit checks.
+
+* **One price board** (`tradingagents/shared_market.py`): every contract's
+  last price from ONE ticker call, in `~/.tradingagents/shared/prices.json`
+  (the store's drive, machine-wide, never one room's folder). A practice exit
+  reads it only while it is at most `BOARD_MAX_AGE_S` (3 s) old.
+* **One set of candles**: a runner `klines` read is one file per (coin, bar,
+  count), valid until the NEXT bar of that size closes after the fetch, so
+  every room keeps exactly the closed bars a fetch of its own would show; a
+  fetch in the first `SETTLE_S` after a close is trusted only that second.
+* **The feed's own minutes first** for a practice exit
+  (`PriceFeed.minute_bars`): MEXC pushes every one-minute bar on the socket
+  the runner already holds. Used only when EVERY closed minute since the
+  order went out is there (a minute is final when the next one is pushed);
+  any hole and the shared REST minutes decide. Measured before relying on it:
+  **180 of 180** closed minutes identical to MEXC's REST Min1 on 12 of the
+  rooms' coins. `_dry_fill` still decides every exit.
+* **One pause**: a 510 (or HTTP 429) on a KEYLESS call writes
+  `public_pause.json`; every other process's `_get_public` waits for it,
+  never more than `PUBLIC_PAUSE_MAX_WAIT_S`.
+
+What must never be shared: the ORDER BOOK the cost check reads at a signal
+(always fresh), anything SIGNED (`_request` — orders, stops, positions never
+wait and never pause), and the backtest's reads — only `run_forever` calls
+`shared_market.enable()`; switched off, every call is the plain `fx` call.
+A lock older than `LOCK_STALE_S` is a killed room's and is broken; a missing,
+corrupt or locked file is a direct read, never an error.
+
+Guard: `tests/test_every_room_shares_one_board.py` — real processes against
+a real local HTTP server, two rooms in the same second = one request, through
+`run_cycle` itself.
+
 ## A fill may only see price the order was exposed to (MANDATORY — 2026-09-12)
 
 The operator: *"how come trade id 7WZMH7EN lose in live and in demo its still

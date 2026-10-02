@@ -36,7 +36,7 @@ from pathlib import Path
 
 import pandas as _pd
 
-from tradingagents import live_price, portable
+from tradingagents import live_price, portable, shared_market
 
 logger = logging.getLogger(__name__)
 
@@ -5304,6 +5304,33 @@ def process_symbol(symbol: str, settings: dict, state: dict, *, fx,
                       slot_key=state_key(symbol, True, key))
 
 
+# How many one-minute bars the practice exit reads back — ONE number for both
+# sources, so the feed's answer and the REST read can never cover different
+# windows.
+PAPER_MINUTES = 300
+
+
+def _feed_minutes(symbol: str, since: int):
+    """The practice exit's one-minute bars from the live feed, as the frame
+    `_closed_bars(fx.klines(symbol, "Min1", PAPER_MINUTES), 60)` would hand over
+    — or None when the feed cannot vouch for every closed minute since
+    `since`, and the caller fetches. Total: a feed that misbehaves is a
+    fetch, never a crash and never a guess."""
+    try:
+        rows = live_price.FEED.minute_bars(symbol, since, limit=PAPER_MINUTES)
+    except Exception:                                          # noqa: BLE001
+        rows = None
+    with contextlib.suppress(Exception):
+        live_price.FEED.note_minutes(rows is not None)
+    if rows is None:
+        return None
+    return _pd.DataFrame({
+        "Date": _pd.to_datetime([t for t, _h, _l in rows], unit="s",
+                                utc=True).tz_localize(None),
+        "High": [float(h) for _t, h, _l in rows],
+        "Low": [float(lo) for _t, _h, lo in rows]})
+
+
 def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                   dry: bool, tripped: frozenset, only: str | None,
                   slot_key: str, entries: bool = True) -> None:
@@ -5377,7 +5404,12 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
         if hit and hit[0] == this_bar:
             frames[spec["interval"]] = hit[1]
             continue
-        df = _closed_bars(fx.klines(symbol, spec["interval"], 300), bar_s)
+        # ONE fetch per bar for EVERY room on this PC (`shared_market`): the
+        # same closed bars a fetch of its own would show, read from the file
+        # the first room to ask wrote (Oct 02, 2026, 64 rate-limit refusals
+        # in 24 hours across six rooms).
+        df = _closed_bars(shared_market.klines(fx, symbol, spec["interval"],
+                                               300), bar_s)
         if not df.empty:
             _BAR_CACHE[(symbol, spec["interval"])] = (this_bar, df)
             frames[spec["interval"]] = df
@@ -5417,7 +5449,16 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             # because the miss was only caught when the 4-hour bar closed.
             # One-minute RANGES close that gap to ~1 minute.
             try:
-                fine = _closed_bars(fx.klines(symbol, "Min1", 300), 60)
+                # THE FEED'S OWN MINUTES FIRST (Oct 02, 2026). MEXC pushes
+                # every one-minute bar on the socket this runner already
+                # holds; when the feed has every closed minute since the
+                # order went out, that IS the REST read, with no call. Any
+                # hole (restart, reconnect, a coin with no push) and the REST
+                # read decides, fetched once for every room on this PC.
+                fine = _feed_minutes(symbol, _since)
+                if fine is None:
+                    fine = _closed_bars(shared_market.klines(
+                        fx, symbol, "Min1", PAPER_MINUTES), 60)
                 # THIS is where the reach-back did its damage: one-minute
                 # resolution against a floor expressed in STRATEGY-BAR time
                 # replayed the whole hour (or four) before the order existed.
@@ -5454,8 +5495,12 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             # mirroring the worst-case bar rule. ONE price per coin per cycle,
             # shared by that coin's open practice slots (`_read_once`).
             try:
-                px = float(_read_once("last", symbol,
-                                      lambda: fx.last_price(symbol)))
+                # ...off the PRICE BOARD every room shares: one ticker call
+                # for every contract, never older than 3 s
+                # (`shared_market.BOARD_MAX_AGE_S`), else this coin's own.
+                px = float(_read_once(
+                    "last", symbol,
+                    lambda: shared_market.last_price(fx, symbol)))
             except Exception as exc:
                 # Unreadable price = no exit decision this cycle. Booking one
                 # anyway is how the paper book invented take-profits.
@@ -6854,6 +6899,31 @@ def _feed_follow(state: dict) -> None:
                                 _order_live_from(pos))
         live_price.FEED.keep_only(demo_slots)
 
+        # THE ONE-MINUTE BARS a practice exit walks, recorded off the socket
+        # (`_feed_minutes`): every coin a practice trade holds, and every coin
+        # armed on the practice book, so the minutes are already there when a
+        # trade opens. Record only — a minute closing never wakes a cycle.
+        # Its own guard: it must never cost the barriers armed above.
+        # Coins HOLDING a practice trade come first; the armed ones fill the
+        # rest up to `live_price.MINUTE_COINS_MAX`, so a room with a very long
+        # list never asks one socket for more streams than it was measured
+        # carrying.
+        with contextlib.suppress(Exception):
+            held = {coin_of_slot(k) for k in demo_slots}
+            held.discard("")
+            armed: set = set()
+            _bk = settings.get("strategy_books") or {}
+            for key in settings.get("strategies", []):
+                if key not in STRATEGY_SPECS:
+                    continue
+                for coin in coins_for(key, settings):
+                    if (not _armed_here(key, coin, _bk)
+                            or True in books_for(key, settings, coin)):
+                        armed.add(coin)
+            room = max(0, live_price.MINUTE_COINS_MAX - len(held))
+            live_price.FEED.track_minutes(
+                held | set(sorted(armed - held - {""})[:room]))
+
         # The private stream tells the runner about a LIVE fill when MEXC
         # fills it. Read-only; no order is ever sent over the socket.
         if False in active_modes(settings):
@@ -7155,6 +7225,10 @@ def run_forever() -> None:
         raise SystemExit(2)
     _pp(PID_PATH).parent.mkdir(parents=True, exist_ok=True)
     _pp(PID_PATH).write_text(str(os.getpid()), encoding="utf-8")
+    # ONE PRICE BOARD AND ONE SET OF CANDLES FOR EVERY ROOM (Oct 02, 2026):
+    # only the runner shares, so the backtests and the API keep their own
+    # reads exactly as before.
+    shared_market.enable()
     modes = active_modes()
     names = [("LIVE — real orders" if not d else "PAPER — simulated")
              for d in modes] or ["nothing enabled"]

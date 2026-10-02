@@ -80,9 +80,25 @@ def test_ten_a_page(tmp_path):
 
 def test_the_tab_offers_every_prompt_from_the_one_document():
     got = rf.prompts()
-    assert [p["title"] for p in got] == ["1. Make a new forecast",
-                                         "2. Look across every saved forecast",
-                                         "3. Find the best room rules (every shape, nothing left out)"]
+    # the first four in order, and every prompt numbered 1..N — a later prompt
+    # is added, never a hardcoded count to break (prompt 4 arrived Oct 02, 2026)
+    assert [p["title"] for p in got][:4] == ["1. Make a new forecast",
+                                             "2. Look across every saved forecast",
+                                             "3. Find the best room rules (every shape, nothing left out)",
+                                             "4. Best room rules this month and for the next 15 days"]
+    assert [p["title"].split(".")[0] for p in got] == [str(i) for i in range(1, len(got) + 1)]
+    # prompt 4 (Oct 02, 2026: "create me a prompt that will loook for Best room
+    # rules this month and 15 days"): 15-day stretches MEASURED, never a month
+    # halved (RCA-2026-10-01-J), from the trades the daily run already left on
+    # this PC — the folder and the functions it names are the code's own
+    from tradingagents import forecast_v2_daily as f2d, forecast_v2_merge as f2m
+
+    p4 = got[3]["text"]
+    assert "Never a month divided by 2" in p4 and "RCA-2026-10-01-J" in p4
+    assert "~/.tradingagents/forecast_v2/runs/<base run>" in p4
+    assert f2d.home().name == "forecast_v2" and (f2d.home() / "runs").parent == f2d.home()
+    assert callable(f2m.load) and callable(f2m.trades_of) and "forecast_v2_merge.load and trades_of" in p4
+    assert "Read only on trading" in p4 and "never `git stash`" in p4
     # prompt 1 saves through the checked door, so every run makes a new forecast
     assert "python -m tradingagents.room_forecasts add" in got[0]["text"]
     assert "room_forecasts.jsonl" in got[1]["text"]
@@ -108,7 +124,8 @@ def test_the_route_serves_the_file_and_the_prompts(tmp_path, monkeypatch):
     monkeypatch.setattr(rf, "FILE", f)
     got = api.forecasts_route(page=1)
     assert got["total"] == 1 and got["forecasts"][0]["pick"] == "4FC03172"
-    assert len(got["prompts"]) == 3
+    # exactly what the one document holds, however many prompts that is
+    assert got["prompts"] == rf.prompts() and len(got["prompts"]) >= 4
 
 
 def test_the_tab_is_under_auto_trade():

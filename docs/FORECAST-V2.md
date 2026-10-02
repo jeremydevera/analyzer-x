@@ -344,6 +344,12 @@ gh workflow run forecast.yml --repo jeremydevera/analyzer-x -f source_run=<repla
 The page's "run it every day" box switches the chain off and on
 (`POST /api/forecast-v2/switch`); off stops it dispatching and nothing else.
 
+For the best rule sets this month AND for the next 15 days — measured on
+15-day stretches of the same trades, and kept on this page every day after —
+paste prompt 4 of `docs/FORECAST-PROMPTS.md` (Auto Trade → Forecast shows it
+with a copy button). It needs no new GitHub run: the daily run's downloads in
+`~/.tradingagents/forecast_v2/runs/` already hold every rule set's trades.
+
 ## Bug hunt (harddev) rounds
 
 1. **Reality check without the per-coin cap**: the backtest side "made" 7,470

@@ -226,6 +226,16 @@ that rang at 7:25pm were right; the numbers printed in them were not.
 
 ## Data limits, said out loud
 
+* **What a replay covers changes as the store grows.** The daily replay
+  writes every strategy that could pass the loosest rule set in the grid
+  (70% wins, 20 trades, any TP, judged on 15 or 30 days) over every signal
+  group and listed coin of that day. Oct 01, 2026: 4 signal groups (classic,
+  preset, sep25, sep27ml), 1,092 coins, 695,845 strategies. The first data,
+  a research replay, covered 2 groups, 1,079 coins and 4,585,414 strategies
+  under a looser rule (50% / 10 trades, TP wider than SL only) — so the same
+  rule set's past months differ between them (#562C0147: July 1,703 trades
+  on the first, 2,098 on Oct 01's). Every kept prediction carries what it
+  covered, and a grade over other strategies says so.
 * The replay settles every exit by the **bar rule** (MEXC sells about 30 days
   of 1-minute candles, so July and August cannot be settled minute by minute).
 * The first data (replay 36763426504) holds only strategies with **TP wider
@@ -271,6 +281,37 @@ that rang at 7:25pm were right; the numbers printed in them were not.
   #4FC03172, #6B08FF64 and #CC94D9FB); after runs that long the next trade
   won 89.2% of 6,382 times. LUNRSTOCK lost 102 in a row.
 
+## The first automatic day (Oct 01, 2026)
+
+The chain ran by itself after the site restarted at 7:25pm, every step on
+GitHub with all 20 machines green and none missing:
+
+| step | run | when |
+|---|---|---|
+| replay (70% / 20 trades / any TP, from Jul 01) | 36940719775 | 7:25pm → ~8:31pm |
+| base (576 rule sets + the rooms' rules) | 36946533025 | 8:32pm (queued behind the what-if) → ~8:37pm; merged 8:39-8:45pm |
+| options (22 options on the 20 best + rooms) | 36947539505 | 8:45pm → merged, made 8:54pm |
+
+* Data to `Oct 01, 2026 4:00pm`: 695,845 strategies, 162,910,671 trades;
+  1,148 rule sets; reality check took 0.1799, gap 0.2225 (803 of 4,463).
+* Best by the worst month after the reality check: **#A2C81BF9** "75% wins,
+  20+ trades in 30 days, TP at least 2x SL, stop 2% or tighter, cost at most
+  15% of the target" — about +63.61 a month (+59.44 to +181.15), beat random
+  100 in 100, needs $205; needs a new switch before a room can run it.
+* Best a room can run today: **#CFABDC2A** "90% wins, 30+ trades in 30 days,
+  any TP, stop 1.5% or tighter" (rank 119) — about +105.84 a month (+41.27 to
+  +168.79), needs $105.
+* The what-if **#2F39EAEC** (asked 7:26pm, measured on the Sep 30 data): "85%
+  wins, 30+ trades in 30 days, TP wider than SL, stop 2% or tighter" — about
+  +98.04 a month (+21.02 to +115.57), beat random 100 in 100, needs $120, a
+  room can run it today.
+* The daily summary rang at 8:54pm (KIMISTOCK won 16 in a row in #CC94D9FB;
+  DHRSTOCK lost 13 in a row in #4FC03172; IGV −50.87 over 47 trades; every
+  room under what its rules made by day 1 except #6B08FF64).
+* Streaks in the replay: 68,805 strategies on a run of 5+ (51,466 winning,
+  17,339 losing) — fewer than the first data's 689,474 because the replay
+  holds only strategies that can pass 70%.
+
 ## Files
 
 | file | what |
@@ -294,7 +335,7 @@ box, written by nothing else), `whatif.json`, `alarms.json`,
 ## Running it by hand
 
 ```
-python -m tradingagents.forecast_v2_merge <base dir> [<options dir>] [--runs JSON] [--no-keep]
+python -m tradingagents.forecast_v2_merge <base dir> [<options dir>] [--runs JSON] [--keep]
 gh workflow run forecast.yml --repo jeremydevera/analyzer-x -f source_run=<replay run> \
   -f end_ms=<common end> -f start=2026-07-01 -f stage=base -f rooms="<ID=w:on:off:trades:tp:cap;...>" \
   -f avoid=<coins> -f families=<families>
@@ -453,6 +494,20 @@ Round 15 (8:42pm, watching the base step land): 41. **"working on GitHub:
 18 of 20 machines done" stayed through the download and merge** of a run
 that had finished green — the tick saves at its end; a slow step now says
 what it is doing, on disk, before it starts.
+
+Round 16 (8:54pm-9:03pm, reading the first automatic day's results):
+42. **October's prediction came from a research replay** (TP wider than SL
+    only, 2 groups, 1,079 coins), so its 288 "any TP" rule sets would have
+    been graded in November on other strategies; the merge's `main()` KEPT a
+    month by default, which is how a hand-run merge claimed it. A month is
+    kept only with `--keep`, which only the chain's final merge passes;
+    every kept prediction and `latest.json` carry the replay's write rule,
+    groups, coins and strategies; the grade names both sides when they
+    differ; October's line is the chain's own first (8:54pm).
+43. **The summary bell named 3 of 6 rooms** ("and 4 more") — the rooms are
+    short now and all six fit.
+44. **"made at 8:49pm"** was when the last step began; the merge finished at
+    8:54pm. It is stamped after the merge.
 
 Streak bells under the old code, before 8:15pm: two, one per run —
 ABNBSTOCK at 7:59pm and NECSTOCK at 8:04pm, both 6 losses in a row in

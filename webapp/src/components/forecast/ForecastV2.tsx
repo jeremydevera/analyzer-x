@@ -555,7 +555,8 @@ function Tracker({ s }: { s: F2Summary }) {
           <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">Past predictions, graded</p>
           <ul className="mt-1 text-theme-xs text-gray-600 dark:text-gray-300">
             {s.grading.months.map((g) => (
-              <li key={g.month}>{monthName(g.month)} (made {fmtWhen(g.made_at)}): {g.graded ? `the backtest landed inside its range ${g.inside} of ${g.judged} times` : g.why}</li>
+              <li key={g.month}>{monthName(g.month)} (made {fmtWhen(g.made_at)}): {g.graded ? `the backtest landed inside its range ${g.inside} of ${g.judged} times` : g.why}
+                {g.differs && g.universe && g.now ? ` · predicted over ${g.universe.groups?.length ?? "?"} signal groups and ${(g.universe.coins ?? 0).toLocaleString()} coins, the newest data covers ${g.now.groups?.length ?? "?"} and ${(g.now.coins ?? 0).toLocaleString()}` : ""}</li>
             ))}
           </ul>
         </div>

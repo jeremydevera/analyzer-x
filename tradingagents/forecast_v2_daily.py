@@ -239,13 +239,26 @@ def _prune_runs(keep: set) -> None:
 def common_end(report_dir: Path) -> int:
     """The earliest last intraday bar over every machine — the one moment
     every coin reached (replay_collect.common_end, the research's own rule)."""
+    return int(read_reports(report_dir)["end_ms"])
+
+
+def read_reports(report_dir: Path) -> dict:
+    """The replay's common end and WHAT IT COVERED — its write rule, signal
+    groups, coins and strategies (bug hunt, round 16): the same rule set
+    walked forward on two replays gave #562C0147 1,703 July trades on the
+    first (2 signal groups, 1,079 coins) and 2,098 on Oct 01, 2026's (4
+    groups, 1,092 coins). A prediction is only comparable with a result
+    measured over the same strategies, so each one carries this."""
     from tradingagents import replay_collect as rc
 
     tot = rc.merge_reports([str(report_dir)])
     end = rc.common_end(tot["spans"])
     if not end:
         raise RuntimeError("the replay's reports name no measured pair")
-    return int(end)
+    coins = {str(k).rsplit(" ", 1)[0] for k in (tot.get("spans") or {})}
+    return {"end_ms": int(end), "universe": {
+        "write": tot.get("write") or {}, "groups": sorted(tot.get("groups") or []),
+        "coins": len(coins), "strategies": int(tot.get("kept") or 0)}}
 
 
 # --------------------------------------------------------- the inputs
@@ -377,7 +390,7 @@ def run_merge(base_dir: str, options_dir: str | None, runs: dict, keep: bool) ->
     args = [sys.executable, "-m", "tradingagents.forecast_v2_merge", base_dir]
     if options_dir:
         args.append(options_dir)
-    args += ["--runs", json.dumps(runs)] + ([] if keep else ["--no-keep"])
+    args += ["--runs", json.dumps(runs)] + (["--keep"] if keep else [])
     with log.open("w", encoding="utf-8") as fh:
         got = subprocess.run(args, stdout=fh, stderr=subprocess.STDOUT, timeout=3600,
                              cwd=str(Path(__file__).resolve().parents[1]),
@@ -499,7 +512,8 @@ def _step(st: dict, now: float) -> None:
         st.setdefault("missing", {})[phase] = {"of": s["machines"], "failed": s["failed"][:40]}
     if phase == "replay":
         rep = download(int(st["replay_run"]), repo, "replay-report-*")
-        st["end_ms"] = common_end(rep)
+        got = read_reports(rep)
+        st["end_ms"], st["universe"] = got["end_ms"], got["universe"]
         st["base_run"] = dispatch(FORECAST_WF, _forecast_inputs(st, "base"), repo,
                                   since=_tried(st, f"base {st['replay_run']}", now))
         st.pop("tried", None)
@@ -513,7 +527,8 @@ def _step(st: dict, now: float) -> None:
                  f"this PC (a few minutes)")
         art = download(int(st["base_run"]), repo, "forecast-*")
         run_merge(str(art), None, {"replay": st["replay_run"], "base": st["base_run"],
-                                   "shards": SHARDS, "missing": st.get("missing") or {}}, keep=False)
+                                   "shards": SHARDS, "missing": st.get("missing") or {},
+                                   "universe": st.get("universe") or {}}, keep=False)
         out = _latest()
         bases = [s_["cfg"] for s_ in out["sets"] if s_["base"]][:fr.TOP_FOR_OPTIONS]
         rooms = room_rules()
@@ -532,11 +547,14 @@ def _step(st: dict, now: float) -> None:
         art = download(int(st["options_run"]), repo, "forecast-*")
         run_merge(st["base_dir"], str(art), {"replay": st["replay_run"], "base": st["base_run"],
                                              "options": st["options_run"], "shards": SHARDS,
-                                             "missing": st.get("missing") or {}}, keep=True)
+                                             "missing": st.get("missing") or {},
+                                             "universe": st.get("universe") or {}}, keep=True)
         out = _latest()
-        st.update(phase="done", done_day=dt.date.fromtimestamp(now).isoformat(), done_at=now,
+        made = time.time()         # after the merge (bug hunt, round 16: "made at 8:49pm"
+        #                            was the tick's start; the merge finished 8:54pm)
+        st.update(phase="done", done_day=dt.date.fromtimestamp(made).isoformat(), done_at=made,
                   error="", failed_at=0,
-                  options_dir=str(art), why=f"made at {fmt_when(now)}",
+                  options_dir=str(art), why=f"made at {fmt_when(made)}",
                   # what the what-if box measures on: the LAST FINISHED data,
                   # never a replay still running (bug hunt, round 4)
                   # .get: a key missing here must never stop a finished day
@@ -655,13 +673,17 @@ def bell(out: dict, live: dict, rooms: list | None = None) -> None:
         parts.append(f"longest losing run: {loss['coin']} in {loss['room_name']}, {loss['length']} in a row")
     if worst:
         parts.append(f"worst coin: {worst['coin']} {worst['profit']:+.2f} over {worst['trades']} trades")
-    for r in rooms:
+    # every room, short (bug hunt, round 16: the long form fit 3 of 6 rooms
+    # in the bell's 500 characters on Oct 01, 2026); the first one says what
+    # the numbers are, once
+    for i, r in enumerate(rooms):
         b = r.get("so_far") or {}
         lo, hi = b.get("corrected_low"), b.get("corrected_high")
-        rng = (f"its rules made {lo:+.2f} to {hi:+.2f} by day {b['day']}" if lo is not None
-               else "no range yet")
-        parts.append(f"{r['name']} {r['month']['profit']:+.2f} this month"
-                     f"{', UNDER its worst' if r.get('below') else ''} ({rng})")
+        rng = f"{lo:+.2f} to {hi:+.2f}" if lo is not None else "no range yet"
+        lead = (f"each room this month vs its rules by day {b.get('day', '?')} "
+                f"(after the reality check): " if i == 0 else "")
+        parts.append(f"{lead}{r['name']} {r['month']['profit']:+.2f}"
+                     f"{' below' if r.get('below') else ''} ({rng})")
     top = out["sets"][0] if out["sets"] else None
     if top and top["predicted"]:
         p = top["predicted"]

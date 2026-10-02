@@ -1,6 +1,6 @@
 """Bring a Forecast v2 run home and turn it into predictions.
 
-    python -m tradingagents.forecast_v2_merge <base run> [<options run>]
+    python -m tradingagents.forecast_v2_merge <base run> [<options run>] [--runs JSON] [--keep]
 
 Each machine of .github/workflows/forecast.yml replayed whole coins, and a raw
 rule set links strategies only through the runner's per-coin limit, so a rule
@@ -279,6 +279,9 @@ def merge(base_dir: str | Path, options_dir: str | Path | None = None, *,
                     # of how many: the chain says (runs["shards"]); the page
                     # prints "N of 20" whenever a machine is missing
                     "of": int((runs or {}).get("shards") or len(metas)),
+                    # WHAT THE REPLAY COVERED (round 16): a prediction and the
+                    # result it is graded on are only comparable over the same
+                    "universe": (runs or {}).get("universe") or {},
                     "shards": sorted(int(m["shard"]) for m in metas),
                     "strategies": sum(int(m["books"]) for m in metas),
                     "trades": sum(int(m["trades"]) for m in metas)},
@@ -388,6 +391,7 @@ def keep_prediction(out: dict, path: Path | None = None) -> bool:
     rows = [{"id": s["id"], "words": s["words"], "room": s.get("room"),
              "predicted": s["predicted"]} for s in out["sets"] if s["predicted"]]
     line = {"month": month, "made_at": out["made_at"], "data_end_ms": out["data"]["end_ms"],
+            "universe": out["data"].get("universe") or {},
             "reality": {k: out["reality"].get(k) for k in ("took", "gap")}, "sets": rows}
     with path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(line, separators=(",", ":"), allow_nan=False) + "\n")
@@ -395,17 +399,22 @@ def keep_prediction(out: dict, path: Path | None = None) -> bool:
 
 
 def main(argv=None) -> int:
-    """`<base dir> [<options dir>] [--runs JSON] [--no-keep]` — run by the
+    """`<base dir> [<options dir>] [--runs JSON] [--keep]` — run by the
     daily chain as its OWN PROCESS: adding up 20 machines' streaks peaks
-    over a gigabyte, which must never happen inside the API."""
+    over a gigabyte, which must never happen inside the API. `--keep` keeps
+    the month's first prediction; only the chain's final merge passes it."""
     argv = list(argv or sys.argv[1:])
     runs = {}
     if "--runs" in argv:
         i = argv.index("--runs")
         runs = json.loads(argv[i + 1])
         del argv[i:i + 2]
-    keep = "--no-keep" not in argv
-    argv = [a for a in argv if a != "--no-keep"]
+    # A MONTH IS KEPT ONLY WHEN ASKED (bug hunt, round 16): the default kept,
+    # so a merge run by hand on a research replay claimed October's
+    # prediction twice on Oct 01, 2026 (RCA-2026-10-01-K). The daily chain's
+    # final merge passes --keep; nothing else does.
+    keep = "--keep" in argv
+    argv = [a for a in argv if a not in ("--keep", "--no-keep")]
     out = merge(argv[0], argv[1] if len(argv) > 1 else None, runs=runs, keep=keep)
     top = out["sets"][0]
     print(f"{out['tested']['total']} rule sets; best #{top['id']} {top['words']}: "

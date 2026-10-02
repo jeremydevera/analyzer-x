@@ -172,11 +172,11 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
-## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: nineteen faults caught by the bug hunt, four of them seen
+## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: twenty-one faults caught by the bug hunt, six of them seen
 
 **CEO**
 
-* On its first night the daily Forecast v2 job had nineteen faults that could
+* On its first night the daily Forecast v2 job had twenty-one faults that could
   start the same GitHub run twice, lose a what-if, undo the "off" box, ring
   46 bells in a day, stop for good after one bad GitHub run, or say
   "working" about a run that had not started. Two
@@ -291,6 +291,13 @@ screen.
     1.15 GB at its peak), and the page kept the line from the poll before,
     because the tick saves at its end. HAPPENED; a slow step now says what it
     is doing, on disk, before it starts.
+11. `8:54pm` — the day done by itself (replay → base → options → merge,
+    20 of 20 machines each). Round 16 read the results: 20. **the summary
+    bell named 3 of 6 rooms** ("and 4 more on the Forecast v2 page") —
+    HAPPENED; the rooms are short now and all six fit; 21. **"made at
+    8:49pm"** was the last step's start, the merge ended 8:54pm — HAPPENED;
+    stamped after the merge. (The same round's prediction fault is in
+    RCA-2026-10-01-K.)
 
 **ROOT CAUSE** — state held in memory across slow calls (GitHub, a download,
 a two-minute merge) and written back whole at the end, by a job whose
@@ -311,7 +318,8 @@ forecast stuck re-merging.
 
 **FIX** — round 6 in f1112b4bd13d; rounds 7-8 in 29e0e618d2be; round 10 in
 c791235f8ba8; round 11 in e7eb75714d53; round 12 in 0c4ae6323fe5; round 13
-in 5eb6cba64cf4; round 14 in 6042900d6db2; round 15 in this commit.
+in 5eb6cba64cf4; round 14 in 6042900d6db2; round 15 in f73fe85397f7; round 16
+in this commit.
 
 **GUARD** — `tests/test_forecast_v2.py`: `test_off_stays_off_when_a_busy_tick_writes_the_state_back`,
 `test_a_what_if_asked_while_another_is_polled_is_kept`,
@@ -478,6 +486,21 @@ sets, the best one missing.
 
 **GUARD** — `tests/test_forecast_v2.py`:
 `test_only_the_days_final_merge_keeps_the_months_prediction`.
+
+**AND AGAIN, FROM THE SAME DEFAULT (bug hunt, round 16, Oct 01, 2026 8:54pm-9:03pm).**
+The 7:57pm repair was itself a merge run by hand on the RESEARCH replay
+36763426504 — 50% / 10 trades / TP wider than SL only, 2 signal groups, 1,079
+coins — so October's 288 "any TP" rule sets were TP-wider-than-SL predictions,
+to be graded in November on data holding every TP shape, 4 groups and 1,092
+coins. The root of both: `forecast_v2_merge.main()` kept a month BY DEFAULT.
+Now a month is kept only with `--keep`, which only the chain's final merge
+passes (`test_only_the_chain_keeps_a_months_prediction`); every kept line and
+`latest.json` carry the replay's write rule, groups, coins and strategies
+(`test_a_prediction_carries_the_strategies_it_was_measured_over`); a grade
+over other strategies says so (`test_a_grade_says_when_it_covers_other_strategies`).
+October's line is now the daily chain's first (8:54pm, replay 36940719775,
+data to Oct 01, 2026 4:00pm — its numbers the medians of Jul, Aug and Sep
+only); the 7:57pm file is kept as `predictions.jsonl.before-repair-2`.
 
 ---
 

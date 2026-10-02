@@ -1276,7 +1276,13 @@ Forecast page is unchanged.
   some machines red says so on the page, and base and options merge over
   the machines they share (a machine is a share of the coins).
 
-Guard: `tests/test_forecast_v2.py` (45, on one timeline).
+* **A month's prediction is kept only by the daily chain's final merge**
+  (`--keep`; a merge run by hand keeps nothing — it claimed October twice on
+  research data, RCA-2026-10-01-K), and it carries what the replay covered
+  (write rule, signal groups, coins, strategies) so a grade over other
+  strategies says so.
+
+Guard: `tests/test_forecast_v2.py` (48, on one timeline).
 
 ## Backtest v2 is the v1 engine in its own folder (MANDATORY — 2026-09-17)
 

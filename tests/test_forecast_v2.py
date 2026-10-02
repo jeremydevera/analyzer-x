@@ -787,8 +787,11 @@ def test_the_daily_bell_names_each_rooms_month_against_its_range(monkeypatch):
         return {"name": name, "month": {"profit": made}, "below": below,
                 "so_far": {"corrected_low": lo, "corrected_high": hi, "day": 1}}
 
-    rooms = [room("Main", -5.51, 0.0, 0.64, True), room("#4FC03172", -173.83, -2.39, 4.65, True),
-             room("#6B08FF64", 1.0, 0.24, 5.14, False)]
+    # the six rooms as the bell of Oct 01, 2026 8:54pm had them — it named 3
+    # of them and "and 4 more" (bug hunt, round 16): every room fits now
+    rooms = [room("Main", -5.51, 0.0, 0.47, True), room("#55D32617", -34.43, -5.27, 19.78, True),
+             room("#4FC03172", -175.07, -3.12, 0.78, True), room("#B2404C0B", -19.02, 0.0, 9.53, True),
+             room("#6B08FF64", 1.0, 0.24, 5.14, False), room("#CC94D9FB", -42.72, 0.0, 3.49, True)]
     out = {"made_at": 1, "sets": [{"id": "A8CD8C72", "predicted": {"profit": 1018.99, "corrected": 92.17}}]}
     fd.bell(out, live, rooms)
     title, k = rung[0]
@@ -797,9 +800,11 @@ def test_the_daily_bell_names_each_rooms_month_against_its_range(monkeypatch):
     order = ["longest winning run: KIMISTOCK in #CC94D9FB, 16 in a row",
              "longest losing run: DHRSTOCK in #4FC03172, 13 in a row",
              "worst coin: IGV -50.87 over 47 trades",
-             "Main -5.51 this month, UNDER its worst (its rules made +0.00 to +0.64 by day 1)",
-             "#4FC03172 -173.83 this month, UNDER its worst (its rules made -2.39 to +4.65 by day 1)",
-             "#6B08FF64 +1.00 this month (its rules made +0.24 to +5.14 by day 1)"]
+             "each room this month vs its rules by day 1 (after the reality check): "
+             "Main -5.51 below (+0.00 to +0.47)",
+             "#55D32617 -34.43 below (-5.27 to +19.78)", "#4FC03172 -175.07 below (-3.12 to +0.78)",
+             "#B2404C0B -19.02 below (+0.00 to +9.53)", "#6B08FF64 +1.00 (+0.24 to +5.14)",
+             "#CC94D9FB -42.72 below (+0.00 to +3.49)"]
     assert [d.find(x) for x in order] == sorted(d.find(x) for x in order) and min(d.find(x) for x in order) == 0
     assert k["ok"] is False, "a room under its worst case is not an all-clear"
 
@@ -1013,3 +1018,85 @@ def test_a_what_ifs_download_is_gone_once_it_is_read(tmp_path, monkeypatch):
     w = fd.whatifs()["W"]
     assert w["status"] == "done" and w["result"]["total"]["profit"] == 4.0
     assert not art.exists(), "the download is gone once it is read"
+
+
+# ----------------------------------------------------- bug hunt, round 16
+def test_a_prediction_carries_the_strategies_it_was_measured_over(tmp_path):
+    """Bug hunt, round 16: the same rule set on two replays — #562C0147 made
+    1,703 July trades on the first (2 signal groups, 1,079 coins, 50% / 10
+    trades / TP wider than SL) and 2,098 on Oct 01, 2026's (4 groups, 1,092
+    coins, 70% / 20 trades / any TP). A prediction graded against a result
+    over different strategies is not a grade, so each one says what it covered."""
+    from tradingagents import forecast_v2_daily as fd
+
+    rep = tmp_path / "rep" / "replay-report-0"
+    rep.mkdir(parents=True)
+    write = {"wr": 70.0, "trades": 20, "tp": "any", "windows": [15, 30]}
+    (rep / "replay-report-0.json").write_text(json.dumps({
+        "kept": 42930, "tested": 2_000_000, "start": "2026-07-01", "write": write,
+        "groups": ["classic", "preset", "sep25", "sep27ml"],
+        "spans": {"BTC_USDT 15m": [1, _ms(2026, 10, 1, 16)], "BTC_USDT 1d": [1, _ms(2026, 9, 30, 20)],
+                  "ASESTOCK_USDT 15m": [1, _ms(2026, 10, 1, 17)]}}), encoding="utf-8")
+    got = fd.read_reports(tmp_path / "rep")
+    assert got["end_ms"] == _ms(2026, 10, 1, 16), "the common end, intraday frames only"
+    uni = {"write": write, "groups": ["classic", "preset", "sep25", "sep27ml"], "coins": 2, "strategies": 42930}
+    assert got["universe"] == uni
+    good = fr.cfg_of(30, 90, 40, ">", 2.0)
+    t = [(_ms(2026, 7, 5), _ms(2026, 7, 5, 13), 10.0), (_ms(2026, 8, 5), _ms(2026, 8, 5, 13), 20.0),
+         (_ms(2026, 9, 5), _ms(2026, 9, 5, 13), 30.0)]
+    out = fm.merge(_fake_run(tmp_path / "art", [(good, t)]), runs={"universe": uni, "shards": 2},
+                   reality={"took": 0.5, "gap": 1.0}, keep=False)
+    assert out["data"]["universe"] == uni
+    p = tmp_path / "predictions.jsonl"
+    assert fm.keep_prediction(out, p)
+    assert json.loads(p.read_text(encoding="utf-8"))["universe"] == uni
+
+
+def test_only_the_chain_keeps_a_months_prediction(tmp_path, monkeypatch):
+    """Bug hunt, round 16: `python -m tradingagents.forecast_v2_merge` kept the
+    month BY DEFAULT, so a merge run by hand on a research replay claimed
+    October's prediction (6:59pm, and the 7:57pm repair). Keeping is asked
+    for with --keep, which only the chain's final merge passes."""
+    from tradingagents import forecast_v2_daily as fd
+
+    monkeypatch.setattr(fm.f2, "live", lambda: {"reality": {"all": {"took": 0.5, "gap": 1.0}}})
+    good = fr.cfg_of(30, 90, 40, ">", 2.0)
+    t = [(_ms(2026, 7, 5), _ms(2026, 7, 5, 13), 10.0), (_ms(2026, 8, 5), _ms(2026, 8, 5, 13), 20.0)]
+    art = _fake_run(tmp_path / "art", [(good, t)])
+    kept = fm.home() / "predictions.jsonl"
+    assert fm.main([str(art)]) == 0 and not kept.exists(), "a merge by hand keeps nothing"
+    assert fm.main([str(art), "--keep"]) == 0 and kept.exists()
+    # and the chain asks for it on its final merge only
+    import subprocess
+
+    calls = []
+    monkeypatch.setattr(subprocess, "run", lambda args, **k: calls.append(args) or type(
+        "R", (), {"returncode": 0})())
+    fd.run_merge("b", None, {}, keep=False)
+    fd.run_merge("b", "o", {}, keep=True)
+    assert "--keep" not in calls[0] and "--no-keep" not in calls[0] and calls[1][-1] == "--keep"
+
+
+def test_a_grade_says_when_it_covers_other_strategies():
+    """Bug hunt, round 16: the store grows — Oct 01, 2026 went from 2 signal
+    groups and 1,079 coins to 4 and 1,092 — so a month graded on newer data
+    says what each side covered when they differ."""
+    old = {"write": {"wr": 70.0, "trades": 20, "tp": "any", "windows": [15, 30]},
+           "groups": ["classic", "preset", "sep25", "sep27ml"], "coins": 1092, "strategies": 695845}
+    new = {**old, "groups": old["groups"] + ["oct12"], "coins": 1100}
+    home = f2._home()
+    home.mkdir(parents=True, exist_ok=True)
+    (home / "predictions.jsonl").write_text(json.dumps(
+        {"month": "2026-10", "made_at": NOW, "data_end_ms": 1, "universe": old, "sets": []}) + "\n",
+        encoding="utf-8")
+    (home / "latest.json").write_text(json.dumps({"data": {"complete": [], "universe": new}, "sets": []}),
+                                      encoding="utf-8")
+    g = f2a.grading()["months"][0]
+    assert g["differs"] and g["universe"] == old and g["now"] == new
+    f2a._FILES.clear()
+    (home / "latest.json").write_text(json.dumps({"data": {"complete": [], "universe": old}, "sets": []}),
+                                      encoding="utf-8")
+    g = f2a.grading()["months"][0]
+    assert not g["differs"] and g["now"] is None
+    src = (ROOT / "webapp/src/components/forecast/ForecastV2.tsx").read_text(encoding="utf-8")
+    assert "the newest data covers" in src

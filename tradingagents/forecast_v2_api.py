@@ -353,13 +353,21 @@ def grading() -> dict:
         lines = []
     lt = latest() or {}
     complete = set((lt.get("data") or {}).get("complete") or [])
+    now_uni = (lt.get("data") or {}).get("universe") or {}
     by = _by_id()
     out = []
     for line in lines:
         m = line["month"]
+        # OVER WHICH STRATEGIES (bug hunt, round 16): a prediction graded
+        # against a result measured over other signal groups or coins says
+        # so — the store grows (Oct 01, 2026: 2 groups -> 4, 1,079 coins -> 1,092)
+        uni = line.get("universe") or {}
+        differs = bool(uni and now_uni and any(uni.get(k) != now_uni.get(k)
+                                               for k in ("groups", "coins", "write")))
+        side = {"universe": uni, "now": now_uni if differs else None, "differs": differs}
         if m not in complete:
             out.append({"month": m, "made_at": line["made_at"], "graded": False,
-                        "why": "the month is not over in the newest data yet"})
+                        "why": "the month is not over in the newest data yet", **side})
             continue
         inside = judged = 0
         for s in line["sets"]:
@@ -371,7 +379,7 @@ def grading() -> dict:
             judged += 1
             inside += pr["low"] <= row["profit"] <= pr["high"]
         out.append({"month": m, "made_at": line["made_at"], "graded": True,
-                    "inside": inside, "judged": judged})
+                    "inside": inside, "judged": judged, **side})
     return {"months": out}
 
 

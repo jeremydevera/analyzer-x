@@ -169,8 +169,10 @@ Rules for the answer:
   must do, or "No pending for you."
 - Do not create rooms, switch anything on or off, or change any rules unless I say
   "deploy". When I do, each rule set I name becomes its own room, practice only
-  (CLAUDE.md "STANDING SETUP"); every rule in grid 6, "=" and the smallest target
-  included, is a rule the rooms can run.
+  (CLAUDE.md "STANDING SETUP"). Rooms can run every rule in grid 6 — "=" and the
+  smallest target included — EXCEPT the 7-day window: a room judges on 15 or 30
+  days only. If a 7-day rule set wins, say so plainly, and name the best 15- or
+  30-day rule set beside it as the one that can be deployed today.
 ```
 
 ## 4. Find new room strategies for this month and the next 15 days

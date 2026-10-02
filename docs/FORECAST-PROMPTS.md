@@ -284,7 +284,7 @@ so the next one can say how long each step takes before starting it:
 
 | step | command | first run |
 |---|---|---|
-| data | a replay written at `wr=40,trades=1,tp=any,windows=7\|15\|30` | run 37007971331: 1,098 coins on **20 of 40** machines (the replay hands coins out first come, first served — an empty shard is normal), 23,494,320 combinations, ~3.1 billion trades, end Oct 02, 2026 8:00am |
+| data | a replay written at `wr=40,trades=1,tp=any,windows=7\|15\|30` | run 37007971331: 1,098 coins on **20 of 40** machines (the replay hands coins out first come, first served — an empty shard is normal), 23,494,320 combinations, 3,139,117,865 trades, end Oct 02, 2026 8:00am |
 | round 1 list | `python -m tradingagents.room_strategies round1 round1` | 8,568 rule sets, 156 switch-on walks |
 | round 1 | `gh workflow run research.yml -f source_run=<replay> -f shards=40 -f end_ms=<end> -f scenarios=file:research/p4/round1.json -f chunks=4 -f output=daily` | run 37033893955: the plan keeps the 20 shards with coins, 80 jobs, **2 h 13 min**, peak memory ~3.3 GB a machine (16 GB there) |
 | score | `python -m tradingagents.room_strategies daily round1 <downloaded folder> <replay>` | 458 s; refuses a round with any job missing (`check_complete`); 673 winners, writes `round1-confirm.json` and `round1-next.json` |

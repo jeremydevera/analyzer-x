@@ -550,8 +550,10 @@ def _step(st: dict, now: float) -> None:
                                              "missing": st.get("missing") or {},
                                              "universe": st.get("universe") or {}}, keep=True)
         out = _latest()
-        made = time.time()         # after the merge (bug hunt, round 16: "made at 8:49pm"
-        #                            was the tick's start; the merge finished 8:54pm)
+        # THE MERGE'S OWN STAMP (bug hunt, rounds 16-17): "made at 8:49pm" was
+        # the tick's start while the card under it said "made 8:54pm" — one
+        # event, one time, read from the file the page reads
+        made = float(out.get("made_at") or time.time())
         st.update(phase="done", done_day=dt.date.fromtimestamp(made).isoformat(), done_at=made,
                   error="", failed_at=0,
                   options_dir=str(art), why=f"made at {fmt_when(made)}",

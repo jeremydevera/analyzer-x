@@ -172,11 +172,11 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
-## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: twenty-one faults caught by the bug hunt, six of them seen
+## RCA-2026-10-01-L — Forecast v2's daily chain on its first night: twenty-two faults caught by the bug hunt, seven of them seen
 
 **CEO**
 
-* On its first night the daily Forecast v2 job had twenty-one faults that could
+* On its first night the daily Forecast v2 job had twenty-two faults that could
   start the same GitHub run twice, lose a what-if, undo the "off" box, ring
   46 bells in a day, stop for good after one bad GitHub run, or say
   "working" about a run that had not started. Two
@@ -298,6 +298,10 @@ screen.
     8:49pm"** was the last step's start, the merge ended 8:54pm — HAPPENED;
     stamped after the merge. (The same round's prediction fault is in
     RCA-2026-10-01-K.)
+12. `9:05pm` — round 17, the live page after the last restart: 22. **one
+    event, two times** — "today's Forecast v2 was made at Oct 01, 2026
+    8:49pm" above a card saying "made Oct 01, 2026 8:54pm". HAPPENED; "made
+    at" is the merge's own stamp now, and tonight's was corrected to 8:54pm.
 
 **ROOT CAUSE** — state held in memory across slow calls (GitHub, a download,
 a two-minute merge) and written back whole at the end, by a job whose
@@ -319,7 +323,7 @@ forecast stuck re-merging.
 **FIX** — round 6 in f1112b4bd13d; rounds 7-8 in 29e0e618d2be; round 10 in
 c791235f8ba8; round 11 in e7eb75714d53; round 12 in 0c4ae6323fe5; round 13
 in 5eb6cba64cf4; round 14 in 6042900d6db2; round 15 in f73fe85397f7; round 16
-in this commit.
+in 6de64c1464a5; round 17 in this commit.
 
 **GUARD** — `tests/test_forecast_v2.py`: `test_off_stays_off_when_a_busy_tick_writes_the_state_back`,
 `test_a_what_if_asked_while_another_is_polled_is_kept`,

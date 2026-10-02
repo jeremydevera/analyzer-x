@@ -509,6 +509,14 @@ Round 16 (8:54pm-9:03pm, reading the first automatic day's results):
 44. **"made at 8:49pm"** was when the last step began; the merge finished at
     8:54pm. It is stamped after the merge.
 
+Round 17 (9:05pm, the live page after the last restart, desktop 1440 and
+phone 390: 0 errors, no sideways scroll, 444/302 ms): 45. **one event, two
+times** — the status line said "today's Forecast v2 was made at Oct 01, 2026
+8:49pm" while the card under it said "made Oct 01, 2026 8:54pm". The chain
+now takes "made at" from the merge's own stamp, the one the card prints, and
+tonight's status was corrected to 8:54pm (read back after the next check).
+Nothing else found; every reader of round 16's new fields checked clean.
+
 Streak bells under the old code, before 8:15pm: two, one per run —
 ABNBSTOCK at 7:59pm and NECSTOCK at 8:04pm, both 6 losses in a row in
 #4FC03172. All rounds that did find something: RCA-2026-10-01-J, -K and -L.

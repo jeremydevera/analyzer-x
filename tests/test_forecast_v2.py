@@ -767,6 +767,9 @@ def test_only_the_days_final_merge_keeps_the_months_prediction(monkeypatch, tmp_
     fd._step(st, NOW + 600)
     assert st["phase"] == "done" and merges[-1] == (False, True), "the day's final merge keeps the month"
     assert st["ready"]["replay_run"] == 5
+    # bug hunt, rounds 16-17: "made at" is the merge's own stamp — the time
+    # the card under it prints — never the tick's start
+    assert st["done_at"] == 1.0 and st["why"].startswith("made at ")
 
 
 # ------------------------------------------------------ bug hunt, round 7

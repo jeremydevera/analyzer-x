@@ -232,3 +232,20 @@ def test_the_plan_leaves_out_only_the_shards_with_no_coins():
     # replay-3 is not listed at all: KEPT, so its download fails by name
     assert rp_.pick(4, sizes) == ([1, 3], [0, 2])
     assert rp_.pick(4, None) == ([0, 1, 2, 3], []), "an unreadable listing keeps every shard"
+
+
+def test_the_round_finds_the_replays_own_reports_by_itself(tmp_path, monkeypatch):
+    """finish_daily calls check_complete with no folder: the first draft
+    looked under the sweep's HOME (~/.tradingagents/backtest/replay), where
+    no report has ever been saved, and refused every real round."""
+    from tradingagents import replay_collect as rc
+    monkeypatch.setattr(rc, "OUT_DIR", tmp_path)
+    d = tmp_path / "reports-37007971331" / "replay-report-1"
+    d.mkdir(parents=True)
+    (d / "replay-report-1.json").write_text(json.dumps({"coins_done": 45}), encoding="utf-8")
+    art = tmp_path / "art" / "research-1-0"
+    art.mkdir(parents=True)
+    (art / "research-1-0.json").write_text(json.dumps({"shard": "1", "chunk": 0, "chunks": 1, "books": 9}),
+                                           encoding="utf-8")
+    assert rst._reports_dir("37007971331") == tmp_path / "reports-37007971331"
+    assert rst.check_complete(str(tmp_path / "art"), "37007971331")["shards"] == [1]

@@ -253,6 +253,15 @@ before any round is scored.
 tests) and `tests/test_prompt4_room_strategies.py` (the missing-job and plan
 tests).
 
+**FOUND BEFORE IT RAN (same day, 12:24pm)** — scoring the 212-rule probe
+(run 37030727294: 20 of 20 jobs, peak memory 2,727-3,318 MB, the biggest
+shard 768 s) found `check_complete` looking for the replay's reports under
+the sweep's HOME (`~/.tradingagents/backtest/replay`), where none has ever
+been saved; every real round would have been refused. `_reports_dir` now
+reads `replay_collect.OUT_DIR`. Not caught because the missing-job test
+handed the folder in by hand; `test_the_round_finds_the_replays_own_reports_by_itself`
+calls it the way `finish_daily` does.
+
 ---
 
 ## RCA-2026-10-02-D — after the live price connection dropped and came back, the runner stopped hearing candles close until it was restarted

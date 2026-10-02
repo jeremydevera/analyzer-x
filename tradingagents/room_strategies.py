@@ -302,9 +302,12 @@ def tried(replay_run: str) -> set:
 
 # ------------------------------------------------------------ one round
 def _reports_dir(replay_run: str) -> Path:
-    from tradingagents import market_sweep as msw
+    """Where the replay's own reports were saved (replay_collect.OUT_DIR —
+    `~/.tradingagents/replay`, not the sweep's HOME, which is one folder
+    deeper and held no reports: the first draft looked there)."""
+    from tradingagents import replay_collect as rc
 
-    return Path(msw.HOME) / "replay" / f"reports-{replay_run}"
+    return Path(rc.OUT_DIR) / f"reports-{replay_run}"
 
 
 def check_complete(art_dir: str, replay_run: str, reports: str | None = None) -> dict:

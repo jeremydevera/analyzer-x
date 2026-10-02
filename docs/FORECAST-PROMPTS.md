@@ -274,3 +274,29 @@ Rules for the answer:
   room does not have yet (TP at least 1.5x or 2x SL, a 7-day window, any of
   Forecast v2's options) says so instead.
 ```
+
+### How prompt 4 runs now — the steps and what they cost (first run, Oct 02, 2026)
+
+The operator, Oct 02, 2026: *"when i run the prompt #4 its up to you what kind
+of combination you want ... when i run that prompt i want you to look for all
+kinds of combination then add it in room strategy"*. Measured on the first run,
+so the next one can say how long each step takes before starting it:
+
+| step | command | first run |
+|---|---|---|
+| data | a replay written at `wr=40,trades=1,tp=any,windows=7\|15\|30` | run 37007971331: 1,098 coins on **20 of 40** machines (the replay hands coins out first come, first served — an empty shard is normal), 23,494,320 combinations, ~3.1 billion trades, end Oct 02, 2026 8:00am |
+| round 1 list | `python -m tradingagents.room_strategies round1 round1` | 8,568 rule sets, 156 switch-on walks |
+| round 1 | `gh workflow run research.yml -f source_run=<replay> -f shards=40 -f end_ms=<end> -f scenarios=file:research/p4/round1.json -f chunks=4 -f output=daily` | run 37033893955: the plan keeps the 20 shards with coins, 80 jobs, **2 h 13 min**, peak memory ~3.3 GB a machine (16 GB there) |
+| score | `python -m tradingagents.room_strategies daily round1 <downloaded folder> <replay>` | 458 s; refuses a round with any job missing (`check_complete`); 673 winners, writes `round1-confirm.json` and `round1-next.json` |
+| confirm | the same dispatch with `scenarios=file:research/p4/round1-confirm.json -f chunks=1 -f output=full` | run 37050144154, ~15 min |
+| keep | `python -m tradingagents.room_strategies finish round1c <folder> ~/.tradingagents/replay/reports-<replay> <replay>` | 75 s; 662 kept (2,381,217 trades, 83 MB on G:) |
+| new rounds | `daily` on `round<N>-next.json`, then its confirm, until a round beats nothing or 5 rounds | round 2: 92 rule sets, ~20 min, 56 winners |
+
+Before trusting a new round's numbers, the confirm run's months were checked
+against the day totals (2,357 months, 0 differences). The newest-15-days figure
+differs by design: day totals count whole days, so their window starts ~8 hours
+earlier. **The kept verdict always comes from the trades.** Download every
+round to G: (`~/.tradingagents/tmp/`), never `C:`. A round's results are about
+345 MB.
+Full account of what broke on the first run: `docs/RCA.md` RCA-2026-10-02-E
+and RCA-2026-10-02-F.

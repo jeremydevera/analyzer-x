@@ -836,7 +836,7 @@ function RoomStrategiesTable() {
                   {d.rows.map((r) => (
                     <tr key={r.id}>
                       <td className={td}><CopyId id={r.id} /></td>
-                      <td className="max-w-[320px] px-2 py-1.5 text-gray-700 dark:text-gray-300">{r.words}
+                      <td className="min-w-[280px] max-w-[360px] px-2 py-1.5 text-gray-700 dark:text-gray-300">{r.words}
                         {!r.still_works && <span className="ml-1 rounded bg-warning-50 px-1 text-[10px] text-warning-700 dark:bg-warning-500/10">stopped working</span>}</td>
                       <td className={td}>{r.found_by} · {fmtWhen(r.found_at)}</td>
                       <td className={td}>{r.trades.toLocaleString()}</td>
@@ -849,7 +849,7 @@ function RoomStrategiesTable() {
                       <td className={`${td} ${tone(r.worst_day)}`}>{fmtMoney(r.worst_day)}</td>
                       <td className={td}>{r.worst_run_n ? `${fmtMoney(r.worst_run)} over ${r.worst_run_n}` : "—"}</td>
                       <td className={td}>{r.max_open}</td>
-                      <td className={td}>{fmtMoney(r.money_needed)}</td>
+                      <td className={td}>${r.money_needed.toLocaleString()}</td>
                       <td className={`${td} ${tone(r.worst_month)}`}>{fmtMoney(r.worst_month)}</td>
                       <td className={td}>{r.deployable ? "yes" : <span title={r.deploy_why} className="text-gray-400">needs a new switch</span>}</td>
                     </tr>

@@ -434,17 +434,120 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
             "reality": {k: reality.get(k) for k in ("took", "gap")}, "margin": 5.0, "leverage": 20}
 
 
+
+
+# ------------------------------------------------- a round in daily totals
+def measure_days(edges, n, w, p, end_ms: int, reality: dict) -> dict:
+    """`measure` from a rule set's day-by-day totals (research_shard OUT=daily):
+    the same months, newest 15 days and worst 15-day stretch, by whole local
+    days — the newest 15 days are the 15 days to the data's end, the day that
+    holds their start counted whole."""
+    import numpy as np
+
+    from tradingagents import forecast_v2 as f2
+
+    edges = np.asarray(edges, dtype=np.int64)
+    n, w, p = (np.asarray(x) for x in (n, w, p))
+    end_month = _month(end_ms)
+    by: dict = {}
+    for k in np.nonzero(n)[0]:
+        m = by.setdefault(_month(int(edges[k]) + 3_600_000), [0, 0, 0.0])
+        m[0] += int(n[k])
+        m[1] += int(w[k])
+        m[2] += float(p[k])
+    months = [{"month": m, "complete": m != end_month, "trades": v[0], "wins": v[1],
+               "profit": round(v[2], 2), "corrected": f2.corrected(v[2], v[0], reality)}
+              for m, v in sorted(by.items())]
+    last = edges[1:] > end_ms - 15 * 86_400_000
+    n15, p15 = int(n[last].sum()), float(p[last].sum())
+    worst15 = None
+    if len(p) >= 15:
+        cs, cc = np.r_[0, np.cumsum(p)], np.r_[0, np.cumsum(n)]
+        sums, ns = cs[15:] - cs[:-15], cc[15:] - cc[:-15]
+        k = int(np.argmin(sums))
+        worst15 = f2.corrected(float(sums[k]), int(ns[k]), reality)
+    tot_n, tot_w = int(n.sum()), int(w.sum())
+    return {"months": months, "last15": {"trades": n15, "profit": round(p15, 2),
+                                         "corrected": f2.corrected(p15, n15, reality)},
+            "worst15": worst15,
+            "total": {"trades": tot_n, "wins": tot_w, "profit": round(float(p.sum()), 2),
+                      "winrate": round(100 * tot_w / tot_n, 1) if tot_n else None}}
+
+
+def finish_daily(name: str, art_dir: str, replay_run: str) -> dict:
+    """Add up a round run with OUT=daily: score every rule set, remember them
+    as tried, write the WINNERS' list for the small OUT=full run that brings
+    their trades home (`finish` then keeps them), and the next round's list
+    (neighbours of the 20 best, untried)."""
+    import numpy as np
+
+    from tradingagents import forecast_rules as fr
+    from tradingagents import forecast_v2 as f2
+
+    reality = f2.live()["reality"]["all"]
+    arts = sorted(Path(art_dir).rglob("research-*.json"))
+    metas = [json.loads(a.read_text(encoding="utf-8")) for a in arts]
+    packs = [np.load(a.with_suffix(".npz")) for a in arts]
+    if not metas or "day_edges" not in metas[0]:
+        raise ValueError(f"{art_dir} holds no daily research (run research.yml with output=daily)")
+    edges = metas[0]["day_edges"]
+    end = int(metas[0]["end_ms"])
+    slices: dict = {}
+    for i, m in enumerate(metas):
+        slices.setdefault(int(m.get("chunk") or 0), []).append(i)
+    rows = []
+    for c_ in sorted(slices):
+        items = slices[c_]
+        for j, rule in enumerate(metas[items[0]]["rules"]):
+            cfg_ = rule["cfg"]
+            n = sum(packs[i][f"{j}_{pt}_dn"].astype(np.int64) for i in items for pt in ("train", "test"))
+            w = sum(packs[i][f"{j}_{pt}_dw"].astype(np.int64) for i in items for pt in ("train", "test"))
+            p = sum(packs[i][f"{j}_{pt}_dp"].astype(np.float64) for i in items for pt in ("train", "test"))
+            meas = measure_days(edges, n, w, p, end, reality)
+            ok, why = is_winner(meas)
+            meas["winner"], meas["why"] = ok, why
+            rows.append({"id": sid(cfg_), "cfg": cfg_, "words": fr.words(cfg_), "p4": meas,
+                         "deployable": fr.deployable(cfg_)[0]})
+    n_tried = remember_tried(replay_run, [r["id"] for r in rows])
+    ranked = sorted(rows, key=lambda r: rank_key(r["p4"]), reverse=True)
+    winners = [r for r in ranked if r["p4"]["winner"]]
+    have = {w_["id"] for w_ in kept()}
+    # the winners, plus every kept winner this round measured (re-measured)
+    confirm = winners + [r for r in rows if r["id"] in have and not r["p4"]["winner"]]
+    conf_path = write_round(f"{name}-confirm", [r["cfg"] for r in confirm]) if confirm else None
+    nxt = neighbours([r["cfg"] for r in ranked[:TOP]], tried(replay_run))
+    nxt_path = write_round(f"{name}-next", nxt) if nxt else None
+    out = {"round": name, "rule_sets": len(rows), "tried_total": n_tried, "winners": len(winners),
+           "best": [{"id": r["id"], "words": r["words"], "worst_month": rank_key(r["p4"])[0],
+                     "worst15": r["p4"]["worst15"], "last15": r["p4"]["last15"]["corrected"],
+                     "winner": r["p4"]["winner"], "why": r["p4"]["why"]} for r in ranked[:10]],
+           "confirm": len(confirm), "confirm_file": _rel(conf_path),
+           "next": len(nxt), "next_file": _rel(nxt_path),
+           "reality": {k: reality.get(k) for k in ("took", "gap")}}
+    (_home() / f"p4_{name}.json").write_text(json.dumps({**out, "rows": rows}, separators=(",", ":")),
+                                             encoding="utf-8")
+    return out
+
+
+def _rel(p: Path | None) -> str | None:
+    return str(p.relative_to(ROOT)).replace("\\", "/") if p else None
+
+
 def main(argv: list | None = None) -> int:
     import sys
     args = list(sys.argv[1:] if argv is None else argv)
     if len(args) == 5 and args[0] == "finish":
         print(json.dumps(finish(*args[1:]), indent=1))
         return 0
+    if len(args) == 4 and args[0] == "daily":
+        print(json.dumps(finish_daily(*args[1:]), indent=1))
+        return 0
     if len(args) == 2 and args[0] == "round1":
         p = write_round(args[1], round1())
         print(p, len(json.loads(p.read_text(encoding="utf-8"))), "rule sets")
         return 0
-    print("usage: room_strategies round1 <name> | finish <name> <research folder> <replay folder> <replay run id>")
+    print("usage: room_strategies round1 <name> | daily <name> <research folder> <replay run id> "
+          "| finish <name> <research folder> <replay folder> <replay run id>")
     return 2
 
 

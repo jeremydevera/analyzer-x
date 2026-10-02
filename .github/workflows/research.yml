@@ -24,6 +24,9 @@ on:
       chunks:
         description: "Split the grid into this many slices, one job each per shard, so no job passes six hours (grid 6: 8)"
         default: "1"
+      output:
+        description: "full = every trade (the page's logs); daily = each rule set's day-by-day totals only (prompt 4's search rounds)"
+        default: "full"
 
 permissions:
   contents: read
@@ -79,6 +82,7 @@ jobs:
           SHARD: ${{ matrix.shard }}
           CHUNK: ${{ matrix.chunk }}
           CHUNKS: ${{ github.event.inputs.chunks }}
+          OUT: ${{ github.event.inputs.output }}
           END_MS: ${{ github.event.inputs.end_ms }}
           SCEN: ${{ github.event.inputs.scenarios }}
           # the checks are the OPERATOR's midnights, as the replay's were

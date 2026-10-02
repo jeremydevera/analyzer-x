@@ -168,3 +168,26 @@ def test_the_merge_scores_every_rule_set_and_keeps_trades_for_winners_only(tmp_p
     a, b = out["rows"]
     assert a["p4"]["winner"] is True and len(a["p4_trades"]) == 4
     assert b["p4"]["winner"] is False and "p4_trades" not in b, "a loser keeps no trade list"
+
+
+def test_the_daily_totals_give_the_same_months_as_the_trades():
+    """research_shard OUT=daily (Oct 02, 2026): ~1.5 KB a rule set instead of
+    its trades — measured on replay-0, 40 rule sets: months identical, the
+    same winner verdict for all 40, 63 KB against 4.6 MB."""
+    import datetime as _dt
+    from tradingagents import watcher_replay as wr
+    t = np.asarray(_trades([(2026, 7, 10, 1.0), (2026, 8, 10, -0.2), (2026, 8, 11, 0.9),
+                            (2026, 9, 10, 1.0), (2026, 9, 25, 1.0)]), dtype=np.float64)
+    mids = wr.local_midnights(int(_dt.datetime(2026, 7, 1).timestamp() * 1000), END)
+    edges = np.asarray(mids + [mids[-1] + 86_400_000], dtype=np.int64)
+    k = np.searchsorted(edges, t[:, 1], "right") - 1
+    n = np.bincount(k, minlength=len(edges) - 1)
+    w = np.bincount(k, weights=(t[:, 2] > 0).astype(float), minlength=len(edges) - 1)
+    p = np.bincount(k, weights=t[:, 2], minlength=len(edges) - 1)
+    a, b = rst.measure(t, END, REAL), rst.measure_days(edges, n, w, p, END, REAL)
+    assert [m["corrected"] for m in a["months"]] == [m["corrected"] for m in b["months"]]
+    assert rst.is_winner(a) == rst.is_winner(b) and b["total"]["trades"] == 5
+    src = (ROOT / ".github/scripts/research_shard.py").read_text(encoding="utf-8")
+    assert 'daily = os.environ.get("OUT", "full").strip() == "daily"' in src
+    wf = (ROOT / ".github/workflows/research.yml").read_text(encoding="utf-8")
+    assert "OUT: ${{ github.event.inputs.output }}" in wf and wf.count("description:") <= 10

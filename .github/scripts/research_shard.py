@@ -78,6 +78,17 @@ def main() -> int:
     arrays: dict = {}
     meta = {"shard": shard, "chunk": chunk, "chunks": chunks, "end_ms": end_ms,
             "books": len(books), "rules": [], "strategies": []}
+    # OUT=daily (prompt 4, Oct 02, 2026): per rule set and part, the closed
+    # trades, wins and profit of every LOCAL day — ~1.5 KB a rule set where the
+    # trade lists of 8,568 rule sets over 40 shards were ~75 GB to bring home.
+    # The winners get a second, small run with OUT=full for their trades.
+    daily = os.environ.get("OUT", "full").strip() == "daily"
+    if daily:
+        mids = wr.local_midnights(ms(os.environ.get("TRAIN_START", "2026-07-01")), end_ms)
+        nxt = [m for m in wr.local_midnights(mids[-1], mids[-1] + 2 * wr.DAY_MS) if m > mids[-1]]
+        edges = np.asarray(mids + nxt[:1], dtype=np.int64)
+        meta["day_edges"] = [int(x) for x in edges]
+        n_days = len(edges) - 1
     strat_ix: dict = {}
     for part, (a, b) in periods.items():
         checks = wr.local_midnights(a, b)
@@ -86,6 +97,21 @@ def main() -> int:
         for j, cfg in enumerate(grid):
             r = rs.raw_trades(books, flat, grids[cfg["window_days"]], checks, cfg, b)
             m = r["closed"] & (r["ext"] <= b)
+            if daily:
+                k = np.searchsorted(edges, r["ext"][m], "right") - 1
+                ok = (k >= 0) & (k < n_days)
+                pv = r["pnl"][m][ok]
+                arrays[f"{j}_{part}_dn"] = np.bincount(k[ok], minlength=n_days).astype(np.int32)
+                arrays[f"{j}_{part}_dw"] = np.bincount(k[ok], weights=(pv > 0).astype(np.float64),
+                                                       minlength=n_days).astype(np.int32)
+                arrays[f"{j}_{part}_dp"] = np.bincount(k[ok], weights=pv,
+                                                       minlength=n_days).astype(np.float32)
+                if part == "train":
+                    meta["rules"].append({"cfg": cfg})
+                meta["rules"][j][part] = {"slots": r["slots"], "open": r["open"]}
+                if (j + 1) % 100 == 0:
+                    print(f"    {part}: {j + 1} of {len(grid)} in {time.time() - t0:.0f}s", flush=True)
+                continue
             arrays[f"{j}_{part}_e"] = (r["ent"][m] // 60_000 - T0_MIN).astype(np.int32)
             arrays[f"{j}_{part}_x"] = (r["ext"][m] // 60_000 - T0_MIN).astype(np.int32)
             arrays[f"{j}_{part}_p"] = r["pnl"][m].astype(np.float32)

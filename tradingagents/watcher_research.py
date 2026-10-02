@@ -391,6 +391,11 @@ def _tp_ok(tp, sl, rule):
         return tp < sl
     if rule == "=":
         return np.abs(np.asarray(tp) - np.asarray(sl)) < 1e-6
+    # the target at least 1.5x / 2x the stop (Forecast v2's shapes, prompt 4)
+    if rule == "1.5x":
+        return np.asarray(tp) >= 1.5 * np.asarray(sl) - 1e-9
+    if rule == "2x":
+        return np.asarray(tp) >= 2.0 * np.asarray(sl) - 1e-9
     return tp > sl if rule == ">" else tp >= sl
 
 

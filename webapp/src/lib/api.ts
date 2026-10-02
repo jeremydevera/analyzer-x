@@ -1115,6 +1115,16 @@ export function dateBoxValue(daysBack = 0): string {
   return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
 }
 
+export type RoomStrategies = {
+  rows: { id: string; words: string; found_at: number; found_by: string; run: string | null;
+    deployable: boolean; deploy_why: string; window: number; tp: string; max_sl: number;
+    trades: number; per_day: number; wins: number; losses: number; winrate: number | null;
+    break_even: number | null; profit: number; corrected: number | null; worst_day: number | null;
+    worst_run: number; worst_run_n: number; max_open: number; money_needed: number;
+    worst_month: number | null; still_works: boolean }[];
+  matched: number; kept: number; page: number; pages: number; from: number; to: number;
+  reality: { took: number | null; gap: number | null }; margin: number; leverage: number;
+};
 export type RoomBtSide = { trades: number; wins: number; losses: number; winrate: number | null;
   profit: number; worst_run: number; worst_run_trades: number };
 export type RoomBacktest = {
@@ -1238,6 +1248,17 @@ export const api = {
   forecasts: (page = 1) => get<Forecasts>(`/api/forecasts?page=${page}`),
   forecastsLive: () => get<ForecastsLive>("/api/forecasts/live"),
   // Forecast -> Backtest a room (Oct 02, 2026): sorted and paged by the server
+  roomStrategies: (q: { from_s: number; to_s: number; min_winrate?: number; min_profit?: number | null;
+    window?: number; deployable?: string; find?: string; sort?: string; page?: number }) => {
+    const p = new URLSearchParams({ from_s: String(Math.floor(q.from_s)), to_s: String(Math.floor(q.to_s)),
+      sort: q.sort ?? "worst_month", page: String(q.page ?? 1) });
+    if (q.min_winrate) p.set("min_winrate", String(q.min_winrate));
+    if (q.min_profit != null) p.set("min_profit", String(q.min_profit));
+    if (q.window) p.set("window", String(q.window));
+    if (q.deployable) p.set("deployable", q.deployable);
+    if (q.find) p.set("find", q.find);
+    return get<RoomStrategies>(`/api/forecasts/room-strategies?${p}`);
+  },
   roomBacktest: (q: { room: string; from_s: number; to_s: number; sort?: string; page?: number }) =>
     get<RoomBacktest>(`/api/forecasts/room-backtest?room=${encodeURIComponent(q.room)}`
       + `&from_s=${Math.floor(q.from_s)}&to_s=${Math.floor(q.to_s)}&sort=${q.sort ?? "gap"}&page=${q.page ?? 1}`),

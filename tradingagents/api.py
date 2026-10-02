@@ -1258,6 +1258,26 @@ def _forecast_live_refresh() -> dict:
         _FORECAST_LIVE["busy"] = False
 
 
+@app.get("/api/forecasts/room-strategies")
+def room_strategies_route(from_s: float, to_s: float, min_winrate: float = 0,
+                          min_profit: float | None = None, window: int = 0,
+                          deployable: str = "", find: str = "", sort: str = "worst_month",
+                          page: int = 1) -> dict:
+    """Forecast -> Room strategies: every winner prompt 4 kept, RE-MEASURED over
+    exactly the chosen dates from its own stored trades (operator, Oct 02, 2026:
+    "when i run that prompt i want you to look for all kinds of combination
+    then add it in room strategy"). Filtered, sorted and paged here."""
+    from tradingagents import room_strategies as _rst
+
+    if to_s < from_s:
+        raise HTTPException(400, "the end of the range is before its start")
+    try:
+        return _rst.table(from_s, to_s, min_winrate=min_winrate, min_profit=min_profit,
+                          window=window, deployable=deployable, find=find, sort=sort, page=page)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
 @app.get("/api/forecasts/room-backtest")
 def room_backtest_route(room: str, from_s: float, to_s: float, sort: str = "gap",
                         page: int = 1) -> dict:

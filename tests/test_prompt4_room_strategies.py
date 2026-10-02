@@ -1,0 +1,170 @@
+"""Prompt 4: find new winning room strategies and keep them (Oct 02, 2026).
+
+Operator: "when i run the prompt #4 its up to you what kind of combination you
+want, like last 15 days or last 7 days or last 30 days with Tp highger than sl
+or 90%winrate ... look for all kinds of combination then add it in room
+strategy", and before it started: "make sure to ask me if there will be
+potential bugs or something that will hurt data".
+
+Every test writes to tmp_path through ROOM_STRATEGIES_HOME — never the real,
+never-delete store. Trades sit on one timeline: Jul 01 to Oct 02, 2026.
+"""
+from __future__ import annotations
+
+import datetime as dt
+import json
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from tradingagents import forecast_rules as fr
+from tradingagents import room_strategies as rst
+from tradingagents import watcher_research as rs
+
+ROOT = Path(__file__).resolve().parents[1]
+REAL = {"took": 0.5, "gap": 0.1}
+END = int(dt.datetime(2026, 10, 2, 12).timestamp() * 1000)
+
+
+def ms(y, m, d, h=12):
+    return int(dt.datetime(y, m, d, h).timestamp() * 1000)
+
+
+@pytest.fixture(autouse=True)
+def store(tmp_path, monkeypatch):
+    monkeypatch.setenv("ROOM_STRATEGIES_HOME", str(tmp_path / "store"))
+    rst._KEPT.clear()
+    yield tmp_path / "store"
+    rst._KEPT.clear()
+
+
+def test_every_shape_and_window_is_a_dial_and_old_ids_hold():
+    assert set(rst.WINDOWS) == {7, 15, 30} and set(rst.SHAPES) == {"any", ">", "1.5x", "2x", "=", "<"}
+    assert rst.LINES[0] == 40.0 and rst.LINES[-1] == 95.0 and 40 in rst.TRADES
+    c = fr.cfg_of(30, 90, 40, ">", 2.0)
+    assert fr.rule_id({**c, "min_tp": 0.0}) == fr.rule_id(c), "an unset floor never moves an id"
+    assert fr.rule_id({**c, "min_tp": 2.0}) != fr.rule_id(c)
+    ok, why = fr.deployable(rst.cfg(7, 60, 3, ">", 2.0))
+    assert not ok and "7-day window" in why
+    assert fr.deployable(rst.cfg(15, 70, 50, "=", 2.0, 1.0))[0], "rooms run '=' and a target floor"
+    assert fr.tp_ok(np.array([1.0]), np.array([1.0]), "=").all()
+    assert rs._tp_ok(np.array([3.0]), np.array([2.0]), "1.5x").all()
+
+
+def test_round_one_is_every_known_rule_set_once_and_survives_the_file():
+    r = rst.round1()
+    ids = [rst.sid(c) for c in r]
+    assert len(ids) == len(set(ids)) >= 8064
+    assert {fr.rule_id(c) for c in fr.base_grid()} <= set(ids)
+    p = rst.write_round("t-round", r)
+    try:
+        back = rst.read_round(str(p.relative_to(ROOT)).replace("\\", "/"))
+        assert [rst.sid(c) for c in back] == ids
+    finally:
+        p.unlink()
+    src = (ROOT / ".github/scripts/research_shard.py").read_text(encoding="utf-8")
+    assert 'if scen.startswith("file:"):' in src and "rst.read_round(scen[5:])" in src
+
+
+def test_new_rounds_never_repeat_a_tried_rule_set():
+    b = rst.cfg(30, 70, 20, ">", 2.0)
+    n = rst.neighbours([b], {rst.sid(b)})
+    got = {rst.dials(c) for c in n}
+    assert (15, 70.0, 20, ">", 2.0, 0.0) in got and (30, 65.0, 20, ">", 2.0, 0.0) in got
+    assert (30, 70.0, 20, "<", 2.0, 0.0) in got and (30, 70.0, 20, ">", 2.0, 1.0) in got
+    assert rst.sid(b) not in {rst.sid(c) for c in n}
+    assert rst.neighbours([b], {rst.sid(c) for c in n} | {rst.sid(b)}) == [], "all tried: nothing new"
+
+
+def _trades(spec):
+    """[(y, m, d, pnl), ...] -> [entry, exit, pnl], one hour long."""
+    return [[ms(y, m, d) - 3_600_000, ms(y, m, d), p] for y, m, d, p in spec]
+
+
+def test_a_winner_makes_money_after_the_reality_check_in_every_month_and_the_newest_15_days():
+    good = _trades([(2026, 7, 10, 1.0), (2026, 8, 10, 1.0), (2026, 9, 10, 1.0), (2026, 9, 25, 1.0)])
+    m = rst.measure(good, END, REAL)
+    assert [x["month"] for x in m["months"]] == ["2026-07", "2026-08", "2026-09"]
+    assert all(x["complete"] for x in m["months"])
+    assert m["months"][0]["corrected"] == round(0.5 * (1.0 - 0.1), 2)
+    assert rst.is_winner(m) == (True, "")
+    no_recent = rst.measure(good[:3], END, REAL)
+    assert rst.is_winner(no_recent)[1] == "lost money in the newest 15 days after the reality check"
+    bad_aug = rst.measure(good[:1] + _trades([(2026, 8, 10, -1.0)]) + good[2:], END, REAL)
+    assert rst.is_winner(bad_aug)[1] == "lost money in 2026-08 after the reality check"
+    # ranked by the WORST complete month, never the best
+    assert rst.rank_key(m) > rst.rank_key(bad_aug)
+
+
+def test_the_store_only_grows_and_the_page_reads_the_newest_line(store):
+    c = rst.cfg(15, 70, 50, ">", 2.0)
+    w = {"id": rst.sid(c), "cfg": c, "words": fr.words(c), "deployable": True, "deploy_why": "",
+         "p4": rst.measure(_trades([(2026, 9, 25, 1.0)]), END, REAL),
+         "trades": _trades([(2026, 9, 20, 1.0), (2026, 9, 25, 1.0)])}
+    assert rst.keep([w], "r1", "RUN", now=1000) == 1
+    assert rst.keep([w], "r1", "RUN", now=2000) == 0, "already kept: not new"
+    w2 = {**w, "trades": _trades([(2026, 9, 20, 1.0), (2026, 9, 25, 1.0), (2026, 9, 28, -0.5)])}
+    rst.keep([], "r2", "RUN", now=3000, remeasured=[w2])
+    lines = (store / "room_strategies.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 2, "a re-measure appends, never rewrites"
+    k = rst.kept()
+    assert len(k) == 1 and k[0]["found_at"] == 1000 and len(k[0]["trades"]) == 3
+
+
+def test_the_table_re_measures_over_exactly_the_chosen_dates(store):
+    c = rst.cfg(7, 60, 3, ">", 2.0)
+    t = _trades([(2026, 9, 1, 1.0), (2026, 9, 20, -0.4), (2026, 9, 21, 1.0)])
+    rst.keep([{"id": rst.sid(c), "cfg": c, "words": fr.words(c), "deployable": False,
+               "deploy_why": "a 7-day window", "p4": rst.measure(t, END, REAL), "trades": t}],
+             "r1", "RUN", now=1000)
+    from tradingagents import forecast_v2 as f2
+    import tradingagents.forecast_v2 as _f2
+    _f2_live = f2.live
+    try:
+        f2.live = lambda *a, **k: {"reality": {"all": REAL}}
+        all_ = rst.table(ms(2026, 9, 1, 0) / 1000, ms(2026, 9, 30, 23) / 1000)
+        late = rst.table(ms(2026, 9, 15, 0) / 1000, ms(2026, 9, 30, 23) / 1000)
+        only_7 = rst.table(ms(2026, 9, 1, 0) / 1000, ms(2026, 9, 30, 23) / 1000, window=15)
+    finally:
+        _f2.live = _f2_live
+    assert all_["rows"][0]["trades"] == 3 and late["rows"][0]["trades"] == 2
+    assert late["rows"][0]["profit"] == 0.6 and late["rows"][0]["worst_run"] == -0.4
+    assert only_7["matched"] == 0 and only_7["kept"] == 1
+    assert all_["rows"][0]["deployable"] is False
+
+
+def test_the_page_shows_the_room_strategies_and_asks_the_server():
+    src = (ROOT / "webapp/src/components/forecast/RoomForecasts.tsx").read_text(encoding="utf-8")
+    assert "<RoomStrategiesTable />" in src and ">Room strategies<" in src
+    assert "api.roomStrategies({ from_s: dayStart(from), to_s: dayStart(to) + 86_399," in src
+    api_py = (ROOT / "tradingagents/api.py").read_text(encoding="utf-8")
+    assert '@app.get("/api/forecasts/room-strategies")' in api_py
+
+
+def test_the_merge_scores_every_rule_set_and_keeps_trades_for_winners_only(tmp_path, monkeypatch):
+    from tradingagents import research_merge as rmg
+    monkeypatch.setattr(rmg.rc, "merge_reports", lambda dirs: {"write": {}})
+    monkeypatch.setattr(rmg.rs, "OUT_DIR", tmp_path / "out")
+    grid = [rst.cfg(15, 70, 5, ">", 2.0), rst.cfg(30, 80, 5, ">", 2.0)]
+    to_min = lambda m: (m // 60_000) - rmg.T0_MIN                       # noqa: E731
+    days = {"train": [ms(2026, 7, 10), ms(2026, 8, 10)], "test": [ms(2026, 9, 10), ms(2026, 9, 25)]}
+    arrays, meta = {}, {"shard": 0, "chunk": 0, "chunks": 1, "end_ms": END, "books": 10,
+                        "rules": [], "strategies": [["S", "VUG", "1h", "macddiv", 0.0, 1.0, 0.5]]}
+    for j, c in enumerate(grid):
+        meta["rules"].append({"cfg": c, "train": {"slots": 1, "open": 0}, "test": {"slots": 1, "open": 0}})
+        sign = 1.0 if j == 0 else -1.0                 # rule 0 wins every month, rule 1 loses
+        for part, xs in days.items():
+            arrays[f"{j}_{part}_e"] = np.array([to_min(x - 3_600_000) for x in xs], np.int32)
+            arrays[f"{j}_{part}_x"] = np.array([to_min(x) for x in xs], np.int32)
+            arrays[f"{j}_{part}_p"] = np.array([sign] * len(xs), np.float32)
+        arrays[f"{j}_test_s"] = np.zeros(2, np.int32)
+    d = tmp_path / "art" / "research-0"
+    d.mkdir(parents=True)
+    np.savez_compressed(d / "research-0.npz", **arrays)
+    (d / "research-0.json").write_text(json.dumps(meta), encoding="utf-8")
+    out = json.loads(Path(rmg.merge("t", str(tmp_path / "art"), str(tmp_path), reality=REAL))
+                     .read_text(encoding="utf-8"))
+    a, b = out["rows"]
+    assert a["p4"]["winner"] is True and len(a["p4_trades"]) == 4
+    assert b["p4"]["winner"] is False and "p4_trades" not in b, "a loser keeps no trade list"

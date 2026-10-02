@@ -138,14 +138,17 @@ def decode_rooms(text: str) -> dict:
 
 # ------------------------------------------------------------------ naming
 ID_KEYS =("window_days", "on_winrate", "off_winrate", "min_trades", "tp_rule",
-           "max_sl", "coin_slices") + OPTION_KEYS
+           "max_sl", "coin_slices") + OPTION_KEYS + (
+    # prompt 4's smallest target (Oct 02, 2026). A key at 0 or missing is left
+    # out of the hash, so every id made before it is unchanged
+    "min_tp",)
 
 
 def rule_id(cfg: dict) -> str:
     """A stable short id, hashed from the rule set's own values — never a
     position on a page (CLAUDE.md kit H)."""
     key = {k: cfg.get(k) for k in ID_KEYS if cfg.get(k) not in (None, False)}
-    for k in ("on_winrate", "off_winrate", "max_sl", "max_cost", "day_loss"):
+    for k in ("on_winrate", "off_winrate", "max_sl", "max_cost", "day_loss", "min_tp"):
         if k in key:
             key[k] = float(key[k])
     for k in ("window_days", "min_trades", "coin_slices"):
@@ -155,7 +158,8 @@ def rule_id(cfg: dict) -> str:
 
 
 TP_WORDS = {">": "TP wider than SL", "1.5x": "TP at least 1.5x SL", "2x": "TP at least 2x SL",
-            "any": "any TP", ">=": "TP at least SL", "<": "TP narrower than SL"}
+            "any": "any TP", ">=": "TP at least SL", "<": "TP narrower than SL",
+            "=": "TP equal to SL"}
 
 
 def words(cfg: dict) -> str:
@@ -166,6 +170,8 @@ def words(cfg: dict) -> str:
            TP_WORDS.get(str(cfg["tp_rule"]), str(cfg["tp_rule"]))]
     if float(cfg.get("max_sl") or 0) > 0:
         out.append(f"stop {float(cfg['max_sl']):g}% or tighter")
+    if float(cfg.get("min_tp") or 0) > 0:
+        out.append(f"target {float(cfg['min_tp']):g}% or wider")
     for key, val, w in OPTIONS:
         if key == "coin_slices":
             continue
@@ -187,8 +193,11 @@ def deployable(cfg: dict) -> tuple[bool, str]:
     """Whether a room can run it today with its own switches."""
     extra = [w for key, val, w in OPTIONS if cfg.get(key) == val and key != "coin_slices"]
     if str(cfg.get("tp_rule")) in ("1.5x", "2x"):
-        # watcher_policy.passes_on knows ">", ">=", "<" and "any" only
+        # watcher_policy.passes_on knows ">", ">=", "=", "<" and "any" only
         extra.insert(0, TP_WORDS[str(cfg["tp_rule"])])
+    if int(cfg.get("window_days") or 30) not in (15, 30):
+        # a room judges on its own last 15 or 30 days (strategy_watcher.set_cfg)
+        extra.insert(0, f"a {int(cfg['window_days'])}-day window")
     if extra:
         return False, "needs a new switch before a room can run it: " + "; ".join(extra)
     if int(cfg.get("coin_slices") or COIN_SLICES) != COIN_SLICES:
@@ -209,6 +218,8 @@ def tp_ok(tp, sl, rule: str):
         return tp >= 2.0 * sl - 1e-9
     if rule == "<":
         return tp < sl
+    if rule == "=":
+        return np.abs(tp - sl) < 1e-6
     return tp > sl if rule == ">" else tp >= sl
 
 
@@ -225,6 +236,9 @@ def row_mask(meta: list[dict], cfg: dict, ctx: dict) -> np.ndarray:
     cap = float(cfg.get("max_sl") or 0)
     if cap > 0:
         ok &= sl <= cap + 1e-9
+    floor = float(cfg.get("min_tp") or 0)
+    if floor > 0:
+        ok &= tp >= floor - 1e-9
     if cfg.get("only_tf"):
         ok &= np.array([m["tf"] == cfg["only_tf"] for m in meta], bool)
     if cfg.get("kind") in ("crypto", "stocks"):

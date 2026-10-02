@@ -45,7 +45,15 @@ def main() -> int:
     # one machine's six hours, so a run is shards x chunks jobs, each the
     # rule sets rs.chunk_of names; the merge on the PC puts them back in order
     chunk, chunks = int(os.environ.get("CHUNK", "0")), int(os.environ.get("CHUNKS", "1"))
-    grid = rs.chunk_of(getattr(rs, f"scenarios{os.environ.get('SCEN', '5')}")(), chunk, chunks)
+    scen = os.environ.get("SCEN", "5")
+    if scen.startswith("file:"):
+        # a LIST of rule sets in this repo (prompt 4's rounds, Oct 02, 2026):
+        # tradingagents.room_strategies.write_round wrote it before dispatch
+        from tradingagents import room_strategies as rst
+        full = rst.read_round(scen[5:])
+    else:
+        full = getattr(rs, f"scenarios{scen}")()
+    grid = rs.chunk_of(full, chunk, chunks)
     out = Path("out")
     out.mkdir(exist_ok=True)
     t0 = time.time()

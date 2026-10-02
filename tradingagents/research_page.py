@@ -55,6 +55,7 @@ def _from_log(test: dict, log: list, start_ms: int, end_ms: int) -> tuple[dict, 
 
 # which target-vs-stop shapes a rule (or a write rule) lets through
 SHAPES = {">": {"wider"}, ">=": {"wider", "equal"}, "=": {"equal"},
+          "1.5x": {"wider"}, "2x": {"wider"},
           "<": {"narrower"}, "any": {"wider", "equal", "narrower"}}
 
 

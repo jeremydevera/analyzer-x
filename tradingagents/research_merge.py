@@ -48,11 +48,17 @@ def _days(e_ms: np.ndarray, x_ms: np.ndarray, p: np.ndarray, start: int, end: in
     return [{"pnl": round(float(v), 2)} for v in raw]
 
 
-def merge(name: str, art_dir: str, data_dir: str, log_top: int = 100) -> Path:
+def merge(name: str, art_dir: str, data_dir: str, log_top: int = 100,
+          reality: dict | None = None) -> Path:
     """`log_top`: only the best `log_top` rule sets on July-August (the fair
     ranking the page uses) keep their trade-by-trade September list — 144
     rule sets with every list made a 1.2 GB file, 8,064 would be ~60 GB.
-    0 keeps every list."""
+    0 keeps every list.
+
+    `reality` (prompt 4, Oct 02, 2026): Forecast v2's reality check; given,
+    every rule set also carries `p4` — its months, newest 15 days and worst
+    15-day stretch after it (room_strategies.measure) — and every WINNER its
+    whole trade list (`p4_trades`), so the page can re-measure any dates."""
     arts = sorted(Path(art_dir).rglob("research-*.json"))
     metas = [json.loads(a.read_text(encoding="utf-8")) for a in arts]
     packs = [np.load(a.with_suffix(".npz")) for a in arts]
@@ -86,11 +92,16 @@ def merge(name: str, art_dir: str, data_dir: str, log_top: int = 100) -> Path:
     total_rules = sum(len(metas[ch[0]]["rules"]) for ch in slices.values())
     rows = []
     done = 0
+    kept_ids: set = set()
+    if reality is not None:
+        from tradingagents import room_strategies as rst
+        kept_ids = {w["id"] for w in rst.kept()}
     for c_ in sorted(slices):
         items = slices[c_]
         for j in range(len(metas[items[0]]["rules"])):
             cfg = metas[items[0]]["rules"][j]["cfg"]
             out = {"id": rs.rule_id(cfg), "cfg": cfg}
+            both: list = []
             for part, (a, b) in periods.items():
                 e = np.concatenate([(packs[i][f"{j}_{part}_e"].astype(np.int64) + T0_MIN) * 60_000
                                     for i in items])
@@ -102,9 +113,24 @@ def merge(name: str, art_dir: str, data_dir: str, log_top: int = 100) -> Path:
                                    "open": sum(metas[i]["rules"][j][part]["open"] for i in items)},
                        "days": _days(e, x, p, a, b), "slots": [{"trades": trades}]}
                 out[part] = rs.score(res, end_ms=b)
+                if reality is not None:
+                    both.append(np.column_stack([e, x, p]) if len(e) else np.zeros((0, 3)))
             out["_at"] = (c_, j)
             # back to grid order: slices are dealt (watcher_research.chunk_of)
             out["_grid"] = j * int(metas[items[0]].get("chunks") or 1) + c_
+            if reality is not None:
+                from tradingagents import room_strategies as rst
+                t_all = np.concatenate(both) if both else np.zeros((0, 3))
+                out["p4"] = rst.measure(t_all, end, reality)
+                ok, why = rst.is_winner(out["p4"])
+                out["p4"]["winner"], out["p4"]["why"] = ok, why
+                # a winner's trades, and an already-KEPT one's even when it no
+                # longer wins (its row must show what it did, not zeros)
+                if ok or rst.sid(cfg) in kept_ids:
+                    # a plain list: the writer's fallback (rs._log_rows) is for
+                    # 4-column logs, and this is entry, exit, profit
+                    out["p4_trades"] = [[int(a), int(b), round(float(c), 4)] for a, b, c
+                                         in t_all[np.argsort(t_all[:, 1], kind="stable")]]
             rows.append(out)
             done += 1
             if done % 100 == 0 or done == total_rules:

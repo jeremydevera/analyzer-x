@@ -13,7 +13,7 @@
  * since — paged and checked by the server, never filtered here.
  */
 import { Fragment, useCallback, useState } from "react";
-import { api, dateBoxValue, fmtMoney, fmtWhen, Forecast, Forecasts, ForecastsLive, RoomBacktest, RoomGroup, RoomNow } from "@/lib/api";
+import { api, dateBoxValue, fmtMoney, fmtWhen, Forecast, Forecasts, ForecastsLive, RoomBacktest, RoomGroup, RoomNow, RoomStrategies } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
 
 const roomName = (id: string) => (id === "main" ? "Main" : `#${id}`);
@@ -740,6 +740,7 @@ export function RoomsAndBacktest() {
   useLiveRefresh(loadPrompts, 300_000);
   return (
     <>
+      <RoomStrategiesTable />
       {saved && saved.prompts.length > 0 && (
         <div className={card}>
           <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Prompts</h3>
@@ -756,5 +757,132 @@ export function RoomsAndBacktest() {
       {live && <RoomBacktestPanel rooms={live.rooms} />}
       {live && <RoomTable rooms={live.rooms} rules={live.rules} />}
     </>
+  );
+}
+
+/** ROOM STRATEGIES — every winner prompt 4 kept (operator, Oct 02, 2026: "when
+ *  i run that prompt i want you to look for all kinds of combination then add
+ *  it in room strategy"). Re-measured on the server over exactly the dates
+ *  chosen, from each winner's own stored trades; filtered, sorted and paged
+ *  there (tradingagents/room_strategies.table). Never deleted: a winner whose
+ *  newest 15 days lost says "stopped working". */
+function RoomStrategiesTable() {
+  const [from, setFrom] = useState(dateBoxValue(30));
+  const [to, setTo] = useState(dateBoxValue(0));
+  const [minWin, setMinWin] = useState("");
+  const [minProfit, setMinProfit] = useState("");
+  const [win, setWin] = useState("");
+  const [dep, setDep] = useState("");
+  const [find, setFind] = useState("");
+  const [sort, setSort] = useState("worst_month");
+  const [page, setPage] = useState(1);
+  const [d, setD] = useState<RoomStrategies | null>(null);
+  const [err, setErr] = useState("");
+  const load = useCallback(() => {
+    if (!from || !to) return;
+    api.roomStrategies({ from_s: dayStart(from), to_s: dayStart(to) + 86_399,
+      min_winrate: Number(minWin) || 0, min_profit: minProfit === "" ? null : Number(minProfit),
+      window: Number(win) || 0, deployable: dep, find, sort, page })
+      .then((x) => { setD(x); setErr(""); })
+      .catch((e) => setErr(String(e?.message ?? e)));
+  }, [from, to, minWin, minProfit, win, dep, find, sort, page]);
+  useLiveRefresh(load, 60_000, [load]);
+  const sel = "rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-theme-xs dark:border-gray-700 dark:text-gray-300";
+  const th = "px-2 py-1.5 text-start font-medium whitespace-nowrap";
+  const td = "px-2 py-1.5 whitespace-nowrap";
+  const reset = () => setPage(1);
+  const quick = (back: number) => { setFrom(dateBoxValue(back)); setTo(dateBoxValue(0)); reset(); };
+  return (
+    <div className={card}>
+      <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Room strategies</h3>
+      <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
+        Every winner prompt 4 found and kept, never deleted. A winner made money after the reality check in every
+        complete month and in its newest 15 days. The numbers below are measured over exactly the dates you pick.
+      </p>
+      <div className="mt-3 flex flex-wrap items-end gap-2 text-theme-xs text-gray-600 dark:text-gray-300">
+        <label className="flex flex-col gap-1">from<input type="date" className={sel} value={from} max={to} onChange={(e) => { setFrom(e.target.value); reset(); }} /></label>
+        <label className="flex flex-col gap-1">to<input type="date" className={sel} value={to} min={from} onChange={(e) => { setTo(e.target.value); reset(); }} /></label>
+        <button type="button" className={btn} onClick={() => quick(15)}>last 15 days</button>
+        <button type="button" className={btn} onClick={() => quick(30)}>last 30 days</button>
+        <label className="flex flex-col gap-1">min win %<input className={`${sel} w-20`} inputMode="decimal" value={minWin} onChange={(e) => { setMinWin(e.target.value); reset(); }} /></label>
+        <label className="flex flex-col gap-1">min profit $<input className={`${sel} w-20`} inputMode="decimal" value={minProfit} onChange={(e) => { setMinProfit(e.target.value); reset(); }} /></label>
+        <label className="flex flex-col gap-1">judged on
+          <select className={sel} value={win} onChange={(e) => { setWin(e.target.value); reset(); }}>
+            <option value="">any days</option><option value="7">7 days</option><option value="15">15 days</option><option value="30">30 days</option>
+          </select></label>
+        <label className="flex flex-col gap-1">a room can run it
+          <select className={sel} value={dep} onChange={(e) => { setDep(e.target.value); reset(); }}>
+            <option value="">all</option><option value="yes">yes</option><option value="no">needs a new switch</option>
+          </select></label>
+        <label className="flex flex-col gap-1">sort
+          <select className={sel} value={sort} onChange={(e) => { setSort(e.target.value); reset(); }}>
+            <option value="worst_month">worst month (best first)</option><option value="corrected">profit after reality check</option>
+            <option value="profit">profit</option><option value="winrate">win rate</option><option value="found">newest found</option>
+          </select></label>
+        <label className="flex flex-col gap-1">find by id<input className={`${sel} w-28`} value={find} placeholder="#ID" onChange={(e) => { setFind(e.target.value); reset(); }} /></label>
+      </div>
+      {err && <p className="mt-3 text-theme-xs text-error-500">could not read the room strategies — {err}</p>}
+      {d && (
+        <>
+          <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
+            {d.matched.toLocaleString()} of {d.kept.toLocaleString()} kept · {fmtWhen(d.from)} to {fmtWhen(d.to)} · ${d.margin} a trade at {d.leverage}x
+            {d.reality.took != null ? ` · reality check: practice takes ${(100 * d.reality.took).toFixed(0)}% of the backtest's trades, ${fmtMoney(-(d.reality.gap ?? 0))} a trade worse` : ""}
+          </p>
+          {d.kept === 0 ? (
+            <p className="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">No winner kept yet — run prompt 4 and its winners land here.</p>
+          ) : (
+            <div className="mt-2 overflow-x-auto">
+              <table className="w-full min-w-[1200px] text-theme-xs">
+                <thead><tr className="border-b border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                  {["ID", "Rules", "Found", "Trades", "A day", "Won / lost", "Win rate", "Break-even", "Profit",
+                    "After reality check", "Worst day", "Worst losing run", "Most open", "Money needed", "Worst month", "Room can run it"].map((h) => <th key={h} className={th}>{h}</th>)}
+                </tr></thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                  {d.rows.map((r) => (
+                    <tr key={r.id}>
+                      <td className={td}><CopyId id={r.id} /></td>
+                      <td className="max-w-[320px] px-2 py-1.5 text-gray-700 dark:text-gray-300">{r.words}
+                        {!r.still_works && <span className="ml-1 rounded bg-warning-50 px-1 text-[10px] text-warning-700 dark:bg-warning-500/10">stopped working</span>}</td>
+                      <td className={td}>{r.found_by} · {fmtWhen(r.found_at)}</td>
+                      <td className={td}>{r.trades.toLocaleString()}</td>
+                      <td className={td}>{r.per_day}</td>
+                      <td className={td}>{r.wins.toLocaleString()} / {r.losses.toLocaleString()}</td>
+                      <td className={td}>{pct(r.winrate)}</td>
+                      <td className={td}>{pct(r.break_even)}</td>
+                      <td className={`${td} font-semibold ${tone(r.profit)}`}>{fmtMoney(r.profit)}</td>
+                      <td className={`${td} ${tone(r.corrected)}`}>{fmtMoney(r.corrected)}</td>
+                      <td className={`${td} ${tone(r.worst_day)}`}>{fmtMoney(r.worst_day)}</td>
+                      <td className={td}>{r.worst_run_n ? `${fmtMoney(r.worst_run)} over ${r.worst_run_n}` : "—"}</td>
+                      <td className={td}>{r.max_open}</td>
+                      <td className={td}>{fmtMoney(r.money_needed)}</td>
+                      <td className={`${td} ${tone(r.worst_month)}`}>{fmtMoney(r.worst_month)}</td>
+                      <td className={td}>{r.deployable ? "yes" : <span title={r.deploy_why} className="text-gray-400">needs a new switch</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {d.pages > 1 && (
+            <div className="mt-2 flex items-center gap-2 text-theme-xs text-gray-500">
+              <button type="button" className={btn} disabled={d.page <= 1} onClick={() => setPage(d.page - 1)}>‹ prev</button>
+              <span>page {d.page} of {d.pages}</span>
+              <button type="button" className={btn} disabled={d.page >= d.pages} onClick={() => setPage(d.page + 1)}>next ›</button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** A rule set's id with a copy button (#ID, the id alone on the clipboard). */
+function CopyId({ id }: { id: string }) {
+  const [ok, setOk] = useState(false);
+  return (
+    <button type="button" title="copy the id" className="font-mono text-gray-800 hover:text-brand-600 dark:text-white/90"
+      onClick={() => { navigator.clipboard?.writeText(id).then(() => { setOk(true); setTimeout(() => setOk(false), 1200); }).catch(() => {}); }}>
+      #{id}{ok ? " ✓" : ""}
+    </button>
   );
 }

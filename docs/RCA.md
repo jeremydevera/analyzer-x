@@ -232,7 +232,8 @@ after every restart and cost the server 14 s of work a minute while open.
 
 **FIX** — this commit (and bf420a5b for the arrays and the per-range memory).
 
-**GUARD** — the two tests above.
+**GUARD** — `tests/test_prompt4_room_strategies.py::test_the_route_uses_the_forecast_pages_own_reality_check`
+and `::test_the_table_is_remembered_until_the_store_changes`.
 
 ---
 

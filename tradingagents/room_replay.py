@@ -71,6 +71,15 @@ VIEWS = ("days", "events", "slots", "trades", "practice", "reconcile")
 CAND_COLS = ("id", "coin", "tf", "signal", "th", "sl", "tp", "trades", "wins",
              "winrate", "profit", "cost_of_tp", "gate", "t15", "w15")
 GROUPS = ("preset", "sep25", "sep27ml")       # every other signal is "classic"
+# The screen asks no floor (operator, Oct 03, 2026: "what's this textbox i
+# dont need this, i only need to input date and id of the room"): the API
+# nominates rows within this many points of the room's own switch-on line.
+# Measured on #6B08FF64 (80%): 70 nominated 4,801 rows; a fixed 70 for a 70%
+# room would have been no floor below its line at all.
+FLOOR_BELOW = 10.0
+# Bumped when a saved replay would answer differently for the same range:
+# 2 = the room's own switch-ons are always candidates (Oct 03, 2026).
+RESULT_TAG = "r2"
 
 
 # --------------------------------------------------------------- the paths
@@ -360,6 +369,88 @@ def candidates(cfg: dict, *, store=None, limit: int = 0,
     if cache:
         _write_json(cache, {"cands": out, "info": info}, loud=False)
     return out, info
+
+
+def auto_floor(cfg: dict) -> float:
+    """The nomination floor the screen's runs use: FLOOR_BELOW points under
+    the room's own switch-on line."""
+    return max(0.0, float(cfg["on_winrate"]) - FLOOR_BELOW)
+
+
+def room_picks(room: str, end_ms: int, *, store=None) -> tuple[list, dict]:
+    """Every strategy the room's OWN watcher switched on up to `end_ms`, as
+    candidates — whatever its 30-day win rate. A 15-day room switches on rows
+    the floor cannot see: #DS598KQV APHSTOCK 1h ibs was switched on in
+    #6B08FF64 at Oct 01, 2026 12:44pm on 24 of 29 trades in 15 days while its
+    30-day win rate was 69.49%, under the 70% floor, so the first replay
+    could never have matched that practice trade (14 of the room's 204
+    switch-ons that day were missing). Looked up in each pair's own file by
+    the id the watcher wrote (the v2 table has no index on `id`)."""
+    from tradingagents import backtest_report as br
+    from tradingagents import market_sweep as ms
+    from tradingagents import profiles
+    from tradingagents import strategy_watcher as sw
+
+    store = store or stores.V2
+    try:
+        with profiles.using(room):
+            path = Path(sw._log_path())
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        lines = []
+    want: dict = {}
+    for line in lines:
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(e, dict) or e.get("action") != "on" or e.get("mode") != "act":
+            continue
+        try:
+            at_ms = float(e.get("at") or 0) * 1000
+        except (TypeError, ValueError):
+            continue
+        rid = str(e.get("id") or "").lstrip("#").upper()
+        if rid and e.get("coin") and e.get("tf") and at_ms <= end_ms:
+            want.setdefault(rid, e)
+    by_pair: dict = collections.defaultdict(dict)
+    for rid, e in want.items():
+        coin = str(e["coin"]).removesuffix("_USDT")
+        by_pair[(coin, str(e["tf"]))][rid] = e
+    out: list = []
+    missing: list = []
+    for (coin, tf), items in sorted(by_pair.items()):
+        try:
+            rows = ms.pair_rows(coin, tf, root=str(store.home)) or []
+        except Exception:                                      # noqa: BLE001
+            rows = []
+        found: dict = {}
+        for r in rows:
+            if (r.get("sizing") or "flat") != "flat":
+                continue
+            try:
+                sig, tp, sl = str(r["signal"]), float(r["tp"]), float(r["sl"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            # cheap test first: a pair file holds every barrier of every signal
+            if not any(str(e.get("signal")) == sig and _same(e.get("tp"), tp)
+                       and _same(e.get("sl"), sl) for e in items.values()):
+                continue
+            rid = br.row_code(coin, tf, sig, float(r.get("th") or 0), sl, tp, "flat", res="1m")
+            if rid in items and rid not in found:
+                found[rid] = _cand_of({**r, "coin": coin, "tf": tf,
+                                       "trades": r.get("trades") or 0,
+                                       "wins": r.get("wins") or 0})
+        out += [found[k] for k in sorted(found)]
+        missing += sorted(set(items) - set(found))
+    return out, {"count": len(want), "found": len(out), "missing": missing}
+
+
+def _same(a, b) -> bool:
+    try:
+        return abs(float(a) - float(b)) < 1e-9
+    except (TypeError, ValueError):
+        return False
 
 
 def _search(cfg: dict, *, store, db: Path, limit: int, min_wr30) -> tuple[list, dict]:
@@ -805,7 +896,15 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
                 f"many trade lists takes days on this PC: {ask}, or force it")
     say("candidates", 0, 0)
     cands, cinfo = candidates(cfg, store=store, limit=limit, min_wr30=min_wr30)
-    sched = wr.live_schedule(start_ms, end_ms, bool(cfg.get("raw")))
+    # the room's own switch-ons are ALWAYS replayed, whatever the floor: the
+    # point of the page is to check the replay against the room's practice
+    picks, pinfo = room_picks(room, end_ms, store=store)
+    have = {c["id"] for c in cands}
+    added = [c for c in picks if c["id"] not in have]
+    cands = cands + added
+    cinfo = {**cinfo, "searched": cinfo.get("count", 0), "count": len(cands),
+             "room_picks": {**pinfo, "added": len(added)}}
+    sched =wr.live_schedule(start_ms, end_ms, bool(cfg.get("raw")))
     on_checks = [a for a, _f, o in sched if o]
     meta = {c["id"]: c for c in cands}
     combos: list = []
@@ -1113,12 +1212,22 @@ def _notes(room, cfg, cinfo, listed, no_list, cov, full_from, pr, cap, start_ms,
                       f"check, so the floor misses about "
                       f"{100 * a['would_pass'] / a['sampled']:.1f}% of them."
                       if a.get("sampled") else " What it left out was not measured."))
-    out.append(f"Candidates: {cinfo.get('count', 0):,} Backtest v2 rows could pass the line at "
+    out.append(f"Candidates: {cinfo.get('searched', cinfo.get('count', 0)):,} Backtest v2 rows "
+               f"could pass the line at "
                f"some moment — at least {cfg['min_trades']} trades and "
                f"{wins_floor(cfg)} wins in the row's last 30 days, TP {cfg.get('tp_rule')} SL, "
                f"stop {float(cfg.get('max_sl') or 0):g}% or tighter, cost under "
                f"{cost_block_pct():g}% of the target. A strategy that was strong only "
                f"before its row's 30 days cannot be nominated.")
+    p = cinfo.get("room_picks") or {}
+    if p.get("count"):
+        out.append(f"The room's own switch-ons are always replayed: {p['count']:,} strategies "
+                   f"its watcher switched on by the end of the range, {p.get('added', 0):,} of "
+                   f"them outside the search above"
+                   + (f"; {len(p['missing']):,} could not be found in this PC's Backtest v2 "
+                      f"files ({', '.join('#' + m for m in p['missing'][:8])}"
+                      f"{' …' if len(p['missing']) > 8 else ''}), so they cannot be replayed"
+                      if p.get("missing") else "") + ".")
     if cov["pc_first"]:
         out.append(f"The trade lists are this PC's 1-minute candles, which begin "
                    f"{_when(cov['pc_first'])}; {n:,} candidates have a list.")
@@ -1282,7 +1391,7 @@ REASONS = {
 # ------------------------------------------------------------ saved results
 def range_path(room: str, from_day: str, to_day: str, min_wr30: float | None = None) -> Path:
     """A floored run is a different answer and is kept apart from the exact one."""
-    tail = "" if min_wr30 is None else f"_wr{float(min_wr30):g}"
+    tail = ("" if min_wr30 is None else f"_wr{float(min_wr30):g}") + f"_{RESULT_TAG}"
     return room_dir(room) / "by-range" / f"{from_day}_{to_day}{tail}.json"
 
 

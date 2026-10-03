@@ -581,7 +581,9 @@ def test_a_measured_range_pages_ten_at_a_time_on_the_server(room):
 def test_the_api_route_serves_the_replay(room):
     from tradingagents import api
 
-    res = rr.replay(ROOM, "2026-10-01", "2026-10-02", now=_ms(2026, 10, 2, 18) / 1000)
+    # the route asks the room's automatic floor (the screen sends none)
+    res = rr.replay(ROOM, "2026-10-01", "2026-10-02", now=_ms(2026, 10, 2, 18) / 1000,
+                    min_wr30=rr.auto_floor(rr.rules_for(ROOM)))
     rr.save(res)
     got = api.room_replay_route(ROOM, _ms(2026, 10, 1) / 1000, _ms(2026, 10, 2) / 1000 + 86399,
                                 view="practice")
@@ -631,3 +633,59 @@ def test_the_first_note_warns_of_hindsight_with_the_fair_side_by_side():
             "12:00am) the replay made +46.44 and the practice account -13.24.") in note
     assert "2026-10" not in note, "dates on screen read like Oct 01, 2026, never a key"
     assert rr._hindsight([], {}).startswith("HINDSIGHT")
+
+
+# ------------------------- 6. the room's own switch-ons, and no floor box
+def test_the_rooms_own_switch_ons_are_candidates_whatever_the_floor(v2, tmp_path, monkeypatch):
+    """Oct 03, 2026: #DS598KQV APHSTOCK 1h was switched on in #6B08FF64 at
+    Oct 01, 2026 12:44pm (24 of 29 in 15 days) with a 30-day win rate of
+    69.49% — under the 70% floor, so the replay never had it and could never
+    match its practice trades. The room's own switch-ons are read from its
+    watcher log and looked up in the pair files by the id the watcher wrote."""
+    from tradingagents import profiles, strategy_watcher as sw
+
+    monkeypatch.setattr(sw, "LOG", tmp_path / "strategy_watcher.jsonl")
+    with profiles.using(ROOM):
+        log = sw._log_path()
+    hit = _cand(1.0)
+    end = _ms(2026, 10, 2, 23, 59)
+    ev = [{"at": _ms(2026, 10, 1, 12, 44) / 1000, "mode": "act", "action": "on",
+           "id": hit["id"], "coin": "XPIN", "tf": "1h", "signal": "ote", "tp": 1.0, "sl": 3.0},
+          {"at": _ms(2026, 10, 1, 12, 44) / 1000, "mode": "act", "action": "on",
+           "id": "ZZZZZZZZ", "coin": "XPIN", "tf": "1h", "signal": "ote", "tp": 9.0, "sl": 3.0},
+          {"at": _ms(2026, 10, 1, 12, 44) / 1000, "mode": "preview", "action": "on",
+           "id": _cand(1.2)["id"], "coin": "XPIN", "tf": "1h", "signal": "ote",
+           "tp": 1.2, "sl": 3.0},
+          {"at": end / 1000 + 3600, "mode": "act", "action": "on",
+           "id": _cand(1.2)["id"], "coin": "XPIN", "tf": "1h", "signal": "ote",
+           "tp": 1.2, "sl": 3.0}]
+    log.write_text("".join(json.dumps(e) + "\n" for e in ev) + "not json\n", encoding="utf-8")
+    picks, info = rr.room_picks(ROOM, end, store=v2)
+    assert [c["id"] for c in picks] == [hit["id"]], \
+        "a preview is not a switch-on, and one after the range is not in it"
+    assert picks[0]["tp"] == 1.0 and picks[0]["th"] == 0.0 and picks[0]["group"] == "classic"
+    assert info == {"count": 2, "found": 1, "missing": ["ZZZZZZZZ"]}, \
+        "an id the files do not hold is NAMED, never dropped quietly"
+
+
+def test_the_screen_asks_only_a_room_and_dates(monkeypatch):
+    """Operator, Oct 03, 2026: "what's this textbox i dont need this, i only
+    need to input date and id of the room strategy that's it"."""
+    from pathlib import Path
+
+    from tradingagents import api
+
+    src = (Path(__file__).resolve().parents[1] / "webapp" / "src" / "components"
+           / "forecast" / "RoomForecasts.tsx").read_text(encoding="utf-8")
+    assert "30-day win %" not in src and "setFloor" not in src
+    client = (Path(__file__).resolve().parents[1] / "webapp" / "src" / "lib"
+              / "api.ts").read_text(encoding="utf-8")
+    assert 'p.set("min_winrate30"' not in client
+    got = {}
+    monkeypatch.setattr(rr, "view", lambda *a, **k: got.update(k) or {"state": "x"})
+    api.room_replay_route(room=ROOM, from_s=_ms(2026, 9, 1) / 1000,
+                          to_s=_ms(2026, 10, 2) / 1000)
+    assert got["min_wr30"] == rr.rules_for(ROOM)["on_winrate"] - rr.FLOOR_BELOW
+    assert rr.range_path(ROOM, "2026-09-01", "2026-10-02", 70.0).name \
+        == f"2026-09-01_2026-10-02_wr70_{rr.RESULT_TAG}.json", \
+        "a replay saved before the room's switch-ons were candidates is never served"

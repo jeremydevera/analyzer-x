@@ -1330,6 +1330,10 @@ def room_replay_route(room: str, from_s: float, to_s: float, view: str = "days",
     if to_s < from_s:
         raise HTTPException(400, "the end of the range is before its start")
     try:
+        if min_winrate30 is None:
+            # the screen asks only a room and dates (operator, Oct 03, 2026);
+            # the floor is the room's own line less FLOOR_BELOW
+            min_winrate30 = _rr.auto_floor(_rr.rules_for(room))
         return _rr.view(room, from_s, to_s, what=view, page=page, per=_f2a.PER_PAGE,
                         day=day, rid=id.strip().lstrip("#").upper(), start=start,
                         refresh=refresh, min_wr30=min_winrate30)

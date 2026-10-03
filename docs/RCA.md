@@ -172,6 +172,70 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-03-A — "Backtest a room" left out strategies the room really switched on, so it could never match the room's practice trades
+
+**CEO**
+
+* What you saw: a "30-day win %" box set to 70 on Backtest a room, and a
+  replay of #6B08FF64 that agreed with only 11 of your 114 practice trades
+  on Oct 01–02, 2026.
+* Why: the replay only looked at strategies that won 70% over 30 days, but a
+  15-day room switches on strategies that won 80% over the last 15 days, and
+  some of those were under 70% over 30 — so the replay never had them.
+* What stops it now: the box is gone, and every strategy your room switched on
+  is always in the replay, whatever its 30-day number.
+
+**DEV**
+
+* `tradingagents/room_replay.py` `replay()` → `candidates(min_wr30=)` →
+  `candidate_sql`'s `+winrate >= ?`: the only source of candidates was the
+  30-day floor; the room's own `strategy_watcher.jsonl` switch-ons were never
+  read. The floor came from a screen box (`RoomForecasts.tsx`, default 70).
+* Invariant broken: **a replay that is compared with a room's practice must
+  contain every strategy that room really ran** — `room_picks()` reads them
+  by id and `replay()` always adds them; the floor is `auto_floor(cfg)` (the
+  room's line less `FLOOR_BELOW`), set by the API, not typed.
+* Guard: `tests/test_backtest_a_room_replays_its_rules.py::test_the_rooms_own_switch_ons_are_candidates_whatever_the_floor`
+  and `::test_the_screen_asks_only_a_room_and_dates`.
+
+**SAW** — the operator, Oct 03, 2026 4:43am, of the box: *"what's this textbox
+i dont need this, i only need to input date and id of the room strategy that's
+it, and you will replay it so that i can check if its matches my room live
+demo trades"*.
+
+**TIMELINE**
+
+1. `Oct 01, 2026 12:44pm` — #6B08FF64's watcher switches on 202 strategies
+   over Oct 01–02, among them #DS598KQV APHSTOCK 1h ibs (24 of 29 in 15 days;
+   69.49% over 30), #NQGPE4WL FLEXSTOCK 15m bb20 (67.74%) and #N7LWELXY
+   ADMSTOCK 15m willr14 (69.64%).
+2. `Oct 03, 2026 3:13am` — the replay of Sep 01–Oct 02 at the 70% floor:
+   4,801 candidates, +6,947.20; its audit of 400 random rows under the floor
+   found 0 that would pass — but the room's own picks were not in that sample.
+3. `Oct 03, 2026 ~5:00am` — checking it against the room: of 204 switch-ons
+   on Oct 01–02, the replay had 90 on at that moment; 114 were not, and 14 of
+   those were not candidates at all (all three above). 11 trades matched.
+4. Same session — fixed here: the room's 202 switch-ons are read in 10.8 s
+   from the pair files, all 202 found.
+
+**ROOT CAUSE** — the candidate list was built from one 30-day number only,
+and a 15-day room's own choices can sit below it; nothing put the room's
+real choices into the replay that is compared with them.
+
+**WHY IT WAS NOT CAUGHT** — the floor's audit sampled RANDOM rows under it,
+and the room's few hundred picks are a sliver of millions, so "0 of 400"
+read as "the floor misses nothing". Every test drove the replay with a
+fixture whose candidates were all above the floor; none asked whether the
+room's own switch-ons were in the list being compared with them.
+
+**COST** — none in money (practice only). One misleading result on screen
+(+6,947.20 against -13.24) for about two hours.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_backtest_a_room_replays_its_rules.py::test_the_rooms_own_switch_ons_are_candidates_whatever_the_floor`,
+`::test_the_screen_asks_only_a_room_and_dates`.
+
 ## RCA-2026-10-02-H — every switch-on and switch-off line in the three 15-day rooms said "the last 30 days" over a 15-day count
 
 **CEO**

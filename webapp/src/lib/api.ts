@@ -1173,7 +1173,10 @@ export type RoomReplay = {
   cfg?: { on_winrate: number; off_winrate: number; min_trades: number; tp_rule: string;
     max_sl: number; window_days: number; raw: boolean };
   margin?: number; leverage?: number; notes?: string[];
-  candidates?: { count: number; min_wr30?: number | null; audit?: { sampled: number; would_pass: number } };
+  candidates?: { count: number; searched?: number; min_wr30?: number | null;
+    audit?: { sampled: number; would_pass: number };
+    /** the strategies the room's own watcher switched on — always replayed */
+    room_picks?: { count: number; found: number; added: number; missing: string[] } };
   lists?: { with_list: number; ever_pass: number };
   summary?: { backtest: RRSide & { switched_on: number; switched_off: number; ids: number; open: number };
     practice: RRSide & { from_ms?: number | null; slots?: number; slots_switched_off?: number };
@@ -1304,12 +1307,11 @@ export const api = {
   // Backtest a room = a replay of its own rules, day by day (Oct 02, 2026);
   // paged and filtered by the server, ten a page
   roomReplay: (q: { room: string; from_s: number; to_s: number; view?: string; page?: number;
-    day?: string; id?: string; min_winrate30?: number | null; refresh?: boolean }) => {
+    day?: string; id?: string; refresh?: boolean }) => {
     const p = new URLSearchParams({ room: q.room, from_s: String(Math.floor(q.from_s)),
       to_s: String(Math.floor(q.to_s)), view: q.view ?? "days", page: String(q.page ?? 1) });
     if (q.day) p.set("day", q.day);
     if (q.id) p.set("id", q.id);
-    if (q.min_winrate30 != null) p.set("min_winrate30", String(q.min_winrate30));
     if (q.refresh) p.set("refresh", "true");
     return get<RoomReplay>(`/api/rooms/replay?${p}`);
   },

@@ -588,8 +588,7 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
   const [room, setRoom] = useState(live[0]?.id ?? "main");
   const [from, setFrom] = useState(dateBoxValue(32));
   const [to, setTo] = useState(dateBoxValue(1));
-  const [floor, setFloor] = useState("70");
-  const [asked, setAsked] = useState<{ room: string; from: string; to: string; floor: number | null } | null>(null);
+  const [asked, setAsked] = useState<{ room: string; from: string; to: string } | null>(null);
   const [page, setPage] = useState(1);
   const [day, setDay] = useState("");
   const [evPage, setEvPage] = useState(1);
@@ -598,8 +597,7 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
   const [ev, setEv] = useState<RoomReplay | null>(null);
   const [tr, setTr] = useState<RoomReplay | null>(null);
   const [err, setErr] = useState("");
-  const base = asked && { room: asked.room, from_s: dayStart(asked.from), to_s: dayStart(asked.to) + 86_399,
-    min_winrate30: asked.floor };
+  const base = asked && { room: asked.room, from_s: dayStart(asked.from), to_s: dayStart(asked.to) + 86_399 };
   const load = useCallback(() => {
     if (!base) return;
     api.roomReplay({ ...base, view: "days", page })
@@ -617,7 +615,7 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
   useLiveRefresh(loadDay, 60_000, [loadDay]);
   const go = () => {
     setPage(1); setDay(""); setEv(null); setTr(null); setD(null);
-    setAsked({ room, from, to, floor: floor.trim() === "" ? null : Number(floor) });
+    setAsked({ room, from, to });
   };
   const again = () => base && api.roomReplay({ ...base, view: "days", page: 1, refresh: true })
     .then(setD).catch((e) => setErr(String(e?.message ?? e)));
@@ -661,9 +659,6 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
         <label className="flex flex-col gap-1">to
           <input type="date" className={sel} value={to} min={from} onChange={(e) => setTo(e.target.value)} />
         </label>
-        <label className="flex flex-col gap-1">only strategies whose own 30-day win % is at least
-          <input className={`${sel} w-24`} inputMode="decimal" value={floor} onChange={(e) => setFloor(e.target.value)} />
-        </label>
         <button type="button" disabled={!from || !to} onClick={go}
           className="rounded-lg bg-brand-500 px-4 py-1.5 font-medium text-white hover:bg-brand-600 disabled:opacity-50">
           Replay
@@ -687,7 +682,10 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
             off under {c.off_winrate}%, {c.min_trades}+ trades, TP wider than SL, stop {c.max_sl}% or tighter ·
             ${d.margin} a trade at {d.leverage}x (${(d.margin ?? 5) * (d.leverage ?? 20)} of coin) ·
             {" "}{(d.candidates?.count ?? 0).toLocaleString()} strategies tested
-            {d.candidates?.min_wr30 != null ? ` (those with a 30-day win rate of ${d.candidates.min_wr30}% or more)` : ""} ·
+            {d.candidates?.min_wr30 != null
+              ? ` (${(d.candidates.searched ?? d.candidates.count).toLocaleString()} with a 30-day win rate of ${d.candidates.min_wr30}% or more`
+                + `${d.candidates.room_picks?.added ? `, plus ${d.candidates.room_picks.added.toLocaleString()} the room switched on itself` : ""})`
+              : ""} ·
             {" "}{s.backtest.switched_on.toLocaleString()} switched on, {s.backtest.switched_off.toLocaleString()} off · measured {d.computed_at ? fmtWhen(d.computed_at) : "—"}
             {d.run?.running ? " · being measured again" : ""}
             <button type="button" className={`${btn} ml-2`} onClick={again}>measure again</button>

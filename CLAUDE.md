@@ -1297,7 +1297,7 @@ the build prompt word for word and the measured first run:
 `docs/FORECAST-V2.md`. Auto Trade → Forecast (`/forecast-v2`, ONE page since
 Oct 02, 2026: *"can i merge forecast to forecast v2 ... what matters to me is this
 prompt and ability to backtest a room strategy"*) — Forecast v2, then the prompts
-with their copy buttons, Backtest a room and the Rooms table
+with their copy buttons and Backtest a room (no Rooms table since Oct 03, 2026)
 (`RoomForecasts.RoomsAndBacktest`). The first Forecast page is off the menu,
 still at `/forecast`.
 

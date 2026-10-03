@@ -95,7 +95,13 @@ def test_a_room_without_a_tab_and_a_bad_sort_are_refused(room):
 
 def test_the_screen_has_the_table_and_the_backtest_and_asks_the_server():
     src = (ROOT / "webapp/src/components/forecast/RoomForecasts.tsx").read_text(encoding="utf-8")
-    assert "<RoomTable rooms={live.rooms} rules={live.rules} />" in src
+    # the merged Forecast page has NO Rooms table (operator, Oct 03, 2026
+    # 6:30am: "remove the rooms section on very bottom i dont need it"); the
+    # first Forecast page keeps it
+    merged = src.split("export function RoomsAndBacktest")[1].split("\nfunction ")[0]
+    assert "<RoomTable" not in merged and "<RoomBacktestPanel rooms={live.rooms} />" in merged
+    first = src.split("export default function RoomForecasts")[1].split("\nfunction ")[0]
+    assert "<RoomTable rooms={live.rooms} rules={live.rules} />" in first
     assert "<RoomBacktestPanel rooms={live.rooms} />" in src
     assert "<RoomCard r={r} rules={rules} />" in src, "a row opens the full card"
     # SINCE OCT 03, 2026 the card is the room's own rules replayed day by day

@@ -700,6 +700,8 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
         <div className="mt-3 rounded-xl border border-gray-200 p-3 text-theme-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
           <b>{RR_STATE[d.state] ?? d.state}</b> — {name(d.room)} {d.from_day} to {d.to_day}
           {d.state === "measuring" && d.run?.running ? <RunProgress run={d.run} /> : <>: {d.why}</>}
+          {/* busy: ANOTHER range is measuring — its own bar, named by its dates */}
+          {d.state === "busy" && d.run?.running && <RunProgress run={d.run} />}
           {d.state === "failed" && (
             <button type="button" className={`${btn} ml-2`} onClick={again}>measure it again</button>
           )}

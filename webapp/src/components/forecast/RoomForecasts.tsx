@@ -683,15 +683,23 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
       {d?.state === "ready" && s && c && (
         <>
           <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
-            {name(d.room)} · {d.from_day} to {d.to_day} · its rules: switch on at {c.on_winrate}%+ over the last {c.window_days} days,
+            {name(d.room)} · {d.start_ms ? dayOf(d.start_ms) : d.from_day} to {d.end_ms ? dayOf(d.end_ms) : d.to_day} · its rules: switch on at {c.on_winrate}%+ over the last {c.window_days} days,
             off under {c.off_winrate}%, {c.min_trades}+ trades, TP wider than SL, stop {c.max_sl}% or tighter ·
             ${d.margin} a trade at {d.leverage}x (${(d.margin ?? 5) * (d.leverage ?? 20)} of coin) ·
             {" "}{(d.candidates?.count ?? 0).toLocaleString()} strategies tested
             {d.candidates?.min_wr30 != null ? ` (those with a 30-day win rate of ${d.candidates.min_wr30}% or more)` : ""} ·
-            {" "}{s.backtest.switched_on} switched on, {s.backtest.switched_off} off · measured {d.computed_at ? fmtWhen(d.computed_at) : "—"}
+            {" "}{s.backtest.switched_on.toLocaleString()} switched on, {s.backtest.switched_off.toLocaleString()} off · measured {d.computed_at ? fmtWhen(d.computed_at) : "—"}
             {d.run?.running ? " · being measured again" : ""}
             <button type="button" className={`${btn} ml-2`} onClick={again}>measure again</button>
           </p>
+          {/* THE HINDSIGHT NOTE GOES BESIDE THE TOTALS, never under the
+              tables: it changes how every total reads (Oct 03, 2026,
+              #6B08FF64: replay +6,947.20, practice -13.24) */}
+          {d.notes?.[0]?.startsWith("HINDSIGHT") && (
+            <p className="mt-2 rounded-xl border border-warning-300 bg-warning-50 p-3 text-theme-xs text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-400">
+              {d.notes[0]}
+            </p>
+          )}
           <div className="mt-2 overflow-x-auto">
             <table className="w-full min-w-[820px] text-theme-xs">
               <thead><tr className="border-b border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400">
@@ -795,7 +803,7 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
           )}
           {(d.notes?.length ?? 0) > 0 && (
             <ul className="mt-3 list-disc pl-5 text-[11px] text-gray-500 dark:text-gray-400">
-              {d.notes!.map((n, i) => <li key={i}>{n}</li>)}
+              {d.notes!.filter((n) => !n.startsWith("HINDSIGHT")).map((n, i) => <li key={i}>{n}</li>)}
             </ul>
           )}
         </>

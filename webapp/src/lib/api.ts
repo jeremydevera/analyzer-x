@@ -1168,7 +1168,9 @@ export type RoomReplay = {
   state: "ready" | "measuring" | "busy" | "waiting" | "failed" | "not_measured";
   room: string; from_day: string; to_day: string; why?: string;
   run?: { running?: boolean; phase?: string; done?: number; total?: number; error?: string;
-    room?: string; from_day?: string; to_day?: string; updated_at?: number };
+    room?: string; from_day?: string; to_day?: string; updated_at?: number;
+    /** which step of how many, in words; the step's percent (null: no count) */
+    step?: number; steps?: number; step_words?: string; pct?: number | null; elapsed_s?: number };
   name?: string; computed_at?: number; start_ms?: number; end_ms?: number; full_from_ms?: number | null;
   cfg?: { on_winrate: number; off_winrate: number; min_trades: number; tp_rule: string;
     max_sl: number; window_days: number; raw: boolean };

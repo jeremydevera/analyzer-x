@@ -1508,6 +1508,35 @@ def disk_job() -> str:
     return ""
 
 
+# Every step a run goes through, in order, with the words the screen prints
+# (operator, Oct 03, 2026: "can you show loading bar on whats percentage so i
+# know the progress, in mobile i only see 'being measured' only"). The phase
+# names are what `replay()` passes to its progress writer.
+PHASES = (("starting", "starting up"),
+          ("estimating", "counting the strategies to check"),
+          ("candidates", "finding the strategies that could pass the room's rules"),
+          ("trade lists", "reading each strategy's own backtest trades"),
+          ("audit", "spot-checking strategies under the cut-off"),
+          ("replay", "replaying the room day by day"),
+          ("practice", "reading your practice trades"))
+
+
+def _with_step(st: dict) -> dict:
+    """The run's step (1-based, of `steps`), its words, how far into it (a
+    percent only where the step has a count) and how long the run has taken."""
+    names = [n for n, _w in PHASES]
+    ph = st.get("phase")
+    if ph in names:
+        i = names.index(ph)
+        st = {**st, "step": i + 1, "steps": len(PHASES), "step_words": PHASES[i][1]}
+    total = int(st.get("total") or 0)
+    st["pct"] = (round(100.0 * min(int(st.get("done") or 0), total) / total, 1)
+                 if total > 0 else None)
+    if st.get("started_at"):
+        st["elapsed_s"] = max(0, int(time.time() - float(st["started_at"])))
+    return st
+
+
 def status() -> dict:
     """What the replay is doing now. `running` is the LOCK, never the file:
     a file that says running while nothing holds the lock is a run that died."""
@@ -1520,12 +1549,12 @@ def status() -> dict:
             and time.time() - float(st.get("updated_at") or 0) < STARTING_S
             and (st.get("pid") is None or portable.pid_alive(st.get("pid")))):
         # spawned a moment ago: Python is still importing, the lock comes next
-        return {**st, "running": True}
+        return _with_step({**st, "running": True})
     if st.get("running") and not alive:
         st = {**st, "running": False,
               "error": st.get("error") or "the replay process stopped before it finished"}
     st["running"] = bool(alive and st.get("running", True))
-    return st
+    return _with_step(st) if st["running"] else st
 
 
 def _progress_writer(room, from_day, to_day, started, min_wr30=None):

@@ -689,3 +689,38 @@ def test_the_screen_asks_only_a_room_and_dates(monkeypatch):
     assert rr.range_path(ROOM, "2026-09-01", "2026-10-02", 70.0).name \
         == f"2026-09-01_2026-10-02_wr70_{rr.RESULT_TAG}.json", \
         "a replay saved before the room's switch-ons were candidates is never served"
+
+
+# ------------------------------------------------ 7. the progress bar
+def test_a_running_replay_says_its_step_and_percent(room):
+    """Operator, Oct 03, 2026: "can you show loading bar on whats percentage so
+    i know the progress, in mobile i only see 'being measured' only"."""
+    import re
+    from pathlib import Path
+
+    src = Path(rr.__file__).read_text(encoding="utf-8")
+    said = set(re.findall(r'say\("([a-z ]+)"', src)) | set(re.findall(r'write\("([a-z ]+)"\)', src))
+    assert said and said <= {n for n, _w in rr.PHASES}, \
+        f"every step a run reports has its words: {said - {n for n, _w in rr.PHASES}}"
+    assert rr.take_lock()
+    try:
+        rr._write_json(rr._run_file(), {"running": True, "room": ROOM, "min_wr30": 70.0,
+                                        "from_day": "2026-10-01", "to_day": "2026-10-02",
+                                        "phase": "trade lists", "done": 1206, "total": 4825,
+                                        "started_at": 0.0})
+        got = rr.view(ROOM, _ms(2026, 10, 1) / 1000, _ms(2026, 10, 2) / 1000, min_wr30=70.0)
+        run = got["run"]
+        assert got["state"] == "measuring"
+        assert (run["step"], run["steps"]) == (4, len(rr.PHASES)) and run["pct"] == 25.0
+        assert run["step_words"] == "reading each strategy's own backtest trades"
+        rr._write_json(rr._run_file(), {"running": True, "room": ROOM, "min_wr30": 70.0,
+                                        "from_day": "2026-10-01", "to_day": "2026-10-02",
+                                        "phase": "candidates", "done": 0, "total": 0})
+        run = rr.status()
+        assert run["step"] == 3 and run["pct"] is None, \
+            "a step with no count prints no number, never 0%"
+    finally:
+        rr.release_lock()
+    tsx = (Path(__file__).resolve().parents[1] / "webapp" / "src" / "components" / "forecast"
+           / "RoomForecasts.tsx").read_text(encoding="utf-8")
+    assert 'role="progressbar"' in tsx and "<RunProgress run={d.run} />" in tsx

@@ -583,6 +583,37 @@ const RR_STATE: Record<string, string> = {
   failed: "The last run failed", not_measured: "Not measured yet",
 };
 
+/** How far a replay run has got (operator, Oct 03, 2026: "can you show
+ *  loading bar on whats percentage so i know the progress, in mobile i only
+ *  see 'being measured' only"). Every word and number comes from the run's
+ *  own status (room_replay.PHASES): a step with a count shows its percent, a
+ *  step without one says so and its bar moves without a number. */
+function RunProgress({ run }: { run: NonNullable<RoomReplay["run"]> }) {
+  const pct = run.pct;
+  const mins = run.elapsed_s != null ? Math.floor(run.elapsed_s / 60) : null;
+  return (
+    <div className="mt-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <span>{run.step && run.steps ? `Step ${run.step} of ${run.steps}: ` : ""}{run.step_words ?? run.phase ?? "starting"}</span>
+        <span className="font-semibold text-gray-800 dark:text-white/90">
+          {pct != null ? `${pct.toFixed(0)}%` : "no count for this step"}
+        </span>
+      </div>
+      <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"
+        role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct ?? undefined}
+        aria-label="replay progress">
+        {pct != null
+          ? <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} />
+          : <div className="h-full w-1/3 animate-pulse rounded-full bg-brand-500/60" />}
+      </div>
+      <div className="mt-1 flex flex-wrap justify-between gap-x-3 text-[11px] text-gray-500 dark:text-gray-400">
+        <span>{run.total ? `${(run.done ?? 0).toLocaleString()} of ${run.total.toLocaleString()}` : ""}</span>
+        <span>{mins != null ? `running for ${mins < 1 ? "under a minute" : `${mins} min`}` : ""}</span>
+      </div>
+    </div>
+  );
+}
+
 function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
   const live = rooms.filter((r) => !r.retired);
   const [room, setRoom] = useState(live[0]?.id ?? "main");
@@ -667,8 +698,8 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
       {err && <p className="mt-3 text-theme-xs text-error-500">could not read the replay — {err}</p>}
       {d && d.state !== "ready" && (
         <div className="mt-3 rounded-xl border border-gray-200 p-3 text-theme-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
-          <b>{RR_STATE[d.state] ?? d.state}</b> — {name(d.room)} {d.from_day} to {d.to_day}: {d.why}
-          {d.run?.running && d.run.total ? ` (${(d.run.done ?? 0).toLocaleString()} of ${d.run.total.toLocaleString()})` : ""}
+          <b>{RR_STATE[d.state] ?? d.state}</b> — {name(d.room)} {d.from_day} to {d.to_day}
+          {d.state === "measuring" && d.run?.running ? <RunProgress run={d.run} /> : <>: {d.why}</>}
           {d.state === "failed" && (
             <button type="button" className={`${btn} ml-2`} onClick={again}>measure it again</button>
           )}
@@ -844,7 +875,9 @@ export function RoomsAndBacktest() {
       {err && !live && <p className="text-theme-xs text-error-500">could not read the rooms — {err}</p>}
       {!live && !err && <p className="text-theme-xs text-gray-400">reading every room&apos;s trade record…</p>}
       {live && <RoomBacktestPanel rooms={live.rooms} />}
-      {live && <RoomTable rooms={live.rooms} rules={live.rules} />}
+      {/* NO ROOMS TABLE HERE (operator, Oct 03, 2026 6:30am: "In forecast
+          tab remove the rooms section on very bottom i dont need it"); the
+          first Forecast page (/forecast) still has it */}
     </>
   );
 }

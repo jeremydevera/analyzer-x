@@ -1307,6 +1307,36 @@ def room_backtest_route(room: str, from_s: float, to_s: float, sort: str = "gap"
         raise HTTPException(404 if "no room" in str(exc) else 400, str(exc)) from exc
 
 
+@app.get("/api/rooms/replay")
+def room_replay_route(room: str, from_s: float, to_s: float, view: str = "days",
+                      page: int = 1, day: str = "", id: str = "", start: bool = True,
+                      refresh: bool = False, min_winrate30: float | None = None) -> dict:
+    """Backtest a room AS A REPLAY of its own rules, day by day (operator,
+    Oct 02, 2026: "backtest room should like backtest for the room strategy
+    example / what strategies did switched on and off for Sept 3, 4, 5, 6, 7
+    and so on"; spec docs/superpowers/specs/2026-10-02-room-replay-design.md).
+
+    Each id's own Backtest v2 trade list decides and pays (room_replay.py).
+    Paged HERE, ten a page like every Forecast list: `view` is days, events,
+    slots, trades, practice or reconcile, filtered by `day` (YYYY-MM-DD) and
+    `id`. A range not measured yet answers its STATE — measuring, waiting for
+    the disk, busy with another range, failed — never an empty table.
+    `min_winrate30` replays only rows whose own 30-day win rate is at least
+    that (the spec's full rule is ~5 million rows for a 15-day room; a run
+    that big is refused with its estimate). The old
+    /api/forecasts/room-backtest stays until the screen moves here."""
+    from tradingagents import forecast_v2_api as _f2a, room_replay as _rr
+
+    if to_s < from_s:
+        raise HTTPException(400, "the end of the range is before its start")
+    try:
+        return _rr.view(room, from_s, to_s, what=view, page=page, per=_f2a.PER_PAGE,
+                        day=day, rid=id.strip().lstrip("#").upper(), start=start,
+                        refresh=refresh, min_wr30=min_winrate30)
+    except ValueError as exc:
+        raise HTTPException(404 if "no room" in str(exc) else 400, str(exc)) from exc
+
+
 @app.get("/api/forecasts/live")
 def forecasts_live_route() -> dict:
     """Every room's numbers (features 1-3, 5, 8-15) and what a forecast made

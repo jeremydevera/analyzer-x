@@ -13,7 +13,7 @@
  * since — paged and checked by the server, never filtered here.
  */
 import { Fragment, useCallback, useState } from "react";
-import { api, dateBoxValue, fmtMoney, fmtWhen, Forecast, Forecasts, ForecastsLive, RoomBacktest, RoomGroup, RoomNow, RoomStrategies } from "@/lib/api";
+import { api, dateBoxValue, fmtMoney, fmtWhen, fmtWhenMs, Forecast, Forecasts, ForecastsLive, RoomGroup, RoomNow, RoomReplay, RoomStrategies, RRDay, RREvent, RRSide, RRTrade } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
 import PageButtons from "@/components/common/PageButtons";
 
@@ -565,52 +565,89 @@ function RoomTable({ rooms, rules }: { rooms: RoomNow[]; rules: ForecastsLive["r
 /** a date input's value as the local midnight it names, in seconds */
 const dayStart = (v: string) => Date.parse(`${v}T00:00:00`) / 1000;
 
-/** BACKTEST A ROOM (operator, Oct 02, 2026: "i want ability to backtest room
- *  in forecast v1, i want option to filter date range to backtest so i can see
- *  if the deployed tabs attached matches the backtest"). For the strategies
- *  switched on in the room now, their backtest trades beside their practice
- *  trades over the chosen days — the same window for both, from each
- *  strategy's switch-on to the backtest's last candle. Sorted and paged by the
- *  server (tradingagents/room_backtest.py). */
+/** BACKTEST A ROOM = REPLAY ITS OWN RULES, DAY BY DAY (operator, Oct 02, 2026:
+ *  "backtest room should like backtest for the room strategy example / what
+ *  strategies did switched on and off for Sept 3, 4, 5, 6, 7 and so on"; spec
+ *  docs/superpowers/specs/2026-10-02-room-replay-design.md). The room's own
+ *  watcher rules walk the days; every strategy's own Backtest v2 trade list
+ *  decides and pays; the practice account's real trades sit beside it. The
+ *  replay is measured in its own process (tradingagents/room_replay.py) and
+ *  every list here is paged by the server, ten a page. */
+function dayOf(ms: number) {
+  const m = fmtWhenMs(ms).match(/^(.*\d{4})\s/);       // "Sep 03, 2026" of "Sep 03, 2026 12:00am"
+  return m ? m[1] : fmtWhenMs(ms);
+}
+
+const RR_STATE: Record<string, string> = {
+  measuring: "Being measured", busy: "Waiting for another replay", waiting: "Waiting for the disk",
+  failed: "The last run failed", not_measured: "Not measured yet",
+};
+
 function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
   const live = rooms.filter((r) => !r.retired);
   const [room, setRoom] = useState(live[0]?.id ?? "main");
-  const [from, setFrom] = useState(dateBoxValue(7));
-  const [to, setTo] = useState(dateBoxValue(0));
-  const [sort, setSort] = useState("gap");
-  const [d, setD] = useState<RoomBacktest | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [from, setFrom] = useState(dateBoxValue(32));
+  const [to, setTo] = useState(dateBoxValue(1));
+  const [floor, setFloor] = useState("70");
+  const [asked, setAsked] = useState<{ room: string; from: string; to: string; floor: number | null } | null>(null);
+  const [page, setPage] = useState(1);
+  const [day, setDay] = useState("");
+  const [evPage, setEvPage] = useState(1);
+  const [trPage, setTrPage] = useState(1);
+  const [d, setD] = useState<RoomReplay | null>(null);
+  const [ev, setEv] = useState<RoomReplay | null>(null);
+  const [tr, setTr] = useState<RoomReplay | null>(null);
   const [err, setErr] = useState("");
-  const run = (pg = 1, so = sort) => {
-    setBusy(true); setErr("");
-    api.roomBacktest({ room, from_s: dayStart(from), to_s: dayStart(to) + 86_399, sort: so, page: pg })
-      .then((x) => setD(x))
-      .catch((e) => setErr(String(e?.message ?? e)))
-      .finally(() => setBusy(false));
+  const base = asked && { room: asked.room, from_s: dayStart(asked.from), to_s: dayStart(asked.to) + 86_399,
+    min_winrate30: asked.floor };
+  const load = useCallback(() => {
+    if (!base) return;
+    api.roomReplay({ ...base, view: "days", page })
+      .then((x) => { setD(x); setErr(""); })
+      .catch((e) => setErr(String(e?.message ?? e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asked, page]);
+  useLiveRefresh(load, 15_000, [load]);
+  const loadDay = useCallback(() => {
+    if (!base || !day) return;
+    api.roomReplay({ ...base, view: "events", day, page: evPage, }).then(setEv).catch(() => {});
+    api.roomReplay({ ...base, view: "trades", day, page: trPage }).then(setTr).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asked, day, evPage, trPage]);
+  useLiveRefresh(loadDay, 60_000, [loadDay]);
+  const go = () => {
+    setPage(1); setDay(""); setEv(null); setTr(null); setD(null);
+    setAsked({ room, from, to, floor: floor.trim() === "" ? null : Number(floor) });
   };
+  const again = () => base && api.roomReplay({ ...base, view: "days", page: 1, refresh: true })
+    .then(setD).catch((e) => setErr(String(e?.message ?? e)));
   const name = (id: string) => rooms.find((r) => r.id === id)?.name ?? id;
   const sel = "rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-theme-xs dark:border-gray-700 dark:text-gray-300";
   const th = "px-2 py-1.5 text-start font-medium whitespace-nowrap";
   const td = "px-2 py-1.5 whitespace-nowrap";
-  const m = d?.match;
-  const compared = m ? m.same + m.different : 0;
-  const side = (label: string, s: RoomBacktest["backtest"]) => (
+  const c = d?.cfg;
+  const s = d?.summary;
+  const side = (label: string, x: RRSide | undefined) => x && (
     <tr>
       <td className={`${td} font-medium text-gray-700 dark:text-gray-300`}>{label}</td>
-      <td className={`${td} font-semibold ${tone(s.trades ? s.profit : null)}`}>{s.trades ? fmtMoney(s.profit) : "—"}</td>
-      <td className={td}>{s.trades.toLocaleString()}</td>
-      <td className={td}>{s.wins.toLocaleString()} / {s.losses.toLocaleString()}</td>
-      <td className={td}>{pct(s.winrate)}</td>
-      <td className={td}>{s.worst_run_trades ? `${fmtMoney(s.worst_run)} over ${s.worst_run_trades}` : "—"}</td>
+      <td className={`${td} font-semibold ${tone(x.closed ? x.profit : null)}`}>{x.closed ? fmtMoney(x.profit) : "—"}</td>
+      <td className={td}>{c ? `${c.tp_rule === ">" ? "wider than SL" : c.tp_rule}` : "—"}</td>
+      <td className={td}>{c ? `${c.max_sl}% or tighter` : "—"}</td>
+      <td className={td}>{d?.leverage ?? 20}x</td>
+      <td className={td}>{x.closed.toLocaleString()}</td>
+      <td className={td}>{x.wins.toLocaleString()} / {x.losses.toLocaleString()}</td>
+      <td className={td}>{pct(x.winrate)}</td>
+      <td className={td}>{x.worst_streak_trades ? `${fmtMoney(x.worst_streak)} over ${x.worst_streak_trades}` : "—"}</td>
     </tr>
   );
+  const days = (d?.state === "ready" ? d.rows : []) as RRDay[];
   return (
     <div className={card}>
       <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Backtest a room</h3>
       <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-        For every strategy switched on in the room now: what its backtest says, beside what the practice account
-        really did, over the days you pick. Each strategy is counted from the moment it was switched on, and both
-        sides stop at the backtest&apos;s last candle (the last daily update).
+        The room&apos;s own rules replayed day by day: which strategies they would have switched on and off each day,
+        and what those strategies&apos; own Backtest v2 trades made while on — beside what the practice account really did.
+        Click a day for its switches and its trades.
       </p>
       <div className="mt-3 flex flex-wrap items-end gap-2 text-theme-xs text-gray-600 dark:text-gray-300">
         <label className="flex flex-col gap-1">room
@@ -624,92 +661,143 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
         <label className="flex flex-col gap-1">to
           <input type="date" className={sel} value={to} min={from} onChange={(e) => setTo(e.target.value)} />
         </label>
-        <button type="button" disabled={busy || !from || !to} onClick={() => run(1)}
+        <label className="flex flex-col gap-1">only strategies whose own 30-day win % is at least
+          <input className={`${sel} w-24`} inputMode="decimal" value={floor} onChange={(e) => setFloor(e.target.value)} />
+        </label>
+        <button type="button" disabled={!from || !to} onClick={go}
           className="rounded-lg bg-brand-500 px-4 py-1.5 font-medium text-white hover:bg-brand-600 disabled:opacity-50">
-          {busy ? "backtesting…" : "Backtest"}
+          Replay
         </button>
       </div>
-      {err && <p className="mt-3 text-theme-xs text-error-500">could not backtest the room — {err}</p>}
-      {d && m && (
+      {err && <p className="mt-3 text-theme-xs text-error-500">could not read the replay — {err}</p>}
+      {d && d.state !== "ready" && (
+        <div className="mt-3 rounded-xl border border-gray-200 p-3 text-theme-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
+          <b>{RR_STATE[d.state] ?? d.state}</b> — {name(d.room)} {d.from_day} to {d.to_day}: {d.why}
+          {d.run?.running && d.run.total ? ` (${(d.run.done ?? 0).toLocaleString()} of ${d.run.total.toLocaleString()})` : ""}
+          {d.state === "failed" && (
+            <button type="button" className={`${btn} ml-2`} onClick={again}>measure it again</button>
+          )}
+          <span className="block text-[10px] text-gray-400">checked again every 15 seconds</span>
+        </div>
+      )}
+      {d?.state === "ready" && s && c && (
         <>
           <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
-            {name(d.room)} · {fmtWhen(d.from)} to {fmtWhen(d.to)} · {d.slots.toLocaleString()} strategies switched on,
-            {" "}{d.traded.toLocaleString()} with a trade in the range · ${d.margin} a trade at {d.leverage}x
-            {d.backtest_end_ms ? ` · backtest up to ${fmtWhen(d.backtest_end_ms / 1000)}` : ""}
-            {d.no_backtest ? ` · ${d.no_backtest.toLocaleString()} strategies have no backtest yet` : ""}
+            {name(d.room)} · {d.from_day} to {d.to_day} · its rules: switch on at {c.on_winrate}%+ over the last {c.window_days} days,
+            off under {c.off_winrate}%, {c.min_trades}+ trades, TP wider than SL, stop {c.max_sl}% or tighter ·
+            ${d.margin} a trade at {d.leverage}x (${(d.margin ?? 5) * (d.leverage ?? 20)} of coin) ·
+            {" "}{(d.candidates?.count ?? 0).toLocaleString()} strategies tested
+            {d.candidates?.min_wr30 != null ? ` (those with a 30-day win rate of ${d.candidates.min_wr30}% or more)` : ""} ·
+            {" "}{s.backtest.switched_on} switched on, {s.backtest.switched_off} off · measured {d.computed_at ? fmtWhen(d.computed_at) : "—"}
+            {d.run?.running ? " · being measured again" : ""}
+            <button type="button" className={`${btn} ml-2`} onClick={again}>measure again</button>
           </p>
           <div className="mt-2 overflow-x-auto">
-            <table className="w-full min-w-[560px] text-theme-xs">
+            <table className="w-full min-w-[820px] text-theme-xs">
               <thead><tr className="border-b border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                {["", "Profit", "Trades", "Won / lost", "Win rate", "Worst losing run"].map((h) => <th key={h} className={th}>{h}</th>)}
+                {["", "Profit", "TP", "SL", "Lev", "Trades", "Won / lost", "Win rate", "Worst losing run"].map((h) => <th key={h} className={th}>{h}</th>)}
               </tr></thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                {side("Backtest", d.backtest)}
-                {side("Practice", d.practice)}
+                {side("Replay (backtest trades)", s.backtest)}
+                {side(`Practice (real, from ${s.practice.from_ms ? dayOf(s.practice.from_ms) : "—"})`, s.practice)}
               </tbody>
             </table>
           </div>
-          <p className="mt-3 text-theme-xs text-gray-700 dark:text-gray-300">
-            <b>Trades both took:</b> {compared.toLocaleString()} — {m.same.toLocaleString()} ended the same way,{" "}
-            <span className={m.different ? "text-error-500" : ""}>{m.different.toLocaleString()} ended differently</span>
-            {compared ? ` (${(100 * m.same / compared).toFixed(1)}% agree)` : ""}
-            {" · "}practice only: {m.practice_only.toLocaleString()}
-            {m.after_backtest ? ` · ${m.after_backtest.toLocaleString()} practice trades closed after the backtest's last candle (checked after the next daily update)` : ""}
-          </p>
-          {m.backtest_only > 0 && (
-            <div className="mt-2 text-theme-xs text-gray-600 dark:text-gray-300">
-              <b>Backtest trades the practice account did not take: {m.backtest_only.toLocaleString()}</b>
-              <ul className="mt-1 list-disc pl-5">
-                {Object.entries(d.reasons).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]).map(([k, n]) => (
-                  <li key={k}>{n.toLocaleString()} — {d.reason_labels[k] ?? k}</li>
-                ))}
-              </ul>
-            </div>
+          {Object.keys(s.reconcile ?? {}).length > 0 && (
+            <ul className="mt-2 list-disc pl-5 text-theme-xs text-gray-600 dark:text-gray-300">
+              {Object.entries(s.reconcile).filter(([k]) => !k.includes(":")).map(([k, n]) => (
+                <li key={k}>{n.toLocaleString()} — {k.replaceAll("_", " ")}
+                  {Object.entries(s.reconcile).filter(([k2]) => k2.startsWith(`${k}:`)).map(([k2, n2]) =>
+                    ` · ${n2.toLocaleString()} ${d.reasons?.[k2.split(":")[1]] ?? k2.split(":")[1]}`).join("")}</li>
+              ))}
+            </ul>
           )}
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-theme-xs text-gray-500 dark:text-gray-400">
-            <span>sort by</span>
-            <select className={sel} value={sort} onChange={(e) => { setSort(e.target.value); run(1, e.target.value); }}>
-              <option value="gap">biggest profit gap</option>
-              <option value="practice">most practice trades</option>
-              <option value="backtest">most backtest trades</option>
-              <option value="different">most different results</option>
-            </select>
-            <span className="ml-auto">{d.traded.toLocaleString()} strategies with a trade in the range</span>
-          </div>
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full min-w-[900px] text-theme-xs">
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[1100px] text-theme-xs">
               <thead><tr className="border-b border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                {["Strategy", "TP", "SL", "Lev", "Backtest", "Practice", "Same / different", "Backtest only", "Profit gap"].map((h) => <th key={h} className={th}>{h}</th>)}
+                {["Day", "Switched on", "Switched off", "Running", "Trades", "Won / lost", "Win rate", "Profit", "Running total",
+                  "Worst losing run", "Practice (trades · profit · total)"].map((h) => <th key={h} className={th}>{h}</th>)}
               </tr></thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                {d.rows.map((r) => (
-                  <tr key={r.slot}>
-                    <td className={td}>
-                      {r.id ? <span className="font-mono text-gray-800 dark:text-white/90">#{r.id} </span> : null}
-                      <span className="text-gray-700 dark:text-gray-300">{r.coin}</span>
-                      <span className="block text-[10px] text-gray-400">{r.key}{r.on_at ? ` · on since ${fmtWhen(r.on_at)}` : ""}</span>
-                    </td>
-                    <td className={td}>{r.tp == null ? "—" : `${r.tp}%`}</td>
-                    <td className={td}>{r.sl == null ? "—" : `${r.sl}%`}</td>
-                    <td className={td}>{d.leverage}x</td>
-                    <td className={td}>{r.backtest.trades} · {r.backtest.wins}W/{r.backtest.losses}L · <span className={tone(r.backtest.profit)}>{fmtMoney(r.backtest.profit)}</span></td>
-                    <td className={td}>{r.practice.trades} · {r.practice.wins}W/{r.practice.losses}L · <span className={tone(r.practice.profit)}>{fmtMoney(r.practice.profit)}</span></td>
-                    <td className={td}>{r.same} / <span className={r.different ? "text-error-500" : ""}>{r.different}</span></td>
-                    <td className={td}>{r.backtest_only}</td>
-                    <td className={`${td} ${tone(r.gap)}`}>{fmtMoney(r.gap)}</td>
+                {days.map((x) => (
+                  <tr key={x.day} onClick={() => { setDay(day === x.day ? "" : x.day); setEvPage(1); setTrPage(1); setEv(null); setTr(null); }}
+                    aria-expanded={day === x.day}
+                    className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03] ${day === x.day ? "bg-gray-50 dark:bg-white/[0.04]" : ""}`}>
+                    <td className={`${td} font-medium`}>{dayOf(x.at)}{!x.judged_full && <span className="ml-1 text-[10px] text-gray-400">(fewer than {c.window_days} days known)</span>}</td>
+                    <td className={`${td} ${x.on ? "text-success-600" : ""}`}>{x.on || "—"}</td>
+                    <td className={`${td} ${x.off ? "text-error-500" : ""}`}>{x.off || "—"}</td>
+                    <td className={td}>{x.running}</td>
+                    <td className={td}>{x.closed}</td>
+                    <td className={td}>{x.wins} / {x.losses}</td>
+                    <td className={td}>{pct(x.winrate)}</td>
+                    <td className={`${td} ${tone(x.closed ? x.profit : null)}`}>{x.closed ? fmtMoney(x.profit) : "—"}</td>
+                    <td className={`${td} ${tone(x.total)}`}>{fmtMoney(x.total)}</td>
+                    <td className={td}>{x.worst_streak_trades ? `${fmtMoney(x.worst_streak)} over ${x.worst_streak_trades}` : "—"}</td>
+                    <td className={td}>{x.practice ? <>{x.practice.closed} · <span className={tone(x.practice.profit)}>{fmtMoney(x.practice.profit)}</span> · <span className={tone(x.practice.total)}>{fmtMoney(x.practice.total)}</span></> : "—"}</td>
                   </tr>
                 ))}
-                {d.rows.length === 0 && (
-                  <tr><td colSpan={9} className="py-3 text-gray-500">
-                    No trade in this range for the {d.slots.toLocaleString()} strategies switched on in {name(d.room)}
-                    {d.backtest_end_ms ? ` (the backtest stops at ${fmtWhen(d.backtest_end_ms / 1000)})` : ""}.
-                  </td></tr>
-                )}
               </tbody>
             </table>
           </div>
-          {/* each page is measured afresh, so the buttons wait while it is */}
-          <PageButtons cur={d.page} pages={d.pages} goto={(n) => run(n)} busy={busy} what="room backtest" />
+          <PageButtons cur={d.page ?? 1} pages={d.pages ?? 1} goto={setPage} what="room backtest" />
+          {day && (
+            <div className="mt-3 rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
+              <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">
+                {dayOf(days.find((x) => x.day === day)?.at ?? dayStart(day) * 1000)} — {ev?.total ?? 0} switch{ev?.total === 1 ? "" : "es"}, {tr?.total ?? 0} trade{tr?.total === 1 ? "" : "s"} closed
+              </p>
+              {(ev?.rows?.length ?? 0) > 0 && (
+                <div className="mt-2 overflow-x-auto">
+                  <table className="w-full min-w-[900px] text-theme-xs">
+                    <thead><tr className="text-gray-500 dark:text-gray-400">
+                      {["When", "", "Strategy", "TP", "SL", "Why"].map((h) => <th key={h} className={th}>{h}</th>)}
+                    </tr></thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                      {(ev!.rows as RREvent[]).map((e, i) => (
+                        <tr key={`${e.id}-${e.at}-${i}`}>
+                          <td className={td}>{fmtWhenMs(e.at)}</td>
+                          <td className={`${td} font-semibold ${e.action === "on" ? "text-success-600" : "text-error-500"}`}>{e.action === "on" ? "switched on" : "switched off"}</td>
+                          <td className={td}><span className="font-mono">#{e.id}</span> {e.coin} <span className="text-gray-400">{e.tf} {e.signal}</span></td>
+                          <td className={td}>{e.tp != null ? `${e.tp}%` : "—"}</td>
+                          <td className={td}>{e.sl != null ? `${e.sl}%` : "—"}</td>
+                          <td className="px-2 py-1.5 text-gray-600 dark:text-gray-300">{e.why}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <PageButtons cur={ev!.page ?? 1} pages={ev!.pages ?? 1} goto={setEvPage} what="room switches" />
+                </div>
+              )}
+              {(tr?.rows?.length ?? 0) > 0 && (
+                <div className="mt-2 overflow-x-auto">
+                  <table className="w-full min-w-[900px] text-theme-xs">
+                    <thead><tr className="text-gray-500 dark:text-gray-400">
+                      {["Opened", "Closed", "Strategy", "Side", "TP", "SL", "Exit", "Profit"].map((h) => <th key={h} className={th}>{h}</th>)}
+                    </tr></thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                      {(tr!.rows as RRTrade[]).map((t, i) => (
+                        <tr key={`${t.id}-${t.entry_ms}-${i}`}>
+                          <td className={td}>{fmtWhenMs(t.entry_ms)}</td>
+                          <td className={td}>{fmtWhenMs(t.exit_ms)}</td>
+                          <td className={td}><span className="font-mono">#{t.id}</span> {t.coin} <span className="text-gray-400">{t.tf} {t.signal}</span></td>
+                          <td className={td}>{t.side}</td>
+                          <td className={td}>{t.tp}%</td>
+                          <td className={td}>{t.sl}%</td>
+                          <td className={td}>{t.why}</td>
+                          <td className={`${td} ${tone(t.pnl)}`}>{fmtMoney(t.pnl)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <PageButtons cur={tr!.page ?? 1} pages={tr!.pages ?? 1} goto={setTrPage} what="room trades" />
+                </div>
+              )}
+            </div>
+          )}
+          {(d.notes?.length ?? 0) > 0 && (
+            <ul className="mt-3 list-disc pl-5 text-[11px] text-gray-500 dark:text-gray-400">
+              {d.notes!.map((n, i) => <li key={i}>{n}</li>)}
+            </ul>
+          )}
         </>
       )}
     </div>

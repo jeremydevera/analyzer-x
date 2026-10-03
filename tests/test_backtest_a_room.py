@@ -98,10 +98,18 @@ def test_the_screen_has_the_table_and_the_backtest_and_asks_the_server():
     assert "<RoomTable rooms={live.rooms} rules={live.rules} />" in src
     assert "<RoomBacktestPanel rooms={live.rooms} />" in src
     assert "<RoomCard r={r} rules={rules} />" in src, "a row opens the full card"
-    assert "api.roomBacktest({ room, from_s: dayStart(from), to_s: dayStart(to) + 86_399, sort: so, page: pg })" in src
+    # SINCE OCT 03, 2026 the card is the room's own rules replayed day by day
+    # (operator, Oct 02-03, 2026: "what strategies did switched on and off for
+    # Sept 3, 4, 5, 6, 7 and so on"): days, then a day's switches and trades,
+    # every list from the server, ten a page
+    panel = src.split("function RoomBacktestPanel")[1].split("\nfunction ")[0]
+    for view in ('view: "days"', 'view: "events"', 'view: "trades"'):
+        assert view in panel, view
+    assert "api.roomReplay(" in panel and "api.roomBacktest(" not in panel
     assert 'type="date"' in src and "fmtWhen" in src
     api_py = (ROOT / "tradingagents/api.py").read_text(encoding="utf-8")
     assert '@app.get("/api/forecasts/room-backtest")' in api_py
+    assert '@app.get("/api/rooms/replay")' in api_py
 
 
 def test_a_quiet_cost_check_refusal_is_named_not_called_no_signal(room):

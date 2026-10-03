@@ -117,19 +117,26 @@ def pick(candidates, running, cooling, now, cfg) -> list:
         per_coin[row["coin"]] = per_coin.get(row["coin"], 0) + 1
         held.add(row["id"])
         out.append({"row": row, "why": (
-            f"{row['winrate']:g}% over {row['trades']} trades in the last 30 "
-            f"days, TP {row['tp']:g}% / SL {row['sl']:g}%, "
+            f"{row['winrate']:g}% over {row['trades']} trades in the last "
+            f"{window_words(cfg)}, TP {row['tp']:g}% / SL {row['sl']:g}%, "
             f"{row['profit']:+.2f}")})
     return out
 
 
+def window_words(cfg) -> str:
+    """The room's own window in words — "15 days" or "30 days", never a
+    literal (RCA-2026-10-02-H: #6B08FF64's log said "in the last 30 days" over
+    every 15-day count it judged on)."""
+    return f"{int((cfg or {}).get('window_days') or 30)} days"
+
+
 def judge(slot, fresh_row, cfg) -> str:
-    """Switch off? Only the last 30 days of the backtest decide."""
+    """Switch off? Only the room's window of the backtest decides."""
     if fresh_row is None:
         return "the backtest store no longer holds this row"
     if float(fresh_row["winrate"]) < cfg["off_winrate"]:
-        return (f"its last-30-days win rate fell to {fresh_row['winrate']:g}%, "
-                f"under {cfg['off_winrate']:g}%")
+        return (f"its last-{window_words(cfg).replace(' ', '-')} win rate fell to "
+                f"{fresh_row['winrate']:g}%, under {cfg['off_winrate']:g}%")
     return ""
 
 

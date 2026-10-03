@@ -1147,6 +1147,42 @@ export type RoomBacktest = {
     after_backtest: number; has_backtest: boolean; on_at: number | null; gap: number }[];
   page: number; pages: number; sort: string;
 };
+/** BACKTEST A ROOM = REPLAY ITS OWN RULES, day by day (Oct 02, 2026: "what
+ *  strategies did switched on and off for Sept 3, 4, 5, 6, 7 and so on";
+ *  tradingagents/room_replay.py). One page of a saved replay, or WHY there is
+ *  none yet (`state`). */
+export type RRSide = { closed: number; wins: number; losses: number; winrate: number | null;
+  profit: number; worst_streak: number; worst_streak_trades: number };
+export type RRDay = RRSide & { day: string; at: number; on: number; off: number; running: number;
+  total: number; judged_full: boolean; lists_short: number;
+  practice?: RRSide & { total: number } | null; reconcile?: Record<string, number> };
+export type RREvent = { at: number; day: string; action: "on" | "off"; id: string; coin: string;
+  tf: string; signal: string; th: number; tp: number; sl: number; winrate?: number;
+  trades?: number; why: string };
+export type RRTrade = { id: string; coin: string; tf: string; signal: string; tp: number; sl: number;
+  entry_ms: number; exit_ms: number; pnl: number; why: string; side: string };
+export type RRSlot = RRSide & { n: number; id: string; coin: string; tf: string; signal: string;
+  tp: number; sl: number; on_ms: number; off_ms: number | null; on_why: string; off_why: string;
+  open: number };
+export type RoomReplay = {
+  state: "ready" | "measuring" | "busy" | "waiting" | "failed" | "not_measured";
+  room: string; from_day: string; to_day: string; why?: string;
+  run?: { running?: boolean; phase?: string; done?: number; total?: number; error?: string;
+    room?: string; from_day?: string; to_day?: string; updated_at?: number };
+  name?: string; computed_at?: number; start_ms?: number; end_ms?: number; full_from_ms?: number | null;
+  cfg?: { on_winrate: number; off_winrate: number; min_trades: number; tp_rule: string;
+    max_sl: number; window_days: number; raw: boolean };
+  margin?: number; leverage?: number; notes?: string[];
+  candidates?: { count: number; min_wr30?: number | null; audit?: { sampled: number; would_pass: number } };
+  lists?: { with_list: number; ever_pass: number };
+  summary?: { backtest: RRSide & { switched_on: number; switched_off: number; ids: number; open: number };
+    practice: RRSide & { from_ms?: number | null; slots?: number; slots_switched_off?: number };
+    reconcile: Record<string, number> };
+  reasons?: Record<string, string>;
+  view?: string; day?: string; id?: string;
+  rows?: (RRDay | RREvent | RRTrade | RRSlot | Record<string, unknown>)[];
+  page?: number; pages?: number; per?: number; total?: number;
+};
 export type ForecastsLive = {
   rooms: RoomNow[];
   verdict: { verdict: Forecast["verdict"]; pick: string | null; pick_why: string };
@@ -1264,6 +1300,18 @@ export const api = {
     if (q.deployable) p.set("deployable", q.deployable);
     if (q.find) p.set("find", q.find);
     return get<RoomStrategies>(`/api/forecasts/room-strategies?${p}`);
+  },
+  // Backtest a room = a replay of its own rules, day by day (Oct 02, 2026);
+  // paged and filtered by the server, ten a page
+  roomReplay: (q: { room: string; from_s: number; to_s: number; view?: string; page?: number;
+    day?: string; id?: string; min_winrate30?: number | null; refresh?: boolean }) => {
+    const p = new URLSearchParams({ room: q.room, from_s: String(Math.floor(q.from_s)),
+      to_s: String(Math.floor(q.to_s)), view: q.view ?? "days", page: String(q.page ?? 1) });
+    if (q.day) p.set("day", q.day);
+    if (q.id) p.set("id", q.id);
+    if (q.min_winrate30 != null) p.set("min_winrate30", String(q.min_winrate30));
+    if (q.refresh) p.set("refresh", "true");
+    return get<RoomReplay>(`/api/rooms/replay?${p}`);
   },
   roomBacktest: (q: { room: string; from_s: number; to_s: number; sort?: string; page?: number }) =>
     get<RoomBacktest>(`/api/forecasts/room-backtest?room=${encodeURIComponent(q.room)}`

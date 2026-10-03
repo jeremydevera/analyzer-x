@@ -298,6 +298,28 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
     except Exception:
         pass
     try:
+        # BACKTEST A ROOM's saved replays, trade-list cache and run lock
+        # (Oct 02, 2026) live under ~/.tradingagents/v2/room_replay — a test
+        # that replays a fixture room must never file it beside the real ones
+        from tradingagents import room_replay as _rr
+
+        monkeypatch.setattr(_rr, "HOME", sandbox / "room_replay")
+    except Exception:
+        pass
+    try:
+        # THE WATCHER'S RUNTIME RECIPES (Oct 03, 2026): `load_settings()`
+        # merges ~/.tradingagents/runtime_specs.json into the module-global
+        # STRATEGY_SPECS, so any test that read settings pulled the
+        # operator's REAL watcher keys into the run — and they outlived the
+        # test (test_a_preview_recipe_does_not_outlive_its_check failed
+        # after the room-replay tests on `macddiv_1h_sl07tp1`, a real key).
+        from tradingagents import runtime_specs as _rspec
+
+        monkeypatch.setattr(_rspec, "PATH", sandbox / "runtime_specs.json")
+        monkeypatch.setattr(at, "_RUNTIME_SEEN", {"mtime": None})
+    except Exception:
+        pass
+    try:
         # THE PENDING LEDGER TOO. Every test that drove `_run_download` wrote
         # its fixture pairs into the operator's REAL ~/.tradingagents/
         # pending_candles.json — C0_USDT..C7_USDT, FLAKY_USDT, NAORIS_USDT,

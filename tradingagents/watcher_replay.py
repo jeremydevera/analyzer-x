@@ -113,14 +113,47 @@ def _live_streak(trades: list, on_ms: int, at_ms: int) -> int:
     return n
 
 
+def live_schedule(start_ms: int, end_ms: int, raw: bool) -> list[tuple]:
+    """The LIVE watcher's own timing, as `(at_ms, off_pass, on_pass)` checks
+    from `start_ms`'s local midnight to `end_ms` (Oct 02, 2026: "what
+    strategies did switched on and off for Sept 3, 4, 5, 6, 7 and so on").
+
+    MIRRORED, NEVER RESTATED: the switch-off pass every
+    `strategy_watcher.OFF_EVERY_S` (an hour), and the switch-on pass whenever
+    `strategy_watcher._on_due` says so — once a local day, at or after noon,
+    or at the first check of the day for a RAW room. The function the live
+    watcher asks is the function asked here, so a change to the live timing
+    changes the replay with it. One check per hour, on the hour: the
+    supervisor's 30-second tick lands every live pass within a minute of one.
+    """
+    from tradingagents import strategy_watcher as sw
+
+    step = int(sw.OFF_EVERY_S) * 1000
+    out: list[tuple] = []
+    last_on = 0.0
+    at = local_midnights(start_ms, start_ms)[0]
+    while at <= end_ms:
+        on = sw._on_due(at / 1000, last_on, bool(raw))
+        if on:
+            last_on = at / 1000
+        out.append((at, True, on))
+        at += step
+    return out
+
+
 def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
              cfg: dict | None = None, rows: dict | None = None,
-             books: dict | None = None) -> dict:
+             books: dict | None = None, schedule: list | None = None) -> dict:
     """Replay the watcher from `start_ms`'s local midnight to `end_ms`.
 
     `combos`: each `{"id", "coin", "tf", "signal", "th", "sl", "tp", "gate",
     "trades": [[entry_ms, exit_ms, pnl, closed], ...]}`, one per combination
     that could ever pass. Returns `{"days", "slots", "events", "summary"}`.
+
+    `schedule` (Oct 02, 2026, Backtest a room): `(at_ms, off_pass, on_pass)`
+    checks, e.g. `live_schedule(...)`; `rows`, when given, is then keyed by
+    the switch-on checks. None is the research replay's one check a midnight,
+    switch-off then switch-on — byte for byte what it always was.
     """
     cfg = {**wp.DEFAULTS, **(cfg or {})}
     window_ms = int(cfg.get("window_days", 30)) * DAY_MS
@@ -130,13 +163,15 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
     events: list[dict] = []
     cooling: dict[str, float] = {}
     checks = local_midnights(start_ms, end_ms)
+    plan = ([(at, True, True) for at in checks] if schedule is None
+            else sorted((int(a), bool(f), bool(n)) for a, f, n in schedule))
     if rows is None:
-        rows = rows_by_check(books, checks, window_ms)
+        rows = rows_by_check(books, [at for at, _f, n in plan if n], window_ms)
     live_n = int(cfg.get("off_streak_live") or 0)
-    for at in checks:
+    for at, do_off, do_on in plan:
         # 1. SWITCH OFF — judged on the row as it stood at this check, and
         # (a research dial, off by default) on its own practice losing run
-        for rid in sorted(running):
+        for rid in (sorted(running) if do_off else ()):
             slot = running[rid]
             why = wp.judge({"id": rid}, books[rid].row(at, window_ms), cfg)
             if not why and live_n:
@@ -149,6 +184,8 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
                 del running[rid]
                 events.append({"at": at, "action": "off", "id": rid,
                                "coin": slot["coin"], "why": why})
+        if not do_on:
+            continue
         # 2. SWITCH ON — every combination's row at this check, then the rules
         cands = [r for r in rows.get(at, []) if not wp.passes_on(r, cfg)]
         picks = wp.pick(cands, [{"id": k, "coin": v["coin"]}

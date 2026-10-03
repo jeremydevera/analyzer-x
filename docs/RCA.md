@@ -172,6 +172,81 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-02-H — every switch-on and switch-off line in the three 15-day rooms said "the last 30 days" over a 15-day count
+
+**CEO**
+
+* What you saw: in #55D32617, #B2404C0B and #6B08FF64 every watcher line said
+  "in the last 30 days" — #6PRDA4S8 was switched on at Oct 01, 2026 12:44pm
+  for "91.18% over 68 trades in the last 30 days", and those 68 trades were its
+  last FIFTEEN days. The numbers were right; the words beside them were not.
+* Why: the sentence was typed with "30" in it when every room judged on 30
+  days, and nobody changed the sentence when the 15-day rooms arrived.
+* What stops it now: the words are taken from the room's own window, and a
+  test fails if a 15-day room ever says 30 again.
+
+**DEV**
+
+* `tradingagents/watcher_policy.py:120` (`pick`'s why: `"... trades in the
+  last 30 days"`) and `:131` (`judge`: `"its last-30-days win rate fell
+  to"`) printed a literal; `strategy_watcher._d` copies both into every room's
+  `strategy_watcher.jsonl` and the Watcher panel. The GitHub replay page had
+  the same literal four times (`replay_page.py:273, 386, 389`).
+* Invariant broken: **label-must-match-data — a window's words come from
+  `cfg["window_days"]`, never a literal** (`watcher_policy.window_words`).
+  `passes_on` already derived "N trades in 15 days" from it since Sep 30,
+  2026; its two neighbours did not.
+* Guard: `tests/test_backtest_a_room_replays_its_rules.py::test_a_15_day_room_says_15_days_not_30`
+  and `::test_the_replay_page_derives_its_window_words` — both run against
+  the files before this commit and fail there (old `pick` said "in the last
+  30 days", old `judge` "its last-30-days", old page "over 30 days").
+
+**SAW** — the investigation of `#6B08FF64` for the operator's *"when i
+backtest 6B08FF64 here's the result, but in my auto trade its -14.45 all time
+for practice"* (Oct 02, 2026), which read the room's own watcher log: *"91.18%
+over 68 trades in the last 30 days"* on a room whose rule is 15 days.
+
+**TIMELINE**
+
+1. `Sep 30, 2026` — the 15-day rooms are built (`window_days: 15`,
+   `profiles.BUILTIN`); `passes_on` learns to say "N trades in 15 days", the
+   switch-on and switch-off sentences keep their literal "30".
+2. `Oct 01, 2026 12:24pm` — #55D32617's first switch-on line; `12:38pm`
+   #B2404C0B's; `12:44pm` #6B08FF64's, #6PRDA4S8 YMTCSTOCK 1h ibs "91.18% over
+   68 trades in the last 30 days" (its row: 135 trades over 28 days, 70 in the
+   last 15).
+3. To `Oct 02, 2026 6:30pm` — **962** lines in #55D32617's log, **467** in
+   #B2404C0B's, **279** in #6B08FF64's: all 1,708 say 30 days over 15-day
+   counts. The two 30-day rooms' 5,652 lines were right by accident.
+4. `Oct 02, 2026` — found while mapping the room replay
+   (docs/superpowers/specs/2026-10-02-room-replay-design.md, "Also fix");
+   fixed in this commit.
+
+**ROOT CAUSE** — literal `"30"` in the f-strings of `watcher_policy.pick` and
+`watcher_policy.judge` (and in `replay_page._HTML`), where `passes_on` beside
+them already read `cfg["window_days"]`.
+
+**WHY IT WAS NOT CAUGHT** — every watcher test asserts on DECISIONS (who was
+switched on, who off, on which number) and the 15-day work added tests for
+the 15-day COUNTS (`test_rooms_judge_on_15_days.py`); none read the sentence a
+decision prints, so a correct decision under a false label passed them all.
+The one sentence that had been made to follow the window (`passes_on`'s "N
+trades in N days") was fixed by the change that needed it, and its two
+neighbours were not grepped — the same "one rule replaced in two places out of
+three" CLAUDE.md names from Sep 05, 2026.
+
+**COST** — none in money and no wrong decision: every number and every
+switch was right. 1,708 log lines carry the wrong window word and stay as
+written (the log is a record, never rewritten). The live watcher runs inside
+the API process, so the corrected words start with the next API restart.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_backtest_a_room_replays_its_rules.py::test_a_15_day_room_says_15_days_not_30`,
+`::test_the_replay_page_derives_its_window_words`.
+
+---
+
 ## RCA-2026-10-02-G — outside the app, GitHub's run titles were read in the wrong alphabet, so a dispatch could never find the run it had just started (NEVER HAPPENED YET in the app)
 
 **CEO**

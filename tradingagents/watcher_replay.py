@@ -232,13 +232,21 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
         else:
             s["trades"] = [t for t in tr if lo <= t[0] < hi]
     if follow is not None:
-        # a trade the rules' slot already holds (it entered before the room
-        # started) is never counted a second time by the room's own slot
-        held = {(s["id"], int(t[0])) for s in slots if not s.get("follow")
-                for t in s["trades"]}
+        # AT THE HANDOVER the rules' trades still open are not the room's: the
+        # room never held them, and kept they take the coin's places from the
+        # room's own trades (#6B08FF64, Oct 01, 2026 12:51pm: rules trades
+        # from 10:30am held YMTCSTOCK's 4 places while the room opened 4
+        # trades there at 12:45pm)
+        cut = int(follow["from_ms"])
         for s in slots:
-            if s.get("follow") and held:
-                s["trades"] = [t for t in s["trades"] if (s["id"], int(t[0])) not in held]
+            if not s.get("follow"):
+                was = s["trades"]
+                keep, gone = [], []
+                for t in was:
+                    still_open = (t[1] > cut) if t[3] else (t[0] < cut)
+                    (gone if still_open else keep).append(t)
+                follow.setdefault("dropped", []).extend((s["id"], t) for t in gone)
+                s["trades"] = _stack(keep, was) if hasattr(was, "shape") else keep
     refused: list = []
     if follow is not None and follow.get("refuse"):
         # WHAT THE ROOM ITSELF REFUSED is not a trade it could have made: the

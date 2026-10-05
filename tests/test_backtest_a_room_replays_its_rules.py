@@ -942,3 +942,18 @@ def test_reenter_reads_the_signal_of_the_candle_a_trade_closed_in(monkeypatch):
     # the store's walk opens every OTHER candle (it skips the one it closed
     # in); the runner's way opens on every one
     assert len(ent(plain)) <= n // 2 + 1 and len(ent(again)) >= n - 2
+
+
+def test_a_rules_trade_still_open_when_the_room_starts_is_not_kept():
+    """Oct 01, 2026 12:51pm: rules trades from 10:30am held YMTCSTOCK's 4
+    places while #6B08FF64 opened 4 trades there at 12:45pm."""
+    d0 = _ms(2026, 9, 20)
+    a_tr = [[d0 + i * 4 * H, d0 + i * 4 * H + H, 0.5, True] for i in range(40)]
+    a_tr += [[_ms(2026, 10, 1, 10, 30), _ms(2026, 10, 1, 13, 30), 0.5, True]]
+    combos = [{"id": "AAAAAAAA", "coin": "XPIN", "tf": "1h", "signal": "ote", "th": 0.0,
+               "sl": 1.0, "tp": 1.2, "group": "classic", "gate": "ok", "trades": a_tr}]
+    start = _ms(2026, 10, 1, 12, 51)
+    got = wr.simulate(combos, start_ms=_ms(2026, 10, 1), end_ms=_ms(2026, 10, 1, 23, 59),
+                      cfg=ROOM_RULES, follow={"from_ms": start, "why": "x", "slots": []})
+    (a,) = got["slots"]
+    assert a["trades"] == [], "open across 12:51pm: the room never held it"

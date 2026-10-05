@@ -223,13 +223,22 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
         tr = own.get(s["id"]) if s.get("follow") else None
         if tr is None:
             tr = books[s["id"]].c["trades"]
+        lo = s.get("trade_from_ms", s["on_ms"])
         if hasattr(tr, "shape"):
             # ONE compact block per slot, not an object per trade: a raw rule
             # set switches on tens of thousands of strategies, and a Python
             # list of row views took the research to 6 GB (Sep 30, 2026)
-            s["trades"] = tr[(tr[:, 0] >= s["on_ms"]) & (tr[:, 0] < hi)]
+            s["trades"] = tr[(tr[:, 0] >= lo) & (tr[:, 0] < hi)]
         else:
-            s["trades"] = [t for t in tr if s["on_ms"] <= t[0] < hi]
+            s["trades"] = [t for t in tr if lo <= t[0] < hi]
+    if follow is not None:
+        # a trade the rules' slot already holds (it entered before the room
+        # started) is never counted a second time by the room's own slot
+        held = {(s["id"], int(t[0])) for s in slots if not s.get("follow")
+                for t in s["trades"]}
+        for s in slots:
+            if s.get("follow") and held:
+                s["trades"] = [t for t in s["trades"] if (s["id"], int(t[0])) not in held]
     refused: list = []
     if follow is not None and follow.get("refuse"):
         # WHAT THE ROOM ITSELF REFUSED is not a trade it could have made: the
@@ -280,7 +289,9 @@ def _follow(follow: dict, running: dict, slots: list, events: list, books: dict,
         slot = {**{k: c.get(k) for k in ("id", "coin", "tf", "signal", "th", "sl", "tp",
                                           "group")},
                 "on_ms": on, "on_why": f["on_why"], "on_row": None,
-                "off_ms": off, "off_why": f.get("off_why") or "", "follow": True}
+                "off_ms": off, "off_why": f.get("off_why") or "", "follow": True,
+                # a candle that closed just before the switch-on is still taken
+                "trade_from_ms": on - int((follow.get("grace_ms") or {}).get(f["id"], 0))}
         slots.append(slot)
         events.append({"at": on, "action": "on", "id": f["id"], "coin": c.get("coin"),
                        "why": f["on_why"]})

@@ -971,6 +971,7 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
                           for t in books[f["id"]].c["trades"]
                           if f["on_ms"] <= t[0] < (f["off_ms"] or float("inf"))
                           for why in [follow["refuse"](f["id"], t)] if why]
+        sim["follow_ends"] = follow.get("ends") or {}
     out = _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta,
                     books, sim, pr, cap, window_ms, sched)
     out["from_day"], out["to_day"] = str(from_day), str(to_day)
@@ -1027,7 +1028,17 @@ def room_follow(room: str, pr: dict, cands: list, books: dict, start_ms: int,
                         or "switched off in your room"})
     why = (f"your room started at {_when(from_ms)}: from here the replay switches "
            f"only what the room switched")
+    # THE RUNNER STILL TAKES A CANDLE THAT CLOSED JUST BEFORE THE SWITCH-ON,
+    # while it is younger than MAX_SIGNAL_AGE_FRACTION of a bar (its stale
+    # check): #6B08FF64's first strategies were switched on at Oct 01, 2026
+    # 12:51pm and took the 12:30pm candle that closed at 12:45pm
+    from tradingagents import auto_trader as _at
+
+    frac = float(getattr(_at, "MAX_SIGNAL_AGE_FRACTION", 0) or 0)
+    grace = {rid: int(_bar_s_of_key(sl.split("|", 1)[0]) * 1000 * frac)
+             for rid, sl in slot_of.items()}
     return ({"from_ms": from_ms, "why": why, "slots": out, "slot_of": slot_of,
+             "grace_ms": grace,
              "refuse": _room_refusals(pr, slot_of)},
             {"from_ms": from_ms, "slots": len(out), "strategies": len({f["id"] for f in out}),
              "missing": missing})
@@ -1051,11 +1062,13 @@ def room_lists(follow: dict, pr: dict, meta: dict, store, progress=None) -> tupl
     gone = pr.get("refused_candles") or {}
     ts_of = {slot: [x[0] for x in v] for slot, v in refused.items()}
     spans: dict = collections.defaultdict(list)
+    grace = follow.get("grace_ms") or {}
     for f in follow["slots"]:
-        spans[f["id"]].append((int(f["on_ms"]), float("inf") if f["off_ms"] is None
-                               else int(f["off_ms"])))
+        spans[f["id"]].append((int(f["on_ms"]) - int(grace.get(f["id"], 0)),
+                               float("inf") if f["off_ms"] is None else int(f["off_ms"])))
     slot_of = follow.get("slot_of") or {}
     out: dict = {}
+    ends: dict = {}
     failed: list = []
     ids = sorted(spans)
     t0 = time.time()
@@ -1078,16 +1091,20 @@ def room_lists(follow: dict, pr: dict, meta: dict, store, progress=None) -> tupl
         try:
             got = ms.trades_for(c["coin"], c["tf"], signal=c["signal"], th=c["th"],
                                 sl=c["sl"], tp=c["tp"], sizing="flat",
-                                base_margin=BASE_MARGIN, store=store, skip=skip)
+                                base_margin=BASE_MARGIN, store=store, skip=skip,
+                                whole=True)
         except Exception:                                      # noqa: BLE001
             failed.append(rid)
             continue
         if got.get("log") is None or got.get("why"):
             failed.append(rid)
             continue
-        out[rid] = record(c, got, None, None)["trades"]
+        rec = record(c, got, None, None)
+        out[rid] = rec["trades"]
+        ends[rid] = rec.get("end_ms")
         if progress:
             progress(n + 1, len(ids))
+    follow["ends"] = ends
     return out, {"rebuilt": len(out), "plain": failed, "rebuild_s": round(time.time() - t0, 1)}
 
 
@@ -1555,9 +1572,12 @@ def _reconcile(room, cands, lists, sim, pr, start_ms, end_ms, now, traded, slots
             continue
         c = cand_by_slot.get(slot)
         rec = lists.get(c["id"]) if c else None
+        # a strategy the room ran is rebuilt to this PC's newest candle
+        end_of = (sim.get("follow_ends") or {}).get(c["id"]) if c else None
+        end_of = end_of or (rec.get("end_ms") if rec else None)
         if c is None:
             reason = "not_candidate"
-        elif rec and rec.get("end_ms") and entry >= int(rec["end_ms"]):
+        elif end_of and entry >= int(end_of):
             reason = "after_backtest"
         elif not any(a <= entry < b for a, b in replay_on.get(slot, ())):
             reason = "replay_off"

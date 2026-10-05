@@ -878,3 +878,22 @@ def test_a_signal_the_room_never_acted_on_is_silenced_and_the_walk_carries_on(v2
     got = msw.trades_for("XPIN", "1h", skip=lambda t: t == signal_open, **kw)
     entries = [t[0] for t in rr.record(_cand(1.0), got, None, None)["trades"]]
     assert first[0] not in entries and len(entries) >= len(plain["log"]) - 1
+
+
+def test_a_whole_walk_reaches_the_newest_candle_not_the_rows_last_bar(v2):
+    """37 practice trades of Oct 01 - Oct 04, 2026 sat after their rows' last
+    bar: a room's rebuilt list runs to this PC's newest candle."""
+    import json as _json
+
+    from tradingagents import market_sweep as msw
+
+    p = v2.home / "rows" / "XPIN-1h.json"
+    rows = _json.loads(p.read_text())
+    for r in rows:
+        r["last_ms"] = H0 + 59 * H                     # the row stops halfway
+    p.write_text(_json.dumps(rows))
+    kw = dict(signal="ote", th=0.0, sl=3.0, tp=1.0, sizing="flat", base_margin=5.0, store=v2)
+    cut = rr.record(_cand(1.0), msw.trades_for("XPIN", "1h", **kw), None, None)
+    whole = rr.record(_cand(1.0), msw.trades_for("XPIN", "1h", whole=True, **kw), None, None)
+    assert cut["end_ms"] <= H0 + 60 * H < whole["end_ms"]
+    assert len(whole["trades"]) > len(cut["trades"])

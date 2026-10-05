@@ -1855,7 +1855,7 @@ def ml_history_short(signal: str, tf: str, before: int) -> str | None:
 
 def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                tp: float, sizing: str, base_margin: float = 5.0,
-               days: int = 365, store=None, skip=None) -> dict:
+               days: int = 365, store=None, skip=None, whole: bool = False) -> dict:
     """Every trade one stored strategy made, rebuilt from the local candles.
 
     The store keeps ONE row per strategy (trades, wins, profit…); the trades
@@ -1869,6 +1869,11 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     switched off there, or the room refused it — so the walk holds exactly the
     trades the room could hold, the same engine, the same rule. None is this
     function byte for byte as it was.
+
+    `whole=True` walks every stored candle, never cut to the row's own
+    window: a room replay needs the trades up to this PC's newest minute, not
+    to the hour the row was last measured (37 practice trades of #6B08FF64's
+    Oct 01 - Oct 04, 2026 sat after their rows' last bar).
     """
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br
@@ -1931,6 +1936,8 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     # Rows measured before `last_ms` existed fall back and can be a trade or
     # two out; the answer says which basis it used so a caller can say so.
     wm = row_end or int(load_states(coin, tf, root).get("__last_ms__") or 0)
+    if whole:
+        wm, want_bars = 0, 0
     # WHERE THIS PC'S CANDLES END, before the cut: a row measured on GitHub's
     # fresher candles cannot be replayed past them, and the screen must say
     # THAT rather than "the candle store has grown" (the reverse of what
@@ -1962,7 +1969,10 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     # AN ml_ ROW NEEDS ITS 200 BARS OF CLUES BEFORE THE WINDOW: without them
     # the replay is a quieter strategy under the stored row's name, so it is
     # refused and says why (ml_history_short)
-    short = ml_history_short(signal, tf, len(full) - want_bars if want_bars else 0)
+    # a WHOLE walk has no window to lead into: its first 200 bars abstain on
+    # their own, weeks before any room's days
+    short = ml_history_short(signal, tf, len(full) if whole
+                             else (len(full) - want_bars if want_bars else 0))
     if short:
         return {"log": [], "why": short}
     # The costs the replay needs come from the file the sweep wrote (see

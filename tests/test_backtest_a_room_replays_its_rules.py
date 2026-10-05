@@ -711,13 +711,15 @@ def test_a_running_replay_says_its_step_and_percent(room):
         got = rr.view(ROOM, _ms(2026, 10, 1) / 1000, _ms(2026, 10, 2) / 1000, min_wr30=70.0)
         run = got["run"]
         assert got["state"] == "measuring"
-        assert (run["step"], run["steps"]) == (4, len(rr.PHASES)) and run["pct"] == 25.0
+        names = [n for n, _w in rr.PHASES]
+        assert (run["step"], run["steps"]) == (names.index("trade lists") + 1, len(rr.PHASES))
+        assert run["pct"] == 25.0
         assert run["step_words"] == "reading each strategy's own backtest trades"
         rr._write_json(rr._run_file(), {"running": True, "room": ROOM, "min_wr30": 70.0,
                                         "from_day": "2026-10-01", "to_day": "2026-10-02",
                                         "phase": "candidates", "done": 0, "total": 0})
         run = rr.status()
-        assert run["step"] == 3 and run["pct"] is None, \
+        assert run["step"] == names.index("candidates") + 1 and run["pct"] is None, \
             "a step with no count prints no number, never 0%"
     finally:
         rr.release_lock()
@@ -971,3 +973,34 @@ def test_the_coin_cap_keeps_the_trades_the_room_really_took():
              for k in range(6)]
     wr.cap_per_coin(plain, 4)
     assert [s["id"] for s in plain if s["trades"]] == ["S0", "S1", "S2", "S3"]
+
+
+def test_a_locked_table_is_waited_for_never_a_failed_run(monkeypatch):
+    """RCA-2026-10-05-E: Oct 05, 2026 12:04pm, "the last run failed:
+    OperationalError: database is locked" - 68 seconds after Replay, while the
+    daily update swapped its rebuilt Backtest v2 table in."""
+    import sqlite3
+
+    monkeypatch.setattr(rr.time, "sleep", lambda s: None)
+    monkeypatch.setattr(rr, "table_holder", lambda store=None: "the daily update is "
+                        "rebuilding the Backtest v2 table (swap)")
+    tries, said = [], []
+
+    def read():
+        tries.append(1)
+        if len(tries) < 3:
+            raise sqlite3.OperationalError("database is locked")
+        return "rows"
+    assert rr._while_busy(read, lambda *a: said.append(a[0])) == "rows"
+    assert len(tries) == 3 and said == ["waiting", "waiting"]
+
+    def locked():
+        raise sqlite3.OperationalError("database is locked")
+
+    def broken():
+        raise sqlite3.OperationalError("no such table: rows")
+    with pytest.raises(RuntimeError) as e:
+        rr._while_busy(locked, lambda *a: None, wait_s=0)
+    assert "rebuilding the Backtest v2 table" in str(e.value)
+    with pytest.raises(sqlite3.OperationalError):
+        rr._while_busy(broken, lambda *a: None)

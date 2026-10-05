@@ -889,7 +889,7 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
     say = progress or (lambda *_a, **_k: None)
     if not force and not limit:
         say("estimating", 0, 0)
-        est = estimate(cfg, store=store, min_wr30=min_wr30)
+        est = _while_busy(lambda: estimate(cfg, store=store, min_wr30=min_wr30), say, store)
         if est["estimate"] > MAX_LISTS:
             ask = ("raise the 30-day win rate floor (min_winrate30) above "
                    f"{float(min_wr30):g}%" if min_wr30 is not None else
@@ -900,7 +900,8 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
                 f"(estimated from {est['pairs']} of {est['of']:,} pairs) — rebuilding that "
                 f"many trade lists takes days on this PC: {ask}, or force it")
     say("candidates", 0, 0)
-    cands, cinfo = candidates(cfg, store=store, limit=limit, min_wr30=min_wr30)
+    cands, cinfo = _while_busy(lambda: candidates(cfg, store=store, limit=limit,
+                                                  min_wr30=min_wr30), say, store)
     # the room's own switch-ons are ALWAYS replayed, whatever the floor: the
     # point of the page is to check the replay against the room's practice
     picks, pinfo = room_picks(room, end_ms, store=store)
@@ -943,7 +944,8 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
         # WHAT THE FLOOR LEFT OUT, measured: random rows under it, their own
         # lists, and how many would have cleared the line at some check
         say("audit", 0, audit)
-        sample = audit_sample(cfg, min_wr30, store=store, want=audit)
+        sample = _while_busy(lambda: audit_sample(cfg, min_wr30, store=store, want=audit),
+                             say, store)
         a_lists, _ = build_lists(sample, store=store, workers=workers, memo=memo,
                                  progress=lambda d, t: say("audit", d, t))
         a_pass = [c["id"] for c in sample
@@ -1815,6 +1817,62 @@ def release_lock() -> None:
             fh.close()
 
 
+# How long a replay waits for the Backtest v2 table before it gives up: the
+# daily update's rebuild swapped a 53,794,867-row table in on Oct 05, 2026
+# after 70 minutes of filing, and the swap itself held the file for longer
+# than a reader's 60-second busy timeout.
+TABLE_WAIT_S = 45 * 60
+TABLE_RETRY_S = 15
+
+
+def table_holder(store=None) -> str:
+    """Who has the Backtest v2 table, in words, or "": a rebuild in progress
+    (its own progress file, its process alive) or a cleanup holding its lock."""
+    from tradingagents import portable
+    from tradingagents import rows_index as ri
+
+    store = store or stores.V2
+    prog = _read_json(Path(_db_of(store)).parent / "rows_rebuild.json")
+    if isinstance(prog, dict) and prog.get("phase") not in (None, "done", "failed")             and prog.get("pid") and portable.pid_alive(prog["pid"]):
+        done, total = prog.get("pairs_done"), prog.get("pairs_total")
+        return (f"the daily update is rebuilding the Backtest v2 table ({prog['phase']}"
+                + (f", {int(done):,} of {int(total):,} coins" if done is not None and total
+                   else "") + ")")
+    with contextlib.suppress(Exception):                       # noqa: BLE001
+        h = ri.lock_holder()
+        if h:
+            return h
+    return ""
+
+
+def _while_busy(fn, say, store=None, wait_s: float | None = None):
+    """Run a read of the Backtest v2 table, WAITING while something else holds
+    it — never failing the run on the first lock (Oct 05, 2026 12:04pm: "the
+    last run failed: OperationalError: database is locked", 68 seconds after
+    Replay was pressed, while the daily update swapped its rebuilt table in).
+    A screen-feeding process does not exit because a resource was busy
+    (CLAUDE.md, THE UI IS THE SOURCE OF TRUTH); it waits, says who holds it,
+    and gives up only after TABLE_WAIT_S, naming them."""
+    import sqlite3
+
+    limit = TABLE_WAIT_S if wait_s is None else wait_s
+    t0 = time.time()
+    while True:
+        try:
+            return fn()
+        except sqlite3.OperationalError as exc:
+            if "locked" not in str(exc).lower() and "busy" not in str(exc).lower():
+                raise
+            who = table_holder(store) or "another program"
+            if time.time() - t0 >= limit:
+                raise RuntimeError(f"the Backtest v2 table stayed locked for "
+                                   f"{int(limit // 60)} minutes ({who})") from exc
+            say("waiting", 0, 0)
+            print(f"[room_replay] the Backtest v2 table is locked by {who}; "
+                  f"trying again in {TABLE_RETRY_S} s", flush=True)
+            time.sleep(TABLE_RETRY_S)
+
+
 def disk_job() -> str:
     """The long job that has the disk now (a candle download, a backtest, a
     collect), named with its progress — or ""."""
@@ -1827,6 +1885,11 @@ def disk_job() -> str:
                 done, total = st.get("done"), st.get("total")
                 return (f"{kind} ({int(done):,} of {int(total):,})" if done is not None
                         and total else kind)
+    # the table the replay reads first: a rebuild swaps a new file in at its end
+    with contextlib.suppress(Exception):                       # noqa: BLE001
+        h = table_holder()
+        if h:
+            return h
     return ""
 
 
@@ -1835,6 +1898,7 @@ def disk_job() -> str:
 # know the progress, in mobile i only see 'being measured' only"). The phase
 # names are what `replay()` passes to its progress writer.
 PHASES = (("starting", "starting up"),
+          ("waiting", "waiting for the Backtest v2 table to be free"),
           ("estimating", "counting the strategies to check"),
           ("candidates", "finding the strategies that could pass the room's rules"),
           ("trade lists", "reading each strategy's own backtest trades"),

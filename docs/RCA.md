@@ -172,6 +172,61 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-05-E — Backtest a room failed with "database is locked" while the daily update swapped its table in
+
+**CEO**
+
+* What you saw: "The last run failed — #6B08FF64 Oct 01, 2026 to Oct 05,
+  2026: the last run failed: OperationalError: database is locked".
+* Why: the daily update was putting a freshly rebuilt Backtest v2 table in
+  place, nothing can read that table during the swap, and the replay gave up
+  after one minute instead of waiting.
+* What stops it now: the replay waits (up to 45 minutes), shows "waiting for
+  the Backtest v2 table to be free" and who is using it, and does not even
+  start while a rebuild is running.
+
+**DEV**
+
+* `room_replay.replay` → `estimate` → `ri._open(readonly=True)` →
+  `SELECT pair FROM pairs` raised `sqlite3.OperationalError: database is
+  locked` after `_connect`'s 60 s busy_timeout; `disk_job()` knew only
+  `db_jobs` kinds, never a row-index rebuild.
+* Invariant broken: **a process that feeds a screen may not exit because a
+  resource was busy** (CLAUDE.md, THE UI IS THE SOURCE OF TRUTH) —
+  `_while_busy` retries every TABLE_RETRY_S up to TABLE_WAIT_S and names the
+  holder (`table_holder`: the rebuild's own progress file, its process alive,
+  or `rows_index.lock_holder()`); `disk_job()` includes it.
+* Guard: `tests/test_backtest_a_room_replays_its_rules.py::test_a_locked_table_is_waited_for_never_a_failed_run`.
+
+**SAW** — the operator's screenshot, Oct 05, 2026: *"im having this error /
+database is locked what does this mean"*.
+
+**TIMELINE**
+
+1. `Oct 05, 2026 9:17am` — the daily update goes to GitHub (run 37315758497);
+   its collect files 5,282 pairs into a fresh 53,794,867-row table (4,184 s).
+2. `12:03:24pm` — Replay pressed for Oct 01 – Oct 05; the run starts (no
+   `db_jobs` kind was running, so `disk_job()` said the disk was free).
+3. `12:04:32pm` — 68 s later `estimate` gives up on the locked table; the run
+   ends "failed", the screen offers "measure it again".
+4. Same day — fixed here; `table_holder()` reads empty again once the swap is
+   done.
+
+**ROOT CAUSE** — the replay treated a busy table as a broken one, and its
+"is the disk free" check did not know the table rebuild existed.
+
+**WHY IT WAS NOT CAUGHT** — every replay test reads a temporary table nobody
+else touches, so a second writer was never in the picture; the disk check was
+copied from the candle and backtest jobs, which are `db_jobs` kinds, while
+the rebuild runs inside the collect and only reports through its own
+progress file.
+
+**COST** — none in money; one failed run and a confusing message.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_backtest_a_room_replays_its_rules.py::test_a_locked_table_is_waited_for_never_a_failed_run`.
+
 ## RCA-2026-10-05-D — Backtest a room measured Sep 30 when Oct 01 was picked
 
 **CEO**

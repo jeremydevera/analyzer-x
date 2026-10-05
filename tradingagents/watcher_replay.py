@@ -215,9 +215,14 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
     if follow is not None:
         _follow(follow, running, slots, events, books, end_ms)
     # 3. WHAT EACH SLOT TRADED
+    own = (follow or {}).get("trades") or {}
     for s in slots:
         hi = s["off_ms"] if s["off_ms"] is not None else float("inf")
-        tr = books[s["id"]].c["trades"]
+        # a slot that follows the room trades the list rebuilt in the room's
+        # own state (its switches and refusals), when one was given
+        tr = own.get(s["id"]) if s.get("follow") else None
+        if tr is None:
+            tr = books[s["id"]].c["trades"]
         if hasattr(tr, "shape"):
             # ONE compact block per slot, not an object per trade: a raw rule
             # set switches on tens of thousands of strategies, and a Python

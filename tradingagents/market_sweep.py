@@ -1855,7 +1855,7 @@ def ml_history_short(signal: str, tf: str, before: int) -> str | None:
 
 def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                tp: float, sizing: str, base_margin: float = 5.0,
-               days: int = 365, store=None) -> dict:
+               days: int = 365, store=None, skip=None) -> dict:
     """Every trade one stored strategy made, rebuilt from the local candles.
 
     The store keeps ONE row per strategy (trades, wins, profit…); the trades
@@ -1863,6 +1863,12 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     derivation: same candles in, same trades out, and the caller can check the
     log's sum against the stored row's profit — the check that once caught a
     rounding bug worth $1.53.
+
+    `skip(signal_candle_open_ms) -> bool` (Oct 05, 2026, Backtest a room)
+    silences the signals a ROOM never acted on — while the strategy was
+    switched off there, or the room refused it — so the walk holds exactly the
+    trades the room could hold, the same engine, the same rule. None is this
+    function byte for byte as it was.
     """
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br
@@ -2017,6 +2023,9 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
         if want_bars:                      # signal first, THEN the window
             df = full.iloc[-want_bars:].reset_index(drop=True)
             dirs = dirs[-want_bars:]
+        if skip is not None:
+            opens_ms = df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
+            dirs = [0 if d and skip(int(t)) else d for d, t in zip(dirs, opens_ms)]
         r = at.backtest_strategy(key, df, base_margin, fee=fee, sizing=sizing,
                                  slippage=slip,
                                  dirs=dirs, tp=float(tp) / 100,

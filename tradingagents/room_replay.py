@@ -950,14 +950,27 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
                           "ids": a_pass[:20]}
     say("practice", 0, 0)
     pr = practice(room, start_ms, end_ms, now)
-    say("replay", 0, 0)
     combos.sort(key=lambda c: c["id"])
     cap = coin_cap(room)
     follow, finfo = room_follow(room, pr, cands, books, start_ms, end_ms)
+    if follow is not None:
+        follow["trades"], rinfo = room_lists(follow, pr, meta, store,
+                                             progress=lambda d, t: say("room lists", d, t))
+        finfo = {**finfo, **rinfo}
+    say("replay", 0, 0)
     cinfo["follow"] = finfo
     sim = wr.simulate(combos, start_ms=start_ms, end_ms=end_ms,
                       cfg={**cfg, "coin_slices": cap}, books=books, schedule=sched,
                       follow=follow)
+    if follow is not None:
+        # WHAT THE ROOM REFUSED, said out loud: the strategy's plain Backtest v2
+        # list, while the room had it on, against the room's own refusals — the
+        # rebuilt lists never contain them, so they are counted here
+        sim["refused"] = [{"id": f["id"], "coin": meta[f["id"]]["coin"], "trade": t, "why": why}
+                          for f in follow["slots"] if f["id"] in books
+                          for t in books[f["id"]].c["trades"]
+                          if f["on_ms"] <= t[0] < (f["off_ms"] or float("inf"))
+                          for why in [follow["refuse"](f["id"], t)] if why]
     out = _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta,
                     books, sim, pr, cap, window_ms, sched)
     out["from_day"], out["to_day"] = str(from_day), str(to_day)
@@ -1014,10 +1027,68 @@ def room_follow(room: str, pr: dict, cands: list, books: dict, start_ms: int,
                         or "switched off in your room"})
     why = (f"your room started at {_when(from_ms)}: from here the replay switches "
            f"only what the room switched")
-    return ({"from_ms": from_ms, "why": why, "slots": out,
+    return ({"from_ms": from_ms, "why": why, "slots": out, "slot_of": slot_of,
              "refuse": _room_refusals(pr, slot_of)},
             {"from_ms": from_ms, "slots": len(out), "strategies": len({f["id"] for f in out}),
              "missing": missing})
+
+
+def room_lists(follow: dict, pr: dict, meta: dict, store, progress=None) -> tuple[dict, dict]:
+    """Each strategy the room ran, rebuilt by its own engine IN THE ROOM'S
+    STATE: its signals count only while the room had it switched on and only
+    where the room did not refuse them, so the walk is flat when the room's
+    was and holds what the room held. Measured on #6B08FF64 Oct 01 - Oct 04,
+    2026 before this: 72 of the room's 142 practice trades had no backtest
+    twin, because the Backtest v2 list was still inside a trade the room
+    never took (one it refused, or one opened before its switch-on).
+
+    Same engine, same candles, same rule (market_sweep.trades_for with
+    `skip`); a strategy that cannot be rebuilt keeps its plain list, and is
+    counted."""
+    from tradingagents import market_sweep as ms
+
+    refused = pr.get("refused") or {}
+    gone = pr.get("refused_candles") or {}
+    ts_of = {slot: [x[0] for x in v] for slot, v in refused.items()}
+    spans: dict = collections.defaultdict(list)
+    for f in follow["slots"]:
+        spans[f["id"]].append((int(f["on_ms"]), float("inf") if f["off_ms"] is None
+                               else int(f["off_ms"])))
+    slot_of = follow.get("slot_of") or {}
+    out: dict = {}
+    failed: list = []
+    ids = sorted(spans)
+    t0 = time.time()
+    for n, rid in enumerate(ids):
+        c, slot = meta.get(rid), slot_of.get(rid)
+        if c is None or slot is None:
+            failed.append(rid)
+            continue
+        bar_ms = _bar_s_of_key(slot.split("|", 1)[0]) * 1000
+        mine, ts_list, dead = refused.get(slot, []), ts_of.get(slot, []), gone.get(slot) or ()
+        on = spans[rid]
+
+        def skip(open_ms, bar_ms=bar_ms, mine=mine, ts_list=ts_list, dead=dead, on=on):
+            entry = open_ms + bar_ms
+            if not any(a <= entry < b for a, b in on):
+                return True                      # the room had it switched off
+            if open_ms // 1000 in dead:
+                return True                      # the cost check counted this candle
+            return rb._reason(mine, ts_list, entry / 1000, bar_ms // 1000) != "none"
+        try:
+            got = ms.trades_for(c["coin"], c["tf"], signal=c["signal"], th=c["th"],
+                                sl=c["sl"], tp=c["tp"], sizing="flat",
+                                base_margin=BASE_MARGIN, store=store, skip=skip)
+        except Exception:                                      # noqa: BLE001
+            failed.append(rid)
+            continue
+        if got.get("log") is None or got.get("why"):
+            failed.append(rid)
+            continue
+        out[rid] = record(c, got, None, None)["trades"]
+        if progress:
+            progress(n + 1, len(ids))
+    return out, {"rebuilt": len(out), "plain": failed, "rebuild_s": round(time.time() - t0, 1)}
 
 
 # a refusal the replay's own coin cap already makes, so never taken out twice
@@ -1669,8 +1740,9 @@ PHASES = (("starting", "starting up"),
           ("candidates", "finding the strategies that could pass the room's rules"),
           ("trade lists", "reading each strategy's own backtest trades"),
           ("audit", "spot-checking strategies under the cut-off"),
-          ("replay", "replaying the room day by day"),
-          ("practice", "reading your practice trades"))
+          ("practice", "reading your practice trades"),
+          ("room lists", "rebuilding the strategies your room ran from their switch-on"),
+          ("replay", "replaying the room day by day"))
 
 
 def _with_step(st: dict) -> dict:

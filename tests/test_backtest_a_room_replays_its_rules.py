@@ -859,3 +859,22 @@ def test_a_trade_the_room_refused_is_left_out_and_counted(tmp_path, monkeypatch)
     assert [int(t[0]) for t in s["trades"]] == [t_ok[0]]
     assert sorted(r["why"] for r in sim["refused"]) == ["chase_skip", "gate_blocked"]
     assert round(sum(float(r["trade"][2]) for r in sim["refused"]), 2) == 1.6
+
+
+def test_a_signal_the_room_never_acted_on_is_silenced_and_the_walk_carries_on(v2):
+    """The rebuilt list holds what the ROOM could hold: a refused signal opens
+    nothing, so the engine is flat for the next one — the 72 practice trades
+    of Oct 01 - Oct 04, 2026 with no backtest twin were the Backtest v2 list
+    still inside a trade the room never took."""
+    from tradingagents import market_sweep as msw
+
+    kw = dict(signal="ote", th=0.0, sl=3.0, tp=1.0, sizing="flat", base_margin=5.0, store=v2)
+    plain = msw.trades_for("XPIN", "1h", **kw)
+    same = msw.trades_for("XPIN", "1h", skip=lambda t: False, **kw)
+    assert [t["entry time"] for t in same["log"]] == [t["entry time"] for t in plain["log"]]
+    assert msw.trades_for("XPIN", "1h", skip=lambda t: True, **kw)["log"] == []
+    first = rr.record(_cand(1.0), plain, None, None)["trades"][0]
+    signal_open = first[0] - H                 # the signal candle opens a bar before entry
+    got = msw.trades_for("XPIN", "1h", skip=lambda t: t == signal_open, **kw)
+    entries = [t[0] for t in rr.record(_cand(1.0), got, None, None)["trades"]]
+    assert first[0] not in entries and len(entries) >= len(plain["log"]) - 1

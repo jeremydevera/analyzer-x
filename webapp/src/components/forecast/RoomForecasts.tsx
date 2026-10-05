@@ -12,7 +12,7 @@
  * every forecast, newest first, ten a page, each with what its pick REALLY did
  * since — paged and checked by the server, never filtered here.
  */
-import { Fragment, useCallback, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { api, dateBoxValue, fmtMoney, fmtWhen, fmtWhenMs, Forecast, Forecasts, ForecastsLive, RoomGroup, RoomNow, RoomReplay, RoomStrategies, RRDay, RREvent, RRSide, RRTrade } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
 import PageButtons from "@/components/common/PageButtons";
@@ -614,6 +614,67 @@ function RunProgress({ run }: { run: NonNullable<RoomReplay["run"]> }) {
   );
 }
 
+/** THE ROOM PICKER WITH A SEARCH BOX INSIDE ITS LIST (operator, Oct 05,
+ *  2026: "in the room dropdown, i want able to have search bar inside the
+ *  dropdown tab"). Typing narrows the rooms by name or by their rules
+ *  ("6B08", "15 days", "80%"); Enter picks the first match, Escape or a
+ *  click outside closes it. The list is every room the page was sent — it is
+ *  never a page cut by a server, so filtering it here is filtering the data. */
+function RoomPicker({ rooms, value, onChange }: {
+  rooms: RoomNow[]; value: string; onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const box = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    input.current?.focus();
+    const away = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", away);
+    return () => document.removeEventListener("mousedown", away);
+  }, [open]);
+  const words = q.trim().toLowerCase().replace(/^#/, "");
+  const shown = rooms.filter((r) => !words
+    || `${r.name} ${r.id} ${r.rules ?? ""}`.toLowerCase().includes(words));
+  const pick = (id: string) => { onChange(id); setOpen(false); setQ(""); };
+  const cur = rooms.find((r) => r.id === value);
+  return (
+    <div ref={box} className="relative">
+      <button type="button" aria-haspopup="listbox" aria-expanded={open} aria-label="room"
+        onClick={() => setOpen(!open)}
+        className="flex min-w-[9rem] items-center justify-between gap-2 rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:text-gray-300">
+        <span>{cur?.name ?? value}</span><span aria-hidden className="text-gray-400">▾</span>
+      </button>
+      {open && (
+        <div className="absolute left-0 z-20 mt-1 w-64 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+          <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="search rooms"
+            aria-label="search rooms"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setOpen(false);
+              if (e.key === "Enter" && shown[0]) pick(shown[0].id);
+            }}
+            className="w-full rounded-md border border-gray-300 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:text-gray-200" />
+          <ul role="listbox" aria-label="rooms" className="mt-1 max-h-60 overflow-auto">
+            {shown.map((r) => (
+              <li key={r.id} role="option" aria-selected={r.id === value}>
+                <button type="button" onClick={() => pick(r.id)}
+                  className={`block w-full rounded-md px-2 py-1 text-start text-theme-xs hover:bg-gray-100 dark:hover:bg-white/[0.06] ${r.id === value ? "font-semibold text-brand-600 dark:text-brand-400" : "text-gray-700 dark:text-gray-300"}`}>
+                  {r.name}
+                  {r.rules && <span className="block text-[10px] font-normal text-gray-400">{r.rules}</span>}
+                </button>
+              </li>
+            ))}
+            {!shown.length && (
+              <li className="px-2 py-1 text-theme-xs text-gray-400">no room matches &ldquo;{q}&rdquo; — {rooms.length} rooms in all</li>
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
   const live = rooms.filter((r) => !r.retired);
   const [room, setRoom] = useState(live[0]?.id ?? "main");
@@ -679,11 +740,9 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
         Click a day for its switches and its trades.
       </p>
       <div className="mt-3 flex flex-wrap items-end gap-2 text-theme-xs text-gray-600 dark:text-gray-300">
-        <label className="flex flex-col gap-1">room
-          <select className={sel} value={room} onChange={(e) => setRoom(e.target.value)}>
-            {live.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-        </label>
+        <div className="flex flex-col gap-1">room
+          <RoomPicker rooms={live} value={room} onChange={setRoom} />
+        </div>
         <label className="flex flex-col gap-1">from
           <input type="date" className={sel} value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
         </label>

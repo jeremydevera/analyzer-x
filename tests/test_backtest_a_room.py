@@ -112,6 +112,14 @@ def test_the_screen_has_the_table_and_the_backtest_and_asks_the_server():
     for view in ('view: "days"', 'view: "events"', 'view: "trades"'):
         assert view in panel, view
     assert "api.roomReplay(" in panel and "api.roomBacktest(" not in panel
+    # the room is picked from a list with a search box INSIDE it (operator,
+    # Oct 05, 2026: "in the room dropdown, i want able to have search bar
+    # inside the dropdown tab"), matching a room's name and its rules
+    assert "<RoomPicker rooms={live} value={room} onChange={setRoom} />" in panel
+    picker = src.split("function RoomPicker")[1].split(chr(10) + "function ")[0]
+    assert 'placeholder="search rooms"' in picker and 'role="listbox"' in picker
+    assert "${r.name} ${r.id} ${r.rules" in picker, "searched by name, id and rules"
+    assert '"Enter"' in picker and '"Escape"' in picker
     # the hindsight warning sits ABOVE the totals it changes, never under the
     # tables (Oct 03, 2026: replay +6,947.20 against practice -13.24), and a
     # printed day reads "Sep 01, 2026", never its key "2026-09-01"

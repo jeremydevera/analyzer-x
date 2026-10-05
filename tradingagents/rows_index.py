@@ -1019,9 +1019,20 @@ def jobs_writing() -> str:
 SETTLE_S = 60.0
 
 
-def stale_watermark(pair: str) -> bool:
+_ASK = object()
+
+
+def stale_watermark(pair: str, indexed_last=_ASK) -> bool:
     """Has this pair FINISHED since it was indexed, without its row file
-    changing? The completion mark lives in the state file, not the row file."""
+    changing? The completion mark lives in the state file, not the row file.
+
+    `indexed_last` is the table's `last_ms` for the pair when the caller has
+    already read it (None: not indexed). `stale_pairs` passes it from its ONE
+    query: asking per pair opened a fresh connection 5,282 times, and after
+    the Oct 04, 2026 power cut every fresh read-only connection re-read the
+    6.2 GB write-ahead log — the collect of Oct 05, 2026 read 138 GB from
+    10:50am on, wrote nothing, and held the table so long that Backtest a
+    room failed with "database is locked" (RCA-2026-10-05-F)."""
     coin, _, tf = pair.rpartition("-")
     if not coin:
         return False
@@ -1040,13 +1051,16 @@ def stale_watermark(pair: str) -> bool:
         return False
     if not live:
         return False
-    def _known():
-        with _open(readonly=True) as con:
-            r = con.execute("SELECT last_ms FROM pairs WHERE pair = ?",
-                            (pair,)).fetchone()
-            return None if r is None else (r[0] or 0)
+    if indexed_last is not _ASK:
+        was = indexed_last
+    else:
+        def _known():
+            with _open(readonly=True) as con:
+                r = con.execute("SELECT last_ms FROM pairs WHERE pair = ?",
+                                (pair,)).fetchone()
+                return None if r is None else (r[0] or 0)
 
-    was = _missing_ok(_known, None)
+        was = _missing_ok(_known, None)
     return was is not None and int(was) != int(live)
 
 
@@ -1162,10 +1176,11 @@ def stale_pairs(now: float | None = None) -> list:
     now = time.time() if now is None else now
     def _known():
         with _open(readonly=True) as con:
-            return {r["pair"]: (r["mtime"], r["size"])
-                    for r in con.execute("SELECT pair,mtime,size FROM pairs")}
+            return {r["pair"]: (r["mtime"], r["size"], r["last_ms"])
+                    for r in con.execute("SELECT pair,mtime,size,last_ms FROM pairs")}
 
-    known = _missing_ok(_known, {})
+    known_full = _missing_ok(_known, {})
+    known = {k: v[:2] for k, v in known_full.items()}
     new, changed = [], []
     for f in sorted(rows_dir.glob("*.json")):
         try:
@@ -1178,7 +1193,7 @@ def stale_pairs(now: float | None = None) -> list:
         # "interrupted part-way" on 2026-08-23 because only the row file was
         # watched. A tail read settles it in under a millisecond.
         if (known.get(f.stem) == (st.st_mtime, st.st_size)
-                and not stale_watermark(f.stem)):
+                and not stale_watermark(f.stem, (known_full[f.stem][2] or 0))):
             continue
         if f.stem not in known:
             new.append(f)

@@ -172,6 +172,65 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-05-F — after the power cut, the daily update's clean-up read 138 GB and locked the Backtest v2 table for hours
+
+**CEO**
+
+* What you saw: Backtest a room failed with "database is locked", and the
+  next run sat on "waiting for the Backtest v2 table".
+* Why: after the power cut, the table was left with 6.2 GB of changes not yet
+  folded in, and the daily update's last step looked at all 5,282 coins one
+  at a time, re-reading those 6.2 GB on every look — 138 GB by 12:30pm,
+  holding the table the whole time.
+* What stops it now: that step looks at every coin in one read, and the
+  6.2 GB was folded into the table once, by hand, today.
+
+**DEV**
+
+* `db_jobs._run_collect` → `rows_index.file_after_collect` →
+  `stale_pairs` → `stale_watermark(pair)` → `_open(readonly=True)` once PER
+  PAIR; after an unclean shutdown a read-only connection cannot persist WAL
+  recovery, so each one rebuilt the wal-index from the 6,277,421,552-byte
+  `rows.db-wal`.
+* Invariant broken: **a scan over every pair reads the table once** —
+  `stale_pairs` selects `pair,mtime,size,last_ms` in its one query and passes
+  `indexed_last` to `stale_watermark`.
+* Guard: `tests/test_empty_pair_stops_being_stale.py::test_stale_pairs_reads_the_table_once_however_many_pairs`
+  (one `_open` for 12 pairs; the old code opened 13).
+
+**SAW** — RCA-2026-10-05-E's run, waiting: the Restart Manager listed two
+processes with `rows.db` open — the collect (pid 19164, since Oct 05, 2026
+10:50am) and the replay; a read-only `SELECT count(*) FROM pairs` did not
+finish in 300 s.
+
+**TIMELINE**
+
+1. `Oct 04, 2026 10:24pm` — the PC loses power (Kernel-Power 41), booting at
+   11:17pm; `rows.db-wal` is left at 6.2 GB beside a 21.3 GB table.
+2. `Oct 05, 2026 10:50am` — the daily update's collect starts; at 11:18am its
+   progress file says finished and filing, and its process walks
+   `stale_pairs` — 138,350 MB read, 0 written, by 12:30pm.
+3. `12:03pm` — Backtest a room fails "database is locked" (RCA-2026-10-05-E);
+   at 12:17pm a new run waits.
+4. `12:30pm` — the two collect processes (19164, 21044) and the waiting
+   replay (21776, 23672) are stopped by pid; one read-write connection
+   recovers the log in 128 s and the checkpoint folds it into the table.
+
+**ROOT CAUSE** — a per-pair lookup that opens a connection each time, which
+is cheap on a clean table and catastrophic on one that needs recovery.
+
+**WHY IT WAS NOT CAUGHT** — every index test runs on a fresh table that was
+shut down cleanly, so opening a connection always costs microseconds; the
+cost of a connection was never part of what any test measured, only the
+answer.
+
+**COST** — none in money; the Backtest v2 table could not be read from about
+11:18am to the repair, and today's daily-update rows waited to be filed.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_empty_pair_stops_being_stale.py::test_stale_pairs_reads_the_table_once_however_many_pairs`.
+
 ## RCA-2026-10-05-E — Backtest a room failed with "database is locked" while the daily update swapped its table in
 
 **CEO**

@@ -104,3 +104,28 @@ def test_a_coin_name_with_a_dash_still_parses(store):
         got = con.execute("SELECT coin, tf FROM pairs "
                           "WHERE pair = '1000000BABYDOGE-1d'").fetchone()
     assert (got["coin"], got["tf"]) == ("1000000BABYDOGE", "1d")
+
+
+def test_stale_pairs_reads_the_table_once_however_many_pairs(store, monkeypatch):
+    """RCA-2026-10-05-F: one connection per pair (5,282 of them) after the Oct
+    04, 2026 power cut — each fresh read-only connection re-read a 6.2 GB
+    write-ahead log; the collect read 138 GB and held the table for hours."""
+    for k in range(12):
+        _pair(store, f"C{k}-1h", [], 1_787_616_000_000 + k)
+    ri.ensure()
+    for k in range(12):
+        ri.index_pair(msw.ROWDIR / f"C{k}-1h.json")
+    opened = []
+    real = ri._open
+
+    def counting(*a, **k):
+        opened.append(1)
+        return real(*a, **k)
+    monkeypatch.setattr(ri, "_open", counting)
+    assert ri.stale_pairs() == []
+    assert len(opened) == 1, f"{len(opened)} connections for 12 pairs"
+    # and a finished pair is still seen as finished
+    (msw.STATES / "C3-1h.json").write_text(json.dumps({"__version__": "x", "__last_ms__": 1}))
+    import time as _t
+
+    assert [f.stem for f in ri.stale_pairs(now=_t.time() + 600)] == ["C3-1h"]

@@ -16,6 +16,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { api, dateBoxValue, fmtMoney, fmtWhen, fmtWhenMs, Forecast, Forecasts, ForecastsLive, RoomGroup, RoomNow, RoomReplay, RoomStrategies, RRDay, RREvent, RRSide, RRTrade } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
 import PageButtons from "@/components/common/PageButtons";
+import DayPicker from "@/components/form/DayPicker";
 
 const roomName = (id: string) => (id === "main" ? "Main" : `#${id}`);
 const pct = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(1)}%`);
@@ -689,15 +690,26 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
   const [ev, setEv] = useState<RoomReplay | null>(null);
   const [tr, setTr] = useState<RoomReplay | null>(null);
   const [err, setErr] = useState("");
-  const base = asked && { room: asked.room, from_s: dayStart(asked.from), to_s: dayStart(asked.to) + 86_399 };
+  // THE DAYS THEMSELVES go to the server, never seconds worked out here: a
+  // browser in another time zone than this PC turned Oct 01 into Sep 30
+  // (Oct 05, 2026: "10/01/2026 to 10/04/2026" was measured as 2026-09-30 to
+  // 2026-10-04)
+  const base = asked && { room: asked.room, from_day: asked.from, to_day: asked.to };
+  // set the moment Replay is pressed, cleared by the first answer: the bar and
+  // the greyed button show at once (operator, Oct 05, 2026: "when i click
+  // replay, immediately show me loading bar and disable the replay button")
+  const [starting, setStarting] = useState(false);
+  const running = starting || !!d?.run?.running;
   const load = useCallback(() => {
     if (!base) return;
     api.roomReplay({ ...base, view: "days", page })
       .then((x) => { setD(x); setErr(""); })
-      .catch((e) => setErr(String(e?.message ?? e)));
+      .catch((e) => setErr(String(e?.message ?? e)))
+      .finally(() => setStarting(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asked, page]);
-  useLiveRefresh(load, 15_000, [load]);
+  // every 3 seconds while a run is measuring, so the bar moves; 15 otherwise
+  useLiveRefresh(load, running ? 3_000 : 15_000, [load, running]);
   const loadDay = useCallback(() => {
     if (!base || !day) return;
     api.roomReplay({ ...base, view: "events", day, page: evPage, }).then(setEv).catch(() => {});
@@ -706,7 +718,8 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
   }, [asked, day, evPage, trPage]);
   useLiveRefresh(loadDay, 60_000, [loadDay]);
   const go = () => {
-    setPage(1); setDay(""); setEv(null); setTr(null); setD(null);
+    setPage(1); setDay(""); setEv(null); setTr(null); setD(null); setErr("");
+    setStarting(true);
     setAsked({ room, from, to });
   };
   const again = () => base && api.roomReplay({ ...base, view: "days", page: 1, refresh: true })
@@ -743,21 +756,27 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
         <div className="flex flex-col gap-1">room
           <RoomPicker rooms={live} value={room} onChange={setRoom} />
         </div>
-        <label className="flex flex-col gap-1">from
-          <input type="date" className={sel} value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
-        </label>
-        <label className="flex flex-col gap-1">to
-          <input type="date" className={sel} value={to} min={from} onChange={(e) => setTo(e.target.value)} />
-        </label>
-        <button type="button" disabled={!from || !to} onClick={go}
-          className="rounded-lg bg-brand-500 px-4 py-1.5 font-medium text-white hover:bg-brand-600 disabled:opacity-50">
-          Replay
+        <div className="flex flex-col gap-1">from
+          <DayPicker label="from" className={`${sel} w-32`} value={from} max={to} onChange={setFrom} />
+        </div>
+        <div className="flex flex-col gap-1">to
+          <DayPicker label="to" className={`${sel} w-32`} value={to} min={from} onChange={setTo} />
+        </div>
+        <button type="button" disabled={!from || !to || running} onClick={go}
+          className="rounded-lg bg-brand-500 px-4 py-1.5 font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50">
+          {running ? "Replaying…" : "Replay"}
         </button>
       </div>
+      {starting && !d && asked && (
+        <div className="mt-3 rounded-xl border border-gray-200 p-3 text-theme-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
+          <b>Starting</b> — {name(asked.room)} {dayOf(dayStart(asked.from) * 1000)} to {dayOf(dayStart(asked.to) * 1000)}
+          <RunProgress run={{ running: true, step: 1, steps: 7, step_words: "starting up", pct: null }} />
+        </div>
+      )}
       {err && <p className="mt-3 text-theme-xs text-error-500">could not read the replay — {err}</p>}
       {d && d.state !== "ready" && (
         <div className="mt-3 rounded-xl border border-gray-200 p-3 text-theme-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
-          <b>{RR_STATE[d.state] ?? d.state}</b> — {name(d.room)} {d.from_day} to {d.to_day}
+          <b>{RR_STATE[d.state] ?? d.state}</b> — {name(d.room)} {dayOf(dayStart(d.from_day) * 1000)} to {dayOf(dayStart(d.to_day) * 1000)}
           {d.state === "measuring" && d.run?.running ? <RunProgress run={d.run} /> : <>: {d.why}</>}
           {/* busy: ANOTHER range is measuring — its own bar, named by its dates */}
           {d.state === "busy" && d.run?.running && <RunProgress run={d.run} />}

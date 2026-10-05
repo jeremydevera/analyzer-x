@@ -172,6 +172,59 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-05-D — Backtest a room measured Sep 30 when Oct 01 was picked
+
+**CEO**
+
+* What you saw: you picked Oct 01 to Oct 04, 2026 and the box said "Being
+  measured — #6B08FF64 2026-09-30 to 2026-10-04": a day you never asked for.
+* Why: the page turned your days into clock times itself, and this PC read
+  that clock time back as the evening of Sep 30.
+* What stops it now: the page sends the days exactly as you picked them and
+  this PC works out the times; the box prints them as "Oct 01, 2026".
+
+**DEV**
+
+* `RoomForecasts.RoomBacktestPanel` sent `from_s: dayStart(from)` —
+  `Date.parse("2026-10-01T00:00:00")` in the BROWSER's clock — and
+  `room_replay.view` → `watcher_replay.day_of` read it in the PC's clock.
+* Invariant broken: **a day key crosses the wire as the day, never as a
+  moment** — `GET /api/rooms/replay` takes `from_day` / `to_day` and makes
+  the PC's own midnights (`_midnight`, `_next_midnight`).
+* Guard: `tests/test_backtest_a_room_replays_its_rules.py::test_the_route_takes_the_days_and_makes_this_pcs_midnights`,
+  `::test_replay_shows_its_bar_at_once_and_greys_the_button_while_it_runs`.
+
+**SAW** — the operator's screenshot, Oct 05, 2026 2:15am: from `10/01/2026`,
+to `10/04/2026`, and "Being measured — #6B08FF64 2026-09-30 to 2026-10-04".
+
+**TIMELINE**
+
+1. `Oct 03, 2026` — the screen ships sending seconds; on this PC's own browser
+   the two clocks agree and every range reads right.
+2. `Oct 03, 2026 ~5:30am` — a run for "2026-09-30 to 2026-10-02" appears,
+   started from another screen — very likely an Oct 01 pick read the same way.
+3. `Oct 05, 2026 2:15am` — Oct 01 – Oct 04 picked, Sep 30 – Oct 04 measured
+   (one extra day replayed, the room's page saved under the wrong range).
+4. Same night — fixed here.
+
+**ROOT CAUSE** — the day was turned into a moment on one machine and back
+into a day on another, so the answer depended on two clocks agreeing: 1.
+possibly a browser in another time zone than this PC, 2. possibly a browser
+that reads "2026-10-01T00:00:00" as UTC midnight (older Safari does), which
+is 8pm Sep 30 here.
+
+**WHY IT WAS NOT CAUGHT** — every test drove the route with seconds made by
+Python on this PC, so the page's clock and the PC's clock were the same clock
+in every test; the browser half was never in the loop.
+
+**COST** — none in money; one replay measured an extra day.
+
+**FIX** — this commit. Still open, named so it is not forgotten: Room
+strategies (`RoomStrategiesTable`) sends its days the same way, and was left
+as it is under the spec's peer constraint.
+
+**GUARD** — `tests/test_backtest_a_room_replays_its_rules.py::test_the_route_takes_the_days_and_makes_this_pcs_midnights`.
+
 ## RCA-2026-10-05-C — Errors and Forecast stayed blank after a menu click until the page was refreshed
 
 **CEO**

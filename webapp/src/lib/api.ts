@@ -1390,10 +1390,13 @@ export const api = {
   },
   // Backtest a room = a replay of its own rules, day by day (Oct 02, 2026);
   // paged and filtered by the server, ten a page
-  roomReplay: (q: { room: string; from_s: number; to_s: number; view?: string; page?: number;
+  /** the DAYS are sent as the date boxes hold them ("2026-10-01"): the
+   *  server turns them into its own midnights, so a browser in another time
+   *  zone asks for the same days it shows */
+  roomReplay: (q: { room: string; from_day: string; to_day: string; view?: string; page?: number;
     day?: string; id?: string; refresh?: boolean }) => {
-    const p = new URLSearchParams({ room: q.room, from_s: String(Math.floor(q.from_s)),
-      to_s: String(Math.floor(q.to_s)), view: q.view ?? "days", page: String(q.page ?? 1) });
+    const p = new URLSearchParams({ room: q.room, from_day: q.from_day, to_day: q.to_day,
+      view: q.view ?? "days", page: String(q.page ?? 1) });
     if (q.day) p.set("day", q.day);
     if (q.id) p.set("id", q.id);
     if (q.refresh) p.set("refresh", "true");

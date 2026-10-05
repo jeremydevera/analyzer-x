@@ -1308,9 +1308,11 @@ def room_backtest_route(room: str, from_s: float, to_s: float, sort: str = "gap"
 
 
 @app.get("/api/rooms/replay")
-def room_replay_route(room: str, from_s: float, to_s: float, view: str = "days",
+def room_replay_route(room: str, from_s: float | None = None, to_s: float | None = None,
+                      view: str = "days",
                       page: int = 1, day: str = "", id: str = "", start: bool = True,
-                      refresh: bool = False, min_winrate30: float | None = None) -> dict:
+                      refresh: bool = False, min_winrate30: float | None = None,
+                      from_day: str = "", to_day: str = "") -> dict:
     """Backtest a room AS A REPLAY of its own rules, day by day (operator,
     Oct 02, 2026: "backtest room should like backtest for the room strategy
     example / what strategies did switched on and off for Sept 3, 4, 5, 6, 7
@@ -1327,6 +1329,18 @@ def room_replay_route(room: str, from_s: float, to_s: float, view: str = "days",
     /api/forecasts/room-backtest stays until the screen moves here."""
     from tradingagents import forecast_v2_api as _f2a, room_replay as _rr
 
+    # THE DAYS, as the date boxes hold them, become THIS PC's midnights (Oct
+    # 05, 2026: a browser in another time zone sent Oct 01's midnight as
+    # seconds and this PC read it as Sep 30, RCA-2026-10-05-D)
+    try:
+        if from_day:
+            from_s = _rr._midnight(from_day) / 1000
+        if to_day:
+            to_s = _rr._next_midnight(to_day) / 1000 - 1
+    except ValueError as exc:
+        raise HTTPException(400, f"a day is YYYY-MM-DD: {exc}") from exc
+    if from_s is None or to_s is None:
+        raise HTTPException(400, "give the days (from_day, to_day) or from_s and to_s")
     if to_s < from_s:
         raise HTTPException(400, "the end of the range is before its start")
     try:

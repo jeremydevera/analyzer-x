@@ -724,3 +724,42 @@ def test_a_running_replay_says_its_step_and_percent(room):
     tsx = (Path(__file__).resolve().parents[1] / "webapp" / "src" / "components" / "forecast"
            / "RoomForecasts.tsx").read_text(encoding="utf-8")
     assert 'role="progressbar"' in tsx and "<RunProgress run={d.run} />" in tsx
+
+
+# ------------------------------------- 8. the days, the button, the calendar
+def test_the_route_takes_the_days_and_makes_this_pcs_midnights(monkeypatch):
+    """RCA-2026-10-05-D: Oct 01 - Oct 04, 2026 was picked and Sep 30 - Oct 04
+    was measured — the browser sent its own midnight as seconds, in another
+    time zone than this PC."""
+    from tradingagents import api
+
+    got = {}
+    monkeypatch.setattr(rr, "view", lambda room, f, t, **k: got.update(f=f, t=t) or {})
+    api.room_replay_route(room=ROOM, from_day="2026-10-01", to_day="2026-10-04")
+    assert got["f"] == _ms(2026, 10, 1) / 1000
+    assert got["t"] == _ms(2026, 10, 5) / 1000 - 1
+    import datetime as _dt
+
+    assert _dt.datetime.fromtimestamp(got["f"]).strftime("%Y-%m-%d") == "2026-10-01"
+    with pytest.raises(api.HTTPException) as e:
+        api.room_replay_route(room=ROOM, from_day="10/01/2026", to_day="2026-10-04")
+    assert e.value.status_code == 400
+
+
+def test_replay_shows_its_bar_at_once_and_greys_the_button_while_it_runs():
+    """Operator, Oct 05, 2026: "when i click replay, immediately show me loading
+    bar and disable the replay button so know its working / also when i click
+    the calendar, the pop is showing under, its very hard to click, it should
+    be above"."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1] / "webapp" / "src"
+    tsx = (root / "components" / "forecast" / "RoomForecasts.tsx").read_text(encoding="utf-8")
+    panel = tsx[tsx.index("function RoomBacktestPanel"):tsx.index("function RoomBacktestPanel") + 6000]
+    assert 'type="date"' not in panel and "<DayPicker" in panel
+    assert "setStarting(true)" in panel and "disabled={!from || !to || running}" in panel
+    assert "from_day: asked.from, to_day: asked.to" in panel
+    picker = (root / "components" / "form" / "DayPicker.tsx").read_text(encoding="utf-8")
+    assert 'position: "above"' in picker
+    client = (root / "lib" / "api.ts").read_text(encoding="utf-8")
+    assert "from_day: q.from_day, to_day: q.to_day" in client

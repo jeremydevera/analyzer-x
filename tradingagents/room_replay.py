@@ -379,6 +379,62 @@ def auto_floor(cfg: dict) -> float:
     return max(0.0, float(cfg["on_winrate"]) - FLOOR_BELOW)
 
 
+# a coin's minutes this far behind the end of the range are fetched again
+PRICES_BEHIND_S = 10 * 60
+PRICES_TIMEOUT_S = 20 * 60
+
+
+def refresh_prices(coins: list, end_ms: int, *, store=None, now: float | None = None) -> dict:
+    """Bring the room's coins' 1-minute candles up to the end of the range
+    before their trades are rebuilt (Oct 05, 2026: 36 of #6B08FF64's practice
+    trades that day sat after this PC's last minute and could not be
+    compared). Only the coins that are behind, only their tail (the same
+    `refresh_candles` the Candles v2 update uses, in the v2 store's own
+    environment); a coin that cannot be fetched is NAMED and its old candles
+    are used."""
+    import subprocess
+
+    from tradingagents import market_sweep as ms
+
+    store = store or stores.V2
+    now = time.time() if now is None else float(now)
+    want_ms = min(int(end_ms), int(now * 1000)) - PRICES_BEHIND_S * 1000
+    behind = []
+    for coin in coins:
+        try:
+            m1 = ms.cached_candles(f"{coin}_USDT", store.fine_tf, candles_dir=store.candles)
+            last = int(m1["Date"].to_numpy().astype("datetime64[ms]").astype("int64")[-1])                 if m1 is not None and len(m1) else 0
+        except Exception:                                      # noqa: BLE001
+            last = 0
+        if last < want_ms:
+            behind.append(coin)
+    if not behind:
+        return {"behind": 0, "fetched": 0, "failed": []}
+    code = "\n".join([
+        "import json, sys",
+        "from tradingagents import market_sweep as ms",
+        "bad = []",
+        "for c in json.loads(sys.argv[1]):",
+        "    try:",
+        "        ms.refresh_candles(c + '_USDT', sys.argv[2], days=30)",
+        "    except Exception as e:",
+        "        bad.append(c + ': ' + type(e).__name__ + ': ' + str(e)[:80])",
+        "print(json.dumps(bad))"])
+    try:
+        out = subprocess.run([sys.executable, "-c", code, json.dumps(behind), store.fine_tf],
+                             env={**os.environ, **store.env_for(), "PYTHONUTF8": "1"},
+                             capture_output=True, text=True, timeout=PRICES_TIMEOUT_S,
+                             cwd=str(Path(__file__).resolve().parents[1]))
+        lines = [x for x in (out.stdout or "").splitlines() if x.startswith("[")]
+        failed = json.loads(lines[-1]) if lines else [f"the fetch ended without an answer: "
+                                                      f"{(out.stderr or '')[-160:]}"]
+    except Exception as exc:                                   # noqa: BLE001
+        failed = [f"{type(exc).__name__}: {str(exc)[:160]}"]
+    print(f"[room_replay] 1-minute prices: {len(behind):,} of {len(coins):,} coins were "
+          f"behind; {len(failed):,} could not be fetched", flush=True)
+    return {"behind": len(behind), "fetched": len(behind) - len(failed), "failed": failed}
+
+
 def room_picks(room: str, end_ms: int, *, store=None) -> tuple[list, dict]:
     """Every strategy the room's OWN watcher switched on up to `end_ms`, as
     candidates — whatever its 30-day win rate. A 15-day room switches on rows
@@ -906,6 +962,10 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
     # point of the page is to check the replay against the room's practice
     picks, pinfo = room_picks(room, end_ms, store=store)
     pick_ids = {c["id"] for c in picks}
+    if store is stores.V2 and not limit:
+        say("prices", 0, 0)
+        pinfo["prices"] = refresh_prices(sorted({c["coin"] for c in picks}), end_ms,
+                                         store=store, now=now)
     have = {c["id"] for c in cands}
     added = [c for c in picks if c["id"] not in have]
     cands = cands + added
@@ -1186,6 +1246,7 @@ def _room_refusals(pr: dict, slot_of: dict):
     refused = pr.get("refused") or {}
     gone = pr.get("refused_candles") or {}
     ts_of = {slot: [x[0] for x in v] for slot, v in refused.items()}
+    took = {slot: {int(x) for x in xs} for slot, xs in (pr.get("entries") or {}).items()}
 
     def refuse(rid: str, t) -> str:
         slot = slot_of.get(rid)
@@ -1193,6 +1254,8 @@ def _room_refusals(pr: dict, slot_of: dict):
             return ""
         bar_s = _bar_s_of_key(slot.split("|", 1)[0])
         entry_s = int(t[0]) // 1000
+        if bar_s and entry_s - bar_s in took.get(slot, ()):
+            return ""          # the room TOOK this candle: never a refusal
         if bar_s and entry_s - bar_s in (gone.get(slot) or ()):
             return "gate_blocked"
         why = rb._reason(refused.get(slot, []), ts_of.get(slot, []), entry_s, bar_s)
@@ -1352,6 +1415,11 @@ def _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta
     # THE SAME HOURS AS PRACTICE: the replay can start before the room did
     same_hours = _side([x[1] for x in traded if p_start is not None
                         and int(x[3][0]) >= p_start - _grace_ms(slots[x[2]])])
+    # BEFORE THE ROOM EXISTED: its rules alone, nothing to compare them with
+    # (Oct 05, 2026: "practice has 191 trades and your replay has 435" — 320
+    # of the 435 were before the room started)
+    before_room = _side([x[1] for x in traded if p_start is not None
+                         and int(x[3][0]) < p_start - _grace_ms(slots[x[2]])])
     gone = [r for r in (sim.get("refused") or ())
             if _in_range(r["trade"], start_ms, end_ms)]
     refused_side = {"closed": len(gone),
@@ -1366,6 +1434,7 @@ def _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta
                             "slots_switched_off": len(set(pr["slots_off_now"])
                                                       & {t["slot"] for t in p_trades})},
                "backtest_room_hours": {**same_hours, "from_ms": p_start},
+               "backtest_before_room": {**before_room, "from_ms": start_ms, "to_ms": p_start},
                "refused_by_room": refused_side,
                "follow_from_ms": (cinfo.get("follow") or {}).get("from_ms"),
                "reconcile": rec_tot}
@@ -1901,6 +1970,7 @@ PHASES = (("starting", "starting up"),
           ("waiting", "waiting for the Backtest v2 table to be free"),
           ("estimating", "counting the strategies to check"),
           ("candidates", "finding the strategies that could pass the room's rules"),
+          ("prices", "updating your room's coins' 1-minute prices"),
           ("trade lists", "reading each strategy's own backtest trades"),
           ("audit", "spot-checking strategies under the cut-off"),
           ("practice", "reading your practice trades"),

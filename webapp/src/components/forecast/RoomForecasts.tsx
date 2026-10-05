@@ -744,6 +744,9 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
     </tr>
   );
   const days = (d?.state === "ready" ? d.rows : []) as RRDay[];
+  // the room's own start lies inside the range: compare over its hours only
+  const roomStarted = !!(s?.backtest_room_hours?.from_ms && d?.start_ms
+    && s.backtest_room_hours.from_ms > d.start_ms);
   return (
     <div className={card}>
       <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Backtest a room</h3>
@@ -815,11 +818,16 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
                 {["", "Profit", "TP", "SL", "Lev", "Trades", "Won / lost", "Win rate", "Worst losing run"].map((h) => <th key={h} className={th}>{h}</th>)}
               </tr></thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                {side("Replay (backtest trades)", s.backtest)}
-                {/* the SAME HOURS as practice: the replay may start before the room did */}
-                {s.backtest_room_hours?.from_ms && d.start_ms && s.backtest_room_hours.from_ms > d.start_ms
-                  && side(`Replay, same hours as practice (from ${fmtWhenMs(s.backtest_room_hours.from_ms)})`, s.backtest_room_hours)}
+                {/* THE ROOM'S OWN HOURS FIRST (Oct 05, 2026: "practice has 191 trades
+                    and your replay has 435" — 320 of them were before the room
+                    started): backtest and practice over the same hours, then
+                    what the rules alone did before the room existed */}
+                {roomStarted
+                  ? side(`Backtest, while your room ran (from ${fmtWhenMs(s.backtest_room_hours!.from_ms!)})`, s.backtest_room_hours)
+                  : side("Backtest", s.backtest)}
                 {side(`Practice (real, from ${s.practice.from_ms ? fmtWhenMs(s.practice.from_ms) : "—"})`, s.practice)}
+                {roomStarted && (s.backtest_before_room?.closed ?? 0) > 0
+                  && side(`Backtest before your room started (its rules alone, ${fmtWhenMs(s.backtest_before_room!.from_ms!)} to ${fmtWhenMs(s.backtest_before_room!.to_ms!)}) — nothing to compare`, s.backtest_before_room)}
               </tbody>
             </table>
           </div>

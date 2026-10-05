@@ -1004,3 +1004,51 @@ def test_a_locked_table_is_waited_for_never_a_failed_run(monkeypatch):
     assert "rebuilding the Backtest v2 table" in str(e.value)
     with pytest.raises(sqlite3.OperationalError):
         rr._while_busy(broken, lambda *a: None)
+
+
+def test_a_trade_the_room_took_is_never_dropped_as_refused():
+    """RCA-2026-10-05-G: #TVWJ66G4 KIMISTOCK 15m stoch14 — the room's cost
+    check wrote a refusal at Oct 01, 2026 4:53pm, the room then TOOK the
+    5:15pm candle (entry 5:30pm, +0.41), and the replay dropped that trade as
+    "refused within the hour" — 45 of the room's trades went unpaired."""
+    room_start = _ms(2026, 10, 1, 12, 51)
+    t530 = [_ms(2026, 10, 1, 17, 30), _ms(2026, 10, 1, 22, 8), 0.41, True,
+            _ms(2026, 10, 1, 22, 7), "TP", "SHORT"]
+    combo = {"id": "TVWJ66G4", "coin": "KIMISTOCK", "tf": "15m", "signal": "stoch14",
+             "th": 0.0, "sl": 0.5, "tp": 0.6, "group": "classic", "gate": "warn",
+             "trades": [t530]}
+    books = {"TVWJ66G4": wr._Book(combo)}
+    every_refusal = lambda rid, t: "gate_blocked_quiet"       # noqa: E731
+    follow = {"from_ms": room_start, "why": "x", "refuse": every_refusal,
+              "slots": [{"id": "TVWJ66G4", "on_ms": room_start, "off_ms": None,
+                         "on_why": "on", "off_why": ""}],
+              "trades": {"TVWJ66G4": [t530]}}      # rebuilt in the room's own state
+    got = wr.simulate([combo], start_ms=_ms(2026, 10, 1), end_ms=_ms(2026, 10, 2),
+                      cfg={**ROOM_RULES, "coin_slices": 4}, books=books, follow=follow)
+    (s,) = [x for x in got["slots"] if x.get("follow")]
+    assert [int(t[0]) for t in s["trades"]] == [t530[0]], \
+        "a rebuilt list is never read for refusals a second time"
+    # and the refusal reading itself never calls a TAKEN candle refused
+    slot = "stoch14_15m_sl05tp06|KIMISTOCK_USDT"
+    pr = {"refused": {slot: [(_ms(2026, 10, 1, 16, 53) / 1000, "gate_blocked")]},
+          "refused_candles": {}, "entries": {slot: [_ms(2026, 10, 1, 17, 15) // 1000]}}
+    refuse = rr._room_refusals(pr, {"TVWJ66G4": slot})
+    assert refuse("TVWJ66G4", t530) == ""
+    t515 = [_ms(2026, 10, 1, 17, 15)] + t530[1:]
+    assert refuse("TVWJ66G4", t515) == "gate_blocked_quiet", "an untaken candle still is"
+
+
+def test_the_backtest_splits_into_the_rooms_hours_and_before_it(room):
+    """Oct 05, 2026: "practice has 191 trades and your replay has 435" — 320
+    of the 435 were before the room started. The two parts add up to the
+    whole, and the screen leads with the room's own hours."""
+    from pathlib import Path
+
+    res = rr.replay(ROOM, "2026-10-01", "2026-10-02", now=_ms(2026, 10, 2, 18) / 1000)
+    s = res["summary"]
+    assert s["backtest_room_hours"]["closed"] + s["backtest_before_room"]["closed"] \
+        == s["backtest"]["closed"]
+    assert s["backtest_before_room"]["to_ms"] == s["practice"]["from_ms"]
+    tsx = (Path(__file__).resolve().parents[1] / "webapp" / "src" / "components" / "forecast"
+           / "RoomForecasts.tsx").read_text(encoding="utf-8")
+    assert "Backtest, while your room ran" in tsx and "before your room started" in tsx

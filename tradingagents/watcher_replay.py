@@ -254,7 +254,12 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
         # room's own trade record. Taken out BEFORE the coin cap, so a refused
         # trade never holds one of a coin's places.
         for s in slots:
-            if not s.get("follow"):
+            # a slot trading a list REBUILT in the room's own state already
+            # had the room's refusals silenced at the signal, the room's real
+            # entries kept; reading the refusals again here dropped trades the
+            # room TOOK (#TVWJ66G4 KIMISTOCK 15m, Oct 01, 2026 5:30pm: the cost
+            # check's 4:53pm refusal read as covering it for the hour)
+            if not s.get("follow") or s["id"] in own:
                 continue
             keep = []
             for t in s["trades"]:

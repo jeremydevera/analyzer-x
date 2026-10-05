@@ -123,7 +123,8 @@ def test_the_screen_has_the_table_and_the_backtest_and_asks_the_server():
     # the hindsight warning sits ABOVE the totals it changes, never under the
     # tables (Oct 03, 2026: replay +6,947.20 against practice -13.24), and a
     # printed day reads "Sep 01, 2026", never its key "2026-09-01"
-    assert panel.index('startsWith("HINDSIGHT")') < panel.index('side("Replay (backtest trades)"')
+    # (the totals table leads with the room's own hours since Oct 05, 2026)
+    assert panel.index('startsWith("HINDSIGHT")') < panel.index('side(`Practice (real')
     assert "{d.from_day} to {d.to_day} · its rules" not in panel and "dayOf(d.start_ms)" in panel
     assert 'type="date"' in src and "fmtWhen" in src
     api_py = (ROOT / "tradingagents/api.py").read_text(encoding="utf-8")

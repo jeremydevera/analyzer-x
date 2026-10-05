@@ -172,6 +172,60 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-05-G — Backtest a room dropped trades the room really made, reading an earlier cost refusal as covering them
+
+**CEO**
+
+* What you saw: practice 191 trades against the backtest's 124 over the same
+  hours (#6B08FF64, Oct 01 – Oct 05, 2026), with 45 practice trades the
+  backtest "made no trade for".
+* Why: the replay threw away any backtest trade that came within an hour of
+  a cost-check refusal, without checking whether the room actually took it —
+  #TVWJ66G4 KIMISTOCK's 5:30pm win was dropped because of a 4:53pm refusal.
+* What stops it now: a trade the room really took is never dropped, and the
+  strategies rebuilt the room's way are not checked a second time.
+
+**DEV**
+
+* `watcher_replay.simulate(follow=)` ran `follow["refuse"]` over every follow
+  slot's trades, including lists `room_replay.room_lists` had already rebuilt
+  with the room's refusals silenced and its real entries kept;
+  `room_replay._room_refusals` → `room_backtest._reason` answered
+  `gate_blocked_quiet` for any entry within GATE_QUIET_S of a written refusal.
+* Invariant broken: **a candle the room entered is never a refusal** —
+  `_room_refusals` checks `pr["entries"]` first, and `simulate` skips the
+  refusal pass for a slot with a rebuilt list (`s["id"] in own`).
+* Guard: `tests/test_backtest_a_room_replays_its_rules.py::test_a_trade_the_room_took_is_never_dropped_as_refused`.
+
+**SAW** — the operator, Oct 05, 2026: *"how come backtest is few than
+practice where is the gap"*, then *"/goal start the fix now"*.
+
+**TIMELINE**
+
+1. `Oct 01, 2026 4:53pm` — #6B08FF64's cost check refuses stoch14_15m_sl05tp06
+   on KIMISTOCK (cost 51% of the target) and writes it.
+2. `5:30pm` — the room ENTERS on the 5:15pm candle, SHORT at ~67.61; it closes
+   at 10:07pm, +0.41.
+3. The replay's rebuilt list for #TVWJ66G4 holds 5:30pm, 10:30pm and Oct 02
+   4:45am, the room's three — and the refusal pass drops 5:30pm and 4:45am
+   as "fees too high … written once an hour".
+4. `Oct 05, 2026` — found by rebuilding that one strategy step by step; fixed
+   here.
+
+**ROOT CAUSE** — two layers each applied the room's refusals; the second one
+used the hour-long guess and had no idea which candles the room really took.
+
+**WHY IT WAS NOT CAUGHT** — the refusal test feeds trades the room did NOT
+take, so "drop a refused trade" was proven and "keep a taken one" was never
+asked; the rebuild (which keeps taken trades) and the drop were added in two
+commits, each tested alone.
+
+**COST** — none in money; the comparison read 45 practice trades as missing.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_backtest_a_room_replays_its_rules.py::test_a_trade_the_room_took_is_never_dropped_as_refused`.
+
 ## RCA-2026-10-05-F — after the power cut, the daily update's clean-up read 138 GB and locked the Backtest v2 table for hours
 
 **CEO**

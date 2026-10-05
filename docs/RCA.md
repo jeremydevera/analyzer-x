@@ -172,6 +172,77 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-05-C — Errors and Forecast stayed blank after a menu click until the page was refreshed
+
+**CEO**
+
+* You opened Errors or Forecast from the menu in Safari and nothing loaded
+  until you refreshed the whole page.
+* Why: the page you had just left (Auto Trade, six rooms) still held the app's
+  four request slots, and its waiting requests went first; when the server
+  was slow, the new page waited behind them, and only a refresh cleared them.
+* What stops it now: leaving a page gives up that page's waiting and
+  unfinished data requests, the header's own checks may use at most two of
+  the four slots, and a header check already on its way is never sent twice.
+
+**DEV**
+
+* `webapp/src/lib/api.ts` `fetchLaned` → `takeLane`: the lane counter and the
+  `waiting` queue are module state that live as long as the TAB; a client-side
+  route change kept the old page's queued calls first in line and its slow
+  calls in flight, and `/api/jobs` (every 4 s) stacked unanswered copies.
+* Invariant broken: **the page on screen owns the request budget** — work for
+  a page that is gone may not stand in front of the page that is shown.
+* Guards: `tests/test_api_lane_budget.py::test_leaving_a_page_gives_up_its_reads`,
+  `::test_the_page_change_is_told_before_the_new_page_asks`,
+  `::test_a_header_poll_never_stacks_up_behind_a_slow_api`,
+  `::test_the_header_never_holds_more_than_two_lanes`.
+
+**SAW** — *"when i go to errors tab or forecast tab, i need to refresh the
+whole page in order for it to load in safari browser"* (Oct 05, 2026).
+
+**TIMELINE** (Safari's engine, WebKit 26.6 under Playwright, this PC)
+
+1. Server warm, one Auto Trade visit then the menu: Errors asked for its data
+   0.1-0.3 s after the click — no fault at normal speed.
+2. `Oct 05, 2026 12:19am` — another session restarted the API; during its
+   warm-up the same click left Errors' first request 15 s (Chrome's engine)
+   and 30 s (WebKit) after the click.
+3. Reproduced on purpose: every Auto Trade answer held 20 s, Auto Trade open
+   15 s, then Errors from the menu — **no request from Errors in the 45 s
+   watched**; the page was blank exactly as described.
+4. After the first fix (old page's reads dropped and cancelled): page data
+   slow, header fast — Errors asked at **+3.2 s**. Everything slow — still
+   **+20 s**: the header's polls held the lanes.
+5. After the header cap and shared header calls: everything slow — Errors at
+   **+0.3 s**, Forecast at **+0.3 s**; normal speed unchanged.
+
+**ROOT CAUSE** — `fetchLaned`'s queue had no notion of which page a call
+belonged to: a menu click (no reload) left the old page's calls ahead of the
+new page's, and the header's polls had no limit on the lanes they could hold.
+
+**WHY IT WAS NOT CAUGHT** — the lane-budget tests (Sep 09, 2026) proved the
+URL changes instantly, which is the half that was fixed then; nothing measured
+when the NEW page's own data request left, and every check ran against a warm,
+fast API where the queue empties in milliseconds. The fault only shows when
+answers are slow — the minutes after every restart. One of those tests had also
+been failing since Oct 01, 2026 (`freeLane()` became `freeLane(behind)`), so the
+file was red and nobody read it as a signal.
+
+**COST** — none in money; the Errors and Forecast pages looked broken after
+restarts until refreshed.
+
+**FIX** — this commit (`newPage()` from the admin layout's render,
+`PageLeft`, `ALWAYS_ON` shared calls, `CHROME_LANES = 2`).
+
+**GUARD** — `tests/test_api_lane_budget.py::test_leaving_a_page_gives_up_its_reads`,
+`::test_the_page_change_is_told_before_the_new_page_asks`,
+`::test_a_header_poll_never_stacks_up_behind_a_slow_api` and
+`::test_the_header_never_holds_more_than_two_lanes`; the stale `freeLane()`
+assertion widened to `freeLane(`.
+
+---
+
 ## RCA-2026-10-05-B — a failed page build during a restart crashed the launcher while printing why, and the site stayed down
 
 **CEO**

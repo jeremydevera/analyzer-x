@@ -41,30 +41,83 @@ export class ApiError extends Error {
  * "reading…" states while their data queues. */
 const MAX_LANES = 4;
 let lanes = 0;
-const waiting: (() => void)[] = [];
+// one call waiting for a lane: `go` sends it, `drop` refuses it (page left)
+type Waiter = { go: () => void; drop: () => void; gen: number; droppable: boolean };
+const waiting: Waiter[] = [];
 // THE ROOM ON SCREEN GOES FIRST, BUT NEVER ALONE (Oct 01, 2026). Every room
 // stays loaded and keeps refreshing behind its tab, so up to six rooms share
 // these four lanes. The visible room's calls are served first — and, measured
 // in the browser the first time this ran, its own refreshes then held all
 // four lanes for good: in 60 s not one call for any other room went out. So
 // up to BEHIND_LANES calls for rooms behind their tabs always get a turn.
-const waitingBehind: (() => void)[] = [];
+const waitingBehind: Waiter[] = [];
 const BEHIND_LANES = 2;
 let behindNow = 0;
 
-async function takeLane(behind = false): Promise<void> {
-  if (lanes < MAX_LANES) { lanes += 1; if (behind) behindNow += 1; return; }
-  await new Promise<void>((res) => (behind ? waitingBehind : waiting).push(res));
-  lanes += 1;
-  if (behind) behindNow += 1;
+// THE PAGE ON SCREEN (operator, Oct 05, 2026: "when i go to errors tab or
+// forecast tab, i need to refresh the whole page in order for it to load in
+// safari browser"). The lanes and the queue live as long as the TAB, not the
+// page: a menu click keeps them, a refresh empties them. Measured in Safari's
+// engine with the API answering in 20 s (as in the minutes after a restart):
+// Auto Trade's six rooms held all four lanes and queued more, and Errors —
+// opened from the menu — had not sent its one call 45 s later, because the
+// page just left still had first claim. So a page change (`newPage`, from the
+// layout) refuses that page's queued reads and cancels its reads in flight.
+// Only READS: an order, a switch or any other POST always goes out. And never
+// the header's own polls, which stay on screen across every page.
+let _page = 0;
+const inflight = new Set<{ gen: number; ctl: AbortController }>();
+const ALWAYS_ON = /^\/api\/(health|jobs|notifications)(\/|\?|$)/;
+
+/** Thrown to a read the page that asked for it no longer shows. */
+export class PageLeft extends Error {
+  constructor() { super("the page that asked for this was left"); this.name = "PageLeft"; }
 }
 
-function freeLane(behind = false): void {
+/** The layout calls this when the page changes, BEFORE the new page's own
+ *  effects run, so the new page's first calls belong to it. */
+export function newPage(): void {
+  _page += 1;
+  for (const q of [waiting, waitingBehind]) {
+    for (let i = q.length - 1; i >= 0; i -= 1) {
+      if (q[i].droppable && q[i].gen < _page) q.splice(i, 1)[0].drop();
+    }
+  }
+  for (const f of inflight) if (f.gen < _page) f.ctl.abort();
+}
+
+// THE HEADER GETS AT MOST TWO LANES (Oct 05, 2026). Its polls (ALWAYS_ON)
+// are never given up on a page change, so with the API slow they could hold
+// all four and the page opened from the menu waited 20 s for its first call
+// (Safari's engine, every answer 20 s). Capped, a page always has two.
+const CHROME_LANES = 2;
+let chromeNow = 0;
+const waitingChrome: Waiter[] = [];
+
+async function takeLane(behind = false, gen = _page, droppable = false, chrome = false): Promise<void> {
+  if (lanes < MAX_LANES && (!chrome || chromeNow < CHROME_LANES)) {
+    lanes += 1;
+    if (behind) behindNow += 1;
+    if (chrome) chromeNow += 1;
+    return;
+  }
+  await new Promise<void>((res, rej) => (chrome ? waitingChrome : behind ? waitingBehind : waiting).push(
+    { go: res, drop: () => rej(new PageLeft()), gen, droppable }));
+  lanes += 1;
+  if (behind) behindNow += 1;
+  if (chrome) chromeNow += 1;
+}
+
+function freeLane(behind = false, chrome = false): void {
   lanes -= 1;
   if (behind) behindNow -= 1;
+  if (chrome) chromeNow -= 1;
+  // the header always keeps ONE lane going, so its status never stalls
+  if (waitingChrome.length && chromeNow === 0) { waitingChrome.shift()?.go(); return; }
   const next = (waitingBehind.length && (behindNow < BEHIND_LANES || !waiting.length))
     ? waitingBehind.shift() : (waiting.shift() ?? waitingBehind.shift());
-  next?.();
+  if (next) { next.go(); return; }
+  if (waitingChrome.length && chromeNow < CHROME_LANES) waitingChrome.shift()?.go();
 }
 
 // WHICH ROOM the Auto Trade screen is showing (trading profiles, Sep 29,
@@ -132,11 +185,23 @@ async function fetchLaned(input: string, init?: RequestInit, room: string = _roo
   }
   // a roomed call for a room that is not on screen waits behind the rest
   const behind = _roomed(input) && room !== _profile;
-  await takeLane(behind);
+  const path = input.replace(/^https?:\/\/[^/]+/, "");
+  const method = (init?.method ?? "GET").toUpperCase();
+  const chrome = ALWAYS_ON.test(path);
+  const droppable = method === "GET" && !chrome;
+  const gen = _page;
+  await takeLane(behind, gen, droppable, chrome);
+  const mine = droppable ? { gen, ctl: new AbortController() } : null;
+  if (mine) inflight.add(mine);
   try {
-    return await fetch(input, init);
+    return await fetch(input, mine ? { ...(init ?? {}), signal: mine.ctl.signal } : init);
+  } catch (e) {
+    // cancelled because its page was left: say so, never "network error"
+    if (mine && mine.ctl.signal.aborted) throw new PageLeft();
+    throw e;
   } finally {
-    freeLane(behind);
+    if (mine) inflight.delete(mine);
+    freeLane(behind, chrome);
   }
 }
 
@@ -163,33 +228,50 @@ export function withApiPrefix<T>(prefix: string, fn: () => T): T {
   }
 }
 
+// THE HEADER'S POLLS NEVER STACK UP (Oct 05, 2026). They stay on screen across
+// every page and are never given up on a page change, so a slow API (the
+// minutes after a restart) let /api/jobs — asked every 4 s — hold every lane
+// with its own unanswered copies, and the page's data waited behind them. A
+// header call already on its way is shared, never sent twice.
+const _sharedGets = new Map<string, Promise<unknown>>();
+
 async function get<T>(path: string): Promise<T> {
   // rebased BEFORE the first await, while the caller's prefix is in force —
   // and the ROOM taken now too, so the retry asks the same room
   path = _rebase(path);
   const room = _roomNow();
-  let r = await fetchLaned(`${API_BASE}${path}`, { cache: "no-store" }, room);
-  // ONE second try, only for a GET. When the API restarts (a fix landing),
-  // the proxy answers 500 for the few seconds it is down — on Sep 09, 2026
-  // the operator opened Auto Trade in that window and every panel went red.
-  // 503 is NOT retried: it carries a real sentence ("the index is being
-  // built") the panels are built to show. A POST is never retried — a
-  // second submit is a second order.
-  if (r.status === 500 || r.status === 502 || r.status === 504) {
-    await new Promise((res) => setTimeout(res, 1_500));
-    r = await fetchLaned(`${API_BASE}${path}`, { cache: "no-store" }, room);
-  }
-  if (!r.ok) {
-    let detail = "";
-    try {
-      const body = await r.json();
-      detail = typeof body?.detail === "string" ? body.detail : "";
-    } catch {
-      /* not JSON: the status is all there is */
+  const key = ALWAYS_ON.test(path) ? `${room} ${path}` : "";
+  const have = key ? _sharedGets.get(key) : undefined;
+  if (have) return (await have) as T;
+  const run = (async (): Promise<T> => {
+    let r = await fetchLaned(`${API_BASE}${path}`, { cache: "no-store" }, room);
+    // ONE second try, only for a GET. When the API restarts (a fix landing),
+    // the proxy answers 500 for the few seconds it is down — on Sep 09, 2026
+    // the operator opened Auto Trade in that window and every panel went red.
+    // 503 is NOT retried: it carries a real sentence ("the index is being
+    // built") the panels are built to show. A POST is never retried — a
+    // second submit is a second order.
+    if (r.status === 500 || r.status === 502 || r.status === 504) {
+      await new Promise((res) => setTimeout(res, 1_500));
+      r = await fetchLaned(`${API_BASE}${path}`, { cache: "no-store" }, room);
     }
-    throw new ApiError(path, r.status, detail);
+    if (!r.ok) {
+      let detail = "";
+      try {
+        const body = await r.json();
+        detail = typeof body?.detail === "string" ? body.detail : "";
+      } catch {
+        /* not JSON: the status is all there is */
+      }
+      throw new ApiError(path, r.status, detail);
+    }
+    return r.json() as Promise<T>;
+  })();
+  if (key) {
+    _sharedGets.set(key, run);
+    run.finally(() => _sharedGets.delete(key)).catch(() => { /* the caller sees it */ });
   }
-  return r.json() as Promise<T>;
+  return run;
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {

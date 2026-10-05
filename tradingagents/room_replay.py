@@ -1162,6 +1162,10 @@ def room_lists(follow: dict, pr: dict, meta: dict, store, progress=None) -> tupl
         if progress:
             progress(n + 1, len(ids))
     follow["ends"] = ends
+    # the trades the room really took, as (id, entry minute): the coin cap
+    # keeps these first when more signal at once than a coin has places
+    follow["took"] = {(rid, (int(x) + _bar_s_of_key(slot.split("|", 1)[0])) * 1000)
+                      for rid, slot in slot_of.items() for x in entered.get(slot, ())}
     return out, {"rebuilt": len(out), "plain": failed, "rebuild_s": round(time.time() - t0, 1)}
 
 
@@ -1192,6 +1196,18 @@ def _room_refusals(pr: dict, slot_of: dict):
         why = rb._reason(refused.get(slot, []), ts_of.get(slot, []), entry_s, bar_s)
         return "" if why in ("none",) + _CAPPED else why
     return refuse
+
+
+def _grace_ms(s: dict) -> int:
+    """How old a closed candle the runner still takes, for this slot's bar
+    (auto_trader.MAX_SIGNAL_AGE_FRACTION of one bar)."""
+    from tradingagents import auto_trader as _at
+
+    try:
+        bar_s = _bar_s_of_key(slot_key(s).split("|", 1)[0])
+    except (ValueError, KeyError):
+        return 0
+    return int(bar_s * 1000 * float(getattr(_at, "MAX_SIGNAL_AGE_FRACTION", 0) or 0))
 
 
 def _room_whys(room: str) -> dict:
@@ -1333,7 +1349,7 @@ def _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta
     pr_side = _side([float(t["pnl"]) for t in p_trades])
     # THE SAME HOURS AS PRACTICE: the replay can start before the room did
     same_hours = _side([x[1] for x in traded if p_start is not None
-                        and int(x[3][0]) >= p_start])
+                        and int(x[3][0]) >= p_start - _grace_ms(slots[x[2]])])
     gone = [r for r in (sim.get("refused") or ())
             if _in_range(r["trade"], start_ms, end_ms)]
     refused_side = {"closed": len(gone),
@@ -1601,7 +1617,9 @@ def _reconcile(room, cands, lists, sim, pr, start_ms, end_ms, now, traded, slots
                                else float("inf")))
     for _exit_ms, _pnl, i, t in traded:
         s = slots[i]
-        if p_start is None or int(t[0]) < p_start:
+        # the room's first trades enter on a candle that closed just BEFORE it
+        # started (#6B08FF64: 12:45pm entries for a 12:51pm start)
+        if p_start is None or int(t[0]) < p_start - _grace_ms(s):
             continue
         try:
             key = slot_key(s)

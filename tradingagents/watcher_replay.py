@@ -265,7 +265,9 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
                     keep.append(t)
             s["trades"] = _stack(keep, s["trades"]) if hasattr(s["trades"], "shape") else keep
     if int(cfg.get("coin_slices") or 0) > 0:
-        cap_per_coin(slots, int(cfg["coin_slices"]))
+        took = (follow or {}).get("took") or set()
+        cap_per_coin(slots, int(cfg["coin_slices"]),
+                     prefer=(lambda s, t: (s["id"], int(t[0])) in took) if took else None)
     for s in slots:
         _totals(s)
     out = {"days": _days(slots, events, checks, end_ms), "slots": slots,
@@ -309,7 +311,7 @@ def _follow(follow: dict, running: dict, slots: list, events: list, books: dict,
     events.sort(key=lambda e: (e["at"], e["action"] != "off", e["id"]))
 
 
-def cap_per_coin(slots: list, n: int) -> None:
+def cap_per_coin(slots: list, n: int, prefer=None) -> None:
     """THE RUNNER'S OWN LIMIT: at most `n` open trades on one coin (the
     operator's "max slices per coin", 4, with partial TP/SL on for demo). A
     trade that would open while `n` are already open on its coin never
@@ -318,16 +320,20 @@ def cap_per_coin(slots: list, n: int) -> None:
     limit) counts trades that 50 rows on KII can never make at once.
 
     First come, first served in entry order; a tie in the same minute goes
-    to the slot switched on first."""
+    to the slot switched on first — or, with `prefer(slot, trade)`, to the
+    trades the ROOM really took (Backtest a room: #6B08FF64 runs 34
+    strategies on YMTCSTOCK, and at Oct 01, 2026 12:45pm more than 4 of them
+    signalled at once; the replay kept a different 4 than the room)."""
     by_coin: dict = {}
     for i, s in enumerate(slots):
         for t in s["trades"]:
-            by_coin.setdefault(s["coin"], []).append((float(t[0]), i, t))
+            first = 0 if prefer is not None and prefer(s, t) else 1
+            by_coin.setdefault(s["coin"], []).append((float(t[0]), first, i, t))
     keep: dict = {i: [] for i in range(len(slots))}
     for trades in by_coin.values():
-        trades.sort(key=lambda x: (x[0], x[1]))
+        trades.sort(key=lambda x: (x[0], x[1], x[2]))
         open_until: list = []
-        for entry, i, t in trades:
+        for entry, _first, i, t in trades:
             open_until = [x for x in open_until if x > entry]
             if len(open_until) >= n:
                 continue

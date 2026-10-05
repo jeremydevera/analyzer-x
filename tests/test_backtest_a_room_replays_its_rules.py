@@ -957,3 +957,17 @@ def test_a_rules_trade_still_open_when_the_room_starts_is_not_kept():
                       cfg=ROOM_RULES, follow={"from_ms": start, "why": "x", "slots": []})
     (a,) = got["slots"]
     assert a["trades"] == [], "open across 12:51pm: the room never held it"
+
+
+def test_the_coin_cap_keeps_the_trades_the_room_really_took():
+    e = _ms(2026, 10, 1, 12, 45)
+    slots = [{"id": f"S{k}", "coin": "YMTCSTOCK",
+              "trades": [[e, e + H, 0.4, True]]} for k in range(6)]
+    took = {("S4", e), ("S5", e)}
+    wr.cap_per_coin(slots, 4, prefer=lambda s, t: (s["id"], int(t[0])) in took)
+    kept = [s["id"] for s in slots if s["trades"]]
+    assert len(kept) == 4 and {"S4", "S5"} <= set(kept)
+    plain = [{"id": f"S{k}", "coin": "YMTCSTOCK", "trades": [[e, e + H, 0.4, True]]}
+             for k in range(6)]
+    wr.cap_per_coin(plain, 4)
+    assert [s["id"] for s in plain if s["trades"]] == ["S0", "S1", "S2", "S3"]

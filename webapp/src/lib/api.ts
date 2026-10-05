@@ -1264,6 +1264,12 @@ export type RoomReplay = {
   lists?: { with_list: number; ever_pass: number };
   summary?: { backtest: RRSide & { switched_on: number; switched_off: number; ids: number; open: number };
     practice: RRSide & { from_ms?: number | null; slots?: number; slots_switched_off?: number };
+    /** the replay over the practice account's own hours only */
+    backtest_room_hours?: RRSide & { from_ms?: number | null };
+    /** backtest trades the room itself refused (cost check, price ran away …) — left out */
+    refused_by_room?: { closed: number; profit: number; by: Record<string, number> };
+    /** from here the replay follows the room's own switches */
+    follow_from_ms?: number | null;
     reconcile: Record<string, number> };
   reasons?: Record<string, string>;
   view?: string; day?: string; id?: string;

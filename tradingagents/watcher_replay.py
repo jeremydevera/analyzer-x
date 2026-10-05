@@ -143,7 +143,8 @@ def live_schedule(start_ms: int, end_ms: int, raw: bool) -> list[tuple]:
 
 def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
              cfg: dict | None = None, rows: dict | None = None,
-             books: dict | None = None, schedule: list | None = None) -> dict:
+             books: dict | None = None, schedule: list | None = None,
+             follow: dict | None = None) -> dict:
     """Replay the watcher from `start_ms`'s local midnight to `end_ms`.
 
     `combos`: each `{"id", "coin", "tf", "signal", "th", "sl", "tp", "gate",
@@ -154,6 +155,14 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
     checks, e.g. `live_schedule(...)`; `rows`, when given, is then keyed by
     the switch-on checks. None is the research replay's one check a midnight,
     switch-off then switch-on — byte for byte what it always was.
+
+    `follow` (Oct 05, 2026, Backtest a room): `{"from_ms", "why", "slots":
+    [{"id", "on_ms", "off_ms" (None: still on), "on_why", "off_why"}]}` — from
+    `from_ms` the ROOM'S OWN switches decide, never the rules: every rules
+    slot still on is ended there (`why`), and each of the room's stretches is
+    a slot of its own. The operator, of a replay that had switched on 279
+    strategies the room never ran: "fix this It switched on strategies your
+    room never ran". None changes nothing.
     """
     cfg = {**wp.DEFAULTS, **(cfg or {})}
     window_ms = int(cfg.get("window_days", 30)) * DAY_MS
@@ -165,6 +174,8 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
     checks = local_midnights(start_ms, end_ms)
     plan = ([(at, True, True) for at in checks] if schedule is None
             else sorted((int(a), bool(f), bool(n)) for a, f, n in schedule))
+    if follow is not None:
+        plan = [p for p in plan if p[0] < int(follow["from_ms"])]
     if rows is None:
         rows = rows_by_check(books, [at for at, _f, n in plan if n], window_ms)
     live_n = int(cfg.get("off_streak_live") or 0)
@@ -201,6 +212,8 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
             slots.append(slot)
             events.append({"at": at, "action": "on", "id": r["id"],
                            "coin": r["coin"], "why": p["why"]})
+    if follow is not None:
+        _follow(follow, running, slots, events, books, end_ms)
     # 3. WHAT EACH SLOT TRADED
     for s in slots:
         hi = s["off_ms"] if s["off_ms"] is not None else float("inf")
@@ -212,12 +225,64 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
             s["trades"] = tr[(tr[:, 0] >= s["on_ms"]) & (tr[:, 0] < hi)]
         else:
             s["trades"] = [t for t in tr if s["on_ms"] <= t[0] < hi]
+    refused: list = []
+    if follow is not None and follow.get("refuse"):
+        # WHAT THE ROOM ITSELF REFUSED is not a trade it could have made: the
+        # cost check, a price that ran away, an old signal — read from the
+        # room's own trade record. Taken out BEFORE the coin cap, so a refused
+        # trade never holds one of a coin's places.
+        for s in slots:
+            if not s.get("follow"):
+                continue
+            keep = []
+            for t in s["trades"]:
+                why = follow["refuse"](s["id"], t)
+                if why:
+                    refused.append({"id": s["id"], "coin": s["coin"], "trade": t, "why": why})
+                else:
+                    keep.append(t)
+            s["trades"] = _stack(keep, s["trades"]) if hasattr(s["trades"], "shape") else keep
     if int(cfg.get("coin_slices") or 0) > 0:
         cap_per_coin(slots, int(cfg["coin_slices"]))
     for s in slots:
         _totals(s)
-    return {"days": _days(slots, events, checks, end_ms), "slots": slots,
-            "events": events, "summary": _summary(slots, checks, end_ms)}
+    out = {"days": _days(slots, events, checks, end_ms), "slots": slots,
+           "events": events, "summary": _summary(slots, checks, end_ms)}
+    if follow is not None:
+        out["refused"] = refused
+    return out
+
+
+def _follow(follow: dict, running: dict, slots: list, events: list, books: dict,
+            end_ms: int) -> None:
+    """From `follow["from_ms"]` the room's own stretches are the slots."""
+    at = int(follow["from_ms"])
+    for rid in sorted(running):
+        slot = running.pop(rid)
+        slot["off_ms"], slot["off_why"] = at, follow["why"]
+        events.append({"at": at, "action": "off", "id": rid, "coin": slot["coin"],
+                       "why": follow["why"]})
+    for f in sorted(follow["slots"], key=lambda f: (f["on_ms"], f["id"])):
+        book = books.get(f["id"])
+        if book is None:
+            continue
+        on = max(int(f["on_ms"]), at)
+        off = f.get("off_ms")
+        off = None if off is None or int(off) > end_ms else int(off)
+        if off is not None and off <= on:
+            continue
+        c = book.c
+        slot = {**{k: c.get(k) for k in ("id", "coin", "tf", "signal", "th", "sl", "tp",
+                                          "group")},
+                "on_ms": on, "on_why": f["on_why"], "on_row": None,
+                "off_ms": off, "off_why": f.get("off_why") or "", "follow": True}
+        slots.append(slot)
+        events.append({"at": on, "action": "on", "id": f["id"], "coin": c.get("coin"),
+                       "why": f["on_why"]})
+        if off is not None:
+            events.append({"at": off, "action": "off", "id": f["id"], "coin": c.get("coin"),
+                           "why": slot["off_why"]})
+    events.sort(key=lambda e: (e["at"], e["action"] != "off", e["id"]))
 
 
 def cap_per_coin(slots: list, n: int) -> None:

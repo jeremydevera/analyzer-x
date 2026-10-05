@@ -78,8 +78,9 @@ GROUPS = ("preset", "sep25", "sep27ml")       # every other signal is "classic"
 # room would have been no floor below its line at all.
 FLOOR_BELOW = 10.0
 # Bumped when a saved replay would answer differently for the same range:
-# 2 = the room's own switch-ons are always candidates (Oct 03, 2026).
-RESULT_TAG = "r2"
+# 2 = the room's own switch-ons are always candidates (Oct 03, 2026);
+# 3 = from the room's first switch-on, its own switches decide (Oct 05, 2026).
+RESULT_TAG = "r3"
 
 
 # --------------------------------------------------------------- the paths
@@ -899,6 +900,7 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
     # the room's own switch-ons are ALWAYS replayed, whatever the floor: the
     # point of the page is to check the replay against the room's practice
     picks, pinfo = room_picks(room, end_ms, store=store)
+    pick_ids = {c["id"] for c in picks}
     have = {c["id"] for c in cands}
     added = [c for c in picks if c["id"] not in have]
     cands = cands + added
@@ -921,7 +923,9 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
         combo = {**{k: c[k] for k in ("id", "coin", "tf", "signal", "th", "sl", "tp",
                                       "group", "gate")}, "trades": rec["trades"]}
         book = wr._Book(combo)
-        if ever_passes(book, on_checks, window_ms, cfg):
+        # the room's own strategies are kept whatever the rules say: from the
+        # room's first day the replay switches them when the ROOM did
+        if c["id"] in pick_ids or ever_passes(book, on_checks, window_ms, cfg):
             combos.append(combo)
             books[c["id"]] = book
             return {**rec, "passes": True}
@@ -944,17 +948,143 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
                                   on_checks, window_ms, cfg)]
         cinfo["audit"] = {"sampled": len(sample), "would_pass": len(a_pass),
                           "ids": a_pass[:20]}
+    say("practice", 0, 0)
+    pr = practice(room, start_ms, end_ms, now)
     say("replay", 0, 0)
     combos.sort(key=lambda c: c["id"])
     cap = coin_cap(room)
+    follow, finfo = room_follow(room, pr, cands, books, start_ms, end_ms)
+    cinfo["follow"] = finfo
     sim = wr.simulate(combos, start_ms=start_ms, end_ms=end_ms,
-                      cfg={**cfg, "coin_slices": cap}, books=books, schedule=sched)
-    say("practice", 0, 0)
-    pr = practice(room, start_ms, end_ms, now)
+                      cfg={**cfg, "coin_slices": cap}, books=books, schedule=sched,
+                      follow=follow)
     out = _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta,
                     books, sim, pr, cap, window_ms, sched)
     out["from_day"], out["to_day"] = str(from_day), str(to_day)
     return out
+
+
+def room_follow(room: str, pr: dict, cands: list, books: dict, start_ms: int,
+                end_ms: int) -> tuple[dict | None, dict]:
+    """FROM THE ROOM'S FIRST SWITCH-ON, ITS OWN SWITCHES (operator, Oct 05,
+    2026: "fix this It switched on strategies your room never ran"). The
+    replay of #6B08FF64 Oct 01 - Oct 04, 2026 switched on 558 strategies by
+    the rules where the room ran 294, and 238 trades (+$80.35, 41% of the gap
+    to practice) came from 279 strategies the room never had on; it also
+    started at 12:00am while the room started at 12:51pm (342 trades,
+    +$39.40, 20%).
+
+    Each stretch is the room's own (`practice()`'s, from its deploy log),
+    joined to its Backtest v2 list by slot (`slot_key`). A stretch with no
+    list is NAMED in the result, never dropped quietly. Before the room's
+    first switch-on, the rules decide as before."""
+    stretches = pr.get("stretches") or {}
+    firsts = [a for v in stretches.values() for a, _b in v]
+    if not firsts:
+        return None, {"from_ms": None, "slots": 0, "why": "the room has switched nothing on"}
+    from_ms = max(int(min(firsts) * 1000), int(start_ms))
+    if from_ms > end_ms:
+        return None, {"from_ms": None, "slots": 0,
+                      "why": "the room's first switch-on is after the range"}
+    by_slot: dict = {}
+    for c in cands:
+        try:
+            by_slot.setdefault(slot_key(c), c)
+        except ValueError:
+            continue
+    whys = _room_whys(room)
+    out, missing = [], []
+    slot_of: dict = {}
+    for slot, v in sorted(stretches.items()):
+        c = by_slot.get(slot)
+        if c is None or c["id"] not in books:
+            missing.append(slot)
+            continue
+        slot_of[c["id"]] = slot
+        for a, b in v:
+            on, off = int(a * 1000), int(b * 1000)
+            if off <= from_ms or on > end_ms:
+                continue
+            open_now = slot not in (pr.get("slots_off_now") or []) and b == v[-1][1]
+            out.append({"id": c["id"], "on_ms": on,
+                        "off_ms": None if open_now else off,
+                        "on_why": _why_near(whys, c["id"], "on", on)
+                        or "switched on in your room",
+                        "off_why": _why_near(whys, c["id"], "off", off)
+                        or "switched off in your room"})
+    why = (f"your room started at {_when(from_ms)}: from here the replay switches "
+           f"only what the room switched")
+    return ({"from_ms": from_ms, "why": why, "slots": out,
+             "refuse": _room_refusals(pr, slot_of)},
+            {"from_ms": from_ms, "slots": len(out), "strategies": len({f["id"] for f in out}),
+             "missing": missing})
+
+
+# a refusal the replay's own coin cap already makes, so never taken out twice
+_CAPPED = ("coin_busy",)
+
+
+def _room_refusals(pr: dict, slot_of: dict):
+    """`refuse(id, trade) -> reason or ""`: did the ROOM refuse this backtest
+    trade? The cost check's counted candles first (RCA-2026-10-02-C), then
+    any refusal written while its entry bar was open, then a cost-check
+    refusal in the quiet hour before it — the same reading the reconciliation
+    has used since Oct 02, 2026 (room_backtest._reason). On #6B08FF64 Oct 01 -
+    Oct 04, 2026 these were 192 trades worth +$57.91 that the replay counted
+    and the room could never have made."""
+    refused = pr.get("refused") or {}
+    gone = pr.get("refused_candles") or {}
+    ts_of = {slot: [x[0] for x in v] for slot, v in refused.items()}
+
+    def refuse(rid: str, t) -> str:
+        slot = slot_of.get(rid)
+        if not slot:
+            return ""
+        bar_s = _bar_s_of_key(slot.split("|", 1)[0])
+        entry_s = int(t[0]) // 1000
+        if bar_s and entry_s - bar_s in (gone.get(slot) or ()):
+            return "gate_blocked"
+        why = rb._reason(refused.get(slot, []), ts_of.get(slot, []), entry_s, bar_s)
+        return "" if why in ("none",) + _CAPPED else why
+    return refuse
+
+
+def _room_whys(room: str) -> dict:
+    """{(id, action): [(at_ms, why), ...]} from the room's watcher log."""
+    from tradingagents import profiles
+    from tradingagents import strategy_watcher as sw
+
+    out: dict = collections.defaultdict(list)
+    try:
+        with profiles.using(room):
+            path = Path(sw._log_path())
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return out
+    for line in lines:
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(e, dict) and e.get("mode") == "act" and e.get("action") in ("on", "off"):
+            with contextlib.suppress(TypeError, ValueError):
+                out[(str(e.get("id")), e["action"])].append(
+                    (int(float(e["at"]) * 1000), str(e.get("why") or "")))
+    return out
+
+
+def _why_near(whys: dict, rid: str, action: str, at_ms: int, within_ms: int = 900_000) -> str:
+    """The room's own sentence for this switch, when its log has one near it
+    (the deploy log stamps the settings write, the watcher log the decision;
+    they differ by seconds to minutes)."""
+    best = None
+    for t, why in whys.get((rid, action), ()):
+        d = abs(t - at_ms)
+        if d <= within_ms and (best is None or d < best[0]):
+            best = (d, why)
+    if not best:
+        return ""
+    return best[1].split(" — ", 1)[-1] if " — " in best[1] else best[1]
 
 
 def ever_passes(book, on_checks: list, window_ms: int, cfg: dict) -> bool:
@@ -1056,6 +1186,14 @@ def _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta
     full_from = cov["full_from"](day_keys, window_ms)
     bt_side = _side([x[1] for x in traded])
     pr_side = _side([float(t["pnl"]) for t in p_trades])
+    # THE SAME HOURS AS PRACTICE: the replay can start before the room did
+    same_hours = _side([x[1] for x in traded if p_start is not None
+                        and int(x[3][0]) >= p_start])
+    gone = [r for r in (sim.get("refused") or ())
+            if _in_range(r["trade"], start_ms, end_ms)]
+    refused_side = {"closed": len(gone),
+                    "profit": round(sum(float(r["trade"][2]) for r in gone), 2),
+                    "by": dict(collections.Counter(r["why"] for r in gone))}
     summary = {"backtest": {**bt_side, "switched_on": sum(1 for e in events if e["action"] == "on"),
                             "switched_off": sum(1 for e in events if e["action"] == "off"),
                             "ids": len({s["id"] for s in slots}),
@@ -1064,6 +1202,9 @@ def _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta
                             "slots": len({t["slot"] for t in p_trades}),
                             "slots_switched_off": len(set(pr["slots_off_now"])
                                                       & {t["slot"] for t in p_trades})},
+               "backtest_room_hours": {**same_hours, "from_ms": p_start},
+               "refused_by_room": refused_side,
+               "follow_from_ms": (cinfo.get("follow") or {}).get("from_ms"),
                "reconcile": rec_tot}
     off_now = set(pr["slots_off_now"])
     listed = [r for r in lists.values() if not r.get("why")]
@@ -1219,6 +1360,17 @@ def _notes(room, cfg, cinfo, listed, no_list, cov, full_from, pr, cap, start_ms,
                f"stop {float(cfg.get('max_sl') or 0):g}% or tighter, cost under "
                f"{cost_block_pct():g}% of the target. A strategy that was strong only "
                f"before its row's 30 days cannot be nominated.")
+    fo = cinfo.get("follow") or {}
+    if fo.get("from_ms"):
+        out.append(f"FROM {_when(fo['from_ms'])} THE REPLAY FOLLOWS YOUR ROOM: it switches "
+                   f"on and off only what the room switched, when it switched it "
+                   f"({fo['slots']:,} stretches over {fo.get('strategies', 0):,} strategies), "
+                   f"each trading its own Backtest v2 list; before that it runs the room's "
+                   f"rules."
+                   + (f" {len(fo['missing']):,} of the room's strategies have no Backtest v2 "
+                      f"list here and cannot be replayed: "
+                      f"{', '.join(fo['missing'][:6])}{' …' if len(fo['missing']) > 6 else ''}."
+                      if fo.get("missing") else ""))
     p = cinfo.get("room_picks") or {}
     if p.get("count"):
         out.append(f"The room's own switch-ons are always replayed: {p['count']:,} strategies "

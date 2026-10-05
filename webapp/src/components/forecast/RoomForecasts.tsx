@@ -816,10 +816,23 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
               </tr></thead>
               <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                 {side("Replay (backtest trades)", s.backtest)}
-                {side(`Practice (real, from ${s.practice.from_ms ? dayOf(s.practice.from_ms) : "—"})`, s.practice)}
+                {/* the SAME HOURS as practice: the replay may start before the room did */}
+                {s.backtest_room_hours?.from_ms && d.start_ms && s.backtest_room_hours.from_ms > d.start_ms
+                  && side(`Replay, same hours as practice (from ${fmtWhenMs(s.backtest_room_hours.from_ms)})`, s.backtest_room_hours)}
+                {side(`Practice (real, from ${s.practice.from_ms ? fmtWhenMs(s.practice.from_ms) : "—"})`, s.practice)}
               </tbody>
             </table>
           </div>
+          {s.follow_from_ms && (
+            <p className="mt-2 text-theme-xs text-gray-600 dark:text-gray-300">
+              From {fmtWhenMs(s.follow_from_ms)} the replay switches on and off only what your room switched, when it switched it
+              {s.refused_by_room && s.refused_by_room.closed > 0
+                ? <>, and leaves out the {s.refused_by_room.closed.toLocaleString()} trade{s.refused_by_room.closed === 1 ? "" : "s"} your
+                  room refused ({Object.entries(s.refused_by_room.by).map(([k, n]) => `${n.toLocaleString()} ${d.reasons?.[k] ?? k}`).join(", ")}),
+                  which would have made <span className={tone(s.refused_by_room.profit)}>{fmtMoney(s.refused_by_room.profit)}</span> in the backtest.</>
+                : "."}
+            </p>
+          )}
           {Object.keys(s.reconcile ?? {}).length > 0 && (
             <ul className="mt-2 list-disc pl-5 text-theme-xs text-gray-600 dark:text-gray-300">
               {Object.entries(s.reconcile).filter(([k]) => !k.includes(":")).map(([k, n]) => (

@@ -763,3 +763,99 @@ def test_replay_shows_its_bar_at_once_and_greys_the_button_while_it_runs():
     assert 'position: "above"' in picker
     client = (root / "lib" / "api.ts").read_text(encoding="utf-8")
     assert "from_day: q.from_day, to_day: q.to_day" in client
+
+
+# ------------------------------------------ 9. from the room's start, its own switches
+def test_from_the_rooms_first_switch_on_the_replay_switches_only_what_the_room_did():
+    """Operator, Oct 05, 2026: "fix this It switched on strategies your room
+    never ran" — #6B08FF64 Oct 01 - Oct 04, 2026: the rules switched on 558
+    strategies, the room 294; 238 trades (+$80.35) came from strategies the
+    room never had on."""
+    d0 = _ms(2026, 9, 20)
+    # A: 40 straight wins before the range, so the RULES switch it on at once
+    a_tr = [[d0 + i * 4 * H, d0 + i * 4 * H + H, 0.5, True] for i in range(40)]
+    a_tr += [[_ms(2026, 10, 1, h), _ms(2026, 10, 1, h) + H, 0.5, True] for h in (2, 15)]
+    # B: too few trades for the rules — only the ROOM switches it on
+    b_tr = [[_ms(2026, 10, 1, h), _ms(2026, 10, 1, h) + H, 0.4, True] for h in (11, 14, 18)]
+    combos = [{"id": "AAAAAAAA", "coin": "XPIN", "tf": "1h", "signal": "ote", "th": 0.0,
+               "sl": 1.0, "tp": 1.2, "group": "classic", "gate": "ok", "trades": a_tr},
+              {"id": "BBBBBBBB", "coin": "VUG", "tf": "1h", "signal": "ote", "th": 0.0,
+               "sl": 1.0, "tp": 1.2, "group": "classic", "gate": "ok", "trades": b_tr}]
+    room_start = _ms(2026, 10, 1, 12, 51)
+    follow = {"from_ms": room_start, "why": "your room started",
+              "slots": [{"id": "BBBBBBBB", "on_ms": room_start, "off_ms": _ms(2026, 10, 1, 17),
+                         "on_why": "switched on in your room",
+                         "off_why": "switched off in your room"}]}
+    end = _ms(2026, 10, 1, 23, 59)
+    plain = wr.simulate(combos, start_ms=_ms(2026, 10, 1), end_ms=end, cfg=ROOM_RULES)
+    got = wr.simulate(combos, start_ms=_ms(2026, 10, 1), end_ms=end, cfg=ROOM_RULES,
+                      follow=follow)
+    a = [s for s in got["slots"] if s["id"] == "AAAAAAAA"]
+    b = [s for s in got["slots"] if s["id"] == "BBBBBBBB"]
+    assert [s["id"] for s in plain["slots"]] == ["AAAAAAAA"], "the rules alone pick A"
+    assert a[0]["off_ms"] == room_start and a[0]["off_why"] == "your room started"
+    assert [int(t[0]) for t in a[0]["trades"]] == [_ms(2026, 10, 1, 2)], \
+        "A's 3pm trade is gone: the room never ran A"
+    assert len(b) == 1 and (b[0]["on_ms"], b[0]["off_ms"]) == (room_start, _ms(2026, 10, 1, 17))
+    assert [int(t[0]) for t in b[0]["trades"]] == [_ms(2026, 10, 1, 14)], \
+        "B trades only while the room had it on (11am before, 6pm after)"
+    acts = [(e["id"], e["action"]) for e in got["events"]]
+    assert acts == [("AAAAAAAA", "on"), ("AAAAAAAA", "off"), ("BBBBBBBB", "on"),
+                    ("BBBBBBBB", "off")]
+
+
+def test_the_rooms_stretches_are_joined_to_their_lists_and_a_missing_one_is_named(
+        tmp_path, monkeypatch):
+    from tradingagents import strategy_watcher as sw
+
+    monkeypatch.setattr(sw, "LOG", tmp_path / "strategy_watcher.jsonl")
+    c = _cand(1.0)
+    slot = rr.slot_key(c)
+    on, off = _ms(2026, 10, 1, 12, 51) / 1000, _ms(2026, 10, 2, 3) / 1000
+    now = _ms(2026, 10, 4) / 1000
+    pr = {"stretches": {slot: [(on, off), (off + 7200, now)],
+                        "bb20_15m_sl12tp12|NOPE_USDT": [(on, now)]},
+          "slots_off_now": []}
+    follow, info = rr.room_follow(ROOM, pr, [c], {c["id"]: object()},
+                                  _ms(2026, 10, 1), _ms(2026, 10, 3, 23, 59))
+    assert follow["from_ms"] == int(on * 1000) == info["from_ms"]
+    assert [(f["on_ms"], f["off_ms"]) for f in follow["slots"]] == [
+        (int(on * 1000), int(off * 1000)), (int((off + 7200) * 1000), None)], \
+        "a stretch still on at the end is open (None), never ended at 'now'"
+    assert info["missing"] == ["bb20_15m_sl12tp12|NOPE_USDT"]
+    assert rr.room_follow(ROOM, {"stretches": {}}, [c], {}, 0, 1)[0] is None
+
+
+def test_a_trade_the_room_refused_is_left_out_and_counted(tmp_path, monkeypatch):
+    """#6B08FF64 Oct 01 - Oct 04, 2026: 192 backtest trades (+$57.91) were ones
+    the room's own cost check refused — the room could never have made them.
+    A refused trade must not hold one of the coin's places either."""
+    from tradingagents import strategy_watcher as sw
+
+    monkeypatch.setattr(sw, "LOG", tmp_path / "strategy_watcher.jsonl")
+    c = _cand(1.0)
+    slot = rr.slot_key(c)
+    bar_s = rr._bar_s_of_key(slot.split("|", 1)[0])
+    assert bar_s == 3600
+    on = _ms(2026, 10, 1, 12, 51)
+    t_ok = [_ms(2026, 10, 1, 14), _ms(2026, 10, 1, 15), 0.5, True, _ms(2026, 10, 1, 15),
+            "TP", "LONG"]
+    t_gate = [_ms(2026, 10, 1, 17), _ms(2026, 10, 1, 18), 0.9, True, _ms(2026, 10, 1, 18),
+              "TP", "LONG"]
+    t_chase = [_ms(2026, 10, 1, 20), _ms(2026, 10, 1, 21), 0.7, True, _ms(2026, 10, 1, 21),
+               "TP", "LONG"]
+    pr = {"stretches": {slot: [(on / 1000, _ms(2026, 10, 4) / 1000)]}, "slots_off_now": [],
+          # the cost check counted the 4pm SIGNAL candle (the 5pm entry's)
+          "refused_candles": {slot: {t_gate[0] // 1000 - bar_s}},
+          "refused": {slot: [(t_chase[0] / 1000 + 5, "chase_skip")]}}
+    combo = {**{k: c[k] for k in ("id", "coin", "tf", "signal", "th", "sl", "tp", "group",
+                                  "gate")}, "trades": [t_ok, t_gate, t_chase]}
+    books = {c["id"]: wr._Book(combo)}
+    end = _ms(2026, 10, 1, 23, 59)
+    follow, _info = rr.room_follow(ROOM, pr, [c], books, _ms(2026, 10, 1), end)
+    sim = wr.simulate([combo], start_ms=_ms(2026, 10, 1), end_ms=end,
+                      cfg={**ROOM_RULES, "coin_slices": 4}, books=books, follow=follow)
+    (s,) = sim["slots"]
+    assert [int(t[0]) for t in s["trades"]] == [t_ok[0]]
+    assert sorted(r["why"] for r in sim["refused"]) == ["chase_skip", "gate_blocked"]
+    assert round(sum(float(r["trade"][2]) for r in sim["refused"]), 2) == 1.6

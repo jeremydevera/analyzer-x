@@ -494,17 +494,27 @@ def _run_delisted(job: dict, flush) -> None:
     # dropped it, each one refused every cycle (Sep 23, 2026). A coin the
     # venue no longer lists cannot be traded; leaving it armed is a screen
     # that lies and a trade record full of noise.
-    try:
-        import tradingagents.auto_trader as _at
+    # EVERY ROOM, not only Main: each room keeps its own settings file, and
+    # disarm_coins reads the CURRENT one (RCA-2026-10-05-A — SUPRA_USDT
+    # stayed switched on in #55D32617 and #4FC03172 after MEXC dropped it)
+    import tradingagents.auto_trader as _at
+    from tradingagents import profiles as _pf
 
-        got = _at.disarm_coins({c["symbol"] for c in coins}, why="delisted")
+    rows = 0
+    for pid in _pf.ids():
+        try:
+            with _pf.using(pid):
+                got = _at.disarm_coins({c["symbol"] for c in coins}, why="delisted")
+        except Exception as exc:                                # noqa: BLE001
+            job["errors"].append(f"disarm {pid}: {type(exc).__name__}: {exc}")
+            continue
         if got.get("rows"):
-            job["disarmed"] = got["removed"]
-            job["phase"] = (f"disarmed {got['rows']} deployed row(s) on "
-                            f"{len(got['removed'])} delisted coin(s)")
-            flush()
-    except Exception as exc:                                    # noqa: BLE001
-        job["errors"].append(f"disarm: {type(exc).__name__}: {exc}")
+            rows += got["rows"]
+            job.setdefault("disarmed", {})[pid] = got["removed"]
+    if rows:
+        job["phase"] = (f"disarmed {rows} deployed row(s) on delisted coins in "
+                        f"{len(job['disarmed'])} room(s)")
+        flush()
     _refresh_candle_index(job, flush)
 
 

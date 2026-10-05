@@ -602,6 +602,35 @@ def _meta_of_key(key: str, symbol: str) -> dict | None:
             "sl": round(float(spec["sl"]) * 100, 3), "tp": round(float(spec["tp"]) * 100, 3)}
 
 
+# MEXC lists ~1,000 contracts; a list far shorter than that is a response that
+# came back useless, never a market that emptied overnight
+MIN_LIVE_LIST = 500
+
+
+def _delisted(symbols) -> set:
+    """The symbols MEXC no longer lists, or an empty set when the list could
+    not be read or looks wrong — "I could not look" is never "it is gone".
+
+    SUPRA_USDT left MEXC ("Contract not exists") by Oct 04, 2026 3:15am while
+    five practice strategies stayed switched on for it in #55D32617 and
+    #4FC03172: 1,924 "no Min15 candles for SUPRA_USDT" failures in 21 hours,
+    because the only thing that switched a delisted coin off was the
+    hand-pressed delisted cleanup, and it only ever touched Main
+    (RCA-2026-10-05-A)."""
+    want = {str(x) for x in symbols or () if x}
+    if not want:
+        return set()
+    try:
+        from tradingagents import db_jobs
+
+        live = db_jobs.live_symbols()
+    except Exception:                                          # noqa: BLE001
+        return set()
+    if not live or len(live) < MIN_LIVE_LIST:
+        return set()
+    return {x for x in want if x not in live}
+
+
 def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str]:
     from tradingagents import auto_trader as at
 
@@ -609,6 +638,8 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
     ws = settings.get("watcher_slots") or {}
     drop = []
     gone_by_hand = []
+    hand = _hand_slots(settings)
+    gone = _delisted({k.split("|", 1)[1] for k in ws} | {c for _k, c in hand})
     for slot, meta in sorted(ws.items()):
         key, sym = slot.split("|", 1)
         if sym not in at.coins_for(key, settings):
@@ -626,6 +657,13 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
         if "real" in at.book_names(settings, key, sym) and not meta.get("real"):
             # a real book the WATCHER did not arm is the operator's: never
             # touched. One it armed under the live switch it may switch off.
+            continue
+        if sym in gone:
+            # nothing can trade it: no candles, no book, no price — switched
+            # off at once, whatever its win rate
+            drop.append((slot, meta["id"], len(out)))
+            out.append(_d(now, st, "off", meta, f"MEXC no longer lists {sym} — "
+                          f"it cannot trade"))
             continue
         fresh, readable = _fresh_row(meta, now, cfg)
         if not readable:
@@ -650,7 +688,17 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
     import datetime as _dt
 
     day = str(_dt.date.fromtimestamp(now))           # a key, never printed
-    for key, sym in _hand_slots(settings):
+    for key, sym in hand:
+        if sym in gone:
+            # a practice row on a coin MEXC dropped: off, whichever backtest it
+            # was armed from (Practice only — _hand_slots never holds "real")
+            m = _meta_of_key(key, sym) or {"coin": sym.removesuffix("_USDT"), "tf": "",
+                                            "signal": key, "th": 0.0, "sl": "", "tp": ""}
+            rid = _row_id(settings, key, sym, m) if _meta_of_key(key, sym) else key
+            drop.append((f"{key}|{sym}", rid, len(out)))
+            out.append(_d(now, st, "off", {**m, "id": rid}, f"one of YOUR practice rows: "
+                          f"MEXC no longer lists {sym} — it cannot trade"))
+            continue
         # judged on the Backtest v2 file, so only rows armed FROM v2
         if (settings.get("strategy_res") or {}).get(f"{key}|{sym}") != "1m":
             continue

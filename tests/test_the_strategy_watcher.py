@@ -61,6 +61,9 @@ def world(tmp_path, monkeypatch):
                         (w["registered"].append((key, persist)), "added")[1])
     monkeypatch.setattr(sw, "_sig_of", lambda key: key.split("_")[0])
     monkeypatch.setattr(sw.time, "sleep", lambda s: None)
+    # which coins MEXC has dropped: none unless a test says so (never the venue)
+    w["gone"] = set()
+    monkeypatch.setattr(sw, "_delisted", lambda syms: set(syms) & w["gone"])
     from tradingagents import notifications as nt
 
     monkeypatch.setattr(nt, "record", lambda *a, **k: (w["bells"].append(a), 1)[1])
@@ -758,3 +761,35 @@ def test_raw_searches_at_any_hour():
     assert not sw._on_due(morning, yesterday), "the old rule waited for noon"
     assert sw._on_due(morning, yesterday, raw=True)
     assert not sw._on_due(morning, morning - 60, raw=True), "still once a day"
+
+
+def test_a_coin_mexc_dropped_is_switched_off_whatever_its_win_rate(world):
+    """RCA-2026-10-05-A: SUPRA_USDT left MEXC by Oct 04, 2026 3:15am and five
+    practice strategies stayed on for it in #55D32617 and #4FC03172 — 1,924
+    "no Min15 candles for SUPRA_USDT" failures in 21 hours."""
+    sw.consider(now=NOW)
+    assert world["settings"]["strategy_coins"][KEY] == ["GPNSTOCK_USDT"]
+    hand_key, hand_sym = HAND.split("|")
+    world["settings"]["strategy_coins"][hand_key] = [hand_sym]
+    world["settings"]["strategy_books"][HAND] = ["paper"]
+    world["gone"] = {"GPNSTOCK_USDT", hand_sym}
+    got = sw.consider(now=NOW + 3601)
+    offs = [d for d in got["decisions"] if d["action"] == "off"]
+    assert len(offs) == 2 and all("MEXC no longer lists" in d["why"] for d in offs)
+    s = world["settings"]
+    assert s["strategy_coins"][KEY] == [] and SLOT not in s["watcher_slots"]
+    assert s["strategy_coins"][hand_key] == [] and HAND not in s["strategy_books"]
+
+
+def test_a_coin_list_that_cannot_be_read_switches_nothing_off(monkeypatch):
+    """"I could not look" is never "it is gone": no list, or a list far too
+    short to be MEXC's, drops nothing."""
+    from tradingagents import db_jobs
+
+    monkeypatch.setattr(db_jobs, "live_symbols", lambda *a, **k: None)
+    assert sw._delisted({"SUPRA_USDT"}) == set()
+    monkeypatch.setattr(db_jobs, "live_symbols", lambda *a, **k: {"BTC_USDT"})
+    assert sw._delisted({"SUPRA_USDT"}) == set(), "a 1-contract list is a broken answer"
+    full = {f"C{i}_USDT" for i in range(sw.MIN_LIVE_LIST)} | {"BTC_USDT"}
+    monkeypatch.setattr(db_jobs, "live_symbols", lambda *a, **k: full)
+    assert sw._delisted({"SUPRA_USDT", "BTC_USDT"}) == {"SUPRA_USDT"}

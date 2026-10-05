@@ -172,6 +172,71 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-05-A — SUPRA_USDT left MEXC and stayed switched on in two rooms, failing 1,924 times in 21 hours
+
+**CEO**
+
+* What you saw: the Errors tab filled with "auto-trader cycle failed for
+  SUPRA_USDT: no Min15 candles for SUPRA_USDT" — 1,093 times in #55D32617
+  and 831 in #4FC03172 between Oct 04, 2026 3:15am and Oct 05, 2026 12:13am.
+* Why: MEXC removed SUPRA, and the only thing that switches a removed coin's
+  strategies off is the delete-delisted button, which you have to press and
+  which only ever looked at Main — never a room.
+* What stops it now: each room's watcher checks every hour whether MEXC still
+  lists each coin it trades and switches off any it dropped; the
+  delete-delisted button now clears every room too.
+
+**DEV**
+
+* `tradingagents/strategy_watcher.py` `_off_pass` judged a delisted row on its
+  backtest file only (stale, so kept), and `storage_months._run_delisted` →
+  `auto_trader.disarm_coins` read `load_settings()` of the CURRENT room, Main.
+* Invariant broken: **a coin the venue no longer lists is switched off in
+  every room that runs it** — `strategy_watcher._delisted` (two guards: no
+  list, or a list under `MIN_LIVE_LIST`, is "do not know", never "gone"),
+  and `_run_delisted` loops `profiles.ids()`.
+* Guard: `tests/test_the_strategy_watcher.py::test_a_coin_mexc_dropped_is_switched_off_whatever_its_win_rate`,
+  `::test_a_coin_list_that_cannot_be_read_switches_nothing_off`,
+  `tests/test_delisted_coins_leave_every_room.py`.
+
+**SAW** — the operator, Oct 05, 2026: *"can you check my errors in error tab,
+and see what can be fixed"*.
+
+**TIMELINE**
+
+1. `Sep 30, 2026 7:57pm` – `Oct 03, 2026 2:48am` — the watchers switch on
+   SUPRA_USDT 15m strategies: #ESCTKZW8 ibs and #9ER4H9XV lx_SUPRA in
+   #4FC03172; #4FBFH6WF, #EH52GY82 and #VETXYH8X vwaprev in #55D32617 (all
+   practice).
+2. `Oct 04, 2026 3:12am` — #55D32617's cost check: "no order book for
+   SUPRA_USDT"; #4FC03172's last read before it: a 2.346% gap between buy and
+   sell, 627% of a 0.40% target.
+3. `Oct 04, 2026 3:15am` — the first "no Min15 candles for SUPRA_USDT"; MEXC
+   answers the contract detail with `1001 Contract not exists`.
+4. To `Oct 05, 2026 12:13am` — 1,924 failures across the two rooms, about one
+   a cycle each. No SUPRA trade was open, so nothing was stuck.
+5. `Oct 05, 2026` — fixed here; the watcher's next hourly pass switches the
+   five off.
+
+**ROOT CAUSE** — switching a delisted coin off lived only in a hand-pressed
+cleanup that read one room's settings, and the watcher, which runs every hour
+in every room, never asked whether the coin still exists.
+
+**WHY IT WAS NOT CAUGHT** — the ROLSTOCK fix of Sep 23, 2026 (`disarm_coins`)
+was written and tested when Main was the only room; its test drives one
+settings file. The rooms arrived on Sep 29, 2026 with their own settings, and
+nothing re-checked which callers of `load_settings()` meant "every room".
+The watcher's tests only ever fed it coins that exist.
+
+**COST** — none in money (practice only, no open SUPRA trade); 1,924 error
+lines that buried the Errors tab for 21 hours.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_strategy_watcher.py::test_a_coin_mexc_dropped_is_switched_off_whatever_its_win_rate`,
+`::test_a_coin_list_that_cannot_be_read_switches_nothing_off`,
+`tests/test_delisted_coins_leave_every_room.py::test_the_delisted_cleanup_disarms_the_coin_in_every_room`.
+
 ## RCA-2026-10-03-A — "Backtest a room" left out strategies the room really switched on, so it could never match the room's practice trades
 
 **CEO**

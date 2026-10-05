@@ -1052,3 +1052,14 @@ def test_the_backtest_splits_into_the_rooms_hours_and_before_it(room):
     tsx = (Path(__file__).resolve().parents[1] / "webapp" / "src" / "components" / "forecast"
            / "RoomForecasts.tsx").read_text(encoding="utf-8")
     assert "Backtest, while your room ran" in tsx and "before your room started" in tsx
+
+
+def test_the_room_list_opens_upward_when_the_page_has_no_room_below():
+    """Operator, Oct 05, 2026: "when clicking backtest a room room field the
+    dropdown is on bottom part of the screen i cannot click it"."""
+    from pathlib import Path
+
+    tsx = (Path(__file__).resolve().parents[1] / "webapp" / "src" / "components" / "forecast"
+           / "RoomForecasts.tsx").read_text(encoding="utf-8")
+    picker = tsx[tsx.index("function RoomPicker"):tsx.index("function RoomBacktestPanel")]
+    assert "getBoundingClientRect()" in picker and '"bottom-full mb-1"' in picker

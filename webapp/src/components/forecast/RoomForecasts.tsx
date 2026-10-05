@@ -625,6 +625,10 @@ function RoomPicker({ rooms, value, onChange }: {
   rooms: RoomNow[]; value: string; onChange: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  // OPENS UPWARD when the page has no room below it (operator, Oct 05, 2026:
+  // "the dropdown is on bottom part of the screen i cannot click it") — the
+  // panel sits last on the page, so a list opening down ran off the screen
+  const [up, setUp] = useState(false);
   const [q, setQ] = useState("");
   const box = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -643,12 +647,17 @@ function RoomPicker({ rooms, value, onChange }: {
   return (
     <div ref={box} className="relative">
       <button type="button" aria-haspopup="listbox" aria-expanded={open} aria-label="room"
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          const r = box.current?.getBoundingClientRect();
+          // the list is a search box plus up to 15rem of rooms: ~320px
+          setUp(!!r && window.innerHeight - r.bottom < 340 && r.top > window.innerHeight - r.bottom);
+          setOpen(!open);
+        }}
         className="flex min-w-[9rem] items-center justify-between gap-2 rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:text-gray-300">
         <span>{cur?.name ?? value}</span><span aria-hidden className="text-gray-400">▾</span>
       </button>
       {open && (
-        <div className="absolute left-0 z-20 mt-1 w-64 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+        <div className={`absolute left-0 z-50 w-64 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900 ${up ? "bottom-full mb-1" : "top-full mt-1"}`}>
           <input ref={input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="search rooms"
             aria-label="search rooms"
             onKeyDown={(e) => {

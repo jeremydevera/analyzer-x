@@ -13,7 +13,7 @@
  *  every list is filtered, sorted and paged there, ten a page under the Auto
  *  Trade buttons (Oct 02, 2026: "in forecast, make it paginated just like in
  *  auto trade"). This file only prints. */
-import { Fragment, useCallback, useState } from "react";
+import { Fragment, type ReactNode, useCallback, useState } from "react";
 import {
   api, fmtMoney, fmtWhen, fmtWhenMs, F2AvoidPage, F2FamilyPage, F2Group, F2Page, F2Rule, F2RulePage,
   F2RuleQuery, F2Streak, F2StreakPage, F2Summary, F2WhatIf, F2WhatIfCfg,
@@ -607,7 +607,10 @@ function Tracker({ s }: { s: F2Summary }) {
   );
 }
 
-export default function ForecastV2() {
+/** `beforeStreaks`: a section placed between the Forecast v2 header and the
+ *  Streaks — Backtest a room on the merged page (operator, Oct 05, 2026:
+ *  "put Backtest a room section above streak section"). */
+export default function ForecastV2({ beforeStreaks }: { beforeStreaks?: ReactNode } = {}) {
   const [s, setS] = useState<F2Summary | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -643,6 +646,7 @@ export default function ForecastV2() {
           </div>
         )}
       </div>
+      {beforeStreaks}
       {s && (
         <>
           <div className={card}>

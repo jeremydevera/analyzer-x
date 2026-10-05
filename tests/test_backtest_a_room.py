@@ -99,7 +99,12 @@ def test_the_screen_has_the_table_and_the_backtest_and_asks_the_server():
     # 6:30am: "remove the rooms section on very bottom i dont need it"); the
     # first Forecast page keeps it
     merged = src.split("export function RoomsAndBacktest")[1].split("\nfunction ")[0]
-    assert "<RoomTable" not in merged and "<RoomBacktestPanel rooms={live.rooms} />" in merged
+    assert "<RoomTable" not in merged
+    # Backtest a room sits ABOVE the Streaks since Oct 05, 2026 ("put Backtest
+    # a room section above streak section"): its own component, handed to
+    # ForecastV2 by the merged page
+    alone = src.split("export function RoomBacktest()")[1].split("\nexport function ")[0]
+    assert "<RoomBacktestPanel rooms={live.rooms} />" in alone
     first = src.split("export default function RoomForecasts")[1].split("\nfunction ")[0]
     assert "<RoomTable rooms={live.rooms} rules={live.rules} />" in first
     assert "<RoomBacktestPanel rooms={live.rooms} />" in src

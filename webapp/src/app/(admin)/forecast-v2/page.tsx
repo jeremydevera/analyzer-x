@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import ForecastV2 from "@/components/forecast/ForecastV2";
-import { RoomsAndBacktest } from "@/components/forecast/RoomForecasts";
+import { RoomBacktest, RoomsAndBacktest } from "@/components/forecast/RoomForecasts";
 
 export const metadata: Metadata = {
   title: "Forecast | TradingAgents",
@@ -16,7 +16,8 @@ export const metadata: Metadata = {
 export default function ForecastV2Page() {
   return (
     <div className="flex flex-col gap-5">
-      <ForecastV2 />
+      {/* Backtest a room sits above the Streaks (operator, Oct 05, 2026) */}
+      <ForecastV2 beforeStreaks={<RoomBacktest />} />
       <RoomsAndBacktest />
     </div>
   );

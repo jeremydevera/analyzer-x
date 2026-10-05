@@ -3503,8 +3503,16 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                       slices: list | None = None,
                       sig_idx=None,
                       fine: tuple | None = None,
-                      recent_from_ms: int | None = None) -> dict:
+                      recent_from_ms: int | None = None,
+                      reenter: bool = False) -> dict:
     """Run one strategy's exact live rules over a candle history.
+
+    ``reenter=True`` (Oct 05, 2026, Backtest a room only) also reads the
+    signal of the candle a trade CLOSED in, as the live runner does: on
+    #6B08FF64, #KND8HHQM KKRSTOCK 15m stopped out at Oct 01, 2026 1:43pm and
+    the room opened again at 1:45pm on that same candle's signal, while this
+    walk resumes a candle later. False is the measured store's rule, byte for
+    byte.
 
     Same engine as the 13-month studies: signal at bar close, enter next bar
     open, worst-case fills (SL before TP inside one bar), DEEP ladder, 20x,
@@ -4051,7 +4059,7 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
         if not keep_log:
             step = 0 if pnl > 0 else step + 1
             _open = None          # or a carried trade re-enters at its old
-            i = j + 1             # entry price on every following bar
+            i = j if reenter else j + 1   # entry price on every following bar
             continue
         log.append({"entry time": stamp(i + 1),
                     # the MINUTE when the minutes settled it (v2), else the bar
@@ -4087,7 +4095,7 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                     **({"slices": _sl_det} if _sl_det else {})})
         step = 0 if pnl > 0 else step + 1
         _open = None
-        i = j + 1
+        i = j if reenter else j + 1
     days = (df["Date"].iloc[-1] - df["Date"].iloc[0]).days if n else 0
     monthly = {m: round(v, 2) for m, v in sorted(monthly.items())}
     green = sum(1 for v in monthly.values() if v > 0)

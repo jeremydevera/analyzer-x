@@ -42,6 +42,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import subprocess
 import sys
 import time
@@ -857,7 +858,10 @@ def practice(room: str, lo_ms: int, hi_ms: int, now_s: float) -> dict:
     trades.sort(key=lambda t: (t["exit_ms"], t["slot"]))
     on_first = min((a for v in stretches.values() for a, _b in v), default=None)
     starts = [s for s in (on_first, first_s) if s is not None]
-    return {"trades": trades, "stretches": stretches, "refused": refused,
+    # each practice trade's SIGNAL candle (entry_ts is the candle's open)
+    entries = {slot: sorted({int(en_s) for _x, en_s, _p, _w in xs if en_s})
+               for slot, xs in exits.items()}
+    return {"trades": trades, "stretches": stretches, "refused": refused, "entries": entries,
             "refused_candles": refused_candles,
             "start_ms": int(min(starts) * 1000) if starts else None,
             "slots_off_now": sorted(s for s, v in stretches.items()
@@ -954,6 +958,8 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
     cap = coin_cap(room)
     follow, finfo = room_follow(room, pr, cands, books, start_ms, end_ms)
     if follow is not None:
+        follow["down"] = room_down(room, follow["from_ms"], end_ms)
+        finfo["down"] = follow["down"]
         follow["trades"], rinfo = room_lists(follow, pr, meta, store,
                                              progress=lambda d, t: say("room lists", d, t))
         finfo = {**finfo, **rinfo}
@@ -1044,6 +1050,43 @@ def room_follow(room: str, pr: dict, cands: list, books: dict, start_ms: int,
              "missing": missing})
 
 
+_TS_RE = re.compile(rb'"ts":\s*([0-9]+(?:\.[0-9]+)?)')
+# a restart after this long without a line in the trade record is an OUTAGE
+DOWN_GAP_S = 10 * 60          # room_errors.QUIET_S
+
+
+def room_down(room: str, lo_ms: int, hi_ms: int) -> list[tuple[int, int]]:
+    """(from_ms, to_ms) of every stretch the room's runner was NOT RUNNING:
+    from the last line of its trade record before a `runner_start` to that
+    start, when the gap is longer than DOWN_GAP_S. Every room was silent from
+    Oct 02, 2026 7:31pm to Oct 03, 2026 2:06am — Windows logged an unclean
+    shutdown (Kernel-Power 41) and booted at 1:57am — and the replay booked 85
+    trades the room could not have made, most of them in those 6.6 hours."""
+    from tradingagents import auto_trader as at
+    from tradingagents import profiles
+
+    with profiles.using(room):
+        path = Path(at._pp(at.LEDGER_PATH))
+    out: list = []
+    prev = None
+    try:
+        with path.open("rb") as fh:
+            for line in fh:
+                m = _TS_RE.search(line)
+                if not m:
+                    continue
+                ts = float(m.group(1))
+                if (b'"runner_start"' in line and prev is not None
+                        and ts - prev > DOWN_GAP_S):
+                    a, b = int(prev * 1000), int(ts * 1000)
+                    if b > lo_ms and a < hi_ms:
+                        out.append((a, b))
+                prev = ts if prev is None else max(prev, ts)
+    except OSError:
+        return []
+    return out
+
+
 def room_lists(follow: dict, pr: dict, meta: dict, store, progress=None) -> tuple[dict, dict]:
     """Each strategy the room ran, rebuilt by its own engine IN THE ROOM'S
     STATE: its signals count only while the room had it switched on and only
@@ -1067,6 +1110,14 @@ def room_lists(follow: dict, pr: dict, meta: dict, store, progress=None) -> tupl
         spans[f["id"]].append((int(f["on_ms"]) - int(grace.get(f["id"], 0)),
                                float("inf") if f["off_ms"] is None else int(f["off_ms"])))
     slot_of = follow.get("slot_of") or {}
+    down = follow.get("down") or []
+    # THE CANDLES THE ROOM REALLY TOOK (each practice trade's signal candle):
+    # the cost check's quiet-hour reading is a guess, and a guess may never
+    # silence a trade the room made (#TVWJ66G4 KIMISTOCK 15m, Oct 01, 2026
+    # 5:15pm, a +0.41 win the first rebuild left out)
+    entered: dict = collections.defaultdict(set)
+    for slot, xs in (pr.get("entries") or {}).items():
+        entered[slot].update(int(x) for x in xs)
     out: dict = {}
     ends: dict = {}
     failed: list = []
@@ -1080,11 +1131,17 @@ def room_lists(follow: dict, pr: dict, meta: dict, store, progress=None) -> tupl
         bar_ms = _bar_s_of_key(slot.split("|", 1)[0]) * 1000
         mine, ts_list, dead = refused.get(slot, []), ts_of.get(slot, []), gone.get(slot) or ()
         on = spans[rid]
+        took = entered.get(slot) or set()
 
-        def skip(open_ms, bar_ms=bar_ms, mine=mine, ts_list=ts_list, dead=dead, on=on):
+        def skip(open_ms, bar_ms=bar_ms, mine=mine, ts_list=ts_list, dead=dead, on=on,
+                 g=int(grace.get(rid, 0)), took=took):
+            if open_ms // 1000 in took:
+                return False                     # the room DID take this candle
             entry = open_ms + bar_ms
             if not any(a <= entry < b for a, b in on):
                 return True                      # the room had it switched off
+            if any(a <= entry < b - g for a, b in down):
+                return True                      # the room's runner was not running
             if open_ms // 1000 in dead:
                 return True                      # the cost check counted this candle
             return rb._reason(mine, ts_list, entry / 1000, bar_ms // 1000) != "none"
@@ -1092,7 +1149,7 @@ def room_lists(follow: dict, pr: dict, meta: dict, store, progress=None) -> tupl
             got = ms.trades_for(c["coin"], c["tf"], signal=c["signal"], th=c["th"],
                                 sl=c["sl"], tp=c["tp"], sizing="flat",
                                 base_margin=BASE_MARGIN, store=store, skip=skip,
-                                whole=True)
+                                whole=True, reenter=True)
         except Exception:                                      # noqa: BLE001
             failed.append(rid)
             continue
@@ -1459,6 +1516,10 @@ def _notes(room, cfg, cinfo, listed, no_list, cov, full_from, pr, cap, start_ms,
                       f"list here and cannot be replayed: "
                       f"{', '.join(fo['missing'][:6])}{' …' if len(fo['missing']) > 6 else ''}."
                       if fo.get("missing") else ""))
+    for a, b in fo.get("down") or ():
+        out.append(f"YOUR ROOM'S RUNNER WAS NOT RUNNING from {_when(a)} to {_when(b)} "
+                   f"({(b - a) / 3_600_000:.1f} hours, from its last line in the trade "
+                   f"record to its restart): the replay takes no trade then either.")
     p = cinfo.get("room_picks") or {}
     if p.get("count"):
         out.append(f"The room's own switch-ons are always replayed: {p['count']:,} strategies "

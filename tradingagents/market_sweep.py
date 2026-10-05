@@ -1855,7 +1855,8 @@ def ml_history_short(signal: str, tf: str, before: int) -> str | None:
 
 def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                tp: float, sizing: str, base_margin: float = 5.0,
-               days: int = 365, store=None, skip=None, whole: bool = False) -> dict:
+               days: int = 365, store=None, skip=None, whole: bool = False,
+               reenter: bool = False) -> dict:
     """Every trade one stored strategy made, rebuilt from the local candles.
 
     The store keeps ONE row per strategy (trades, wins, profit…); the trades
@@ -2040,7 +2041,8 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                                  slippage=slip,
                                  dirs=dirs, tp=float(tp) / 100,
                                  sl=float(sl) / 100, liq_move_pct=liq,
-                                 funding=fund, keep_log=True, fine=fine)
+                                 funding=fund, keep_log=True, fine=fine,
+                                 reenter=reenter)
     finally:
         at.STRATEGY_SPECS.pop(key, None)
     return {"log": r["log"], "trades": r["trades"], "wins": r["wins"],

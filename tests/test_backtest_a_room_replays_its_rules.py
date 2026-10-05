@@ -897,3 +897,48 @@ def test_a_whole_walk_reaches_the_newest_candle_not_the_rows_last_bar(v2):
     whole = rr.record(_cand(1.0), msw.trades_for("XPIN", "1h", whole=True, **kw), None, None)
     assert cut["end_ms"] <= H0 + 60 * H < whole["end_ms"]
     assert len(whole["trades"]) > len(cut["trades"])
+
+
+def test_the_hours_the_rooms_runner_was_down_are_found_in_its_trade_record(room):
+    """Every room was silent Oct 02, 2026 7:31pm - Oct 03, 2026 2:06am (a power
+    cut; Windows booted at 1:57am): the replay must take no trade then."""
+    from tradingagents import auto_trader as at, profiles
+
+    with profiles.using(ROOM):
+        led = at._pp(at.LEDGER_PATH)
+    t0 = _ms(2026, 10, 2, 19, 31) / 1000
+    rows = [{"action": "gate_blocked", "ts": t0 - 300}, {"action": "exit", "ts": t0},
+            {"action": "runner_start", "ts": _ms(2026, 10, 3, 2, 6) / 1000},
+            {"action": "gate_blocked", "ts": _ms(2026, 10, 3, 2, 7) / 1000},
+            # a restart a minute after its last line is not an outage
+            {"action": "runner_start", "ts": _ms(2026, 10, 3, 2, 8) / 1000}]
+    with open(led, "a", encoding="utf-8") as fh:
+        fh.write("".join(json.dumps(r) + "\n" for r in rows))
+    got = rr.room_down(ROOM, _ms(2026, 10, 1), _ms(2026, 10, 4))
+    assert (int(t0 * 1000), _ms(2026, 10, 3, 2, 6)) in got
+    assert all(b - a > rr.DOWN_GAP_S * 1000 for a, b in got)
+
+
+def test_reenter_reads_the_signal_of_the_candle_a_trade_closed_in(monkeypatch):
+    """The live runner opens again on the candle it just closed in (#KND8HHQM
+    KKRSTOCK 15m: stopped at Oct 01, 2026 1:43pm, opened again at 1:45pm);
+    the measured store's walk resumes a candle later, and keeps doing so."""
+    from tradingagents import auto_trader as at
+
+    n = 20
+    t0 = pd.Timestamp(_ms(2026, 10, 1, 12), unit="ms")
+    df = pd.DataFrame({"Date": [t0 + pd.Timedelta(minutes=15 * k) for k in range(n)],
+                       "Open": [100.0] * n, "High": [101.5] * n, "Low": [99.9] * n,
+                       "Close": [100.0] * n, "Volume": [1.0] * n})
+    key = "test_reenter_15m"
+    monkeypatch.setitem(at.STRATEGY_SPECS, key, {"interval": "Min15", "bar_seconds": 900,
+                                                 "tp": 0.01, "sl": 0.01, "threshold": 0.003})
+    kw = dict(dirs=[1] * n, tp=0.01, sl=0.01, sizing="flat", fee=0.0, slippage=0.0,
+              keep_log=True)
+    plain = at.backtest_strategy(key, df, 5.0, **kw)
+    again = at.backtest_strategy(key, df, 5.0, reenter=True, **kw)
+    ent = lambda r: [t["entry time"] for t in r["log"]]      # noqa: E731
+    assert len(ent(again)) >= 2 * len(ent(plain)) - 2, (len(ent(plain)), len(ent(again)))
+    # the store's walk opens every OTHER candle (it skips the one it closed
+    # in); the runner's way opens on every one
+    assert len(ent(plain)) <= n // 2 + 1 and len(ent(again)) >= n - 2

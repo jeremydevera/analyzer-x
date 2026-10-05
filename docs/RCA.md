@@ -172,6 +172,58 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-05-B — a failed page build during a restart crashed the launcher while printing why, and the site stayed down
+
+**CEO**
+
+* What you saw: nothing yet — the site was down for a few minutes on Oct 05,
+  2026 during a restart, until it was started again by hand.
+* Why: the page build failed, and the launcher crashed while printing the
+  reason, because the build's error mark is a symbol the Windows window
+  cannot show.
+* What stops it now: the launcher prints any symbol it cannot show as "?",
+  and keeps a failed build's full log in its own file so the next restart
+  cannot erase it.
+
+**DEV**
+
+* `start.py` `cmd_start` → `print(tail(LOGS / "build.log"))` on a cp1252
+  stdout raised `UnicodeEncodeError: 'charmap' codec can't encode character
+  '⨯'` (Next.js's "⨯").
+* Invariant broken: **a failure report may never itself fail** — `main()`
+  calls `_safe_console()` (`reconfigure(errors="replace")`), and a failed
+  build is copied to `logs/build-failed.log`.
+* Guard: `tests/test_start_launcher.py::test_a_failed_build_prints_its_reason_on_a_cp1252_console`.
+
+**SAW** — while restarting the site for RCA-2026-10-05-A: `start.py start`
+ended in `UnicodeEncodeError ... '⨯' in position 61`, then `start.py
+status` read `port 8503: free`, `health: NOT answering`.
+
+**TIMELINE**
+
+1. `Oct 05, 2026` — `start.py start` stops the API and the UI, starts the
+   API, runs `npm run build`; the build fails.
+2. Same second — printing the build log's tail raises; the launcher exits
+   with the UI stopped and no reason on screen.
+3. A minute later — started again with `PYTHONIOENCODING=utf-8`; that build
+   succeeds and the site answers 200. Its build.log replaced the failed one,
+   so why the first build failed is not known.
+
+**ROOT CAUSE** — the launcher wrote to the console with its default encoding
+and no error handling, on the one path whose job is to print a foreign log.
+
+**WHY IT WAS NOT CAUGHT** — every restart before it built cleanly, and a
+clean build prints only plain words; `test_start_launcher.py` drove the happy
+path, never the failure branch, so the one print that carries a foreign log
+had never run under test.
+
+**COST** — none in money; the site was down a few minutes. The runners were
+not stopped.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_start_launcher.py::test_a_failed_build_prints_its_reason_on_a_cp1252_console`.
+
 ## RCA-2026-10-05-A — SUPRA_USDT left MEXC and stayed switched on in two rooms, failing 1,924 times in 21 hours
 
 **CEO**

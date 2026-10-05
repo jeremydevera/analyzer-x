@@ -62,3 +62,21 @@ def test_unix_is_unchanged_a_single_sigterm(start, monkeypatch):
     start.kill(7, tree=False)
     start.kill(8, tree=True)
     assert sent == [(7, start.signal.SIGTERM), (8, start.signal.SIGTERM)]
+
+
+def test_a_failed_build_prints_its_reason_on_a_cp1252_console(monkeypatch):
+    """RCA-2026-10-05-B: Next.js marks a failed build with "⨯" (U+2A2F); the
+    launcher crashed printing it, the reason was lost and the site stayed down."""
+    import io
+    import sys
+
+    import start
+
+    raw = io.BytesIO()
+    console = io.TextIOWrapper(raw, encoding="cp1252", errors="strict")
+    monkeypatch.setattr(sys, "stdout", console)
+    start._safe_console()
+    print("⨯ Failed to compile: ./src/x.tsx")
+    console.flush()
+    assert raw.getvalue() == b"? Failed to compile: ./src/x.tsx\r\n" or \
+        raw.getvalue() == b"? Failed to compile: ./src/x.tsx\n"

@@ -270,7 +270,11 @@ def cmd_start(now: bool = False) -> int:
         build = subprocess.run([node_tool("npm"), "run", "build"], cwd=str(WEBAPP),
                                stdout=fh, stderr=subprocess.STDOUT)
     if build.returncode != 0:
-        print(f"BUILD FAILED — see {LOGS / 'build.log'}")
+        # KEPT: the next start rewrites build.log, and on Oct 05, 2026 the
+        # retry that worked erased the only record of why the first one failed
+        with contextlib.suppress(OSError):
+            shutil.copyfile(LOGS / "build.log", LOGS / "build-failed.log")
+        print(f"BUILD FAILED — see {LOGS / 'build-failed.log'}")
         print(tail(LOGS / "build.log"))
         return 1
 
@@ -293,7 +297,19 @@ def cmd_start(now: bool = False) -> int:
 COMMANDS = {"start": cmd_start, "stop": cmd_stop, "status": cmd_status}
 
 
+def _safe_console() -> None:
+    """Print anything, on any console. A Windows console is cp1252, and
+    Next.js marks a failed build with "⨯" (U+2A2F): on Oct 05, 2026 the
+    BUILD FAILED path raised UnicodeEncodeError while printing the build log's
+    tail, so the reason was lost and the site stayed down (RCA-2026-10-05-B).
+    A character the console cannot show prints as "?" instead."""
+    for stream in (sys.stdout, sys.stderr):
+        with contextlib.suppress(AttributeError, ValueError, OSError):
+            stream.reconfigure(errors="replace")
+
+
 def main(argv: list[str] | None = None) -> int:
+    _safe_console()
     args = sys.argv[1:] if argv is None else argv
     words = [a for a in args if not a.startswith("--")]
     action = words[0] if words else "start"

@@ -1163,6 +1163,12 @@ backtest everyday the promotion and demotion"*.
   trades to its last candle, then the practice trades since — so the screen
   and the switch-off read the same win rate; the backtest's own 30 days only
   while that figure is not worked out yet.
+* **A room switches OFF a running practice row its TP rule would not switch
+  on** (`watcher_policy.tp_fails`, used by `passes_on` AND `judge`; operator,
+  Oct 06, 2026: *"update it then"*, on dropping running strategies whose stop
+  is as big as or bigger than their target). It covers the operator's own
+  hand-picked practice rows whatever backtest armed them (Main ran 16, e.g.
+  keltner_30m_sl2tp2 on GPNSTOCK); real money is never touched.
 * **No stop wider than 2% is switched on** (`watcher_policy` `max_sl`,
   operator Sep 29, 2026: *"okay do it"*): of 457 practice trades since
   Sep 15, the 93 with a stop wider than 2% won 31% and lost $139.66 — the

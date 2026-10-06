@@ -675,7 +675,8 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
             out.append(_d(now, st, "report", meta, f"no {cfg['window_days']}-day count "
                           f"for it yet — kept until the daily update measures it"))
             continue
-        why = wp.judge({"id": meta["id"]}, fresh, cfg)
+        why = wp.judge({"id": meta["id"], "tp": meta.get("tp"), "sl": meta.get("sl")},
+                       fresh, cfg)
         if why:
             drop.append((slot, meta["id"], len(out)))
             out.append(_d(now, st, "off", meta, why, fresh))
@@ -699,6 +700,21 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
             out.append(_d(now, st, "off", {**m, "id": rid}, f"one of YOUR practice rows: "
                           f"MEXC no longer lists {sym} — it cannot trade"))
             continue
+        # THE ROOM'S TP RULE FIRST, whichever backtest the row was armed from
+        # (Oct 06, 2026: Main ran 16 hand-picked practice rows whose stop was
+        # as big as their target, e.g. keltner_30m_sl2tp2 on GPNSTOCK)
+        m0 = _meta_of_key(key, sym)
+        tp_why = wp.tp_fails(m0["tp"], m0["sl"], cfg) if m0 else ""
+        if tp_why:
+            rid = _row_id(settings, key, sym, m0)
+            if not act and seen.get(rid) == day:
+                continue
+            if not act:
+                seen[rid] = day
+            drop.append((f"{key}|{sym}", rid, len(out)))
+            out.append(_d(now, st, "off", {**m0, "id": rid},
+                          f"one of YOUR practice rows: {tp_why}"))
+            continue
         # judged on the Backtest v2 file, so only rows armed FROM v2
         if (settings.get("strategy_res") or {}).get(f"{key}|{sym}") != "1m":
             continue
@@ -717,7 +733,8 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
         fresh = _judged(slot, fresh, now, cfg["window_days"])
         if fresh and fresh.get("unmeasured"):
             continue
-        why = wp.judge({"id": meta["id"]}, fresh, cfg)
+        why = wp.judge({"id": meta["id"], "tp": meta.get("tp"), "sl": meta.get("sl")},
+                       fresh, cfg)
         if why:
             if not act:
                 seen[meta["id"]] = day

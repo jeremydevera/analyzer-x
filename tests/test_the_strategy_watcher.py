@@ -20,7 +20,9 @@ R6 = {"id": "77Y3BPFG", "coin": "GPNSTOCK", "tf": "1h", "signal": "macddiv",
       "winrate": 100.0, "profit": 15.84, "gate": "ok", "measured_ms": NOW * 1000}
 KEY = "macddiv_1h_sl07tp1"
 SLOT = f"{KEY}|GPNSTOCK_USDT"
-HAND = "bb20_15m_sl12tp12|FASTSTOCK_USDT"
+# a target bigger than its stop: since Oct 06, 2026 a room switches off a
+# practice row its TP rule would not switch on (test_rooms_run_only_target_over_stop)
+HAND = "bb20_15m_sl12tp15|FASTSTOCK_USDT"
 
 
 @pytest.fixture
@@ -144,7 +146,7 @@ def test_the_on_pass_is_daily_and_the_off_pass_hourly(world):
 
 def test_it_never_touches_real_money_or_a_row_you_armed_yourself(world):
     world["settings"]["strategy_coins"] = {KEY: ["GPNSTOCK_USDT"],
-                                           "bb20_15m_sl12tp12": ["FASTSTOCK_USDT"]}
+                                           "bb20_15m_sl12tp15": ["FASTSTOCK_USDT"]}
     world["settings"]["strategy_books"] = {KEY: ["real"], HAND: ["paper"]}
     got = sw.consider(now=NOW)
     s = world["settings"]

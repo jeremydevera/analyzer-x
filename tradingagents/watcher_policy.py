@@ -48,18 +48,32 @@ def break_even(win_usd: float, loss_usd: float) -> float:
     return round(100 * float(loss_usd) / total, 1) if total > 0 else 100.0
 
 
-def passes_on(row: dict, cfg: dict) -> str:
-    tp, sl = float(row["tp"]), float(row["sl"])
-    if cfg["tp_rule"] == ">" and not tp > sl:
+def tp_fails(tp, sl, cfg: dict) -> str:
+    """Why a target and stop break the room's TP rule, or "". ONE reading,
+    for the switch-on (passes_on) and the switch-off (judge): since Oct 06,
+    2026 a room also switches OFF a running row its rule would not switch on
+    (operator: "update it then", on dropping running strategies whose stop is
+    as big as or bigger than their target)."""
+    tp, sl = float(tp), float(sl)
+    rule = cfg.get("tp_rule")
+    if rule == ">" and not tp > sl:
         return f"TP {tp:g}% is not wider than SL {sl:g}%"
-    if cfg["tp_rule"] == ">=" and not tp >= sl:
+    if rule == ">=" and not tp >= sl:
         return f"TP {tp:g}% is narrower than SL {sl:g}%"
     # "<": the target NARROWER than the stop (Sep 29, 2026: "you can try sl
     # greater than tp") — it only pays at a high win rate
-    if cfg["tp_rule"] == "<" and not tp < sl:
+    if rule == "<" and not tp < sl:
         return f"TP {tp:g}% is not narrower than SL {sl:g}%"
-    if cfg["tp_rule"] == "=" and not tp_equal(tp, sl):
+    if rule == "=" and not tp_equal(tp, sl):
         return f"TP {tp:g}% is not equal to SL {sl:g}%"
+    return ""
+
+
+def passes_on(row: dict, cfg: dict) -> str:
+    tp, sl = float(row["tp"]), float(row["sl"])
+    why = tp_fails(tp, sl, cfg)
+    if why:
+        return why
     floor = float(cfg.get("min_tp") or 0)
     if floor > 0 and tp < floor - 1e-9:
         return f"TP {tp:g}% is under {floor:g}%"
@@ -131,9 +145,20 @@ def window_words(cfg) -> str:
 
 
 def judge(slot, fresh_row, cfg) -> str:
-    """Switch off? Only the room's window of the backtest decides."""
+    """Switch off? The room's window of the backtest decides, and since
+    Oct 06, 2026 the room's TP rule too: a running row whose target and stop
+    the rule would not switch on is switched off (`tp_fails`). The target and
+    stop come from the slot when it names them, else from the row."""
     if fresh_row is None:
         return "the backtest store no longer holds this row"
+    tp = (slot or {}).get("tp", fresh_row.get("tp"))
+    sl = (slot or {}).get("sl", fresh_row.get("sl"))
+    try:
+        why = tp_fails(tp, sl, cfg)
+    except (TypeError, ValueError):
+        why = ""                         # no readable target or stop: rule unknown
+    if why:
+        return why
     if float(fresh_row["winrate"]) < cfg["off_winrate"]:
         return (f"its last-{window_words(cfg).replace(' ', '-')} win rate fell to "
                 f"{fresh_row['winrate']:g}%, under {cfg['off_winrate']:g}%")

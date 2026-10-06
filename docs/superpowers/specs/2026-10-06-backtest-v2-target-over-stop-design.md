@@ -2,6 +2,14 @@
 
 Date: Oct 06, 2026. Status: approved design, for the implementation plan.
 
+> **Changed after the final review (Oct 06, 2026):** the rule lives in the
+> INDEX ONLY (`backtest_report.index_keeps`, used by `rows_index._kept`); the
+> pair files keep every row and `running_rows` was removed. Dropping TP <= SL
+> rows from the files would have broken Backtest a room for the 256 strategies
+> Main switched off in the 14 days before, and a paused strategy could never be
+> switched back on. Components 1-3 below describe the first build; the index is
+> cleaned by one v2 index rebuild from the pair files instead of a GitHub run.
+
 ## What the operator asked, in their words, in order
 
 1. The goal: *"since none of the the strategies are working, what i want is in

@@ -1538,15 +1538,21 @@ that has higher sl than tp or if tp same as sl, you will change it as well
 example tp=5% sl=5% / the goal is to have higher tp than sl"* (the asks before
 it, in order, are in the spec).
 
-* **One rule, `backtest_report.store_keeps`:** a Backtest v2 row is kept only
-  when TP > SL strictly (`target_over_stop`). v1 is untouched.
+* **One rule, `backtest_report.index_keeps`:** the Backtest v2 TAB — the
+  index behind Stored strategies, its CSV, its id lookup and the rooms'
+  switch-on search — lists a row only when TP > SL strictly
+  (`target_over_stop`). v1 is untouched.
+* **THE INDEX ONLY, NEVER THE PAIR FILES.** The pair files keep every row
+  (`store_keeps`, flat-only as before), because the rooms read them: the
+  watcher switches off a running row its file no longer holds, and Backtest a
+  room replays from them. The first build dropped TP <= SL rows from the files
+  and the final review measured what that would have cost: 256 strategies Main
+  switched off in the 14 days before Oct 06, 2026 with nothing left to replay,
+  and a paused one that could never be switched back on.
 * **Replaced, never measured differently.** The grid measures every stop with
-  every target, so each stop's bigger targets already exist; nothing GitHub
-  measures changed, and the rule is reversible in one line.
-* **The index never holds a TP ≤ SL row; the pair files keep what a room is
-  running now** (`running_rows.combos()`), because the watcher's switch-off
-  check reads the pair files and a missing row is switched off at once — the
-  operator chose "Backtest tab only" for the rooms.
+  every target, so each stop's bigger targets already exist; GitHub still
+  measures every combination, so undoing this is `index_keeps` plus one v2
+  index rebuild.
 * Guard: `tests/test_backtest_v2_keeps_target_over_stop.py`.
 Spec: `docs/superpowers/specs/2026-10-06-backtest-v2-target-over-stop-design.md`.
 

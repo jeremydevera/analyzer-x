@@ -685,7 +685,9 @@ def _kept(r: dict) -> bool:
     and a re-filed pair cannot bring them back."""
     from tradingagents import backtest_report as br
 
-    return br.store_keeps(r)
+    # and only TP > SL on Backtest v2 (Oct 06, 2026): the TAB's rule, never
+    # the pair files' (backtest_report.index_keeps)
+    return br.index_keeps(r)
 
 
 # Columns added after stores already existed. ensure() ALTERs them on, but a

@@ -893,12 +893,8 @@ def save_pair_rows(coin: str, tf: str, rows: list) -> None:
     # twins in CAKE-1h.json, no longer measured by anything. Every writer
     # passes here, the local sweep and the GitHub collect alike.
     import tradingagents.backtest_report as br
-    from tradingagents import running_rows as _running
 
-    # TP > SL for Backtest v2 (Oct 06, 2026), except what a room is running
-    # now: the watcher's switch-off check reads those rows HERE
-    running = _running.combos()
-    rows = [r for r in rows if br.store_keeps(r, running)]
+    rows = [r for r in rows if br.store_keeps(r)]
     ROWDIR.mkdir(parents=True, exist_ok=True)
     with _pair_lock(coin, tf):
         tmp = ROWDIR / f"{coin}-{tf}.json.tmp"
@@ -954,12 +950,10 @@ def rewrite_pair_rows(coin: str, tf: str, change) -> list:
     writes the file itself rather than calling save_pair_rows under the lock;
     the store rule (`backtest_report.store_keeps`) is the same one."""
     import tradingagents.backtest_report as br
-    from tradingagents import running_rows as _running
 
-    running = _running.combos()          # read BEFORE the lock: it reads settings
     ROWDIR.mkdir(parents=True, exist_ok=True)
     with _pair_lock(coin, tf):
-        rows = [r for r in change(pair_rows(coin, tf)) if br.store_keeps(r, running)]
+        rows = [r for r in change(pair_rows(coin, tf)) if br.store_keeps(r)]
         tmp = ROWDIR / f"{coin}-{tf}.json.tmp"
         tmp.write_text(json.dumps(rows, separators=(",", ":")))
         tmp.replace(ROWDIR / f"{coin}-{tf}.json")

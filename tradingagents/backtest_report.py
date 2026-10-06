@@ -252,33 +252,35 @@ def target_over_stop(row: dict) -> bool:
         return False
 
 
-def combo_of(row: dict) -> tuple:
-    """(coin, tf, signal, th, sl, tp) — one strategy on one coin, the way
-    `running_rows.combos()` names what a room is running."""
-    return (str(row.get("coin") or "").removesuffix("_USDT"), str(row.get("tf") or ""),
-            str(row.get("signal") or ""), round(float(row.get("th") or 0), 3),
-            round(float(row.get("sl") or 0), 3), round(float(row.get("tp") or 0), 3))
-
-
-def store_keeps(row: dict, running=frozenset()) -> bool:
+def store_keeps(row: dict) -> bool:
     """Does the store this row belongs to keep it? The row's own `res` names
-    the store. The index files by this (`rows_index._kept`) and so does every
-    write of a pair file (`market_sweep.save_pair_rows`): a v2 file that is
-    written again comes back flat only, instead of carrying martingale twins
-    that no measure updates any more (RCA-2026-09-25-C).
+    the store. The index files by this (`rows_index._kept`, through
+    `index_keeps`) and so does every write of a pair file
+    (`market_sweep.save_pair_rows`): a v2 file that is written again comes
+    back flat only, instead of carrying martingale twins that no measure
+    updates any more (RCA-2026-09-25-C)."""
+    return str(row.get("sizing") or "flat") in sizings_for(row.get("res"))
 
-    BACKTEST v2 KEEPS ONLY TP > SL (Oct 06, 2026, spec 2026-10-06-backtest-
-    v2-target-over-stop): a row whose stop is bigger than or equal to its
-    target is replaced by the same strategy and stop with the bigger targets
-    the grid already measures. `running` names combinations a room is trading
-    now (`running_rows.combos()`): the PAIR FILES keep those, because the
-    watcher's hourly switch-off check reads them there; the index is called
-    without it and never holds them."""
-    if str(row.get("sizing") or "flat") not in sizings_for(row.get("res")):
+
+def index_keeps(row: dict) -> bool:
+    """Does the Backtest TAB list this row — the index behind Stored
+    strategies, its CSV, its id lookup and the rooms' switch-on search?
+    Everything `store_keeps` keeps, and for Backtest v2 only a target bigger
+    than the stop (Oct 06, 2026, spec 2026-10-06-backtest-v2-target-over-
+    stop: "the goal is to have higher tp than sl").
+
+    THE INDEX ONLY, NEVER THE PAIR FILES (final review, Oct 06, 2026): the
+    rooms read the files. Main had switched off 256 TP <= SL strategies in the
+    14 days before; with their rows gone from the files, Backtest a room had
+    nothing to replay for them (room_replay.room_picks) and a paused one could
+    never be switched on again (the watcher switches off a row its file no
+    longer holds). GitHub keeps measuring them, so undoing this is this
+    function and one index rebuild."""
+    if not store_keeps(row):
         return False
     if str(row.get("res") or "").strip().lower() != "1m":
         return True
-    return target_over_stop(row) or (bool(running) and combo_of(row) in running)
+    return target_over_stop(row)
 
 
 BARRIERS: dict[str, list[tuple[float, float]]] = {

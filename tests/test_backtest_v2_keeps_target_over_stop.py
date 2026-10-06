@@ -1,32 +1,51 @@
-"""Backtest v2 keeps only rows whose target is bigger than their stop.
+"""The Backtest v2 tab lists only rows whose target is bigger than their stop.
 
 Operator, Oct 06, 2026: "take note you will only replace the ones that has
 higher sl than tp or if tp same as sl, you will change it as well example
-tp=5% sl=5% / the goal is to have higher tp than sl". Spec:
+tp=5% sl=5% / the goal is to have higher tp than sl", for the Backtest tab's
+stored strategies only ("Backtest tab only" for the rooms). Spec:
 docs/superpowers/specs/2026-10-06-backtest-v2-target-over-stop-design.md
+
+THE INDEX ONLY, never the pair files (final review, Oct 06, 2026): the rooms
+read the pair files. Main switched off 256 TP <= SL strategies in the 14 days
+to Oct 06, 2026; dropping their rows from the files would have left Backtest
+a room with nothing to replay for them (room_replay.room_picks reads the
+files), and a paused one could never be switched back on (the watcher switches
+off a row its file no longer holds). The index — the Stored strategies table,
+its CSV, its id lookup and the rooms' switch-on search — is what "the Backtest
+tab" is.
 """
 from __future__ import annotations
 
-from tradingagents import backtest_report as br
+import sqlite3
+import types
+
+import pytest
+
+from tradingagents import backtest_report as br, market_sweep as msw
+from tradingagents import rows_index as ri
 
 
 def _row(sl, tp, res="1m", **kw):
     return {"coin": "GPNSTOCK", "tf": "1h", "signal": "stoch14", "th": 0.0,
-            "sl": sl, "tp": tp, "sizing": "flat", "res": res, **kw}
+            "sl": sl, "tp": tp, "sizing": "flat", "res": res, "trades": 12,
+            "wins": 8, "losses": 4, "winrate": 66.67, "profit": 5.0,
+            "monthly": {}, "last_ms": 1, **kw}
 
 
-def test_a_target_bigger_than_the_stop_is_kept():
+# ------------------------------------------------------------------ the rule
+def test_a_target_bigger_than_the_stop_is_listed():
     assert br.target_over_stop(_row(5.0, 6.0))
-    assert br.store_keeps(_row(5.0, 6.0))
+    assert br.index_keeps(_row(5.0, 6.0))
 
 
-def test_an_equal_target_is_replaced():
+def test_an_equal_target_is_not_listed():
     assert not br.target_over_stop(_row(5.0, 5.0))
-    assert not br.store_keeps(_row(5.0, 5.0))
+    assert not br.index_keeps(_row(5.0, 5.0))
 
 
-def test_a_stop_bigger_than_the_target_is_replaced():
-    assert not br.store_keeps(_row(5.0, 4.0))
+def test_a_stop_bigger_than_the_target_is_not_listed():
+    assert not br.index_keeps(_row(5.0, 4.0))
 
 
 def test_equal_within_rounding_is_not_bigger():
@@ -34,145 +53,71 @@ def test_equal_within_rounding_is_not_bigger():
 
 
 def test_a_v1_row_is_never_touched():
-    assert br.store_keeps(_row(5.0, 4.0, res=None))
-    assert br.store_keeps(_row(5.0, 5.0, res=""))
+    assert br.index_keeps(_row(5.0, 4.0, res=None))
+    assert br.index_keeps(_row(5.0, 5.0, res=""))
 
 
-def test_the_flat_only_rule_still_applies():
+def test_the_flat_only_rule_still_applies_to_the_list():
+    assert not br.index_keeps(_row(1.0, 2.0, sizing="martingale"))
+
+
+def test_the_files_keep_every_flat_row_whatever_its_target():
+    assert br.store_keeps(_row(5.0, 5.0))
+    assert br.store_keeps(_row(5.0, 4.0))
     assert not br.store_keeps(_row(1.0, 2.0, sizing="martingale"))
 
 
-def test_a_running_combination_is_kept_in_the_files():
-    r = _row(2.0, 2.0)
-    assert br.store_keeps(r, running=frozenset({br.combo_of(r)}))
-    assert not br.store_keeps(r, running=frozenset())
-
-
-def test_the_combination_is_coin_tf_signal_threshold_stop_target():
-    r = _row(2.0, 2.5, coin="KKRSTOCK", th=0.3)
-    assert br.combo_of(r) == ("KKRSTOCK", "1h", "stoch14", 0.3, 2.0, 2.5)
-    assert br.combo_of({**r, "coin": "KKRSTOCK_USDT"})[0] == "KKRSTOCK"
-
-
-# --------------------------------------------- what the rooms are running now
-import json  # noqa: E402
-
-import pytest  # noqa: E402
-
-
+# ------------------------------------------------- the files and the index
 @pytest.fixture
-def rooms(tmp_path, monkeypatch):
-    from tradingagents import auto_trader as at, profiles, running_rows as rr
-
-    paths = {"main": tmp_path / "auto_trade.json",
-             "6B08FF64": tmp_path / "profiles" / "6B08FF64" / "auto_trade.json"}
-    paths["6B08FF64"].parent.mkdir(parents=True)
-    monkeypatch.setattr(profiles, "ids", lambda: list(paths))
-    monkeypatch.setattr(profiles, "path", lambda g, pid=None: paths[pid])
-    monkeypatch.setattr(at, "merge_runtime_specs", lambda: 0)
-    rr._CACHE.clear()
-    return paths
-
-
-def _settings(path, key, coins, books=("paper",), slot_books=None):
-    s = {"strategies": [key], "strategy_coins": {key: list(coins)},
-         "strategy_books": {key: list(books)}}
-    for c, b in (slot_books or {}).items():
-        s["strategy_books"][f"{key}|{c}"] = list(b)
-    path.write_text(json.dumps(s), encoding="utf-8")
-
-
-def test_a_hand_picked_equal_row_main_runs_is_running(rooms):
-    from tradingagents import running_rows as rr
-
-    _settings(rooms["main"], "keltner_30m_sl2tp2", ["GPNSTOCK_USDT"])
-    rooms["6B08FF64"].write_text("{}", encoding="utf-8")
-    assert ("GPNSTOCK", "30m", "keltner", 0.0, 2.0, 2.0) in rr.read_combos()
-
-
-def test_a_coin_switched_off_is_not_running(rooms):
-    from tradingagents import running_rows as rr
-
-    _settings(rooms["main"], "keltner_30m_sl2tp2", [])
-    rooms["6B08FF64"].write_text("{}", encoding="utf-8")
-    assert rr.read_combos() == frozenset()
-
-
-def test_a_coin_with_no_account_is_not_running(rooms):
-    from tradingagents import running_rows as rr
-
-    _settings(rooms["main"], "keltner_30m_sl2tp2", ["GPNSTOCK_USDT"], books=())
-    rooms["6B08FF64"].write_text("{}", encoding="utf-8")
-    assert rr.read_combos() == frozenset()
-
-
-def test_a_runtime_watcher_key_is_recognised(rooms):
-    from tradingagents import running_rows as rr
-
-    _settings(rooms["6B08FF64"], "ibs_15m_sl05tp06", ["FASTSTOCK_USDT"], books=(),
-              slot_books={"FASTSTOCK_USDT": ["paper"]})
-    rooms["main"].write_text("{}", encoding="utf-8")
-    assert ("FASTSTOCK", "15m", "ibs", 0.0, 0.5, 0.6) in rr.read_combos()
-
-
-def test_an_unreadable_room_keeps_its_last_known_combos(rooms):
-    import os
-
-    from tradingagents import running_rows as rr
-
-    _settings(rooms["main"], "keltner_30m_sl2tp2", ["GPNSTOCK_USDT"])
-    rooms["6B08FF64"].write_text("{}", encoding="utf-8")
-    first = rr.read_combos()
-    rooms["main"].write_text('{"strategy_coins": {', encoding="utf-8")   # mid-write
-    os.utime(rooms["main"], (1, 1))
-    assert first and rr.read_combos() == first
-
-
-def test_a_missing_room_folder_is_nothing_running(rooms):
-    from tradingagents import running_rows as rr
-
-    assert rr.read_combos() == frozenset()
-
-
-def test_no_test_depends_on_the_operators_real_rooms():
-    from tradingagents import running_rows as rr
-
-    assert rr.combos() == frozenset()
-
-
-# ------------------------------- the writers keep it, the index never does
-def test_a_pair_file_keeps_a_running_equal_row_and_drops_the_rest(tmp_path, monkeypatch):
-    from tradingagents import market_sweep as msw, running_rows as rr
-
+def index(tmp_path, monkeypatch):
+    (tmp_path / "rows").mkdir()
     monkeypatch.setattr(msw, "ROWDIR", tmp_path / "rows")
-    eq, big, small = (_row(2.0, tp, coin="GPNSTOCK", tf="30m", signal="keltner")
-                      for tp in (2.0, 3.0, 1.5))
-    monkeypatch.setattr(rr, "combos", lambda: frozenset({br.combo_of(eq)}))
-    msw.save_pair_rows("GPNSTOCK", "30m", [eq, big, small])
-    on_disk = json.loads((tmp_path / "rows" / "GPNSTOCK-30m.json").read_text())
-    assert sorted(r["tp"] for r in on_disk) == [2.0, 3.0]
-    # the room switches it off: the next write drops it
-    monkeypatch.setattr(rr, "combos", lambda: frozenset())
+    monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows.db")
+    ri.ensure()
+    return tmp_path
+
+
+def _three(tf="30m"):
+    return [_row(2.0, tp, tf=tf, signal="keltner") for tp in (2.0, 3.0, 1.5)]
+
+
+def test_the_pair_file_keeps_an_equal_row_the_rooms_read(index):
+    """What the watcher and Backtest a room read: every row, untouched."""
+    msw.save_pair_rows("GPNSTOCK", "30m", _three())
     msw.merge_pair_rows("GPNSTOCK", "30m", [])
-    on_disk = json.loads((tmp_path / "rows" / "GPNSTOCK-30m.json").read_text())
-    assert [r["tp"] for r in on_disk] == [3.0]
+    msw.rewrite_pair_rows("GPNSTOCK", "30m", lambda rows: rows)
+    assert sorted(r["tp"] for r in msw.pair_rows("GPNSTOCK", "30m")) == [1.5, 2.0, 3.0]
 
 
-def test_rewrite_pair_rows_keeps_the_same_rule(tmp_path, monkeypatch):
-    from tradingagents import market_sweep as msw, running_rows as rr
+def test_the_index_files_only_rows_whose_target_is_bigger(index):
+    msw.save_pair_rows("GPNSTOCK", "30m", _three())
+    ri.index_pair(msw.ROWDIR / "GPNSTOCK-30m.json")
+    con = sqlite3.connect(index / "rows.db")
+    try:
+        filed = sorted((r[0], r[1]) for r in con.execute("SELECT sl, tp FROM rows"))
+    finally:
+        con.close()
+    assert filed == [(2.0, 3.0)]
 
-    monkeypatch.setattr(msw, "ROWDIR", tmp_path / "rows")
-    keep = _row(5.0, 5.0, coin="KKRSTOCK")
-    monkeypatch.setattr(rr, "combos", lambda: frozenset({br.combo_of(keep)}))
-    got = msw.rewrite_pair_rows("GPNSTOCK", "1h",
-                                lambda rows: [_row(5.0, 5.0), _row(5.0, 6.0), keep])
-    assert sorted((r["coin"], r["tp"]) for r in got) == [("GPNSTOCK", 6.0), ("KKRSTOCK", 5.0)]
+
+def test_the_index_and_the_files_read_their_own_rule():
+    import inspect
+
+    assert "br.index_keeps(r)" in inspect.getsource(ri._kept)
+    assert "br.store_keeps(r)" in inspect.getsource(msw.save_pair_rows)
+    assert "br.store_keeps(r)" in inspect.getsource(msw.rewrite_pair_rows)
 
 
-def test_the_index_never_keeps_an_equal_row_even_when_running(monkeypatch):
-    from tradingagents import rows_index as ri, running_rows as rr
+def test_a_row_written_to_its_file_still_reaches_the_watcher(index, monkeypatch):
+    """The watcher's hourly switch-off check finds a running row in its pair
+    file (strategy_watcher._fresh_row -> watcher_candidates.matched_rows): a
+    TP = SL row Main runs (keltner_30m_sl2tp2 on GPNSTOCK) must still be
+    there after any write, or the room switches it off within the hour."""
+    from tradingagents import watcher_candidates as wc
 
-    r = _row(2.0, 2.0)
-    monkeypatch.setattr(rr, "combos", lambda: frozenset({br.combo_of(r)}))
-    assert not ri._kept(r)
-    assert ri._kept(_row(2.0, 2.5))
+    monkeypatch.setattr(wc, "stores", types.SimpleNamespace(V2=types.SimpleNamespace(home=index)))
+    wc._MATCH_CACHE.clear()
+    msw.save_pair_rows("GPNSTOCK", "30m", _three())
+    got = wc.matched_rows("GPNSTOCK", "30m",
+                          [{"signal": "keltner", "th": 0.0, "sl": 2.0, "tp": 2.0}])
+    assert got and [float(r["tp"]) for r in got.values() if r] == [2.0]

@@ -1529,6 +1529,27 @@ now fills the front whenever a frame is shorter than its cap; the pending
 ledger did not know `candles_v2`; nothing indexed the v2 folder, so the v2 job
 files its own rows; a v2 report defaulted to v1's file name.
 
+## Backtest v2 keeps only TP > SL (MANDATORY — Oct 06, 2026)
+
+The operator, after six rooms lost $889.10 on 4,375 practice trades (average
+win +$0.80, average loss −$1.04 on $100: about $0.23 of fees comes off every
+win and goes on top of every loss): *"take note you will only replace the ones
+that has higher sl than tp or if tp same as sl, you will change it as well
+example tp=5% sl=5% / the goal is to have higher tp than sl"* (the asks before
+it, in order, are in the spec).
+
+* **One rule, `backtest_report.store_keeps`:** a Backtest v2 row is kept only
+  when TP > SL strictly (`target_over_stop`). v1 is untouched.
+* **Replaced, never measured differently.** The grid measures every stop with
+  every target, so each stop's bigger targets already exist; nothing GitHub
+  measures changed, and the rule is reversible in one line.
+* **The index never holds a TP ≤ SL row; the pair files keep what a room is
+  running now** (`running_rows.combos()`), because the watcher's switch-off
+  check reads the pair files and a missing row is switched off at once — the
+  operator chose "Backtest tab only" for the rooms.
+* Guard: `tests/test_backtest_v2_keeps_target_over_stop.py`.
+Spec: `docs/superpowers/specs/2026-10-06-backtest-v2-target-over-stop-design.md`.
+
 ## Read the emitter, not the label (MANDATORY — 2026-08-18)
 
 23. **Before explaining ANY log line, ledger action, counter or status string,

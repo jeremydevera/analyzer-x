@@ -1220,46 +1220,61 @@ def room_lists(follow: dict, pr: dict, meta: dict, store, progress=None) -> tupl
     out: dict = {}
     ends: dict = {}
     failed: list = []
-    ids = sorted(spans)
+    # ONE COIN AT A TIME, each coin's files read once (_one_coin_memo, as the
+    # candidate lists do): Main follows 672 strategies on 87 coins for Oct 01
+    # - Oct 05, 2026 once the 7 days before the range are in, and each call
+    # parsed its pair file and minutes again - over an hour on a busy G:
+    ids = sorted(spans, key=lambda r: (str((meta.get(r) or {}).get("coin")), r))
     t0 = time.time()
-    for n, rid in enumerate(ids):
-        c, slot = meta.get(rid), slot_of.get(rid)
-        if c is None or slot is None:
-            failed.append(rid)
-            continue
-        bar_ms = _bar_s_of_key(slot.split("|", 1)[0]) * 1000
-        mine, ts_list, dead = refused.get(slot, []), ts_of.get(slot, []), gone.get(slot) or ()
-        on = spans[rid]
-        took = entered.get(slot) or set()
+    coin_memo = contextlib.ExitStack()
+    at_coin = None
+    try:
+        for n, rid in enumerate(ids):
+            c, slot = meta.get(rid), slot_of.get(rid)
+            if c is None or slot is None:
+                failed.append(rid)
+                continue
+            if c["coin"] != at_coin:
+                coin_memo.close()
+                coin_memo = contextlib.ExitStack()
+                coin_memo.enter_context(_one_coin_memo())
+                at_coin = c["coin"]
+            bar_ms = _bar_s_of_key(slot.split("|", 1)[0]) * 1000
+            mine, ts_list, dead = refused.get(slot, []), ts_of.get(slot, []), gone.get(slot) or ()
+            on = spans[rid]
+            took = entered.get(slot) or set()
 
-        def skip(open_ms, bar_ms=bar_ms, mine=mine, ts_list=ts_list, dead=dead, on=on,
-                 g=int(grace.get(rid, 0)), took=took):
-            if open_ms // 1000 in took:
-                return False                     # the room DID take this candle
-            entry = open_ms + bar_ms
-            if not any(a <= entry < b for a, b in on):
-                return True                      # the room had it switched off
-            if any(a <= entry < b - g for a, b in down):
-                return True                      # the room's runner was not running
-            if open_ms // 1000 in dead:
-                return True                      # the cost check counted this candle
-            return rb._reason(mine, ts_list, entry / 1000, bar_ms // 1000) != "none"
-        try:
-            got = ms.trades_for(c["coin"], c["tf"], signal=c["signal"], th=c["th"],
-                                sl=c["sl"], tp=c["tp"], sizing="flat",
-                                base_margin=BASE_MARGIN, store=store, skip=skip,
-                                whole=True, reenter=True)
-        except Exception:                                      # noqa: BLE001
-            failed.append(rid)
-            continue
-        if got.get("log") is None or got.get("why"):
-            failed.append(rid)
-            continue
-        rec = record(c, got, None, None)
-        out[rid] = rec["trades"]
-        ends[rid] = rec.get("end_ms")
-        if progress:
-            progress(n + 1, len(ids))
+            def skip(open_ms, bar_ms=bar_ms, mine=mine, ts_list=ts_list, dead=dead, on=on,
+                     g=int(grace.get(rid, 0)), took=took):
+                if open_ms // 1000 in took:
+                    return False                     # the room DID take this candle
+                entry = open_ms + bar_ms
+                if not any(a <= entry < b for a, b in on):
+                    return True                      # the room had it switched off
+                if any(a <= entry < b - g for a, b in down):
+                    return True                      # the room's runner was not running
+                if open_ms // 1000 in dead:
+                    return True                      # the cost check counted this candle
+                return rb._reason(mine, ts_list, entry / 1000, bar_ms // 1000) != "none"
+            try:
+                got = ms.trades_for(c["coin"], c["tf"], signal=c["signal"], th=c["th"],
+                                    sl=c["sl"], tp=c["tp"], sizing="flat",
+                                    base_margin=BASE_MARGIN, store=store, skip=skip,
+                                    whole=True, reenter=True)
+            except Exception:                                      # noqa: BLE001
+                failed.append(rid)
+                continue
+            if got.get("log") is None or got.get("why"):
+                failed.append(rid)
+                continue
+            rec = record(c, got, None, None)
+            out[rid] = rec["trades"]
+            ends[rid] = rec.get("end_ms")
+            if progress:
+                progress(n + 1, len(ids))
+    finally:
+        # never left patched: market_sweep's readers are module-wide
+        coin_memo.close()
     follow["ends"] = ends
     # the trades the room really took, as (id, entry minute): the coin cap
     # keeps these first when more signal at once than a coin has places

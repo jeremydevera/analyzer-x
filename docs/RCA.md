@@ -305,9 +305,25 @@ stretch; and 8 the old reading lost entirely have one now (squeeze_1h_sl3tp3 on
 KITE, mom6_1h_pv on XAUT ... all before Sep 10, 2026, none with a practice
 trade on this PC's record).
 
+Measured after the fix, Main Oct 01 – Oct 05, 2026: backtest 39 trades,
+17 won, 22 lost, -$4.88 against practice 39 trades, 17 won, 22 lost, -$4.69;
+38 the same trade with the same result (34 before), 1 practice-only (IGV,
+RCA-2026-10-06-B), 1 backtest-only (PDDSTOCK eqraid from Sep 24, 2026 1:00am,
+-$3.23: the room recorded neither a trade nor a refusal - its cost check
+refused that row at 52-72% of the target every time it wrote, and before
+Oct 02, 2026 it did not write every refusal, RCA-2026-10-02-C).
+
+Found by pressing it after shipping: following the 7 days before the range
+took Main from 180 strategies to 759 picked and 209 to 672 rebuilt, and the
+rebuild parsed each strategy's pair file and minutes again — 258 of 672 in
+20 minutes on a G: shared with the live results door and the watcher. The
+rebuild now goes one coin at a time with each coin's files read once
+(`_one_coin_memo`, as the candidate lists already did), always undone after.
+
 **GUARD** — `tests/test_a_moved_switch_is_not_a_switch_off.py` (7; 5 fail on
 the old code), `tests/test_backtest_a_room_replays_its_rules.py::test_a_strategy_switched_off_just_before_the_range_is_still_nominated`
-(fails on the old code).
+(fails on the old code), `::test_the_room_rebuild_reads_each_coins_files_once_and_answers_the_same`
+(fails on the old code), `::test_the_room_rebuild_leaves_nothing_swapped_when_a_strategy_fails`.
 
 ## RCA-2026-10-05-H — a strategy switched off a second time was never written to the room's deployment record
 

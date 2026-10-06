@@ -1216,3 +1216,51 @@ def test_a_twin_that_closed_outside_the_range_is_named(monkeypatch):
     assert by["backtest_only"]["reason"] == "practice_closed_outside"
     assert tot["practice_only:closed_outside"] == 1
     assert "closed_outside" in rr.REASONS and "practice_closed_outside" in rr.REASONS
+
+
+def test_the_room_rebuild_reads_each_coins_files_once_and_answers_the_same(v2, monkeypatch):
+    """Main, Oct 01 - Oct 05, 2026: 672 strategies on 87 coins once the 7 days
+    before the range are followed, each parsing its pair file again — over an
+    hour on a busy G:. One coin at a time, its files read once: the same
+    lists, and market_sweep's readers are never left swapped out."""
+    import contextlib as _cl
+
+    from tradingagents import market_sweep as msw
+
+    cands = [_cand(1.0), _cand(1.2)]
+    follow = {"slots": [{"id": c["id"], "on_ms": H0, "off_ms": None} for c in cands],
+              "slot_of": {c["id"]: rr.slot_key(c) for c in cands}, "grace_ms": {}, "down": []}
+    pr = {"refused": {}, "refused_candles": {}, "entries": {}}
+    meta = {c["id"]: c for c in cands}
+    reads = []
+    real = msw.pair_rows
+
+    def counted(coin, tf, root=None):
+        reads.append((coin, tf))
+        return real(coin, tf, root)
+    monkeypatch.setattr(msw, "pair_rows", counted)
+    got, info = rr.room_lists(dict(follow), pr, meta, v2)
+    once = len(reads)
+    assert msw.pair_rows is counted, "the coin memo must be undone"
+    reads.clear()
+    monkeypatch.setattr(rr, "_one_coin_memo", _cl.nullcontext)
+    plain, _ = rr.room_lists(dict(follow), pr, meta, v2)
+    assert got == plain and info["rebuilt"] == 2 and all(len(v) >= 10 for v in got.values())
+    assert once == 1 < len(reads), (once, len(reads))
+
+
+def test_the_room_rebuild_leaves_nothing_swapped_when_a_strategy_fails(v2, monkeypatch):
+    from tradingagents import market_sweep as msw
+
+    before = msw.pair_rows
+    c = _cand(1.0)
+    follow = {"slots": [{"id": c["id"], "on_ms": H0, "off_ms": None}],
+              "slot_of": {c["id"]: rr.slot_key(c)}, "grace_ms": {}, "down": []}
+
+    def boom(*a, **k):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(msw, "trades_for", boom)
+    with pytest.raises(KeyboardInterrupt):
+        rr.room_lists(follow, {"refused": {}, "refused_candles": {}, "entries": {}},
+                      {c["id"]: c}, v2)
+    assert msw.pair_rows is before

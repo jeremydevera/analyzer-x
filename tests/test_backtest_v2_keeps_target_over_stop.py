@@ -138,3 +138,41 @@ def test_no_test_depends_on_the_operators_real_rooms():
     from tradingagents import running_rows as rr
 
     assert rr.combos() == frozenset()
+
+
+# ------------------------------- the writers keep it, the index never does
+def test_a_pair_file_keeps_a_running_equal_row_and_drops_the_rest(tmp_path, monkeypatch):
+    from tradingagents import market_sweep as msw, running_rows as rr
+
+    monkeypatch.setattr(msw, "ROWDIR", tmp_path / "rows")
+    eq, big, small = (_row(2.0, tp, coin="GPNSTOCK", tf="30m", signal="keltner")
+                      for tp in (2.0, 3.0, 1.5))
+    monkeypatch.setattr(rr, "combos", lambda: frozenset({br.combo_of(eq)}))
+    msw.save_pair_rows("GPNSTOCK", "30m", [eq, big, small])
+    on_disk = json.loads((tmp_path / "rows" / "GPNSTOCK-30m.json").read_text())
+    assert sorted(r["tp"] for r in on_disk) == [2.0, 3.0]
+    # the room switches it off: the next write drops it
+    monkeypatch.setattr(rr, "combos", lambda: frozenset())
+    msw.merge_pair_rows("GPNSTOCK", "30m", [])
+    on_disk = json.loads((tmp_path / "rows" / "GPNSTOCK-30m.json").read_text())
+    assert [r["tp"] for r in on_disk] == [3.0]
+
+
+def test_rewrite_pair_rows_keeps_the_same_rule(tmp_path, monkeypatch):
+    from tradingagents import market_sweep as msw, running_rows as rr
+
+    monkeypatch.setattr(msw, "ROWDIR", tmp_path / "rows")
+    keep = _row(5.0, 5.0, coin="KKRSTOCK")
+    monkeypatch.setattr(rr, "combos", lambda: frozenset({br.combo_of(keep)}))
+    got = msw.rewrite_pair_rows("GPNSTOCK", "1h",
+                                lambda rows: [_row(5.0, 5.0), _row(5.0, 6.0), keep])
+    assert sorted((r["coin"], r["tp"]) for r in got) == [("GPNSTOCK", 6.0), ("KKRSTOCK", 5.0)]
+
+
+def test_the_index_never_keeps_an_equal_row_even_when_running(monkeypatch):
+    from tradingagents import rows_index as ri, running_rows as rr
+
+    r = _row(2.0, 2.0)
+    monkeypatch.setattr(rr, "combos", lambda: frozenset({br.combo_of(r)}))
+    assert not ri._kept(r)
+    assert ri._kept(_row(2.0, 2.5))

@@ -436,7 +436,8 @@ def _row(coin, tf, signal, sl=1.0, tp=2.0):
 
 def test_landing_a_run_swaps_only_the_learned_rows(v2store):
     msw, ri, sl_, lc = v2store
-    grid = [_row("BTC", "1h", "keltner"), _row("BTC", "1h", "rsi14", 1.2, 1.0)]
+    # a target bigger than the stop: Backtest v2 keeps no other row (Oct 06, 2026)
+    grid = [_row("BTC", "1h", "keltner"), _row("BTC", "1h", "rsi14", 1.0, 1.2)]
     old = [_row("BTC", "1h", "lx_BTC_1h_1"), _row("BTC", "1h", "lx_BTC_1h_2")]
     msw.save_pair_rows("BTC", "1h", grid + old)
     msw.save_states("BTC", "1h", {"__cloud__": True, "__last_ms__": 123})

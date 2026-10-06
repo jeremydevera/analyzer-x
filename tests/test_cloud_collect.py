@@ -396,7 +396,9 @@ def test_one_pair_for_the_other_store_is_refused_by_name_and_the_rest_land(
     after it. One wrong pair is refused and NAMED; every other pair lands."""
     from tradingagents import market_sweep as msw
     monkeypatch.setattr(msw, "FINE_TF", "1m")
-    v2 = lambda coin, tf, sig: {**_row(coin, tf, sig), "res": "1m"}   # noqa: E731
+    # a target bigger than the stop: Backtest v2 keeps no other row (Oct 06, 2026)
+    v2 = lambda coin, tf, sig: {**_row(coin, tf, sig), "res": "1m",   # noqa: E731
+                                "sl": 1.0, "tp": 2.0}
     _download(monkeypatch, {"rows-0": [
         _row("A", "1h", "mom6"),                       # no res: bar-rule rows
         v2("APEX", "1h", "mom6"), v2("PI", "4h", "rsi14")]})

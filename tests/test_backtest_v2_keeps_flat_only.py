@@ -157,4 +157,6 @@ def test_the_index_and_the_files_read_one_rule():
     import inspect
 
     assert "br.store_keeps(r)" in inspect.getsource(ri._kept)
-    assert "br.store_keeps(r)" in inspect.getsource(msw.save_pair_rows)
+    # the files also keep what a room runs (Oct 06, 2026, running_rows)
+    assert "br.store_keeps(r, running)" in inspect.getsource(msw.save_pair_rows)
+    assert "br.store_keeps(r, running)" in inspect.getsource(msw.rewrite_pair_rows)

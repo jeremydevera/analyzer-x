@@ -272,7 +272,8 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
     if int(cfg.get("coin_slices") or 0) > 0:
         took = (follow or {}).get("took") or set()
         cap_per_coin(slots, int(cfg["coin_slices"]),
-                     prefer=(lambda s, t: (s["id"], int(t[0])) in took) if took else None)
+                     prefer=(lambda s, t: (s["id"], int(t[0])) in took) if took else None,
+                     same_side=follow is not None)
     for s in slots:
         _totals(s)
     out = {"days": _days(slots, events, checks, end_ms), "slots": slots,
@@ -295,7 +296,10 @@ def _follow(follow: dict, running: dict, slots: list, events: list, books: dict,
         book = books.get(f["id"])
         if book is None:
             continue
-        on = max(int(f["on_ms"]), at)
+        # a room slot may start BEFORE the range (follow["lead_from_ms"]), so a
+        # trade it opened then and closed inside the range is counted, as the
+        # practice account counts it; its switch-on is no event of the range
+        on = max(int(f["on_ms"]), int(follow.get("lead_from_ms", at)))
         off = f.get("off_ms")
         off = None if off is None or int(off) > end_ms else int(off)
         if off is not None and off <= on:
@@ -308,15 +312,26 @@ def _follow(follow: dict, running: dict, slots: list, events: list, books: dict,
                 # a candle that closed just before the switch-on is still taken
                 "trade_from_ms": on - int((follow.get("grace_ms") or {}).get(f["id"], 0))}
         slots.append(slot)
-        events.append({"at": on, "action": "on", "id": f["id"], "coin": c.get("coin"),
-                       "why": f["on_why"]})
+        if on >= at:
+            events.append({"at": on, "action": "on", "id": f["id"], "coin": c.get("coin"),
+                           "why": f["on_why"]})
         if off is not None:
             events.append({"at": off, "action": "off", "id": f["id"], "coin": c.get("coin"),
                            "why": slot["off_why"]})
     events.sort(key=lambda e: (e["at"], e["action"] != "off", e["id"]))
 
 
-def cap_per_coin(slots: list, n: int, prefer=None) -> None:
+def _side_of(t):
+    """A trade's side, when its row carries one (Backtest a room's lists:
+    [entry, known, pnl, closed, exit, why, side]); None otherwise."""
+    try:
+        side = str(t[6]).upper()
+    except (IndexError, TypeError):
+        return None
+    return side if side in ("LONG", "SHORT") else None
+
+
+def cap_per_coin(slots: list, n: int, prefer=None, same_side: bool = False) -> None:
     """THE RUNNER'S OWN LIMIT: at most `n` open trades on one coin (the
     operator's "max slices per coin", 4, with partial TP/SL on for demo). A
     trade that would open while `n` are already open on its coin never
@@ -328,7 +343,14 @@ def cap_per_coin(slots: list, n: int, prefer=None) -> None:
     to the slot switched on first — or, with `prefer(slot, trade)`, to the
     trades the ROOM really took (Backtest a room: #6B08FF64 runs 34
     strategies on YMTCSTOCK, and at Oct 01, 2026 12:45pm more than 4 of them
-    signalled at once; the replay kept a different 4 than the room)."""
+    signalled at once; the replay kept a different 4 than the room).
+
+    `same_side=True` adds the runner's OTHER per-coin rule (Backtest a room):
+    no trade against the side already open on the coin — "not accepted, the
+    open slice(s) point the other way, netting would cancel them". #4FC03172,
+    Oct 02, 2026 11:06am: cci20_30m on KKRSTOCK refused under two LONG fade15
+    trades; the replay took such trades and they held the coin's places.
+    Off by default: the research replay's rows carry no side."""
     by_coin: dict = {}
     for i, s in enumerate(slots):
         for t in s["trades"]:
@@ -337,13 +359,16 @@ def cap_per_coin(slots: list, n: int, prefer=None) -> None:
     keep: dict = {i: [] for i in range(len(slots))}
     for trades in by_coin.values():
         trades.sort(key=lambda x: (x[0], x[1], x[2]))
-        open_until: list = []
+        open_until: list = []                 # (until, side)
         for entry, _first, i, t in trades:
-            open_until = [x for x in open_until if x > entry]
+            open_until = [x for x in open_until if x[0] > entry]
             if len(open_until) >= n:
                 continue
+            side = _side_of(t) if same_side else None
+            if side and any(o[1] and o[1] != side for o in open_until):
+                continue
             # a trade still open at the end counts as open for ever
-            open_until.append(float(t[1]) if t[3] else float("inf"))
+            open_until.append((float(t[1]) if t[3] else float("inf"), side))
             keep[i].append(t)
     for i, s in enumerate(slots):
         was = s["trades"]

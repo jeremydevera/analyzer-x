@@ -1118,3 +1118,40 @@ def test_a_hand_picked_strategy_the_watcher_never_touched_is_replayed(v2, tmp_pa
     picks, info = rr.room_picks(ROOM, _ms(2026, 10, 5, 23, 59), store=v2,
                                 start_ms=_ms(2026, 10, 1), now=_ms(2026, 10, 6) / 1000)
     assert [p["id"] for p in picks] == [c["id"]] and info["missing"] == []
+
+
+def test_a_trade_opened_before_the_range_and_closed_in_it_is_replayed():
+    """#4FC03172, Oct 01 - Oct 05, 2026: 34 practice trades opened Sep 30
+    8:00pm-8:45pm and closed on Oct 01 — counted by their close in practice,
+    impossible for a replay that began at Oct 01 12:00am."""
+    start = _ms(2026, 10, 1)
+    on = _ms(2026, 9, 30, 20, 21)
+    t = [_ms(2026, 9, 30, 20, 30), _ms(2026, 10, 1, 1, 0), 0.6, True]
+    combo = {"id": "CU7UBJ7H", "coin": "TOYOTASTOCK", "tf": "15m", "signal": "stoch14",
+             "th": 0.0, "sl": 0.6, "tp": 0.8, "group": "classic", "gate": "ok", "trades": [t]}
+    follow = {"from_ms": start, "lead_from_ms": start - rr.LEAD_MS, "why": "x",
+              "slots": [{"id": "CU7UBJ7H", "on_ms": on, "off_ms": None, "on_why": "on",
+                         "off_why": ""}]}
+    got = wr.simulate([combo], start_ms=start, end_ms=_ms(2026, 10, 1, 23, 59),
+                      cfg=ROOM_RULES, books={"CU7UBJ7H": wr._Book(combo)}, follow=follow)
+    (s,) = got["slots"]
+    assert s["on_ms"] == on and [int(x[0]) for x in s["trades"]] == [t[0]]
+    assert not any(e["action"] == "on" for e in got["events"]), \
+        "a switch-on before the range is no event of the range"
+
+
+def test_the_coin_cap_refuses_a_trade_against_the_side_already_open():
+    """#4FC03172, Oct 02, 2026 11:06am: "cci20_30m_sl08tp1 not accepted — the
+    open slice(s) point the other way" under two LONG fade15 trades."""
+    e = _ms(2026, 10, 2, 5, 0)
+    long1 = [e, e + 6 * H, 0.5, True, e + 6 * H, "TP", "LONG"]
+    short = [e + H, e + 2 * H, 0.5, True, e + 2 * H, "TP", "SHORT"]
+    long2 = [e + H, e + 2 * H, 0.5, True, e + 2 * H, "TP", "LONG"]
+    slots = [{"id": "A", "coin": "KKRSTOCK", "trades": [long1]},
+             {"id": "B", "coin": "KKRSTOCK", "trades": [short]},
+             {"id": "C", "coin": "KKRSTOCK", "trades": [long2]}]
+    wr.cap_per_coin(slots, 4, same_side=True)
+    assert [len(s["trades"]) for s in slots] == [1, 0, 1]
+    plain = [{"id": "A", "coin": "K", "trades": [long1]}, {"id": "B", "coin": "K", "trades": [short]}]
+    wr.cap_per_coin(plain, 4)
+    assert [len(s["trades"]) for s in plain] == [1, 1], "off unless asked: research rows"

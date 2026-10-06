@@ -379,6 +379,9 @@ def auto_floor(cfg: dict) -> float:
     return max(0.0, float(cfg["on_winrate"]) - FLOOR_BELOW)
 
 
+# how long before the range a room's strategy is followed, so a trade opened
+# before the range and closed inside it is in the replay as in practice
+LEAD_MS = 7 * DAY_MS
 # a coin's minutes this far behind the end of the range are fetched again
 PRICES_BEHIND_S = 10 * 60
 PRICES_TIMEOUT_S = 20 * 60
@@ -1038,7 +1041,7 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
     cap = coin_cap(room)
     follow, finfo = room_follow(room, pr, cands, books, start_ms, end_ms)
     if follow is not None:
-        follow["down"] = room_down(room, follow["from_ms"], end_ms)
+        follow["down"] = room_down(room, follow["lead_from_ms"], end_ms)
         finfo["down"] = follow["down"]
         follow["trades"], rinfo = room_lists(follow, pr, meta, store,
                                              progress=lambda d, t: say("room lists", d, t))
@@ -1083,6 +1086,12 @@ def room_follow(room: str, pr: dict, cands: list, books: dict, start_ms: int,
     if not firsts:
         return None, {"from_ms": None, "slots": 0, "why": "the room has switched nothing on"}
     from_ms = max(int(min(firsts) * 1000), int(start_ms))
+    # A TRADE OPENED BEFORE THE RANGE AND CLOSED IN IT counts on the practice
+    # side (it is counted by its close), so the room's strategies are followed
+    # from up to LEAD_MS before the range: #4FC03172 had 34 practice trades
+    # opened on Sep 30, 2026 8:00pm-8:45pm and closed on Oct 01 that a replay
+    # starting at Oct 01 12:00am could never have
+    lead_from = max(int(min(firsts) * 1000), int(start_ms) - LEAD_MS)
     if from_ms > end_ms:
         return None, {"from_ms": None, "slots": 0,
                       "why": "the room's first switch-on is after the range"}
@@ -1103,7 +1112,7 @@ def room_follow(room: str, pr: dict, cands: list, books: dict, start_ms: int,
         slot_of[c["id"]] = slot
         still_on = slot not in (pr.get("slots_off_now") or [])
         for on, off in _merged_stretches(v, still_on, whys, c["id"]):
-            if (off is not None and off <= from_ms) or on > end_ms:
+            if (off is not None and off <= lead_from) or on > end_ms:
                 continue
             out.append({"id": c["id"], "on_ms": on,
                         "off_ms": off,
@@ -1124,7 +1133,8 @@ def room_follow(room: str, pr: dict, cands: list, books: dict, start_ms: int,
     frac = float(getattr(_at, "MAX_SIGNAL_AGE_FRACTION", 0) or 0)
     grace = {rid: int(_bar_s_of_key(sl.split("|", 1)[0]) * 1000 * frac)
              for rid, sl in slot_of.items()}
-    return ({"from_ms": from_ms, "why": why, "slots": out, "slot_of": slot_of,
+    return ({"from_ms": from_ms, "lead_from_ms": lead_from, "why": why, "slots": out,
+             "slot_of": slot_of,
              "grace_ms": grace,
              "refuse": _room_refusals(pr, slot_of)},
             {"from_ms": from_ms, "slots": len(out), "strategies": len({f["id"] for f in out}),
@@ -1685,7 +1695,12 @@ def _notes(room, cfg, cinfo, listed, no_list, cov, full_from, pr, cap, start_ms,
                f"out; a raw room's live watcher switches them on, and the runner then "
                f"refuses their trades at the cost check.")
     out.append(f"At most {cap} trade(s) open on one coin at once — the practice runner's "
-               f"own limit; its rule that they all point the same way is not replayed.")
+               f"own limit — and, from your room's start, none against the side already "
+               f"open on the coin, as the runner refuses it. Your room buys at the live price "
+               f"a few seconds after a candle closes, the backtest at the candle's open: "
+               f"a few tenths of a percent apart, which can move a trade's exit by hours "
+               f"(#4FC03172 KKRSTOCK, Oct 02, 2026 11:15am: 90.65 against 90.82, closed "
+               f"12:58pm against 4:32pm).")
     if pr.get("start_ms"):
         out.append(f"The cost check at each live entry (that moment's spread) cannot be "
                    f"replayed for past days; only the refusals the room recorded since "

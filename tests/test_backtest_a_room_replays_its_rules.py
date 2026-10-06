@@ -1120,6 +1120,33 @@ def test_a_hand_picked_strategy_the_watcher_never_touched_is_replayed(v2, tmp_pa
     assert [p["id"] for p in picks] == [c["id"]] and info["missing"] == []
 
 
+def test_a_strategy_switched_off_just_before_the_range_is_still_nominated(
+        v2, tmp_path, monkeypatch):
+    """Main's stoch14_1h_sl2tp2 on VUG: switched off Sep 30, 2026 10:26am,
+    its practice trade opened 10:00am and closed Oct 02 4:24am (-$2.20) -
+    inside an Oct 01 - Oct 05 range, so it is nominated from LEAD_MS before
+    the range, as room_follow follows it."""
+    from tradingagents import local_history as lh, profiles
+    from tradingagents import strategy_watcher as sw
+
+    monkeypatch.setattr(sw, "LOG", tmp_path / "strategy_watcher.jsonl")
+    c = _cand(1.0)
+    key, _, sym = rr.slot_key(c).partition("|")
+    with profiles.using(ROOM):
+        lh.record_deployment({"changed_at": _ms(2026, 9, 25) // 1000, "strategy_key": key,
+                              "symbol": sym, "action": "deployed", "books": "paper"})
+        lh.record_deployment({"changed_at": _ms(2026, 9, 30, 10, 26) // 1000,
+                              "strategy_key": key, "symbol": sym, "action": "disarmed",
+                              "books": ""})
+    picks, _info = rr.room_picks(ROOM, _ms(2026, 10, 5, 23, 59), store=v2,
+                                 start_ms=_ms(2026, 10, 1), now=_ms(2026, 10, 6) / 1000)
+    assert [p["id"] for p in picks] == [c["id"]]
+    # a stretch that ended more than LEAD_MS before the range is not
+    picks, _info = rr.room_picks(ROOM, _ms(2026, 10, 20, 23, 59), store=v2,
+                                 start_ms=_ms(2026, 10, 15), now=_ms(2026, 10, 21) / 1000)
+    assert picks == []
+
+
 def test_a_trade_opened_before_the_range_and_closed_in_it_is_replayed():
     """#4FC03172, Oct 01 - Oct 05, 2026: 34 practice trades opened Sep 30
     8:00pm-8:45pm and closed on Oct 01 — counted by their close in practice,
@@ -1155,3 +1182,37 @@ def test_the_coin_cap_refuses_a_trade_against_the_side_already_open():
     plain = [{"id": "A", "coin": "K", "trades": [long1]}, {"id": "B", "coin": "K", "trades": [short]}]
     wr.cap_per_coin(plain, 4)
     assert [len(s["trades"]) for s in plain] == [1, 1], "off unless asked: research rows"
+
+
+def test_a_twin_that_closed_outside_the_range_is_named(monkeypatch):
+    """Main, vwaprev_1h_sl07tp1 on IGV: practice and backtest both went SHORT
+    from Sep 30, 2026 10:00am. Practice filled at 106.80 and its stop hit
+    Oct 01 1:31am (inside Oct 01 - Oct 05); the backtest entered at the
+    candle's open and its stop hit Sep 30 5:13pm (outside). It is the same
+    trade, so "its backtest list took no trade on that bar" was false.
+    And the other way round: a backtest trade whose practice twin closed
+    after the range."""
+    monkeypatch.setattr(rr, "_ids_of_slots", lambda room: {})
+    c = {"id": "4H5R5RX3", "coin": "IGV", "tf": "1h", "signal": "vwaprev", "th": 0.0,
+         "sl": 0.7, "tp": 1.0}
+    slot = rr.slot_key(c)
+    start, end = _ms(2026, 10, 1), _ms(2026, 10, 5, 23, 59)
+    twin = [_ms(2026, 9, 30, 10), _ms(2026, 9, 30, 17, 13), -0.92, "SL", "SHORT"]
+    later = [_ms(2026, 10, 2, 10), _ms(2026, 10, 2, 11), 0.78, "TP", "LONG"]
+    slots = [{**c, "on_ms": _ms(2026, 9, 29, 12, 3), "off_ms": None, "trades": [twin, later]}]
+    # the simulation's own row: [entry, known, pnl, closed, exit, why, side]
+    raw = [later[0], later[0], later[2], True, later[1], "TP", "LONG"]
+    traded = [(later[1], later[2], 0, raw)]
+    pr = {"trades": [{"slot": slot, "entry_ms": _ms(2026, 9, 30, 9),
+                      "exit_ms": _ms(2026, 10, 1, 1, 31), "pnl": -0.88, "why": "SL"}],
+          "start_ms": _ms(2026, 8, 31), "refused": {}, "refused_candles": {},
+          "stretches": {slot: [(_ms(2026, 9, 29, 12, 3) / 1000, _ms(2026, 10, 6) / 1000)]},
+          "entries": {slot: [_ms(2026, 9, 30, 9) // 1000, _ms(2026, 10, 2, 9) // 1000]}}
+    rec, _by_day, tot = rr._reconcile("main", [c], {c["id"]: {"end_ms": _ms(2026, 10, 6)}},
+                                      {}, pr, start, end, _ms(2026, 10, 6) / 1000, traded, slots)
+    by = {r["kind"]: r for r in rec["rows"]}
+    assert by["practice_only"]["reason"] == "closed_outside"
+    assert by["practice_only"]["backtest_exit_ms"] == twin[1]
+    assert by["backtest_only"]["reason"] == "practice_closed_outside"
+    assert tot["practice_only:closed_outside"] == 1
+    assert "closed_outside" in rr.REASONS and "practice_closed_outside" in rr.REASONS

@@ -172,6 +172,143 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-06-B — Backtest a room said "its backtest took no trade" for a trade the backtest did take
+
+**CEO**
+
+* What you saw: Main's replay, Oct 01 – Oct 05, 2026, listed the IGV trade of
+  Sep 30, 2026 10:00am (-$0.88) as one the backtest "took no trade on".
+* Why: the backtest took the same trade at the same minute, but its stop was
+  hit on Sep 30 — before the range — while yours, sold 8 cents higher
+  (106.80 against 106.72), was hit on Oct 01; the label only looked inside the range.
+* What stops it now: such a trade is labelled "the backtest made this trade
+  too, but closed it outside the range", with its close time, and the same
+  the other way round.
+
+**DEV**
+
+* `room_replay._reconcile` paired practice trades only with `traded` (replay
+  trades CLOSED in the range); a twin that closed outside fell to
+  `reason = "no_backtest_trade"`, a label about the backtest list that was
+  false.
+* Invariant broken: **a label states what the data shows** — the twin is looked
+  up among every replay trade by slot and entry (`anywhere`), and a backtest
+  trade whose practice signal is in `pr["entries"]` is
+  `practice_closed_outside`.
+* Guard: `tests/test_backtest_a_room_replays_its_rules.py::test_a_twin_that_closed_outside_the_range_is_named`.
+
+**SAW** — Main's replay, Oct 06, 2026: `practice_only no_backtest_trade
+vwaprev_1h_sl07tp1|IGV_USDT #4H5R5RX3 Sep 30, 2026 10:00am -0.88`.
+
+**TIMELINE**
+
+1. `Sep 30, 2026 10:00am` — both go SHORT on IGV: practice fills at 106.80,
+   the backtest at the candle's open, 106.72.
+2. `Sep 30, 2026 5:13pm` — the backtest's stop at 107.47 is hit (-0.92).
+3. `Oct 01, 2026 1:31am` — practice's stop at 107.55 is hit (-0.88).
+4. `Oct 06, 2026` — a replay of Oct 01 – Oct 05 counts each side by its close:
+   practice has it, the backtest does not, and the label says the backtest
+   took no trade.
+
+**ROOT CAUSE** — the "why is this one unpaired" search looked only at the
+trades counted in the range, not at every trade the replay made.
+
+**WHY IT WAS NOT CAUGHT** — every matching test put both twins inside the
+range; the range boundary falling between two closes of one trade was never
+built.
+
+**COST** — none: a wrong reason on one of 39 rows.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_backtest_a_room_replays_its_rules.py::test_a_twin_that_closed_outside_the_range_is_named`
+(fails on the old code).
+
+## RCA-2026-10-06-A — Main's GPNSTOCK strategy read as switched off on Sep 24 when it was moved, so Backtest a room never replayed its Oct 01 trades
+
+**CEO**
+
+* What you saw: Backtest a room for Main, Oct 01 – Oct 05, 2026 — practice
+  39 trades and -4.69, the backtest 34 and +3.09, with 4 practice trades the
+  backtest "never had" (keltner_30m_sl2tp2 on GPNSTOCK twice, stoch14 and
+  willr14 on VUG).
+* Why: on Sep 24 a save moved GPNSTOCK's on-switch from the coin to the
+  strategy — still on — and the history read the move as a switch-off; and
+  the two VUG strategies were switched off on Sep 30, 26 minutes after their
+  trades opened, so a range starting Oct 01 never picked them.
+* What stops it now: the history is replayed the way the runner reads the
+  settings, and a strategy switched off in the 7 days before the range is
+  picked so its last trades can be replayed.
+
+**DEV**
+
+* `forecast_v2._switches` turned each deploy-log line into its own on/off:
+  `keltner_30m_sl2tp2|GPNSTOCK_USDT` "disarmed" at `Sep 24, 2026 7:45am` closed
+  the stretch, though the same save wrote `keltner_30m_sl2tp2` "deployed" for
+  GPNSTOCK — `_intervals` gave `[(Sep 03 1:33pm, Sep 24 7:45am)]`;
+  `room_replay.room_picks` kept only stretches overlapping `[start, end]`.
+* Invariant broken: **a coin's own switch, removed, falls back to the
+  strategy's switch** (`auto_trader.books_for`) — so the log is replayed as
+  three settings (coin switch, strategy switch, strategy coin list), on =
+  "paper" in the accounts in force; and **the strategies the replay follows
+  and the strategies it picks start from the same moment** (`LEAD_MS`).
+* Guard: `tests/test_a_moved_switch_is_not_a_switch_off.py` (7),
+  `tests/test_backtest_a_room_replays_its_rules.py::test_a_strategy_switched_off_just_before_the_range_is_still_nominated`.
+
+**SAW** — the active goal, Oct 06, 2026: *"can you check other practice and
+see if it matches the backtest, if not fix the bug"*; Main's replay listed 4
+practice trades as "not a replay candidate".
+
+**TIMELINE**
+
+1. `Sep 03, 2026 10:28pm` — keltner_30m_sl2tp2 on GPNSTOCK on practice,
+   through the strategy's switch.
+2. `Sep 16, 2026` (between 3:00am and 12:41pm) — the per-coin move puts
+   every strategy's accounts onto its coins (`keltner_30m_sl2tp2|GPNSTOCK_USDT
+   = ["paper"]`) and writes no line; the settings copies show it.
+3. `Sep 24, 2026 7:45am` — one save moves it back: the strategy's switch on
+   for GPNSTOCK and KKRSTOCK, the coin's own switch removed. Still trading.
+4. `Sep 30, 2026 10:00am` — practice opens stoch14_1h_sl2tp2 and
+   willr14_1h_sl2tp2 on VUG; both switched off 10:26am; both close
+   `Oct 02, 2026 4:24am` at -2.20.
+5. `Oct 01, 2026 4:30am` and `11:30am` — practice trades keltner_30m_sl2tp2
+   on GPNSTOCK: -2.42 and +1.78. `11:51am` — switched off (the strategy's
+   coin list emptied).
+6. `Oct 06, 2026` — the replay reads stretch `Sep 03 → Sep 24 7:45am`, does not
+   pick #DGHBUURC, and the VUG pair (#8R6USJKK, #KJACR5LX) ended before the
+   range: 4 practice trades, -5.04, with nothing to pair.
+
+**ROOT CAUSE** — the deploy log is a DIFF of `strategy_books` (two shapes) and
+`strategy_coins`, and `_switches` read each line alone: removing a coin's own
+switch is a switch-off only when the strategy's switch does not carry the coin.
+
+**WHY IT WAS NOT CAUGHT** — `test_every_spelling_of_a_switch_is_read` checked
+each spelling of a switch on its own; no test put two spellings in ONE save,
+which is what every hand deploy that replaces a watcher row writes. The five
+watcher rooms only ever write one spelling, so their replays matched and Main
+was the only room that could show it. And the room_picks window was tested
+only with stretches inside the range.
+
+**COST** — none in money (the runner read its settings, which were right).
+Main's replay and Forecast v2's reality check had 2 practice trades (Oct 01)
+outside every stretch, and the replay was missing 4 practice trades worth
+-5.04.
+
+**FIX** — this commit. Checked on every room's history before shipping: the
+five watcher rooms' stretches since Sep 23 are identical to the minute
+(603, 848, 1,948, 1,131 and 4,259 strategies); Main's practice trades outside
+every stretch went 2 → 0 (all 50 since Aug 06). Main's stretches also start
+at practice, not real money: 21 strategies on REAL money only from
+`Sep 03, 2026 1:33pm` start at 10:28pm, when practice was added; 11 that were
+only ever real money (LYN, TREE, CTC ... from Aug 2026) have no practice
+stretch; and 8 the old reading lost entirely have one now (squeeze_1h_sl3tp3 on
+KITE, mom6_1h_pv on XAUT ... all before Sep 10, 2026, none with a practice
+trade on this PC's record).
+
+**GUARD** — `tests/test_a_moved_switch_is_not_a_switch_off.py` (7; 5 fail on
+the old code), `tests/test_backtest_a_room_replays_its_rules.py::test_a_strategy_switched_off_just_before_the_range_is_still_nominated`
+(fails on the old code).
+
 ## RCA-2026-10-05-H — a strategy switched off a second time was never written to the room's deployment record
 
 **CEO**

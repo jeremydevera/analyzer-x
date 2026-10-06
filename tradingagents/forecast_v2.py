@@ -48,6 +48,7 @@ THE DEFINITIONS (the same as everywhere else in the project):
 """
 from __future__ import annotations
 
+import collections
 import contextlib
 import datetime as dt
 import json
@@ -237,7 +238,8 @@ def _settings(pid: str) -> dict:
 
 def _intervals(pid: str, now_s: float) -> dict:
     """{slot: [(on_s, off_s or now_s), ...]} — every stretch a row was
-    switched on in this room, from its deploy log (deployed / disarmed), and
+    switched on in this room's PRACTICE account, from its deploy log
+    (`_switches`: real money alone is not practice), and
     the room's current `watcher_slots` for a row whose deploy line is
     missing."""
     from tradingagents import local_history as lh, profiles
@@ -321,20 +323,48 @@ def _end_stretches_no_longer_on(pid: str, out: dict, now_s: float) -> None:
 _NO_COIN = ("", "\u2014", "-", None)
 
 
+def _books_of(e: dict, act: str) -> list:
+    """The accounts a deploy-log line leaves on. A line written without the
+    field (the delisted cleanup's, a test's) is on for "deployed"/"changed"
+    and off for "disarmed"."""
+    raw = e.get("books")
+    if raw is None:
+        return ["paper"] if act in ("deployed", "changed") else []
+    return [b for b in str(raw).split(",") if b]
+
+
+def _same_margin(a, b) -> bool:
+    try:
+        return float(a) == float(b)
+    except (TypeError, ValueError):
+        return a == b
+
+
 def _switches(lines: list) -> list:
-    """[(at_s, slot, "deployed"|"disarmed")] from a room's deploy log, in
-    order, whichever of its three spellings a line uses (Oct 06, 2026 - Main's
-    history is almost all the first two, and none of it was read):
+    """[(at_s, slot, "deployed"|"disarmed")] — when each strategy-and-coin
+    started and stopped trading on the PRACTICE account, read off a room's
+    deploy log in order.
 
-      * "key|COIN_USDT", symbol "-"   (one per-coin slot; the watcher's rows)
-      * "key", symbol "COIN_USDT"     (a key armed for a list of coins)
-      * "changed" for a bare key: one line per coin the key is armed for
-        AFTER the change, the coins before it in prev_json - so a coin that
-        appears is switched on and a coin that is gone is switched off.
+    The log is a diff of three settings and is replayed as them, never line
+    by line (`local_history.deploy_diff`; the runner's `auto_trader.books_for`):
 
-    Main, Oct 01 - Oct 05, 2026: 12 of its 39 practice trades came from
-    strategies whose stretches were written the second way, so Backtest a
-    room never had them and the reality check counted them nowhere."""
+      * "key|COIN", symbol "-": one coin's own accounts. Set, or REMOVED - and
+        a removed one falls back to the bare key's accounts, so it is a
+        switch-off only when the bare key does not carry the coin on practice.
+      * "key", symbol "COIN_USDT": the key's accounts and its coin list, one
+        line per coin AFTER the change (a second apart, so lines for one key
+        with the same coins-before within a minute are one change), the coins
+        before in prev_json. When no coin is left, deploy_diff lists the coins
+        BEFORE - spotted as a line whose coins, accounts and margin all equal
+        the ones before it, which deploy_diff never writes otherwise.
+      * a delisted cleanup's "key", "COIN" disarmed line, without prev_json.
+
+    Main, Sep 24, 2026 7:45am: keltner_30m_sl2tp2 on GPNSTOCK moved from its
+    own switch to the key's (`key|GPNSTOCK` removed, `key` on for GPNSTOCK and
+    KKRSTOCK in the same second). Read line by line, that was a switch-off,
+    and its two practice trades of Oct 01, 2026 had nothing to pair with; it
+    really went off at Oct 01, 2026 11:51am, when the key's coin list
+    emptied."""
     rows = []
     for line in lines:
         try:
@@ -344,45 +374,107 @@ def _switches(lines: list) -> list:
         if not isinstance(e, dict):
             continue
         at_s = rs._num(e.get("changed_at"), None)
-        key, act, sym = e.get("strategy_key"), e.get("action"), e.get("symbol")
+        key, act = e.get("strategy_key"), e.get("action")
         if not key or at_s is None or act not in ("deployed", "disarmed", "changed"):
             continue
-        rows.append((at_s, str(key), act, sym, e.get("prev_json")))
-    out = []
-    groups: list = []
-    open_group: dict = {}            # (key, prev_json) -> the group it is filling
-    for at_s, key, act, sym, prev in rows:
+        rows.append((at_s, str(key), act, e))
+    events: list = []                # (at_s, order, kind, key, data)
+    open_group: dict = {}            # (key, prev_json) -> the change it is filling
+    for n, (at_s, key, act, e) in enumerate(rows):
         if "|" in key:
-            if act in ("deployed", "disarmed"):
-                out.append((at_s, key, act))
+            events.append([at_s, n, "slot", key, _books_of(e, act)])
             continue
-        if act in ("deployed", "disarmed"):
+        sym, prev = e.get("symbol"), e.get("prev_json")
+        if prev is None and act == "disarmed":
             if sym not in _NO_COIN:
-                out.append((at_s, f"{key}|{sym}", act))
+                events.append([at_s, n, "drop", key, sym])
             continue
-        # ONE CHANGE writes one line per coin, and they can be stamped a second
-        # apart: Main's rsidiv_15m_sl1tp15 at Oct 03, 2026 3:34am wrote
-        # FASTSTOCK then KKRSTOCK, both with the coins before = [FASTSTOCK];
-        # read as two changes, the second "removed" FASTSTOCK. Lines for the
-        # same key with the same coins-before within a minute are one change.
         g = open_group.get((key, prev))
-        if g is None or at_s - g["at"] > 60:
-            g = {"at": at_s, "key": key, "now": set(), "prev": prev}
-            groups.append(g)
+        if g is None or at_s - g[0] > 60:
+            g = [at_s, n, "bare", key, {"now": set(), "books": _books_of(e, act),
+                                        "known": e.get("books") is not None, "margin": e.get("base_margin"),
+                                        "prev": prev}]
+            events.append(g)
             open_group[(key, prev)] = g
-        g["now"].add(sym)
-    for g in groups:
-        at_s, key = g["at"], g["key"]
-        now = {c for c in g["now"] if c not in _NO_COIN}
-        try:
-            before = set((json.loads(g["prev"] or "{}") or {}).get("coins") or [])
-        except (TypeError, ValueError):
-            before = set()
-        before = {c for c in before if c not in _NO_COIN}
-        out += [(at_s, f"{key}|{c}", "deployed") for c in sorted(now - before)]
-        out += [(at_s, f"{key}|{c}", "disarmed") for c in sorted(before - now)]
-    out.sort(key=lambda x: x[0])
-    return out
+        g[4]["now"].add(sym)
+    events.sort(key=lambda x: (x[0], x[1]))
+
+    own: dict = {}                   # "key|COIN" -> its own accounts
+    books: dict = {}                 # key -> its accounts
+    coins: dict = {}                 # key -> its coin list
+    # A COIN'S OWN SWITCH THE LOG NEVER SET was written straight into the
+    # settings - Main's per-coin move of Sep 16, 2026 took every key's
+    # accounts onto its coins without a line, so what this replay holds for
+    # the key is stale from then on. Removing such a switch falls back to the
+    # key only when a line for the key in the same save says what the key
+    # is; otherwise the coin is off until the key is written again
+    # (macddiv_4h_sl25tp25 on STBL, removed Sep 24, 2026 7:45am, the key's
+    # accounts gone since Sep 16 - the settings copies say so).
+    set_here: set = set()
+    unknown: set = set()
+    bare_at: dict = collections.defaultdict(list)
+    for ev in events:
+        if ev[2] == "bare":
+            bare_at[ev[3]].append(ev[0])
+
+    def on(slot):
+        if slot in own:
+            return "paper" in own[slot]
+        if slot in unknown:
+            return False
+        k, _, c = slot.partition("|")
+        return c in coins.get(k, ()) and "paper" in books.get(k, ())
+
+    out: list = []
+    state: dict = {}                 # slot -> on, as last written to `out`
+    for at_s, _n, kind, key, data in events:
+        if kind == "slot":
+            if data:
+                own[key] = data
+                set_here.add(key)
+                unknown.discard(key)
+            else:
+                k = key.partition("|")[0]
+                if (key not in set_here
+                        and not any(abs(t - at_s) <= 60 for t in bare_at.get(k, ()))):
+                    unknown.add(key)
+                own.pop(key, None)
+            touched = [key]
+        elif kind == "drop":
+            coins[key] = set(coins.get(key, ())) - {data}
+            own.pop(f"{key}|{data}", None)
+            touched = [f"{key}|{data}"]
+        else:
+            listed = {c for c in data["now"] if c not in _NO_COIN}
+            try:
+                p = json.loads(data["prev"] or "{}") or {}
+            except (TypeError, ValueError):
+                p = {}
+            before = {c for c in (p.get("coins") or []) if c not in _NO_COIN}
+            if (data["known"] and listed and listed == before
+                    and sorted(data["books"]) == sorted(p.get("books") or [])
+                    and _same_margin(data["margin"], p.get("base_margin"))):
+                listed = set()       # deploy_diff listed the coins before: none left
+            books[key] = data["books"]
+            touched = [f"{key}|{c}" for c in sorted(set(coins.get(key, ())) | listed | before)]
+            coins[key] = listed
+            unknown.difference_update(touched)
+        for slot in touched:
+            now_on = on(slot)
+            if now_on != state.get(slot, False):
+                state[slot] = now_on
+                out.append((at_s, slot, "deployed" if now_on else "disarmed"))
+    # one save writes its lines over a second or two, so a switch-off and the
+    # switch-on that replaces it can land apart: no gap was ever traded
+    last: dict = {}
+    keep = [True] * len(out)
+    for i, (at_s, slot, act) in enumerate(out):
+        j = last.get(slot)
+        if (act == "deployed" and j is not None and out[j][2] == "disarmed"
+                and at_s - out[j][0] <= 60):
+            keep[i] = keep[j] = False
+        last[slot] = i
+    return [x for x, k in zip(out, keep) if k]
 
 
 def _watcher_decisions(pid: str) -> dict:

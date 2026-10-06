@@ -482,8 +482,11 @@ def room_picks(room: str, end_ms: int, *, store=None, start_ms: int | None = Non
     if start_ms is not None:
         from tradingagents import forecast_v2 as f2
 
+        # from LEAD_MS before the range, as room_follow: a practice trade opened
+        # before the range closes inside it (Main's stoch14_1h_sl2tp2 on VUG,
+        # opened Sep 30, 2026 10:00am, switched off 10:26am, closed Oct 02)
         for slot, spans in f2._intervals(room, time.time() if now is None else now).items():
-            if not any(a * 1000 < end_ms and b * 1000 > start_ms for a, b in spans):
+            if not any(a * 1000 < end_ms and b * 1000 > start_ms - LEAD_MS for a, b in spans):
                 continue
             rid = f2._row_id_of_slot(slot)
             if not rid or rid in want:
@@ -1750,6 +1753,19 @@ def _reconcile(room, cands, lists, sim, pr, start_ms, end_ms, now, traded, slots
         except ValueError:
             continue
         bt.setdefault(key, {})[int(t[0])] = (t, s)
+    # every replay trade by slot and entry, wherever it closed: a practice
+    # trade's twin can close OUTSIDE the range when the two fills differ (Main,
+    # vwaprev_1h_sl07tp1 on IGV: both SHORT from Sep 30, 2026 10:00am, the
+    # practice stop at 107.55 off a 106.80 fill hit Oct 01 1:31am, the
+    # backtest's off the candle's open Sep 30 5:13pm)
+    anywhere: dict = collections.defaultdict(dict)
+    for s in slots:
+        try:
+            key = slot_key(s)
+        except ValueError:
+            continue
+        for tr in s.get("trades") or ():
+            anywhere[key][int(tr[0])] = int(tr[1])
     rows = []
     tot = collections.Counter()
     by_day: dict = collections.defaultdict(collections.Counter)
@@ -1784,6 +1800,9 @@ def _reconcile(room, cands, lists, sim, pr, start_ms, end_ms, now, traded, slots
             reason = "after_backtest"
         elif not any(a <= entry < b for a, b in replay_on.get(slot, ())):
             reason = "replay_off"
+        elif entry in anywhere.get(slot, {}):
+            reason = "closed_outside"
+            base["backtest_exit_ms"] = anywhere[slot][entry]
         else:
             reason = "no_backtest_trade"
         kind = "after_backtest" if reason == "after_backtest" else "practice_only"
@@ -1804,6 +1823,9 @@ def _reconcile(room, cands, lists, sim, pr, start_ms, end_ms, now, traded, slots
                 continue
             if not _on_at(stretch, entry / 1000):
                 reason = "practice_off"
+            elif entry // 1000 - bar_s in (pr.get("entries") or {}).get(slot, ()):
+                # practice made it too and closed it outside the range
+                reason = "practice_closed_outside"
             elif entry // 1000 - bar_s in (gone.get(slot) or ()):
                 reason = "gate_blocked"
             else:
@@ -1825,6 +1847,11 @@ REASONS = {
     "replay_off": "the replay had this strategy switched off then",
     "no_backtest_trade": "switched on in both, but its backtest list took no trade on that "
                          "bar",
+    "closed_outside": "the backtest made this trade too, but closed it outside the range "
+                      "(its price was the candle's open, the room's a live fill)",
+    "practice_closed_outside": "the practice room made this trade too, but closed it "
+                               "outside the range (its price was a live fill, the "
+                               "backtest's the candle's open)",
     "after_backtest": "after the strategy's backtest list ends",
     "practice_off": "the practice room had this strategy switched off then",
     **rb.REASONS,

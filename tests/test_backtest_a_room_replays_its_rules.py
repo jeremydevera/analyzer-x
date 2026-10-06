@@ -1063,3 +1063,21 @@ def test_the_room_list_opens_upward_when_the_page_has_no_room_below():
            / "RoomForecasts.tsx").read_text(encoding="utf-8")
     picker = tsx[tsx.index("function RoomPicker"):tsx.index("function RoomBacktestPanel")]
     assert "getBoundingClientRect()" in picker and '"bottom-full mb-1"' in picker
+
+
+def test_a_switch_off_missing_from_the_deploy_log_is_read_from_the_watcher_log():
+    """RCA-2026-10-05-H: #ES68FMKK (#CC94D9FB) on Oct 02, 2026 12:15am, off at
+    12:56am in the watcher log but never in the deploy log — the replay kept
+    it on for three days."""
+    on = _ms(2026, 10, 2, 0, 15) / 1000
+    now = _ms(2026, 10, 5, 19) / 1000
+    off_ms = _ms(2026, 10, 2, 0, 56)
+    whys = {("ES68FMKK", "on"): [(_ms(2026, 10, 2, 0, 12), "80%")],
+            ("ES68FMKK", "off"): [(off_ms, "fell to 79.96%")]}
+    got = rr._merged_stretches([(on, now)], True, whys, "ES68FMKK")
+    assert got == [(int(on * 1000), off_ms)], \
+        "the deploy line's switch-on stands, the watcher's switch-off ends it"
+    # a strategy with no watcher decisions keeps the deploy log's stretches
+    assert rr._merged_stretches([(on, now)], True, {}, "X") == [(int(on * 1000), None)]
+    assert rr._merged_stretches([(on, on + 600)], False, {}, "X") == \
+        [(int(on * 1000), int((on + 600) * 1000))]

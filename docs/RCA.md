@@ -172,6 +172,66 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-05-H — a strategy switched off a second time was never written to the room's deployment record
+
+**CEO**
+
+* What you saw: Backtest a room for #CC94D9FB, Oct 01 – Oct 05, 2026 —
+  backtest 754 trades and -5.29 against practice 397 and -59.04.
+* Why: when the watcher switched a strategy off for the second time, the
+  room's record treated it as a copy of the first switch-off and skipped it,
+  so the backtest believed the strategy was still on and kept trading it.
+* What stops it now: every switch-off is written, and the backtest also reads
+  the watcher's own on/off log, which has the switch-offs the record lost.
+
+**DEV**
+
+* `local_history.record_deployment` compared against
+  `reversed(deployments(limit=200))` — `deployments()` is newest-first, so
+  the loop met the OLDEST same-slot line of the newest 200 and returned 0
+  when its change_id matched (an earlier identical "disarmed").
+* Invariant broken: **the duplicate check compares with the immediately
+  previous line for the same strategy+coin** — the loop walks
+  `deployments()` newest-first; `room_replay._merged_stretches` adds the
+  watcher log's act on/off decisions where the deploy log has no line within
+  15 minutes.
+* Guard: `tests/test_a_second_switch_off_is_recorded.py`,
+  `tests/test_backtest_a_room_replays_its_rules.py::test_a_switch_off_missing_from_the_deploy_log_is_read_from_the_watcher_log`.
+
+**SAW** — the operator's screenshot, Oct 06, 2026: *"stiill wrong ataching
+screenshot / backtest does not match practice"* — #CC94D9FB, backtest 754
+trades -5.29, practice 397 -59.04.
+
+**TIMELINE**
+
+1. `Sep 30, 2026 8:22pm` — #ES68FMKK DVNSTOCK 15m ibs switched on in
+   #CC94D9FB (deploy line 8:27pm).
+2. `Oct 01, 2026 12:51pm` — switched off: deploy line "disarmed" written.
+3. `Oct 02, 2026 12:12am` — switched on again (deploy line 12:15am).
+4. `Oct 02, 2026 12:56am` — switched off again ("fell to 79.96%"): the deploy
+   line is identical to step 2's, step 2 is the oldest DVNSTOCK-ibs line in
+   the newest 200, so nothing is written.
+5. `Oct 06, 2026` — the replay reads the deploy log: #ES68FMKK on from Oct 02
+   12:15am to the end, 84 trades the room never made; 400 backtest-only
+   trades in all. Across the rooms 43 (#CC94D9FB), 9, 17, 23 and 13
+   switch-offs were missing.
+
+**ROOT CAUSE** — `reversed()` over a list that was already newest-first: the
+"immediately previous record" was the oldest one in the window.
+
+**WHY IT WAS NOT CAUGHT** — the dedupe was only ever tested with the same
+save twice in a row, where oldest and newest are the same line; a strategy
+switched off, on and off again — what the hourly watcher does every day —
+was never in a test.
+
+**COST** — none in money (the runner read its settings, which were right);
+the deploy history and every reader of it (the replay, Forecast v2's
+reality check) had strategies switched on that were off.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_a_second_switch_off_is_recorded.py::test_a_second_switch_off_is_written`.
+
 ## RCA-2026-10-05-G — Backtest a room dropped trades the room really made, reading an earlier cost refusal as covering them
 
 **CEO**

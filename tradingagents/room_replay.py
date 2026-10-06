@@ -1083,13 +1083,12 @@ def room_follow(room: str, pr: dict, cands: list, books: dict, start_ms: int,
             missing.append(slot)
             continue
         slot_of[c["id"]] = slot
-        for a, b in v:
-            on, off = int(a * 1000), int(b * 1000)
-            if off <= from_ms or on > end_ms:
+        still_on = slot not in (pr.get("slots_off_now") or [])
+        for on, off in _merged_stretches(v, still_on, whys, c["id"]):
+            if (off is not None and off <= from_ms) or on > end_ms:
                 continue
-            open_now = slot not in (pr.get("slots_off_now") or []) and b == v[-1][1]
             out.append({"id": c["id"], "on_ms": on,
-                        "off_ms": None if open_now else off,
+                        "off_ms": off,
                         "on_why": _why_near(whys, c["id"], "on", on)
                         or "switched on in your room",
                         "off_why": _why_near(whys, c["id"], "off", off)
@@ -1273,6 +1272,40 @@ def _grace_ms(s: dict) -> int:
     except (ValueError, KeyError):
         return 0
     return int(bar_s * 1000 * float(getattr(_at, "MAX_SIGNAL_AGE_FRACTION", 0) or 0))
+
+
+def _merged_stretches(v: list, still_on: bool, whys: dict, rid: str) -> list:
+    """[(on_ms, off_ms or None)]: the deploy log's stretches (`v`, seconds,
+    the last one ending "now" while `still_on`) MERGED with the watcher's own
+    switch decisions. The deploy log dropped a second switch-off of the same
+    strategy (RCA-2026-10-05-H): #ES68FMKK in #CC94D9FB was switched off at
+    Oct 02, 2026 12:56am with no deploy line, and the replay kept it on for
+    three days — 84 trades the room never made. The watcher log has every
+    decision it carried out (a refused one is written "refused")."""
+    ev = []
+    for i, (a, b) in enumerate(v):
+        ev.append((int(a * 1000), 1))
+        if not (still_on and i == len(v) - 1):
+            ev.append((int(b * 1000), 0))
+    # a watcher decision fills in only where the deploy log has no line for it
+    # within 15 minutes (the deploy log stamps the settings write, which is
+    # when the runner can act on it)
+    near = 900_000
+    for flag, action in ((1, "on"), (0, "off")):
+        logged = [t for t, f in ev if f == flag]
+        ev += [(t, flag) for t, _w in whys.get((rid, action), ())
+               if not any(abs(t - x) <= near for x in logged)]
+    out, start = [], None
+    for t, on in sorted(ev):
+        if on and start is None:
+            start = t
+        elif not on and start is not None:
+            if t > start:
+                out.append((start, t))
+            start = None
+    if start is not None:
+        out.append((start, None))
+    return out
 
 
 def _room_whys(room: str) -> dict:

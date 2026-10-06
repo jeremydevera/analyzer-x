@@ -48,8 +48,13 @@ def record_deployment(entry: dict) -> int:
         return 0
     row["change_id"] = _change_id(row)
     # a Streamlit rerun re-saves the same config seconds apart; the same
-    # CONTENT for the same strategy+coin is one piece of history, not two
-    for old in reversed(deployments(limit=200)):
+    # CONTENT for the same strategy+coin is one piece of history, not two.
+    # NEWEST FIRST, as deployments() returns them: this read `reversed(...)`,
+    # which compared against the OLDEST same-slot line among the newest 200,
+    # so a second switch-off matched the first one word for word and was
+    # never written — #ES68FMKK in #CC94D9FB, Oct 02, 2026 12:56am, and 43 of
+    # that room's 497 watcher switch-offs (RCA-2026-10-05-H)
+    for old in deployments(limit=200):
         if (old.get("strategy_key") == row["strategy_key"]
                 and old.get("symbol") == row["symbol"]):
             if old.get("change_id") == row["change_id"]:

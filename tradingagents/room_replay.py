@@ -1091,8 +1091,10 @@ def room_follow(room: str, pr: dict, cands: list, books: dict, start_ms: int,
                         "off_ms": off,
                         "on_why": _why_near(whys, c["id"], "on", on)
                         or "switched on in your room",
-                        "off_why": _why_near(whys, c["id"], "off", off)
-                        or "switched off in your room"})
+                        # still on at the end: no switch-off, so no reason
+                        "off_why": "" if off is None else (
+                            _why_near(whys, c["id"], "off", off)
+                            or "switched off in your room")})
     why = (f"your room started at {_when(from_ms)}: from here the replay switches "
            f"only what the room switched")
     # THE RUNNER STILL TAKES A CANDLE THAT CLOSED JUST BEFORE THE SWITCH-ON,

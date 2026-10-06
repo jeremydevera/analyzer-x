@@ -1081,3 +1081,21 @@ def test_a_switch_off_missing_from_the_deploy_log_is_read_from_the_watcher_log()
     assert rr._merged_stretches([(on, now)], True, {}, "X") == [(int(on * 1000), None)]
     assert rr._merged_stretches([(on, on + 600)], False, {}, "X") == \
         [(int(on * 1000), int((on + 600) * 1000))]
+
+
+def test_a_strategy_still_on_with_watcher_decisions_has_no_switch_off(tmp_path, monkeypatch):
+    """The first run with the watcher log merged in crashed (Oct 06, 2026):
+    a strategy still on has no switch-off time to find a reason near."""
+    from tradingagents import strategy_watcher as sw
+
+    monkeypatch.setattr(sw, "LOG", tmp_path / "strategy_watcher.jsonl")
+    c = _cand(1.0)
+    on = _ms(2026, 10, 2, 0, 15) / 1000
+    monkeypatch.setattr(rr, "_room_whys", lambda room: {
+        (c["id"], "on"): [(int(on * 1000) - 180_000, "80% over 550 trades")]})
+    pr = {"stretches": {rr.slot_key(c): [(on, _ms(2026, 10, 5) / 1000)]}, "slots_off_now": []}
+    follow, _ = rr.room_follow(ROOM, pr, [c], {c["id"]: object()}, _ms(2026, 10, 1),
+                               _ms(2026, 10, 4, 23, 59))
+    (f,) = follow["slots"]
+    assert f["off_ms"] is None and f["off_why"] == ""
+    assert f["on_why"] == "80% over 550 trades"

@@ -111,6 +111,15 @@ def _no_network(request):
 # that wants to inspect what it wrote still can: the files exist, under tmp.
 # --------------------------------------------------------------------------
 @pytest.fixture(autouse=True)
+def _no_real_rooms_running(monkeypatch):
+    """The pair-file writers keep what a room runs (running_rows.combos): a
+    test must never depend on the operator's real rooms. The reader's own
+    tests call running_rows.read_combos()."""
+    from tradingagents import running_rows
+    monkeypatch.setattr(running_rows, "combos", lambda: frozenset())
+
+
+@pytest.fixture(autouse=True)
 def _never_touch_the_live_book(tmp_path, monkeypatch):
     try:
         import tradingagents.auto_trader as at

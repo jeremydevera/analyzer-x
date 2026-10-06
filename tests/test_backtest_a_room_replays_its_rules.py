@@ -1099,3 +1099,22 @@ def test_a_strategy_still_on_with_watcher_decisions_has_no_switch_off(tmp_path, 
     (f,) = follow["slots"]
     assert f["off_ms"] is None and f["off_why"] == ""
     assert f["on_why"] == "80% over 550 trades"
+
+
+def test_a_hand_picked_strategy_the_watcher_never_touched_is_replayed(v2, tmp_path, monkeypatch):
+    """Main, Oct 01 - Oct 05, 2026: 12 of its 39 practice trades came from
+    strategies the operator switched on by hand — never in the watcher's log,
+    so never candidates. The room's own history now nominates them."""
+    from tradingagents import local_history as lh, profiles
+    from tradingagents import strategy_watcher as sw
+
+    monkeypatch.setattr(sw, "LOG", tmp_path / "strategy_watcher.jsonl")
+    c = _cand(1.0)
+    slot = rr.slot_key(c)
+    key, _, sym = slot.partition("|")
+    with profiles.using(ROOM):
+        lh.record_deployment({"changed_at": _ms(2026, 9, 25) // 1000, "strategy_key": key,
+                              "symbol": sym, "action": "deployed", "books": "paper"})
+    picks, info = rr.room_picks(ROOM, _ms(2026, 10, 5, 23, 59), store=v2,
+                                start_ms=_ms(2026, 10, 1), now=_ms(2026, 10, 6) / 1000)
+    assert [p["id"] for p in picks] == [c["id"]] and info["missing"] == []

@@ -435,7 +435,8 @@ def refresh_prices(coins: list, end_ms: int, *, store=None, now: float | None = 
     return {"behind": len(behind), "fetched": len(behind) - len(failed), "failed": failed}
 
 
-def room_picks(room: str, end_ms: int, *, store=None) -> tuple[list, dict]:
+def room_picks(room: str, end_ms: int, *, store=None, start_ms: int | None = None,
+               now: float | None = None) -> tuple[list, dict]:
     """Every strategy the room's OWN watcher switched on up to `end_ms`, as
     candidates — whatever its 30-day win rate. A 15-day room switches on rows
     the floor cannot see: #DS598KQV APHSTOCK 1h ibs was switched on in
@@ -471,6 +472,23 @@ def room_picks(room: str, end_ms: int, *, store=None) -> tuple[list, dict]:
         rid = str(e.get("id") or "").lstrip("#").upper()
         if rid and e.get("coin") and e.get("tf") and at_ms <= end_ms:
             want.setdefault(rid, e)
+    # AND EVERY STRATEGY THE ROOM'S OWN HISTORY HAS SWITCHED ON in the range,
+    # watcher or not: Main's hand-picked rows (keltner_30m_sl2tp2 on
+    # GPNSTOCK, ml_MNT_30m_2 ...) were never candidates, and 12 of its 39
+    # practice trades of Oct 01 - Oct 05, 2026 had nothing to pair with
+    if start_ms is not None:
+        from tradingagents import forecast_v2 as f2
+
+        for slot, spans in f2._intervals(room, time.time() if now is None else now).items():
+            if not any(a * 1000 < end_ms and b * 1000 > start_ms for a, b in spans):
+                continue
+            rid = f2._row_id_of_slot(slot)
+            if not rid or rid in want:
+                continue
+            key, _, sym = slot.partition("|")
+            sp = f2.spec_of(key)
+            want[rid] = {"coin": sym, "tf": sp["tf"], "signal": sp["signal"],
+                         "tp": sp["tp"], "sl": sp["sl"]}
     by_pair: dict = collections.defaultdict(dict)
     for rid, e in want.items():
         coin = str(e["coin"]).removesuffix("_USDT")
@@ -960,7 +978,7 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
                                                   min_wr30=min_wr30), say, store)
     # the room's own switch-ons are ALWAYS replayed, whatever the floor: the
     # point of the page is to check the replay against the room's practice
-    picks, pinfo = room_picks(room, end_ms, store=store)
+    picks, pinfo = room_picks(room, end_ms, store=store, start_ms=start_ms, now=now)
     pick_ids = {c["id"] for c in picks}
     if store is stores.V2 and not limit:
         say("prices", 0, 0)

@@ -1105,6 +1105,11 @@ def room_follow(room: str, pr: dict, cands: list, books: dict, start_ms: int,
     out, missing = [], []
     slot_of: dict = {}
     for slot, v in sorted(stretches.items()):
+        # only a strategy on at some moment of the window is the replay's
+        # business — Main's history names 400+ rows back to August, and the
+        # page listed them all as "cannot be replayed"
+        if not any(a * 1000 < end_ms and b * 1000 > lead_from for a, b in v):
+            continue
         c = by_slot.get(slot)
         if c is None or c["id"] not in books:
             missing.append(slot)

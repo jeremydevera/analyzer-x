@@ -111,3 +111,29 @@ def test_a_pass_that_failed_before_writing_logs_its_switches_as_refused(monkeypa
     kept = [{"action": "off", "why": "#A"}]
     sw._undo_if_unwritten(kept, before, "x")
     assert kept[0]["action"] == "off"
+
+
+def test_every_spelling_of_a_switch_is_read():
+    """Main's deploy history is written three ways (Oct 06, 2026): a slot
+    "key|COIN", a bare key with the coin beside it, and "changed" lines - one
+    per coin still on, a second apart, with the coins before in prev_json."""
+    import json as _j
+
+    from tradingagents import forecast_v2 as f2
+
+    def line(t, key, sym, act, prev=None):
+        return _j.dumps({"changed_at": t, "strategy_key": key, "symbol": sym, "action": act,
+                         "prev_json": _j.dumps({"coins": prev or []})})
+    k = "rsidiv_15m_sl1tp15"
+    lines = [line(100, k, "FASTSTOCK_USDT", "deployed"),
+             line(200, k, "FASTSTOCK_USDT", "changed", ["FASTSTOCK_USDT"]),   # one change,
+             line(201, k, "KKRSTOCK_USDT", "changed", ["FASTSTOCK_USDT"]),    # a second apart
+             line(300, k, "FASTSTOCK_USDT", "changed", ["FASTSTOCK_USDT", "KKRSTOCK_USDT"]),
+             line(400, f"{k}|GPNSTOCK_USDT", "—", "deployed"),
+             line(500, k, "FASTSTOCK_USDT", "disarmed")]
+    got = f2._switches(lines)
+    assert got == [(100, f"{k}|FASTSTOCK_USDT", "deployed"),
+                   (200, f"{k}|KKRSTOCK_USDT", "deployed"),
+                   (300, f"{k}|KKRSTOCK_USDT", "disarmed"),
+                   (400, f"{k}|GPNSTOCK_USDT", "deployed"),
+                   (500, f"{k}|FASTSTOCK_USDT", "disarmed")], got

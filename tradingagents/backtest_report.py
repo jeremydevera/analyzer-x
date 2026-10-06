@@ -241,13 +241,44 @@ def sizings_for(res: str | None) -> tuple[str, ...]:
     return SIZINGS_BY_RES.get(str(res or "").strip().lower(), SIZINGS)
 
 
-def store_keeps(row: dict) -> bool:
+def target_over_stop(row: dict) -> bool:
+    """Is the row's take-profit BIGGER than its stop-loss (both percent)?
+    Strictly: TP 5% / SL 5% is not (operator, Oct 06, 2026: "you will only
+    replace the ones that has higher sl than tp or if tp same as sl ... the
+    goal is to have higher tp than sl"). A difference under 1e-9 is equal."""
+    try:
+        return float(row["tp"]) - float(row["sl"]) > 1e-9
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
+def combo_of(row: dict) -> tuple:
+    """(coin, tf, signal, th, sl, tp) — one strategy on one coin, the way
+    `running_rows.combos()` names what a room is running."""
+    return (str(row.get("coin") or "").removesuffix("_USDT"), str(row.get("tf") or ""),
+            str(row.get("signal") or ""), round(float(row.get("th") or 0), 3),
+            round(float(row.get("sl") or 0), 3), round(float(row.get("tp") or 0), 3))
+
+
+def store_keeps(row: dict, running=frozenset()) -> bool:
     """Does the store this row belongs to keep it? The row's own `res` names
     the store. The index files by this (`rows_index._kept`) and so does every
     write of a pair file (`market_sweep.save_pair_rows`): a v2 file that is
     written again comes back flat only, instead of carrying martingale twins
-    that no measure updates any more (RCA-2026-09-25-C)."""
-    return str(row.get("sizing") or "flat") in sizings_for(row.get("res"))
+    that no measure updates any more (RCA-2026-09-25-C).
+
+    BACKTEST v2 KEEPS ONLY TP > SL (Oct 06, 2026, spec 2026-10-06-backtest-
+    v2-target-over-stop): a row whose stop is bigger than or equal to its
+    target is replaced by the same strategy and stop with the bigger targets
+    the grid already measures. `running` names combinations a room is trading
+    now (`running_rows.combos()`): the PAIR FILES keep those, because the
+    watcher's hourly switch-off check reads them there; the index is called
+    without it and never holds them."""
+    if str(row.get("sizing") or "flat") not in sizings_for(row.get("res")):
+        return False
+    if str(row.get("res") or "").strip().lower() != "1m":
+        return True
+    return target_over_stop(row) or (bool(running) and combo_of(row) in running)
 
 
 BARRIERS: dict[str, list[tuple[float, float]]] = {

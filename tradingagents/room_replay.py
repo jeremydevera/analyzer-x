@@ -1282,32 +1282,12 @@ def _merged_stretches(v: list, still_on: bool, whys: dict, rid: str) -> list:
     switch decisions. The deploy log dropped a second switch-off of the same
     strategy (RCA-2026-10-05-H): #ES68FMKK in #CC94D9FB was switched off at
     Oct 02, 2026 12:56am with no deploy line, and the replay kept it on for
-    three days — 84 trades the room never made. The watcher log has every
-    decision it carried out (a refused one is written "refused")."""
-    ev = []
-    for i, (a, b) in enumerate(v):
-        ev.append((int(a * 1000), 1))
-        if not (still_on and i == len(v) - 1):
-            ev.append((int(b * 1000), 0))
-    # a watcher decision fills in only where the deploy log has no line for it
-    # within 15 minutes (the deploy log stamps the settings write, which is
-    # when the runner can act on it)
-    near = 900_000
-    for flag, action in ((1, "on"), (0, "off")):
-        logged = [t for t, f in ev if f == flag]
-        ev += [(t, flag) for t, _w in whys.get((rid, action), ())
-               if not any(abs(t - x) <= near for x in logged)]
-    out, start = [], None
-    for t, on in sorted(ev):
-        if on and start is None:
-            start = t
-        elif not on and start is not None:
-            if t > start:
-                out.append((start, t))
-            start = None
-    if start is not None:
-        out.append((start, None))
-    return out
+    three days — 84 trades the room never made. One rule with the reality
+    check: forecast_v2.merge_decisions."""
+    from tradingagents import forecast_v2 as f2
+
+    return f2.merge_decisions([(int(a * 1000), int(b * 1000)) for a, b in v], still_on,
+                              whys, rid)
 
 
 def _room_whys(room: str) -> dict:

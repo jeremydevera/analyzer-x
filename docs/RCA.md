@@ -228,9 +228,26 @@ was never in a test.
 the deploy history and every reader of it (the replay, Forecast v2's
 reality check) had strategies switched on that were off.
 
-**FIX** — this commit.
+**FIX** — f65f883ca268 (the record and the replay), then the next commit:
+the reality check under Best room rules this month merges the watcher's
+decisions too (`forecast_v2.merge_decisions`, shared with the replay). Its
+review found two more faults, fixed with it: (1) the watcher stamps a
+decision when its pass STARTS and the settings are written up to 36 minutes
+later, so a 15-minute match window moved 3,416 of #4FC03172's switch-ons up
+to 25 minutes early — the window is now 5 minutes before to 45 after, and
+the deploy time wins; (2) a pass that raised before writing still logged
+"act off" — #4FC03172, Oct 02, 2026 9:20am, 20 switch-offs that never
+happened while the runner traded #3L97L8ZF at 11:01am — so
+`strategy_watcher._undo_if_unwritten` logs them "refused", and a switch-off
+repeated by the next decision is not taken as carried out. Reality check,
+all rooms, measured: took 9.26% -> 9.37%, gap $0.298 -> $0.299 a trade;
+#CC94D9FB 8.9% -> 9.7%, #4FC03172 unchanged.
 
-**GUARD** — `tests/test_a_second_switch_off_is_recorded.py::test_a_second_switch_off_is_written`.
+**GUARD** — `tests/test_a_second_switch_off_is_recorded.py::test_a_second_switch_off_is_written`,
+`::test_the_reality_check_reads_a_switch_off_the_deploy_log_lost`,
+`::test_a_deploy_line_up_to_45_minutes_after_the_decision_is_that_decision`,
+`::test_a_switch_off_repeated_by_the_next_decision_was_not_carried_out`,
+`::test_a_pass_that_failed_before_writing_logs_its_switches_as_refused`.
 
 ## RCA-2026-10-05-G — Backtest a room dropped trades the room really made, reading an earlier cost refusal as covering them
 

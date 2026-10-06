@@ -268,6 +268,135 @@ def _intervals(pid: str, now_s: float) -> dict:
         on = rs._num(v.get("on_at"), None)
         if on is not None and slot not in out:
             out[slot] = [(on, now_s)]
+    # THE WATCHER'S OWN DECISIONS fill in what the deploy log lost: it dropped
+    # every second switch-off of a strategy until Oct 06, 2026
+    # (RCA-2026-10-05-H — 43 of #CC94D9FB's 497), and those rows then read
+    # as switched on in the reality check
+    decided = _watcher_decisions(pid)
+    if decided:
+        for slot in sorted(out):
+            rid = _row_id_of_slot(slot)
+            if not rid or not (decided.get((rid, "on")) or decided.get((rid, "off"))):
+                continue
+            spans = out.get(slot) or []
+            still_on = bool(spans) and spans[-1][1] == now_s
+            merged = merge_decisions([(a * 1000, b * 1000) for a, b in spans], still_on,
+                                     decided, rid)
+            out[slot] = [(a / 1000, now_s if b is None else b / 1000) for a, b in merged]
+            if not out[slot]:
+                del out[slot]
+    return out
+
+
+def _watcher_decisions(pid: str) -> dict:
+    """{(id, "on"|"off"): [(at_ms, why), ...]} — every switch the room's
+    watcher CARRIED OUT (mode act; a decision that was not carried out is
+    written "refused"), re-read only when the log changes."""
+    from tradingagents import profiles
+    from tradingagents import strategy_watcher as sw
+
+    def parse(text):
+        out: dict = {}
+        for line in (text or "").splitlines():
+            try:
+                e = json.loads(line)
+            except ValueError:
+                continue
+            if (not isinstance(e, dict) or e.get("mode") != "act"
+                    or e.get("action") not in ("on", "off")):
+                continue
+            with contextlib.suppress(TypeError, ValueError):
+                # the time only: the reasons are ~11 MB across the rooms and
+                # nothing here reads them (Backtest a room reads its own)
+                out.setdefault((str(e.get("id")), e["action"]), []).append(
+                    (int(float(e["at"]) * 1000), ""))
+        return out
+    try:
+        with profiles.using(pid):
+            path = Path(sw._log_path())
+    except Exception:                                          # noqa: BLE001
+        return {}
+    return _read_cached(path, parse)
+
+
+_ROW_IDS: dict = {}
+
+
+def _row_id_of_slot(slot: str) -> str:
+    """The Backtest v2 id the watcher writes for a slot ("key|COIN_USDT"),
+    from the key's own recipe (spec_of) - the same row_code the watcher's
+    decisions carry. A key the static recipes do not hold is looked up again
+    after the watcher's runtime recipes are merged: read off the name alone,
+    cx_4h_15m_sl1tp12 is a 4h key and its id is wrong (review, Oct 06,
+    2026). Only an answer read from a recipe is remembered."""
+    from tradingagents import auto_trader as at
+    from tradingagents import backtest_report as br
+
+    got = _ROW_IDS.get(slot)
+    if got is not None:
+        return got
+    key, _, sym = str(slot).partition("|")
+    if key not in at.STRATEGY_SPECS:
+        with contextlib.suppress(Exception):                   # noqa: BLE001
+            at.merge_runtime_specs()
+    from_recipe = key in at.STRATEGY_SPECS
+    sp = spec_of(key)
+    if not (sym and sp.get("tf") and sp.get("signal") and sp.get("tp") is not None
+            and sp.get("sl") is not None):
+        return ""
+    try:
+        rid = br.row_code(sym.removesuffix("_USDT"), sp["tf"], sp["signal"],
+                          float(sp.get("th") or 0), float(sp["sl"]), float(sp["tp"]),
+                          "flat", res="1m")
+    except Exception:                                          # noqa: BLE001
+        return ""
+    if from_recipe:
+        _ROW_IDS[slot] = rid
+    return rid
+
+
+def merge_decisions(spans_ms: list, still_on: bool, decided: dict, rid: str) -> list:
+    """[(on_ms, off_ms or None)]: a slot's deploy-log stretches (`spans_ms`,
+    the last one still running while `still_on`) MERGED with the watcher's
+    carried-out switches for its id. A watcher decision fills in only where
+    the deploy log has no line of the same kind within 15 minutes (the deploy
+    log stamps the settings write, which is when the runner can act). Shared
+    by Backtest a room (room_replay) and the reality check (_intervals)."""
+    ev = []
+    for i, (a, b) in enumerate(spans_ms):
+        ev.append((int(a), 1))
+        if not (still_on and i == len(spans_ms) - 1):
+            ev.append((int(b), 0))
+    # THE WATCHER STAMPS A DECISION WHEN ITS PASS STARTS, the deploy log when
+    # the settings are written - up to 36 minutes later (#55D32617; #4FC03172
+    # median 24.9 min). A deploy line from 5 minutes before to 45 minutes
+    # after a decision IS that decision, and only the deploy time is kept:
+    # it is when the runner could act (review, Oct 06, 2026 - a 15-minute
+    # window moved 3,416 of #4FC03172's switch-ons up to 25 minutes early).
+    before, after = 300_000, 2_700_000
+    mine = sorted([(int(t), 1) for t, _w in decided.get((rid, "on"), ())]
+                  + [(int(t), 0) for t, _w in decided.get((rid, "off"), ())])
+    for k, (t, flag) in enumerate(mine):
+        logged = [x for x, f in ev if f == flag]
+        if any(t - before <= x <= t + after for x in logged):
+            continue
+        # A SWITCH-OFF THE NEXT DECISION REPEATS was not carried out: the
+        # pass that logged it failed to write (#4FC03172, Oct 02, 2026
+        # 9:20am, 20 of them; the next pass switched 19 off at 10:21am and
+        # the runner traded #3L97L8ZF in between)
+        if flag == 0 and k + 1 < len(mine) and mine[k + 1][1] == 0:
+            continue
+        ev.append((t, flag))
+    out, start = [], None
+    for t, on in sorted(ev):
+        if on and start is None:
+            start = t
+        elif not on and start is not None:
+            if t > start:
+                out.append((start, t))
+            start = None
+    if start is not None:
+        out.append((start, None))
     return out
 
 

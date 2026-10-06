@@ -751,6 +751,34 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
     return [slot for slot, _id, _i in drop]
 
 
+def _armed_now():
+    """What is switched on right now, to tell afterwards whether a pass that
+    raised had written anything."""
+    from tradingagents import auto_trader as at
+
+    try:
+        st = at.load_settings()
+        return json.dumps([st.get("strategy_coins") or {}, st.get("strategy_books") or {}],
+                          sort_keys=True, default=str)
+    except Exception:                                          # noqa: BLE001
+        return None
+
+
+def _undo_if_unwritten(decisions: list, armed_before, reason: str) -> None:
+    """A pass that RAISED after deciding: when the settings are exactly what
+    they were before it, nothing was written, and every on/off it decided is
+    logged as what it is - refused. #4FC03172, Oct 02, 2026 9:20am: 20
+    switch-offs were logged "act off" and never reached the settings (no
+    deploy line until 10:27am, the runner kept judging those rows), and
+    Backtest a room and the reality check read them as carried out
+    (RCA-2026-10-05-H)."""
+    if armed_before is None or _armed_now() != armed_before:
+        return
+    for d in decisions:
+        if d.get("action") in ("on", "off"):
+            _undo(d, f"nothing was written - {reason}")
+
+
 def _undo(d: dict, reason: str) -> None:
     """A decision that was not carried out is logged as what it is."""
     d["action"] = "refused"
@@ -1002,19 +1030,23 @@ def consider(*, now: float | None = None) -> dict:
         # stamped FIRST: a pass that raises is retried next hour, never every
         # minute (the tick only prints the error; nothing else would stop it)
         st["last_off_pass"] = now
+        n0, armed0 = len(out), _armed_now()
         try:
             _off_pass(now, cfg, st, act, out)
         except Exception as exc:                               # noqa: BLE001
             st["why"] = f"the switch-off check failed: {type(exc).__name__}: {str(exc)[:160]}"
+            _undo_if_unwritten(out[n0:], armed0, st["why"])
         st["practice"] = _practice_now(now, cfg)
     due_on = _on_due(now, float(st.get("last_on_pass") or 0), bool(cfg.get("raw")))
     tried = now - float(st.get("last_on_try") or 0) >= RETRY_S
     if due_on and tried:
         st["last_on_try"] = now
+        n0, armed0 = len(out), _armed_now()
         try:
             wait = _on_pass(now, cfg, st, act, out)
         except Exception as exc:                               # noqa: BLE001
             wait = f"it failed: {type(exc).__name__}: {str(exc)[:160]}"
+            _undo_if_unwritten(out[n0:], armed0, f"the switch-on pass {wait}")
         if wait:
             st["why"] = f"switch-on pass waiting: {wait}"
         else:

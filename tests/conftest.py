@@ -176,6 +176,21 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
         monkeypatch.setattr(_lh, "SETTINGS_SNAPSHOTS", sandbox)
     except Exception:
         pass
+    # The WATCHER'S OWN LOG AND STATE. Forecast v2's reality check and
+    # Backtest a room read every room's watcher decisions since Oct 06, 2026
+    # (RCA-2026-10-05-H), and an unsandboxed test read the operator's real
+    # #CC94D9FB log: test_the_reality_check_compares_the_same_rows_over_the_
+    # same_hours counted a trade from before its own switch-on because the
+    # real room had switched that strategy on earlier.
+    try:
+        from tradingagents import strategy_watcher as _swt
+
+        for _name, _leaf in (("LOG", "strategy_watcher.jsonl"),
+                             ("STATE", "strategy_watcher.json")):
+            if hasattr(_swt, _name):
+                monkeypatch.setattr(_swt, _name, sandbox / _leaf)
+    except Exception:
+        pass
     # The DETACHED JOB FILES too. They were not sandboxed, and a test that
     # drove db_jobs._run_backtest_inner with a stub grid wrote
     # {"running": false, "rows": 0, "note": "nothing survived the trade floor"}

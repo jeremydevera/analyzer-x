@@ -317,7 +317,7 @@ function ForecastDetail({ f }: { f: Forecast }) {
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+        <tbody className="divide-y divide-gray-100 text-gray-700 dark:divide-white/[0.05] dark:text-gray-300">
           {rooms.map((r) => (
             <tr key={r.id} className={f.pick === r.id ? "bg-success-50/60 dark:bg-success-500/10" : ""}>
               <td className="px-2 py-1.5">
@@ -364,7 +364,7 @@ function History({ d, setPage }: { d: Forecasts; setPage: (n: number) => void })
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+            <tbody className="divide-y divide-gray-100 text-gray-700 dark:divide-white/[0.05] dark:text-gray-300">
               {d.forecasts.map((f, i) => (
                 <Fragment key={`${f.at}-${i}`}>
                   <tr className="align-top">
@@ -516,7 +516,7 @@ function RoomTable({ rooms, rules }: { rooms: RoomNow[]; rules: ForecastsLive["r
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+          <tbody className="divide-y divide-gray-100 text-gray-700 dark:divide-white/[0.05] dark:text-gray-300">
             {rooms.map((r) => {
               const p = r.practice;
               const res = r.research;
@@ -734,7 +734,7 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
   const again = () => base && api.roomReplay({ ...base, view: "days", page: 1, refresh: true })
     .then(setD).catch((e) => setErr(String(e?.message ?? e)));
   const name = (id: string) => rooms.find((r) => r.id === id)?.name ?? id;
-  const sel = "rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-theme-xs dark:border-gray-700 dark:text-gray-300";
+  const sel = "rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:[color-scheme:dark]";
   const th = "px-2 py-1.5 text-start font-medium whitespace-nowrap";
   const td = "px-2 py-1.5 whitespace-nowrap";
   const c = d?.cfg;
@@ -826,7 +826,7 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
               <thead><tr className="border-b border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400">
                 {["", "Profit", "TP", "SL", "Lev", "Trades", "Won / lost", "Win rate", "Worst losing run"].map((h) => <th key={h} className={th}>{h}</th>)}
               </tr></thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+              <tbody className="divide-y divide-gray-100 text-gray-700 dark:divide-white/[0.05] dark:text-gray-300">
                 {/* THE ROOM'S OWN HOURS FIRST (Oct 05, 2026: "practice has 191 trades
                     and your replay has 435" — 320 of them were before the room
                     started): backtest and practice over the same hours, then
@@ -865,7 +865,7 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
                 {["Day", "Switched on", "Switched off", "Running", "Trades", "Won / lost", "Win rate", "Profit", "Running total",
                   "Worst losing run", "Practice (trades · profit · total)"].map((h) => <th key={h} className={th}>{h}</th>)}
               </tr></thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+              <tbody className="divide-y divide-gray-100 text-gray-700 dark:divide-white/[0.05] dark:text-gray-300">
                 {days.map((x) => (
                   <tr key={x.day} onClick={() => { setDay(day === x.day ? "" : x.day); setEvPage(1); setTrPage(1); setEv(null); setTr(null); }}
                     aria-expanded={day === x.day}
@@ -898,7 +898,7 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
                     <thead><tr className="text-gray-500 dark:text-gray-400">
                       {["When", "", "Strategy", "TP", "SL", "Why"].map((h) => <th key={h} className={th}>{h}</th>)}
                     </tr></thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                    <tbody className="divide-y divide-gray-100 text-gray-700 dark:divide-white/[0.05] dark:text-gray-300">
                       {(ev!.rows as RREvent[]).map((e, i) => (
                         <tr key={`${e.id}-${e.at}-${i}`}>
                           <td className={td}>{fmtWhenMs(e.at)}</td>
@@ -920,7 +920,7 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
                     <thead><tr className="text-gray-500 dark:text-gray-400">
                       {["Opened", "Closed", "Strategy", "Side", "TP", "SL", "Exit", "Profit"].map((h) => <th key={h} className={th}>{h}</th>)}
                     </tr></thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                    <tbody className="divide-y divide-gray-100 text-gray-700 dark:divide-white/[0.05] dark:text-gray-300">
                       {(tr!.rows as RRTrade[]).map((t, i) => (
                         <tr key={`${t.id}-${t.entry_ms}-${i}`}>
                           <td className={td}>{fmtWhenMs(t.entry_ms)}</td>
@@ -1028,7 +1028,7 @@ function RoomStrategiesTable() {
       .catch((e) => setErr(String(e?.message ?? e)));
   }, [from, to, minWin, minProfit, win, dep, find, sort, page]);
   useLiveRefresh(load, 60_000, [load]);
-  const sel = "rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-theme-xs dark:border-gray-700 dark:text-gray-300";
+  const sel = "rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:[color-scheme:dark]";
   const th = "px-2 py-1.5 text-start font-medium whitespace-nowrap";
   const td = "px-2 py-1.5 whitespace-nowrap";
   const reset = () => setPage(1);
@@ -1078,7 +1078,7 @@ function RoomStrategiesTable() {
                   {["ID", "Rules", "Found", "Trades", "A day", "Won / lost", "Win rate", "Break-even", "Profit",
                     "After reality check", "Worst day", "Worst losing run", "Most open", "Money needed", "Worst month", "Room can run it"].map((h) => <th key={h} className={th}>{h}</th>)}
                 </tr></thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                <tbody className="divide-y divide-gray-100 text-gray-700 dark:divide-white/[0.05] dark:text-gray-300">
                   {d.rows.map((r) => (
                     <tr key={r.id}>
                       <td className={td}><CopyId id={r.id} /></td>

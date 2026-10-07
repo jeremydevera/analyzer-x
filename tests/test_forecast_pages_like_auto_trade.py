@@ -150,3 +150,18 @@ def test_the_new_routes_answer_a_page(api_mod, monkeypatch):
                   "return _f2a.whatifs(page)"):
         assert route in src, route
     assert "rows[:20]" not in src.split('@app.get("/api/forecast-v2/whatif")')[1].split("@app.")[0]
+
+
+def test_every_forecast_table_reads_at_night():
+    """Operator, Oct 07, 2026: "fix the ui on these when in night mode" — the
+    Room strategies cells had no colour (dark grey on dark) and Safari drew the
+    dropdowns light. The colour sits on each table BODY (a cell's own tone,
+    profit green/red, still wins) and every field turns dark."""
+    src = open("webapp/src/components/forecast/RoomForecasts.tsx", encoding="utf-8").read()
+    bodies = src.count('<tbody className="divide-y')
+    assert bodies and src.count('<tbody className="divide-y divide-gray-100 text-gray-700 '
+                                'dark:divide-white/[0.05] dark:text-gray-300">') == bodies
+    for line in [l for l in src.splitlines() if "const sel =" in l]:
+        assert "dark:bg-gray-900" in line and "dark:[color-scheme:dark]" in line, line
+    # a colour on every CELL would override the profit tone in the dark theme
+    assert all("dark:text" not in l for l in src.splitlines() if "const td =" in l)

@@ -172,6 +172,57 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-A — the Forecast page's tables were dark grey on dark at night, and Safari drew their dropdowns in day colours
+
+**CEO**
+
+* At night, most of the Room strategies table — when it was found, trades, a
+  day, won / lost, win rate, break-even — was dark grey on a dark background,
+  and the three dropdowns showed in Safari's light style.
+* Why: those cells had no text colour of their own, and the dropdowns were
+  never told the page was dark.
+* What stops it now: every table on the Forecast page sets readable text for
+  its rows at night, and its dropdowns and date boxes switch to the dark style.
+
+**DEV**
+
+* `webapp/src/components/forecast/RoomForecasts.tsx`: the `td` constant of the
+  three tables (Rooms, Backtest a room, Room strategies) carried no colour,
+  and `sel` was `bg-transparent` with no `color-scheme`, so Safari's native
+  controls rendered light.
+* Invariant broken: **every cell has a colour in both themes** — the colour
+  sits on the `tbody` so a cell's own tone (profit green/red) still wins; the
+  first draft put it on every cell and its `dark:` variant overrode the tone.
+* Guard: `tests/test_forecast_pages_like_auto_trade.py::test_every_forecast_table_reads_at_night`.
+
+**SAW** — the operator's screenshot, Oct 07, 2026: *"fix the ui on these when
+in night mode"*.
+
+**TIMELINE**
+
+1. Oct 02, 2026 — Room strategies ships with `td` = spacing only; the Rooms
+   and Backtest a room tables share the same constant.
+2. Oct 07, 2026 — the operator's Safari screenshot: grey-on-dark cells, light
+   dropdowns.
+3. Measured in Safari's engine, night mode, after the fix: the Found and
+   Trades cells `rgb(208, 213, 221)` on `rgb(16, 24, 40)`, profit
+   `rgb(3, 152, 85)` (green, kept), dropdowns `color-scheme: dark`.
+
+**ROOT CAUSE** — `const td = "px-2 py-1.5 whitespace-nowrap"` and a `sel`
+without a dark background or `color-scheme`.
+
+**WHY IT WAS NOT CAUGHT** — every check of this page ran in day mode (the
+screenshot taken on Oct 02 was light), and the page tests read text and
+paging, never colour in the dark theme.
+
+**COST** — none; the numbers were right, only hard to read.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_forecast_pages_like_auto_trade.py::test_every_forecast_table_reads_at_night`.
+
+---
+
 ## RCA-2026-10-06-B — Backtest a room said "its backtest took no trade" for a trade the backtest did take
 
 **CEO**

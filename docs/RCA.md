@@ -172,6 +172,61 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-P — a clean "0 could not be" line was filed as "The site's rolling30 failed"
+
+**CEO**
+
+* What happened: at 5:16pm the error system opened a fault for the part that
+  rebuilds each running strategy's last 30 days — but that line said it had
+  rebuilt all 69 rows and 0 had a problem. Nothing was wrong.
+* Why: the system looks for the words "could not" and "failed", and "0 could
+  not be" contains them even though the number in front is zero.
+* What stops it now: a "failed" or "could not" with a zero right in front of
+  it is read as "none failed"; "2 could not be" or "10 failed" still files.
+
+**DEV**
+
+* `tradingagents/api.py:386` (`_rolling30_loop`) prints `[rolling30] rebuilt
+  69 row(s), 0 could not be: []` after every pass that rebuilt anything;
+  `tradingagents/error_issues.py:180` `from_site_log` → `_FAILING.search`
+  matched `could not` and filed it as kind `supervisor`, fault `574d9983698f`.
+* Invariant broken: **a count of zero failures is not a failure, however it
+  is spelled** — RCA-2026-10-07-K covered the quoted spelling (`'failed': 0`)
+  and not the word one (`0 could not`, `0 failed`). `_FAILING` now refuses a
+  failure word directly after `\b0 ` (`error_issues.py:128`).
+* Guard: `tests/test_errors_become_issues.py::test_a_count_of_zero_failures_is_never_an_error`
+  (red on the old pattern: both zero lines were filed).
+
+**SAW** — the fixer's evidence file for fault `574d9983698f`, "The site's
+rolling30 failed", one occurrence at `Oct 07, 2026 5:16pm`, message
+`[rolling30] rebuilt 69 row(s), 0 could not be: []`.
+
+**TIMELINE**
+
+1. `Oct 07, 2026 5:16pm` — the rolling30 thread's pass rebuilds 69 deployed
+   rows' last 30 days with 0 errors and prints its summary (site log line 533).
+2. `5:16pm` — the filer's tick reads the new log tail; `_FAILING` matches
+   "could not", the line is a new fault, an issue is filed and the fixer
+   started.
+3. `5:17pm` — the fixer reads the emitter: the line is a success report.
+   Run over the whole current site log, the new pattern changes the verdict
+   on exactly one line — this one.
+
+**ROOT CAUSE** — `_FAILING` matched a failure WORD with no regard for the
+count in front of it; K's fix taught it to skip a quoted key only.
+
+**WHY IT WAS NOT CAUGHT** — K's test held the one spelling of "zero failures"
+that had been seen (`'failed': 0`, a printed dict). A guard is only as wide as
+its pattern: nothing asked about a summary sentence that names its failures
+even when there are none, which is how `_rolling30_loop` has printed since
+the DEMO column shipped (a3b9d45a).
+
+**COST** — none. One false issue and one fixer run; no trade, no setting.
+
+**FIX** — this commit: the `(?<!\b0 )` look-behind in `_FAILING`.
+
+**GUARD** — `tests/test_errors_become_issues.py::test_a_count_of_zero_failures_is_never_an_error`.
+
 ## RCA-2026-10-07-O — the 1-4 day rooms judged a row's age by its coin's newest date, so an old row in a fresh file could pass as "this week" (NEVER HAPPENED YET)
 
 **CEO**

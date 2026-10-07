@@ -607,6 +607,23 @@ def test_the_filers_own_status_line_is_never_an_error(tmp_path, monkeypatch):
     assert [e["message"] for e in got] == ["[cloud-autopilot] collect failed: CloudError('gh timed out')"]
 
 
+def test_a_count_of_zero_failures_is_never_an_error(tmp_path, monkeypatch):
+    """Issue 574d9983698f (Oct 07, 2026 5:16pm): "[rolling30] rebuilt 69
+    row(s), 0 could not be: []" — a clean pass — was filed as "The site's
+    rolling30 failed". RCA-2026-10-07-K stopped a QUOTED 'failed': 0; the
+    same zero written as a word got through. A real count still files."""
+    log = tmp_path / "api.log"
+    log.write_text(
+        "[rolling30] rebuilt 69 row(s), 0 could not be: []\n"
+        "[daily-update] 12 done, 0 failed\n"
+        "[rolling30] rebuilt 3 row(s), 2 could not be: [('#AB12CD34', 'no candles')]\n"
+        "[forecast] 10 failed\n", encoding="utf-8")
+    monkeypatch.setattr(ei, "SITE_LOG", log)
+    monkeypatch.setattr(ei, "_SITE_TAIL", {})
+    got = ei.from_site_log(now=T0)
+    assert [e["message"][:14] for e in got] == ["[rolling30] re", "[forecast] 10 "]
+
+
 def test_issues_are_filed_as_the_projects_owner(monkeypatch):
     """On this PC gh's ACTIVE account is the fork's (jeremydvera, checked
     Oct 07, 2026); the issues belong to jeremydevera/analyzer-x, so the filer

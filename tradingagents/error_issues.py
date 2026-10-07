@@ -123,7 +123,9 @@ _TAGGED = re.compile(r"^\[([a-z0-9-]+)\] ")
 # A WORD, never a quoted key: the filer's own "[error-issues] {..., 'failed': 0}"
 # — zero failures — was filed as issue #2 in its first live hour (Oct 07, 2026
 # 2:38pm, RCA-2026-10-07-K)
-_FAILING = re.compile(r"(?<!['\"])\b(?:failed|could not|COULD NOT)\b(?!['\"])")
+# — and never a count of zero written as a word: "[rolling30] rebuilt 69
+# row(s), 0 could not be: []" was filed at 5:16pm the same day (RCA-2026-10-07-P)
+_FAILING = re.compile(r"(?<!['\"])(?<!\b0 )\b(?:failed|could not|COULD NOT)\b(?!['\"])")
 _SELF_RETRYING = ("tries again", "trying again", "will retry", "try again")
 # the filer's own lines are never a fault to file: its counts are status, and
 # its own failures are reported by the tab and the bell, not by filing through

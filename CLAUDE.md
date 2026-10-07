@@ -1562,6 +1562,30 @@ it, in order, are in the spec).
 * Guard: `tests/test_backtest_v2_keeps_target_over_stop.py`.
 Spec: `docs/superpowers/specs/2026-10-06-backtest-v2-target-over-stop-design.md`.
 
+## The daytime rule (MANDATORY — Oct 07, 2026; trial on #4FC03172)
+
+The operator: *"so what do you think is the correct, because its seems like i
+cannot rely on winrate for past 30 days"*, then *"yes"* to building the best
+rule of a walk-forward test as a room rule, trial room #4FC03172. Measured over
+20,604 saved Backtest v2 trade lists (picks on 16 days, Sep 17 – Oct 02, 2026,
+each followed 3 days, takeable trades only): today's rule 14,010 bets, 53.4%
+won, −$672.37; the daytime rule 1,655 bets, 60.1% won, +$394.82, green 16 of 16.
+
+* **One flag, `daytime_rule: {"since": ts}` in the room's settings**, read by
+  the watcher's switch-on pass (`daytime_rule.screen`: pays a loss after the
+  row's own fee; stock and US ETF tokens ≥ 20 trades at the line between
+  9:30am–4pm New York; the last 7 days ≥ 5 trades at the line), the runner
+  (`_daytime_closed`: no stock/US-ETF token opened outside those hours; an
+  hourly `market_closed` row carries every skipped candle) and Backtest a room
+  (`_daytime_masks`, from `since`). No flag = byte for byte as before.
+* **An UNREAD list never switches anything** (no list, or one ending a day
+  before its row's last bar): never on, and a running row stays on.
+* **The pass brings the coins' minutes up to now first**, waits for a disk job,
+  builds with 2 workers. It runs inside the API, on the thread every room's
+  watcher shares.
+* Spec: `docs/superpowers/specs/2026-10-07-daytime-rule-design.md`; guard:
+  `tests/test_daytime_rule.py`.
+
 ## Read the emitter, not the label (MANDATORY — 2026-08-18)
 
 23. **Before explaining ANY log line, ledger action, counter or status string,

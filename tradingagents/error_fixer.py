@@ -179,10 +179,11 @@ TO FIX: write a failing test first and see it fail; make the smallest
 correct change; run every related test file and compare any failure with the
 untouched code; add a docs/RCA.md entry in the same commit (read the file for
 the next free id); commit ONLY your files with
-`python scripts/commit_own.py -F <message file> <paths>`; then
+`.venv/Scripts/python scripts/commit_own.py -F <message file> <paths>`; then
 `git push origin HEAD:main` and `git push colleague HEAD:main`; then run
-`python start.py api` (it restarts only the back end and the room programs;
-the page stays up).
+`.venv/Scripts/python start.py api` (it restarts only the back end and the
+room programs; the page stays up). Always use .venv/Scripts/python, never a
+bare `python`, for this project's commands and tests.
 
 NEVER: edit settings, keys, .env, watcher rules or room configs under
 ~/.tradingagents; place, cancel or change orders; touch real money; run

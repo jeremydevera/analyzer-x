@@ -225,6 +225,34 @@ def tail(path: Path, n: int = 20) -> str:
         return ""
 
 
+def api_command() -> list[str]:
+    """How the back end starts — one definition for `start` and `api`."""
+    return [venv_python(), "-m", "uvicorn", "tradingagents.api:app",
+            "--host", "127.0.0.1", "--port", str(API_PORT)]
+
+
+def _start_api() -> int:
+    # UTF-8 everywhere: Windows' default text encoding is cp1252, and the
+    # store's JSON/progress files carry em dashes and coin names. Every job the
+    # API spawns inherits this.
+    # UNBUFFERED, so the log is complete and in order when it is read — a
+    # restart is often exactly when someone needs its last lines
+    api_env = dict(os.environ, PYTHONUTF8="1", PYTHONUNBUFFERED="1")
+    api_pid = spawn(api_command(), LOGS / "api.log", ROOT, api_env)
+    fresh(LOGS / "api.pid").write_text(f"{api_pid}\n")
+    return api_pid
+
+
+def _restart_rooms() -> int:
+    """Every room's runner the operator wants, restarted on the new code —
+    by the project's own Python, whatever Python ran this script."""
+    out = subprocess.run([venv_python(), "-m", "tradingagents.room_restart"],
+                         cwd=str(ROOT), capture_output=True, text=True,
+                         encoding="utf-8", errors="replace")
+    print((out.stdout or out.stderr or "").strip())
+    return out.returncode
+
+
 # ---------------------------------------------------------------- commands
 def cmd_status() -> int:
     for port in (API_PORT, UI_PORT):
@@ -254,16 +282,7 @@ def cmd_start(now: bool = False) -> int:
     free_port(UI_PORT, tree=True)
 
     print(f"starting API on {API_PORT}…")
-    # UTF-8 everywhere: Windows' default text encoding is cp1252, and the
-    # store's JSON/progress files carry em dashes and coin names. Every job the
-    # API spawns inherits this.
-    # UNBUFFERED, so the log is complete and in order when it is read — a
-    # restart is often exactly when someone needs its last lines
-    api_env = dict(os.environ, PYTHONUTF8="1", PYTHONUNBUFFERED="1")
-    api_pid = spawn([venv_python(), "-m", "uvicorn", "tradingagents.api:app",
-                     "--host", "127.0.0.1", "--port", str(API_PORT)],
-                    LOGS / "api.log", ROOT, api_env)
-    fresh(LOGS / "api.pid").write_text(f"{api_pid}\n")
+    _start_api()
 
     print("building the UI…")
     with open(fresh(LOGS / "build.log"), "w", encoding="utf-8") as fh:
@@ -294,7 +313,35 @@ def cmd_start(now: bool = False) -> int:
     return 1
 
 
-COMMANDS = {"start": cmd_start, "stop": cmd_stop, "status": cmd_status}
+def cmd_api(now: bool = False) -> int:
+    """Restart the BACK END and the room programs only (Oct 07, 2026).
+
+    The page on UI_PORT is never touched — `start` rebuilds it and the site
+    goes dark for minutes (the operator: "this is critical", Sep 23, 2026).
+    This is the one restart the unattended fixer may perform after it pushes
+    a fix. The API port is freed with tree=False, so the API's detached
+    children — runners, jobs, a fixer run — survive; the rooms are restarted
+    only once the new back end answers, so code that cannot start the back
+    end is never pushed into the rooms too.
+    """
+    LOGS.mkdir(exist_ok=True)
+    if not now:
+        wait_for_downloads()
+    free_port(API_PORT, tree=False)
+    print(f"starting API on {API_PORT}…")
+    _start_api()
+    for _ in range(READY_SECONDS):
+        time.sleep(1)
+        if health(API_PORT):
+            print("the back end answers; restarting the rooms…")
+            _restart_rooms()
+            return 0
+    print(f"the back end did not answer in {READY_SECONDS}s — see {LOGS / 'api.log'}")
+    print(tail(LOGS / "api.log"))
+    return 1
+
+
+COMMANDS = {"start": cmd_start, "stop": cmd_stop, "status": cmd_status, "api": cmd_api}
 
 
 def _safe_console() -> None:
@@ -314,9 +361,9 @@ def main(argv: list[str] | None = None) -> int:
     words = [a for a in args if not a.startswith("--")]
     action = words[0] if words else "start"
     if action not in COMMANDS:
-        print(f"usage: {Path(sys.argv[0]).name} [start|stop|status] [--now]")
+        print(f"usage: {Path(sys.argv[0]).name} [start|stop|status|api] [--now]")
         return 2
-    if action in ("start", "stop"):
+    if action in ("start", "stop", "api"):
         return COMMANDS[action](now="--now" in args)
     return COMMANDS[action]()
 

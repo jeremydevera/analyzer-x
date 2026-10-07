@@ -136,7 +136,11 @@ def test_a_restart_keeps_the_previous_log(start, tmp_path):
         "the run a restart is about to end"
     src = inspect.getsource(start.spawn)
     assert "open(keep_previous(log)" in src, "the API and UI logs are rotated, not deleted"
-    assert 'PYTHONUNBUFFERED="1"' in inspect.getsource(start.cmd_start)
+    # the back end starts through ONE helper for `start` and `api` (Oct 07,
+    # 2026) — the unbuffered log has to be set there, and both must use it
+    assert 'PYTHONUNBUFFERED="1"' in inspect.getsource(start._start_api)
+    assert "_start_api()" in inspect.getsource(start.cmd_start)
+    assert "_start_api()" in inspect.getsource(start.cmd_api)
 
 
 

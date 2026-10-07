@@ -50,8 +50,10 @@ def test_free_port_knows_which_port_owns_detached_children(start, monkeypatch):
 
 def test_both_commands_free_the_api_port_without_the_tree():
     src = (REPO / "start.py").read_text(encoding="utf-8")
-    assert src.count("free_port(API_PORT, tree=False)") == 2, "stop and start alike"
-    assert src.count("free_port(UI_PORT, tree=True)") == 2
+    # stop, start and api (Oct 07, 2026) alike: EVERY place that frees the API
+    # port leaves its detached children alone
+    assert src.count("free_port(API_PORT, tree=False)") == src.count("free_port(API_PORT") >= 3
+    assert src.count("free_port(UI_PORT, tree=True)") == 2, "api never touches the page"
     assert "free_port(API_PORT)\n" not in src and "free_port(UI_PORT)\n" not in src
 
 

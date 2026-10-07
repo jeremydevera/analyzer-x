@@ -3197,6 +3197,39 @@ def _gate_tally(st: dict, key: str) -> dict:
         key, {"bars": [], "unread": [], "why": "", "last": 0})
 
 
+# The daytime rule's hourly row: {"at": last row, "candles": n, "coins": set}
+_MARKET_CLOSED: dict = {}
+MARKET_CLOSED_EVERY_S = 3600
+
+
+def _daytime_closed(settings: dict, symbol: str, now: float | None = None) -> bool:
+    """A stock token outside 9:30am-4pm New York in a room with the daytime
+    rule (docs/superpowers/specs/2026-10-07-daytime-rule-design.md)."""
+    from tradingagents import daytime_rule as _dr
+
+    if not _dr.enabled(settings) or not _dr.is_stock(symbol):
+        return False
+    return not _dr.in_market_hours(time.time() if now is None else now)
+
+
+def _note_market_closed(symbol: str, dry: bool) -> None:
+    """Count one skipped candle; write the room's `market_closed` row at the
+    first skip and then at most once an hour, carrying every candle counted
+    since the row before (the line is rate-limited, the count is not)."""
+    m = _MARKET_CLOSED
+    m["candles"] = int(m.get("candles") or 0) + 1
+    m.setdefault("coins", set()).add(str(symbol).removesuffix("_USDT"))
+    now = time.time()
+    if m.get("at") and now - float(m["at"]) < MARKET_CLOSED_EVERY_S:
+        return
+    append_ledger({"symbol": symbol, "action": "market_closed",
+                   "why": "daytime rule: stock tokens open only 9:30am-4pm New York, "
+                          "Monday to Friday",
+                   "candles": m["candles"], "coins": sorted(m["coins"])[:50],
+                   "dry_run": bool(dry)})
+    m.update(at=now, candles=0, coins=set())
+
+
 def _count_refused_candle(st: dict, key: str, symbol: str, dry: bool,
                           bar_ts: int | None, unreadable: bool, why: str) -> None:
     """Count one refused candle ONCE: a gate re-refuses the same candle every
@@ -5772,6 +5805,19 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
     # the same instant have no "first" between them.
     for key in strategies:
         if key in tripped:                 # paused for the day — no entries
+            continue
+        # THE DAYTIME RULE (Oct 07, 2026, room setting `daytime_rule`): a stock
+        # token opens only 9:30am-4pm New York, Mon-Fri. Its candle is marked
+        # seen (never re-read every cycle), the cost check is not asked, and
+        # the skipped candles are counted into an hourly `market_closed` row.
+        if _daytime_closed(settings, symbol):
+            _dspec = STRATEGY_SPECS.get(key) or {}
+            _ddf = frames.get(_dspec.get("interval"))
+            if _ddf is not None and len(_ddf):
+                _dts = int(_ddf["Date"].iloc[-1].timestamp())
+                if st["last_ts"].get(_dspec["interval"], 0) < _dts:
+                    st["last_ts"][_dspec["interval"]] = _dts
+                    _note_market_closed(symbol, dry)
             continue
         # The liquidity gate: never open a trade whose take-profit is
         # smaller than the cost of getting in and out. Checked live, per

@@ -258,3 +258,112 @@ def test_without_the_flag_nothing_changes(room):
     got = sw.consider(now=NOW)
     assert [d["id"] for d in got["decisions"] if d["action"] == "on"] == ["BBBB2222"]
     assert room["asked"] == []
+
+
+# ------------------------------------- the runner never opens one after hours
+import json as _json  # noqa: E402
+import time as _time  # noqa: E402
+
+import pandas as _pd  # noqa: E402
+
+T_NIGHT = 1790812800        # Sep 30, 2026 8:00pm New York, on a 15-minute line
+T_DAY = 1790863200          # Oct 01, 2026 10:00am New York
+
+
+class _FX:
+    def __init__(self, clock):
+        self.clock, self.books = clock, 0
+
+    def klines(self, symbol, interval, n):
+        step = {"Min15": 900, "Min30": 1800, "Min60": 3600}.get(interval, 900)
+        last = int(self.clock()) // step * step
+        opens = [last - step * i for i in range(n)][::-1]
+        return _pd.DataFrame({"Date": _pd.to_datetime(opens, unit="s"), "Open": 50.0,
+                              "High": 50.0, "Low": 50.0, "Close": 50.0, "Volume": 10.0})
+
+    def open_positions(self, symbol=None):
+        return []
+
+    def contract_spec(self, symbol):
+        return {"priceScale": 4, "contractSize": 1, "volUnit": 1, "minVol": 1,
+                "maxVol": 25000, "maintenanceMarginRate": 0.005}
+
+    def last_price(self, symbol):
+        return 50.0
+
+    def funding_now(self, symbol):
+        return {"per_day": 0.0003, "cycle_h": 8}
+
+    def book_cost(self, symbol, notional_usd=200.0):
+        self.books += 1
+        return {"spread": 0.035, "slippage": 0.001, "book_exhausted": False}
+
+
+class _Clock:
+    def __init__(self, t):
+        self.t = float(t)
+
+    def __call__(self):
+        return self.t
+
+
+@pytest.fixture
+def runner(tmp_path, monkeypatch):
+    clock = _Clock(T_NIGHT + 10)
+    monkeypatch.setattr(_time, "time", clock)
+    monkeypatch.setattr(at, "LEDGER_PATH", tmp_path / "ledger.jsonl")
+    for name in ("_GATE_CACHE", "_GATE_LOGGED", "_BAR_CACHE", "_FUNDING_CACHE"):
+        monkeypatch.setattr(at, name, {}, raising=False)
+    monkeypatch.setattr(at, "_MARKET_CLOSED", {}, raising=False)
+    fx = _FX(clock)
+    r = {"clock": clock, "fx": fx, "state": {}, "path": tmp_path / "ledger.jsonl"}
+
+    def cycle(t, symbol="WIDESTOCK_USDT", key="fade15_15m", flag=True):
+        clock.t = float(t)
+        s = {"strategies": [key], "strategy_coins": {key: [symbol]},
+             "strategy_margins": {key: 5.0}}
+        if flag:
+            s["daytime_rule"] = {"since": T_NIGHT - 3600}
+        at.process_symbol(symbol, s, r["state"], fx=fx, dry=True)
+    r["cycle"] = cycle
+
+    def rows(action):
+        if not r["path"].exists():
+            return []
+        return [x for x in (_json.loads(l) for l in r["path"].read_text().splitlines())
+                if x.get("action") == action]
+    r["rows"] = rows
+    return r
+
+
+def test_a_stock_token_is_not_traded_at_night(runner):
+    runner["cycle"](T_NIGHT + 10)
+    assert runner["fx"].books == 0, "no cost check, no order, outside market hours"
+    got = runner["rows"]("market_closed")
+    assert len(got) == 1 and got[0]["candles"] == 1 and "WIDESTOCK" in got[0]["coins"][0]
+    assert not runner["rows"]("gate_blocked")
+
+
+def test_the_same_candle_is_not_counted_twice_and_the_row_is_hourly(runner):
+    runner["cycle"](T_NIGHT + 10)
+    runner["cycle"](T_NIGHT + 70)          # same candle, next cycle
+    runner["cycle"](T_NIGHT + 910)         # next 15-minute candle, same hour
+    assert len(runner["rows"]("market_closed")) == 1
+    runner["cycle"](T_NIGHT + 3610)        # an hour later
+    got = runner["rows"]("market_closed")
+    assert len(got) == 2 and got[1]["candles"] == 2, got
+
+
+def test_in_market_hours_the_runner_checks_as_before(runner):
+    runner["cycle"](T_DAY + 10)
+    assert runner["fx"].books >= 1 and not runner["rows"]("market_closed")
+
+
+def test_crypto_is_traded_at_night(runner):
+    runner["cycle"](T_NIGHT + 10, symbol="WIDE_USDT")
+    assert runner["fx"].books >= 1 and not runner["rows"]("market_closed")
+
+
+def test_without_the_flag_a_stock_token_trades_at_night_as_before(runner):
+    runner["cycle"](T_NIGHT + 10, flag=False)
+    assert runner["fx"].books >= 1 and not runner["rows"]("market_closed")

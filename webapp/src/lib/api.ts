@@ -67,6 +67,8 @@ let behindNow = 0;
 // the header's own polls, which stay on screen across every page.
 let _page = 0;
 const inflight = new Set<{ gen: number; ctl: AbortController }>();
+// reads still waiting for a lane, by room and address (fetchLaned)
+const _waitingReads = new Map<string, { p: Promise<Response>; gen: number }>();
 const ALWAYS_ON = /^\/api\/(health|jobs|notifications)(\/|\?|$)/;
 
 /** Thrown to a read the page that asked for it no longer shows. */
@@ -190,19 +192,43 @@ async function fetchLaned(input: string, init?: RequestInit, room: string = _roo
   const chrome = ALWAYS_ON.test(path);
   const droppable = method === "GET" && !chrome;
   const gen = _page;
-  await takeLane(behind, gen, droppable, chrome);
-  const mine = droppable ? { gen, ctl: new AbortController() } : null;
-  if (mine) inflight.add(mine);
-  try {
-    return await fetch(input, mine ? { ...(init ?? {}), signal: mine.ctl.signal } : init);
-  } catch (e) {
-    // cancelled because its page was left: say so, never "network error"
-    if (mine && mine.ctl.signal.aborted) throw new PageLeft();
-    throw e;
-  } finally {
-    if (mine) inflight.delete(mine);
-    freeLane(behind, chrome);
-  }
+  // ONE READ PER ADDRESS WHILE IT WAITS FOR A LANE (operator, Oct 07, 2026:
+  // "why trade histsory is blank for 6B08FF64?"). Every panel of all six rooms
+  // asks again every 5 s (15 s behind its tab) whether or not its last read
+  // has come back, so with the API slow the queue grew without end: a read
+  // for the room on screen waited 62 s for its lane (Safari's engine). A read
+  // whose exact twin is still WAITING joins it — the same question, not yet
+  // asked, so the same fresh answer. Once a read has been SENT it is never
+  // joined: a later read is a new question and must not get an older answer.
+  // (`behind` is part of the twin's name: a read for the room just brought on
+  // screen never joins one still waiting at the behind-the-tabs priority)
+  const same = droppable ? `${room} ${behind ? "behind" : "front"} ${input}` : "";
+  const twin = same ? _waitingReads.get(same) : undefined;
+  if (twin && twin.gen === gen) return (await twin.p).clone();
+  const entry: { p: Promise<Response>; gen: number } = { p: Promise.resolve(new Response()), gen };
+  entry.p = (async () => {
+    try {
+      await takeLane(behind, gen, droppable, chrome);
+    } finally {
+      // sent or refused: from here on a read of this address is a new one
+      if (same && _waitingReads.get(same) === entry) _waitingReads.delete(same);
+    }
+    const mine = droppable ? { gen, ctl: new AbortController() } : null;
+    if (mine) inflight.add(mine);
+    try {
+      return await fetch(input, mine ? { ...(init ?? {}), signal: mine.ctl.signal } : init);
+    } catch (e) {
+      // cancelled because its page was left: say so, never "network error"
+      if (mine && mine.ctl.signal.aborted) throw new PageLeft();
+      throw e;
+    } finally {
+      if (mine) inflight.delete(mine);
+      freeLane(behind, chrome);
+    }
+  })();
+  if (same) _waitingReads.set(same, entry);
+  // each reader reads its own copy of the one answer
+  return (await entry.p).clone();
 }
 
 // WHICH STORE A CALL GOES TO. Backtest v2 (Sep 17, 2026) serves the same

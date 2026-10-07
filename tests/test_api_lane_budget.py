@@ -35,8 +35,13 @@ def test_a_lane_is_freed_even_when_the_fetch_throws():
     """A thrown fetch that kept its lane would strangle the app four calls
     later — the free lives in `finally`."""
     s = _src()
-    i = s.index("async function fetchLaned")
-    body = s[i:s.index("}", s.index("finally", i))]
+    fl = s[s.index("async function fetchLaned"):]
+    fl = fl[:fl.index("\n}\n")]
+    # the FETCH's finally (since Oct 07, 2026 an earlier one forgets a read's
+    # waiting twin): the lane is freed whatever the fetch did
+    after_fetch = fl[fl.index("await fetch("):]
+    body = after_fetch[after_fetch.index("finally"):]
+    body = body[:body.index("}")]
     # freeLane(behind) since the rooms got lanes of their own (Oct 01, 2026)
     assert "finally" in body and "freeLane(" in body
 

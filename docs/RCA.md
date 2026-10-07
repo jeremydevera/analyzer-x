@@ -172,6 +172,66 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-J — #6B08FF64's Trade history said "0 on this book" on DEMO while its practice book held 104 trades
+
+**CEO**
+
+* On the DEMO tab of room #6B08FF64, Trade history said "0 on this book" and
+  "No closed trades on the demo book yet" — while that room had 104 closed
+  practice trades, the newest MDTSTOCK closed by its stop at 2:07pm for -0.77.
+* Why: the panel opens on LIVE, and #6B08FF64 has no real-money trades. Its
+  LIVE readings were still stuck in a long queue when DEMO was clicked, landed
+  afterwards, and put LIVE's "0" under the DEMO tab.
+* What stops it now: the panel only shows an answer for the tab that is
+  selected (it says "reading the demo book…" while it waits), and repeated
+  readings of the same thing no longer pile up in the queue.
+
+**DEV**
+
+* `webapp/src/components/trade/TradeHistory.tsx` set `d` from every
+  `tradeApi.history(dry, …)` answer, whatever `dry` it was asked with;
+  `webapp/src/lib/api.ts` `fetchLaned` queued every poll, so six rooms' panels
+  asking every 5 s built a queue that held a read for 62 s.
+* Invariant broken: **an answer is shown only for what it was asked** (the
+  PnlPanel rule since Sep 27, 2026, never applied here), and **a poll never
+  queues behind its own unsent twin**.
+* Guard: `tests/test_a_book_switch_never_shows_the_other_book.py` (3 tests).
+
+**SAW** — the operator's screenshot, Oct 07, 2026: *"why trade histsory is
+blank for 6B08FF64?"* — DEMO selected, "every closed trade · 0 on this book".
+
+**TIMELINE** (room #6B08FF64; Safari's engine on this PC)
+
+1. Oct 06, 2026 6:55pm — the room's practice record was reset (858 rows
+   removed, backup kept); from then to Oct 07, 2026 2:08pm: 166 entries and
+   104 closed practice trades; real money: 0.
+2. Oct 07, 2026 2:10pm — the server answers correctly: DEMO total 104 in
+   0.37 s, LIVE total 0 in 0.34 s.
+3. Same minute, the page: room tab opened at 8.6 s, DEMO switched on at
+   31.2 s; the room's history reads went out at 94.2 s, 105.6 s and 158.0 s —
+   all `dry=false`, asked before the click and queued for over a minute; the
+   panel read "0 on this book" from 95.0 s to the end of the watch.
+
+**ROOT CAUSE** — `.then((r) => { setD(r); … })` with no check that `r` was
+for the book still selected, fed by a queue that let one panel's polls stack.
+
+**WHY IT WAS NOT CAUGHT** — the stale-answer rule was written for the profit
+calendar on Sep 27, 2026 (*"before showing result"*) and nobody looked for the
+same shape in the panel beside it, which has the same LIVE/DEMO switch; and
+every check of Trade history was made with a warm, quiet API, where answers
+come back in order in under a second.
+
+**COST** — none in money; the DEMO tab showed an empty history for a room with
+104 closed trades.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_a_book_switch_never_shows_the_other_book.py::test_a_late_answer_for_the_other_book_is_dropped`,
+`::test_a_new_book_starts_on_page_one_in_the_same_click` and
+`::test_a_read_waiting_for_a_lane_is_joined_never_one_already_sent`.
+
+---
+
 ## RCA-2026-10-07-E — a room's runner died 9 times when Windows refused its save, and the Errors tab never said it had crashed
 
 **CEO**

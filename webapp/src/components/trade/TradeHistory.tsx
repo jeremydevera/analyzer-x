@@ -5,7 +5,7 @@
  * effectively as a net figure does. The running total is computed over the
  * whole book, so page 3's "running $" is the real one, not the page's.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { markReady } from "@/lib/loading";
 import { useLiveRefresh } from "@/lib/live";
 import CopyableId from "./CopyableId";
@@ -36,7 +36,15 @@ export default function TradeHistory() {
   const { tradeApi } = useRoomApis();
   const [dry, setDry] = useState(false);
   const [page, setPage] = useState(1);
-  const [d, setD] = useState<HistoryPayload | null>(null);
+  // THE ANSWER ON SCREEN IS FOR THE BOOK THE TAB SAYS (operator, Oct 07, 2026:
+  // "why trade histsory is blank for 6B08FF64?"). With six rooms sharing four
+  // request lanes a read waited over a minute, and LIVE reads asked before a
+  // click on DEMO kept landing after it: #6B08FF64's real-money book has 0
+  // closed trades, so the DEMO tab read "0 on this book" and "No closed trades
+  // on the demo book yet" while its practice book held 104. Each answer is
+  // kept with the book, page and search it was asked for, and shown only
+  // while that is still what the panel shows (PnlPanel's rule, Sep 27, 2026).
+  const [got, setGot] = useState<{ key: string; data: HistoryPayload } | null>(null);
   const [err, setErr] = useState("");
   // FIND A TRADE BY ID, ACROSS BOTH BOOKS. Operator, Sep 17, 2026: "in trade
   // history, put a id search there, when i search LG9NSU4B for example it
@@ -57,13 +65,26 @@ export default function TradeHistory() {
   // reload: *"i want the ui realtime ... currently i need to refresh it"*.
   // The old self-healing retry is kept by the same loop: a failed fetch is
   // simply the next tick's job (an API restart's few dark seconds, Sep 09).
+  const want = `${dry}|${page}|${q.trim()}`;
+  const wantNow = useRef(want);
+  useEffect(() => { wantNow.current = want; }, [want]);
   useLiveRefresh(() => {
+    const asked = `${dry}|${page}|${q.trim()}`;
     tradeApi.history(dry, page, 5, q.trim())
-      .then((r) => { setD(r); setErr(""); markReady("trade history"); })
+      .then((r) => {
+        if (asked !== wantNow.current) return;      // a late answer for what is no longer shown
+        setGot({ key: asked, data: r }); setErr(""); markReady("trade history");
+      })
       .catch((e) => setErr(String(e)));
   }, 5_000, [dry, page, q]);
+  // only the answer for what is on screen; while it is on its way, "reading"
+  const d = got && got.key === want ? got.data : null;
+  const reading = got !== null && got.key !== want;
 
-  useEffect(() => { setPage(1); }, [dry, q]);
+  // a new book or a new search starts on page 1 — set in the same click, so
+  // the panel never asks for the old page of the new book first
+  const pickBook = (v: boolean) => { setDry(v); setPage(1); };
+  const search = (v: string) => { setQ(v); setPage(1); };
 
   const t = d?.totals;
   return (
@@ -77,7 +98,7 @@ export default function TradeHistory() {
                   ? `${d.total} trade${d.total === 1 ? "" : "s"} matching `
                     + `${d.q ?? q} on BOTH books, of ${d.examined ?? 0} closed`
                   : "searching both books")
-              : `every closed trade${d ? ` · ${d.total} on this book` : ""}`}
+              : `every closed trade${d ? ` · ${d.total} on this book` : reading ? ` · reading the ${dry ? "demo" : "live"} book…` : ""}`}
             {t && t.trades ? ` · ${t.wins}W / ${t.losses}L · ${fmtMoney(t.profit)} total` : ""}
           </p>
         </div>
@@ -86,12 +107,12 @@ export default function TradeHistory() {
               case. A search covers BOTH books, so the live/demo tabs go quiet
               while one is running rather than pretending to still apply. */}
           <div className="relative">
-            <input value={q} onChange={(e) => setQ(e.target.value)}
+            <input value={q} onChange={(e) => search(e.target.value)}
               id="trade-history-search"
               placeholder="find by id, e.g. LG9NSU4B"
               className="h-8 w-56 rounded-lg border border-gray-200 bg-transparent px-2 pr-7 font-mono text-theme-xs text-gray-700 placeholder:font-sans placeholder:text-gray-400 dark:border-gray-700 dark:text-gray-300" />
             {searching && (
-              <button type="button" onClick={() => setQ("")} title="clear the search"
+              <button type="button" onClick={() => search("")} title="clear the search"
                 className="absolute right-1 top-1 h-6 w-6 rounded text-theme-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                 ×
               </button>
@@ -99,7 +120,7 @@ export default function TradeHistory() {
           </div>
           <div className={`flex gap-1 rounded-lg bg-gray-100 p-1 dark:bg-white/[0.06] ${searching ? "opacity-40" : ""}`}>
             {([[false, "LIVE — real money"], [true, "DEMO — simulated"]] as const).map(([v, lab]) => (
-              <button key={String(v)} onClick={() => setDry(v)} disabled={searching}
+              <button key={String(v)} onClick={() => pickBook(v)} disabled={searching}
                 title={searching ? "a search covers both books" : undefined}
                 className={`rounded-md px-3 py-1 text-theme-xs font-medium transition ${dry === v && !searching
                   ? (v ? "bg-white text-gray-800 shadow-theme-xs dark:bg-gray-800 dark:text-white/90"
@@ -111,7 +132,7 @@ export default function TradeHistory() {
           </div>
         </div>
       </div>
-      <PanelStatus err={err} loaded={d !== null} />
+      <PanelStatus err={err} loaded={got !== null} />
 
       {/* PHONE: CARDS, NOT A TABLE (operator, Sep 23, 2026, reading this on
           their phone over Tailscale: "the live trade table is not mobile

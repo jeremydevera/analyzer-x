@@ -289,8 +289,15 @@ so the next one can say how long each step takes before starting it:
 | round 1 | `python -m tradingagents.room_strategies dispatch research/p4/round1.json daily 4 <replay> <replay repo> <end ms>` — **both accounts, 40 machines** (CLAUDE.md, Oct 02, 2026); then `... fetch <folder on G:> <repo>:<run> <repo>:<run>` | first run (one account, before that rule): run 37033893955, the 20 shards with coins x 4 slices = 80 jobs, **2 h 13 min**, peak memory ~3.3 GB a machine (16 GB there) |
 | score | `python -m tradingagents.room_strategies daily round1 <downloaded folder> <replay>` | 458 s; refuses a round with any job missing (`check_complete`); 673 winners, writes `round1-confirm.json` and `round1-next.json` |
 | confirm | `... dispatch research/p4/round1-confirm.json full 1 <replay> <replay repo> <end ms>`, then `fetch` | run 37050144154, ~15 min |
-| keep | `python -m tradingagents.room_strategies finish round1c <folder> ~/.tradingagents/replay/reports-<replay> <replay>` | 75 s; 662 kept (2,381,217 trades, 83 MB on G:) |
+| keep | `python -m tradingagents.room_strategies finish round1c <folder> ~/.tradingagents/replay/reports-<replay> <replay>` — it also rewrites `research/p4/kept.json`, the list the DAILY RE-TEST reads: **commit and push it** with the round's files, or tomorrow's re-test misses the new winners (the page counts them) | 75 s; 662 kept (2,381,217 trades, 83 MB on G:) |
 | new rounds | `daily` on `round<N>-next.json`, then its confirm, until a round beats nothing or 5 rounds | round 2: 92 rule sets, ~20 min, 56 winners |
+
+**AFTER PROMPT 4, EVERY DAY (Oct 07, 2026).** The operator: *"what do you mean
+saved strategy? it should be updated everyday justd like the backtest"*. Every
+kept winner is re-measured once a day on GitHub by
+`tradingagents/room_strategies_daily.py` — the same replay start (Jul 01, 2026),
+signal groups (classic, preset) and research walk, so a row's numbers reach last
+night. Prompt 4 still FINDS new winners; the daily job never adds or deletes one.
 
 Before trusting a new round's numbers, the confirm run's months were checked
 against the day totals (2,357 months, 0 differences). The newest-15-days figure

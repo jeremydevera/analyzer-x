@@ -226,6 +226,17 @@ def _keep_the_row_index_current() -> None:
                     print(f"[forecast v2] could not start its threads: {exc!r}", flush=True)
                 # (the month alarm and the streak bells ride the chain's
                 # thread: forecast_v2_daily.tick)
+                # ROOM STRATEGIES, RE-TESTED EVERY DAY (operator, Oct 07, 2026:
+                # "it should be updated everyday justd like the backtest") — a
+                # replay and a re-test on GitHub, then the add-up in its own
+                # process; its own thread, so a slow GitHub never holds this loop
+                try:
+                    from tradingagents import room_strategies_daily as _rsd
+
+                    if not any(t.name == "room-strategies-retest" for t in _th.enumerate()):
+                        _th.Thread(target=_rsd.tick, name="room-strategies-retest", daemon=True).start()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[room strategies re-test] could not start its thread: {exc!r}", flush=True)
                 # NO AUTOMATIC CANDLE TOP-UP. candle_autopilot.tick() ran here
                 # from 2026-09-06 to 2026-09-09 and started an UPDATE by itself
                 # whenever the store was 3h stale. The operator saw
@@ -1332,6 +1343,14 @@ def room_strategies_route(from_s: float, to_s: float, min_winrate: float = 0,
                          window=window, deployable=deployable, find=find, sort=sort, page=page,
                          per=_f2a.PER_PAGE, reality=reality if reality is not None else {})
         out["reality_pending"] = reality is None
+        # the daily re-test on GitHub (room_strategies_daily): when the numbers
+        # were last brought up to date, and where today's is
+        try:
+            from tradingagents import room_strategies_daily as _rsd
+
+            out["retest"] = _rsd.status()
+        except Exception as exc:                               # noqa: BLE001
+            out["retest"] = {"phase": "unknown", "why": f"its state could not be read: {exc!r}"[:200]}
         return out
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc

@@ -48,6 +48,17 @@ def _days(e_ms: np.ndarray, x_ms: np.ndarray, p: np.ndarray, start: int, end: in
     return [{"pnl": round(float(v), 2)} for v in raw]
 
 
+def part_trades(packs: list, items: list, j: int, part: str) -> tuple:
+    """Rule set j's closed trades in one part (train | test) over the machines
+    `items`: (entry ms, exit ms, profit) arrays, machine after machine. ONE
+    reading of research_shard's packed minutes, shared by `merge` and the
+    daily re-test of the kept room strategies (room_strategies_daily)."""
+    e = np.concatenate([(packs[i][f"{j}_{part}_e"].astype(np.int64) + T0_MIN) * 60_000 for i in items])
+    x = np.concatenate([(packs[i][f"{j}_{part}_x"].astype(np.int64) + T0_MIN) * 60_000 for i in items])
+    p = np.concatenate([packs[i][f"{j}_{part}_p"].astype(np.float64) for i in items])
+    return e, x, p
+
+
 def merge(name: str, art_dir: str, data_dir: str, log_top: int = 100,
           reality: dict | None = None) -> Path:
     """`log_top`: only the best `log_top` rule sets on July-August (the fair
@@ -103,11 +114,7 @@ def merge(name: str, art_dir: str, data_dir: str, log_top: int = 100,
             out = {"id": rs.rule_id(cfg), "cfg": cfg}
             both: list = []
             for part, (a, b) in periods.items():
-                e = np.concatenate([(packs[i][f"{j}_{part}_e"].astype(np.int64) + T0_MIN) * 60_000
-                                    for i in items])
-                x = np.concatenate([(packs[i][f"{j}_{part}_x"].astype(np.int64) + T0_MIN) * 60_000
-                                    for i in items])
-                p = np.concatenate([packs[i][f"{j}_{part}_p"].astype(np.float64) for i in items])
+                e, x, p = part_trades(packs, items, j, part)
                 trades = np.column_stack([e, x, p, np.ones(len(e))]) if len(e) else np.zeros((0, 4))
                 res = {"summary": {"slots": sum(metas[i]["rules"][j][part]["slots"] for i in items),
                                    "open": sum(metas[i]["rules"][j][part]["open"] for i in items)},

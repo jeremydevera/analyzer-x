@@ -1142,10 +1142,24 @@ export function RoomStrategiesSection() {
     <div className={card}>
       <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Room strategies</h3>
       <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-        Every winner prompt 4 found and kept, never deleted. A winner made money after the reality check in every
-        complete month and in its newest 15 days. The numbers below are measured over exactly the dates you pick, or
-        the last N days you type. Nothing changes until you press Apply. Click a row to see its trades.
+        Every winner prompt 4 found and kept, never deleted, and re-tested every day on GitHub so its numbers reach
+        last night. A winner made money after the reality check in every complete month and in its newest 15 days.
+        The numbers below are measured over exactly the dates you pick, or the last N days you type. Nothing changes
+        until you press Apply. Click a row to see its trades.
       </p>
+      {/* THE DAILY RE-TEST (operator, Oct 07, 2026: "it should be updated
+          everyday justd like the backtest") — when the numbers were last
+          brought up to date, and where today's re-test is */}
+      {d?.retest && (
+        <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
+          {d.retest.made_at
+            ? `Last re-test: ${fmtWhen(d.retest.made_at)}, ${(d.retest.retested ?? 0).toLocaleString()} room strategies with prices up to ${d.retest.end_ms ? fmtWhenMs(d.retest.end_ms) : "—"}`
+            : "Not re-tested yet — until the first daily re-test lands, the numbers are prompt 4's own"}
+          {d.retest.unlisted > 0 && ` · ${d.retest.unlisted.toLocaleString()} kept since are re-tested from the next run`}
+          {d.retest.why && ` · now: ${d.retest.why}`}
+          {d.retest.error && <span className="text-error-500"> · last error: {d.retest.error}</span>}
+        </p>
+      )}
       <form className="mt-3 flex flex-wrap items-end gap-2 text-theme-xs text-gray-600 dark:text-gray-300"
         onSubmit={(e) => { e.preventDefault(); apply(); }}>
         <label className="flex flex-col gap-1">from<input type="date" className={`${sel} disabled:opacity-50`} value={draft.from} max={draft.to} disabled={byDays} onChange={(e) => set({ from: e.target.value })} /></label>
@@ -1179,9 +1193,11 @@ export function RoomStrategiesSection() {
           {d.kept > 0 && pastEnd && d.data_end != null && (
             <p className="mt-2 rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-theme-xs text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-400">
               {d.with_trades === 0
-                ? `None of the ${d.kept.toLocaleString()} has a trade in these dates: their saved trades end ${fmtWhenMs(d.data_end)}. `
-                : `${d.with_trades.toLocaleString()} of the ${d.kept.toLocaleString()} have a trade in these dates, and their saved trades end ${fmtWhenMs(d.data_end)}, so nothing after that is in these numbers. `}
-              Prompt 4 measured them up to then; run it again (Prompts, at the bottom of this page) to measure them up to today.
+                ? `None of the ${d.kept.toLocaleString()} has a trade in these dates: their trades are measured up to ${fmtWhenMs(d.data_end)}. `
+                : `${d.with_trades.toLocaleString()} of the ${d.kept.toLocaleString()} have a trade in these dates, and their trades are measured up to ${fmtWhenMs(d.data_end)}, so nothing after that is in these numbers. `}
+              {d.retest?.made_at
+                ? "The daily re-test measured them up to then; the next one brings them up to last night."
+                : "Prompt 4 measured them up to then; the first daily re-test brings them up to last night."}
               {(asked.min_winrate > 0 || asked.min_profit != null) && " A row with no trade in these dates passes no win % or profit floor."}
             </p>
           )}

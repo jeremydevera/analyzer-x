@@ -1254,6 +1254,9 @@ export type RoomStrategies = {
   with_trades: number;
   /** the first and last close across every kept winner's saved trades, ms */
   data_start: number | null; data_end: number | null;
+  /** the daily re-test on GitHub (room_strategies_daily.status) */
+  retest?: { phase: string; why: string; error?: string; made_at?: number | null; end_ms?: number | null;
+    retested?: number | null; unlisted: number; due_hour?: number };
 };
 /** One room strategy's trades that closed in the chosen dates, oldest first,
  *  paged by the server (room_strategies.trades). No coin: the replay kept only

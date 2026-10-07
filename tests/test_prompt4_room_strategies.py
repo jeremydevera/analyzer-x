@@ -307,8 +307,10 @@ def test_a_range_past_the_saved_trades_says_where_they_end():
     instead of 992 rows of zeros reading as strategies that did nothing."""
     s = _section()
     assert "d.to * 1000 > d.data_end" in s and "d.with_trades === 0" in s
-    assert "their saved trades end ${fmtWhenMs(d.data_end)}" in s
-    assert "run it again (Prompts, at the bottom of this page) to measure them up to today" in s
+    assert "their trades are measured up to ${fmtWhenMs(d.data_end)}" in s
+    # re-tested every day since Oct 07, 2026 (room_strategies_daily): the box
+    # says the next re-test brings them up to date, never "run prompt 4"
+    assert "the next one brings them up to last night" in s and "run it again" not in s
     trades = _src_all().split("\nfunction StrategyTrades(")[1]
     assert "TOTAL PROFIT" in trades and "not which coin it was on" in trades
     assert "api.roomStrategyTrades({ id, from_s, to_s, page })" in trades

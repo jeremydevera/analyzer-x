@@ -1,4 +1,9 @@
 name: Watcher rules research (raw, split by coin)
+# A RUN NAMED BY WHAT IT DOES (Oct 07, 2026): the daily re-test of the kept
+# room strategies (tradingagents/room_strategies_daily.py) finds ITS run by
+# this title, never "the newest run" — prompt 4's rounds dispatch this same
+# workflow (forecast_v2_daily.title_of holds the same words)
+run-name: "Watcher rules research · ${{ inputs.scenarios }} · ${{ inputs.output }} · replay ${{ inputs.source_run }}"
 
 # Operator, Sep 30, 2026: "show me the result for top 100 combinations so i
 # can decide which to deploy" — over replay data too big for the PC. Each

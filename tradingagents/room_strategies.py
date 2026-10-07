@@ -92,7 +92,41 @@ def kept() -> list[dict]:
     """Every winner kept so far, in the order first found — each the NEWEST
     line written for its id (a later run re-measures a winner by appending,
     never by rewriting), with the day it was FIRST found. Read again only
-    when the file has changed."""
+    when the file has changed.
+
+    AND THE NEWEST DAILY RE-TEST ON TOP (Oct 07, 2026: "it should be updated
+    everyday justd like the backtest"): a winner the daily re-test measured
+    AFTER its newest line carries the re-test's trades and months
+    (`retested`), and says so (`retested: True`). Its id, rules and the day it
+    was found never change; a winner the re-test did not reach keeps its own
+    line's numbers — never zeros."""
+    base = _kept_lines()
+    now = retested()
+    if not now or not base:
+        return base
+    sig = (_stamp(store_path()), _stamp(now_path()))
+    hit = _KEPT.get("retested")
+    if hit and hit[0] == sig:
+        return hit[1]
+    by, made = now["by_id"], float(now["meta"].get("made_at") or 0)
+    out = [{**w, "trades": by[w["id"]]["trades"], "p4": by[w["id"]]["p4"], "measured_at": made,
+            "retested": True}
+           if w["id"] in by and made >= float(w.get("measured_at") or 0) else w
+           for w in base]
+    _KEPT["retested"] = (sig, out)
+    return out
+
+
+def _stamp(p: Path):
+    try:
+        st = p.stat()
+    except OSError:
+        return None
+    return (st.st_mtime, st.st_size)
+
+
+def _kept_lines() -> list[dict]:
+    """The never-delete store alone: the newest line per id, first found first."""
     path = store_path()
     try:
         st = path.stat()
@@ -122,6 +156,65 @@ def kept() -> list[dict]:
     out = [{**latest[i], "found_at": first[i]} for i in order]
     _KEPT[str(path)] = (st.st_mtime, st.st_size, out)
     return out
+
+
+# ------------------------------------------------ the daily re-test's file
+LIST_NAME = "kept"          # research/p4/kept.json — the list GitHub re-tests every day
+
+
+def now_path() -> Path:
+    """The newest daily re-test of every kept winner (room_strategies_daily):
+    ONE file, swapped in whole each day — never appended to the never-delete
+    store, which would grow by every trade of every winner every day (the
+    992 kept hold 4,302,254 trades, ~150 MB a copy)."""
+    return _home() / "room_strategies_now.npz"
+
+
+_NOW: dict = {}
+
+
+def retested() -> dict:
+    """{"meta": {...}, "by_id": {id: {"trades": (n, 3), "p4": {...}}}} — the
+    newest daily re-test, or {} before the first one. A file that cannot be
+    read is {} and SAID, so the kept numbers stay on the page — never zeros."""
+    import numpy as np
+
+    from tradingagents.research_merge import T0_MIN
+
+    p = now_path()
+    sig = _stamp(p)
+    if sig is None:
+        return {}
+    hit = _NOW.get(str(p))
+    if hit and hit[0] == sig:
+        return hit[1]
+    try:
+        with np.load(p, allow_pickle=False) as z:
+            meta = json.loads(str(z["meta"]))
+            e, x, pr, offs = z["e"], z["x"], z["p"], z["offs"]
+            by = {}
+            for k, rid in enumerate(meta["ids"]):
+                a, b = int(offs[k]), int(offs[k + 1])
+                # profit to 4 places, as research_merge keeps a winner's
+                # trades in the store — so a row reads the same either way
+                t = (np.column_stack([(e[a:b].astype(np.int64) + T0_MIN) * 60_000,
+                                      (x[a:b].astype(np.int64) + T0_MIN) * 60_000,
+                                      np.round(pr[a:b].astype(np.float64), 4)]).astype(np.float64)
+                     if b > a else np.zeros((0, 3)))
+                by[rid] = {"trades": t, "p4": meta["p4"][k]}
+    except (OSError, ValueError, KeyError, IndexError) as exc:
+        print(f"[room strategies] the daily re-test file {p} could not be read: {exc!r}", flush=True)
+        return {}
+    out = {"meta": {k: v for k, v in meta.items() if k not in ("ids", "p4")}, "by_id": by}
+    _NOW[str(p)] = (sig, out)
+    return out
+
+
+def write_list() -> Path:
+    """research/p4/kept.json: every kept winner's rules, the list the daily
+    re-test hands GitHub (research.yml `scenarios=file:...`). A runner reads
+    the COMMITTED file, so whoever keeps new winners commits it with them."""
+    return write_round(LIST_NAME, [w["cfg"] for w in _kept_lines()])
 
 
 def round1() -> list[dict]:
@@ -393,6 +486,9 @@ def finish(name: str, art_dir: str, data_dir: str, replay_run: str) -> dict:
                           "deploy_why": why, "p4": r["p4"],
                           "trades": [[int(a), int(b), round(float(c), 4)] for a, b, c in t]})
     new = keep(winners, name, replay_run, remeasured=winners + again)
+    # the list the DAILY RE-TEST hands GitHub, now holding these winners too —
+    # committed with this round's files, or tomorrow's re-test misses them
+    write_list()
     nxt = neighbours([r["cfg"] for r in ranked[:TOP]], tried(replay_run))
     nxt_path = write_round(f"{name}-next", nxt) if nxt else None
     return {"round": name, "rule_sets": len(rows), "tried_total": n_tried,
@@ -517,6 +613,8 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
         sig = (str(path), st.st_mtime, st.st_size)
     except OSError:
         sig = (str(path), None, None)
+    # and the daily re-test's file: a new re-test is on the very next ask
+    sig += (_stamp(now_path()),)
     ck = (float(from_s), float(to_s), sig, reality.get("took"), reality.get("gap"))
     measured = _TABLE.get(ck)
     if measured is None:

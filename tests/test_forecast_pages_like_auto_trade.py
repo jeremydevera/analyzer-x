@@ -122,6 +122,11 @@ def api_mod():
 def test_the_room_lists_get_the_same_size_through_their_routes(api_mod, monkeypatch):
     from tradingagents import room_backtest as rb, room_strategies as rst
 
+    # A KEPT REALITY CHECK, so the route never starts the real background
+    # refresh: left running, it kept forecast_v2_api busy into the next test
+    # file, whose live() then answered NotReady (1-2 failures in
+    # test_forecast_v2.py whenever this file ran first, Oct 07, 2026)
+    monkeypatch.setitem(f2a._LIVE, "value", {"reality": {"all": {}}})
     seen = {}
     monkeypatch.setattr(rb, "compare", lambda *a, **k: seen.setdefault("backtest", k) and {})
     monkeypatch.setattr(rst, "table", lambda *a, **k: seen.setdefault("strategies", k) and {})

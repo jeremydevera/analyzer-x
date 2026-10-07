@@ -172,6 +172,65 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-Q — the Forecast v2 tests failed 1-2 times whenever the pager tests ran first
+
+**CEO**
+
+* Nothing on your screen changed: two Forecast v2 checks in the test suite
+  failed on some runs and passed on others, which hides real failures behind
+  "it was just flaky".
+* Why: one test called the real Room strategies route, which starts the
+  Forecast page's practice-number refresh in the background; it was still
+  busy when the next file's tests asked for those numbers, so they got "still
+  being worked out".
+* What stops it now: that test hands the route a ready answer, so it never
+  starts the background refresh; three runs in a row, all green.
+
+**DEV**
+
+* `tests/test_forecast_pages_like_auto_trade.py::test_the_room_lists_get_the_same_size_through_their_routes`
+  → `api.room_strategies_route` → `_f2a._LIVE["value"] is None and not busy`
+  → `threading.Thread(target=_f2a.live_refresh)` (RCA-2026-10-07-B), which
+  sets `_LIVE["busy"]`; `forecast_v2_api.live()` then raises `NotReady`
+  (RCA-2026-10-07-M) in `tests/test_forecast_v2.py`.
+* Invariant broken: **a test never leaves a real background job running into
+  the next test** — a route test gives the route the state it needs.
+* Guard: the same test, now `monkeypatch.setitem(f2a._LIVE, "value", ...)`;
+  checked green 3 of 3 with `test_forecast_v2.py` after it.
+
+**SAW** — while testing the daily Room strategies re-test, Oct 07, 2026:
+`test_forecast_v2.py::test_the_coins_to_avoid_are_gone_and_old_sets_still_read_true`
+failed with `NotReady: the practice numbers are still being worked out after
+a restart` only when `test_forecast_pages_like_auto_trade.py` ran first.
+
+**TIMELINE**
+
+1. Oct 07, 2026 — RCA-2026-10-07-B: the Room strategies route starts the
+   practice-number refresh in a thread when none is kept.
+2. Oct 07, 2026 — RCA-2026-10-07-M: `live()` answers `NotReady` while that
+   refresh is busy, instead of crashing.
+3. Together, in one test process: the pager test's route call started the
+   real refresh, and the next file's `live()` met it busy. On a clean copy of
+   commit `7021591d5566`: 0 failures on the first (cold, 21.9 s) run, then 1
+   and 2 failures on the next two warm runs (~5 s) — a race the slow run hid.
+4. After the fix: 68 passed, three runs in a row (2.8-3.6 s each).
+
+**ROOT CAUSE** — the route test called `room_strategies_route` with no kept
+reality check, so the route did what it does after a restart: started the
+real background refresh.
+
+**WHY IT WAS NOT CAUGHT** — each file passes alone, and a cold run is slow
+enough for the refresh to finish before the next file asks; only a warm run
+of both files in one process meets the busy flag.
+
+**COST** — none in money; suite time spent on a failure that was not a fault.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_forecast_pages_like_auto_trade.py::test_the_room_lists_get_the_same_size_through_their_routes`.
+
+---
+
 ## RCA-2026-10-07-P — a clean "0 could not be" line was filed as "The site's rolling30 failed"
 
 **CEO**

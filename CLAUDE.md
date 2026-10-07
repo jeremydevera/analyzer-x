@@ -162,6 +162,7 @@ machines were idle. First asked `Sep 21, 2026`: *"i want 40"*.
 | prompt 4 / research rounds | `python -m tradingagents.room_strategies dispatch ...` deals the replay's shards by size (`research.yml` takes `shards=[..]` and `source_repo`); `... fetch` downloads every account's share into one folder; `check_complete` refuses a round with a share missing; the slices are raised until each account has at least 20 jobs (`MACHINES_PER_ACCOUNT`) — 20 shards with coins at one slice left 10 machines idle on each |
 | learn.yml, ml.yml | started by hand — start one on each account |
 | Forecast v2's daily chain and its what-ifs (`replay.yml` then `forecast.yml`, `forecast_v2_daily`) | `_dispatch_replays` names the market (`market()`, sweep_shard.eligible's rule) and deals it with `split_coins` — each account's claim board is in its own repo, so two unnamed runs would measure every coin twice; each account's base, options and what-if runs read ITS OWN replay; the merge numbers account i's machine k as i*100 + k (`forecast_v2_merge.folders`); an account refusing or red twice is dropped and named (Oct 02, 2026) |
+| Room strategies, re-tested every day (`replay.yml` then `research.yml`, `room_strategies_daily`) | the market dealt with `split_coins` exactly as Forecast v2 deals it; each account's research reads ITS OWN replay (`source_repo`), the slices raised until its 20 machines are busy; an account refusing, unsynced (`sync_fleet`) or red twice ENDS the day, named — a re-test missing half the coins is never published (Oct 07, 2026) |
 
 * A new workflow or dispatch path follows this from its first commit.
   `tests/test_forty_machines_across_two_accounts.py::test_every_cloud_press_goes_through_the_splitter`
@@ -1513,6 +1514,44 @@ first Forecast page is off the menu, still at `/forecast`.
   strategies says so.
 
 Guard: `tests/test_forecast_v2.py` (56, on one timeline; the two-account chain from `test_the_replay_is_dealt_between_both_accounts` on).
+
+## Room strategies are re-tested every day (MANDATORY — Oct 07, 2026)
+
+The operator, told that "last 4 days" on Room strategies was empty because
+every saved trade of the 992 kept rule sets ended `Oct 02, 2026 8:00am` (the
+end of the replay prompt 4 found them on): *"what do you mean saved strategy?
+it should be updated everyday justd like the backtest"*.
+`tradingagents/room_strategies_daily.py`, ticked by the API supervisor in its
+own thread:
+
+* **Once a local day at or after 1:00am** (`DUE_HOUR`), or at once when the PC
+  was off through yesterday's: `replay.yml` on both accounts from Jul 01, 2026
+  with prompt 4's groups (classic, preset), written by the LOOSEST rule a kept
+  rule set uses (`write_rule_for`: `wr=60,trades=20,tp=any,windows=7|15|30`
+  for the 992), then `research.yml` over each account's own replay with
+  `scenarios=file:research/p4/kept.json`, `output=full`.
+* **The same measure as prompt 4, proved:** the add-up (`merge`, in its own
+  process) run over prompt 4's own round-5 artifacts gave all 91 rule sets
+  trade-for-trade, month-for-month and newest-15-days identical to the store.
+  Trades are ordered by close with ties in machine order and profits kept to
+  4 places, as `research_merge` keeps them — the worst losing run is counted
+  along that order.
+* **One file, swapped whole:** `room_strategies_now.npz` beside the store.
+  `room_strategies.kept()` lays it over the never-delete store — a winner's
+  id, rules and found day never change, a re-test only replaces trades and
+  months, and only when it is NEWER than the winner's own line. The store is
+  never appended to daily (992 winners hold ~4.3M trades, ~150 MB a copy).
+* **Never half a market:** every account's share is checked whole
+  (`check_complete`) before anything is published; an account refusing,
+  unsynced or red twice ends the day, NAMED on the page, and the last whole
+  re-test stays. A day not done in 20 hours (`STALE_S`) is given up so the next
+  day can run.
+* **The list is the committed file:** a runner reads
+  `research/p4/kept.json` from main. Prompt 4's `finish` rewrites it; commit and
+  push it with the round, or the page says how many kept winners wait for the
+  next run.
+
+Guard: `tests/test_room_strategies_retest_daily.py`.
 
 ## Backtest v2 is the v1 engine in its own folder (MANDATORY — 2026-09-17)
 

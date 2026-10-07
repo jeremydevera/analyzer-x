@@ -172,6 +172,250 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-G — the Errors tab hid a power cut once the window started after the cut began, while still listing the restart that ended it
+
+**CEO**
+
+* Replayed on the tab's own windows, found while checking it for you on Oct
+  07, 2026: from about Oct 03, 2026 7:30pm until 2:06am the next morning,
+  the default "last 24 hours" view listed each room's "Runner started again"
+  at Oct 03, 2026 2:06am but not the six and a half hours with no price check
+  before it. "Last hour" at Oct 06, 2026 5:30am did the same with the
+  54-minute power cut that ended at 5:09am.
+* Why: the tab threw away every price check from before the window's start
+  and only then looked for long silences, so a silence that began before the
+  window had lost its beginning and was never found.
+* What stops it now: the tab looks for silences over everything it has read
+  and lists each one that ends inside the window, a room down for longer
+  than the window shows too, and each room's "log read" line starts early
+  enough to hold the silence listed beside it.
+
+**DEV**
+
+* `room_errors.py:258` (`report()`, HEAD 7a9a16fc) was
+  `_quiet([x for x in t.lines if x >= since], now, alive)`. The window cut
+  the INPUT of the gap measurement, so a stretch whose first scan came before
+  `since` lost that scan and no gap was found; a dead runner with no scan in
+  the window passed `_quiet` an empty list and got no open stretch either.
+  And `examined.from` (285) was `max(t.first, since)`, which reads backwards
+  ("log read Oct 06, 2026 5:15am to Oct 06, 2026 4:15am") once the last line
+  is older than the window.
+* Invariant broken: **measure first, then window the RESULT**. A stretch
+  belongs to the window where it ENDS (`room_errors.py:286-289`: `_quiet`
+  over every scan up to `now`, then `if b < since: continue`; scans after
+  `now` are dropped, so an answer as of a past moment cannot know how a
+  stretch ended). And **the span a card prints holds every row beside it**:
+  `examined.from` (`room_errors.py:323-325`) reaches back to the earliest
+  stretch listed and never past `t.last`.
+* Guard: `tests/test_the_errors_tab_shows_each_rooms_errors.py::test_an_outage_that_began_before_the_window_is_still_shown`,
+  `::test_a_runner_dead_longer_than_the_window_is_still_shown` and
+  `::test_an_answer_as_of_a_past_moment_does_not_see_the_scans_after_it`.
+  All three are red on the old file, where each answers 0 rows; the first two
+  also assert that the card's span holds each quiet row's start and never
+  reads backwards (red on the first draft of this fix).
+
+**SAW** — found while answering the operator's Oct 07, 2026 7:03am *"could
+you check the error tabs and fix the errors you see"*, on a tab built for
+their Oct 01, 2026 ask *"can you check if there has been outage for the
+tabs"*. At Oct 07, 2026 7:34am the investigation asked the site started at
+7:25am for 27 hours (`hours=27`, `api.prev.log:2746-2749`), a window the
+screen does not offer: it offers last hour, 6 hours, 24 hours, 7 days and
+everything read. It returned 0 "Runner went quiet" rows beside 6 "Runner
+started again" rows, while 28 hours (lines 2750-2751) returned 6 quiet rows,
+one per room, for the Oct 06, 2026 4:15am-5:09am power cut. Each of those 6
+restart rows is one room's group, not the cut's restart alone: each also
+counted the Oct 06, 2026 6:55pm reset (#4FC03172's also its Oct 07, 2026
+5:14am start), and four were doubled by RCA-2026-10-07-F.
+
+**TIMELINE**
+
+1. `Oct 01, 2026 10:03am`: the Errors tab ships (c9bfd01c). It measures
+   quiet stretches over the scan lines inside the window only.
+2. `Oct 02, 2026 7:32pm`: the PC loses power (Windows event 6008), and every
+   room's last scan falls between 7:30pm and 7:32pm. At `Oct 03, 2026 2:06am`
+   the supervisor starts all six again: 394 to 396 minutes with no price
+   check.
+3. Replayed with the module's own measurement: at `Oct 03, 2026 2:10am`,
+   "last 6 hours" listed each room's 2:06am restart and no quiet row for the
+   outage that had ended 4 minutes earlier. From about `Oct 03, 2026 7:30pm`
+   (24 hours after each room's last scan) until `Oct 04, 2026 2:06am`, the
+   default "last 24 hours" view did the same: the restart listed, the 6.5
+   hours before it not.
+4. `Oct 06, 2026 4:15am`: another power cut, and at `5:09am` all six rooms
+   restart. Replayed: at `Oct 06, 2026 5:30am`, "last hour" listed the 5:09am
+   restart and not the 54 minutes before it.
+5. `Oct 07, 2026 7:34am`: found by the investigation's API checks. `hours=27`
+   (from Oct 06, 2026 4:34am) gave 0 quiet rows and 6 restart rows;
+   `hours=28` gave 6 quiet rows. None of the screen's own windows showed it
+   at that moment: in "last 24 hours" both the cut and its restarts were
+   already before the window, and "last 7 days" and "everything read" listed
+   both.
+6. NEVER HAPPENED YET: a runner dead for longer than the window got no row
+   at all. A room down for 25 hours would read "no errors" in "last 24
+   hours", under a card reading backwards: "log read Oct 06, 2026 5:15am to
+   Oct 06, 2026 4:15am" (the test's state, asked at Oct 07, 2026 5:15am).
+7. Found in review of the first draft of this fix, before it shipped:
+   measuring from before the window put the row "no price check for 396
+   minutes (from Oct 02, 2026 7:30pm to Oct 03, 2026 2:06am)" beside the
+   card "log read Oct 02, 2026 8:10pm to Oct 03, 2026 2:10am", and the
+   backwards card beside the new 1,500-minute row. The card now starts at the
+   earliest stretch listed.
+8. After this fix, in tests on one timeline: at Oct 03, 2026 2:10am, "last 6
+   hours" lists "no price check for 396 minutes (from Oct 02, 2026 7:30pm to
+   Oct 03, 2026 2:06am)" beside the restart, under "log read Oct 02, 2026
+   7:30pm to Oct 03, 2026 2:10am". A runner dead for 25 hours lists 1,500
+   minutes in "last 24 hours", under "log read Oct 06, 2026 4:15am to Oct 06,
+   2026 4:15am". An answer as of Oct 03, 2026 1:00am says 330 minutes so far.
+   Cost of measuring over every scan read, on 400,000 scan stamps: 13 ms to
+   57 ms per room for "last 24 hours", against 73 ms for "everything read"
+   before.
+
+**ROOT CAUSE** — `_quiet([x for x in t.lines if x >= since], now, alive)`:
+the window cut the scan lines BEFORE the gaps between them were measured.
+
+**WHY IT WAS NOT CAUGHT** — every test that measured a quiet stretch called
+`report(hours=0)`, where `since` is 0 and the cut removes nothing. The only
+windowed test (`hours=7` in `test_filters_and_paging_happen_on_the_server`)
+had no scan lines at all, and no test read `examined`, so the backwards card
+had nothing asserting it either. This is the CLAUDE.md rule FILTER WHERE THE
+DATA IS, NEVER AFTER A WINDOW HAS BEEN TAKEN, inside one function: the window
+was taken from the measurement's input, so the measurement could not see
+what it needed. It is also pattern 6 of "Patterns that keep repeating", *a
+missing line is not "nothing happened"*: a window with no scan in it read as
+"no outage" when the missing scans WERE the outage.
+
+**COST** — none in money: every room trades on the practice account only.
+After each power cut, the default "last 24 hours" view listed the restart
+without the outage before it for as long as the cut itself had lasted,
+starting 24 hours after it began: 6 hours 36 minutes from about Oct 03, 2026
+7:30pm, about an hour from Oct 05, 2026 10:24pm, and 54 minutes from Oct 07,
+2026 4:15am. The shorter windows hid each outage sooner, whenever the tab was
+open then.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_errors_tab_shows_each_rooms_errors.py::test_an_outage_that_began_before_the_window_is_still_shown`,
+`::test_a_runner_dead_longer_than_the_window_is_still_shown` and
+`::test_an_answer_as_of_a_past_moment_does_not_see_the_scans_after_it`, all
+red on the old file.
+
+---
+
+## RCA-2026-10-07-F — two reads of one room's history at once counted every restart twice: the site started at 7:25am answered 17 for four rooms whose records hold 8
+
+**CEO**
+
+* Found while checking the Errors tab for you on Oct 07, 2026: right after
+  the site restarted at 7:25am, it answered that #4FC03172, #B2404C0B,
+  #6B08FF64 and #CC94D9FB had each been restarted 17 times in the last 7
+  days, where each room's own history holds 8. Only our checks got that
+  answer: that copy of the site was replaced 13 minutes later, and the one
+  running since 7:38am read each room's history alone, so it counts 8.
+* Why: when the site starts it reads every room's history in the background,
+  and a question asked while that first read is still going read the same
+  history again at the same moment; both reads counted every restart into
+  the same total. Your page asking every 30 seconds during that first read
+  would do the same.
+* What stops it now: only one read of a room's history runs at a time; a
+  second one waits for it and counts nothing twice, and a slow first read of
+  one room never makes another room wait.
+
+**DEV**
+
+* `room_errors.py:255` (`report()`, HEAD 7a9a16fc) called `_restarts(pid)`
+  after its `with _LOCK:` block (248-252) had closed, and `_restarts`
+  (175-203) seeked to `_STARTS[pid]["offset"]` at 191-192 but moved it only
+  at 193, after the read. Two first readers, the warm-up thread
+  (`api.py:390-398`) and the route (`api.py:1472-1487`, a plain `def` served
+  on the request thread pool), both read from byte 0 and appended every
+  `runner_start` to one shared list: 9 starts became 18 cached, and 17
+  restarts were answered.
+* Invariant broken: **a cache shared by threads is read and advanced under
+  one lock**, so the reader that moves the offset is the only one that may
+  read past it (the rule RCA-2026-09-29-B round 3 bought for
+  `merge_runtime_specs`). The lock is the ROOM's (`_starts_lock`,
+  `room_errors.py:186`), never `_LOCK`, so #4FC03172's 144 MB first read
+  holds up only #4FC03172.
+* Guard: `tests/test_the_errors_tab_shows_each_rooms_errors.py::test_two_first_reads_at_once_count_each_restart_once`
+  forces the overlap with a barrier inside the read and asserts 8 and 8 with
+  9 starts cached (red 20 of 20 runs on the old file: one reader 17, the
+  other 8, 18 cached). `::test_a_slow_first_read_of_one_rooms_record_never_holds_up_another_room`
+  is green on the old file by design and goes red if the starts share
+  `_LOCK` or one lock for every room (both tried).
+
+**SAW** — found while answering the operator's Oct 07, 2026 7:03am *"could
+you check the error tabs and fix the errors you see"*. Asked for its 7-day
+restarts (`hours=168&kind=restart`), the site started at 7:25am answered
+"Runner started again" ×17 for #4FC03172, #B2404C0B, #6B08FF64 and
+#CC94D9FB. It was never on the operator's screen. All 13 Errors requests
+that process logged were the investigation's: each puts `hours` before
+`kind`, which the page never does (it sends room, kind, hours, page), or asks
+for 27 or 28 hours, which it does not offer. The site running since 7:38am
+has logged none.
+
+**TIMELINE**
+
+1. `Oct 01, 2026 10:03am`: the Errors tab ships (c9bfd01c), with a warm-up
+   thread that reads every room at each API start. A room's log tail is read
+   under `_LOCK`; its trade record's starts are read outside it. From then
+   on, any read of a room's record during the warm-up's first read of it
+   could double that room's restarts.
+2. `Oct 07, 2026 7:25am`: the API restarts (the second of three that
+   morning, RCA-2026-10-07-C). Its warm-up starts the first read of every
+   room's trade record. The investigation's `hours=0&kind=restart` request
+   (port 49929, opened before any other request the process logged,
+   answered at `api.prev.log:358`) was the long first read beside it. Its
+   `kind=exception` and `kind=other_error` requests followed (lines 360-361).
+   The racing reads were the warm-up and those checks. In normal use, the
+   page's 30-second poll during the warm-up's first read takes the same path.
+3. Checked after that, 7-day view (`api.prev.log:1967` and `2815`): **85
+   restarts where the trade records hold 49**. #4FC03172, #B2404C0B,
+   #6B08FF64 and #CC94D9FB answered 17 each against a true 8; Main (8) and
+   #55D32617 (9) were not doubled. The 24-hour view (lines 1968 and 2694)
+   answered 12 against 7: #4FC03172 4 against 2, the other three 2 against 1.
+4. Reproduced in a fresh process by the investigation: two threads reading
+   #B2404C0B's starts on an empty cache returned 15 and 17 and left 18
+   starts cached, in 3 of 3 trials; one call alone returns 8. On a 67.9 MB
+   record with 9 starts: 18 cached and 16-17 restarts, in 5 of 5 trials.
+5. `Oct 07, 2026 7:38am`: the API restarts again, and the doubled cache goes
+   with the 7:25am process, 13 minutes after it started. The new process's
+   log holds 0 Errors requests (checked at 8:44am), so only its warm-up has
+   read the records: one reader, each start counted once.
+6. This fix, with the overlap forced in a test over a 9-start record. Before:
+   20 of 20 runs answered 17 and 8, with 18 starts cached. After: 8 and 8,
+   with 9 cached, in 20 of 20 runs.
+
+**ROOT CAUSE** — `for ts in _restarts(pid):` ran outside `_LOCK`, and
+`_restarts` moved its read offset only AFTER reading, so two first readers
+both read from byte 0 into the same list.
+
+**WHY IT WAS NOT CAUGHT** — every test of the tab called `report()` from one
+thread, so the cache was never read twice at once. In production two readers
+are normal: the route is a plain `def` (FastAPI's thread pool), the API adds
+a warm-up thread at every start, and the page polls every 30 seconds while
+that warm-up's first read takes about 30 seconds on this disk. This is the
+SECOND time the shape has bitten: RCA-2026-09-29-B round 3 was
+`merge_runtime_specs`, merged from request threads and the watcher thread and
+tested from one. Proposed for "Patterns that keep repeating": **a cache a
+route fills is filled by many threads at once**. Test it from two threads
+with the overlap FORCED (a barrier inside the read), never hoped for: a race
+left to luck passes when it should fail.
+
+**COST** — none in money, and nothing reads the count but the tab. The
+overstated count (85 shown against 49 over 7 days, 12 against 7 over 24
+hours) lived only in the process started at 7:25am, for 13 minutes until
+7:38am, and was only ever answered to the investigation's checks. The site
+running since 7:38am read each record alone.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_errors_tab_shows_each_rooms_errors.py::test_two_first_reads_at_once_count_each_restart_once`
+(red on the old file, 20 of 20 runs) and
+`::test_a_slow_first_read_of_one_rooms_record_never_holds_up_another_room`
+(red under a whole-tab lock or one lock for every room).
+
+---
+
 ## RCA-2026-10-07-D — the daily switch-on put SUPRA_USDT back on after MEXC dropped it, 110 more failures in two rooms
 
 **CEO**

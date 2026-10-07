@@ -170,37 +170,55 @@ def _ledger_path(pid: str) -> Path:
 
 
 _STARTS: dict = {}            # pid -> {"path", "offset", "starts": [ts...]}
+# ONE LOCK PER ROOM over its entry above. report() runs on the API's request
+# threads and on its warm-up thread at start, and two FIRST reads of one trade
+# record at once both read it from byte 0 into the same list: the API started
+# at Oct 07, 2026 7:25am, its warm-up racing the checks made of it, answered
+# the 7-day view with 17 restarts for #4FC03172, #B2404C0B, #6B08FF64 and
+# #CC94D9FB, whose records hold 9 starts (8 restarts) each — the page's
+# 30-second poll during the warm-up's first read takes the same path. The
+# ROOM's lock, never `_LOCK`: #4FC03172's first read is 144 MB, and every
+# other room's answer would wait behind it.
+_STARTS_LOCKS: dict = {}
+_STARTS_GUARD = threading.Lock()
+
+
+def _starts_lock(pid: str) -> threading.Lock:
+    with _STARTS_GUARD:
+        return _STARTS_LOCKS.setdefault(pid, threading.Lock())
 
 
 def _restarts(pid: str) -> list:
     """Every `runner_start` in the room's trade record after its first one:
     a runner that had to be started again. Read once, then only what was
-    appended (the record grows by tens of thousands of rows a day)."""
+    appended (the record grows by tens of thousands of rows a day), under
+    the room's own lock so no two readers take the same bytes."""
     path = _ledger_path(pid)
-    st = _STARTS.get(pid)
-    if st is None or st["path"] != path:
-        st = _STARTS[pid] = {"path": path, "offset": 0, "starts": [], "partial": b""}
-    try:
-        size = path.stat().st_size
-    except OSError:
-        return []
-    if size < st["offset"]:
-        st.update(offset=0, starts=[], partial=b"")
-    if size > st["offset"]:
-        with path.open("rb") as fh:
-            fh.seek(st["offset"])
-            data = st["partial"] + fh.read(size - st["offset"])
-        st["offset"] = size
-        lines = data.split(b"\n")
-        st["partial"] = lines.pop()
-        for line in lines:
-            if b'"runner_start"' not in line:
-                continue
-            try:
-                st["starts"].append(float(json.loads(line).get("ts") or 0))
-            except ValueError:
-                continue
-    return st["starts"][1:]
+    with _starts_lock(pid):
+        st = _STARTS.get(pid)
+        if st is None or st["path"] != path:
+            st = _STARTS[pid] = {"path": path, "offset": 0, "starts": [], "partial": b""}
+        try:
+            size = path.stat().st_size
+        except OSError:
+            return []
+        if size < st["offset"]:
+            st.update(offset=0, starts=[], partial=b"")
+        if size > st["offset"]:
+            with path.open("rb") as fh:
+                fh.seek(st["offset"])
+                data = st["partial"] + fh.read(size - st["offset"])
+            st["offset"] = size
+            lines = data.split(b"\n")
+            st["partial"] = lines.pop()
+            for line in lines:
+                if b'"runner_start"' not in line:
+                    continue
+                try:
+                    st["starts"].append(float(json.loads(line).get("ts") or 0))
+                except ValueError:
+                    continue
+        return st["starts"][1:]
 
 
 def _quiet(lines: list, now: float, alive: bool) -> list:
@@ -255,7 +273,22 @@ def report(*, room: str | None = None, kind: str | None = None, hours: float = 0
         for ts in _restarts(pid):
             if ts >= since:
                 events.append((ts, "restart", "the runner was started again", "the runner was started again"))
-        for a, b in _quiet([x for x in t.lines if x >= since], now, alive):
+        # A STRETCH IS IN THE WINDOW WHEN IT ENDS THERE, measured over every
+        # scan read. The lines used to be cut at the window's start first, so
+        # an outage that began before the window lost its first scan and
+        # vanished while the "Runner started again" row that ended it stayed
+        # (replayed: "last 24 hours" from about Oct 03, 2026 7:30pm listed
+        # each room's 2:06am restart and not the 396 minutes before it; "last
+        # hour" at Oct 06, 2026 5:30am, the 5:09am restart and not the 54
+        # minutes before it), and a runner dead for longer than the window
+        # got no row at all. Scans after `now` are left out: an answer as of
+        # a past moment cannot know how a stretch ended.
+        began = None                    # the earliest stretch this answer lists
+        for a, b in _quiet([x for x in t.lines if x <= now], now, alive):
+            if b < since:
+                continue
+            if not kind or kind == "quiet":
+                began = a if began is None else min(began, a)
             mins = int((b - a) // 60)
             events.append((b, "quiet", "no price check",
                            f"no price check for {mins} minutes (from {_fmt(a)} to {_fmt(b)})"))
@@ -278,12 +311,23 @@ def report(*, room: str | None = None, kind: str | None = None, hours: float = 0
         for ts, k in t.safety:
             if ts >= since:
                 safety[k] = safety.get(k, 0) + 1
+        # THE CARD'S "log read X to Y" HOLDS EVERY ROW IT LISTS: the window's
+        # start, or the start of the earliest stretch listed when that began
+        # before it, and never past the last line read. Measuring from before
+        # the window first printed "log read Oct 02, 2026 8:10pm to Oct 03,
+        # 2026 2:10am" beside a stretch "from Oct 02, 2026 7:30pm"; and a
+        # room whose last line is older than the window always read
+        # backwards — "log read Oct 06, 2026 5:15am to Oct 06, 2026 4:15am"
+        # at Oct 07, 2026 5:15am for a runner silent since 4:15am — now
+        # beside the row that says so.
+        seen = None
+        if t.first is not None:
+            seen = min(max(t.first, since), t.last if began is None else began, t.last)
         per_room.append({"room": pid, "running": alive, "errors": n_err,
                          "last_error": max((e[0] for e in events
                                             if not kind or e[1] == kind), default=None),
                          "safety": safety,
-                         "examined": {"from": max(t.first or 0, since) if t.first else None,
-                                      "to": t.last}})
+                         "examined": {"from": seen, "to": t.last}})
     rows = sorted(groups.values(), key=lambda g: -g["last"])
     pages = max(1, -(-len(rows) // per))
     page = min(max(1, int(page)), pages)

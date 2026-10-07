@@ -1331,7 +1331,14 @@ tighter, raw, practice, $5 x 20x):
 | #B2404C0B | 15 days | 75% | 50 |
 | #6B08FF64 | 15 days | 80% | 30 |
 | #CC94D9FB | 30 days | 80% | 30 |
+| #99E79CBA | on: last 1 day · off: DEMO 30 days | 80% | 30 inside the 1 day |
+| #C7396286 | on: last 2 days · off: DEMO 30 days | 80% | 30 inside the 2 days |
+| #1D4274C1 | on: last 3 days · off: DEMO 30 days | 80% | 30 inside the 3 days |
+| #8F0C7926 | on: last 4 days · off: DEMO 30 days | 80% | 30 inside the 4 days |
 | #DC57174E, #CC8DC54C, #B52662ED | retired, no tab | — | — |
+
+The four short-window rooms were added Oct 07, 2026 (see "Rooms that switch
+on by their last 1-4 days" below).
 
 A new room needs its runner started once (`at.start_runner()` under
 `profiles.using(id)`) after the API runs the code that lists it; the
@@ -1358,10 +1365,58 @@ their runners keep going only to finish the practice trades still open.
   window_ms=)` judges its running rows. A row without the count is
   `unmeasured` and can never be switched on by it, and until the daily update
   has written the count anywhere the pass is NOT READY (retried every 30
-  minutes), never an empty day. `window_days` is a live rule: 15 or the
-  store's 30, nothing else.
+  minutes), never an empty day. `window_days` is a live rule: a window every
+  v2 row is measured over — 1, 2, 3, 4, 15 — or the store's 30, nothing else.
 
 Guard: `tests/test_rooms_judge_on_15_days.py`.
+
+**ROOMS THAT SWITCH ON BY THEIR LAST 1-4 DAYS (Oct 07, 2026).** The operator:
+*"can you create a room strategy that has criteria that looks for past 1 day
+or 2 days or 3 days or 4 days ... (create seperate room for each)"* — 80%+ with
+30+ trades INSIDE those days (*"Then it should not show any results dont you
+get me?"*), switched off on *"the DEMO 30 DAYS figure"* (*"Refer to previous
+prompt"*). Spec: `docs/superpowers/specs/2026-10-07-short-window-rooms-design.md`.
+
+* **Measured like t15, in the same walk.** `backtest_strategy(recent_windows=
+  {days: from_ms})` → `recents`; the v2 shard asks for `br.SHORT_DAYS`;
+  every row carries `t1/w1/p1 .. t4/w4/p4` after `t15/w15/p15`
+  (`br.recent_fields`, `br.recent_keys`); the index files them
+  (`LATE_COLUMNS`) and `recent_rows(days=N)` searches them.
+* **Two windows: `judge_days`.** A room's switch-off reads `judge_days`
+  (`watcher_candidates.judge_of`, `watcher_policy.judge_days`); 0 = its
+  switch-on window, which is every room before these four, so nothing else
+  changed. It is hashed into a room's id only when it differs from
+  `window_days` (`forecast_rules.rule_id`), and travels to GitHub as `:j30`
+  on the room's line (`forecast_rules.encode`) — without it the Forecast v2
+  shard would replay the 2-day room switched off on 2 days.
+* **Never switched on what the hourly check would drop at once**
+  (RCA-2026-10-01-B across two windows, `strategy_watcher._off_at_once`): a
+  row needs its last N days at the line AND its DEMO 30 DAYS figure not under
+  the off line; the count left out is printed on the status line. The replay
+  (`watcher_replay.simulate`, `watcher_research.raw_fast(judge_grid=)`) does
+  the same, held equal to simulate by a test; `raw_trades` refuses a second
+  window rather than answer with one.
+* **Ready means numbers in the table.** `recent_filed(days)` needs the newest
+  pairs filed with a non-NULL count, not only the column: a process still on
+  the old code files NULL there.
+* **The switch-on reads the MEASURED count, the switch-off the DEMO figure.**
+  `rolling30.figure` counts back from now, `t1`..`t4` from the backtest's last
+  candle, and its record is shared by every room running a slot: at a
+  midnight pass 15 hours after the backtest ended a 1-day figure read 16
+  trades where the row measured 36. A two-window room's switch-on uses the
+  row's own `tN`; `_judged` is for the switch-off (and so the guard) only.
+* **A 1-4 day row on a backtest older than `fresh_hours` (36) is skipped and
+  counted** — "its last 1 day" from a backtest that ended days ago is not
+  the latest day.
+* **ONE search for the four rooms.** One pass over the 16 GB Backtest v2
+  table measured 283 s, and on Oct 07, 2026 one 15-day room's switch-on held
+  the shared watcher thread 14-18 minutes. `rows_index.recent_rows_any` asks
+  every short window at once; `watcher_candidates._short_rows` keeps that
+  one answer while the table's file and journal are unchanged.
+* **Prompt 4's research leaves a two-window room out of round 1**: its six
+  dials have no `judge_days`, and `raw_trades` refuses a second window.
+
+Guard: `tests/test_rooms_judge_on_short_windows.py`.
 
 ## Forecast v2 predicts; it never switches anything (MANDATORY — 2026-10-01)
 

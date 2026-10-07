@@ -301,7 +301,11 @@ def rules(sort: str = "rank", page: int = 1, base: str = "", deployable: bool = 
             named.append(fr.TP_WORDS.get(tp_rule, tp_rule))
         if window:
             rows = [s for s in rows if int(s["cfg"]["window_days"]) == int(window)]
-            named.append(f"judged on {int(window)} days")
+            w = int(window)
+            # a 1-4 day rule set is switched on by those days and off by its
+            # own judge window (Oct 07, 2026) — "judged on 2 days" was false
+            named.append(f"judged on {w} days" if w > 4 else
+                         f"switched on by its last {w} day{'' if w == 1 else 's'}")
         if max_sl:
             rows = [s for s in rows if float(s["cfg"].get("max_sl") or 99) <= float(max_sl) + 1e-9]
             named.append(f"stop {float(max_sl):g}% or tighter")

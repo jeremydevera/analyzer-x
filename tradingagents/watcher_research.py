@@ -643,8 +643,14 @@ def _tp_sl(books: list) -> tuple:
     return hit[1], hit[2]
 
 
-def raw_fast(books: list, grid: tuple, checks: list[int], cfg: dict, end_ms: int) -> dict:
-    """simulate() for a RAW rule set, from the (N, W) grid of count_grid."""
+def raw_fast(books: list, grid: tuple, checks: list[int], cfg: dict, end_ms: int,
+             judge_grid: tuple | None = None) -> dict:
+    """simulate() for a RAW rule set, from the (N, W) grid of count_grid.
+
+    `judge_grid` (Oct 07, 2026): the (N, W) grid over the switch-off's own
+    window, for a rule set whose `judge_days` is not its `window_days` (the
+    1-4 day rooms, switched off on 30). The switch-off reads it, and a row it
+    would switch off is never switched on — simulate's own two rules."""
     from tradingagents import watcher_replay as wr_
 
     c = {**wp.DEFAULTS, **cfg}
@@ -660,7 +666,16 @@ def raw_fast(books: list, grid: tuple, checks: list[int], cfg: dict, end_ms: int
     N, W = N[:, keep], W[:, keep]
     rate = np.round(100.0 * W / np.maximum(N, 1), 2)
     passon = (N >= int(c["min_trades"])) & (N > 0) & (rate >= float(c["on_winrate"]))
-    off = (N == 0) | (rate < float(c["off_winrate"]))
+    if wp.judge_days(c) != int(c.get("window_days") or 30):
+        if judge_grid is None:
+            raise ValueError(f"this rule set is switched off on {wp.judge_days(c)} days "
+                             f"and on on {int(c.get('window_days') or 30)}: pass judge_grid")
+        JN, JW = judge_grid[0][:, keep], judge_grid[1][:, keep]
+        jrate = np.round(100.0 * JW / np.maximum(JN, 1), 2)
+        off = (JN == 0) | (jrate < float(c["off_winrate"]))
+        passon &= ~off
+    else:
+        off = (N == 0) | (rate < float(c["off_winrate"]))
     on = np.zeros(len(books), dtype=bool)
     open_slot = np.full(len(books), -1, dtype=np.int64)
     ids = [b.c["id"] for b in books]
@@ -749,6 +764,10 @@ def _starts(N: np.ndarray, W: np.ndarray, checks: list, c: dict, ids_rank: np.nd
     or -1). The same state machine - a check first switches off what fell
     under the off line, then switches on what passes - with the pick order
     (best win rate, most trades, id) as one sort key."""
+    if wp.judge_days(c) != int(c.get("window_days") or 30):
+        # one grid cannot answer two windows: raw_fast(judge_grid=) can
+        raise ValueError("raw_trades replays one window; a rule set switched off on "
+                         "another (judge_days) goes through raw_fast with judge_grid")
     rate = np.round(100.0 * W / np.maximum(N, 1), 2)
     passon = (N >= int(c["min_trades"])) & (N > 0) & (rate >= float(c["on_winrate"]))
     off = (N == 0) | (rate < float(c["off_winrate"]))

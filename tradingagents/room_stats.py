@@ -301,7 +301,10 @@ def rules_of(room: str) -> dict:
 
 def rules_text(cfg: dict) -> str:
     tp = {">": "TP wider than SL", ">=": "TP at least SL", "<": "TP narrower than SL"}
-    out = [f"judged on {int(cfg.get('window_days') or 30)} days",
+    w = int(cfg.get("window_days") or 30)
+    j = int(cfg.get("judge_days") or 0)
+    out = [f"judged on {w} days" if not j or j == w else
+           f"on by its last {w} day{'' if w == 1 else 's'}, off by its last {j} days",
            f"on at {_fmt_pct(cfg.get('on_winrate'))} wins",
            f"off under {_fmt_pct(cfg.get('off_winrate'))}",
            f"at least {int(cfg.get('min_trades') or 0)} trades"]

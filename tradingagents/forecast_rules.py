@@ -119,15 +119,24 @@ def encode(cfg: dict) -> str:
     """A base rule set in one short line — `30:90:90:40:>:2` (window, on,
     off, trades, TP rule, stop cap) — because a GitHub workflow input is a
     string and ten of them is the most a dispatch may carry."""
-    return (f"{int(cfg['window_days'])}:{float(cfg['on_winrate']):g}:"
+    w = int(cfg["window_days"])
+    j = int(cfg.get("judge_days") or 0)
+    # `:j30` only on a room whose switch-off reads another window (Oct 07,
+    # 2026), so every line made before it is exactly what it was
+    return (f"{w}:{float(cfg['on_winrate']):g}:"
             f"{float(cfg.get('off_winrate', cfg['on_winrate'])):g}:{int(cfg['min_trades'])}:"
-            f"{cfg['tp_rule']}:{float(cfg.get('max_sl') or 0):g}")
+            f"{cfg['tp_rule']}:{float(cfg.get('max_sl') or 0):g}"
+            + (f":j{j}" if j and j != w else ""))
 
 
 def decode(text: str) -> dict:
-    w, on, off, mt, tp, sl = str(text).strip().split(":")
+    parts = str(text).strip().split(":")
+    w, on, off, mt, tp, sl = parts[:6]
     c = cfg_of(int(w), float(on), int(mt), tp, float(sl))
     c["off_winrate"] = float(off)
+    for extra in parts[6:]:
+        if extra.startswith("j"):
+            c["judge_days"] = int(extra[1:])
     return c
 
 
@@ -150,7 +159,10 @@ ID_KEYS =("window_days", "on_winrate", "off_winrate", "min_trades", "tp_rule",
            "max_sl", "coin_slices") + OPTION_KEYS + (
     # prompt 4's smallest target (Oct 02, 2026). A key at 0 or missing is left
     # out of the hash, so every id made before it is unchanged
-    "min_tp",)
+    "min_tp",
+    # the switch-off's own window (Oct 07, 2026: the 1-4 day rooms). Hashed
+    # only when it differs from window_days, so no id made before it moves
+    "judge_days")
 
 
 def rule_id(cfg: dict) -> str:
@@ -160,9 +172,11 @@ def rule_id(cfg: dict) -> str:
     for k in ("on_winrate", "off_winrate", "max_sl", "max_cost", "day_loss", "min_tp"):
         if k in key:
             key[k] = float(key[k])
-    for k in ("window_days", "min_trades", "coin_slices"):
+    for k in ("window_days", "min_trades", "coin_slices", "judge_days"):
         if k in key:
             key[k] = int(key[k])
+    if "judge_days" in key and key["judge_days"] == int(cfg.get("window_days") or 30):
+        del key["judge_days"]            # the same window twice is the one window
     return hashlib.sha1(json.dumps(key, sort_keys=True).encode()).hexdigest()[:8].upper()
 
 
@@ -174,13 +188,17 @@ TP_WORDS = {">": "TP wider than SL", "1.5x": "TP at least 1.5x SL", "2x": "TP at
 def words(cfg: dict) -> str:
     """The rule set in the operator's words: "90% wins, 40+ trades in 30
     days, TP wider than SL, stop 2% or tighter"."""
+    w = int(cfg["window_days"])
     out = [f"{float(cfg['on_winrate']):g}% wins",
-           f"{int(cfg['min_trades'])}+ trades in {int(cfg['window_days'])} days",
+           f"{int(cfg['min_trades'])}+ trades in {w} day{'' if w == 1 else 's'}",
            TP_WORDS.get(str(cfg["tp_rule"]), str(cfg["tp_rule"]))]
     if float(cfg.get("max_sl") or 0) > 0:
         out.append(f"stop {float(cfg['max_sl']):g}% or tighter")
     if float(cfg.get("min_tp") or 0) > 0:
         out.append(f"target {float(cfg['min_tp']):g}% or wider")
+    j = int(cfg.get("judge_days") or 0)
+    if j and j != w:
+        out.append(f"switched off on its last {j} days")
     for key, val, w in _LABELS:
         if key == "coin_slices":
             continue
@@ -204,8 +222,11 @@ def deployable(cfg: dict) -> tuple[bool, str]:
     if str(cfg.get("tp_rule")) in ("1.5x", "2x"):
         # watcher_policy.passes_on knows ">", ">=", "=", "<" and "any" only
         extra.insert(0, TP_WORDS[str(cfg["tp_rule"])])
-    if int(cfg.get("window_days") or 30) not in (15, 30):
-        # a room judges on its own last 15 or 30 days (strategy_watcher.set_cfg)
+    from tradingagents import backtest_report as br
+
+    if int(cfg.get("window_days") or 30) not in br.RECENT_WINDOWS + (30,):
+        # a room judges on a window every v2 row is measured over: its last
+        # 1, 2, 3, 4 or 15 days, or the store's 30 (strategy_watcher.set_cfg)
         extra.insert(0, f"a {int(cfg['window_days'])}-day window")
     if extra:
         return False, "needs a new switch before a room can run it: " + "; ".join(extra)

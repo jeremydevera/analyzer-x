@@ -3796,6 +3796,7 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                       sig_idx=None,
                       fine: tuple | None = None,
                       recent_from_ms: int | None = None,
+                      recent_windows: dict | None = None,
                       reenter: bool = False) -> dict:
     """Run one strategy's exact live rules over a candle history.
 
@@ -3861,6 +3862,11 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     that judges rows on their last 15 days (#55D32617, Sep 30, 2026) reads a
     measured count, never one estimated from the 30-day totals. ``None``
     leaves the result exactly as before.
+
+    ``recent_windows`` (``{days: from_ms}``) counts the same way from each of
+    several instants in the same walk — ``recents: {days: {trades, wins,
+    profit}}`` — for the rooms that switch on by a row's last 1, 2, 3 or 4
+    days (Oct 07, 2026). ``None`` leaves the result exactly as before.
     """
     if slices is not None:
         if not slices:
@@ -3934,8 +3940,10 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     n_unclear = 0
     rec_n = rec_w = 0
     rec_p = 0.0
+    # each extra window: [days, from_ms, trades, wins, profit]
+    _recs = [[int(d), int(ms), 0, 0, 0.0] for d, ms in sorted((recent_windows or {}).items())]
     _rec_ms = (df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
-               if recent_from_ms is not None else None)
+               if recent_from_ms is not None or _recs else None)
     # Bar timestamps in EPOCH MILLISECONDS, converted through datetime64[ms]
     # rather than by dividing a raw int64. MEXC's frames come back as
     # datetime64[s], so `astype("int64") // 1_000_000` read 1,754 instead of
@@ -4328,11 +4336,17 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
         trades += 1
         wins += pnl > 0
         profit += pnl
-        if _rec_ms is not None and (int(_exit_min) if _exit_min is not None
-                                    else int(_rec_ms[j])) >= recent_from_ms:
-            rec_n += 1
-            rec_w += pnl > 0
-            rec_p += pnl
+        if _rec_ms is not None:
+            _x_ms = int(_exit_min) if _exit_min is not None else int(_rec_ms[j])
+            if recent_from_ms is not None and _x_ms >= recent_from_ms:
+                rec_n += 1
+                rec_w += pnl > 0
+                rec_p += pnl
+            for _rw in _recs:
+                if _x_ms >= _rw[1]:
+                    _rw[2] += 1
+                    _rw[3] += pnl > 0
+                    _rw[4] += pnl
         worst_trade = min(worst_trade, pnl)
         equity += pnl
         peak = max(peak, equity)
@@ -4413,7 +4427,10 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             "worst_month": round(min(monthly.values()), 2) if monthly else 0.0,
             **({"recent": {"trades": rec_n, "wins": int(rec_w),
                            "profit": round(rec_p, 2)}}
-               if recent_from_ms is not None else {})}
+               if recent_from_ms is not None else {}),
+            **({"recents": {d: {"trades": n_, "wins": int(w_), "profit": round(p_, 2)}
+                            for d, _ms, n_, w_, p_ in _recs}}
+               if recent_windows is not None else {})}
 
 
 def daily_pnl(dry: bool | None = None) -> dict:

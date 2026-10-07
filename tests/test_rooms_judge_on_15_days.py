@@ -139,7 +139,8 @@ def test_a_15_day_room_reads_the_15_day_figures_never_the_30():
     assert old["unmeasured"] and old["trades"] == 0, "not measured is not a pass"
 
 
-def test_the_watcher_takes_15_or_30_days_and_nothing_else(tmp_path, monkeypatch):
+def test_the_watcher_takes_15_or_30_days_and_no_unmeasured_window(tmp_path, monkeypatch):
+    """1-4 are measured windows too since Oct 07, 2026 (test_rooms_judge_on_short_windows); 7 is not."""
     from tradingagents import strategy_watcher as sw
     monkeypatch.setattr(sw, "_state_path", lambda: tmp_path / "w.json")
     monkeypatch.setattr(sw, "_log_path", lambda: tmp_path / "w.jsonl")
@@ -295,6 +296,10 @@ def _file_into_table(home, rows, *, with_t15):
     for f in rows.glob("*.json"):
         st = f.stat()
         con.execute("INSERT INTO pairs VALUES (?,?,?)", (f.stem, st.st_mtime, st.st_size))
+        # a filed pair holds its rows, and a row measured with the count
+        # holds it in the table (recent_filed asks for a value, Oct 07, 2026)
+        con.execute("INSERT INTO rows VALUES (?" + (", ?" if with_t15 else "") + ")",
+                    (f.stem, 50) if with_t15 else (f.stem,))
     con.commit()
     con.close()
 

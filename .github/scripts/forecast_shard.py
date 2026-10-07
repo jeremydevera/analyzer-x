@@ -50,6 +50,7 @@ from tradingagents import (
     forecast_rules as fr,
     forecast_v2 as f2,
     room_stats as rs_,
+    watcher_policy as wp,
     watcher_replay as wr,
     watcher_research as rs,
 )
@@ -121,7 +122,11 @@ def replay(books, meta, grids, checks, cfg, end_ms, ctx):
     sub = [books[i] for i in idx]
     # the shape and the row options are already applied by row_mask
     walk = {**cfg, "tp_rule": "any", "max_sl": 0.0, "coin_slices": 0}
-    res = rs.raw_fast(sub, (n_all[:, idx], w_all[:, idx]), checks, walk, end_ms)
+    # a room switched off on another window (the 1-4 day rooms, Oct 07, 2026:
+    # off on 30 days) is replayed on that window's grid too
+    jd = wp.judge_days(cfg)
+    jg = None if jd == int(cfg["window_days"]) else (grids[jd][0][:, idx], grids[jd][1][:, idx])
+    res = rs.raw_fast(sub, (n_all[:, idx], w_all[:, idx]), checks, walk, end_ms, judge_grid=jg)
     slots = res["slots"]
     if cfg.get("own_market") or cfg.get("no_ny_morning"):
         for s in slots:
@@ -377,7 +382,8 @@ def main() -> int:
     if any(c.get("stop_vs_move") for c in sets):
         ctx["move"] = normal_moves({m["coin"] for m in meta})
     grids = {wd: rs.count_grid(books, checks, wd * wr.DAY_MS)
-             for wd in sorted({int(c["window_days"]) for c in sets})}
+             for wd in sorted({int(c["window_days"]) for c in sets}
+                              | {wp.judge_days(c) for c in sets})}
     log(f"{len(sets)} rule sets, {len(checks)} checks, stage {stage}")
     arrays: dict = {}
     info = {"shard": shard, "stage": stage, "end_ms": end_ms, "start": start,

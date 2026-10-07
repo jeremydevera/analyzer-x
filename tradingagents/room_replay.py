@@ -962,6 +962,8 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
     _check_room(room)
     cfg = rules_for(room)
     window_ms = int(cfg["window_days"]) * DAY_MS
+    # the switch-off's own window (`judge_days`, Oct 07, 2026)
+    judge_ms = wp.judge_days(cfg) * DAY_MS
     start_ms = _midnight(from_day)
     end_ms = min(_next_midnight(to_day) - 1, int(now * 1000))
     if end_ms < start_ms:
@@ -1065,7 +1067,7 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
                           for why in [follow["refuse"](f["id"], t)] if why]
         sim["follow_ends"] = follow.get("ends") or {}
     out = _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta,
-                    books, sim, pr, cap, window_ms, sched)
+                    books, sim, pr, cap, window_ms, sched, judge_ms=judge_ms)
     out["from_day"], out["to_day"] = str(from_day), str(to_day)
     return out
 
@@ -1417,13 +1419,24 @@ def _in_range(t, start_ms, end_ms) -> bool:
     return bool(t[3]) and start_ms <= int(t[4]) <= end_ms
 
 
+def _event_row(book, e: dict, window_ms: int, judge_ms: int) -> dict:
+    """The figures a switch event was DECIDED on: a switch-off over the
+    window the switch-off reads (`judge_days`: 30 for the 1-4 day rooms), a
+    switch-on over the switch-on window — never 2-day figures printed beside
+    a 30-day reason."""
+    return book.row(e["at"], judge_ms if e["action"] == "off" else window_ms) or {}
+
+
 def _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta, books,
-              sim, pr, cap, window_ms, sched) -> dict:
+              sim, pr, cap, window_ms, sched, judge_ms: int | None = None) -> dict:
+    judge_ms = window_ms if judge_ms is None else int(judge_ms)
+    # a day is judged in full only when BOTH windows' history is known
+    known_ms = max(window_ms, judge_ms)
     day_keys = [wr.day_of(m) for m in wr.local_midnights(start_ms, end_ms)]
     # ---- the switch events, with the numbers each was judged on
     events = []
     gone = "the backtest store no longer holds this row"
-    quiet = f"no trade closed in its last {wp.window_words(cfg)}"
+    quiet = f"no trade closed in its last {wp.judge_words(cfg)}"
     for s in sim["slots"]:
         # watcher_replay's book has no row for a window without a trade, and
         # judge() then speaks of a row the STORE lost; here the store holds
@@ -1434,7 +1447,7 @@ def _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta
         if e["action"] == "off" and e["why"] == gone:
             e = {**e, "why": quiet}
         c = meta[e["id"]]
-        row = books[e["id"]].row(e["at"], window_ms) or {}
+        row = _event_row(books[e["id"]], e, window_ms, judge_ms)
         events.append({"at": e["at"], "day": wr.day_of(e["at"]), "action": e["action"],
                        "id": e["id"], "coin": c["coin"], "tf": c["tf"], "signal": c["signal"],
                        "th": c["th"], "tp": c["tp"], "sl": c["sl"], "group": c["group"],
@@ -1476,7 +1489,7 @@ def _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta
     for t in p_trades:
         by_day_pr[wr.day_of(t["exit_ms"])].append(float(t["pnl"]))
     ev_by_day = collections.Counter((e["day"], e["action"]) for e in events)
-    cov = _coverage(lists, window_ms)
+    cov = _coverage(lists, known_ms)
     for key in day_keys:
         d0 = _midnight(key)
         d1 = min(_next_midnight(key), end_ms + 1)
@@ -1488,7 +1501,7 @@ def _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta
         bt_total += sum(by_day_bt.get(key, []))
         row = {"day": key, "at": d0, "on": ev_by_day.get((key, "on"), 0),
                "off": ev_by_day.get((key, "off"), 0), "running": run_n, **bt,
-               "total": round(bt_total, 2), **_day_coverage(cov, d0, window_ms)}
+               "total": round(bt_total, 2), **_day_coverage(cov, d0, known_ms)}
         if p_start is not None and d1 > p_start:
             pd_ = _side(by_day_pr.get(key, []))
             pr_total += sum(by_day_pr.get(key, []))
@@ -1498,7 +1511,7 @@ def _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta
             row["practice"] = None           # the room did not exist yet: no column
             row["reconcile"] = None
         days.append(row)
-    full_from = cov["full_from"](day_keys, window_ms)
+    full_from = cov["full_from"](day_keys, known_ms)
     bt_side = _side([x[1] for x in traded])
     pr_side = _side([float(t["pnl"]) for t in p_trades])
     # THE SAME HOURS AS PRACTICE: the replay can start before the room did
@@ -1532,14 +1545,14 @@ def _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta
     no_list = collections.Counter(_why_short(r.get("why")) for r in lists.values()
                                   if r.get("why"))
     notes = _notes(room, cfg, cinfo, listed, no_list, cov, full_from, pr, cap, start_ms,
-                   end_ms, rec_tot, day_keys, window_ms)
+                   end_ms, rec_tot, day_keys, known_ms)
     notes.insert(0, _hindsight(days, cov))
     return {"room": room, "name": "Main" if room == profiles.MAIN else f"#{room}",
             "computed_at": now, "start_ms": start_ms, "end_ms": end_ms,
             "cfg": {k: cfg.get(k) for k in ("on_winrate", "off_winrate", "min_trades",
                                             "tp_rule", "max_sl", "min_tp", "window_days",
-                                            "raw", "max_new_per_day", "max_slots",
-                                            "max_per_coin", "cooldown_days")},
+                                            "judge_days", "raw", "max_new_per_day",
+                                            "max_slots", "max_per_coin", "cooldown_days")},
             "coin_cap": cap, "margin": BASE_MARGIN, "leverage": _leverage(),
             "schedule": {"checks": len(sched), "on_passes": sum(1 for s in sched if s[2]),
                          "off_every_s": _off_every_s(), "raw": bool(cfg.get("raw"))},
@@ -1657,8 +1670,9 @@ def _hindsight(days: list, cov: dict) -> str:
 def _notes(room, cfg, cinfo, listed, no_list, cov, full_from, pr, cap, start_ms, end_ms,
            rec_tot, day_keys, window_ms) -> list:
     """The data limits, every one derived from what was measured (spec, "Data
-    limits": printed on the screen, never hidden)."""
-    w = int(cfg["window_days"])
+    limits": printed on the screen, never hidden). `window_ms` is the window a
+    day must hold in full: the longer of the switch-on and switch-off windows."""
+    w = int(window_ms) // DAY_MS
     n = len(listed)
     out = []
     if cinfo.get("limit"):

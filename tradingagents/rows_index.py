@@ -74,11 +74,16 @@ COLS = ("id", "coin", "tf", "signal", "th", "sl", "tp", "rr", "sizing", "lev",
         # Backtest v2 (Sep 30, 2026): trades, wins and profit of the row's LAST
         # 15 DAYS (backtest_report.RECENT_DAYS), for the rooms that judge on
         # 15 days. NULL on every row measured before — "not measured", never 0.
-        "t15", "w15", "p15")
+        "t15", "w15", "p15",
+        # ...and of its LAST 1, 2, 3 AND 4 DAYS (Oct 07, 2026,
+        # backtest_report.SHORT_DAYS), for the rooms that switch on by them
+        "t1", "w1", "p1", "t2", "w2", "p2", "t3", "w3", "p3", "t4", "w4", "p4")
 _NUMERIC = {"th", "sl", "tp", "rr", "base", "notional", "winrate", "profit",
-            "funding", "h1", "h2", "worst", "dd", "cost_of_tp", "rt", "p15"}
+            "funding", "h1", "h2", "worst", "dd", "cost_of_tp", "rt", "p15",
+            "p1", "p2", "p3", "p4"}
 _INTEGER = {"lev", "trades", "wins", "losses", "green", "months", "liqs",
-            "days", "bars", "stop_reachable", "unclear", "t15", "w15"}
+            "days", "bars", "stop_reachable", "unclear", "t15", "w15",
+            "t1", "w1", "t2", "w2", "t3", "w3", "t4", "w4"}
 
 _SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS rows (
@@ -696,7 +701,9 @@ def _kept(r: dict) -> bool:
 # named t15" — so every write adds what is missing first. ADD COLUMN is
 # metadata only; PRAGMA table_info is a schema read.
 LATE_COLUMNS = (("unclear", "INTEGER"), ("res", "TEXT"),
-                ("t15", "INTEGER"), ("w15", "INTEGER"), ("p15", "REAL"))
+                ("t15", "INTEGER"), ("w15", "INTEGER"), ("p15", "REAL")) + tuple(
+    # the short windows (Oct 07, 2026)
+    (f"{k}{d}", "REAL" if k == "p" else "INTEGER") for d in (1, 2, 3, 4) for k in "twp")
 
 
 def _late_columns(con: sqlite3.Connection) -> None:
@@ -4069,24 +4076,70 @@ RECENT_TP = {">": " AND tp > sl", ">=": " AND tp >= sl", "<": " AND tp < sl",
              "=": " AND abs(tp - sl) < 0.000001", "any": ""}
 
 
+def recent_sql(days: int = 15) -> str:
+    """RECENT_SQL over another measured window's own columns: `t2`/`w2` for
+    the 2-day room. Only a window every v2 row is measured over
+    (backtest_report.RECENT_WINDOWS) — the column name comes from that list,
+    never from the caller's text."""
+    from tradingagents import backtest_report as br
+
+    t, w, _p = br.recent_keys(days)
+    return RECENT_SQL.replace("t15", t).replace("w15", w)
+
+
 def recent_rows(*, min_trades: int, min_winrate: float, max_sl: float = 0,
-                tp_rule: str = ">", min_tp: float = 0, db_path=None) -> list[dict]:
-    """Every flat row whose LAST 15 DAYS (`t15`/`w15`, backtest_report.
-    RECENT_DAYS) meet the floors and the target rule (`tp_rule`, `min_tp`), stop at or under
-    `max_sl` when given (Sep 30, 2026: the 15-day rooms). A row measured
+                tp_rule: str = ">", min_tp: float = 0, db_path=None,
+                days: int = 15) -> list[dict]:
+    """Every flat row whose LAST `days` DAYS (`t15`/`w15` by default,
+    backtest_report.RECENT_DAYS; `t1`..`t4` for the short-window rooms, Oct 07,
+    2026) meet the floors and the target rule (`tp_rule`, `min_tp`), stop at or
+    under `max_sl` when given (Sep 30, 2026: the 15-day rooms). A row measured
     before the columns existed has NULL there and is never a match — not
     measured is not a pass. One pass over the table: this is the watcher's
     once-a-day background search, never a screen's query."""
+    from tradingagents import backtest_report as br
+
     if tp_rule not in RECENT_TP:
         raise ValueError(f"unknown target rule {tp_rule!r}; use one of {sorted(RECENT_TP)}")
-    sql = (RECENT_SQL + RECENT_TP[tp_rule] + (" AND sl <= ?" if max_sl else "")
+    col = br.recent_keys(days)[0]
+    sql = (recent_sql(days) + RECENT_TP[tp_rule] + (" AND sl <= ?" if max_sl else "")
            + (" AND tp >= ?" if min_tp else ""))
     args = ([int(min_trades), float(min_winrate)] + ([float(max_sl)] if max_sl else [])
             + ([float(min_tp)] if min_tp else []))
     with _open(readonly=True, db_path=db_path) as con:
         have = {r[1] for r in con.execute("PRAGMA table_info(rows)")}
-        if "t15" not in have:
+        if col not in have:
             return []
+        con.row_factory = sqlite3.Row
+        return [{k: r[k] for k in r.keys()} for r in con.execute(sql, args)]  # noqa: SIM118
+
+
+def recent_rows_any(*, days_list, min_trades: int, min_winrate: float, max_sl: float = 0,
+                    tp_rule: str = ">", min_tp: float = 0, db_path=None) -> list[dict]:
+    """ONE pass for several measured windows at once (Oct 07, 2026): every
+    flat row that meets the floors on ANY of `days_list`. The four 1-4 day
+    rooms share their floors, and one pass over the 16 GB Backtest v2 table
+    took 283 s on this PC — so the first room's pass answers all four and each
+    reads its own window out of the rows (watcher_candidates._short_rows). A
+    window whose columns the table does not have yet is left out of the
+    search; none at all is no rows."""
+    from tradingagents import backtest_report as br
+
+    if tp_rule not in RECENT_TP:
+        raise ValueError(f"unknown target rule {tp_rule!r}; use one of {sorted(RECENT_TP)}")
+    keys = [br.recent_keys(d) for d in days_list]        # every window, validated
+    with _open(readonly=True, db_path=db_path) as con:
+        have = {r[1] for r in con.execute("PRAGMA table_info(rows)")}
+        keys = [k for k in keys if k[0] in have and k[1] in have]
+        if not keys:
+            return []
+        # the column names come from backtest_report.recent_keys, never the caller
+        any_window = " OR ".join(f"({t} >= ? AND {w} * 100.0 >= ? * {t})" for t, w, _p in keys)
+        sql = (f"SELECT * FROM rows WHERE ({any_window}) "
+               "AND (sizing = 'flat' OR sizing IS NULL)" + RECENT_TP[tp_rule]
+               + (" AND sl <= ?" if max_sl else "") + (" AND tp >= ?" if min_tp else ""))
+        args = ([x for _k in keys for x in (int(min_trades), float(min_winrate))]
+                + ([float(max_sl)] if max_sl else []) + ([float(min_tp)] if min_tp else []))
         con.row_factory = sqlite3.Row
         return [{k: r[k] for k in r.keys()} for r in con.execute(sql, args)]  # noqa: SIM118
 

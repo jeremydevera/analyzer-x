@@ -962,6 +962,11 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                                 fine=fine,
                                 # the row's last 15 days too (br.RECENT_DAYS)
                                 recent_from_ms=(int(ts[-1]) - br.RECENT_DAYS * 86_400_000
+                                                if len(ts) else None),
+                                # and its last 1, 2, 3 and 4 days, for the
+                                # rooms that switch on by them (Oct 07, 2026)
+                                recent_windows=({d: int(ts[-1]) - d * 86_400_000
+                                                 for d in br.SHORT_DAYS}
                                                 if len(ts) else None))
                         except Exception:
                             continue

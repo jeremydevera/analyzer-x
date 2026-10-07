@@ -390,7 +390,12 @@ function Rules({ s }: { s: F2Summary }) {
           <option value="any">any TP</option>
         </select>
         <select aria-label="days judged" className={field} value={q.window ?? 0} onChange={(e) => set({ window: Number(e.target.value) })}>
-          <option value={0}>15 or 30 days</option>
+          <option value={0}>any window</option>
+          {/* the 1-4 day rooms' rule sets (Oct 07, 2026): on by those days, off by 30 */}
+          <option value={1}>on by 1 day</option>
+          <option value={2}>on by 2 days</option>
+          <option value={3}>on by 3 days</option>
+          <option value={4}>on by 4 days</option>
           <option value={15}>15 days</option>
           <option value={30}>30 days</option>
         </select>

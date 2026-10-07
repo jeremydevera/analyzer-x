@@ -134,17 +134,28 @@ def _match(rows: list[dict], want: dict) -> dict | None:
 
 
 def window_of(cfg: dict | None) -> int:
-    """The days a room judges rows on: 15 (backtest_report.RECENT_DAYS, the
-    row's own t15/w15/p15) or the store's 30."""
+    """The days a room switches rows ON by: a window every v2 row carries its
+    own count for (backtest_report.RECENT_WINDOWS — the last 1, 2, 3 or 4
+    days, Oct 07, 2026, or 15, `t15`/`w15`/`p15`) or the store's 30."""
     w = int((cfg or {}).get("window_days") or 30)
-    return br.RECENT_DAYS if w == br.RECENT_DAYS else 30
+    return w if w in br.RECENT_WINDOWS else 30
+
+
+def judge_of(cfg: dict | None) -> int:
+    """The days a room switches rows OFF by (`judge_days`, Oct 07, 2026: the
+    1-4 day rooms switch on by their last few days and off by "the DEMO 30
+    DAYS figure"). 0 — every room before it — is the switch-on window."""
+    j = int((cfg or {}).get("judge_days") or 0)
+    if not j:
+        return window_of(cfg)
+    return j if j in br.RECENT_WINDOWS else 30
 
 
 def _fresh(coin: str, tf: str, r: dict, last_ms: float, window: int = 30) -> dict:
-    """The row's figures over the room's window. On 15 days they are the
-    row's own last-15-day count; a row measured before that count existed is
-    `unmeasured` (0 trades, so it can never be switched on by it) — never
-    its 30-day totals relabelled as 15."""
+    """The row's figures over the room's window. On 15 days (or 1-4) they are
+    the row's own last-15-day (last-N-day) count; a row measured before that
+    count existed is `unmeasured` (0 trades, so it can never be switched on by
+    it) — never its 30-day totals relabelled as 15."""
     out = {"id": br.row_code(coin, tf, r["signal"], float(r.get("th") or 0),
                              float(r["sl"]), float(r["tp"]), "flat", res="1m"),
            "coin": coin, "tf": tf, "signal": r["signal"],
@@ -154,8 +165,9 @@ def _fresh(coin: str, tf: str, r: dict, last_ms: float, window: int = 30) -> dic
            "winrate": float(r["winrate"]), "profit": float(r["profit"]),
            "gate": r.get("gate") or "", "cost_of_tp": r.get("cost_of_tp"),
            "measured_ms": last_ms, "window_days": 30}
-    if window == br.RECENT_DAYS:
-        n, w = r.get("t15"), r.get("w15")
+    if window in br.RECENT_WINDOWS:
+        tk, wk, pk = br.recent_keys(window)
+        n, w = r.get(tk), r.get(wk)
         if n is None or w is None:
             out.update(trades=0, wins=0, losses=0, winrate=0.0, profit=0.0,
                        unmeasured=True, window_days=window)
@@ -163,7 +175,7 @@ def _fresh(coin: str, tf: str, r: dict, last_ms: float, window: int = 30) -> dic
             n, w = int(n), int(w)
             out.update(trades=n, wins=w, losses=n - w,
                        winrate=round(100 * w / n, 2) if n else 0.0,
-                       profit=float(r.get("p15") or 0.0), window_days=window)
+                       profit=float(r.get(pk) or 0.0), window_days=window)
     return out
 
 
@@ -174,7 +186,7 @@ def raw_candidates(cfg: dict) -> dict:
     criteria in the table and deploy it")."""
     from tradingagents import rows_index as ri
 
-    if window_of(cfg) == br.RECENT_DAYS:
+    if window_of(cfg) != 30:
         return _raw_recent(cfg)
     try:
         got = []
@@ -199,11 +211,13 @@ def raw_candidates(cfg: dict) -> dict:
                    f"trades and stop floors with TP at least as wide as SL"}
 
 
-def recent_measured(sample: int = 5) -> bool:
-    """Has the daily update written the 15-day count yet? The newest pair
-    files are the answer: a row carries t15/w15/p15 as its LAST keys
-    (backtest_report.recent_fields), so the file's tail names them. A few
-    stats and 512-byte reads, never a pass over the table."""
+def recent_measured(sample: int = 5, days: int = br.RECENT_DAYS) -> bool:
+    """Has the daily update written the `days` count yet (15, or 1-4 since
+    Oct 07, 2026)? The newest pair files are the answer: a row carries
+    t15/w15/p15 then t1..p4 as its LAST keys (backtest_report.recent_fields),
+    so the file's tail names them. A few stats and 512-byte reads, never a
+    pass over the table."""
+    tag = f'"{br.recent_keys(days)[0]}"'.encode()
     try:
         files = sorted((Path(stores.V2.home) / "rows").glob("*.json"),
                        key=lambda f: f.stat().st_mtime, reverse=True)[:sample]
@@ -213,15 +227,15 @@ def recent_measured(sample: int = 5) -> bool:
         try:
             with f.open("rb") as fh:
                 fh.seek(max(0, f.stat().st_size - 512))
-                if b'"t15"' in fh.read():
+                if tag in fh.read():
                     return True
         except OSError:
             continue
     return False
 
 
-def recent_filed(sample: int = 5) -> bool:
-    """Does the TABLE carry the 15-day count yet — not only the pair files?
+def recent_filed(sample: int = 5, days: int = br.RECENT_DAYS) -> bool:
+    """Does the TABLE carry the `days` count yet — not only the pair files?
 
     RCA-2026-10-01-A. `recent_measured()` reads the newest pair FILES, and
     the daily run lands those live, an hour or more before its collect
@@ -232,8 +246,11 @@ def recent_filed(sample: int = 5) -> bool:
 
     Ready = the column exists AND the `sample` newest pair files are filed in
     the table at their current mtime and size (the `pairs` table that
-    `rows_index.stale_pairs` reads). A few primary-key lookups, never a pass
-    over the rows."""
+    `rows_index.stale_pairs` reads) AND at least one of them has the count IN
+    the table, not NULL (Oct 07, 2026: a process still on the code before the
+    1-4 day columns files a pair with NULL there while another has already
+    added the column — the column alone said ready over an empty search). A
+    few primary-key and `rows_pair` lookups, never a pass over the rows."""
     import sqlite3
 
     try:
@@ -244,7 +261,8 @@ def recent_filed(sample: int = 5) -> bool:
         con = sqlite3.connect(f"file:{stores.V2.rows_db}?mode=ro", uri=True,
                               timeout=30)
         try:
-            if "t15" not in {r[1] for r in con.execute("PRAGMA table_info(rows)")}:
+            col = br.recent_keys(days)[0]
+            if col not in {r[1] for r in con.execute("PRAGMA table_info(rows)")}:
                 return False
             for f in files:
                 st = f.stat()
@@ -252,6 +270,9 @@ def recent_filed(sample: int = 5) -> bool:
                                   (f.stem,)).fetchone()
                 if not got or (got[0], got[1]) != (st.st_mtime, st.st_size):
                     return False
+            if not any(con.execute(f"SELECT 1 FROM rows WHERE pair = ? AND {col} IS NOT NULL "
+                                   f"LIMIT 1", (f.stem,)).fetchone() for f in files):
+                return False
         finally:
             con.close()
     except Exception:                                          # noqa: BLE001
@@ -259,38 +280,85 @@ def recent_filed(sample: int = 5) -> bool:
     return True
 
 
-def _raw_recent(cfg: dict) -> dict:
-    """RAW on the last 15 days: every row whose own t15/w15 meet the floors.
-    Until the daily update has measured the count at all, the pass is NOT
-    READY (tried again every 30 minutes), never an empty day: a once-a-day
-    pass that ran before the count landed would otherwise wait a whole day."""
+# THE 1-4 DAY ROOMS SHARE ONE PASS (Oct 07, 2026): the last search over the
+# Backtest v2 table, by the table's state and the floors it was asked
+_SHORT_PASS: dict = {}
+
+
+def _table_stamp(db) -> tuple:
+    """What changes when the table does: its file's and its journal's time
+    and size. A search is reused only while both are unchanged."""
+    out = []
+    for p in (Path(db), Path(f"{db}-wal")):
+        try:
+            st = p.stat()
+            out.append((st.st_mtime_ns, st.st_size))
+        except OSError:
+            out.append(None)
+    return tuple(out)
+
+
+def _short_rows(cfg: dict, days: int, db) -> list[dict]:
+    """The table rows whose own last `days` days meet the room's floors —
+    from ONE pass over the table shared by every 1-4 day room with the same
+    floors (`rows_index.recent_rows_any`; one pass took 283 s on this PC)."""
     from tradingagents import rows_index as ri
 
-    if not recent_measured():
+    floors = (int(cfg["min_trades"]), float(cfg["on_winrate"]),
+              float(cfg.get("max_sl") or 0), str(cfg.get("tp_rule") or ">"),
+              float(cfg.get("min_tp") or 0))
+    key = (str(db), _table_stamp(db), floors)
+    rows = _SHORT_PASS.get(key)
+    if rows is None:
+        rows = ri.recent_rows_any(days_list=br.SHORT_DAYS, min_trades=floors[0],
+                                  min_winrate=floors[1], max_sl=floors[2],
+                                  tp_rule=floors[3], min_tp=floors[4], db_path=db)
+        _SHORT_PASS.clear()                  # one search kept, never a growing pile
+        _SHORT_PASS[key] = rows
+    t, w, _p = br.recent_keys(days)
+    return [r for r in rows if r.get(t) is not None and r.get(w) is not None
+            and int(r[t]) >= floors[0] and int(r[w]) * 100.0 >= floors[1] * int(r[t])]
+
+
+def _raw_recent(cfg: dict) -> dict:
+    """RAW on the room's own short window: every row whose own last-15-day
+    (or, since Oct 07, 2026, last 1-4 day) count meets the floors. Until the
+    daily update has measured THAT count, the pass is NOT READY (tried again
+    every 30 minutes), never an empty day: a once-a-day pass that ran before
+    the count landed would otherwise wait a whole day."""
+    from tradingagents import rows_index as ri
+
+    days = window_of(cfg)
+    if days == 30:                       # a caller that meant the store's window
+        days = br.RECENT_DAYS
+    if not recent_measured(days=days):
         return {"rows": [], "asked": 0, "stale": 0, "gone": 0, "not_ready": True,
-                "why": f"no Backtest v2 row carries its last-{br.RECENT_DAYS}-day "
+                "why": f"no Backtest v2 row carries its last-{days}-day "
                        f"count yet — the daily update adds it to every row it "
                        f"measures; checking again every 30 minutes"}
-    if not recent_filed():
+    if not recent_filed(days=days):
         return {"rows": [], "asked": 0, "stale": 0, "gone": 0, "not_ready": True,
-                "why": f"the daily update's last-{br.RECENT_DAYS}-day counts are in "
+                "why": f"the daily update's last-{days}-day counts are in "
                        f"the coin files but not yet in the Backtest v2 table (it is "
                        f"rebuilt after the run comes home); checking again every "
                        f"30 minutes"}
     try:
-        got = ri.recent_rows(min_trades=int(cfg["min_trades"]),
-                             min_winrate=float(cfg["on_winrate"]),
-                             max_sl=float(cfg.get("max_sl") or 0),
-                             tp_rule=str(cfg.get("tp_rule") or ">"),
-                             min_tp=float(cfg.get("min_tp") or 0),
-                             db_path=stores.V2.rows_db)
+        if days in br.SHORT_DAYS:
+            got = _short_rows(cfg, days, stores.V2.rows_db)
+        else:
+            got = ri.recent_rows(min_trades=int(cfg["min_trades"]),
+                                 min_winrate=float(cfg["on_winrate"]),
+                                 max_sl=float(cfg.get("max_sl") or 0),
+                                 tp_rule=str(cfg.get("tp_rule") or ">"),
+                                 min_tp=float(cfg.get("min_tp") or 0),
+                                 db_path=stores.V2.rows_db, days=days)
     except Exception as exc:                                   # noqa: BLE001
         return {"rows": [], "asked": 0, "stale": 0, "gone": 0, "not_ready": True,
                 "why": f"the Backtest v2 list could not be read yet "
                        f"({type(exc).__name__}: {str(exc)[:160]}) — asking again later"}
-    rows = [_fresh(r["coin"], r["tf"], r, 0.0, br.RECENT_DAYS) for r in got]
+    rows = [_fresh(r["coin"], r["tf"], r, 0.0, days) for r in got]
     why = (f"{len(rows):,} row(s) in the Backtest v2 table meet the criteria on "
-           f"their last {br.RECENT_DAYS} days")
+           f"their last {days} day{'s' if days != 1 else ''}")
     return {"rows": rows, "asked": len(got), "stale": 0, "gone": 0, "why": why}
 
 

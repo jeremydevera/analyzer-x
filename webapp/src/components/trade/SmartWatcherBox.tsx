@@ -65,7 +65,9 @@ export default function SmartWatcherBox({ onChange }: { onChange?: (w: Watcher) 
     <label className={`flex items-center gap-2 text-theme-xs ${on
       ? "font-semibold text-brand-600 dark:text-brand-400" : "text-gray-600 dark:text-gray-300"}`}
       title={w ? (on
-        ? `ON: switches practice rows on at ${w.cfg.on_winrate}%+ and off under ${w.cfg.off_winrate}% over the last ${w.window_days} days — your own practice rows too. The daily backtest update runs either way.`
+        ? `ON: switches practice rows on at ${w.cfg.on_winrate}%+ ${Number(w.cfg.judge_days) && Number(w.cfg.judge_days) !== w.window_days
+            ? `over the last ${w.window_days} day${w.window_days === 1 ? "" : "s"} and off under ${w.cfg.off_winrate}% over the last ${w.cfg.judge_days} days`
+            : `and off under ${w.cfg.off_winrate}% over the last ${w.window_days} days`} — your own practice rows too. The daily backtest update runs either way.`
         : "OFF: switches nothing on and nothing off. The daily backtest update still runs every 24 hours.")
         : "reading the watcher…"}>
       <input type="checkbox" checked={on} disabled={!w || busy}

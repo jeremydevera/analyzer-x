@@ -58,9 +58,12 @@ for _p in BUILTIN[1:]:
 # 144 rule sets over 4,585,414 strategies, picked on Jul 01-Aug 31 and graded
 # on Sep 01-Sep 30, 2026). Every rule of each is copied from its row; a
 # 15-day window reads each row's own measured t15/w15.
-def _rule(window: int, line: float, trades: int) -> dict:
+def _rule(window: int, line: float, trades: int, judge: int = 0) -> dict:
+    """A room's rules, raw. `judge` is the window its switch-off reads when it
+    is not `window` (Oct 07, 2026: the 1-4 day rooms, switched off on 30)."""
     return {"on_winrate": line, "off_winrate": line, "min_trades": trades,
-            "tp_rule": ">", "max_sl": 2.0, "window_days": window, **NO_LIMIT}
+            "tp_rule": ">", "max_sl": 2.0, "window_days": window,
+            **({"judge_days": judge} if judge else {}), **NO_LIMIT}
 
 
 # Main first, then the table, then the retired rooms — the order of the tabs
@@ -70,6 +73,16 @@ BUILTIN[1:1] = [
     {"id": "B2404C0B", "name": "#B2404C0B", "rules": _rule(15, 75.0, 50)},
     {"id": "6B08FF64", "name": "#6B08FF64", "rules": _rule(15, 80.0, 30)},
     {"id": "CC94D9FB", "name": "#CC94D9FB", "rules": _rule(30, 80.0, 30)},
+    # THE LAST 1, 2, 3 AND 4 DAYS (operator, Oct 07, 2026: "can you create a
+    # room strategy that has criteria that looks for past 1 day or 2 days or 3
+    # days or 4 days ... (create seperate room for each)"): switched on at 80%+
+    # with 30+ trades INSIDE those days, switched off on "the DEMO 30 DAYS
+    # figure". Each named by its id (forecast_rules.rule_id of its rule set,
+    # judge_days included). docs/superpowers/specs/2026-10-07-short-window-rooms-design.md
+    {"id": "99E79CBA", "name": "#99E79CBA", "rules": _rule(1, 80.0, 30, judge=30)},
+    {"id": "C7396286", "name": "#C7396286", "rules": _rule(2, 80.0, 30, judge=30)},
+    {"id": "1D4274C1", "name": "#1D4274C1", "rules": _rule(3, 80.0, 30, judge=30)},
+    {"id": "8F0C7926", "name": "#8F0C7926", "rules": _rule(4, 80.0, 30, judge=30)},
 ]
 
 

@@ -166,6 +166,9 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
     """
     cfg = {**wp.DEFAULTS, **(cfg or {})}
     window_ms = int(cfg.get("window_days", 30)) * DAY_MS
+    # THE SWITCH-OFF'S OWN WINDOW (Oct 07, 2026): the 1-4 day rooms switch on
+    # by their last few days and off by 30 (`judge_days`; 0 = the same window)
+    judge_ms = wp.judge_days(cfg) * DAY_MS
     books = books if books is not None else {c["id"]: _Book(c) for c in combos}
     running: dict[str, dict] = {}         # id -> the open slot
     slots: list[dict] = []
@@ -184,7 +187,7 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
         # (a research dial, off by default) on its own practice losing run
         for rid in (sorted(running) if do_off else ()):
             slot = running[rid]
-            why = wp.judge({"id": rid}, books[rid].row(at, window_ms), cfg)
+            why = wp.judge({"id": rid}, books[rid].row(at, judge_ms), cfg)
             if not why and live_n:
                 n = _live_streak(books[rid].c["trades"], slot["on_ms"], at)
                 if n >= live_n:
@@ -199,6 +202,12 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
             continue
         # 2. SWITCH ON — every combination's row at this check, then the rules
         cands = [r for r in rows.get(at, []) if not wp.passes_on(r, cfg)]
+        if judge_ms != window_ms:
+            # never switched on when the switch-off would drop it at once —
+            # the live watcher's own rule (strategy_watcher._off_at_once,
+            # RCA-2026-10-01-B across two windows)
+            cands = [r for r in cands
+                     if not wp.judge({"id": r["id"]}, books[r["id"]].row(at, judge_ms), cfg)]
         picks = wp.pick(cands, [{"id": k, "coin": v["coin"]}
                                 for k, v in running.items()],
                         cooling, at / 1000, cfg)

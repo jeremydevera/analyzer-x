@@ -223,16 +223,43 @@ SIZINGS_BY_RES: dict[str, tuple[str, ...]] = {"1m": ("flat",)}
 # are profit only and split by calendar month.
 RECENT_DAYS = 15
 RECENT_FIELDS = ("t15", "w15", "p15")
+# AND ITS LAST 1, 2, 3 AND 4 DAYS (Oct 07, 2026: "can you create a room
+# strategy that has criteria that looks for past 1 day or 2 days or 3 days or
+# 4 days"): `t1`/`w1`/`p1` .. `t4`/`w4`/`p4`, counted by the same engine walk
+# on the same exit clock (`backtest_strategy(recent_windows=)`). Every window
+# a row carries its own count for is in RECENT_WINDOWS; a room may judge on
+# one of them or on the store's 30, nothing else.
+SHORT_DAYS = (1, 2, 3, 4)
+RECENT_WINDOWS = SHORT_DAYS + (RECENT_DAYS,)
+
+
+def recent_keys(days: int) -> tuple[str, str, str]:
+    """The row's trades, wins and profit columns for a measured window."""
+    d = int(days)
+    if d not in RECENT_WINDOWS:
+        raise ValueError(f"no Backtest v2 row carries a {d}-day count; the measured "
+                         f"windows are {RECENT_WINDOWS} days")
+    return f"t{d}", f"w{d}", f"p{d}"
 
 
 def recent_fields(r: dict) -> dict:
-    """The row's `t15`/`w15`/`p15` from an engine result, or {} when the run
-    was not asked for them."""
+    """The row's `t15`/`w15`/`p15` — then `t1`..`p4` — from an engine result,
+    or {} when the run was not asked for them. The 15-day keys come first and
+    the short ones follow, all at the END of the row: `watcher_candidates.
+    recent_measured` reads a pair file's tail for them."""
+    out: dict = {}
     rec = r.get("recent")
-    if not rec:
-        return {}
-    return {"t15": int(rec["trades"]), "w15": int(rec["wins"]),
-            "p15": round(float(rec["profit"]), 2)}
+    if rec:
+        out.update(t15=int(rec["trades"]), w15=int(rec["wins"]),
+                   p15=round(float(rec["profit"]), 2))
+    more = r.get("recents") or {}
+    for d in SHORT_DAYS:
+        got = more.get(d) or more.get(str(d))
+        if got:
+            t, w, p = recent_keys(d)
+            out.update({t: int(got["trades"]), w: int(got["wins"]),
+                        p: round(float(got["profit"]), 2)})
+    return out
 
 
 def sizings_for(res: str | None) -> tuple[str, ...]:

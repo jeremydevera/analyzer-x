@@ -801,8 +801,8 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
       {d?.state === "ready" && s && c && (
         <>
           <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
-            {name(d.room)} · {d.start_ms ? dayOf(d.start_ms) : d.from_day} to {d.end_ms ? dayOf(d.end_ms) : d.to_day} · its rules: switch on at {c.on_winrate}%+ over the last {c.window_days} days,
-            off under {c.off_winrate}%, {c.min_trades}+ trades, TP wider than SL, stop {c.max_sl}% or tighter ·
+            {name(d.room)} · {d.start_ms ? dayOf(d.start_ms) : d.from_day} to {d.end_ms ? dayOf(d.end_ms) : d.to_day} · its rules: switch on at {c.on_winrate}%+ over the last {c.window_days} day{c.window_days === 1 ? "" : "s"},
+            off under {c.off_winrate}%{c.judge_days && c.judge_days !== c.window_days ? ` over the last ${c.judge_days} days` : ""}, {c.min_trades}+ trades, TP wider than SL, stop {c.max_sl}% or tighter ·
             ${d.margin} a trade at {d.leverage}x (${(d.margin ?? 5) * (d.leverage ?? 20)} of coin) ·
             {" "}{(d.candidates?.count ?? 0).toLocaleString()} strategies tested
             {d.candidates?.min_wr30 != null
@@ -870,7 +870,7 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
                   <tr key={x.day} onClick={() => { setDay(day === x.day ? "" : x.day); setEvPage(1); setTrPage(1); setEv(null); setTr(null); }}
                     aria-expanded={day === x.day}
                     className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03] ${day === x.day ? "bg-gray-50 dark:bg-white/[0.04]" : ""}`}>
-                    <td className={`${td} font-medium`}>{dayOf(x.at)}{!x.judged_full && <span className="ml-1 text-[10px] text-gray-400">(fewer than {c.window_days} days known)</span>}</td>
+                    <td className={`${td} font-medium`}>{dayOf(x.at)}{!x.judged_full && <span className="ml-1 text-[10px] text-gray-400">(fewer than {Math.max(c.window_days, c.judge_days || 0)} days known)</span>}</td>
                     <td className={`${td} ${x.on ? "text-success-600" : ""}`}>{x.on || "—"}</td>
                     <td className={`${td} ${x.off ? "text-error-500" : ""}`}>{x.off || "—"}</td>
                     <td className={td}>{x.running}</td>

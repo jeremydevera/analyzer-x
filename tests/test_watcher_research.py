@@ -216,3 +216,35 @@ def test_the_fast_raw_path_is_simulate(tmp_path, on, mt, rule):
     grid = rs.count_grid(blist, checks, cfg["window_days"] * wr.DAY_MS)
     fast = rs.score(rs.raw_fast(blist, grid, checks, cfg, end), end_ms=end)
     assert fast == slow
+
+
+@pytest.mark.parametrize("window,judge", [(2, 30), (4, 15)])
+def test_the_fast_raw_path_is_simulate_with_two_windows(tmp_path, window, judge):
+    """Oct 07, 2026: the 1-4 day rooms switch on by their last few days and off
+    by 30 (`judge_days`). Forecast v2's GitHub shard replays every room with
+    raw_fast, so its switch-off — and the switch-on's "never what the
+    switch-off would drop at once" — read the judge window's grid, exactly as
+    simulate does."""
+    end = _ms(2026, 9, 20)
+    # LOSING FOR SIX WEEKS, THEN WINNING from Sep 10: its last few days pass
+    # long before its 15 or 30 do — the row the second window is for
+    late = {"id": "EEEE0005", "coin": "IGV", "tf": "1h", "signal": "macddiv", "th": 0.0,
+            "sl": 0.7, "tp": 1.0, "gate": "ok", "group": "classic",
+            "trades": [[_ms(2026, 8, 1) + i * 3 * H, _ms(2026, 8, 1) + i * 3 * H + 2 * H,
+                        0.8 if i >= 320 else -1.5, 1] for i in range(400)]}
+    folder = _folder(tmp_path, COMBOS + [late], end)
+    books = rs.load_lean([folder])["books"]
+    start = _ms(2026, 9, 1)
+    cfg = {**rs.CURRENT, **rs.RAW, "on_winrate": 60.0, "off_winrate": 60.0,
+           "min_trades": 3, "tp_rule": "any", "max_sl": 0.0,
+           "window_days": window, "judge_days": judge}
+    checks = wr.local_midnights(start, end)
+    slow = rs.score(wr.simulate([], start_ms=start, end_ms=end, cfg=cfg, books=books),
+                    end_ms=end)
+    blist = list(books.values())
+    grid = rs.count_grid(blist, checks, window * wr.DAY_MS)
+    jgrid = rs.count_grid(blist, checks, judge * wr.DAY_MS)
+    fast = rs.score(rs.raw_fast(blist, grid, checks, cfg, end, judge_grid=jgrid), end_ms=end)
+    assert fast == slow
+    one = rs.score(rs.raw_fast(blist, grid, checks, {**cfg, "judge_days": 0}, end), end_ms=end)
+    assert one != slow, "the fixture must make the second window matter"

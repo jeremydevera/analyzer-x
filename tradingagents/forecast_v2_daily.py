@@ -351,7 +351,10 @@ def room_rules() -> dict:
         c = rs.rules_of(pid)
         cfg = fr.cfg_of(int(c.get("window_days") or 30), float(c["on_winrate"]),
                         int(c["min_trades"]), str(c.get("tp_rule") or ">"),
-                        float(c.get("max_sl") or 0))
+                        float(c.get("max_sl") or 0),
+                        # the switch-off's own window (the 1-4 day rooms, Oct 07,
+                        # 2026) — or GitHub forecasts them switched off on 2 days
+                        judge_days=int(c.get("judge_days") or 0) or None)
         cfg["off_winrate"] = float(c.get("off_winrate", c["on_winrate"]))
         out[pid] = cfg
     return out

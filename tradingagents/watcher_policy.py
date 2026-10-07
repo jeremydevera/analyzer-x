@@ -22,6 +22,10 @@ DEFAULTS = {"on_winrate": 90.0, "off_winrate": 90.0, "min_trades": 20,
             # operator's rules exactly: judged on 30 days, ranked by win rate,
             # the practice record never switches a row off.
             "window_days": 30, "rank": "winrate", "off_streak_live": 0,
+            # THE SWITCH-OFF'S OWN WINDOW (Oct 07, 2026): the 1-4 day rooms
+            # switch on by their last few days and off by "the DEMO 30 DAYS
+            # figure". 0 = the switch-on window, as every room before them.
+            "judge_days": 0,
             # RAW (operator, Sep 30, 2026: "i want raw output, dont put any
             # limit, you only need to serach a criteria in the table and
             # deploy it in my strategies deployed that's it"): the criteria
@@ -83,7 +87,7 @@ def passes_on(row: dict, cfg: dict) -> str:
     if float(row["winrate"]) < cfg["on_winrate"]:
         return f"win rate {row['winrate']:g}% is under {cfg['on_winrate']:g}%"
     if int(row["trades"]) < cfg["min_trades"]:
-        return (f"{row['trades']} trades in {int(cfg.get('window_days') or 30)} days, "
+        return (f"{row['trades']} trades in {window_words(cfg)}, "
                 f"fewer than {cfg['min_trades']}")
     if cfg.get("raw"):
         return ""
@@ -137,11 +141,26 @@ def pick(candidates, running, cooling, now, cfg) -> list:
     return out
 
 
+def _days(n: int) -> str:
+    return f"{n} day{'' if n == 1 else 's'}"
+
+
 def window_words(cfg) -> str:
-    """The room's own window in words — "15 days" or "30 days", never a
-    literal (RCA-2026-10-02-H: #6B08FF64's log said "in the last 30 days" over
-    every 15-day count it judged on)."""
-    return f"{int((cfg or {}).get('window_days') or 30)} days"
+    """The room's own switch-on window in words — "15 days", "30 days", "1
+    day", never a literal (RCA-2026-10-02-H: #6B08FF64's log said "in the last
+    30 days" over every 15-day count it judged on)."""
+    return _days(int((cfg or {}).get("window_days") or 30))
+
+
+def judge_days(cfg) -> int:
+    """The window the switch-off reads: `judge_days`, or the switch-on window
+    when it is 0 (every room before Oct 07, 2026)."""
+    c = cfg or {}
+    return int(c.get("judge_days") or 0) or int(c.get("window_days") or 30)
+
+
+def judge_words(cfg) -> str:
+    return _days(judge_days(cfg))
 
 
 def judge(slot, fresh_row, cfg) -> str:
@@ -160,7 +179,7 @@ def judge(slot, fresh_row, cfg) -> str:
     if why:
         return why
     if float(fresh_row["winrate"]) < cfg["off_winrate"]:
-        return (f"its last-{window_words(cfg).replace(' ', '-')} win rate fell to "
+        return (f"its last-{judge_words(cfg).replace(' ', '-')} win rate fell to "
                 f"{fresh_row['winrate']:g}%, under {cfg['off_winrate']:g}%")
     return ""
 

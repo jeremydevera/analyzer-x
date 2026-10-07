@@ -139,6 +139,13 @@ export const PROFILES: readonly { id: string; name: string }[] = [
   { id: "B2404C0B", name: "#B2404C0B" },
   { id: "6B08FF64", name: "#6B08FF64" },
   { id: "CC94D9FB", name: "#CC94D9FB" },
+  // Oct 07, 2026: "create a room strategy that has criteria that looks for
+  // past 1 day or 2 days or 3 days or 4 days ... (create seperate room for
+  // each)" — switched on by their last 1, 2, 3, 4 days, off on 30
+  { id: "99E79CBA", name: "#99E79CBA" },
+  { id: "C7396286", name: "#C7396286" },
+  { id: "1D4274C1", name: "#1D4274C1" },
+  { id: "8F0C7926", name: "#8F0C7926" },
 ];
 let _profile = "main";
 export function setProfile(id: string): void { _profile = id; }
@@ -1300,7 +1307,9 @@ export type RoomReplay = {
     step?: number; steps?: number; step_words?: string; pct?: number | null; elapsed_s?: number };
   name?: string; computed_at?: number; start_ms?: number; end_ms?: number; full_from_ms?: number | null;
   cfg?: { on_winrate: number; off_winrate: number; min_trades: number; tp_rule: string;
-    max_sl: number; window_days: number; raw: boolean };
+    max_sl: number; window_days: number; raw: boolean;
+    /** the window the switch-off reads when it is not window_days (0/absent: the same) */
+    judge_days?: number | null };
   margin?: number; leverage?: number; notes?: string[];
   candidates?: { count: number; searched?: number; min_wr30?: number | null;
     audit?: { sampled: number; would_pass: number };

@@ -62,10 +62,15 @@ const MODE_TEXT: Record<Watcher["mode"], string> = {
  *  tab "i" popup, so the two can never say different things. The last line
  *  follows the room's real-money switch (label-must-match-data). */
 export function rules(c: Watcher["cfg"], days: number, live = false): string[] {
+  // THE SWITCH-OFF'S OWN WINDOW (Oct 07, 2026: the 1-4 day rooms switch on by
+  // their last few days and off on "the DEMO 30 DAYS figure"); 0 = the same
+  const judge = Number(c.judge_days) || days;
+  const d = (n: number) => `${n} day${n === 1 ? "" : "s"}`;
   return [
-    `switch on at ${c.on_winrate}%+ over the last ${days} days`,
+    `switch on at ${c.on_winrate}%+ over the last ${d(days)}`,
     `switch off under ${c.off_winrate}%`,
-    `${c.min_trades}+ trades`,
+    judge === days ? `${c.min_trades}+ trades`
+      : `${c.min_trades}+ trades ${days === 1 ? "in that day" : `in those ${days} days`}`,
     c.tp_rule === "any" ? "any TP" : `TP ${c.tp_rule === ">" ? "wider than" : c.tp_rule === "<" ? "narrower than"
       : c.tp_rule === "=" ? "equal to" : "at least"} SL`,
     ...(c.max_sl ? [`SL no wider than ${c.max_sl}%`] : []),
@@ -77,7 +82,9 @@ export function rules(c: Watcher["cfg"], days: number, live = false): string[] {
        c.max_per_coin ? `${c.max_per_coin} per coin` : "no limit per coin",
        c.max_new_per_day ? `${c.max_new_per_day} new a day` : "no limit a day"].join(" · "),
       `${c.cooldown_days}-day wait after a switch-off`]),
-    days === 30 ? "judged on the DEMO 30 DAYS figure"
+    judge !== days
+      ? `switched on by its last ${d(days)}, switched off on the DEMO ${judge} DAYS figure — and never switched on while that is under ${c.off_winrate}%`
+      : days === 30 ? "judged on the DEMO 30 DAYS figure"
       : `judged on its own last ${days} days: the backtest, then its practice trades`,
     live ? "practice AND real money" : "practice account only",
   ];

@@ -126,7 +126,13 @@ LIVE_RULES = ("on_winrate", "off_winrate", "min_trades", "tp_rule",
               "max_new_per_day", "cooldown_days", "fresh_hours", "rank", "raw",
               # 15 or the store's 30 (Sep 30, 2026): on 15 a row is judged on
               # its own measured last-15-day count (backtest_report.RECENT_DAYS)
+              # — and 1, 2, 3 or 4 since Oct 07, 2026 (backtest_report.
+              # SHORT_DAYS), each its own measured count
               "window_days",
+              # the window the SWITCH-OFF reads, when it is not the switch-on
+              # window (Oct 07, 2026: the 1-4 day rooms are switched off on
+              # "the DEMO 30 DAYS figure"); 0 = the same window
+              "judge_days",
               # the smallest target (Oct 01, 2026); tp_rule also takes "="
               "min_tp")
 
@@ -146,8 +152,12 @@ def cfg_of(st: dict | None = None) -> dict:
     st = _read() if st is None else st
     cfg = {**wp.DEFAULTS, **(st.get("cfg") or {})}
     w = int(cfg.get("window_days") or 0)
-    return {**cfg, "window_days": br.RECENT_DAYS if w == br.RECENT_DAYS
-            else store_window_days(), "off_streak_live": 0}
+    win = w if w in br.RECENT_WINDOWS else store_window_days()
+    j = int(cfg.get("judge_days") or 0)
+    judge = j if j in br.RECENT_WINDOWS else store_window_days() if j else 0
+    # the same window twice is the room's ONE window: 0, so nothing reads two
+    return {**cfg, "window_days": win, "judge_days": 0 if judge == win else judge,
+            "off_streak_live": 0}
 
 
 def mode_of(st: dict | None = None) -> str:
@@ -242,12 +252,14 @@ def set_cfg(partial: dict) -> dict:
                              f"{store_window_days()}-day window")
         if k == "tp_rule" and v not in wp.TP_RULES:
             raise ValueError(f"tp_rule must be one of {wp.TP_RULES}")
-        if k == "window_days":
+        if k in ("window_days", "judge_days"):
             from tradingagents import backtest_report as br
 
-            ok = (br.RECENT_DAYS, store_window_days())
+            ok = tuple(br.RECENT_WINDOWS) + (store_window_days(),)
+            if k == "judge_days":
+                ok = (0,) + ok
             if v not in ok:
-                raise ValueError(f"window_days must be one of {ok} — the only "
+                raise ValueError(f"{k} must be one of {ok} — the only "
                                  f"windows every Backtest v2 row is measured over")
         want = type(wp.DEFAULTS[k])
         if want is float and isinstance(v, int):
@@ -376,7 +388,9 @@ def _candidates(cfg: dict, now: float) -> dict:
 
 
 def _fresh_row(meta: dict, now: float, cfg: dict):
-    """(row or None, readable). A pair file that is NOT THERE (a delisted
+    """(row or None, readable) — for the SWITCH-OFF, so over the window it
+    reads (`watcher_candidates.judge_of`: the room's own window, or its
+    `judge_days`). A pair file that is NOT THERE (a delisted
     coin's, removed by the cleanup) is a row that is gone: (None, True), and
     judge() switches it off. A file that IS there but reads empty or broken is
     `readable` False — kept, and checked again next hour. The file is read
@@ -391,7 +405,7 @@ def _fresh_row(meta: dict, now: float, cfg: dict):
     row = got.get(wc._sig(meta))
     last = wc._last_ms(meta["coin"], meta["tf"]) or 0.0
     return (None if row is None else wc._fresh(meta["coin"], meta["tf"], row, last,
-                                               wc.window_of(cfg))), True
+                                               wc.judge_of(cfg))), True
 
 
 def _judged(slot: str, fresh: dict | None, now: float | None = None,
@@ -635,8 +649,12 @@ def _delisted(symbols) -> set:
 def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str]:
     from tradingagents import auto_trader as at
 
+    from tradingagents import watcher_candidates as wc
+
     settings = at.load_settings()
     ws = settings.get("watcher_slots") or {}
+    # the window the switch-off reads (the 1-4 day rooms: 30, Oct 07, 2026)
+    judge = wc.judge_of(cfg)
     drop = []
     gone_by_hand = []
     hand = _hand_slots(settings)
@@ -671,9 +689,9 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
             out.append(_d(now, st, "report", meta, "its backtest file could not be "
                           "read this hour — kept, checked again next hour"))
             continue
-        fresh = _judged(slot, fresh, now, cfg["window_days"])
+        fresh = _judged(slot, fresh, now, judge)
         if fresh and fresh.get("unmeasured"):
-            out.append(_d(now, st, "report", meta, f"no {cfg['window_days']}-day count "
+            out.append(_d(now, st, "report", meta, f"no {judge}-day count "
                           f"for it yet — kept until the daily update measures it"))
             continue
         why = wp.judge({"id": meta["id"], "tp": meta.get("tp"), "sl": meta.get("sl")},
@@ -731,7 +749,7 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
         if not readable:
             continue
         slot = f"{key}|{sym}"
-        fresh = _judged(slot, fresh, now, cfg["window_days"])
+        fresh = _judged(slot, fresh, now, judge)
         if fresh and fresh.get("unmeasured"):
             continue
         why = wp.judge({"id": meta["id"], "tp": meta.get("tp"), "sl": meta.get("sl")},
@@ -921,7 +939,36 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     # check applies. #FR34HHN4 went on at 71.13% from the list and off 33
     # minutes later at 69.06% from its file, twice in five hours.
     cands = _as_the_off_check_sees(got["rows"], now, cfg)
+    # A 1-4 DAY ROW ON AN OLD BACKTEST (final review, Oct 07, 2026): its "last
+    # N days" ended long ago — skipped before the line, and counted
+    stale = [r for r in cands if r.get("stale_h") is not None]
+    cands = [r for r in cands if r.get("stale_h") is None]
+    stale_why = ""
+    if stale:
+        w_ = int(cfg.get("window_days") or 30)
+        stale_why = (f" · {len(stale):,} skipped: {'its' if len(stale) == 1 else 'their'} "
+                     f"backtest ends more than {float(cfg.get('fresh_hours') or 36):g} hours "
+                     f"ago, so {'its' if len(stale) == 1 else 'their'} last {w_} "
+                     f"day{'' if w_ == 1 else 's'} are not the latest")
     rows = [r for r in cands if not wp.passes_on(r, cfg)]
+    # A ROOM WITH TWO WINDOWS (Oct 07, 2026: on by the last 1-4 days, off by
+    # the DEMO 30 DAYS figure): a row the hourly switch-off would drop the
+    # moment it went on is never switched on — RCA-2026-10-01-B's rule across
+    # two windows — and the count is said, never silent
+    at_once = {r["id"]: w for r in rows for w in [_off_at_once(r, cfg)] if w}
+    rows = [r for r in rows if r["id"] not in at_once]
+    at_once_why = ""
+    if at_once:
+        import collections as _co2
+        import re as _re2
+
+        top = _co2.Counter(" ".join(_re2.sub(r"[+-]?\d[\d.,]*%?", " ", w).split())
+                           for w in at_once.values()).most_common(1)[0][0]
+        example = next(w for w in at_once.values()
+                       if " ".join(_re2.sub(r"[+-]?\d[\d.,]*%?", " ", w).split()) == top)
+        at_once_why = (f" · {len(at_once):,} pass the {int(cfg.get('window_days') or 30)}-day"
+                       f" line but the hourly check would switch them off at once"
+                       f" ({example if len(at_once) == 1 else 'most often ' + example})")
     # A COIN MEXC NO LONGER LISTS IS NEVER SWITCHED ON (RCA-2026-10-07-D): the
     # switch-off's own test, asked before any pick or daytime list. Only the
     # hourly switch-off asked, and a raw room has no wait after one: #4FC03172
@@ -1031,12 +1078,14 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     # (RCA-2026-09-30-C): "1,511 meet the criteria" over 539 switched on read
     # as 972 rows lost
     gone = len(got["rows"]) - len(cands)
-    failed_one = len(cands) - len(rows) - n_dead
+    failed_one = len(cands) - len(rows) - n_dead - len(at_once)
     st["last_candidates"] = (f"{got.get('why', '')} — {len(rows):,} pass every rule "
                              f"on their own result file"
                              + (f" ({failed_one:,} fail one, most often "
                                 f"{_top_fail(cands, cfg)})"
                                 if failed_one > 0 else "")
+                             + at_once_why
+                             + stale_why
                              + dead_why
                              + (f" · {gone:,} could not be read from their file"
                                 if gone else "")
@@ -1086,18 +1135,38 @@ def _top_daytime(failed: dict) -> str:
     return c.most_common(1)[0][0] if c else "?"
 
 
+def _off_at_once(r: dict, cfg: dict) -> str:
+    """Why the hourly switch-off would drop this candidate the moment it went
+    on, or "". Only a room whose switch-off reads another window than its
+    switch-on carries `off_row` (`_as_the_off_check_sees`). A figure the
+    switch-off cannot read is kept by it, so it is kept here too."""
+    if "off_row" not in r:
+        return ""
+    off = r["off_row"]
+    if off is not None and off.get("unmeasured"):
+        return ""
+    return wp.judge({"id": r["id"], "tp": r.get("tp"), "sl": r.get("sl")}, off, cfg)
+
+
 def _as_the_off_check_sees(rows: list, now: float, cfg: dict) -> list:
     """Each candidate as `_off_pass` would judge it: its row in its pair
     file (one parse per pair), then `_judged` over the room's window. A
     candidate whose file is missing, unreadable or no longer holds it is
-    dropped — the switch-off would remove it at once."""
+    dropped — the switch-off would remove it at once. A room whose switch-off
+    reads ANOTHER window (`judge_days`, Oct 07, 2026) gets that figure too,
+    as `off_row`, so the switch-on can leave out what the switch-off would
+    drop at once."""
     from tradingagents import watcher_candidates as wc
 
     by_pair: dict = {}
     for r in rows:
         by_pair.setdefault((r["coin"], r["tf"]), []).append(r)
+    from tradingagents import backtest_report as br
+
     out = []
     window = int(cfg.get("window_days") or 30)
+    judge = wc.judge_of(cfg)
+    stale_ms = float(cfg.get("fresh_hours") or 36) * 3_600_000
     for (coin, tf), want in by_pair.items():
         have = wc.matched_rows(coin, tf, want) or {}
         if not have:
@@ -1113,7 +1182,24 @@ def _as_the_off_check_sees(rows: list, now: float, cfg: dict) -> list:
             except ValueError:
                 out.append(fresh)          # refused by name in _try_picks
                 continue
-            out.append(_judged(slot, fresh, now, window) or fresh)
+            if judge == wc.window_of(cfg):
+                row = _judged(slot, fresh, now, window) or fresh
+            else:
+                # TWO WINDOWS (Oct 07, 2026): the switch-on reads the row's own
+                # MEASURED last N days. `rolling30.figure` counts back from now
+                # while `t1`..`t4` count back from the backtest's last candle,
+                # and its record is shared by every room running the slot: at
+                # a midnight pass 15 hours after the backtest ended, a 1-day
+                # figure read 16 trades where the row measured 36 (final
+                # review). The switch-off — and so the guard — reads the DEMO
+                # figure, as the operator asked.
+                row = {**fresh, "off_row": _judged(slot, wc._fresh(coin, tf, got, last, judge),
+                                                   now, judge)}
+            if window in br.SHORT_DAYS and last and now * 1000 - last > stale_ms:
+                # "its last 1 day" from a backtest that ended days ago is not
+                # this week's day (final review): skipped, and counted
+                row = {**row, "stale_h": round((now * 1000 - last) / 3_600_000)}
+            out.append(row)
     return out
 
 

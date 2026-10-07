@@ -145,7 +145,11 @@ def round1() -> list[dict]:
     for c in fr.base_grid():
         add(c)
     for p in profiles.BUILTIN:
-        if p.get("rules"):
+        # a room switched off on ANOTHER window (the 1-4 day rooms, Oct 07,
+        # 2026) is not a rule set the research walk measures: its six dials
+        # have no `judge_days`, and raw_trades refuses a second window — left
+        # out, never researched as a different rule set under another id
+        if p.get("rules") and not int(p["rules"].get("judge_days") or 0):
             add({**rs.CURRENT, **p["rules"]})
     add({**rs.CURRENT, **rs.RAW})                              # Main
     for w in kept():

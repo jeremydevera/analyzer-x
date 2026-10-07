@@ -801,8 +801,8 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
       {d?.state === "ready" && s && c && (
         <>
           <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
-            {name(d.room)} · {d.start_ms ? dayOf(d.start_ms) : d.from_day} to {d.end_ms ? dayOf(d.end_ms) : d.to_day} · its rules: switch on at {c.on_winrate}%+ over the last {c.window_days} day{c.window_days === 1 ? "" : "s"},
-            off under {c.off_winrate}%{c.judge_days && c.judge_days !== c.window_days ? ` over the last ${c.judge_days} days` : ""}, {c.min_trades}+ trades, TP wider than SL, stop {c.max_sl}% or tighter ·
+            {name(d.room)} · {d.start_ms ? dayOf(d.start_ms) : d.from_day} to {d.end_ms ? dayOf(d.end_ms) : d.to_day} · its rules: switch on at {c.on_winrate}%+ over the last {c.window_days} days,
+            off under {c.off_winrate}%, {c.min_trades}+ trades, TP wider than SL, stop {c.max_sl}% or tighter ·
             ${d.margin} a trade at {d.leverage}x (${(d.margin ?? 5) * (d.leverage ?? 20)} of coin) ·
             {" "}{(d.candidates?.count ?? 0).toLocaleString()} strategies tested
             {d.candidates?.min_wr30 != null
@@ -870,7 +870,7 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
                   <tr key={x.day} onClick={() => { setDay(day === x.day ? "" : x.day); setEvPage(1); setTrPage(1); setEv(null); setTr(null); }}
                     aria-expanded={day === x.day}
                     className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03] ${day === x.day ? "bg-gray-50 dark:bg-white/[0.04]" : ""}`}>
-                    <td className={`${td} font-medium`}>{dayOf(x.at)}{!x.judged_full && <span className="ml-1 text-[10px] text-gray-400">(fewer than {Math.max(c.window_days, c.judge_days || 0)} days known)</span>}</td>
+                    <td className={`${td} font-medium`}>{dayOf(x.at)}{!x.judged_full && <span className="ml-1 text-[10px] text-gray-400">(fewer than {c.window_days} days known)</span>}</td>
                     <td className={`${td} ${x.on ? "text-success-600" : ""}`}>{x.on || "—"}</td>
                     <td className={`${td} ${x.off ? "text-error-500" : ""}`}>{x.off || "—"}</td>
                     <td className={td}>{x.running}</td>
@@ -1017,14 +1017,18 @@ export function RoomsAndBacktest() {
  *  two "last 15 days" / "last 30 days" buttons became ONE box ("what i want is
  *  for it to be textbox, if i input 3 days show me the room strat and its
  *  trade for past 3 days"): the last N x 24 hours up to the moment Apply is
- *  pressed. Click a row for its trades in the same dates. */
-type RsDraft = { from: string; to: string; days: string; minWin: string; minProfit: string;
-  win: string; dep: string; find: string; sort: string };
+ *  pressed. Click a row for its trades in the same dates.
+ *
+ *  NO "judged on", "a room can run it" OR "sort" (Oct 07, 2026: "remove these
+ *  fields its not needed"): one order, the worst month first. And Apply shows
+ *  Loading... and cannot be pressed until its answer lands ("when i click
+ *  apply, i want to see loading, then make apply button disabled"). */
+type RsDraft = { from: string; to: string; days: string; minWin: string; minProfit: string; find: string };
 type RsAsk = { from_s: number; to_s: number; days: number | null; min_winrate: number;
-  min_profit: number | null; window: number; deployable: string; find: string; sort: string };
+  min_profit: number | null; find: string };
 
 const rsDefault = (): RsDraft => ({ from: dateBoxValue(30), to: dateBoxValue(0), days: "", minWin: "",
-  minProfit: "", win: "", dep: "", find: "", sort: "worst_month" });
+  minProfit: "", find: "" });
 
 /** The days box: "" = use the dates, a number above 0 = that many days,
  *  anything else = NaN, which Apply refuses out loud. */
@@ -1054,7 +1058,7 @@ function rsAsk(f: RsDraft, nowS: number): RsAsk {
     days: days || null,
     min_winrate: f.minWin.trim() === "" ? 0 : Number(f.minWin),
     min_profit: f.minProfit.trim() === "" ? null : Number(f.minProfit),
-    window: Number(f.win) || 0, deployable: f.dep, find: f.find.trim(), sort: f.sort,
+    find: f.find.trim(),
   };
 }
 
@@ -1065,9 +1069,6 @@ function rsFilterWords(a: RsAsk): string[] {
   if (a.find) out.push(`id #${a.find.replace(/^#/, "").toUpperCase()}`);
   if (a.min_winrate) out.push(`win rate ${a.min_winrate}% or better`);
   if (a.min_profit != null) out.push(`profit ${fmtMoney(a.min_profit)} or more`);
-  if (a.window) out.push(`judged on ${a.window} days`);
-  if (a.deployable === "yes") out.push("a room can run it");
-  if (a.deployable === "no") out.push("needs a new switch");
   return out;
 }
 
@@ -1093,7 +1094,7 @@ export function RoomStrategiesSection() {
   // boxes said "min win 90" over a list reading "992 of 992 kept" — the page
   // was still showing an answer to an earlier ask (the server answers 2 of
   // 992 for 90%). An answer to anything else is dropped, and until the right
-  // one lands the row says it is measuring.
+  // one lands Apply says Loading… and cannot be pressed.
   const wantKey = JSON.stringify([applied.ask, page]);
   const want = useRef(wantKey);
   useEffect(() => { want.current = wantKey; }, [wantKey]);
@@ -1101,8 +1102,7 @@ export function RoomStrategiesSection() {
     const ask = applied.ask;
     const key = JSON.stringify([ask, page]);
     api.roomStrategies({ from_s: ask.from_s, to_s: ask.to_s, min_winrate: ask.min_winrate,
-      min_profit: ask.min_profit, window: ask.window, deployable: ask.deployable, find: ask.find,
-      sort: ask.sort, page })
+      min_profit: ask.min_profit, find: ask.find, page })
       .then((x) => { if (key === want.current) { setShown({ key, ask, d: x }); setErr(""); } })
       .catch((e) => { if (key === want.current) setErr(String(e?.message ?? e)); });
   }, [applied, page]);
@@ -1153,24 +1153,18 @@ export function RoomStrategiesSection() {
         <label className="flex flex-col gap-1">or last N days<input className={`${sel} w-24`} inputMode="decimal" placeholder="e.g. 3" value={draft.days} onChange={(e) => setDays(e.target.value)} /></label>
         <label className="flex flex-col gap-1">min win %<input className={`${sel} w-20`} inputMode="decimal" value={draft.minWin} onChange={(e) => set({ minWin: e.target.value })} /></label>
         <label className="flex flex-col gap-1">min profit $<input className={`${sel} w-20`} inputMode="decimal" value={draft.minProfit} onChange={(e) => set({ minProfit: e.target.value })} /></label>
-        <label className="flex flex-col gap-1">judged on
-          <select className={sel} value={draft.win} onChange={(e) => set({ win: e.target.value })}>
-            <option value="">any days</option><option value="7">7 days</option><option value="15">15 days</option><option value="30">30 days</option>
-          </select></label>
-        <label className="flex flex-col gap-1">a room can run it
-          <select className={sel} value={draft.dep} onChange={(e) => set({ dep: e.target.value })}>
-            <option value="">all</option><option value="yes">yes</option><option value="no">needs a new switch</option>
-          </select></label>
-        <label className="flex flex-col gap-1">sort
-          <select className={sel} value={draft.sort} onChange={(e) => set({ sort: e.target.value })}>
-            <option value="worst_month">worst month (best first)</option><option value="corrected">profit after reality check</option>
-            <option value="profit">profit</option><option value="winrate">win rate</option><option value="found">newest found</option>
-          </select></label>
         <label className="flex flex-col gap-1">find by id<input className={`${sel} w-28`} value={draft.find} placeholder="#ID" onChange={(e) => set({ find: e.target.value })} /></label>
-        <button type="submit" className="rounded-lg border border-brand-500 bg-brand-500 px-4 py-1 text-theme-xs font-semibold text-white hover:bg-brand-600">Apply</button>
+        {/* Disabled from the press until the answer to what was applied
+            lands (or the ask fails); a disabled default button also stops
+            Enter. "clear" stays pressable. */}
+        <button type="submit" disabled={waiting} aria-busy={waiting}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-brand-500 bg-brand-500 px-4 py-1 text-theme-xs font-semibold text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-brand-500">
+          {waiting && <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />}
+          {waiting ? "Loading…" : "Apply"}
+        </button>
         <button type="button" className={btn} onClick={clear}>clear</button>
         {bad ? <span className="self-center text-error-500">{bad}</span>
-          : waiting ? <span className="self-center text-gray-400">measuring…</span>
+          : waiting ? <span className="self-center text-gray-400">loading the room strategies…</span>
           : unsent ? <span className="self-center text-warning-600">changed — press Apply to use it</span> : null}
       </form>
       {err && <p className="mt-3 text-theme-xs text-error-500">could not read the room strategies — {err}</p>}
@@ -1194,7 +1188,7 @@ export function RoomStrategiesSection() {
           {d.kept === 0 ? (
             <p className="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">No winner kept yet — run prompt 4 and its winners land here.</p>
           ) : (
-            <div className="mt-2 overflow-x-auto">
+            <div className={`mt-2 overflow-x-auto transition-opacity ${waiting ? "opacity-50" : ""}`}>
               <table className="w-full min-w-[1200px] text-theme-xs">
                 <thead><tr className="border-b border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400">
                   {cols.map((h) => <th key={h} className={th}>{h}</th>)}

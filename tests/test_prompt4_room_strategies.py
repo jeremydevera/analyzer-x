@@ -237,7 +237,7 @@ def test_nothing_is_asked_until_apply():
     the boxes never ask the server or move the page while being typed in."""
     s = _section()
     assert 'onSubmit={(e) => { e.preventDefault(); apply(); }}' in s
-    assert '<button type="submit"' in s and ">Apply</button>" in s and ">clear</button>" in s
+    assert '<button type="submit"' in s and '"Loading…" : "Apply"}' in s and ">clear</button>" in s
     for line in [l for l in s.splitlines() if "onChange=" in l]:
         assert "setPage" not in line and "reset()" not in line and "api." not in line, line
     assert "useLiveRefresh(load, 60_000, [load])" in s and "}, [applied, page]);" in s
@@ -255,10 +255,38 @@ def test_an_answer_is_shown_only_if_it_answers_what_was_applied():
     — an answer to an earlier ask (the server answers 2 of 992 for 90%)."""
     s = _section()
     assert "if (key === want.current) { setShown({ key, ask, d: x });" in s
-    assert "const waiting = !err && (!shown || shown.key !== wantKey);" in s and "measuring…" in s
+    assert "const waiting = !err && (!shown || shown.key !== wantKey);" in s
     # the line above the table names the filters of the ANSWER, not the boxes
     assert "const words = asked ? rsFilterWords(asked) : [];" in s
     assert "{words.length > 0 && ` · ${words.join(\" · \")}`}" in s
+
+
+def test_apply_shows_loading_and_cannot_be_pressed_until_its_answer_lands():
+    """Operator, Oct 07, 2026: "when i click apply, i want to see loading,
+    then make apply button disabled". `waiting` is true from the press until
+    the answer to what was applied is on screen, and false again on an
+    error, so a failed ask never leaves the button dead."""
+    s = _section()
+    assert '<button type="submit" disabled={waiting} aria-busy={waiting}' in s
+    assert '{waiting ? "Loading…" : "Apply"}' in s and "animate-spin" in s
+    assert "loading the room strategies…" in s
+    assert "${waiting ? \"opacity-50\" : \"\"}" in s, "the old rows are dimmed while the new ones load"
+    assert '<button type="button" className={btn} onClick={clear}>clear</button>' in s, \
+        "clear is never disabled"
+
+
+def test_judged_on_room_can_run_it_and_sort_are_gone():
+    """Operator, Oct 07, 2026: "also remove these fields its not needed" —
+    the three dropdowns. The list keeps one order, worst month first."""
+    s = _section()
+    assert "<select" not in s, "no dropdown is left in the filter row"
+    for gone in (">judged on", ">a room can run it", ">sort", "draft.win", "draft.dep", "draft.sort",
+                 "deployable: ask.deployable", "window: ask.window", "sort: ask.sort"):
+        assert gone not in s, gone
+    head = _src_all().split("export function RoomStrategiesSection()")[0]
+    assert "win: string; dep: string" not in head and "judged on ${a.window}" not in head
+    # the server's own default order is the one the list keeps
+    assert 'sort: q.sort ?? "worst_month"' in (ROOT / "webapp/src/lib/api.ts").read_text(encoding="utf-8")
 
 
 def test_last_n_days_is_one_box_not_two_buttons():

@@ -1302,7 +1302,7 @@ def _daytime_masks(coin: str, entry_ms: int, since_s) -> bool:
         return False
     from tradingagents import daytime_rule as _dr
 
-    return (_dr.is_stock(coin) and int(entry_ms) >= float(since_s) * 1000
+    return (_dr.us_hours(coin) and int(entry_ms) >= float(since_s) * 1000
             and not _dr.in_market_hours(int(entry_ms) / 1000))
 
 

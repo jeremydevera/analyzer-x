@@ -50,6 +50,24 @@ def is_stock(name: str) -> bool:
     return str(name or "").upper().removesuffix("_USDT").endswith("STOCK")
 
 
+# US-LISTED ETF TOKENS keep the same hours (final review, Oct 07, 2026:
+# #4FC03172 opened VUG_USDT four times on the night of Oct 06, 2026, and an
+# ETF's book at night is a stock token's book). Taken from the coins this
+# PC's Backtest v2 store holds. NAS100, SPX500 and US30 are NOT here: they
+# are priced off index futures that trade nearly round the clock.
+US_ETFS = frozenset({
+    "ARKK", "DIA", "EWJ", "EWZ", "GDX", "GLD", "IGV", "IWM", "MSTU", "NVDL",
+    "SMH", "SOXL", "SOXX", "SPY", "SQQQ", "TLT", "TQQQ", "TSLL", "USO", "VUG",
+    "XBI", "XLE", "XLK"})
+
+
+def us_hours(name: str) -> bool:
+    """Does this token follow US market hours under the rule: a stock token,
+    or a US-listed ETF token."""
+    base = str(name or "").upper().removesuffix("_USDT")
+    return is_stock(base) or base in US_ETFS
+
+
 def in_market_hours(ts_s: float) -> bool:
     """Mon-Fri 9:30am-4:00pm New York (the close itself is out), judged in New
     York's own clock at that instant, so daylight saving is never a fixed
@@ -100,7 +118,7 @@ def list_checks(trades: list, coin: str, end_ms: int, line: float) -> str:
     measured a day behind is judged on its own days, not emptied by the clock."""
     end = int(end_ms)
     closed = [t for t in trades if t[3] and int(t[4]) <= end]
-    stock = is_stock(coin)
+    stock = us_hours(coin)
 
     def kept(t):
         return not stock or in_market_hours(int(t[0]) / 1000)
@@ -123,10 +141,34 @@ def list_checks(trades: list, coin: str, end_ms: int, line: float) -> str:
     return ""
 
 
+UNREAD = "unread: "
+
+
+def is_unread(why: str) -> bool:
+    """A failure that says nothing about the strategy - its list could not be
+    built or reads old days. Never a switch-on; never a switch-off either:
+    an unreadable file keeps a running row (CLAUDE.md, the watcher)."""
+    return str(why or "").startswith(UNREAD)
+
+
+def check_of(why: str) -> str:
+    """Which check a reason belongs to, for the per-check counts."""
+    w = str(why or "")
+    if is_unread(w):
+        return "unread"
+    if "after fees" in w or "fee is unknown" in w:
+        return "fee"
+    if "daytime trades (9:30am" in w or "its daytime trades won" in w:
+        return "daytime record"
+    return "last 7 days"
+
+
 def screen(rows: list, cfg: dict, *, lists_for) -> tuple[list, dict]:
     """(rows that pass, {id: why} for the rest). The fee check first, from the
-    row alone; trade lists (`lists_for(rows) -> {id: {"trades", "end_ms"}}`)
-    are asked only for the rows it lets through. A row with no list FAILS."""
+    row alone; trade lists (`lists_for(rows) -> {id: {"trades", "end_ms",
+    "why"}}`) are asked only for the rows it lets through. A row with no list,
+    or a list ending a day or more before its row's own last bar
+    (`measured_ms`), fails as UNREAD (`is_unread`)."""
     line = float(cfg["on_winrate"])
     failed: dict = {}
     survivors = []
@@ -145,10 +187,19 @@ def screen(rows: list, cfg: dict, *, lists_for) -> tuple[list, dict]:
         rec = lists.get(r["id"]) or {}
         trades = rec.get("trades") or []
         if not trades:
-            failed[r["id"]] = "no trade list could be built for it"
+            failed[r["id"]] = (f"{UNREAD}no trade list could be built for it"
+                               + (f" ({rec['why']})" if rec.get("why") else ""))
             continue
-        end = rec.get("end_ms") or max(int(t[4]) for t in trades)
-        why = list_checks(trades, r["coin"], int(end), line)
+        end = int(rec.get("end_ms") or max(int(t[4]) for t in trades))
+        bar = r.get("measured_ms")
+        if bar and end < float(bar) - DAY_MS:
+            from tradingagents.positions_view import fmt_when
+
+            failed[r["id"]] = (f"{UNREAD}its trade list ends {fmt_when(end / 1000)}, more "
+                               f"than a day before its own last bar "
+                               f"{fmt_when(float(bar) / 1000)}")
+            continue
+        why = list_checks(trades, r["coin"], end, line)
         if why:
             failed[r["id"]] = why
         else:

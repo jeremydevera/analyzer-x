@@ -174,7 +174,9 @@ NOW = 1_791_400_000.0      # Oct 07, 2026, after the pass hour
 def _cand(rid, coin, tp, sl, rt=0.22, signal="macddiv"):
     return {"id": rid, "coin": coin, "tf": "1h", "signal": signal, "th": 0.0,
             "sl": sl, "tp": tp, "rt": rt, "trades": 90, "wins": 80, "losses": 10,
-            "winrate": 88.89, "profit": 15.0, "gate": "ok", "measured_ms": NOW * 1000}
+            "winrate": 88.89, "profit": 15.0, "gate": "ok",
+            # the row's last bar is the list's last candle (one timeline)
+            "measured_ms": END}
 
 
 @pytest.fixture
@@ -210,6 +212,10 @@ def room(tmp_path, monkeypatch):
         w["asked"] += [r["id"] for r in rows]
         return {r["id"]: w["lists"][r["id"]] for r in rows if r["id"] in w["lists"]}
     monkeypatch.setattr(sw, "_daytime_lists", lists)
+    # no disk job unless a test says so (never this PC's own job state)
+    from tradingagents import room_replay as _rr
+
+    monkeypatch.setattr(_rr, "disk_job", lambda: "")
     from tradingagents import notifications as nt
 
     monkeypatch.setattr(nt, "record", lambda *a, **k: 1)
@@ -391,3 +397,128 @@ def test_the_room_rebuild_applies_the_mask():
 
     assert "_daytime_masks(" in inspect.getsource(rr.room_lists)
     assert "daytime_since" in inspect.getsource(rr.room_follow)
+
+
+# ================================================== the final review's fixes
+# Critical #1: a running row whose list could not be built is KEPT (an
+# unreadable file keeps a running row, CLAUDE.md), never switched off.
+def _running(room, rid, coin, key="macddiv_1h_sl1tp15", books=("paper",), real=False):
+    slot = f"{key}|{coin}_USDT"
+    room["settings"]["strategy_coins"] = {key: [f"{coin}_USDT"]}
+    room["settings"]["strategy_books"] = {slot: list(books)}
+    room["settings"]["watcher_slots"] = {slot: {
+        "id": rid, "coin": coin, "tf": "1h", "signal": "macddiv", "tp": 1.5, "sl": 1.0,
+        "on_at": NOW - 86_400, "real": real}}
+    return key, slot
+
+
+def test_a_running_row_with_no_list_is_kept_and_named(room):
+    room["cands"] = [_cand("CCCC3333", "FWDISTOCK", 1.5, 1.0)]
+    room["lists"] = {}                                  # the build failed
+    key, _slot = _running(room, "CCCC3333", "FWDISTOCK")
+    got = sw.consider(now=NOW)
+    assert not [d for d in got["decisions"] if d["action"] == "off"]
+    assert room["settings"]["strategy_coins"][key] == ["FWDISTOCK_USDT"]
+    assert sw._read()["daytime"]["unread"] == 1
+
+
+# Important #2: a list that ends a day or more before its row's own last bar
+# reads old days — unread, never a switch-on or a switch-off
+def test_a_stale_list_neither_switches_on_nor_off(room):
+    stale = {"trades": _days(3, 1, 5, 5), "end_ms": END}       # would FAIL
+    room["cands"] = [{**_cand("CCCC3333", "FWDISTOCK", 1.5, 1.0),
+                      "measured_ms": END + 3 * DAY}]
+    room["lists"] = {"CCCC3333": stale}
+    key, _slot = _running(room, "CCCC3333", "FWDISTOCK")
+    got = sw.consider(now=NOW)
+    assert not [d for d in got["decisions"] if d["action"] == "off"]
+    assert sw._read()["daytime"]["unread"] == 1
+
+
+def test_the_lists_are_built_after_the_prices_are_brought_up(monkeypatch):
+    from tradingagents import room_replay as rr
+
+    calls = []
+    monkeypatch.setattr(rr, "refresh_prices", lambda coins, end_ms, store=None, now=None:
+                        calls.append(("prices", sorted(coins))) or {})
+    monkeypatch.setattr(rr, "build_lists", lambda cands, store=None, workers=None, **k:
+                        (calls.append(("lists", workers)) or {}, {}))
+    sw._daytime_lists_real([_cand("AAAA1111", "GPNSTOCK", 1.5, 1.0)], now=NOW)
+    assert calls[0] == ("prices", ["GPNSTOCK"]) and calls[1] == ("lists", 2)
+
+
+# Important #3: US-listed ETF tokens follow US hours like stock tokens
+def test_us_etf_tokens_keep_us_hours_and_index_tokens_do_not():
+    for name in ("VUG_USDT", "SPY", "IGV", "TQQQ_USDT", "GLD"):
+        assert dr.us_hours(name), name
+    for name in ("NAS100", "SPX500_USDT", "US30", "BB_USDT", "ZINC"):
+        assert not dr.us_hours(name), name
+    assert dr.us_hours("GPNSTOCK_USDT")
+
+
+def test_the_runner_skips_vug_at_night(runner):
+    runner["cycle"](T_NIGHT + 10, symbol="VUG_USDT")
+    assert runner["fx"].books == 0 and runner["rows"]("market_closed")
+
+
+def test_the_replay_masks_vug_at_night():
+    from tradingagents import room_replay as rr
+
+    assert rr._daytime_masks("VUG", (T_NIGHT + 900) * 1000, T_NIGHT - 3600)
+
+
+# Important #4: the daytime switch-off keeps the off pass's two protections
+def test_the_daytime_rule_never_takes_your_own_real_money_off(room):
+    room["cands"] = [_cand("CCCC3333", "FWDISTOCK", 1.5, 1.0)]
+    room["lists"] = {"CCCC3333": NIGHT}
+    key, slot = _running(room, "CCCC3333", "FWDISTOCK", books=("paper", "real"), real=False)
+    got = sw.consider(now=NOW)
+    assert not [d for d in got["decisions"] if d["action"] == "off"]
+    assert room["settings"]["strategy_books"][slot] == ["paper", "real"]
+
+
+def test_a_row_you_switched_off_yourself_is_not_logged_off_again(room):
+    room["cands"] = [_cand("CCCC3333", "FWDISTOCK", 1.5, 1.0)]
+    room["lists"] = {"CCCC3333": NIGHT}
+    key, _slot = _running(room, "CCCC3333", "FWDISTOCK")
+    room["settings"]["strategy_coins"][key] = []           # you switched it off
+    got = sw.consider(now=NOW)
+    assert not [d for d in got["decisions"]
+                if d["action"] == "off" and "daytime" in d["why"]]
+
+
+# Important #5: the market_closed count survives a runner restart, the row
+# names no single coin for the whole count, and every coin is counted
+def test_the_market_closed_count_survives_a_restart(runner, monkeypatch, tmp_path):
+    monkeypatch.setattr(at, "STATE_DIR", tmp_path)
+    runner["cycle"](T_NIGHT + 10)                      # first row
+    runner["cycle"](T_NIGHT + 910)                     # counted, no row
+    at._MARKET_CLOSED.clear()                          # the runner is killed
+    runner["cycle"](T_NIGHT + 1810)                    # counted after restart
+    runner["cycle"](T_NIGHT + 3610)                    # an hour on: the row
+    got = runner["rows"]("market_closed")
+    assert len(got) == 2 and got[1]["candles"] == 3, got
+    assert got[1]["symbol"] == "" and got[1]["coins_total"] == 1
+
+
+# Important #6: the pass waits for a disk job instead of competing with it
+def test_the_daytime_pass_waits_for_a_disk_job(room, monkeypatch):
+    from tradingagents import room_replay as rr
+
+    monkeypatch.setattr(rr, "disk_job", lambda: "a candle download (40%)")
+    room["cands"] = [_cand("AAAA1111", "GPNSTOCK", 1.5, 1.0)]
+    room["lists"] = {"AAAA1111": GOOD}
+    got = sw.consider(now=NOW)
+    assert not [d for d in got["decisions"] if d["action"] == "on"]
+    assert room["asked"] == []
+
+
+# Minor: per-check counts are kept for the screen
+def test_the_pass_keeps_a_count_per_check(room):
+    room["cands"] = [_cand("AAAA1111", "GPNSTOCK", 1.5, 1.0),
+                     _cand("BBBB2222", "GPNSTOCK", 1.0, 0.8),
+                     _cand("CCCC3333", "FWDISTOCK", 1.5, 1.0)]
+    room["lists"] = {"AAAA1111": GOOD, "CCCC3333": NIGHT}
+    sw.consider(now=NOW)
+    d = sw._read()["daytime"]
+    assert d["passed"] == 1 and d["checks"]["fee"] == 1 and d["checks"]["daytime record"] == 1

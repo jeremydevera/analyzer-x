@@ -929,19 +929,45 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     daytime_off: list = []
     daytime_why = ""
     if dr.enabled(settings):
+        # ONE DISK: the lists are built from the store's files, and a candle
+        # download or a collect rewrites them (the room replay waits the same way)
+        from tradingagents import room_replay as _rr
+
+        busy = _rr.disk_job()
+        if busy:
+            return f"the daytime rule waits for {busy}"
         line_passed = len(rows)
         rows, failed = dr.screen(rows, cfg, lists_for=_daytime_lists)
         slot_of = {m.get("id"): slot for slot, m in ws.items()}
         for rid, why in sorted(failed.items()):
             slot = slot_of.get(rid)
-            if slot:
-                daytime_off.append((slot, rid, len(out)))
-                out.append(_d(now, st, "off", {**ws[slot], "id": rid},
-                              f"daytime rule: {why}"))
+            if not slot or dr.is_unread(why):
+                continue               # an unreadable list keeps a running row
+            key, sym = slot.split("|", 1)
+            meta = ws[slot]
+            # the off pass's own two protections: a row you switched off
+            # yourself is no longer the watcher's, and a real-money book the
+            # watcher did not arm is yours, never touched
+            if sym not in at.coins_for(key, settings):
+                continue
+            if "real" in at.book_names(settings, key, sym) and not meta.get("real"):
+                continue
+            daytime_off.append((slot, rid, len(out)))
+            out.append(_d(now, st, "off", {**meta, "id": rid}, f"daytime rule: {why}"))
         gone_ids = {rid for _s, rid, _i in daytime_off}
         running = [x for x in running if x["id"] not in gone_ids]
+        import collections as _co
+
+        checks = _co.Counter(dr.check_of(w) for w in failed.values())
+        st["daytime"] = {"at": now, "line_passed": line_passed, "passed": len(rows),
+                         "unread": checks.pop("unread", 0), "checks": dict(checks),
+                         "switched_off": len(daytime_off),
+                         "examples": dict(list(sorted(failed.items()))[:30])}
         daytime_why = (f" · daytime rule: {len(rows):,} of {line_passed:,} pass"
-                       + (f", most often failing on {_top_daytime(failed)}" if failed else "")
+                       + (f" (" + ", ".join(f"{n:,} fail the {c}" for c, n in
+                                             checks.most_common()) + ")" if checks else "")
+                       + (f", {st['daytime']['unread']:,} unread and kept as they are"
+                          if st["daytime"]["unread"] else "")
                        + (f", {len(daytime_off):,} running switched off" if daytime_off else ""))
     arm = []
     refused: set = set()
@@ -980,8 +1006,10 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
                 _undo(out[i], reason)
             if not stop:
                 return f"{reason}, trying again"
-        for _slot, rid, _i in daytime_off:
-            st.setdefault("cooling", {})[rid] = now
+        else:
+            # the wait starts only for a switch-off that really happened
+            for _slot, rid, _i in daytime_off:
+                st.setdefault("cooling", {})[rid] = now
     # the count that passes EVERY rule, beside the one the list was asked for
     # (RCA-2026-09-30-C): "1,511 meet the criteria" over 539 switched on read
     # as 972 rows lost
@@ -998,15 +1026,34 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
 
 
 def _daytime_lists(rows: list) -> dict:
-    """{id: {"trades", "end_ms"}} — each row's own Backtest v2 trade list
-    (room_replay.build_lists: minute-exact, cached by input stamp, the lists
-    Backtest a room uses), for the daytime rule's checks."""
+    """The daytime rule's lists — see `_daytime_lists_real`."""
+    return _daytime_lists_real(rows, now=time.time())
+
+
+# workers for the daytime lists: the build runs inside the site's own process,
+# and every room's hourly switch-off waits on this thread (final review)
+DAYTIME_WORKERS = 2
+
+
+def _daytime_lists_real(rows: list, now: float) -> dict:
+    """{id: {"trades", "end_ms", "why"}} — each row's own Backtest v2 trade
+    list (room_replay.build_lists: minute-exact, cached by input stamp, the
+    lists Backtest a room uses), built AFTER the rows' coins' 1-minute candles
+    are brought up to now (room_replay.refresh_prices), so "the last 7 days"
+    are this week's and not the last week a download happened to reach."""
     from tradingagents import room_replay as rr
     from tradingagents import stores
 
+    coins = sorted({str(r["coin"]) for r in rows})
+    print(f"[watcher] daytime rule: bringing {len(coins):,} coin(s) up to now, then "
+          f"{len(rows):,} trade list(s)", flush=True)
+    rr.refresh_prices(coins, int(now * 1000), store=stores.V2, now=now)
     cands = [rr._cand_of(r) for r in rows]
-    lists, _info = rr.build_lists(cands, store=stores.V2)
-    return {rid: {"trades": rec.get("trades") or [], "end_ms": rec.get("end_ms")}
+    lists, info = rr.build_lists(cands, store=stores.V2, workers=DAYTIME_WORKERS)
+    print(f"[watcher] daytime rule: {len(lists):,} list(s) ready "
+          f"({int((info or {}).get('cached') or 0):,} from the cache)", flush=True)
+    return {rid: {"trades": rec.get("trades") or [], "end_ms": rec.get("end_ms"),
+                  "why": rec.get("why") or ""}
             for rid, rec in lists.items()}
 
 
@@ -1153,7 +1200,9 @@ def consider(*, now: float | None = None) -> dict:
 
 
 PASS_FIELDS = ("last_on_pass", "last_off_pass", "last_on_try", "cooling",
-               "reported", "why", "last_candidates", "practice")
+               "reported", "why", "last_candidates", "practice",
+               # the daytime rule's last pass: counts per check and examples
+               "daytime")
 
 
 def _practice_now(now: float, cfg: dict) -> dict:

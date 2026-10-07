@@ -3207,27 +3207,50 @@ def _daytime_closed(settings: dict, symbol: str, now: float | None = None) -> bo
     rule (docs/superpowers/specs/2026-10-07-daytime-rule-design.md)."""
     from tradingagents import daytime_rule as _dr
 
-    if not _dr.enabled(settings) or not _dr.is_stock(symbol):
+    if not _dr.enabled(settings) or not _dr.us_hours(symbol):
         return False
     return not _dr.in_market_hours(time.time() if now is None else now)
+
+
+MARKET_CLOSED_FILE = "market_closed.json"
+
+
+def _market_closed_path() -> Path:
+    return _pp(STATE_DIR / MARKET_CLOSED_FILE)
 
 
 def _note_market_closed(symbol: str, dry: bool) -> None:
     """Count one skipped candle; write the room's `market_closed` row at the
     first skip and then at most once an hour, carrying every candle counted
-    since the row before (the line is rate-limited, the count is not)."""
+    since the row before. The count is kept in the room's own file, so a
+    runner killed between rows (a stop on Windows always is) loses none of it
+    - the line is rate-limited, the count never is (RCA-2026-10-02-C)."""
     m = _MARKET_CLOSED
+    path = _market_closed_path()
+    if not m:
+        try:
+            got = json.loads(path.read_text(encoding="utf-8"))
+            m.update(at=got.get("at"), candles=int(got.get("candles") or 0),
+                     coins=set(got.get("coins") or []))
+        except (OSError, ValueError, TypeError):
+            pass
     m["candles"] = int(m.get("candles") or 0) + 1
     m.setdefault("coins", set()).add(str(symbol).removesuffix("_USDT"))
     now = time.time()
-    if m.get("at") and now - float(m["at"]) < MARKET_CLOSED_EVERY_S:
-        return
-    append_ledger({"symbol": symbol, "action": "market_closed",
-                   "why": "daytime rule: stock tokens open only 9:30am-4pm New York, "
-                          "Monday to Friday",
-                   "candles": m["candles"], "coins": sorted(m["coins"])[:50],
-                   "dry_run": bool(dry)})
-    m.update(at=now, candles=0, coins=set())
+    if not (m.get("at") and now - float(m["at"]) < MARKET_CLOSED_EVERY_S):
+        coins = sorted(m["coins"])
+        append_ledger({"symbol": "", "action": "market_closed",
+                       "why": "daytime rule: stock and US fund tokens open only "
+                              "9:30am-4pm New York, Monday to Friday",
+                       "candles": m["candles"], "coins": coins,
+                       "coins_total": len(coins), "dry_run": bool(dry)})
+        m.update(at=now, candles=0, coins=set())
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"at": m.get("at"), "candles": m["candles"],
+                                    "coins": sorted(m["coins"])}), encoding="utf-8")
+    except OSError:
+        pass
 
 
 def _count_refused_candle(st: dict, key: str, symbol: str, dry: bool,

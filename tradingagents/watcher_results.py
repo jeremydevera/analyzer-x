@@ -23,7 +23,7 @@ def practice(slots: dict, *, now: float) -> dict:
     if not slots:
         return out
     got: dict = {s: [] for s in slots}
-    for e in at.ledger_since(min(starts.values())):
+    for e in at.ledger_trades(min(starts.values())):
         if e.get("action") != "exit" or not e.get("dry_run"):
             continue
         slot = at.book_slot(e.get("strategy") or "", e.get("symbol"))

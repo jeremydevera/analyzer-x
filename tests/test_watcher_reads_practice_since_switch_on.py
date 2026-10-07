@@ -15,7 +15,7 @@ def _exit(ts, pnl, dry=True, strat="bb20_15m_sl12tp12", sym="FASTSTOCK_USDT"):
 @pytest.fixture
 def ledger(monkeypatch):
     rows = []
-    monkeypatch.setattr(at, "ledger_since",
+    monkeypatch.setattr(at, "ledger_trades",
                         lambda ts: [r for r in rows if r["ts"] >= ts])
     return rows
 
@@ -70,7 +70,7 @@ def test_a_list_that_is_not_ready_is_a_wait_never_an_empty_day(monkeypatch):
 
 def test_the_ledger_is_read_once_however_many_slots(ledger, monkeypatch):
     calls = []
-    real = at.ledger_since
-    monkeypatch.setattr(at, "ledger_since", lambda ts: (calls.append(ts), real(ts))[1])
+    real = at.ledger_trades
+    monkeypatch.setattr(at, "ledger_trades", lambda ts: (calls.append(ts), real(ts))[1])
     wr.practice({f"k{i}|C{i}_USDT": NOW - 1000 for i in range(50)}, now=NOW)
     assert len(calls) == 1

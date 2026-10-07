@@ -53,8 +53,8 @@ LEDGER = [_exit(KEY, "DVNSTOCK_USDT", 0.16),
 
 
 @pytest.fixture
-def ledger(monkeypatch):
-    monkeypatch.setattr(at, "ledger_since", lambda ts: list(LEDGER))
+def ledger(write_ledger):
+    write_ledger(LEDGER)            # the record itself (RCA-2026-10-07-L)
     return LEDGER
 
 
@@ -75,8 +75,7 @@ def test_the_default_is_still_the_whole_strategy(ledger):
     assert (got[KEY]["wins"], got[KEY]["losses"]) == (2, 1)
 
 
-def test_todays_pnl_takes_the_same_switch(ledger, monkeypatch):
-    monkeypatch.setattr(at, "ledger_since", lambda ts: list(LEDGER))
+def test_todays_pnl_takes_the_same_switch(ledger):
     per_coin = at.pnl_today_by_strategy(now=1_789_500_100.0, dry=True,
                                         by_coin=True)
     whole = at.pnl_today_by_strategy(now=1_789_500_100.0, dry=True)

@@ -172,6 +172,112 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-L — the profit calendar said "still not loading after 112s": every Auto Trade figure re-read each room's whole trade record, 366,316 lines to find 374 trades
+
+**CEO**
+
+* On Auto Trade, the day-by-day profit calendar spun for two minutes and
+  more ("profit — still not loading after 112s, retrying"), and the trade
+  history was slow too.
+* Why: every number on that page read each room's ENTIRE trade record from
+  the first line, every 5 to 15 seconds, and the busiest room's record had
+  grown to 366,316 lines of which only 374 were trades — the rest were "too
+  costly, skipped" notes — so the app could never catch up.
+* What stops it now: the app keeps each room's trades in memory and reads
+  only the lines added since it last looked; a read of that room went from
+  2.0 seconds to under a millisecond.
+
+**DEV**
+
+* `tradingagents/api.py` `trade_pnl_daily` → `auto_trader.daily_pnl` →
+  `ledger_since(0)` json-parsed every line of
+  `profiles/4FC03172/auto_trade_ledger.jsonl` (144 MB) to keep 166 exits, and
+  so did `trade_summary` (`_all_time_records(ledger_since(0))`, `pnl_today`
+  ×2), `trade_strategies` (`strategy_stats` ×2, `pnl_today_by_strategy` ×2),
+  `trade_positions` (`coin_stats` ×2) and `trade_history`
+  (`ledger_tail(100000)`): eleven full parses per room per refresh, six rooms
+  polling (`trade_equity` too, though no screen asks for it today).
+* Invariant broken: **a screen reads what it shows, never the whole file to
+  find it** — an append-only record is read once, then from where the last
+  read stopped (`auto_trader.ledger_trades`, `_TradeRows`), and a reader of
+  trades reads EVERY trade, never the last 100,000 lines.
+* Guard: `tests/test_the_screen_reads_trades_not_the_whole_record.py`
+  (14 tests), with `::test_no_screen_route_reads_the_whole_record` and
+  `::test_a_trade_100000_lines_back_is_still_in_the_history` both red on the
+  old code.
+
+**SAW** — Oct 07, 2026 2:45pm, a screenshot of Auto Trade with the spinner
+over the calendar, "profit — still not loading after 112s, retrying":
+*"what's taking this so long"*, then *"also day by day calendar is taking too
+long to load and trade history"*.
+
+**TIMELINE**
+
+1. Oct 01–06, 2026 — #4FC03172's record grows 52,896 to 62,325 lines a day;
+   39,669 to 52,290 of them a day are the cost check's `gate_blocked` notes.
+2. Oct 06, 2026 6:55pm — the record reset removes the room's trades and
+   keeps the other 338,459 lines.
+3. Oct 07, 2026, about 2:50pm — measured: 366,316 lines, 144 MB — 300,907
+   `gate_blocked`, 50,829 `coin_busy`, 11,088 `chase_skip`, 206 `enter`,
+   166 `exit`. One full parse on its own: 2.02 s (#55D32617: 158,368 lines,
+   0.9 s).
+4. Same minutes — the API process burns 12.1 s of CPU per 10 s; py-spy finds
+   all four request threads inside `ledger_since` (summary, strategies twice,
+   the calendar).
+5. Same minutes, asked directly while the page was open: the calendar of
+   #4FC03172 18.6 s and 17.7 s, #55D32617 21.5 s; summary 44.3 s, strategies
+   62.9 s, positions 74.2 s; `/api/health` 4.2 s. In the browser: 112 s and
+   retrying.
+6. After the fix, on the nine real records, read-only: the trades kept are
+   identical to a full read on every one; first read 0.06 to 1.10 s, every
+   read after it 0.2 to 1.0 ms.
+
+NEVER HAPPENED YET, found on the way: `trade_history` and `/api/ledger`
+read the last 100,000 LINES. #4FC03172's oldest trade sat 25,678 lines from
+the end of its record, so at ~55,000 lines a day its history would have
+started losing its oldest trades within two days — `total` and `examined`
+shrinking with them, and `/api/ledger`'s `total` ("N lines on this PC") was
+already printing 100,000 for a 366,316-line record.
+
+**ROOT CAUSE** — `ledger_since()`: `for line in fh: e = json.loads(line)`
+over the whole file on every call, eleven calls per room per refresh,
+while the file grew by ~55,000 non-trade lines a day.
+
+**WHY IT WAS NOT CAUGHT** — reading everything was the FIX for an older
+bug (`pnl_today`: "a fixed tail silently hid a whole day's exits"), and it
+was cheap when it was written: the Sep 24, 2026 review measured 0.18 s per
+parse at 37,000 lines and wrote down that "the grid slows down linearly as
+the ledger grows" — nothing measured the size again. Every test of these
+readers used a handful of rows, and none asked HOW MUCH of the file a
+screen reads, so a cost that grows with the file had nowhere to show. The
+rooms multiplied it: six records polled at once, the busiest writing up to
+52,290 "too costly" notes a day. The guard now makes the whole-file readers fail inside
+every screen route, and counts the lines parsed after an append (one).
+
+**COST** — none in money. Auto Trade's calendar, profit and history took
+minutes to load. The runners were not slowed: no room has a loss limit set,
+so none of them reads its record each round.
+
+**FIX** — this commit. `auto_trader.ledger_trades()` keeps each record's
+`enter`/`exit` rows per process and reads only appended bytes, starting over
+when the file shrinks, is swapped for another file, its first bytes or the
+bytes before the read position change, a `record_reset` row arrives, or ten
+minutes pass; a line that cannot be a trade is skipped before parsing. Every
+screen reader, the loss-limit readers and the watcher's practice record use
+it; the history and `/api/ledger` read every trade.
+
+**GUARD** — `tests/test_the_screen_reads_trades_not_the_whole_record.py`:
+`::test_the_kept_trades_are_exactly_what_a_full_read_finds`,
+`::test_only_the_lines_added_since_the_last_look_are_parsed`,
+`::test_a_rewritten_record_that_grew_back_past_the_old_end_is_read_again`,
+`::test_a_swapped_in_copy_of_the_same_size_is_read_again`,
+`::test_an_edit_nobody_announced_is_wrong_for_minutes_never_for_ever`,
+`::test_a_read_that_fails_half_way_counts_nothing_twice` (found by the bug
+hunt before it shipped), `::test_no_screen_route_reads_the_whole_record` and
+`::test_a_trade_100000_lines_back_is_still_in_the_history`.
+
+---
+
 ## RCA-2026-10-07-K — the error-to-issue system's first live hour: the filer filed its own status line, and the fixer's first check had no Bash
 
 **CEO**

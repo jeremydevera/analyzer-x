@@ -34,7 +34,6 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-import tradingagents.auto_trader as at
 from tradingagents.api import app
 
 # the shape of the operator's file: a few trades buried under refusals
@@ -50,8 +49,11 @@ LEDGER = (
 
 
 @pytest.fixture()
-def client(monkeypatch):
-    monkeypatch.setattr(at, "ledger_tail", lambda n: list(LEDGER))
+def client(write_ledger):
+    # LEDGER is newest first, as the route's old `ledger_tail` returned it;
+    # the FILE holds it oldest first (RCA-2026-10-07-L: the trades are now
+    # read from the record itself, so the record is what is faked)
+    write_ledger(reversed(LEDGER))
     return TestClient(app)
 
 

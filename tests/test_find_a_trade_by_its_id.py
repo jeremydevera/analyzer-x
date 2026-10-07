@@ -47,8 +47,9 @@ LEDGER = [
 
 
 @pytest.fixture
-def ledger(monkeypatch):
-    monkeypatch.setattr(at, "ledger_tail", lambda n: list(LEDGER))
+def ledger(monkeypatch, write_ledger):
+    # newest first in LEDGER, oldest first in the file (RCA-2026-10-07-L)
+    write_ledger(reversed(LEDGER))
     monkeypatch.setattr(at, "load_settings", lambda: {
         "strategy_coins": {STRAT: ["VUG_USDT"]},
         "strategy_books": {STRAT: ["paper"]}})

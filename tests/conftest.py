@@ -129,6 +129,11 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
         at._CYCLE_GATES.clear()
     if hasattr(at, "_GATE_CACHE"):
         at._GATE_CACHE.clear()
+    # the kept trade rows of every record this process has read
+    # (RCA-2026-10-07-L): keyed by path, so one test's record can never be
+    # another's, but a test starts with nothing kept all the same
+    if hasattr(at, "_TRADE_READERS"):
+        at._TRADE_READERS.clear()
     for name, filename in (("STATE_PATH", "auto_trade_state.json"),
                            ("STATE_LOCK_PATH", "auto_trade_state.lock"),
                            ("LEDGER_PATH", "auto_trade_ledger.jsonl"),
@@ -345,6 +350,30 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
         monkeypatch.setattr(_pl, "STATE_DIR", sandbox, raising=False)
     except Exception:
         pass
+
+
+@pytest.fixture
+def write_ledger():
+    """Put rows in this test's sandboxed trade record, in FILE order — the
+    oldest first, the way the runner appends them — and return its path.
+
+    The screen's readers KEEP a record's trades and read only what was added
+    since (auto_trader.ledger_trades, RCA-2026-10-07-L), so a test fakes the
+    FILE, never the reader: a stubbed `ledger_since` or `ledger_tail` is a
+    function nothing calls any more, and the test would pass on an empty
+    record."""
+    import json as _json
+
+    import tradingagents.auto_trader as at
+
+    def _write(rows) -> Path:
+        p = at._pp(at.LEDGER_PATH)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("".join(_json.dumps(r) + "\n" for r in rows),
+                     encoding="utf-8")
+        return p
+
+    return _write
 
 
 @pytest.fixture(autouse=True)

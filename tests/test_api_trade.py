@@ -320,7 +320,7 @@ def test_the_probe_reports_whether_a_stop_can_actually_rest(client,
 # trade, on LIVE/DEMO tabs, with a per-month summary and 5-row pages.
 
 def test_history_separates_the_books_and_runs_the_total_over_the_whole_book(
-        client, monkeypatch):
+        client, write_ledger):
     led = [
         {"action": "exit", "dry_run": False, "ts": 1_787_000_000,
          "symbol": "APEX_USDT", "side": "SHORT", "strategy": "sweep30_1h_w",
@@ -333,7 +333,7 @@ def test_history_separates_the_books_and_runs_the_total_over_the_whole_book(
          "why": "TP", "pnl_est": 9.0},
         {"action": "enter", "dry_run": False, "ts": 1_787_300_000},
     ]
-    monkeypatch.setattr(at, "ledger_tail", lambda n: led)
+    write_ledger(reversed(led))  # read back newest first: `led` (RCA-2026-10-07-L)
     live = client.get("/api/trade/history?dry=false").json()
     assert live["total"] == 2, "entries and the paper book are excluded"
     assert [r["coin"] for r in live["rows"]] == ["PI", "APEX"], "newest first"
@@ -343,10 +343,10 @@ def test_history_separates_the_books_and_runs_the_total_over_the_whole_book(
     assert [r["coin"] for r in paper["rows"]] == ["XAUT"]
 
 
-def test_history_pages_are_five_deep_and_clamped(client, monkeypatch):
+def test_history_pages_are_five_deep_and_clamped(client, write_ledger):
     led = [{"action": "exit", "dry_run": False, "ts": 1_787_000_000 + i,
             "symbol": "A_USDT", "pnl_est": 1.0} for i in range(12)]
-    monkeypatch.setattr(at, "ledger_tail", lambda n: led)
+    write_ledger(reversed(led))  # read back newest first: `led` (RCA-2026-10-07-L)
     p1 = client.get("/api/trade/history?per_page=5&page=1").json()
     assert len(p1["rows"]) == 5 and p1["pages"] == 3
     p9 = client.get("/api/trade/history?per_page=5&page=9").json()
@@ -355,14 +355,14 @@ def test_history_pages_are_five_deep_and_clamped(client, monkeypatch):
 
 
 def test_history_carries_a_per_month_summary_that_sums_to_its_own_total(
-        client, monkeypatch):
+        client, write_ledger):
     led = [{"action": "exit", "dry_run": False, "ts": 1_785_000_000,
             "symbol": "A_USDT", "pnl_est": 3.0},
            {"action": "exit", "dry_run": False, "ts": 1_787_000_000,
             "symbol": "A_USDT", "pnl_est": -1.0},
            {"action": "exit", "dry_run": False, "ts": 1_787_100_000,
             "symbol": "A_USDT", "pnl_est": 2.0}]
-    monkeypatch.setattr(at, "ledger_tail", lambda n: led)
+    write_ledger(reversed(led))  # read back newest first: `led` (RCA-2026-10-07-L)
     got = client.get("/api/trade/history").json()
     assert len(got["months"]) == 2
     assert got["months"][0]["label"] > "", "months are printed as 'Aug 2026'"
@@ -480,8 +480,8 @@ def test_the_streak_is_read_from_the_book_the_row_trades(client, monkeypatch):
     assert r["streak"] == 1, "a paper row must read the paper ladder"
 
 
-def test_the_equity_curve_is_built_from_the_same_exit_rows(client, monkeypatch):
-    monkeypatch.setattr(at, "ledger_since", lambda ts: [
+def test_the_equity_curve_is_built_from_the_same_exit_rows(client, write_ledger):
+    write_ledger([
         {"action": "exit", "dry_run": False, "ts": 1.0, "pnl_est": 2.0,
          "symbol": "A_USDT"},
         {"action": "enter", "dry_run": False, "ts": 2.0},

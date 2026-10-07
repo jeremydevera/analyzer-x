@@ -2656,11 +2656,18 @@ def ledger(limit: int = 500, actions: str | None = None) -> dict:
     """
     import tradingagents.auto_trader as at
 
-    rows = at.ledger_tail(100000)
     want = {a.strip() for a in (actions or "").split(",") if a.strip()}
+    if want and want <= set(at._TRADE_ACTIONS):
+        # TRADES come from the kept trade rows: the WHOLE record, newest
+        # first, where the last 100,000 lines held only two days of
+        # #4FC03172 (RCA-2026-10-07-L)
+        rows = list(reversed(at.ledger_trades(0)))
+    else:
+        rows = at.ledger_tail(100000)
     kept = [r for r in rows if r.get("action") in want] if want else rows
     return {"rows": kept[:max(0, min(limit, 5000))],
-            "total": len(rows), "matched": len(kept),
+            # every line of the record, not the length of the window read
+            "total": at.ledger_line_count(), "matched": len(kept),
             "actions": sorted(want)}
 
 
@@ -2792,7 +2799,9 @@ def trade_summary() -> dict:
                 "margin": pos.get("margin"),
                 "strategy": pos.get("strategy"),
             })
-    life_total, paper_all = _all_time_records(at.ledger_since(0))
+    # the kept trade rows: a re-read of #4FC03172's whole record was 2.0 s
+    # of every summary, three times over (RCA-2026-10-07-L)
+    life_total, paper_all = _all_time_records(at.ledger_trades(0))
     open_real = round(sum(r["unrealized"] for r in open_rows), 2)
     return {
         "pid": pid,
@@ -3989,7 +3998,12 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1,
     _q = (q or "").strip().lstrip("#").upper()
     # a search spans BOTH books; without one the tab still rules
     _books = (False, True) if _q else (dry,)
-    _all = at.ledger_tail(100000)
+    # EVERY trade on the record, newest first as `ledger_tail` gave them (the
+    # sorts below are stable, so same-second trades keep their order). The
+    # last 100,000 LINES used to be read here: #4FC03172 writes ~55,000 a day,
+    # so its oldest trades were two days from falling out of its own history
+    # when this changed (RCA-2026-10-07-L).
+    _all = list(reversed(at.ledger_trades(0)))
     _exits = [e for e in _all if e.get("action") == "exit"]
     _examined = len(_exits)
 
@@ -4136,7 +4150,7 @@ def trade_equity(dry: bool = False) -> dict:
     import tradingagents.auto_trader as at
 
     out, run = [], 0.0
-    for e in at.ledger_since(0):
+    for e in at.ledger_trades(0):
         if e.get("action") != "exit" or bool(e.get("dry_run")) is not dry:
             continue
         run = round(run + float(e.get("pnl_est") or 0), 2)

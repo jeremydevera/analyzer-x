@@ -2372,7 +2372,8 @@ def pnl_today(now: float | None = None, dry: bool | None = None) -> dict:
     # Read by TIME, not by row count: gate_blocked / chase_skip / error rows
     # share this file, so a fixed tail silently hid a whole day's exits once
     # the log got busy — and the loss limit then read 0.00 on a losing day.
-    for e in ledger_since(midnight):
+    # The kept trade rows, never a re-read of the record (RCA-2026-10-07-L).
+    for e in ledger_trades(midnight):
         if e.get("action") != "exit" or e.get("ts", 0) < midnight:
             continue
         if dry is not None and bool(e.get("dry_run")) is not dry:
@@ -2419,6 +2420,156 @@ def ledger_tail(n: int = 20) -> list[dict]:
         except ValueError:
             continue
     return list(reversed(out))
+
+
+# THE TRADES ARE KEPT, NOT RE-READ (Oct 07, 2026, RCA-2026-10-07-L). Every
+# figure on Auto Trade parsed its room's WHOLE trade record to find the trades
+# in it. #4FC03172's record held 366,316 lines and 374 of them were trades —
+# 300,907 were the cost check's "gate_blocked" notes — and the screen asked
+# for eleven full reads per room (summary 3, strategies 4, positions 2, the
+# calendar, the history) every 5 s for the room on screen and every 15 s for
+# the other five. One read was 2.0 s on its own; the API
+# was busy 12.1 s of every 10, and the calendar said "still not loading after
+# 112s". A record is only ever APPENDED to, so each process keeps every
+# record's ENTER and EXIT rows and reads just the bytes added since it last
+# looked. A full read skips any line that cannot be a trade before parsing
+# it: 0.6 s for that record instead of 2.0.
+_TRADE_ACTIONS = ("enter", "exit")
+
+
+class _TradeRows:
+    """One trade record's ENTER and EXIT rows, read incrementally.
+
+    It starts over from the top whenever the bytes it has already read may
+    have changed: the file shrank (a record reset rewrites it without the
+    removed trades), it is a different file (`backfill_ledger_ids` swaps in a
+    rewritten copy), its first bytes or the bytes just before where it
+    stopped are not what it read, a `record_reset` row arrives, or
+    RECHECK_S has passed — so anything nobody thought of is wrong for
+    minutes, never for ever. A last line with no newline is still being
+    written and is left for the next look."""
+
+    FP = 4096                  # bytes compared at the head and before `offset`
+    RECHECK_S = 600.0
+
+    def __init__(self):
+        self.lock = _threading.Lock()
+        self._clear()
+
+    def _clear(self) -> None:
+        self.ident = None
+        self.offset = 0
+        self.head = b""
+        self.tail = b""
+        self.rows: list[dict] = []
+        self.lines = 0
+        self.full_at = 0.0
+
+    def _unchanged(self, fh) -> bool:
+        fh.seek(0)
+        if fh.read(len(self.head)) != self.head:
+            return False
+        fh.seek(self.offset - len(self.tail))
+        return fh.read(len(self.tail)) == self.tail
+
+    def _read_on(self, fh) -> bool:
+        """Parse the complete lines after `offset` and keep them — all of
+        them or none: a read that fails half-way and kept its first half
+        would read that half AGAIN next time and count those trades twice.
+        False when a `record_reset` row turns up part-way through (start
+        over)."""
+        start = pos = self.offset
+        new: list[dict] = []
+        lines = 0
+        fh.seek(start)
+        for line in fh:
+            if not line.endswith(b"\n"):
+                break                        # still being written
+            pos += len(line)
+            if line.strip():
+                lines += 1
+            # json.dumps writes "enter"/"exit" with their quotes, so a line
+            # without either cannot be a trade — and 99.9% of lines are not
+            if not (b'"exit"' in line or b'"enter"' in line
+                    or (start and b'"record_reset"' in line)):
+                continue
+            try:
+                e = json.loads(line)
+            except ValueError:
+                continue
+            if not isinstance(e, dict):
+                continue
+            if e.get("action") in _TRADE_ACTIONS:
+                new.append(e)
+            elif start and e.get("action") == "record_reset":
+                return False
+        self.rows.extend(new)
+        self.lines += lines
+        self.offset = pos
+        return True
+
+    def _refresh(self, fh) -> None:
+        st = os.fstat(fh.fileno())
+        ident = (st.st_dev, st.st_ino) if st.st_ino else None
+        now = time.time()
+        if (ident != self.ident or st.st_size < self.offset
+                or not 0 <= now - self.full_at < self.RECHECK_S
+                or not self._unchanged(fh)):
+            self._clear()
+            self.ident, self.full_at = ident, now
+        if not self._read_on(fh):
+            self._clear()
+            self.ident, self.full_at = ident, now
+            self._read_on(fh)
+        k = min(self.FP, self.offset)
+        fh.seek(0)
+        self.head = fh.read(k)
+        fh.seek(self.offset - k)
+        self.tail = fh.read(k)
+
+    def read(self, path: Path) -> tuple[list[dict], int]:
+        """(the trade rows oldest first, the record's non-blank lines)."""
+        with self.lock:
+            try:
+                with path.open("rb") as fh:
+                    self._refresh(fh)
+            except FileNotFoundError:
+                self._clear()
+            except OSError as exc:
+                # unreadable THIS moment: what was kept is still true, and a
+                # screen of zeros or a loss limit reading 0.00 would not be
+                logger.warning("trade record %s unreadable, answering from "
+                               "the rows kept so far: %s", path, exc)
+            return list(self.rows), self.lines
+
+
+_TRADE_READERS: dict[str, _TradeRows] = {}
+_TRADE_READERS_LOCK = _threading.Lock()
+
+
+def _trade_rows() -> tuple[list[dict], int]:
+    path = _pp(LEDGER_PATH)
+    with _TRADE_READERS_LOCK:
+        reader = _TRADE_READERS.get(str(path))
+        if reader is None:
+            reader = _TRADE_READERS[str(path)] = _TradeRows()
+    return reader.read(path)
+
+
+def ledger_trades(ts: float = 0) -> list[dict]:
+    """Every ENTER and EXIT row at or after ``ts``, oldest first: the trade
+    rows of :func:`ledger_since`, with no row-count cap, without parsing the
+    rest of the record on every call. Each row is a COPY — the kept rows are
+    shared by every caller in this process, and one that edited its row would
+    change every later answer."""
+    rows, _ = _trade_rows()
+    return [dict(e) for e in rows if e.get("ts", 0) >= ts]
+
+
+def ledger_line_count() -> int:
+    """How many lines the room's trade record holds, all kinds — counted by
+    the same reader, so it costs nothing once the trades have been read."""
+    return _trade_rows()[1]
 
 
 # --------------------------------------------------- liquidity / edge gate
@@ -4274,7 +4425,7 @@ def daily_pnl(dry: bool | None = None) -> dict:
     differently from 3W/0L.
     """
     out: dict[str, dict] = {}
-    for e in ledger_since(0):
+    for e in ledger_trades(0):
         if e.get("action") != "exit":
             continue
         if dry is not None and bool(e.get("dry_run")) is not dry:
@@ -4302,7 +4453,7 @@ def coin_stats(dry: bool | None = None) -> dict:
     strategy is carrying the others, or bleeding while they win.
     """
     out: dict[str, dict] = {}
-    for e in ledger_since(0):
+    for e in ledger_trades(0):
         if e.get("action") != "exit":
             continue
         if dry is not None and bool(e.get("dry_run")) is not dry:
@@ -4347,7 +4498,7 @@ def strategy_stats(dry: bool | None = None, by_coin: bool = False) -> dict:
     move with this.
     """
     out: dict[str, dict] = {}
-    for e in ledger_since(0):
+    for e in ledger_trades(0):
         if e.get("action") != "exit":
             continue
         if dry is not None and bool(e.get("dry_run")) is not dry:
@@ -4389,7 +4540,7 @@ def pnl_today_by_strategy(now: float | None = None,
     midnight = time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday,
                             0, 0, 0, 0, 0, -1))
     out: dict[str, float] = {}
-    for e in ledger_since(midnight):
+    for e in ledger_trades(midnight):
         if e.get("action") != "exit" or e.get("ts", 0) < midnight:
             continue
         if dry is not None and bool(e.get("dry_run")) is not dry:

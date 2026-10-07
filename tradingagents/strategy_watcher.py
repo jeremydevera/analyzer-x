@@ -42,6 +42,7 @@ from pathlib import Path
 
 from tradingagents import strategy_keys as sk
 from tradingagents import watcher_policy as wp
+from tradingagents import daytime_rule as dr
 
 HOME = Path(os.path.expanduser("~/.tradingagents"))
 STATE = HOME / "strategy_watcher.json"
@@ -921,6 +922,27 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     # minutes later at 69.06% from its file, twice in five hours.
     cands = _as_the_off_check_sees(got["rows"], now, cfg)
     rows = [r for r in cands if not wp.passes_on(r, cfg)]
+    # THE DAYTIME RULE (Oct 07, 2026; room setting `daytime_rule`): of the rows
+    # that pass the line, only those whose win pays a loss after fees, whose
+    # daytime record (stock tokens) and last 7 days still win, may go on; a
+    # RUNNING row that is a candidate but fails is switched off, by name
+    daytime_off: list = []
+    daytime_why = ""
+    if dr.enabled(settings):
+        line_passed = len(rows)
+        rows, failed = dr.screen(rows, cfg, lists_for=_daytime_lists)
+        slot_of = {m.get("id"): slot for slot, m in ws.items()}
+        for rid, why in sorted(failed.items()):
+            slot = slot_of.get(rid)
+            if slot:
+                daytime_off.append((slot, rid, len(out)))
+                out.append(_d(now, st, "off", {**ws[slot], "id": rid},
+                              f"daytime rule: {why}"))
+        gone_ids = {rid for _s, rid, _i in daytime_off}
+        running = [x for x in running if x["id"] not in gone_ids]
+        daytime_why = (f" · daytime rule: {len(rows):,} of {line_passed:,} pass"
+                       + (f", most often failing on {_top_daytime(failed)}" if failed else "")
+                       + (f", {len(daytime_off):,} running switched off" if daytime_off else ""))
     arm = []
     refused: set = set()
     # A REFUSED PICK DOES NOT USE UP A PLACE: the day's 20 new are 20 that
@@ -939,10 +961,12 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
         if not picks:
             break
         _try_picks(picks, now, st, act, out, settings, ws, arm, refused)
-    if act and arm:
+    if act and (arm or daytime_off):
         live = live_of(st)
 
         def mutate(s):
+            for slot, _rid, _i in daytime_off:
+                _disarm(s, slot)
             for key, sym, meta in arm:
                 _arm(s, key, sym, meta, live=live)
             return s
@@ -952,8 +976,12 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
             for d in out:
                 if d["action"] == "on":
                     _undo(d, reason)
+            for _slot, _rid, i in daytime_off:
+                _undo(out[i], reason)
             if not stop:
                 return f"{reason}, trying again"
+        for _slot, rid, _i in daytime_off:
+            st.setdefault("cooling", {})[rid] = now
     # the count that passes EVERY rule, beside the one the list was asked for
     # (RCA-2026-09-30-C): "1,511 meet the criteria" over 539 switched on read
     # as 972 rows lost
@@ -964,8 +992,32 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
                                 f"{_top_fail(cands, cfg)})"
                                 if len(cands) > len(rows) else "")
                              + (f" · {gone:,} could not be read from their file"
-                                if gone else ""))
+                                if gone else "")
+                             + daytime_why)
     return ""
+
+
+def _daytime_lists(rows: list) -> dict:
+    """{id: {"trades", "end_ms"}} — each row's own Backtest v2 trade list
+    (room_replay.build_lists: minute-exact, cached by input stamp, the lists
+    Backtest a room uses), for the daytime rule's checks."""
+    from tradingagents import room_replay as rr
+    from tradingagents import stores
+
+    cands = [rr._cand_of(r) for r in rows]
+    lists, _info = rr.build_lists(cands, store=stores.V2)
+    return {rid: {"trades": rec.get("trades") or [], "end_ms": rec.get("end_ms")}
+            for rid, rec in lists.items()}
+
+
+def _top_daytime(failed: dict) -> str:
+    """The daytime check most of the failures share, numbers taken out."""
+    import collections
+    import re
+
+    c = collections.Counter(" ".join(re.sub(r"[+-]?\d[\d.,]*%?", " ", w).split())
+                            for w in failed.values())
+    return c.most_common(1)[0][0] if c else "?"
 
 
 def _as_the_off_check_sees(rows: list, now: float, cfg: dict) -> list:

@@ -162,3 +162,99 @@ def test_screen_fails_a_row_with_no_trade_list():
 def test_the_flag_is_the_since_time():
     assert dr.enabled({"daytime_rule": {"since": 1791360000}}) == 1791360000
     assert dr.enabled({}) is None and dr.enabled({"daytime_rule": {}}) is None
+
+
+# --------------------------------------------- the watcher's daily pass
+from tradingagents import auto_trader as at  # noqa: E402
+from tradingagents import strategy_watcher as sw  # noqa: E402
+
+NOW = 1_791_400_000.0      # Oct 07, 2026, after the pass hour
+
+
+def _cand(rid, coin, tp, sl, rt=0.22, signal="macddiv"):
+    return {"id": rid, "coin": coin, "tf": "1h", "signal": signal, "th": 0.0,
+            "sl": sl, "tp": tp, "rt": rt, "trades": 90, "wins": 80, "losses": 10,
+            "winrate": 88.89, "profit": 15.0, "gate": "ok", "measured_ms": NOW * 1000}
+
+
+@pytest.fixture
+def room(tmp_path, monkeypatch):
+    w = {"settings": {"strategies": [], "strategy_coins": {}, "strategy_books": {},
+                      "strategy_margins": {}, "strategy_sizing": {}, "enabled": False,
+                      "daytime_rule": {"since": NOW - 60}},
+         "cands": [], "lists": {}, "asked": []}
+    monkeypatch.setattr(at, "STATE_DIR", tmp_path)
+    from tradingagents import rolling30 as _r30
+
+    _r30._MEMO.clear()
+    monkeypatch.setattr(sw, "STATE", tmp_path / "w.json")
+    monkeypatch.setattr(sw, "LOG", tmp_path / "w.jsonl")
+    monkeypatch.setattr(at, "load_settings", lambda: sw._copy(w["settings"]))
+
+    def _save(s):
+        w["settings"] = s
+        return []
+    monkeypatch.setattr(at, "save_settings", _save)
+    monkeypatch.setattr(sw, "_edge", lambda key, sym: {"verdict": "ok", "reason": "test"})
+    monkeypatch.setattr(sw, "_candidates", lambda cfg, now: {"rows": list(w["cands"]),
+                                                             "why": "fake"})
+    monkeypatch.setattr(sw, "_fresh_row", lambda meta, now, cfg: (
+        next((c for c in w["cands"] if c["id"] == meta["id"]), None), True))
+    monkeypatch.setattr(sw, "_as_the_off_check_sees", lambda rows, now, cfg: rows)
+    monkeypatch.setattr(sw, "_register", lambda key, spec, persist=True: "added")
+    monkeypatch.setattr(sw, "_sig_of", lambda key: key.split("_")[0])
+    monkeypatch.setattr(sw.time, "sleep", lambda s: None)
+    monkeypatch.setattr(sw, "_delisted", lambda syms: set())
+
+    def lists(rows):
+        w["asked"] += [r["id"] for r in rows]
+        return {r["id"]: w["lists"][r["id"]] for r in rows if r["id"] in w["lists"]}
+    monkeypatch.setattr(sw, "_daytime_lists", lists)
+    from tradingagents import notifications as nt
+
+    monkeypatch.setattr(nt, "record", lambda *a, **k: 1)
+    sw.set_mode("act")
+    st = sw._read()
+    st.setdefault("cfg", {}).update({"on_winrate": 70.0, "off_winrate": 70.0,
+                                     "min_trades": 50, "tp_rule": ">", "raw": True})
+    sw._write(st)
+    return w
+
+
+GOOD = {"trades": _days(3, 3, 0, 0), "end_ms": END}
+NIGHT = {"trades": _days(3, 1, 5, 5), "end_ms": END}
+
+
+def test_the_pass_switches_on_only_what_passes_the_daytime_checks(room):
+    room["cands"] = [_cand("AAAA1111", "GPNSTOCK", 1.5, 1.0),       # passes all
+                     _cand("BBBB2222", "GPNSTOCK", 1.0, 0.8),       # fee fails
+                     _cand("CCCC3333", "FWDISTOCK", 1.5, 1.0)]      # night winner
+    room["lists"] = {"AAAA1111": GOOD, "CCCC3333": NIGHT}
+    got = sw.consider(now=NOW)
+    on = [d["id"] for d in got["decisions"] if d["action"] == "on"]
+    assert on == ["AAAA1111"]
+    assert "BBBB2222" not in room["asked"], "no list is built for a fee failure"
+    assert "daytime" in (sw._read().get("last_candidates") or "")
+
+
+def test_a_running_row_that_fails_is_switched_off_by_name(room):
+    room["cands"] = [_cand("CCCC3333", "FWDISTOCK", 1.5, 1.0)]
+    room["lists"] = {"CCCC3333": NIGHT}
+    key = "macddiv_1h_sl1tp15"
+    room["settings"]["strategy_coins"] = {key: ["FWDISTOCK_USDT"]}
+    room["settings"]["strategy_books"] = {f"{key}|FWDISTOCK_USDT": ["paper"]}
+    room["settings"]["watcher_slots"] = {f"{key}|FWDISTOCK_USDT": {
+        "id": "CCCC3333", "coin": "FWDISTOCK", "tf": "1h", "signal": "macddiv",
+        "tp": 1.5, "sl": 1.0, "on_at": NOW - 86_400}}
+    got = sw.consider(now=NOW)
+    offs = [d for d in got["decisions"] if d["action"] == "off" and d["id"] == "CCCC3333"]
+    assert offs and "daytime rule" in offs[0]["why"] and "33.3%" in offs[0]["why"]
+    assert room["settings"]["strategy_coins"][key] == []
+
+
+def test_without_the_flag_nothing_changes(room):
+    room["settings"].pop("daytime_rule")
+    room["cands"] = [_cand("BBBB2222", "GPNSTOCK", 1.0, 0.8)]
+    got = sw.consider(now=NOW)
+    assert [d["id"] for d in got["decisions"] if d["action"] == "on"] == ["BBBB2222"]
+    assert room["asked"] == []

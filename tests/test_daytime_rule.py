@@ -522,3 +522,37 @@ def test_the_pass_keeps_a_count_per_check(room):
     sw.consider(now=NOW)
     d = sw._read()["daytime"]
     assert d["passed"] == 1 and d["checks"]["fee"] == 1 and d["checks"]["daytime record"] == 1
+
+
+def test_mexcs_own_label_decides_which_tokens_keep_us_hours(monkeypatch):
+    """The first preview passed XLI (a US industrials fund) as crypto because
+    the hand list missed it. MEXC labels every one: read Oct 07, 2026."""
+    from tradingagents.dataflows import mexc_futures as fx
+
+    plates = {"XLI_USDT": ["mc-trade-zone-Stock", "mc-trade-zone-tradfi", "mc-trade-zone-ETF",
+                           "mc-trade-zone-stockindex"],
+              "NAS100_USDT": ["mc-trade-zone-Stock", "mc-trade-zone-tradfi",
+                              "mc-trade-zone-stockindex"],
+              "BB_USDT": ["mc-trade-zone-mainly"],
+              "ZINC_USDT": ["mc-trade-zone-tradfi"]}
+    monkeypatch.setattr(dr, "_PLATES", {})
+    monkeypatch.setattr(dr, "_PLATES_FAILED", {})
+    monkeypatch.setattr(fx, "contract_spec", lambda sym: {"conceptPlate": plates[sym]})
+    assert dr.us_hours("XLI_USDT")
+    assert not dr.us_hours("NAS100") and not dr.us_hours("BB") and not dr.us_hours("ZINC")
+
+
+def test_an_unreadable_label_falls_back_to_the_list_and_is_not_asked_every_call(monkeypatch):
+    from tradingagents.dataflows import mexc_futures as fx
+
+    asks = []
+
+    def boom(sym):
+        asks.append(sym)
+        raise RuntimeError("code 510")
+    monkeypatch.setattr(dr, "_PLATES", {})
+    monkeypatch.setattr(dr, "_PLATES_FAILED", {})
+    monkeypatch.setattr(fx, "contract_spec", boom)
+    assert dr.us_hours("VUG") and not dr.us_hours("NAS100")
+    assert dr.us_hours("VUG")
+    assert asks.count("VUG_USDT") == 1, "a failed ask waits PLATES_RETRY_S"

@@ -58,14 +58,50 @@ def is_stock(name: str) -> bool:
 US_ETFS = frozenset({
     "ARKK", "DIA", "EWJ", "EWZ", "GDX", "GLD", "IGV", "IWM", "MSTU", "NVDL",
     "SMH", "SOXL", "SOXX", "SPY", "SQQQ", "TLT", "TQQQ", "TSLL", "USO", "VUG",
-    "XBI", "XLE", "XLK"})
+    "XBI", "XLE", "XLI", "XLK"})
+
+# MEXC's OWN LABEL decides first (contract detail `conceptPlate`, read Oct 07,
+# 2026): stocks and US funds carry "mc-trade-zone-Stock", a fund also
+# "mc-trade-zone-ETF", an index token (NAS100) "mc-trade-zone-stockindex"
+# without "ETF". The list above is only the fallback when MEXC cannot be
+# asked — the first preview passed XLI as crypto because a hand list missed it.
+_PLATES: dict = {}            # base -> tuple of plates (lower case)
+_PLATES_FAILED: dict = {}     # base -> when the last ask failed
+PLATES_RETRY_S = 600
+
+
+def _plates(base: str):
+    """MEXC's zones for a token, or None when they cannot be read now."""
+    import time as _time
+
+    if base in _PLATES:
+        return _PLATES[base]
+    if _time.time() - _PLATES_FAILED.get(base, -1e18) < PLATES_RETRY_S:
+        return None
+    try:
+        from tradingagents.dataflows import mexc_futures as fx
+
+        got = tuple(str(x).lower() for x in
+                    (fx.contract_spec(f"{base}_USDT").get("conceptPlate") or []))
+    except Exception:                                          # noqa: BLE001
+        _PLATES_FAILED[base] = _time.time()
+        return None
+    _PLATES[base] = got
+    return got
 
 
 def us_hours(name: str) -> bool:
-    """Does this token follow US market hours under the rule: a stock token,
-    or a US-listed ETF token."""
+    """Does this token follow US market hours under the rule: a stock token or
+    a US fund (ETF) token — never an index token or crypto."""
     base = str(name or "").upper().removesuffix("_USDT")
-    return is_stock(base) or base in US_ETFS
+    if is_stock(base):
+        return True
+    plates = _plates(base)
+    if plates is None:
+        return base in US_ETFS
+    if "mc-trade-zone-etf" in plates:
+        return True
+    return "mc-trade-zone-stock" in plates and "mc-trade-zone-stockindex" not in plates
 
 
 def in_market_hours(ts_s: float) -> bool:

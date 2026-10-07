@@ -114,7 +114,8 @@ def test_the_ninth_run_of_a_day_waits(home):
 @pytest.mark.parametrize("verdict,state", [("fixed", "fixed"),
                                            ("not_a_fault", "not_a_fault"),
                                            ("needs_you", "needs_you")])
-def test_a_verdict_file_moves_the_issue_once(home, verdict, state):
+def test_a_verdict_file_moves_the_issue_once(home, verdict, state, monkeypatch):
+    monkeypatch.setattr(fx, "_commit_landed", lambda commit: True)
     _fault("aaaa00000001", state="checking")
     fx.result_path("aaaa00000001").write_text(json.dumps(
         {"verdict": verdict, "commit": "abc1234", "summary": "plain words"}), encoding="utf-8")
@@ -138,7 +139,62 @@ def test_a_run_that_ended_without_a_verdict_is_needs_you(home):
     fx.tick(T0 + 100, spawn=Spawned(), gh=gh)
     assert ei._read()["faults"]["aaaa00000001"]["state"] == "needs_you"
     said = " ".join(c[1] or "" for c in gh.calls)
-    assert "without a verdict" in said and "the last thing it said" in said
+    assert "without a verdict" in said
+    # NEVER the log itself on a public issue: its last lines are raw tool
+    # output, a `cat` of the key file among them (final review, C2) — the
+    # issue names where the log is on the PC instead
+    assert "the last thing it said" not in said
+    assert str(fx.log_path("aaaa00000001")) in said
+
+
+def test_a_run_that_said_nothing_never_posts_its_log(home):
+    _fault("aaaa00000001", state="checking")
+    fx.log_path("aaaa00000001").write_text('{"api_key": "mx0LEAKED12345"}\n', encoding="utf-8")
+    got = fx.run("aaaa00000001", popen=FakePopen(code=1), now=T0)
+    assert "mx0LEAKED12345" not in got["summary"] and "api_key" not in got["summary"]
+    assert str(fx.log_path("aaaa00000001")) in got["summary"]
+
+
+def test_a_fixed_verdict_whose_commit_is_not_on_github_is_needs_you(home, monkeypatch):
+    """I8: "fixed" was taken on the run's word — the issue closed and the tab
+    said "fixed in <hash>" even for a commit that never reached GitHub."""
+    monkeypatch.setattr(fx, "_commit_landed", lambda commit: False)
+    _fault("aaaa00000001", state="checking")
+    fx.result_path("aaaa00000001").write_text(json.dumps(
+        {"verdict": "fixed", "commit": "dead123", "summary": "x"}), encoding="utf-8")
+    gh = FakeGh()
+    fx.tick(T0 + 100, spawn=Spawned(), gh=gh)
+    rec = ei._read()["faults"]["aaaa00000001"]
+    assert rec["state"] == "needs_you"
+    assert "dead123" in " ".join(c[1] or "" for c in gh.calls)
+
+
+def test_the_run_cannot_reach_the_public_issue_or_the_web(home):
+    """I7: the issue's text is one `gh issue view` away from a run with every
+    permission; the run is denied the tools that read it."""
+    _fault("aaaa00000001", state="checking")
+    p = FakePopen(writes=(fx.result_path("aaaa00000001"),
+                          {"verdict": "not_a_fault", "summary": "x"}))
+    fx.run("aaaa00000001", popen=p, now=T0)
+    denied = p.cmd[p.cmd.index("--disallowedTools") + 1:]
+    for tool in ("Bash(gh issue:*)", "Bash(gh api:*)", "WebFetch", "WebSearch"):
+        assert tool in denied, tool
+    prompt = p.cmd[p.cmd.index("-p") + 1]
+    assert "#101" not in prompt and "issues/" not in prompt
+
+
+def test_the_run_does_not_inherit_the_parent_claude_session(home, monkeypatch):
+    """M7: the site may have been started from a Claude session; its
+    CLAUDE* settings (session id, attended flag, messaging socket) are not
+    the fixer's."""
+    monkeypatch.setenv("CLAUDECODE", "1")
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "parent-session")
+    _fault("aaaa00000001", state="checking")
+    p = FakePopen(writes=(fx.result_path("aaaa00000001"),
+                          {"verdict": "not_a_fault", "summary": "x"}))
+    fx.run("aaaa00000001", popen=p, now=T0)
+    assert not [k for k in p.kw["env"] if k.upper().startswith("CLAUDE")]
+    assert p.kw["env"]["TA_FIXER"] == "1"
 
 
 # ------------------------------------------------------------------ the run
@@ -210,9 +266,11 @@ def test_a_second_run_cannot_start_beside_the_first(home):
 
 
 def test_the_prompt_holds_the_rules_that_matter():
-    text = fx.prompt_for("aaaa00000001", issue=101)
-    for must in ("never read", "python start.py api", "scripts/commit_own.py",
+    text = fx.prompt_for("aaaa00000001")
+    for must in ("python start.py api", "scripts/commit_own.py",
                  "git push origin HEAD:main", "git push colleague HEAD:main",
                  "docs/RCA.md", "start.py start", "real money", "needs_you",
-                 "not_a_fault", "fixed", "failing test"):
+                 "not_a_fault", "fixed", "failing test",
+                 # M6: only on main, and a restart that fails is said out loud
+                 "git branch --show-current", "did not come back"):
         assert must in text, must

@@ -114,13 +114,17 @@ def test_a_crash_inside_the_site_is_an_event(tmp_path, monkeypatch):
     assert ei.from_site_log(now=1791370100.0) == []
 
 
-def test_the_fingerprint_ignores_the_room_and_the_numbers():
+def test_the_fingerprint_ignores_the_room_the_numbers_and_the_coin():
+    """One candle outage across the 64 armed coins is ONE fault, not 64
+    issues and 64 fixer runs (8 days of the 8-a-day budget) — the final
+    review's I9. The kind still separates faults."""
     a = {"source": "room", "kind": "no_price",
          "key": "", "message": "GPNSTOCK_USDT: no live price (after 3 attempts) at Oct 07, 2026 1:19am"}
     b = dict(a, message="GPNSTOCK_USDT: no live price (after 5 attempts) at Oct 08, 2026 2:20am")
     c = dict(a, message="VUG_USDT: no live price (after 3 attempts) at Oct 07, 2026 1:19am")
-    assert ei.fingerprint(a) == ei.fingerprint(b)
-    assert ei.fingerprint(a) != ei.fingerprint(c)
+    d = dict(a, kind="cycle_failed")
+    assert ei.fingerprint(a) == ei.fingerprint(b) == ei.fingerprint(c)
+    assert ei.fingerprint(a) != ei.fingerprint(d)
 
 
 # ------------------------------------------------------------ the scrubber
@@ -163,15 +167,23 @@ T0 = 1791380000.0   # Oct 07, 2026 10:13am
 
 
 class FakeGh:
-    def __init__(self, fail=False):
+    def __init__(self, fail=False, existing=None, fail_on=None):
         self.calls: list = []
         self.fail = fail
         self.next = 101
+        self.existing = existing or []      # what `gh issue list --search` finds
+        self.fail_on = fail_on              # (verb, nth) -> fail that call once
 
     def __call__(self, args, input_text=None):
         self.calls.append((list(args), input_text))
         if self.fail:
             raise ei.GhFailed("gh: could not resolve host api.github.com")
+        if self.fail_on and args[:2] == ["issue", self.fail_on[0]]:
+            n = sum(1 for c in self.calls if c[0][:2] == ["issue", self.fail_on[0]])
+            if n == self.fail_on[1]:
+                raise ei.GhFailed(f"gh: {self.fail_on[0]} refused")
+        if args[:2] == ["issue", "list"]:
+            return json.dumps(self.existing)
         if args[:2] == ["issue", "create"]:
             n, self.next = self.next, self.next + 1
             return f"https://github.com/{ei.GH_REPO}/issues/{n}\n"
@@ -194,7 +206,7 @@ def filer(tmp_path, monkeypatch):
     monkeypatch.setattr(ei, "_LABELS_MADE", set())
     events: list = []
     monkeypatch.setattr(ei, "collect",
-                        lambda now: [dict(e, rooms=list(e["rooms"])) for e in events])
+                        lambda now, failed=None: [dict(e, rooms=list(e["rooms"])) for e in events])
     bells: list = []
     from tradingagents import notifications
 
@@ -238,7 +250,11 @@ def test_a_new_fault_files_one_issue_and_queues_it(filer):
     rec = ei._read()["faults"][fp]
     assert rec["issue"] == 101 and rec["state"] == "queued"
     ev_file = json.loads((ei.FIXER_DIR / f"{fp}.json").read_text(encoding="utf-8"))
-    assert ev_file["issue"] == 101 and ev_file["message"] == SUPRA
+    assert ev_file["message"] == SUPRA
+    # nothing in it points at the public issue, which anyone can comment on
+    # (final review, I7)
+    assert "issue" not in ev_file and "url" not in ev_file
+    assert "issues/" not in json.dumps(ev_file)
     assert bells and "#101" in bells[-1][1]
 
 
@@ -387,6 +403,190 @@ def test_a_baseline_fault_that_happens_again_is_filed(filer):
     gh = FakeGh()
     ei.tick(T0 + 400, gh=gh)
     assert len(gh.made()) == 1
+
+
+# ------------------------------------- the final review's fix pass (Oct 07, 2026)
+
+def test_an_issue_is_recorded_the_moment_github_makes_it(filer, monkeypatch):
+    """C1: the evidence write raised (a full drive) AFTER GitHub made the
+    issue, the tick aborted before saving it, and the next tick filed the
+    same fault again — 12 public issues in 24 minutes in the review's run."""
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev(SUPRA, last=T0 + 60))
+    calls = {"n": 0}
+
+    def full_drive(*a, **k):
+        calls["n"] += 1
+        raise OSError(28, "No space left on device")
+    monkeypatch.setattr(ei, "_write_evidence", full_drive)
+    gh = FakeGh()
+    ei.tick(T0 + 120, gh=gh)
+    ei.tick(T0 + 240, gh=gh)
+    assert len(gh.made()) == 1
+    fp = ei.fingerprint(events[0])
+    assert ei._read()["faults"][fp]["issue"] == 101
+
+
+def test_an_issue_github_made_but_never_answered_is_adopted_not_doubled(filer):
+    """C1, second door: GitHub made the issue but gh timed out. The next try
+    finds it by its fault id instead of making another."""
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev(SUPRA, last=T0 + 60))
+    fp = ei.fingerprint(events[0])
+    gh = FakeGh(existing=[{"number": 88, "url": f"https://github.com/{ei.GH_REPO}/issues/88"}])
+    ei.tick(T0 + 120, gh=gh)
+    assert gh.made() == []
+    assert any(fp in " ".join(c[0]) for c in gh.did("list"))
+    assert ei._read()["faults"][fp]["issue"] == 88
+
+
+def test_the_flood_summary_is_filed_once_even_if_its_comment_fails(filer):
+    """I1: flood_at was set only after the comment, so a refused comment
+    filed a new flood issue every tick (5 in 10 minutes)."""
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    for i in range(14):
+        events.append(_ev(f"fault number {chr(65 + i)} broke", last=T0 + 60))
+    ei.tick(T0 + 120, gh=FakeGh(fail_on=("comment", 1)))
+    gh = FakeGh()
+    ei.tick(T0 + 240, gh=gh)
+    titles = [c[0][c[0].index("--title") + 1] for c in gh.made()]
+    assert not any("error flood" in t for t in titles)
+
+
+def test_a_site_crash_github_refused_is_still_filed_later(filer):
+    """I2: a site crash is read ONCE (the log tail moves on), so a refused
+    create lost it for good."""
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    crash = {"source": "site", "kind": "site_crash", "label": "The site itself failed",
+             "message": "KeyError: 'at' (in forecast_v2_api.py:summary)", "key": "",
+             "rooms": [], "count": 1, "first": T0 + 60, "last": T0 + 60}
+    events.append(crash)
+    ei.tick(T0 + 120, gh=FakeGh(fail=True))
+    events.clear()                       # the tail has moved past it
+    gh = FakeGh()
+    ei.tick(T0 + 240, gh=gh)
+    assert len(gh.made()) == 1 and "KeyError" in gh.made()[0][0][gh.made()[0][0].index("--title") + 1]
+
+
+def test_a_verdict_is_posted_once_however_often_github_refuses_a_step(filer):
+    """I3: a refused label made every retry post "Real fault, fixed in ..."
+    again (4 times in 4 ticks in the review's run)."""
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev(SUPRA, last=T0 + 60))
+    ei.tick(T0 + 120, gh=FakeGh())
+    fp = ei.fingerprint(events[0])
+    with pytest.raises(ei.GhFailed):
+        ei.set_verdict(fp, "fixed", commit="abc1234", summary="x", now=T0 + 200,
+                       gh=FakeGh(fail_on=("edit", 1)))
+    ok = FakeGh()
+    ei.set_verdict(fp, "fixed", commit="abc1234", summary="x", now=T0 + 300, gh=ok)
+    assert sum("Real fault" in (c[1] or "") for c in ok.did("comment")) == 1
+    assert ei._read()["faults"][fp]["state"] == "fixed"
+
+
+def test_no_baseline_is_written_while_a_source_cannot_be_read(filer, monkeypatch):
+    """I4: rooms unreadable on the first tick made a baseline without them,
+    and tick 2 filed every room fault as new (10 issues and a flood)."""
+    events, _ = filer
+    events.append(_ev("old fault", last=T0 - 3600))
+    first = {"done": False}
+
+    def collect(now, failed=None):
+        if not first["done"]:
+            first["done"] = True
+            if failed is not None:
+                failed.append("from_rooms")
+            return []
+        return [dict(e, rooms=list(e["rooms"])) for e in events]
+    monkeypatch.setattr(ei, "collect", collect)
+    ei.tick(T0, gh=FakeGh())
+    assert not ei._read().get("baseline")
+    gh = FakeGh()
+    ei.tick(T0 + 120, gh=gh)
+    assert ei._read().get("baseline") == T0 + 120 and gh.made() == []
+
+
+def test_a_not_a_fault_that_keeps_happening_is_checked_again(filer):
+    """I9: one not-a-fault verdict must not silence a fault for ever: 20 more
+    times after the verdict and it is reopened and queued for another check."""
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev("the runner was started again", kind="restart", last=T0 + 60, count=3))
+    ei.tick(T0 + 120, gh=FakeGh())
+    fp = ei.fingerprint(events[0])
+    ei.set_verdict(fp, "not_a_fault", summary="deploy restarts", now=T0 + 200, gh=FakeGh())
+    events[0] = _ev("the runner was started again", kind="restart", last=T0 + 4000, count=10)
+    gh = FakeGh()
+    ei.tick(T0 + 4100, gh=gh)
+    assert gh.did("reopen") == []
+    events[0] = _ev("the runner was started again", kind="restart", last=T0 + 9000,
+                    count=3 + ei.NOT_A_FAULT_RECHECK)
+    gh = FakeGh()
+    ei.tick(T0 + 9100, gh=gh)
+    assert gh.did("reopen") and ei._read()["faults"][fp]["state"] == "queued"
+
+
+def test_an_unreadable_state_file_is_never_overwritten(filer):
+    """M1: a state file Windows would not let us read was treated as a first
+    run — a new baseline and every issue number dropped."""
+    events, _ = filer
+    ei.STATE.parent.mkdir(parents=True, exist_ok=True)
+    ei.STATE.write_text("{ half a file", encoding="utf-8")
+    events.append(_ev(SUPRA, last=T0 + 60))
+    got = ei.tick(T0, gh=FakeGh())
+    assert got["failed"] == 1
+    assert ei.STATE.read_text(encoding="utf-8") == "{ half a file"
+
+
+def test_the_stored_mexc_keys_are_removed_too(tmp_path, monkeypatch):
+    """C2: on this PC the keys live in ~/.tradingagents/mexc_credentials.json,
+    not in .env — and reach the site's environment only after a route loads
+    them."""
+    from tradingagents.dataflows import mexc_credentials as cred
+
+    monkeypatch.delenv("MEXC_API_KEY", raising=False)
+    monkeypatch.delenv("MEXC_API_SECRET", raising=False)
+    monkeypatch.setattr(cred, "_read", lambda: {"api_key": "mx0STOREDKEY99", "api_secret": "STOREDSECRET1234"})
+    out = ei.scrub('{\\"api_key\\": \\"mx0STOREDKEY99\\", x STOREDSECRET1234}')
+    assert "mx0STOREDKEY99" not in out and "STOREDSECRET1234" not in out
+
+
+@pytest.mark.parametrize("line,secret", [
+    ("GH_TOKEN=gho_16C7e42F292c6912E7710c838347Ae178B4a", "gho_16C7e42F292c6912E7710c838347Ae178B4a"),
+    ("MEXC_API_SECRET=0123abcd4567efgh8901", "0123abcd4567efgh8901"),
+    ("access_token=at-1234567890abcdef", "at-1234567890abcdef"),
+    ("refresh_token=rt-1234567890abcdef", "rt-1234567890abcdef"),
+    ("secret_key=sk-1234567890abcdef", "sk-1234567890abcdef"),
+    ('api_secret: "as-1234567890abcdef"', "as-1234567890abcdef"),
+    ("apiSecret=cs-1234567890abcdef", "cs-1234567890abcdef"),
+    ("sent Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig1234567890", "eyJhbGciOiJIUzI1NiJ9"),
+    ("Authorization: token ghp_1234567890abcdefghijABCDEFGHIJ", "ghp_1234567890abcdefghij"),
+    ("Authorization: Basic dXNlcjpwYXNzd29yZDEyMw==", "dXNlcjpwYXNzd29yZDEyMw"),
+    ('{\\"api_key\\": \\"mx0vglJSONESCAPED1\\"}', "mx0vglJSONESCAPED1"),
+])
+def test_the_scrubber_catches_the_forms_the_review_found(line, secret):
+    """I10: each of these passed through untouched."""
+    out = ei.scrub(line)
+    assert secret not in out, out
+
+
+def test_a_self_retrying_supervisor_line_is_not_a_fault(tmp_path, monkeypatch):
+    """M3: "could not be swapped in yet ... next check tries again" is the
+    supervisor waiting, printed every 30 s; [handoff] failures are real."""
+    log = tmp_path / "api.log"
+    log.write_text(
+        "[supervisor] C:\\rows.db: a verified rebuild could not be swapped in yet "
+        "(PermissionError: x) — next check tries again\n"
+        "[handoff] failed: CloudError('gh timed out')\n", encoding="utf-8")
+    monkeypatch.setattr(ei, "SITE_LOG", log)
+    monkeypatch.setattr(ei, "_SITE_TAIL", {})
+    got = ei.from_site_log(now=T0)
+    assert [e["message"][:9] for e in got] == ["[handoff]"]
 
 
 def test_issues_are_filed_as_the_projects_owner(monkeypatch):

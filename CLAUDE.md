@@ -727,7 +727,22 @@ as-is, checking and fixing **on this PC**, **push and restart by itself**, and
   every rule here: failing test first, RCA in the same commit, commit_own,
   both remotes, and `.venv/Scripts/python start.py api` as its ONLY restart.
 * **`python start.py api`** restarts the back end and the room programs, never
-  the page; the rooms only after the new back end answers.
+  the page; the rooms only after the new back end answers (12 probes of 15 s);
+  a room is never left switched off (its runner is ended by pid, its WANT flag
+  never touched); and under `TA_FIXER` it REFUSES while `tradingagents/` or
+  `start.py` holds uncommitted changes — another session's half-finished code
+  must never reach every room unattended.
+* **What the final review (Oct 07, 2026) made permanent:** an issue is
+  recorded the moment GitHub holds it and an unanswered create is found by
+  its fault id, never filed twice; the fault id drops the COIN as well as the
+  room (one outage across 64 coins is one issue); a not-a-fault that happens
+  20 more times is checked again; a site crash GitHub refused waits, it is
+  never lost; no baseline is taken while a source cannot be read; an
+  unreadable state file is never overwritten; a run's raw log lines are never
+  posted (the issue names the log's path on the PC); "fixed" is accepted only
+  for a commit `git merge-base --is-ancestor` finds on `origin/main`; and a
+  run is denied `gh issue`, `gh api`, `gh search`, WebFetch and WebSearch, and
+  never inherits the parent session's `CLAUDE*` environment.
 * **Never from a test:** `_gh` refuses under pytest and so does a real fixer
   run; the fixer runs with `TA_FIXER=1` and the asks hook skips it — the
   fixer's prompt is not the operator's words.

@@ -28,19 +28,25 @@ def calls(monkeypatch):
 
     def rooms():
         seen["rooms"] += 1
-        return 0
+        return seen.get("rooms_code", 0)
     monkeypatch.setattr(start, "_restart_rooms", rooms)
+    monkeypatch.setattr(start, "_dirty_code", lambda: [])
+    seen["bells"] = []
+    monkeypatch.setattr(start, "_bell", lambda title: seen["bells"].append(title))
+    monkeypatch.delenv("TA_FIXER", raising=False)
     return seen
 
 
 def test_only_the_back_end_restarts(calls, monkeypatch, tmp_path):
     monkeypatch.setattr(start, "LOGS", tmp_path)
-    monkeypatch.setattr(start, "health", lambda port: calls["health"].append(port) or True)
+    monkeypatch.setattr(start, "health",
+                        lambda port, timeout=2.0: calls["health"].append((port, timeout)) or True)
     assert start.cmd_api(now=True) == 0
     assert calls["free"] == [(start.API_PORT, False)]
     assert all(port != start.UI_PORT for port, _ in calls["free"])
     assert calls["spawn"] == [start.api_command()]
-    assert start.API_PORT in calls["health"] and start.UI_PORT not in calls["health"]
+    ports = [p for p, _t in calls["health"]]
+    assert start.API_PORT in ports and start.UI_PORT not in ports
     assert calls["rooms"] == 1
 
 
@@ -58,13 +64,57 @@ def test_rooms_wait_for_the_back_end(calls, monkeypatch, tmp_path):
     """New code that cannot start the back end must not be pushed into the
     rooms as well: they keep running the old code in memory."""
     monkeypatch.setattr(start, "LOGS", tmp_path)
-    monkeypatch.setattr(start, "health", lambda port: False)
+    monkeypatch.setattr(start, "health", lambda port, timeout=2.0: False)
     assert start.cmd_api(now=True) == 1
     assert calls["rooms"] == 0
 
 
 def test_the_word_api_is_a_command():
     assert start.COMMANDS["api"] is start.cmd_api
+
+
+def test_the_fixer_never_restarts_onto_someone_elses_unfinished_code(calls, monkeypatch, tmp_path):
+    """C3: `start.py api` starts the back end and every room from the shared
+    checkout. During the final review main moved under it with +244 lines of
+    another session's auto_trader.py; a fixer restart then would have put
+    every room on half-written trading code, unattended."""
+    monkeypatch.setattr(start, "LOGS", tmp_path)
+    monkeypatch.setattr(start, "health", lambda port, timeout=2.0: True)
+    monkeypatch.setattr(start, "_dirty_code", lambda: ["tradingagents/auto_trader.py"])
+    monkeypatch.setenv("TA_FIXER", "1")
+    assert start.cmd_api(now=True) == 3
+    assert calls["free"] == [] and calls["rooms"] == 0
+    # a person restarting by hand decides for themselves
+    monkeypatch.delenv("TA_FIXER")
+    assert start.cmd_api(now=True) == 0
+
+
+def test_the_back_end_gets_long_enough_to_answer(calls, monkeypatch, tmp_path):
+    """I6: /api/health measured 26 s on the first call after an API-only
+    restart and up to 77 s under load; 30 probes of 2 s called a slow back
+    end dead and left the rooms unrestarted."""
+    monkeypatch.setattr(start, "LOGS", tmp_path)
+    timeouts: list = []
+    monkeypatch.setattr(start, "health",
+                        lambda port, timeout=2.0: timeouts.append(timeout) or False)
+    start.cmd_api(now=True)
+    assert min(timeouts) >= 10
+    assert sum(timeouts) >= 150
+
+
+def test_a_back_end_that_does_not_come_back_rings_the_bell(calls, monkeypatch, tmp_path):
+    monkeypatch.setattr(start, "LOGS", tmp_path)
+    monkeypatch.setattr(start, "health", lambda port, timeout=2.0: False)
+    assert start.cmd_api(now=True) == 1
+    assert calls["bells"] and "did not come back" in calls["bells"][0]
+
+
+def test_a_room_that_could_not_be_restarted_is_not_a_success(calls, monkeypatch, tmp_path):
+    """I5: room_restart failing printed nothing and `api` still said 0."""
+    monkeypatch.setattr(start, "LOGS", tmp_path)
+    monkeypatch.setattr(start, "health", lambda port, timeout=2.0: True)
+    calls["rooms_code"] = 1
+    assert start.cmd_api(now=True) == 4
 
 
 def test_the_rooms_are_restarted_by_the_projects_own_python(monkeypatch, tmp_path):

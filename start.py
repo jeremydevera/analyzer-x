@@ -38,6 +38,11 @@ WINDOWS = os.name == "nt"
 UI_PORT = int(os.environ.get("UI_PORT", "8503"))
 API_PORT = int(os.environ.get("API_PORT", "8787"))
 READY_SECONDS = 30
+# `api` waits for the back end alone: 12 probes of 15 s (final review, I6 —
+# 26 s measured for the first /api/health after an API-only restart, 77 s
+# under load)
+API_READY_TRIES = 12
+API_HEALTH_TIMEOUT_S = 15.0
 # How long a restart waits for downloads in flight before cutting them. The
 # operator's own 30-day window CSV measured 67-110 s warm on Sep 24, 2026 and
 # the cold one had run more than six minutes when a restart killed it.
@@ -116,9 +121,10 @@ def free_port(port: int, *, tree: bool) -> None:
         time.sleep(1)
 
 
-def health(port: int) -> bool:
+def health(port: int, timeout: float = 2.0) -> bool:
     try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=2) as r:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health",
+                                    timeout=timeout) as r:
             return r.status == 200
     except (urllib.error.URLError, OSError, ValueError):
         return False
@@ -253,6 +259,25 @@ def _restart_rooms() -> int:
     return out.returncode
 
 
+def _dirty_code() -> list[str]:
+    """Code files with changes nobody has committed — another session's work
+    in progress, which a restart would put into every room."""
+    out = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no", "--",
+                          "tradingagents", "start.py"], cwd=str(ROOT),
+                         capture_output=True, text=True, encoding="utf-8", errors="replace")
+    return [ln[3:].strip() for ln in (out.stdout or "").splitlines() if ln.strip()]
+
+
+def _bell(title: str) -> None:
+    """A bell note from this script, by the project's own Python. The back
+    end that normally rings it may be the thing that failed."""
+    code = ("import sys; from tradingagents import notifications as n; "
+            "n.record('restart', sys.argv[1], ok=False)")
+    with contextlib.suppress(Exception):
+        subprocess.run([venv_python(), "-c", code, title], cwd=str(ROOT),
+                       capture_output=True, timeout=60)
+
+
 # ---------------------------------------------------------------- commands
 def cmd_status() -> int:
     for port in (API_PORT, UI_PORT):
@@ -325,19 +350,32 @@ def cmd_api(now: bool = False) -> int:
     end is never pushed into the rooms too.
     """
     LOGS.mkdir(exist_ok=True)
+    # THE FIXER NEVER RESTARTS ONTO SOMEONE ELSE'S UNFINISHED CODE (final
+    # review, C3): this starts the back end and every room from the shared
+    # checkout, and another session may be half-way through a change.
+    if os.environ.get("TA_FIXER"):
+        dirty = _dirty_code()
+        if dirty:
+            print("refused: these code files hold changes nobody has committed, and "
+                  "a restart would put them into every room: " + ", ".join(dirty))
+            return 3
     if not now:
         wait_for_downloads()
     free_port(API_PORT, tree=False)
     print(f"starting API on {API_PORT}…")
     _start_api()
-    for _ in range(READY_SECONDS):
+    # LONG ENOUGH TO ANSWER: /api/health measured 26 s on the first call after
+    # an API-only restart and up to 77 s under load (final review, I6)
+    for _ in range(API_READY_TRIES):
         time.sleep(1)
-        if health(API_PORT):
+        if health(API_PORT, timeout=API_HEALTH_TIMEOUT_S):
             print("the back end answers; restarting the rooms…")
-            _restart_rooms()
-            return 0
-    print(f"the back end did not answer in {READY_SECONDS}s — see {LOGS / 'api.log'}")
+            return 0 if _restart_rooms() == 0 else 4
+    waited = API_READY_TRIES * API_HEALTH_TIMEOUT_S
+    print(f"the back end did not answer in about {waited:.0f}s — see {LOGS / 'api.log'}")
     print(tail(LOGS / "api.log"))
+    _bell("The back end did not come back after a restart (start.py api); "
+          "the rooms were left on their old code")
     return 1
 
 

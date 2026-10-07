@@ -35,11 +35,17 @@ def _norm(msg: str) -> str:
     return room_errors._norm(msg)
 
 
+_COIN = re.compile(r"\b[A-Z0-9]+_USDT\b")
+
+
 def fingerprint(ev: dict) -> str:
     """One fault = one id: the source, the kind and the message with its
-    numbers and times taken out. The ROOM is not part of it — SUPRA's
-    candles failed in #4FC03172 and #55D32617 on Oct 06, 2026, one fault."""
+    numbers, times and COIN taken out. The room is not part of it — SUPRA's
+    candles failed in #4FC03172 and #55D32617 on Oct 06, 2026, one fault —
+    and neither is the coin: one candle outage across the 64 armed coins is
+    one fault, not 64 issues and 64 fixer runs (final review, I9)."""
     key = ev.get("key") or _norm(str(ev.get("message") or ""))
+    key = _COIN.sub("<coin>", key)
     raw = f"{ev.get('source')}|{ev.get('kind')}|{key}"
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
 
@@ -109,6 +115,13 @@ def from_jobs() -> list[dict]:
 # the site's own log has no timestamps (uvicorn); it is read as a tail, once
 # per process, and an event takes the time it was read
 _SITE_TAIL: dict = {}
+# EVERY background loop's failure line, not only the supervisor's: [handoff],
+# [cloud-autopilot], [daily-update], [forecast]... print their own tags (final
+# review, M3) — but never a line that says it is simply trying again, which
+# the rebuild swap prints every 30 s while it waits
+_TAGGED = re.compile(r"^\[([a-z0-9-]+)\] ")
+_FAILING = re.compile(r"failed|could not|COULD NOT")
+_SELF_RETRYING = ("tries again", "trying again", "will retry", "try again")
 _FRAME = re.compile(r'^\s*File "([^"]+)", line \d+, in (\S+)')
 _LAST = re.compile(r"^([A-Za-z_][\w.]*(?:Error|Exception|Exit|Interrupt|Warning)\b.*)$")
 
@@ -154,9 +167,11 @@ def from_site_log(now: float) -> list[dict]:
                             "first": now, "last": now})
                 in_tb = False
             continue
-        if ln.startswith("[supervisor]") and ("failed" in ln or "could not" in ln):
+        m = _TAGGED.match(ln)
+        if (m and _FAILING.search(ln)
+                and not any(p in ln.lower() for p in _SELF_RETRYING)):
             out.append({"source": "site", "kind": "supervisor",
-                        "label": "The site's supervisor failed", "message": ln[:400],
+                        "label": f"The site's {m.group(1)} failed", "message": ln[:400],
                         "key": _norm(ln), "rooms": [], "count": 1,
                         "first": now, "last": now})
     merged: dict = {}
@@ -169,18 +184,24 @@ def from_site_log(now: float) -> list[dict]:
     return list(merged.values())
 
 
-def collect(now: float) -> list[dict]:
-    """Every error the system has now, one event per fault."""
+def collect(now: float, failed: list | None = None) -> list[dict]:
+    """Every error the system has now, one event per fault. A source that
+    could not be read is named in `failed` — the baseline must never be
+    taken without it (final review, I4)."""
     out: list[dict] = []
     for source in (from_rooms, from_jobs):
         try:
             out += source()
         except Exception as exc:                               # noqa: BLE001
+            if failed is not None:
+                failed.append(source.__name__)
             print(f"[error-issues] could not read {source.__name__}: "
                   f"{type(exc).__name__}: {exc}", flush=True)
     try:
         out += from_site_log(now)
     except Exception as exc:                                   # noqa: BLE001
+        if failed is not None:
+            failed.append("from_site_log")
         print(f"[error-issues] could not read the site log: "
               f"{type(exc).__name__}: {exc}", flush=True)
     return out
@@ -189,11 +210,25 @@ def collect(now: float) -> list[dict]:
 # ------------------------------------------------------------ the scrubber
 # "As-is" was the operator's choice for DETAILS; a credential is not a detail.
 # Nothing that can sign an order or open the live door leaves this PC.
-_SECRET_WORDS = (r"signature|apikey|api_key|api-key|access[_-]?key|secret|"
+# A KEY NAME CONTAINING one of the words, with any prefix or suffix — the first
+# version anchored the word with \b, which never matches after "_" or inside
+# camelCase, so GH_TOKEN=, access_token=, secret_key= and apiSecret= passed
+# untouched (final review, I10). Quotes may be JSON-escaped (\").
+_SECRET_WORDS = (r"signature|api[_-]?key|api[_-]?secret|access[_-]?key|secret|"
                  r"token|password|passwd|authorization")
 _SECRET_RX = re.compile(
-    r"(?i)(\b(?:" + _SECRET_WORDS + r")\b[\"']?\s*[:=]\s*[\"']?)"
-    r"((?:bearer\s+)?)([^\s\"'&,;}]+)")
+    r"(?i)([A-Za-z0-9_\-]*(?:" + _SECRET_WORDS + r")[A-Za-z0-9_\-]*"
+    r"\\?[\"']?\s*[:=]\s*\\?[\"']?)"
+    r"((?:bearer|basic|token)\s+)?([^\s\"'\\&,;}]+)")
+# credentials by their SHAPE, wherever they stand: a bare "Bearer <x>", GitHub
+# tokens, a JWT, a MEXC key
+_SECRET_SHAPES = (
+    re.compile(r"(?i)\b(bearer|basic)\s+[A-Za-z0-9._~+/=-]{8,}"),
+    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{16,}\b"),
+    re.compile(r"\bgithub_pat_[A-Za-z0-9_]{16,}\b"),
+    re.compile(r"\beyJ[A-Za-z0-9_-]{8,}(?:\.[A-Za-z0-9_-]+){1,2}"),
+    re.compile(r"\bmx0[A-Za-z0-9]{8,}\b"),
+)
 
 
 def _secret_values() -> list[str]:
@@ -201,6 +236,15 @@ def _secret_values() -> list[str]:
     try:
         vals.append((HOME / "ingest_token").read_text(encoding="utf-8").strip())
     except OSError:
+        pass
+    # ON THIS PC the keys live in ~/.tradingagents/mexc_credentials.json and
+    # reach the site's environment only once a route loads them (C2)
+    try:
+        from tradingagents.dataflows import mexc_credentials as _cred
+
+        got = _cred._read()
+        vals += [str(got.get("api_key") or ""), str(got.get("api_secret") or "")]
+    except Exception:                                          # noqa: BLE001
         pass
     try:
         for ln in (REPO_ROOT / ".env").read_text(encoding="utf-8").splitlines():
@@ -217,7 +261,10 @@ def scrub(text: str) -> str:
     s = str(text)
     for v in _secret_values():
         s = s.replace(v, "[removed]")
-    return _SECRET_RX.sub(lambda m: m.group(1) + m.group(2) + "[removed]", s)
+    s = _SECRET_RX.sub(lambda m: m.group(1) + (m.group(2) or "") + "[removed]", s)
+    for rx in _SECRET_SHAPES:
+        s = rx.sub(lambda m: (m.group(1) + " " if m.re.groups else "") + "[removed]", s)
+    return s
 
 
 # ---------------------------------------------------------- the GitHub side
@@ -307,17 +354,27 @@ def _ensure_labels(gh) -> None:
         _LABELS_MADE.add(name)
 
 
+class StateUnreadable(RuntimeError):
+    """The state file is there but could not be read — never a first run."""
+
+
 def _read() -> dict:
+    """The filer's state. A MISSING file is a first run; a file that is there
+    but cannot be read (Windows refused it, half-written) raises: treating it
+    as a first run would take a new baseline and drop every issue number, and
+    the faults would be filed again (final review, M1)."""
     import json
 
+    if not STATE.exists():
+        return {"faults": {}}
     try:
         got = json.loads(STATE.read_text(encoding="utf-8"))
-        if isinstance(got, dict):
-            got.setdefault("faults", {})
-            return got
-    except (OSError, ValueError):
-        pass
-    return {"faults": {}}
+    except (OSError, ValueError) as exc:
+        raise StateUnreadable(f"{STATE}: {type(exc).__name__}: {exc}") from exc
+    if not isinstance(got, dict):
+        raise StateUnreadable(f"{STATE}: not a JSON object")
+    got.setdefault("faults", {})
+    return got
 
 
 def _write(st: dict) -> None:
@@ -341,7 +398,7 @@ def _rooms(rooms) -> str:
 
 
 def _rec_of(ev: dict) -> dict:
-    return {k: ev.get(k) for k in ("source", "kind", "label", "message", "rooms",
+    return {k: ev.get(k) for k in ("source", "kind", "label", "message", "key", "rooms",
                                    "count", "first", "last")}
 
 
@@ -378,11 +435,17 @@ def _write_evidence(fp: str, rec: dict, why: str) -> None:
         except Exception:                                      # noqa: BLE001
             pass
     FIXER_DIR.mkdir(parents=True, exist_ok=True)
+    # NO issue number and NO link: anyone on the internet can comment on a
+    # public issue, so the fixer is given nothing that points at that text.
+    # What an earlier check decided travels HERE instead (final review, I7).
     evidence_path(fp).write_text(json.dumps({
-        "fingerprint": fp, "issue": rec.get("issue"), "url": rec.get("url"),
-        "why": why, **_rec_of(rec), "first_when": _when(rec.get("first")),
-        "last_when": _when(rec.get("last")), "room_logs": logs,
-        "site_log": str(SITE_LOG)}, indent=1), encoding="utf-8")
+        "fingerprint": fp, "why": why, **_rec_of(rec),
+        "first_when": _when(rec.get("first")), "last_when": _when(rec.get("last")),
+        "earlier_verdict": rec.get("verdict") or "",
+        "earlier_fix_commit": rec.get("commit") or "",
+        "earlier_fix_when": _when(rec.get("fixed_at")) if rec.get("fixed_at") else "",
+        "came_back": int(rec.get("came_back") or 0),
+        "room_logs": logs, "site_log": str(SITE_LOG)}, indent=1), encoding="utf-8")
 
 
 def _bell(title: str, detail: str, url: str = "") -> None:
@@ -392,8 +455,28 @@ def _bell(title: str, detail: str, url: str = "") -> None:
                          meta={"url": url} if url else None)
 
 
+def _existing(fp: str, gh) -> tuple[int, str] | None:
+    """An issue GitHub already holds for this fault — made by an earlier try
+    whose answer never arrived (gh timed out, or printed no link). Found by
+    the fault id every issue body carries (final review, C1)."""
+    import json
+
+    out = gh(["issue", "list", "-R", GH_REPO, "--label", "auto-error", "--state", "all",
+              "--search", f"{fp} in:body", "--json", "number,url", "--limit", "1"])
+    try:
+        got = json.loads(out or "[]")
+    except ValueError:
+        return None
+    if got and isinstance(got, list) and got[0].get("number"):
+        return int(got[0]["number"]), str(got[0].get("url") or "")
+    return None
+
+
 def _file(ev: dict, fp: str, gh) -> tuple[int, str]:
     _ensure_labels(gh)
+    found = _existing(fp, gh) if fp != "flood" else None
+    if found:
+        return found
     out = gh(["issue", "create", "-R", GH_REPO, "--title", _title(ev),
               "--label", "auto-error", "--body-file", "-"], input_text=_body(ev, fp))
     url = out.strip().splitlines()[-1].strip() if out.strip() else ""
@@ -425,9 +508,28 @@ def _state_change(gh, args: list, done_phrase: str) -> None:
 
 
 def _seen_again(rec: dict, ev: dict) -> str:
-    return (f"Seen again: {int(ev.get('count') or 0):,} time(s) in total "
-            f"(was {int(rec.get('posted_count') or 0):,}), rooms {_rooms(ev.get('rooms') or [])}, "
-            f"last {_when(ev.get('last'))}.")
+    """The words say what the number IS (final review, M4): a room fault's
+    count is what the logs read so far hold — not a total, it restarts with
+    the site — and a job's or the site's own fault has no running count."""
+    if ev.get("source") == "room":
+        return (f"Seen again: {int(ev.get('count') or 0):,} time(s) in the room logs "
+                f"read so far (was {int(rec.get('posted_count') or 0):,}), rooms "
+                f"{_rooms(ev.get('rooms') or [])}, last {_when(ev.get('last'))}.")
+    return f"Seen again, last {_when(ev.get('last'))}."
+
+
+NOT_A_FAULT_RECHECK = 20   # more times after a not-a-fault verdict: checked again (I9)
+
+
+def _quietly(what: str, fn, *args) -> None:
+    """A step after GitHub already holds the issue (the evidence file, the
+    bell): it may fail - a full drive - but it must never abort the tick, or
+    the fault is filed again next tick (final review, C1: 12 issues for one
+    fault in 24 minutes)."""
+    try:
+        fn(*args)
+    except Exception as exc:                                   # noqa: BLE001
+        print(f"[error-issues] {what} failed: {type(exc).__name__}: {exc}", flush=True)
 
 
 def tick(now: float | None = None, gh=None) -> dict:
@@ -437,18 +539,35 @@ def tick(now: float | None = None, gh=None) -> dict:
 
     now = time.time() if now is None else float(now)
     gh = gh or _gh
-    st = _read()
-    faults = st["faults"]
     out = {"filed": 0, "commented": 0, "reopened": 0, "waiting": 0, "failed": 0}
-    events = collect(now)
+    try:
+        st = _read()
+    except StateUnreadable as exc:
+        out["failed"], out["why"] = 1, str(exc)
+        print(f"[error-issues] {exc} - nothing filed until it can be read", flush=True)
+        return out
+    faults = st["faults"]
+    failed_sources: list = []
+    events = collect(now, failed_sources)
     if not st.get("baseline"):
         # THE BASELINE: what was already there when the filer first ran was
-        # checked by hand on Oct 07, 2026 (34 groups) — not filed again
+        # checked by hand on Oct 07, 2026 (34 groups) - not filed again. Never
+        # taken while a source could not be read: its faults would all be
+        # filed as new on the next tick (final review, I4)
+        if failed_sources:
+            out["why"] = "the baseline waits: could not read " + ", ".join(failed_sources)
+            return out
         for ev in events:
             faults[fingerprint(ev)] = {**_rec_of(ev), "state": "baseline"}
         st["baseline"] = now
         _write(st)
         return out
+    # A FAULT NOT FILED YET IS RETRIED even when no source reports it this
+    # tick: a crash in the site's own log is read ONCE (final review, I2)
+    present = {fingerprint(ev) for ev in events}
+    for fp, rec in list(faults.items()):
+        if rec.get("state") == "waiting" and fp not in present and rec.get("message"):
+            events.append(_rec_of(rec))
     filed = [t for t in st.get("filed_times", []) if now - t < 3600]
     waiting: list = []
     for ev in events:
@@ -463,13 +582,20 @@ def tick(now: float | None = None, gh=None) -> dict:
                     faults[fp] = {**(rec or {}), **_rec_of(ev), "state": "waiting"}
                     waiting.append(ev)
                     continue
-                n, url = _file(ev, fp, gh)
+                try:
+                    n, url = _file(ev, fp, gh)
+                except GhFailed:
+                    faults[fp] = {**(rec or {}), **_rec_of(ev), "state": "waiting"}
+                    raise
                 filed.append(now)
                 faults[fp] = {**_rec_of(ev), "state": "queued", "issue": n, "url": url,
                               "filed_at": now, "commented_at": now,
                               "posted_count": int(ev.get("count") or 0), "came_back": 0}
-                _write_evidence(fp, faults[fp], "new")
-                _bell(f"Issue #{n} filed: {ev.get('label')}", str(ev.get("message")), url)
+                st["filed_times"] = filed
+                _write(st)                 # recorded the moment GitHub holds it (C1)
+                _quietly("the fixer's evidence", _write_evidence, fp, faults[fp], "new")
+                _quietly("the bell", _bell, f"Issue #{n} filed: {ev.get('label')}",
+                         str(ev.get("message")), url)
                 out["filed"] += 1
                 continue
             if not rec or not rec.get("issue"):
@@ -491,18 +617,36 @@ def tick(now: float | None = None, gh=None) -> dict:
                     _comment(rec, f"It happened again after the fix ({rec.get('commit')}). "
                              + _seen_again(rec, ev) + " Queued for another check.", gh)
                     rec["state"] = "queued"
-                    _write_evidence(fp, {**rec, **_rec_of(ev)}, "came_back")
+                    _quietly("the fixer's evidence", _write_evidence, fp,
+                             {**rec, **_rec_of(ev), "came_back": came}, "came_back")
                 else:
                     _label(rec, "needs-you", gh)
                     _comment(rec, "It came back after two fixes, so it waits for the "
                              "operator. " + _seen_again(rec, ev), gh)
                     rec["state"] = "needs_you"
-                    _bell(f"Issue #{rec['issue']} came back twice: {ev.get('label')}",
-                          str(ev.get("message")), rec.get("url", ""))
+                    _quietly("the bell", _bell,
+                             f"Issue #{rec['issue']} came back twice: {ev.get('label')}",
+                             str(ev.get("message")), rec.get("url", ""))
                 rec["came_back"] = came
                 rec["commented_at"] = now
             elif state == "not_a_fault":
-                if now - float(rec.get("commented_at") or 0) >= NOT_A_FAULT_COMMENT_EVERY_S:
+                more = int(ev.get("count") or 0) - int(rec.get("count_at_verdict")
+                                                       or rec.get("count") or 0)
+                if more >= NOT_A_FAULT_RECHECK:
+                    # ONE verdict never silences a fault for ever (I9)
+                    _state_change(gh, ["issue", "reopen", str(rec["issue"]), "-R", GH_REPO],
+                                  "already open")
+                    _comment(rec, f"It has happened {more:,} more time(s) since it was "
+                             "judged not a fault. Queued for another check. "
+                             + _seen_again(rec, ev), gh)
+                    rec["state"] = "queued"
+                    rec["commented_at"] = now
+                    rec["count_at_verdict"] = int(ev.get("count") or 0)
+                    _quietly("the fixer's evidence", _write_evidence, fp,
+                             {**rec, **_rec_of(ev)}, "recheck")
+                    out["reopened"] += 1
+                    posted = True
+                elif now - float(rec.get("commented_at") or 0) >= NOT_A_FAULT_COMMENT_EVERY_S:
                     _comment(rec, _seen_again(rec, ev), gh)
                     rec["commented_at"] = now
                     out["commented"] += 1
@@ -520,6 +664,10 @@ def tick(now: float | None = None, gh=None) -> dict:
         except GhFailed as exc:
             out["failed"] += 1
             out["why"] = str(exc)
+        except Exception as exc:                               # noqa: BLE001
+            out["failed"] += 1
+            out["why"] = f"{type(exc).__name__}: {exc}"
+            print(f"[error-issues] {fp}: {out['why']}", flush=True)
     if waiting:
         out["waiting"] = len(waiting)
         if now - float(st.get("flood_at") or 0) >= 3600:
@@ -530,9 +678,13 @@ def tick(now: float | None = None, gh=None) -> dict:
                                 "message": f"{len(waiting)} more new errors this hour",
                                 "rooms": [], "count": len(waiting),
                                 "first": now, "last": now}, "flood", gh)
-                _comment({"issue": n}, "Waiting to be filed next hour:\n" + lines, gh)
+                # set the moment it exists: a refused comment must not file
+                # another flood issue every tick (final review, I1)
                 st["flood_at"] = now
-                _bell(f"Issue #{n}: error flood", f"{len(waiting)} new errors wait", url)
+                _write(st)
+                _quietly("the bell", _bell, f"Issue #{n}: error flood",
+                         f"{len(waiting)} new errors wait", url)
+                _comment({"issue": n}, "Waiting to be filed next hour:\n" + lines, gh)
             except GhFailed as exc:
                 out["failed"] += 1
                 out["why"] = str(exc)
@@ -558,7 +710,11 @@ def mark_checking(fp: str, gh=None) -> None:
 def set_verdict(fp: str, verdict: str, *, commit: str = "", summary: str = "",
                 now: float | None = None, gh=None) -> None:
     """Move a fault's issue to the fixer's verdict: `fixed`, `not_a_fault`
-    or `needs_you`. Raises GhFailed so the caller can try again later."""
+    or `needs_you`. Raises GhFailed so the caller can try again later.
+
+    THE COMMENT GOES LAST: labels and closing can be repeated harmlessly, a
+    comment cannot - a refused label made every retry post "Real fault, fixed
+    in ..." again, 4 times in 4 ticks (final review, I3)."""
     import time
 
     now = time.time() if now is None else float(now)
@@ -569,25 +725,27 @@ def set_verdict(fp: str, verdict: str, *, commit: str = "", summary: str = "",
         return
     n = str(rec["issue"])
     if verdict == "fixed":
-        _comment(rec, f"Real fault, fixed in {commit}. {summary}", gh)
         _label(rec, "real-fault", gh)
         _label(rec, "fixed", gh)
         _state_change(gh, ["issue", "close", n, "-R", GH_REPO, "--reason", "completed"],
                       "already closed")
+        _comment(rec, f"Real fault, fixed in {commit}. {summary}", gh)
         rec.update(state="fixed", fixed_at=now, commit=commit)
     elif verdict == "not_a_fault":
-        _comment(rec, f"Not a fault. {summary}", gh)
         _label(rec, "not-a-fault", gh)
         _state_change(gh, ["issue", "close", n, "-R", GH_REPO, "--reason", "not planned"],
                       "already closed")
+        _comment(rec, f"Not a fault. {summary}", gh)
         rec.update(state="not_a_fault")
     else:
-        _comment(rec, f"Needs the operator. {summary}", gh)
         _label(rec, "needs-you", gh)
+        _comment(rec, f"Needs the operator. {summary}", gh)
         rec.update(state="needs_you")
-        _bell(f"Issue #{n} needs you: {rec.get('label')}", summary, rec.get("url", ""))
+        _quietly("the bell", _bell, f"Issue #{n} needs you: {rec.get('label')}", summary,
+                 rec.get("url", ""))
     rec["verdict"] = summary
     rec["commented_at"] = now
+    rec["count_at_verdict"] = int(rec.get("count") or 0)
     _write(st)
 
 

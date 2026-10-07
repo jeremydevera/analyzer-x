@@ -297,6 +297,12 @@ def test_a_preview_recipe_does_not_outlive_its_check(world, monkeypatch):
     file, so the runner never learned the key."""
     monkeypatch.setattr(sw, "_register", sw.__dict__["_register"].__wrapped__
                         if hasattr(sw.__dict__["_register"], "__wrapped__") else _REAL_REGISTER)
+    # START CLEAN: the key is a REAL one (`macddiv_1h_sl07tp1`), and an earlier
+    # test that reads a real room's settings (profiles.HOME is still not
+    # sandboxed - test_tests_cannot_write_the_real_home) can leave it in the
+    # module-wide dict; this test asks whether a PREVIEW adds it (Oct 07, 2026:
+    # failed in a full run only, passed alone and after every new test file)
+    monkeypatch.delitem(at.STRATEGY_SPECS, KEY, raising=False)
     sw.set_mode("preview")
     sw.consider(now=NOW)
     assert KEY not in at.STRATEGY_SPECS

@@ -9,8 +9,8 @@ Prompt 4 FINDS winners (docs/FORECAST-PROMPTS.md). This job RE-MEASURES every
 winner it kept, once a day, exactly the way prompt 4 measured it — the same
 replay start, signal groups and research walk — so a row's numbers reach last
 night instead of the day it was found. One step per supervisor tick (api.py,
-every 30 seconds, in its own thread), the state in
-~/.tradingagents/forecast_v2/retest_state.json:
+every 30 seconds, in its own thread), the state beside the store
+(room_strategies._home(): ~/.tradingagents/backtest/forecast_v2/retest_state.json):
 
   idle      due once a local day at or after DUE_HOUR — or at once when the
             PC was off through yesterday's

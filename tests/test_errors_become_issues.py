@@ -153,3 +153,249 @@ def test_the_configured_keys_are_removed_wherever_they_appear(tmp_path, monkeypa
 def test_ordinary_words_are_kept():
     line = "LIQUIDITY GATE: refusing stoch14_15m on AONSTOCK_USDT - the order book could not be read"
     assert ei.scrub(line) == line
+
+
+# ------------------------------------------------------- the GitHub side
+# One timeline: T0 is the first tick (the baseline). Every fake event below
+# is placed on it, and `gh` is a recorder — no network, no real issue.
+
+T0 = 1791380000.0   # Oct 07, 2026 10:13am
+
+
+class FakeGh:
+    def __init__(self, fail=False):
+        self.calls: list = []
+        self.fail = fail
+        self.next = 101
+
+    def __call__(self, args, input_text=None):
+        self.calls.append((list(args), input_text))
+        if self.fail:
+            raise ei.GhFailed("gh: could not resolve host api.github.com")
+        if args[:2] == ["issue", "create"]:
+            n, self.next = self.next, self.next + 1
+            return f"https://github.com/{ei.GH_REPO}/issues/{n}\n"
+        return ""
+
+    def made(self):
+        return [c for c in self.calls if c[0][:2] == ["issue", "create"]]
+
+    def did(self, verb):
+        return [c for c in self.calls if c[0][:2] == ["issue", verb]]
+
+
+@pytest.fixture
+def filer(tmp_path, monkeypatch):
+    """The filer on a sandboxed home, with the three sources replaced by a
+    list the test controls and the bell recorded."""
+    monkeypatch.setattr(ei, "HOME", tmp_path)
+    monkeypatch.setattr(ei, "STATE", tmp_path / "error_issues.json")
+    monkeypatch.setattr(ei, "FIXER_DIR", tmp_path / "fixer")
+    monkeypatch.setattr(ei, "_LABELS_MADE", set())
+    events: list = []
+    monkeypatch.setattr(ei, "collect",
+                        lambda now: [dict(e, rooms=list(e["rooms"])) for e in events])
+    bells: list = []
+    from tradingagents import notifications
+
+    monkeypatch.setattr(notifications, "record",
+                        lambda kind, title, **kw: bells.append((kind, title, kw)) or 1)
+    return events, bells
+
+
+def _ev(msg, *, last, room="4FC03172", kind="cycle_failed", count=1, first=None):
+    return {"source": "room", "kind": kind, "label": "A check failed", "message": msg,
+            "key": "", "rooms": [room], "count": count,
+            "first": first if first is not None else last, "last": last}
+
+
+def test_the_first_tick_files_nothing_and_remembers_what_it_saw(filer):
+    """The 34 groups checked by hand on Oct 07, 2026 are not filed again."""
+    events, _ = filer
+    events.append(_ev("old fault", last=T0 - 3600))
+    gh = FakeGh()
+    ei.tick(T0, gh=gh)
+    assert gh.made() == []
+    st = ei._read()
+    assert st["baseline"] == T0
+    assert list(st["faults"].values())[0]["state"] == "baseline"
+
+
+def test_a_new_fault_files_one_issue_and_queues_it(filer):
+    events, bells = filer
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev(SUPRA, last=T0 + 60, count=43))
+    gh = FakeGh()
+    ei.tick(T0 + 120, gh=gh)
+    made = gh.made()
+    assert len(made) == 1
+    args, body = made[0]
+    assert args[args.index("--label") + 1] == "auto-error"
+    assert args[args.index("-R") + 1] == ei.GH_REPO
+    assert "SUPRA_USDT" in args[args.index("--title") + 1]
+    assert "#4FC03172" in body and "43" in body
+    fp = ei.fingerprint(events[0])
+    rec = ei._read()["faults"][fp]
+    assert rec["issue"] == 101 and rec["state"] == "queued"
+    ev_file = json.loads((ei.FIXER_DIR / f"{fp}.json").read_text(encoding="utf-8"))
+    assert ev_file["issue"] == 101 and ev_file["message"] == SUPRA
+    assert bells and "#101" in bells[-1][1]
+
+
+def test_a_repeat_comments_at_most_once_an_hour(filer):
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev(SUPRA, last=T0 + 60))
+    ei.tick(T0 + 120, gh=FakeGh())
+    events[0] = _ev(SUPRA, last=T0 + 600, count=5)
+    gh = FakeGh()
+    ei.tick(T0 + 700, gh=gh)
+    assert gh.made() == [] and gh.did("comment") == []
+    events[0] = _ev(SUPRA, last=T0 + 4000, count=9)
+    gh = FakeGh()
+    ei.tick(T0 + 4100, gh=gh)
+    assert gh.made() == []
+    assert len(gh.did("comment")) == 1
+    assert "9" in gh.did("comment")[0][1]
+
+
+def test_the_was_count_is_what_the_issue_last_said(filer):
+    """A repeat that did not post a comment must not move "was N": the next
+    comment compares with what the issue last SAID, 1 — not the unposted 5."""
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev(SUPRA, last=T0 + 60, count=1))
+    ei.tick(T0 + 120, gh=FakeGh())
+    events[0] = _ev(SUPRA, last=T0 + 600, count=5)
+    ei.tick(T0 + 700, gh=FakeGh())
+    events[0] = _ev(SUPRA, last=T0 + 4000, count=9)
+    gh = FakeGh()
+    ei.tick(T0 + 4100, gh=gh)
+    assert "(was 1)" in gh.did("comment")[0][1]
+
+
+def test_a_reopen_github_says_already_happened_is_not_a_failure(filer):
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev(SUPRA, last=T0 + 60))
+    ei.tick(T0 + 120, gh=FakeGh())
+    fp = ei.fingerprint(events[0])
+    ei.set_verdict(fp, "fixed", commit="abc1234", summary="x", now=T0 + 200, gh=FakeGh())
+
+    class AlreadyOpen(FakeGh):
+        def __call__(self, args, input_text=None):
+            if args[:2] == ["issue", "reopen"]:
+                self.calls.append((list(args), input_text))
+                raise ei.GhFailed("could not reopen issue #101: issue is already open")
+            return super().__call__(args, input_text)
+
+    events[0] = _ev(SUPRA, last=T0 + 9000)
+    got = ei.tick(T0 + 9100, gh=AlreadyOpen())
+    assert got["failed"] == 0
+    assert ei._read()["faults"][fp]["state"] == "queued"
+
+
+def test_the_same_fault_in_a_second_room_is_the_same_issue(filer):
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev(SUPRA, last=T0 + 60))
+    ei.tick(T0 + 120, gh=FakeGh())
+    events[0] = dict(_ev(SUPRA, last=T0 + 5000), rooms=["4FC03172", "55D32617"])
+    gh = FakeGh()
+    ei.tick(T0 + 5100, gh=gh)
+    assert gh.made() == []
+    assert "#55D32617" in gh.did("comment")[0][1]
+
+
+def test_a_fixed_fault_that_comes_back_is_reopened_once_then_needs_you(filer):
+    events, bells = filer
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev(SUPRA, last=T0 + 60))
+    ei.tick(T0 + 120, gh=FakeGh())
+    fp = ei.fingerprint(events[0])
+    ei.set_verdict(fp, "fixed", commit="abc1234", summary="switch-on asks MEXC",
+                   now=T0 + 200, gh=FakeGh())
+    events[0] = _ev(SUPRA, last=T0 + 9000)
+    gh = FakeGh()
+    ei.tick(T0 + 9100, gh=gh)
+    assert gh.did("reopen") and ei._read()["faults"][fp]["state"] == "queued"
+    assert any(c[0][-1] == "came-back" for c in gh.did("edit"))
+    ei.set_verdict(fp, "fixed", commit="def5678", summary="again", now=T0 + 9200, gh=FakeGh())
+    events[0] = _ev(SUPRA, last=T0 + 20000)
+    gh = FakeGh()
+    ei.tick(T0 + 20100, gh=gh)
+    assert ei._read()["faults"][fp]["state"] == "needs_you"
+    assert any(c[0][-1] == "needs-you" for c in gh.did("edit"))
+    assert any("came back" in b[1] for b in bells)
+
+
+def test_a_not_a_fault_issue_gets_one_comment_a_day(filer):
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev("no price check for 54 minutes", kind="quiet", last=T0 + 60))
+    ei.tick(T0 + 120, gh=FakeGh())
+    fp = ei.fingerprint(events[0])
+    ei.set_verdict(fp, "not_a_fault", summary="the PC lost power", now=T0 + 200, gh=FakeGh())
+    events[0] = _ev("no price check for 54 minutes", kind="quiet", last=T0 + 4000)
+    gh = FakeGh()
+    ei.tick(T0 + 4100, gh=gh)
+    assert gh.did("comment") == [] and gh.did("reopen") == []
+    events[0] = _ev("no price check for 54 minutes", kind="quiet", last=T0 + 90000)
+    gh = FakeGh()
+    ei.tick(T0 + 90100, gh=gh)
+    assert len(gh.did("comment")) == 1 and gh.did("reopen") == []
+    assert ei._read()["faults"][fp]["state"] == "not_a_fault"
+
+
+def test_a_flood_files_ten_then_one_summary_and_waits(filer):
+    """A broken release could throw 500 different errors in an hour: ten
+    issues, one summary, the rest filed the next hour — never 500 issues."""
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    for i in range(14):
+        events.append(_ev(f"fault number {chr(65 + i)} broke", last=T0 + 60))
+    gh = FakeGh()
+    ei.tick(T0 + 120, gh=gh)
+    titles = [c[0][c[0].index("--title") + 1] for c in gh.made()]
+    assert len(titles) == ei.FLOOD_PER_HOUR + 1
+    assert sum("error flood" in t for t in titles) == 1
+    waiting = [r for r in ei._read()["faults"].values() if r["state"] == "waiting"]
+    assert len(waiting) == 4
+    gh = FakeGh()
+    ei.tick(T0 + 120 + 3700, gh=gh)
+    assert len(gh.made()) == 4
+
+
+def test_a_github_failure_is_retried_and_never_raised(filer):
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev(SUPRA, last=T0 + 60))
+    got = ei.tick(T0 + 120, gh=FakeGh(fail=True))
+    assert got["failed"] >= 1
+    fp = ei.fingerprint(events[0])
+    assert ei._read()["faults"].get(fp, {}).get("issue") is None
+    gh = FakeGh()
+    ei.tick(T0 + 240, gh=gh)
+    assert len(gh.made()) == 1
+
+
+def test_a_baseline_fault_that_happens_again_is_filed(filer):
+    events, _ = filer
+    events.append(_ev(SUPRA, last=T0 - 600))
+    ei.tick(T0, gh=FakeGh())
+    events[0] = _ev(SUPRA, last=T0 + 300)
+    gh = FakeGh()
+    ei.tick(T0 + 400, gh=gh)
+    assert len(gh.made()) == 1
+
+
+def test_nothing_posted_carries_a_secret(filer, monkeypatch):
+    events, _ = filer
+    monkeypatch.setenv("MEXC_API_KEY", "mx0KEYVALUE1234")
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev("signed call failed: ApiKey=mx0KEYVALUE1234 signature=abcdef0123456789",
+                      last=T0 + 60))
+    gh = FakeGh()
+    ei.tick(T0 + 120, gh=gh)
+    posted = json.dumps(gh.calls)
+    assert "mx0KEYVALUE1234" not in posted and "abcdef0123456789" not in posted

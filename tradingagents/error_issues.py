@@ -218,3 +218,347 @@ def scrub(text: str) -> str:
     for v in _secret_values():
         s = s.replace(v, "[removed]")
     return _SECRET_RX.sub(lambda m: m.group(1) + m.group(2) + "[removed]", s)
+
+
+# ---------------------------------------------------------- the GitHub side
+STATE = HOME / "error_issues.json"
+FIXER_DIR = HOME / "fixer"
+GH_REPO = "jeremydevera/analyzer-x"
+FLOOD_PER_HOUR = 10                  # new issues an hour before the flood summary
+COMMENT_EVERY_S = 3600               # an open fault's repeats: one comment an hour
+NOT_A_FAULT_COMMENT_EVERY_S = 86400  # a closed not-a-fault one: one a day
+LABELS = {
+    "auto-error": ("B60205", "Filed by the system from an error it met"),
+    "checking": ("FBCA04", "The fixer on the PC is checking it"),
+    "real-fault": ("D93F0B", "The fixer found a real fault"),
+    "not-a-fault": ("C5DEF5", "Not a fault: an outside event or a deliberate action"),
+    "fixed": ("0E8A16", "Fixed, tested, pushed and restarted"),
+    "needs-you": ("5319E7", "The fixer could not decide or fix it safely"),
+    "came-back": ("E99695", "It happened again after a fix"),
+}
+_LABELS_MADE: set = set()
+
+
+class GhFailed(RuntimeError):
+    """gh is missing, signed out, offline or refused — the tick tries again."""
+
+
+def _gh(args: list, input_text: str | None = None) -> str:
+    """One `gh` call. UTF-8 always (RCA-2026-10-02-G); no console window — it
+    runs from the site's background thread."""
+    import shutil
+    import subprocess
+
+    exe = shutil.which("gh") or "gh"
+    try:
+        out = subprocess.run([exe, *args], input=input_text, capture_output=True,
+                             text=True, encoding="utf-8", errors="replace", timeout=90,
+                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise GhFailed(f"{type(exc).__name__}: {exc}") from exc
+    if out.returncode != 0:
+        raise GhFailed((out.stderr or out.stdout or f"gh exited {out.returncode}")
+                       .strip()[:300])
+    return out.stdout
+
+
+def _ensure_labels(gh) -> None:
+    for name, (color, desc) in LABELS.items():
+        if name in _LABELS_MADE:
+            continue
+        gh(["label", "create", name, "--color", color, "--description", desc,
+            "--force", "-R", GH_REPO])
+        _LABELS_MADE.add(name)
+
+
+def _read() -> dict:
+    import json
+
+    try:
+        got = json.loads(STATE.read_text(encoding="utf-8"))
+        if isinstance(got, dict):
+            got.setdefault("faults", {})
+            return got
+    except (OSError, ValueError):
+        pass
+    return {"faults": {}}
+
+
+def _write(st: dict) -> None:
+    from tradingagents import db_jobs
+
+    STATE.parent.mkdir(parents=True, exist_ok=True)
+    db_jobs._write(STATE, st)
+
+
+def _when(ts) -> str:
+    from tradingagents.positions_view import fmt_when
+
+    try:
+        return fmt_when(float(ts)) if ts else "?"
+    except (TypeError, ValueError):
+        return "?"
+
+
+def _rooms(rooms) -> str:
+    return ", ".join("Main" if r == "main" else f"#{r}" for r in rooms) or "none"
+
+
+def _rec_of(ev: dict) -> dict:
+    return {k: ev.get(k) for k in ("source", "kind", "label", "message", "rooms",
+                                   "count", "first", "last")}
+
+
+def _title(ev: dict) -> str:
+    return scrub(f"[{ev.get('label') or ev.get('kind')}] {ev.get('message')}")[:120]
+
+
+def _body(ev: dict, fp: str) -> str:
+    return scrub(
+        "**Filed by the system on the operator's PC.** The fixer on that PC "
+        "checks it and posts its verdict here.\n\n"
+        f"- error: `{ev.get('message')}`\n"
+        f"- kind: {ev.get('label')} ({ev.get('source')}/{ev.get('kind')})\n"
+        f"- rooms: {_rooms(ev.get('rooms') or [])}\n"
+        f"- seen: {int(ev.get('count') or 0):,} time(s), first {_when(ev.get('first'))}, "
+        f"last {_when(ev.get('last'))}\n"
+        f"- fault id: `{fp}`\n")
+
+
+def evidence_path(fp: str) -> Path:
+    return FIXER_DIR / f"{fp}.json"
+
+
+def _write_evidence(fp: str, rec: dict, why: str) -> None:
+    """What the fixer reads — on this PC, never the public issue's text."""
+    import json
+
+    from tradingagents import room_errors
+
+    logs = {}
+    for r in rec.get("rooms") or []:
+        try:
+            logs[r] = str(room_errors._log_path(r))
+        except Exception:                                      # noqa: BLE001
+            pass
+    FIXER_DIR.mkdir(parents=True, exist_ok=True)
+    evidence_path(fp).write_text(json.dumps({
+        "fingerprint": fp, "issue": rec.get("issue"), "url": rec.get("url"),
+        "why": why, **_rec_of(rec), "first_when": _when(rec.get("first")),
+        "last_when": _when(rec.get("last")), "room_logs": logs,
+        "site_log": str(SITE_LOG)}, indent=1), encoding="utf-8")
+
+
+def _bell(title: str, detail: str, url: str = "") -> None:
+    from tradingagents import notifications
+
+    notifications.record("error_issue", title, detail=scrub(detail)[:300], ok=False,
+                         meta={"url": url} if url else None)
+
+
+def _file(ev: dict, fp: str, gh) -> tuple[int, str]:
+    _ensure_labels(gh)
+    out = gh(["issue", "create", "-R", GH_REPO, "--title", _title(ev),
+              "--label", "auto-error", "--body-file", "-"], input_text=_body(ev, fp))
+    url = out.strip().splitlines()[-1].strip() if out.strip() else ""
+    m = re.search(r"/issues/(\d+)", url)
+    if not m:
+        raise GhFailed(f"gh issue create answered without an issue link: {out[:200]!r}")
+    return int(m.group(1)), url
+
+
+def _comment(rec: dict, text: str, gh) -> None:
+    gh(["issue", "comment", str(rec["issue"]), "-R", GH_REPO, "--body-file", "-"],
+       input_text=scrub(text))
+
+
+def _label(rec: dict, name: str, gh) -> None:
+    _ensure_labels(gh)
+    gh(["issue", "edit", str(rec["issue"]), "-R", GH_REPO, "--add-label", name])
+
+
+def _state_change(gh, args: list, done_phrase: str) -> None:
+    """A reopen or close that GitHub answers "already open/closed" has
+    happened — a half-finished earlier tick must not turn into a failure that
+    repeats for ever."""
+    try:
+        gh(args)
+    except GhFailed as exc:
+        if done_phrase not in str(exc).lower():
+            raise
+
+
+def _seen_again(rec: dict, ev: dict) -> str:
+    return (f"Seen again: {int(ev.get('count') or 0):,} time(s) in total "
+            f"(was {int(rec.get('posted_count') or 0):,}), rooms {_rooms(ev.get('rooms') or [])}, "
+            f"last {_when(ev.get('last'))}.")
+
+
+def tick(now: float | None = None, gh=None) -> dict:
+    """File or update the issue of every fault the system has now. Never
+    raises a GitHub failure: what could not be posted is tried next tick."""
+    import time
+
+    now = time.time() if now is None else float(now)
+    gh = gh or _gh
+    st = _read()
+    faults = st["faults"]
+    out = {"filed": 0, "commented": 0, "reopened": 0, "waiting": 0, "failed": 0}
+    events = collect(now)
+    if not st.get("baseline"):
+        # THE BASELINE: what was already there when the filer first ran was
+        # checked by hand on Oct 07, 2026 (34 groups) — not filed again
+        for ev in events:
+            faults[fingerprint(ev)] = {**_rec_of(ev), "state": "baseline"}
+        st["baseline"] = now
+        _write(st)
+        return out
+    filed = [t for t in st.get("filed_times", []) if now - t < 3600]
+    waiting: list = []
+    for ev in events:
+        fp = fingerprint(ev)
+        rec = faults.get(fp)
+        try:
+            fresh = (rec is None or rec.get("state") == "waiting"
+                     or (rec.get("state") == "baseline"
+                         and float(ev["last"]) > float(rec.get("last") or 0)))
+            if fresh:
+                if len(filed) >= FLOOD_PER_HOUR:
+                    faults[fp] = {**(rec or {}), **_rec_of(ev), "state": "waiting"}
+                    waiting.append(ev)
+                    continue
+                n, url = _file(ev, fp, gh)
+                filed.append(now)
+                faults[fp] = {**_rec_of(ev), "state": "queued", "issue": n, "url": url,
+                              "filed_at": now, "commented_at": now,
+                              "posted_count": int(ev.get("count") or 0), "came_back": 0}
+                _write_evidence(fp, faults[fp], "new")
+                _bell(f"Issue #{n} filed: {ev.get('label')}", str(ev.get("message")), url)
+                out["filed"] += 1
+                continue
+            if not rec or not rec.get("issue"):
+                if rec is not None:
+                    rec.update(_rec_of(ev) | {"state": rec.get("state")})
+                continue
+            if float(ev["last"]) <= float(rec.get("last") or 0):
+                continue
+            state = rec.get("state")
+            posted = False
+            if state == "fixed" and float(ev["last"]) > float(rec.get("fixed_at") or 0):
+                came = int(rec.get("came_back") or 0) + 1
+                _state_change(gh, ["issue", "reopen", str(rec["issue"]), "-R", GH_REPO],
+                              "already open")
+                out["reopened"] += 1
+                posted = True
+                if came == 1:
+                    _label(rec, "came-back", gh)
+                    _comment(rec, f"It happened again after the fix ({rec.get('commit')}). "
+                             + _seen_again(rec, ev) + " Queued for another check.", gh)
+                    rec["state"] = "queued"
+                    _write_evidence(fp, {**rec, **_rec_of(ev)}, "came_back")
+                else:
+                    _label(rec, "needs-you", gh)
+                    _comment(rec, "It came back after two fixes, so it waits for the "
+                             "operator. " + _seen_again(rec, ev), gh)
+                    rec["state"] = "needs_you"
+                    _bell(f"Issue #{rec['issue']} came back twice: {ev.get('label')}",
+                          str(ev.get("message")), rec.get("url", ""))
+                rec["came_back"] = came
+                rec["commented_at"] = now
+            elif state == "not_a_fault":
+                if now - float(rec.get("commented_at") or 0) >= NOT_A_FAULT_COMMENT_EVERY_S:
+                    _comment(rec, _seen_again(rec, ev), gh)
+                    rec["commented_at"] = now
+                    out["commented"] += 1
+                    posted = True
+            elif now - float(rec.get("commented_at") or 0) >= COMMENT_EVERY_S:
+                _comment(rec, _seen_again(rec, ev), gh)
+                rec["commented_at"] = now
+                out["commented"] += 1
+                posted = True
+            if posted:
+                # "was N" in the next comment is what the issue last SAID
+                rec["posted_count"] = int(ev.get("count") or 0)
+            for k in ("rooms", "count", "last", "message"):
+                rec[k] = ev.get(k)
+        except GhFailed as exc:
+            out["failed"] += 1
+            out["why"] = str(exc)
+    if waiting:
+        out["waiting"] = len(waiting)
+        if now - float(st.get("flood_at") or 0) >= 3600:
+            try:
+                lines = "\n".join(f"- {_title(e)}" for e in waiting[:30])
+                n, url = _file({"source": "filer", "kind": "flood",
+                                "label": "error flood",
+                                "message": f"{len(waiting)} more new errors this hour",
+                                "rooms": [], "count": len(waiting),
+                                "first": now, "last": now}, "flood", gh)
+                _comment({"issue": n}, "Waiting to be filed next hour:\n" + lines, gh)
+                st["flood_at"] = now
+                _bell(f"Issue #{n}: error flood", f"{len(waiting)} new errors wait", url)
+            except GhFailed as exc:
+                out["failed"] += 1
+                out["why"] = str(exc)
+    st["filed_times"] = filed
+    _write(st)
+    return out
+
+
+def mark_checking(fp: str, gh=None) -> None:
+    gh = gh or _gh
+    st = _read()
+    rec = st["faults"].get(fp)
+    if not rec:
+        return
+    rec["state"] = "checking"
+    _write(st)
+    try:
+        _label(rec, "checking", gh)
+    except GhFailed:
+        pass
+
+
+def set_verdict(fp: str, verdict: str, *, commit: str = "", summary: str = "",
+                now: float | None = None, gh=None) -> None:
+    """Move a fault's issue to the fixer's verdict: `fixed`, `not_a_fault`
+    or `needs_you`. Raises GhFailed so the caller can try again later."""
+    import time
+
+    now = time.time() if now is None else float(now)
+    gh = gh or _gh
+    st = _read()
+    rec = st["faults"].get(fp)
+    if not rec or not rec.get("issue"):
+        return
+    n = str(rec["issue"])
+    if verdict == "fixed":
+        _comment(rec, f"Real fault, fixed in {commit}. {summary}", gh)
+        _label(rec, "real-fault", gh)
+        _label(rec, "fixed", gh)
+        _state_change(gh, ["issue", "close", n, "-R", GH_REPO, "--reason", "completed"],
+                      "already closed")
+        rec.update(state="fixed", fixed_at=now, commit=commit)
+    elif verdict == "not_a_fault":
+        _comment(rec, f"Not a fault. {summary}", gh)
+        _label(rec, "not-a-fault", gh)
+        _state_change(gh, ["issue", "close", n, "-R", GH_REPO, "--reason", "not planned"],
+                      "already closed")
+        rec.update(state="not_a_fault")
+    else:
+        _comment(rec, f"Needs the operator. {summary}", gh)
+        _label(rec, "needs-you", gh)
+        rec.update(state="needs_you")
+        _bell(f"Issue #{n} needs you: {rec.get('label')}", summary, rec.get("url", ""))
+    rec["verdict"] = summary
+    rec["commented_at"] = now
+    _write(st)
+
+
+def issue_for(fp: str, st: dict | None = None) -> dict | None:
+    """{number, url, state} of a fault's issue, for the Errors tab."""
+    rec = (st or _read())["faults"].get(fp)
+    if not rec or not rec.get("issue"):
+        return None
+    return {"number": rec["issue"], "url": rec.get("url", ""),
+            "state": rec.get("state", ""), "commit": rec.get("commit", "")}

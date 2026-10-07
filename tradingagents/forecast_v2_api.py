@@ -34,11 +34,16 @@ _FILES: dict = {}
 _FILES_LOCK = threading.Lock()
 
 
+class NotReady(Exception):
+    """No practice copy yet and the first one is being made — the routes
+    answer 503 with this sentence (RCA-2026-10-07-M)."""
+
+
 # ------------------------------------------------------- the practice copy
 def live_refresh() -> dict:
     with _LIVE_LOCK:
         if _LIVE["busy"]:
-            return _LIVE["value"] or {}
+            return _LIVE["value"]
         _LIVE["busy"] = True
     try:
         value = f2.live()
@@ -61,9 +66,16 @@ def live_refresh() -> dict:
 
 
 def live() -> dict:
+    """The kept practice copy. NEVER {} (RCA-2026-10-07-M): right after a
+    restart the first copy takes a minute or two, and an empty dict handed
+    to every reader crashed 21 asks at 3:39pm on Oct 07, 2026 and made the
+    signal families look empty — so while it is being made, say so."""
     have = _LIVE["value"]
     if have is None:
-        return live_refresh()
+        have = live_refresh()
+        if not have:
+            raise NotReady("the practice numbers are still being worked out after a restart "
+                           "— they show here in a minute or two")
     if time.time() - have["at"] > LIVE_FRESH_S and not _LIVE["busy"]:
         threading.Thread(target=live_refresh, name="forecast-v2-live", daemon=True).start()
     return have

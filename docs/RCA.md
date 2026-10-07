@@ -172,6 +172,74 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-M — two minutes after the 3:37pm restart the Forecast page crashed 21 times while its practice numbers were still being made
+
+**CEO**
+
+* Right after the site restarted at 3:37pm on Oct 07, 2026, the Forecast
+  page's winning and losing streak lists and the page itself failed 21 times
+  in a row, and the signal families showed an empty list as if there were
+  none, until the practice numbers were ready a minute or two later.
+* Why: while the first copy of the practice numbers was still being worked
+  out, the server handed every other ask an empty answer instead of saying
+  "not ready yet", and the lists tripped over it.
+* What stops it now: until the first copy exists every one of those reads
+  answers "the practice numbers are still being worked out after a restart",
+  which the page prints in its own line and clears on its next 30-second read.
+
+**DEV**
+
+* `tradingagents/api.py` `forecast_v2_streaks_route` → `forecast_v2_api.streaks`
+  → `live()` → `live_refresh()`: with no kept copy and one being made
+  (`_LIVE["busy"]`) it returned `{}`, so `lv["streaks"]` (forecast_v2_api.py:180)
+  and `lv["at"]` in `summary()` raised KeyError, and `families()` read
+  `{}.get("money")` as zero families.
+* Invariant broken: **a missing copy is never an empty copy** — `live()` now
+  raises `forecast_v2_api.NotReady` while the first copy is being made and the
+  three routes answer 503 with its sentence; RCA-2026-10-07-B had fixed only the
+  Room strategies reader of the same `{}`.
+* Guard: `tests/test_forecast_v2.py::test_the_first_ask_after_a_restart_says_it_is_being_worked_out`.
+
+**SAW** — the error-to-issue filer's site-crash fault `28d5038804c4`:
+"KeyError: 'streaks' (in forecast_v2_api.py:streaks)", 15 times at
+Oct 07, 2026 3:39pm.
+
+**TIMELINE**
+
+1. Oct 07, 2026 3:37pm — the site restarted for RCA-2026-10-07-L; the
+   supervisor's tick started the first practice copy in its own thread.
+2. 3:39pm — the open Forecast page kept asking on its 30-second reads while
+   that copy was being made: `.run/api.log` holds **15** failed streak asks
+   (`KeyError: 'streaks'`, practice wins at 9+ and losses at 5+) and **6**
+   failed page asks (`KeyError: 'at'`), with `/families` answering 200 and an
+   empty list on the same rounds.
+3. About four 30-second rounds later the copy landed and every read answered
+   200 again — nothing was lost, the page was broken for that window.
+4. After this fix the same state answers 503 with "the practice numbers are
+   still being worked out after a restart" on all three routes, and the
+   expensive `forecast_v2.live()` is never run inside the request (the test
+   makes it raise).
+
+**ROOT CAUSE** — `live_refresh()` returned `_LIVE["value"] or {}` when busy,
+so "no copy yet" and "a copy with nothing in it" were the same value to every
+reader.
+
+**WHY IT WAS NOT CAUGHT** — RCA-2026-10-07-B found this exact `{}` the same
+morning and fixed the ONE reader it was looking at (Room strategies) by going
+around `live()`; the fix never asked who else reads `live()`, and the Forecast
+v2 tests always ran with a copy already made or none being made, never the
+"being made" state a restart produces.
+
+**COST** — none in money; the Forecast page read as broken for about two
+minutes after the restart.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_forecast_v2.py::test_the_first_ask_after_a_restart_says_it_is_being_worked_out`
+(red on the old file with the production `KeyError: 'streaks'`).
+
+---
+
 ## RCA-2026-10-07-L — the profit calendar said "still not loading after 112s": every Auto Trade figure re-read each room's whole trade record, 366,316 lines to find 374 trades
 
 **CEO**

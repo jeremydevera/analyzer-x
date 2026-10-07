@@ -1451,14 +1451,21 @@ def forecast_v2_route() -> dict:
     their own routes (tradingagents/forecast_v2_api.py)."""
     from tradingagents import forecast_v2_api as _f2a
 
-    return _f2a.summary()
+    try:
+        return _f2a.summary()
+    except _f2a.NotReady as exc:
+        # 503 with a sentence, never a crash (RCA-2026-10-07-M)
+        raise HTTPException(503, str(exc)) from exc
 
 
 @app.get("/api/forecast-v2/families")
 def forecast_v2_families_route(page: int = 1) -> dict:
     from tradingagents import forecast_v2_api as _f2a
 
-    return _f2a.families(page)
+    try:
+        return _f2a.families(page)
+    except _f2a.NotReady as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 @app.get("/api/forecast-v2/streaks")
@@ -1468,6 +1475,8 @@ def forecast_v2_streaks_route(source: str = "practice", kind: str = "win",
 
     try:
         return _f2a.streaks(source, kind, min, page)
+    except _f2a.NotReady as exc:
+        raise HTTPException(503, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 

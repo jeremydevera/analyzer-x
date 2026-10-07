@@ -1363,3 +1363,29 @@ def test_a_what_if_never_carries_a_retired_option(monkeypatch):
     got = fd.whatif({"window_days": 30, "on_winrate": 90, "min_trades": 20, "tp_rule": ">",
                      "max_sl": 2.0, "skip_coins": True})
     assert got["id"] == fr.rule_id(fr.cfg_of(30, 90, 20, ">", 2.0)), "the base set, not a skip_coins one"
+
+
+def test_the_first_ask_after_a_restart_says_it_is_being_worked_out(monkeypatch):
+    """Oct 07, 2026 3:39pm, two minutes after the 3:37pm restart: the page
+    asked while the first practice copy was still being made, `live()`
+    answered {}, and 21 asks crashed — 15 on the streak lists
+    (KeyError: 'streaks') and 6 on the page itself (KeyError: 'at') — while
+    the signal families answered an empty list as if there were none. Every
+    read now answers 503 with a sentence the page prints, never a crash and
+    never an empty list standing in for the numbers."""
+    from fastapi import HTTPException
+    from tradingagents import api
+
+    def boom(*a, **k):
+        raise AssertionError("worked the practice numbers out in the request")
+    monkeypatch.setattr(f2, "live", boom)
+    monkeypatch.setitem(f2a._LIVE, "value", None)
+    monkeypatch.setitem(f2a._LIVE, "busy", True)          # the first copy is being made
+    for ask in (lambda: api.forecast_v2_streaks_route("practice", "win", 9, 1),
+                lambda: api.forecast_v2_streaks_route("backtest", "loss", 5, 1),
+                lambda: api.forecast_v2_route(),
+                lambda: api.forecast_v2_families_route(1)):
+        with pytest.raises(HTTPException) as got:
+            ask()
+        assert got.value.status_code == 503
+        assert "still being worked out" in got.value.detail

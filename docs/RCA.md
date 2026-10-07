@@ -172,6 +172,118 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-I — a coin whose order book could not be read held three rooms' rounds in silence during the Oct 07, 2026 1:18am network drop
+
+**CEO**
+
+* What you saw: during the 80-second network drop at 1:19am on Oct 07, 2026
+  the Errors tab named only two rooms (#6B08FF64 and #CC94D9FB, "No live
+  price"); #55D32617, #B2404C0B and #4FC03172 showed nothing, though their
+  price checks were held up too.
+* Why: each of those three was stuck on one coin with no open trade
+  (FASTSTOCK, FASTSTOCK, WDAYSTOCK), asking MEXC for that coin's order book
+  again for every strategy switched on for it (125 on FASTSTOCK in
+  #55D32617), about 3 seconds an ask, and every one of those strategies had
+  already used its one message an hour, so nothing was written.
+* What stops it now: after two failed asks in a row the coin is not asked
+  again until the next round, so the coins after it are checked within
+  seconds, and the round writes one line per coin saying its order book could
+  not be read and how many strategies that refused.
+
+**DEV**
+
+* At 7a9a16fcb6e9, `tradingagents/auto_trader.py:2974` `_book_for` filed only
+  a reading in `_CYCLE_READS`, never a failure, so `_process_slot` (`:5862`)
+  → `_edge_gate_cached` → `edge_check` → `fx.book_cost` asked MEXC again for
+  every strategy on a coin whose book raised (`_get_public`: 3 tries, 1 s and
+  2 s apart); `_edge_gate_cached` (`:3380`) rightly never caches "unknown",
+  and `_gate_should_log` (`:3390`) had used each strategy's hourly line, so the
+  unreadable branch (`:5864-5899`) wrote no line and no row.
+* Invariant broken: **one coin's unreadable read may cost a round a bounded
+  number of asks, and a refusal that has no line of its own still leaves one
+  line per coin per round.** Shared failures are counted per coin in
+  `_CYCLE_READS` (`BOOK_FAILS_PER_ROUND = 2` in a row, gone with the round,
+  forgotten on any reading; the signal's `shared=False` read always asks), and
+  `_CYCLE_UNREAD` tallies the refusals for one `_say_unreadable_book` line after
+  each coin's pass in `run_cycle`.
+* Guard: `tests/test_an_unreadable_book_cannot_hold_the_round.py` (4; 3 through
+  `run_cycle` inside `reads_once_per_cycle`, one on the gate itself), with
+  `tests/test_one_read_per_coin_per_cycle.py::test_a_read_that_fails_is_not_remembered`
+  still holding the single-failure retry.
+
+**SAW** — the operator, Oct 07, 2026 7:03am: *"could you check the error tabs
+and fix the errors you see"*. The tab listed six "No live price" groups, all
+first = last `Oct 07, 2026 1:19am`, in #6B08FF64 and #CC94D9FB only. The first
+investigation read the other rooms' empty logs as "waiting between rounds";
+three of them were stuck inside a round.
+
+**TIMELINE**
+
+1. `Oct 07, 2026 12:33am` – `1:15am` — every strategy armed on FASTSTOCK in
+   #55D32617 (125) writes its hourly cost-check line; each is silent for the
+   next hour.
+2. `Oct 07, 2026 1:17am` — #55D32617 and #B2404C0B finish a round (last coins
+   SPX and BKNGSTOCK); FASTSTOCK's book is read at 1:17am and at 1:18am.
+3. `Oct 07, 2026 1:18am` (second 44) — the PC's network card (Intel I211)
+   loses its link; at 1:19am (second 6) Windows resets it. Every MEXC read
+   fails: `getaddrinfo failed` (Errno 11001). Book reads across all coins
+   stop at 1:18am (second 39).
+4. `1:18am` – `1:20am` — #55D32617 and #B2404C0B sit on FASTSTOCK (125 and 65
+   strategies, no open trade), #4FC03172 on WDAYSTOCK (at least 30): one book
+   ask per strategy, ~3 s each, none remembered; 0 "order book could not be
+   read" lines and 0 unreadable `gate_blocked` rows in any room; the exit
+   checks of every coin after them wait. Only #6B08FF64 and #CC94D9FB, mid-way
+   through coins with open practice trades, log "no live price" (6 and 7).
+5. `Oct 07, 2026 1:20am` (second 4) — the link is back at 100 Mbps; FASTSTOCK's
+   book reads succeed at seconds 18-22, WDAYSTOCK's from second 19; all three
+   rooms finish the coin and log it.
+6. Measured in the guard, the same shape with 20 strategies on one coin and a
+   practice trade on the next: before — 20 book asks, the next coin's exit
+   check 60 s late, 0 lines; after — 2 asks, 6 s, 1 line: "FASTSTOCK_USDT: the
+   order book could not be read (transport failure: <urlopen error [Errno
+   11001] getaddrinfo failed> after 3 attempts) — the cost check refused 20
+   practice strategies on it this round".
+
+**ROOT CAUSE** — `_book_for` remembered a reading for the round but not a
+failure, so "a failed read is retried by the next slot" meant "by every slot";
+and the only line an unreadable book could write was the per-strategy hourly
+one, already spent.
+
+**WHY IT WAS NOT CAUGHT** —
+`test_a_read_that_fails_is_not_remembered` pinned ONE failure followed by a
+success, which is right, and no test failed the same coin twice inside one
+round, so nothing bounded the asking. And
+`tests/test_every_refusal_is_counted.py::test_a_candle_refused_only_for_an_unreadable_book_is_taken_back`
+ran exactly this state — an unreadable book with the hourly line already used
+— but asserted only the COUNT, never what reaches the screen, so "no line at
+all" passed. A stall with no line also reads in the log exactly like a room
+waiting between rounds, which is how the first investigation of this outage
+got it wrong.
+
+**COST** — none in money: the drop lasted 80 seconds, no price could be read
+anyway, and the stuck rounds let go about 15 s after the link returned. The
+risk was a coin whose book keeps failing while the rest works: ~6 minutes a
+round on FASTSTOCK in #55D32617 (125 × 3 s), every round, with at most one
+line per strategy an hour — NEVER HAPPENED YET in the logs examined (the only
+unreadable-book line since Oct 03, 2026 is SUPRA's empty book in #55D32617 at
+Oct 04, 2026 3:12am, on 3 strategies).
+
+**FIX** — this commit. Still open, so it is not forgotten: the practice
+exit's last-price read still retries once per OPEN trade on a failing coin
+(GPNSTOCK x4 in #6B08FF64 at Oct 07, 2026 1:19am, up to ~9 s each), so a coin
+with several open practice trades can still hold a round during a drop.
+
+**GUARD** — `tests/test_an_unreadable_book_cannot_hold_the_round.py`:
+`::test_a_coin_whose_book_cannot_be_read_does_not_hold_the_round`,
+`::test_the_next_round_asks_again`,
+`::test_one_failure_is_retried_two_end_the_asking_and_a_signal_reads_fresh`,
+`::test_a_round_that_dies_part_way_leaves_no_memory_behind` — all four red on
+7a9a16fcb6e9, in that order: 20 asks against 2; 0 lines against 1; 5 asks
+for five strategies against 2; the round after a failed save asking 20 times
+against 2.
+
+---
+
 ## RCA-2026-10-07-G — the Errors tab hid a power cut once the window started after the cut began, while still listing the restart that ended it
 
 **CEO**

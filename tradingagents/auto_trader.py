@@ -2945,6 +2945,16 @@ def slippage_paid(expected: float, filled: float, side: int) -> float:
 _CYCLE_READS: dict | None = None
 # set only while `_edge_gate_cached` asks — the screen, never a signal
 _SCREENING = [False]
+# TWO FAILED BOOK READS OF ONE COIN, IN A ROW, END THAT COIN'S ASKING FOR THE
+# ROUND (RCA-2026-10-07-I). A failed read was never remembered, so the screen
+# asked again for every armed strategy: at Oct 07, 2026 1:18am the network
+# dropped for 80 s and #55D32617 sat on FASTSTOCK (no open trade) asking MEXC
+# for its book once per strategy — 125 of them, ~3 s a failed read — while
+# the exit checks of every coin after it waited. ONE failure is still retried
+# by the next strategy (a single 510 must not refuse a coin's every strategy),
+# a reading forgets the count, the signal's own fresh read always asks, and
+# the count lives in `_CYCLE_READS`, so it is gone with the round.
+BOOK_FAILS_PER_ROUND = 2
 
 
 @contextlib.contextmanager
@@ -2973,14 +2983,31 @@ def _read_once(kind: str, symbol: str, read):
 
 def _book_for(symbol: str, notional: float, *, fx, shared: bool):
     """(book reading, fresh?) — shared only when asked AND inside a cycle.
-    A fresh read is always filed for the rest of the cycle to use."""
+    A fresh read is always filed for the rest of the cycle to use.
+
+    A SHARED read that fails is counted per coin; after
+    `BOOK_FAILS_PER_ROUND` in a row the rest of the round's shared reads of
+    that coin raise the last failure again without asking MEXC."""
     memo = _CYCLE_READS
     k = ("book", symbol, round(float(notional), 6))
-    if shared and memo is not None and k in memo:
-        return memo[k], False
-    m = fx.book_cost(symbol, notional)
+    failed = ("book_failed", symbol)
+    if shared and memo is not None:
+        if k in memo:
+            return memo[k], False
+        n, last = memo.get(failed, (0, None))
+        if n >= BOOK_FAILS_PER_ROUND:
+            # the stored failure again, on a fresh traceback: re-raising one
+            # instance would grow its traceback by a frame pair per strategy
+            raise last.with_traceback(None)
+    try:
+        m = fx.book_cost(symbol, notional)
+    except Exception as exc:
+        if shared and memo is not None:
+            memo[failed] = (memo.get(failed, (0, None))[0] + 1, exc)
+        raise
     if memo is not None:
         memo[k] = m
+        memo.pop(failed, None)          # the venue answered for this coin
     return m, True
 
 
@@ -3396,6 +3423,42 @@ def _gate_should_log(symbol: str, key: str, dry: bool = False) -> bool:
         return False
     _GATE_LOGGED[(key, symbol, dry)] = now
     return True
+
+
+# ONE LINE PER COIN A ROUND FOR A BOOK THAT COULD NOT BE READ (RCA-2026-10-07-I).
+# The line above is per strategy and hourly, so a book that stopped answering
+# after every strategy on it had used its line refused the coin in silence:
+# FASTSTOCK in #55D32617 at Oct 07, 2026 1:18am, 125 strategies whose lines
+# were all written between 12:33am and 1:15am, 0 lines on the Errors tab. Each
+# refusal is tallied per coin and book; the round writes ONE line after the
+# coin's pass with how many strategies it refused — never one per strategy,
+# which would be ~125 lines a round on FASTSTOCK alone. Wiped by `run_cycle`.
+_CYCLE_UNREAD: dict = {}
+
+
+def _note_unreadable_book(symbol: str, dry: bool, why, said: bool) -> None:
+    """One strategy refused because its coin's order book could not be read;
+    `said` when its own hourly line was written."""
+    t = _CYCLE_UNREAD.setdefault((symbol, bool(dry)),
+                                 {"refused": 0, "silent": 0, "why": ""})
+    t["refused"] += 1
+    t["silent"] += 0 if said else 1
+    t["why"] = str(why or "") or t["why"]
+
+
+def _say_unreadable_book(symbol: str, dry: bool) -> None:
+    """The coin's line for this round — only when a refusal had no line of
+    its own. The words "order book could not be read" are what the Errors tab
+    files it by (`room_errors.ERROR_KINDS`)."""
+    t = _CYCLE_UNREAD.pop((symbol, bool(dry)), None)
+    if not t or not t["silent"]:
+        return
+    n = t["refused"]
+    logger.warning(
+        "%s: the order book could not be read (%s) — the cost check refused "
+        "%d %s %s on it this round", symbol, t["why"] or "no reason given", n,
+        "practice" if dry else "real-money",
+        "strategy" if n == 1 else "strategies")
 
 
 def blocked_pairs(settings: dict, *, fx=None) -> list[dict]:
@@ -5865,7 +5928,12 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                 unreadable = _unknown_gate(gate)
                 _count_refused_candle(st, key, symbol, dry, _gbar, unreadable,
                                       gate.get("reason"))
-                if _gate_should_log(symbol, key, dry):
+                said = _gate_should_log(symbol, key, dry)
+                # an unreadable book is also tallied for the coin's ONE line
+                # this round, written even when this hourly line is used
+                if unreadable:
+                    _note_unreadable_book(symbol, dry, gate.get("reason"), said)
+                if said:
                     # nothing new to count: the candle in force was counted in
                     # an earlier row — a 4-hour candle is refused for four
                     # hours, so three hourly rows in four repeat it. Saying 0
@@ -6661,6 +6729,8 @@ def run_cycle(*, fx=None) -> None:
     # leave last cycle's numbers behind
     _CYCLE_PRICES.clear()
     _CYCLE_GATES.clear()
+    # ...and its tally of books that could not be read (one line per coin)
+    _CYCLE_UNREAD.clear()
     # ...and what the LAST cycle committed. By now the venue's own
     # `positionMargin` has caught up with those fills, so carrying the figure
     # forward would count the same margin twice and shrink the ceiling on
@@ -6893,6 +6963,9 @@ def run_cycle(*, fx=None) -> None:
             # happened before the pass for exactly that reason. It must still
             # come after `process_symbol` to see a slot the pass created.
             touched.extend(book_slots(state, symbol, dry))
+            # the coin's one line for a book that could not be read, after
+            # the slots are safe — and said even if the pass raised later
+            _say_unreadable_book(symbol, dry)
     # refused candles still waiting two hours on (refusals stopped, switched
     # off, coin gone) are written — BEFORE the save, so the save holds them
     # cleared and a restart cannot write them twice; never able to break the

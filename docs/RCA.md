@@ -231,6 +231,15 @@ long to load and trade history"*.
 6. After the fix, on the nine real records, read-only: the trades kept are
    identical to a full read on every one; first read 0.06 to 1.10 s, every
    read after it 0.2 to 1.0 ms.
+7. Oct 07, 2026 3:37pm — `start.py api` puts cb7b4f53123e live (the back end
+   and all nine rooms). Asked directly with the page open: the calendar of
+   #4FC03172 0.004 s (was 18.6 s), its history 0.016 s, summary 0.04 s (was
+   44.3 s), strategies 0.34 s (was 62.9 s), positions 0.03 s (was 74.2 s),
+   `/api/health` 0.36 s (was 4.2 s); the API burns 1.4 s of CPU per 10 s
+   (was 12.1 s). In Safari's engine, a freshly opened Auto Trade showed the
+   calendar's numbers after 6.4 s (#4FC03172), 8.0 s (#6B08FF64) and 8.3 s
+   (#55D32617) with all six rooms loading at once, and "still not loading"
+   never appeared.
 
 NEVER HAPPENED YET, found on the way: `trade_history` and `/api/ledger`
 read the last 100,000 LINES. #4FC03172's oldest trade sat 25,678 lines from

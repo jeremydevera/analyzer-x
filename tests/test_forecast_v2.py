@@ -151,16 +151,22 @@ def test_practice_streaks_are_per_room_and_coin_longest_first():
     assert got[0]["tf"] == "15m" and got[0]["tp"] == 1.5 and got[0]["sl"] == 1.0
 
 
-def test_coins_to_avoid_need_five_losing_trades_and_carry_the_backtest():
+def test_the_coins_to_avoid_are_gone_and_old_sets_still_read_true():
+    """Operator, Oct 07, 2026: "remove the section coins to avoid i dont need
+    its logic". No list, no route, no what-if option — but a rule set measured
+    before with the coins skipped keeps its id and still says so."""
+    from tradingagents import api as api_mod
     settings()
-    write(trades([-1.0] * 4 + [0.5], symbol="IGV_USDT"))                 # 5 trades, -3.50
-    write(trades([-1.0] * 4, symbol="USTOCK_USDT", start=NOW - 9 * HOUR))  # only 4: not judged
-    rebuilt("stoch14_15m_sl1tp15|IGV_USDT", [(NOW - 50 * HOUR, NOW - 49 * HOUR, 0.5)] * 3, NOW - 30 * HOUR)
-    a = f2.coins_to_avoid([room()])
-    assert [c["coin"] for c in a["coins"]] == ["IGV"] and a["examined"] == 2
-    c = a["coins"][0]
-    assert (c["trades"], c["wins"], c["profit"], c["worst_run"], c["worst_run_trades"]) == (5, 1, -3.5, -4.0, 4)
-    assert c["backtest"]["winrate"] == 100.0 and c["backtest"]["trades"] == 3
+    write(trades([-1.0] * 5, symbol="IGV_USDT"))
+    lv = f2.live(NOW)
+    assert "avoid" not in lv and "avoid_min_trades" not in lv["defaults"]
+    assert not hasattr(f2, "coins_to_avoid") and not hasattr(f2a, "avoid")
+    assert not hasattr(api_mod, "forecast_v2_avoid_route")
+    assert all(k != "skip_coins" for k, _v, _w in fr.OPTIONS), "never measured again"
+    assert all(o["key"] != "skip_coins" for o in f2a.summary()["options"]), "nor offered as a what-if"
+    old = {**fr.cfg_of(30, 90, 20, ">", 2.0), "skip_coins": True}
+    assert "the coins to avoid skipped (removed Oct 07, 2026)" in fr.words(old)
+    assert fr.rule_id(old) != fr.rule_id(fr.cfg_of(30, 90, 20, ">", 2.0)), "its id is kept"
 
 
 def test_where_the_money_goes_splits_by_hour_held_and_kind():
@@ -256,14 +262,14 @@ def test_the_row_options():
             {"coin": "BTC", "tf": "1h", "signal": "keltner", "tp": 3.0, "sl": 1.0, "cost_of_tp": 12.0},
             {"coin": "GPNSTOCK", "tf": "15m", "signal": "ibs", "tp": 2.0, "sl": 0.3, "cost_of_tp": 3.0}]
     base = fr.cfg_of(30, 90, 20, ">", 2.0)
-    m = lambda **o: list(fr.row_mask(meta, {**base, **o}, {"avoid": ["GPNSTOCK"], "families": ["keltner"],  # noqa: E731
+    m = lambda **o: list(fr.row_mask(meta, {**base, **o}, {"families": ["keltner"],  # noqa: E731
                                                           "move": {"GPNSTOCK": 0.5}}))
     assert m() == [True, True, True]
     assert m(skip_jp=True) == [False, True, True]
     assert m(kind="crypto") == [False, True, False]
     assert m(only_tf="1h") == [False, True, False]
     assert m(max_cost=10.0) == [True, False, True]
-    assert m(skip_coins=True) == [True, True, False]
+    assert m(skip_coins=True) == [True, True, True], "the coins to avoid went on Oct 07, 2026"
     assert m(skip_families=True) == [True, False, True]
     assert m(stop_vs_move=True) == [True, True, False], "a 0.3% stop under a 0.5% normal move"
 
@@ -413,13 +419,14 @@ def test_the_lists_are_filtered_and_paged_by_the_server():
 
 def test_the_page_prints_and_works_nothing_out():
     src = (ROOT / "webapp/src/components/forecast/ForecastV2.tsx").read_text(encoding="utf-8")
-    for words in ("Streaks", "Coins to avoid", "Where the money goes", "Best room rules this month",
+    assert "Coins to avoid" not in src and "forecastV2Avoid" not in src
+    for words in ("Streaks", "Where the money goes", "Best room rules this month",
                   "Reality check", "What if", "This month so far", "could be luck",
                   "api.forecastV2Streaks", "api.forecastV2Rules", "api.forecastV2WhatIf"):
         assert words in src, words
     assert "toLocale" not in src.replace("toLocaleString()", "")
     assert "new Date(" not in src
-    assert ".filter(" not in src.split("function Avoid")[0], "the streak lists are filtered by the server"
+    assert ".filter(" not in src.split("function sumBreakdown")[0], "the streak lists are filtered by the server"
     # a day reaches the screen through fmtWhen, never as its "2026-10-01" key
     # (found on the phone pass, Oct 01, 2026 7:35pm)
     assert "worst_day.day" not in src and "fmtWhen(r.worst_day.at)" in src
@@ -580,21 +587,20 @@ def test_the_month_tracker_holds_a_day_against_the_same_day_of_past_months(tmp_p
     assert f2a.tracker_alarms(NOW) == [], "once a room a month"
 
 
-def test_off_stays_off_when_a_busy_tick_writes_the_state_back():
-    """Bug hunt, round 6: a tick reads the state, can spend minutes in a
-    download and a merge, then writes the whole state back — a switch saved
-    into the same file meanwhile came back "on"."""
-    from tradingagents import forecast_v2_daily as fd
+def test_the_daily_run_is_always_on():
+    """Operator, Oct 07, 2026: "remove the banner 'Forecast v2' it should be
+    'run it everyday' enabled in the backend". No box, no switch file, no
+    route: an "off" left in an old state.json is ignored, and nothing saves one."""
+    from tradingagents import api as api_mod, forecast_v2_daily as fd
 
-    fd._write({"phase": "replay", "replay_run": 6})
-    st = fd.read()                              # the tick reads ...
-    assert st["on"] is True
-    fd.switch(False)                            # ... the box is switched off mid-merge ...
-    fd._write(st)                               # ... and the tick writes back what it read
-    assert fd.read()["on"] is False and fd.is_on() is False
+    fd.home().mkdir(parents=True, exist_ok=True)
+    fd._state_path().write_text('{"phase":"done","on":false}', encoding="utf-8")
+    assert fd.is_on() is True and fd.read()["on"] is True
+    fd._write(fd.read())
     assert "on" not in json.loads(fd._state_path().read_text(encoding="utf-8"))
-    fd.switch(True)
-    assert fd.read()["on"] is True
+    assert not hasattr(fd, "switch") and not hasattr(api_mod, "forecast_v2_switch_route")
+    src = (ROOT / "webapp/src/components/forecast/ForecastV2.tsx").read_text(encoding="utf-8")
+    assert "run it every day" not in src and "forecastV2Switch" not in src
 
 
 def test_a_what_if_asked_while_another_is_polled_is_kept(monkeypatch):
@@ -781,14 +787,14 @@ def test_the_daily_bell_names_each_rooms_month_against_its_range(monkeypatch):
     """Bug hunt, round 7: the build prompt's section E asks for "the longest
     winning streak, the longest losing streak, the worst coin to avoid, and
     each room's month so far against its predicted range"; the bell said so
-    in its docstring and never added the rooms."""
+    in its docstring and never added the rooms. The worst coin left the bell
+    on Oct 07, 2026 with the coins to avoid."""
     from tradingagents import forecast_v2_daily as fd, notifications as nt
 
     rung = []
     monkeypatch.setattr(nt, "record", lambda kind, title, **k: rung.append((title, k)))
     live = {"streaks": [{"kind": "win", "coin": "KIMISTOCK", "room_name": "#CC94D9FB", "length": 16},
-                        {"kind": "loss", "coin": "DHRSTOCK", "room_name": "#4FC03172", "length": 13}],
-            "avoid": {"coins": [{"coin": "IGV", "profit": -50.87, "trades": 47}]}}
+                        {"kind": "loss", "coin": "DHRSTOCK", "room_name": "#4FC03172", "length": 13}]}
 
     def room(name, made, lo, hi, below):
         return {"name": name, "month": {"profit": made}, "below": below,
@@ -806,7 +812,6 @@ def test_the_daily_bell_names_each_rooms_month_against_its_range(monkeypatch):
     assert title == "Forecast v2 is ready" and len(d) <= fd.BELL_CHARS
     order = ["longest winning run: KIMISTOCK in #CC94D9FB, 16 in a row",
              "longest losing run: DHRSTOCK in #4FC03172, 13 in a row",
-             "worst coin: IGV -50.87 over 47 trades",
              "each room this month vs its rules by day 1 (after the reality check): "
              "Main -5.51 below (+0.00 to +0.47)",
              "#55D32617 -34.43 below (-5.27 to +19.78)", "#4FC03172 -175.07 below (-3.12 to +0.78)",
@@ -814,6 +819,7 @@ def test_the_daily_bell_names_each_rooms_month_against_its_range(monkeypatch):
              "#CC94D9FB -42.72 below (+0.00 to +3.49)"]
     assert [d.find(x) for x in order] == sorted(d.find(x) for x in order) and min(d.find(x) for x in order) == 0
     assert k["ok"] is False, "a room under its worst case is not an all-clear"
+    assert "worst coin" not in d, "no coins to avoid since Oct 07, 2026"
 
 
 def test_a_long_bell_keeps_its_count_of_the_rest(monkeypatch):
@@ -877,7 +883,7 @@ def test_a_dispatch_is_on_disk_before_it_is_made(monkeypatch):
     from tradingagents import forecast_v2_daily as fd, room_forecasts as rf
 
     monkeypatch.setattr(fd, "due", lambda now, st: (True, "the update is on this PC"))
-    monkeypatch.setattr(fd, "skip_lists", lambda: ([], []))
+    monkeypatch.setattr(fd, "skip_families", lambda: [])
     monkeypatch.setattr(rf, "_update", lambda: {"runs": [1], "collected": [1], "when": NOW - HOUR})
     sinces = []
 
@@ -903,21 +909,15 @@ def test_a_dispatch_is_on_disk_before_it_is_made(monkeypatch):
     assert fresh["phase"] == "replay" and fresh["replay_runs"] == {"x/y": 41} and "tried" not in fresh
 
 
-def test_an_off_saved_before_the_box_had_its_own_file_stays_off():
-    """Bug hunt, round 10: the box used to live in state.json; the first
-    save after the switch got its own file dropped it, so a chain switched
-    off on another machine would have come back on after `git pull`."""
-    from tradingagents import forecast_v2_daily as fd
-
-    fd.home().mkdir(parents=True, exist_ok=True)
-    fd._state_path().write_text('{"phase":"done","on":false}', encoding="utf-8")
-    assert not fd._switch_path().exists() and fd.read()["on"] is False
-    fd._write(fd.read())                       # the first save by the new code
-    assert fd.read()["on"] is False and fd.is_on() is False
-    assert "on" not in json.loads(fd._state_path().read_text(encoding="utf-8"))
-    fd.switch(True)
-    fd._write(fd.read())
-    assert fd.read()["on"] is True, "once the box has its own file, it alone decides"
+def test_the_page_names_a_failed_daily_run_without_a_banner():
+    """The banner went on Oct 07, 2026, but a failure is still named on the
+    page (CLAUDE.md, "A job that cannot start must SAY SO"): a line shows
+    only when something is wrong."""
+    src = (ROOT / "webapp/src/components/forecast/ForecastV2.tsx").read_text(encoding="utf-8")
+    main = src[src.index("export default function ForecastV2"):]
+    assert ">Forecast v2</h3>" not in main, "no banner"
+    for shown in ("could not read Forecast v2", "s?.refresh_error", "c?.error", "was used without:"):
+        assert shown in main, shown
 
 
 # ----------------------------------------------------- bug hunt, round 12
@@ -974,7 +974,7 @@ def test_the_page_names_the_machines_a_run_was_used_without(monkeypatch):
     were "named in the state and on the page" — the page was never sent them."""
     from tradingagents import forecast_v2_daily as fd
 
-    monkeypatch.setattr(f2a, "live", lambda: {"at": 1, "took_ms": 1, "rooms": [], "avoid": {}, "money": {},
+    monkeypatch.setattr(f2a, "live", lambda: {"at": 1, "took_ms": 1, "rooms": [], "money": {},
                                               "reality": {}, "defaults": {}, "streaks": []})
     gone = {"base": {"of": 20, "failed": ["forecast (3)"]}}
     fd._write({"phase": "options", "missing": gone})
@@ -1129,7 +1129,7 @@ def _two(monkeypatch, coins=("A_USDT", "B_USDT", "C_USDT", "D_USDT", "E_USDT")):
     monkeypatch.setattr(fd, "fleets_now", lambda: ([ME, FORK], []))
     monkeypatch.setattr(fd, "market", lambda: list(coins))
     monkeypatch.setattr(cs, "sync_fleet", lambda slug, source="": "")
-    monkeypatch.setattr(fd, "skip_lists", lambda: ([], []))
+    monkeypatch.setattr(fd, "skip_families", lambda: [])
     monkeypatch.setattr(fd, "due", lambda now, st: (True, "the update is on this PC"))
     monkeypatch.setattr(fd, "room_rules", lambda: {})
     monkeypatch.setattr(rf, "_update", lambda: {"runs": [1], "collected": [1], "when": NOW - HOUR})
@@ -1353,3 +1353,13 @@ def test_a_deal_left_by_an_earlier_day_is_never_reused(monkeypatch):
     fd._step(st, NOW)
     assert st["replay_runs"] == {ME: 61, FORK: 62}, "a fresh deal, both accounts asked today"
     assert sent == [(ME, None), (FORK, None)], "nothing adopted from yesterday's attempts"
+
+
+def test_a_what_if_never_carries_a_retired_option(monkeypatch):
+    """The coins to avoid went on Oct 07, 2026: a what-if asked by hand with
+    `skip_coins` is measured without it, never labelled as skipping coins."""
+    from tradingagents import forecast_v2_daily as fd
+    assert "skip_coins" in fr.OPTION_KEYS and "skip_coins" not in fr.LIVE_OPTION_KEYS
+    got = fd.whatif({"window_days": 30, "on_winrate": 90, "min_trades": 20, "tp_rule": ">",
+                     "max_sl": 2.0, "skip_coins": True})
+    assert got["id"] == fr.rule_id(fr.cfg_of(30, 90, 20, ">", 2.0)), "the base set, not a skip_coins one"

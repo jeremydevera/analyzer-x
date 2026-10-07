@@ -1302,10 +1302,18 @@ Forecast v2, use harddev skill and make sure to document this"*. Full account,
 the build prompt word for word and the measured first run:
 `docs/FORECAST-V2.md`. Auto Trade → Forecast (`/forecast-v2`, ONE page since
 Oct 02, 2026: *"can i merge forecast to forecast v2 ... what matters to me is this
-prompt and ability to backtest a room strategy"*) — Forecast v2, then the prompts
-with their copy buttons and Backtest a room (no Rooms table since Oct 03, 2026)
-(`RoomForecasts.RoomsAndBacktest`). The first Forecast page is off the menu,
-still at `/forecast`.
+prompt and ability to backtest a room strategy"*). Top to bottom since
+Oct 07, 2026: Backtest a room, **Room strategies directly under it** (*"put
+room strategies under backtest a room"*), Streaks, Where the money goes, Best
+room rules this month, This month so far, then the prompts with their copy
+buttons (`RoomForecasts.RoomsAndBacktest`). **No "Forecast v2" banner and no
+Coins to avoid** (*"remove the section coins to avoid i dont need its logic
+... also remove the banner 'Forecast v2' it should be 'run it everyday'
+enabled in the backend"*) — the list, its route, its what-if option
+(`skip_coins`, kept only as a label on sets measured before, its id key
+kept) and the bell's "worst coin" all went; a line shows on the page ONLY
+when a read or the daily run fails. No Rooms table since Oct 03, 2026. The
+first Forecast page is off the menu, still at `/forecast`.
 
 * **One place for every number.** Practice: `forecast_v2.py`. Rule sets and
   options: `forecast_rules.py`. The GitHub research is
@@ -1351,8 +1359,11 @@ still at `/forecast`.
 * **The bell is a summary, never a feed**: at most one streak bell an hour,
   every new run named in it once (46 runs reached the line on Oct 01, 2026),
   no bell for a room that is off, one daily summary.
-* **The on/off box has its own file** (`switch.json`): a tick that read the
-  state, merged for two minutes and wrote it back would otherwise undo it.
+* **The daily run is ALWAYS ON** (operator, Oct 07, 2026: *"it should be
+  'run it everyday' enabled in the backend"*): `forecast_v2_daily.is_on()`
+  is True, there is no box, no `switch.json` and no switch route, and an
+  "off" left in an old `state.json` is ignored. The run still deals both
+  accounts (the 40-machine rule) and still names its failures on the page.
 * **Every Forecast v2 file is written through `forecast_v2.publish`** (a temp
   unique to the call, the swap retried for 3 s — the page reads these files
   every 30 s and Windows refuses a swap under a reader), and **a dispatch's

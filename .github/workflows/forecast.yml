@@ -43,9 +43,6 @@ on:
       rooms:
         description: "The rooms' own rules, `ID=window:on:off:trades:tp:stopcap` joined by ;"
         default: ""
-      avoid:
-        description: "The coins to avoid, comma-separated (the skip-coins option)"
-        default: ""
       families:
         description: "The worst signal families, comma-separated (the skip-families option)"
         default: ""
@@ -106,7 +103,6 @@ jobs:
           STAGE: ${{ github.event.inputs.stage }}
           BASES: ${{ github.event.inputs.bases }}
           ROOMS: ${{ github.event.inputs.rooms }}
-          AVOID: ${{ github.event.inputs.avoid }}
           FAMILIES: ${{ github.event.inputs.families }}
           CUSTOM: ${{ github.event.inputs.custom }}
           # the checks are the OPERATOR's midnights, as the replay's were

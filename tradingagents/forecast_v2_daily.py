@@ -71,22 +71,12 @@ def _state_path() -> Path:
     return home() / "state.json"
 
 
-def _switch_path() -> Path:
-    return home() / "switch.json"
-
-
 def is_on() -> bool:
-    """The page's on/off box, kept in ITS OWN FILE (bug hunt, round 6): the
-    chain's tick reads the state, may spend minutes downloading and merging,
-    then writes the whole state back — a switch saved into that same file
-    meanwhile was written over, and "off" came back "on"."""
-    try:
-        return json.loads(_switch_path().read_text(encoding="utf-8"))["on"] is not False
-    except (OSError, ValueError, KeyError, TypeError):
-        try:            # never switched since the box got its own file
-            return json.loads(_state_path().read_text(encoding="utf-8")).get("on", True) is not False
-        except (OSError, ValueError, AttributeError):
-            return True
+    """ALWAYS ON (operator, Oct 07, 2026: "remove the banner 'Forecast v2' it
+    should be 'run it everyday' enabled in the backend"). The page's "run it
+    every day" box and its switch.json are gone: the daily chain runs every
+    day, and nothing on any screen can switch it off."""
+    return True
 
 
 def read() -> dict:
@@ -99,17 +89,7 @@ def read() -> dict:
 
 
 def _write(st: dict) -> None:
-    if not _switch_path().exists() and _state_path().exists():
-        # CARRIED OVER, never dropped (bug hunt, round 10): before the box had
-        # its own file it lived in this one — the first save without it
-        # would have turned an "off" into the default "on"
-        try:
-            was = json.loads(_state_path().read_text(encoding="utf-8")).get("on")
-        except (OSError, ValueError, AttributeError):
-            was = None
-        if was is False:
-            f2.publish(_switch_path(), json.dumps({"on": False, "at": time.time(), "from": "state.json"}))
-    keep = {k: v for k, v in st.items() if k != "on"}     # the switch has its own file
+    keep = {k: v for k, v in st.items() if k != "on"}     # always on: never saved
     f2.publish(_state_path(), json.dumps(keep, separators=(",", ":"), allow_nan=False))
 
 
@@ -377,13 +357,13 @@ def room_rules() -> dict:
     return out
 
 
-def skip_lists(live: dict | None = None) -> tuple[list, list]:
-    """(coins to avoid, the worst signal families) from practice right now."""
+def skip_families(live: dict | None = None) -> list:
+    """The worst signal families from practice right now (the "skip the worst
+    families" option). The coins to avoid went on Oct 07, 2026."""
     live = live or f2.live()
-    coins = [c["coin"] for c in live["avoid"]["coins"]]
     fam = sorted((g for g in live["money"]["by_family"]
                   if g["trades"] >= f2.THIN and g["profit"] < 0), key=lambda g: g["profit"])
-    return coins, [g["group"] for g in fam[:WORST_FAMILIES]]
+    return [g["group"] for g in fam[:WORST_FAMILIES]]
 
 
 def first_check(now: float) -> str:
@@ -397,10 +377,10 @@ def _forecast_inputs(st: dict, stage: str, repo: str, extra: dict | None = None)
     """One account's forecast run: on THAT account's replay run (a run reads
     the artifacts of its own repository), with the whole chain's common end."""
     rooms = room_rules()
-    avoid, fams = st.get("avoid") or [], st.get("families") or []
+    fams = st.get("families") or []
     return {"source_run": st["replay_runs"][repo], "shards": SHARDS, "end_ms": st["end_ms"],
             "start": st["start"], "stage": stage, "bases": "", "rooms": fr.encode_rooms(rooms),
-            "avoid": ",".join(avoid), "families": ",".join(fams), "custom": "",
+            "families": ",".join(fams), "custom": "",
             **(extra or {})}
 
 
@@ -721,9 +701,7 @@ def _merge_runs(st: dict) -> dict:
 def _step(st: dict, now: float) -> None:
     from tradingagents.positions_view import fmt_when
 
-    if st.get("on") is False:
-        st["why"] = "switched off on the Forecast v2 page"
-        return
+    # (no "switched off" case: the daily chain is always on since Oct 07, 2026)
     if st.get("failed_at") and now - float(st["failed_at"]) < RETRY_S:
         return
     _normalize(st)
@@ -743,13 +721,13 @@ def _step(st: dict, now: float) -> None:
             st.pop("plan", None)
             return
         runs, piles, lost, note = got
-        avoid, fams = skip_lists()
+        fams = skip_families()
         st.pop("tried", None)
         st.pop("plan", None)
         st.update(phase="replay", fleets=list(piles), replay_runs=runs, piles=piles,
                   coins={r: len(p) for r, p in piles.items()}, lost=lost, start=start,
                   started_at=now, started_day=dt.date.fromtimestamp(now).isoformat(),
-                  last_update=rf._update()["when"], avoid=avoid, families=fams,
+                  last_update=rf._update()["when"], families=fams,
                   base_runs={}, options_runs={}, base_dirs={}, error="", failed_at=0, polled_at=0,
                   missing={}, redo={}, refused={}, bases="",
                   why=f"replay {_named_runs(st | {'fleets': list(piles)}, runs)} started on GitHub at "
@@ -843,7 +821,7 @@ def _step(st: dict, now: float) -> None:
                   # reaching "done", or the merge re-runs every RETRY_S
                   ready={"replay_runs": dict(st.get("replay_runs") or {}),
                          "fleets": list(st.get("fleets") or []),
-                         **{k: st.get(k) for k in ("end_ms", "start", "avoid", "families")}})
+                         **{k: st.get(k) for k in ("end_ms", "start", "families")}})
         bell(out, f2.live())
 
 
@@ -928,8 +906,9 @@ def fit(parts: list[str], left: int = 0, limit: int = BELL_CHARS) -> str:
 
 def bell(out: dict, live: dict, rooms: list | None = None) -> None:
     """ONE message a day, in the build prompt's own order (section E): the
-    longest winning and losing streaks, the worst coin to avoid, and each
-    room's month so far against its predicted range — then the best rule set.
+    longest winning and losing streaks and each room's month so far against
+    its predicted range — then the best rule set. (The worst coin to avoid left
+    it on Oct 07, 2026, with the coins to avoid.)
 
     Bug hunt, round 7: this said "and each room's month so far" while the
     code never added the rooms. `rooms` are the month tracker's rows
@@ -948,14 +927,11 @@ def bell(out: dict, live: dict, rooms: list | None = None) -> None:
     st = live["streaks"]
     win = next((s for s in st if s["kind"] == "win"), None)
     loss = next((s for s in st if s["kind"] == "loss"), None)
-    worst = (live["avoid"]["coins"] or [None])[0]
     parts = []
     if win:
         parts.append(f"longest winning run: {win['coin']} in {win['room_name']}, {win['length']} in a row")
     if loss:
         parts.append(f"longest losing run: {loss['coin']} in {loss['room_name']}, {loss['length']} in a row")
-    if worst:
-        parts.append(f"worst coin: {worst['coin']} {worst['profit']:+.2f} over {worst['trades']} trades")
     # every room, short (bug hunt, round 16: the long form fit 3 of 6 rooms
     # in the bell's 500 characters on Oct 01, 2026); the first one says what
     # the numbers are, once
@@ -1027,7 +1003,8 @@ def whatif(cfg: dict) -> dict:
     running for it is reported)."""
     cfg = fr.cfg_of(int(cfg["window_days"]), float(cfg["on_winrate"]), int(cfg["min_trades"]),
                     str(cfg["tp_rule"]), float(cfg.get("max_sl") or 0),
-                    **{k: cfg.get(k) for k in fr.OPTION_KEYS if cfg.get(k) not in (None, "", False)},
+                    # never a retired option (skip_coins, Oct 07, 2026), even asked by hand
+                    **{k: cfg.get(k) for k in fr.LIVE_OPTION_KEYS if cfg.get(k) not in (None, "", False)},
                     **({"coin_slices": int(cfg["coin_slices"])} if cfg.get("coin_slices") else {}))
     rid = fr.rule_id(cfg)
     st = _ready_of(read().get("ready") or {})
@@ -1170,8 +1147,3 @@ def _whatifs(st: dict, now: float) -> None:
                                           f"{type(exc).__name__}: {str(exc)[:160]}"}, run=mark)
 
 
-def switch(on: bool) -> dict:
-    """The page's on/off box. Off stops the chain dispatching; nothing else.
-    Written to its own file, which nothing else writes (see is_on)."""
-    f2.publish(_switch_path(), json.dumps({"on": bool(on), "at": time.time()}))
-    return read()

@@ -355,8 +355,8 @@ def main() -> int:
     end_ms = int(os.environ["END_MS"])
     stage = (os.environ.get("STAGE") or "base").strip()
     start = os.environ.get("START") or "2026-07-01"
-    ctx = {"avoid": [c for c in (os.environ.get("AVOID") or "").split(",") if c.strip()],
-           "families": [f for f in (os.environ.get("FAMILIES") or "").split(",") if f.strip()]}
+    # no coins to avoid since Oct 07, 2026 (operator: "i dont need its logic")
+    ctx = {"families": [f for f in (os.environ.get("FAMILIES") or "").split(",") if f.strip()]}
     out = Path("out")
     out.mkdir(exist_ok=True)
     t0 = time.time()

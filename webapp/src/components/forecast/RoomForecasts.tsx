@@ -979,12 +979,14 @@ export function RoomsAndBacktest() {
   useLiveRefresh(loadPrompts, 300_000);
   return (
     <>
-      <RoomStrategiesTable />
+      {/* ROOM STRATEGIES is no longer here: it sits directly under Backtest a
+          room (operator, Oct 07, 2026: "put room strategies under backtest a
+          room") — RoomStrategiesSection, handed to ForecastV2 above the Streaks */}
       {saved && saved.prompts.length > 0 && (
         <div className={card}>
           <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Prompts</h3>
           <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-            Copy one and paste it to Claude. Prompt 4 finds new winning room strategies and keeps them in Best room rules above.
+            Copy one and paste it to Claude. Prompt 4 finds new winning room strategies and keeps them in Room strategies above.
           </p>
           <div className="mt-3 grid items-start gap-3 lg:grid-cols-2">
             {saved.prompts.map((p) => <PromptBox key={p.title} title={p.title} text={p.text} />)}
@@ -1007,7 +1009,7 @@ export function RoomsAndBacktest() {
  *  chosen, from each winner's own stored trades; filtered, sorted and paged
  *  there (tradingagents/room_strategies.table). Never deleted: a winner whose
  *  newest 15 days lost says "stopped working". */
-function RoomStrategiesTable() {
+export function RoomStrategiesSection() {
   const [from, setFrom] = useState(dateBoxValue(30));
   const [to, setTo] = useState(dateBoxValue(0));
   const [minWin, setMinWin] = useState("");

@@ -153,7 +153,10 @@ def test_the_tab_is_under_auto_trade():
     assert 'path: "/forecast" }' not in side
     assert (ROOT / "webapp/src/app/(admin)/forecast/page.tsx").exists()
     v2 = (ROOT / "webapp/src/app/(admin)/forecast-v2/page.tsx").read_text(encoding="utf-8")
-    assert "<ForecastV2 beforeStreaks={<RoomBacktest />} />" in v2 and "<RoomsAndBacktest />" in v2
+    # Room strategies directly under Backtest a room (Oct 07, 2026: "put room
+    # strategies under backtest a room"), both above the Streaks
+    assert "<ForecastV2 beforeStreaks={<><RoomBacktest /><RoomStrategiesSection /></>} />" in v2
+    assert "<RoomsAndBacktest />" in v2
     fv2 = (ROOT / "webapp/src/components/forecast/ForecastV2.tsx").read_text(encoding="utf-8")
     assert fv2.index("{beforeStreaks}") < fv2.index(">Streaks</h3>"), \
         "Backtest a room sits above the Streaks (Oct 05, 2026)"

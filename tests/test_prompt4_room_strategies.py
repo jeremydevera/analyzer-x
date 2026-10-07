@@ -138,7 +138,10 @@ def test_the_table_re_measures_over_exactly_the_chosen_dates(store):
 
 def test_the_page_shows_the_room_strategies_and_asks_the_server():
     src = (ROOT / "webapp/src/components/forecast/RoomForecasts.tsx").read_text(encoding="utf-8")
-    assert "<RoomStrategiesTable />" in src and ">Room strategies<" in src
+    assert "export function RoomStrategiesSection()" in src and ">Room strategies<" in src
+    # shown on the Forecast page directly under Backtest a room (Oct 07, 2026)
+    page = (ROOT / "webapp/src/app/(admin)/forecast-v2/page.tsx").read_text(encoding="utf-8")
+    assert "<RoomBacktest /><RoomStrategiesSection />" in page
     assert "api.roomStrategies({ from_s: dayStart(from), to_s: dayStart(to) + 86_399," in src
     api_py = (ROOT / "tradingagents/api.py").read_text(encoding="utf-8")
     assert '@app.get("/api/forecasts/room-strategies")' in api_py

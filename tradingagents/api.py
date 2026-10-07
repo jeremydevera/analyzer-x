@@ -1406,13 +1406,6 @@ def forecast_v2_route() -> dict:
     return _f2a.summary()
 
 
-@app.get("/api/forecast-v2/avoid")
-def forecast_v2_avoid_route(page: int = 1) -> dict:
-    from tradingagents import forecast_v2_api as _f2a
-
-    return _f2a.avoid(page)
-
-
 @app.get("/api/forecast-v2/families")
 def forecast_v2_families_route(page: int = 1) -> dict:
     from tradingagents import forecast_v2_api as _f2a
@@ -1463,14 +1456,6 @@ def forecast_v2_whatifs_route(page: int = 1) -> dict:
     from tradingagents import forecast_v2_api as _f2a
 
     return _f2a.whatifs(page)
-
-
-@app.post("/api/forecast-v2/switch")
-def forecast_v2_switch_route(body: dict) -> dict:
-    """The daily chain's on/off box. Off stops it dispatching; nothing else."""
-    from tradingagents import forecast_v2_daily as _f2d
-
-    return _f2d.switch(bool((body or {}).get("on")))
 
 
 @app.get("/api/errors/rooms")

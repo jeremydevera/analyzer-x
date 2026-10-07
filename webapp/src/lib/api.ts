@@ -1076,9 +1076,6 @@ export type F2Streak = { source: "practice" | "backtest"; kind: "win" | "loss"; 
 export type F2StreakPage = { rows: F2Streak[]; total: number; page: number; pages: number; per: number;
   source: string; kind: string; min: number; of: number; note: string;
   examined: { what: string; rooms?: number; rows?: number; strategies?: number; trades?: number; end_ms?: number } };
-export type F2Avoid = { coin: string; rooms: string[]; trades: number; wins: number; losses: number;
-  winrate: number; profit: number; worst_run: number; worst_run_trades: number;
-  backtest: { rows: number; of: number; trades: number; wins: number; winrate: number | null } };
 export type F2Reality = { rows: number; bt_trades: number; bt_wins: number; bt_profit: number;
   pr_trades: number; pr_wins: number; pr_profit: number; bt_winrate: number | null;
   pr_winrate: number | null; bt_per_trade: number | null; pr_per_trade: number | null;
@@ -1110,7 +1107,6 @@ export type F2WhatIf = { id: string; words?: string; status: string; why: string
   asked_at?: number; end_ms?: number; result?: F2Rule | null };
 /** one page of a Forecast page list, paged by the server (forecast_v2_api._page) */
 export type F2Page<T> = { rows: T[]; total: number; page: number; pages: number; per: number };
-export type F2AvoidPage = F2Page<F2Avoid> & { examined: number; rule: string };
 /** a signal family with the rooms' backtest beside it, [trades, wins, profit];
  *  `has_backtest` false = no backtest at all, so the column reads — not 0 */
 export type F2FamilyPage = F2Page<F2Group & { bt: [number, number, number] | null }> & { has_backtest: boolean };
@@ -1122,7 +1118,6 @@ export type F2Summary = {
   at: number; took_ms: number; refresh_error: string;
   rooms: { id: string; name: string; retired: boolean; trades: number; unreadable: number;
     month: { trades: number; wins: number; losses: number; profit: number; days: { day: string; total: number }[] } }[];
-  avoid: { rule: string; coins: F2Avoid[]; examined: number };
   money: {
     costs: { rooms: { room: string; name: string; retired: boolean; trades: number; profit: number;
       costs: number; matched: number; without_costs: number;
@@ -1133,7 +1128,7 @@ export type F2Summary = {
     overlap: { coin: string; rooms: string[]; count: number; trades: number; flag: boolean }[];
     thin_below: number };
   reality: { rooms: (F2Reality & { room: string; name: string; cap: number })[]; all: F2Reality; rule: string };
-  defaults: { win_n: number; loss_m: number; avoid_min_trades: number; thin: number; overlap_warn: number };
+  defaults: { win_n: number; loss_m: number; thin: number; overlap_warn: number };
   streak_counts: { practice: { win: number; loss: number }; backtest: { count: number; win: number; loss: number; floor: number } | null };
   backtest: null | { made_at: number; runs: Record<string, unknown>; reality: F2Reality;
     data: { start: string; end_ms: number; months: string[]; complete: string[];
@@ -1144,7 +1139,7 @@ export type F2Summary = {
     rooms: Record<string, F2Breakdown>;
     follow: { win?: { k: number; cases: number; next_win: number; cases10: number; pnl10: number }[];
       loss?: { k: number; cases: number; next_win: number; cases10: number; pnl10: number }[] } };
-  chain: { phase?: string; why?: string; error?: string; on?: boolean; done_at?: number;
+  chain: { phase?: string; why?: string; error?: string; done_at?: number;
     replay_run?: number; base_run?: number; options_run?: number; repo?: string;
     /** per step, the machines its run was used without */
     missing?: Record<string, { of: number; failed: string[] }> | null };
@@ -1440,9 +1435,7 @@ export const api = {
   // ten a page, like every list on the Forecast page (Oct 02, 2026: "make it
   // paginated just like in auto trade")
   forecastV2WhatIfs: (page = 1) => get<F2Page<F2WhatIf>>(`/api/forecast-v2/whatif?page=${page}`),
-  forecastV2Avoid: (page = 1) => get<F2AvoidPage>(`/api/forecast-v2/avoid?page=${page}`),
   forecastV2Families: (page = 1) => get<F2FamilyPage>(`/api/forecast-v2/families?page=${page}`),
-  forecastV2Switch: (on: boolean) => postDetail<{ on: boolean }>("/api/forecast-v2/switch", { on }),
   roomErrors: (q: { room?: string; kind?: string; hours?: number; page?: number }) => {
     const p = new URLSearchParams();
     if (q.room) p.set("room", q.room);

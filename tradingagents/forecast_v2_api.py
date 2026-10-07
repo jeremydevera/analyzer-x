@@ -24,8 +24,8 @@ LIVE_FRESH_S = 30
 # TEN A PAGE, THE AUTO TRADE SIZE (operator, Oct 02, 2026: "in forecast, make
 # it paginated just like in auto trade" — Positions and the Watcher there page
 # ten rows at a time under numbered buttons). Every list on the Forecast page
-# pages at this size: the streaks, the rule sets, the coins to avoid, the
-# signal families and the what-ifs here, and Backtest a room and Room
+# pages at this size: the streaks, the rule sets, the signal families and
+# the what-ifs here, and Backtest a room and Room
 # strategies through their routes in api.py.
 PER_PAGE = 10
 _LIVE: dict = {"value": None, "busy": False, "error": ""}
@@ -212,16 +212,6 @@ def streaks(source: str = "practice", kind: str = "win", min_len: int | None = N
     for r in out["rows"]:
         r["follow"] = _follow_for(kind, r["length"])
     out.update(source=source, kind=kind, min=n, of=len(every), examined=examined, note=note)
-    return out
-
-
-def avoid(page: int = 1) -> dict:
-    """Coins to avoid, worst first as forecast_v2.coins_to_avoid ranks them,
-    paged here — the whole list used to sit in one scroll box (46 coins on
-    Oct 02, 2026)."""
-    a = live().get("avoid") or {}
-    out = _page(list(a.get("coins") or []), page)
-    out.update(examined=a.get("examined", 0), rule=a.get("rule", ""))
     return out
 
 
@@ -461,16 +451,16 @@ def tracker_alarms(now: float | None = None) -> list:
 
 def summary(now: float | None = None) -> dict:
     """Everything on the page except the lists that page on their own routes
-    (streaks, rule sets, coins to avoid, signal families, what-ifs). `avoid`
-    and `money` still carry their whole lists for the counts and the small
-    splits; the page reads the long ones a page at a time."""
+    (streaks, rule sets, signal families, what-ifs). `money` still carries its
+    whole lists for the counts and the small splits; the page reads the long
+    ones a page at a time. (No coins to avoid since Oct 07, 2026.)"""
     from tradingagents import forecast_v2_daily as fd
 
     lv = live()
     lt = latest()
     st = fd.read()
     return {"at": lv["at"], "took_ms": lv["took_ms"], "refresh_error": _LIVE["error"],
-            "rooms": lv["rooms"], "avoid": lv["avoid"], "money": lv["money"],
+            "rooms": lv["rooms"], "money": lv["money"],
             "reality": lv["reality"], "defaults": lv["defaults"],
             "streak_counts": {"practice": {"win": sum(1 for s in lv["streaks"] if s["kind"] == "win"),
                                            "loss": sum(1 for s in lv["streaks"] if s["kind"] == "loss")},

@@ -44,8 +44,7 @@ COIN_SLICES = 4               # the runner's own open trades per coin (auto_trad
 
 # THE OPTIONS (item D.2): (key, value, plain words). Each is one rule set
 # per base set it is added to.
-OPTIONS = [("skip_coins", True, "the coins to avoid skipped"),
-           ("skip_jp", True, "Japanese stocks skipped"),
+OPTIONS = [("skip_jp", True, "Japanese stocks skipped"),
            ("own_market", True, "stocks only while their own market is open"),
            ("max_cost", 5.0, "cost at most 5% of the target"),
            ("max_cost", 10.0, "cost at most 10% of the target"),
@@ -63,8 +62,18 @@ OPTIONS = [("skip_coins", True, "the coins to avoid skipped"),
            ("coin_slices", 1, "at most 1 trade per coin"),
            ("coin_slices", 2, "at most 2 trades per coin"),
            ("coin_slices", 3, "at most 3 trades per coin")]
+# NO LONGER MEASURED (operator, Oct 07, 2026: "remove the section coins to
+# avoid i dont need its logic"): no new rule set carries "skip_coins" and the
+# what-if box no longer offers it — but a set measured before still reads as
+# what it was, so its label is kept here, and so is its id key below (ID_KEYS
+# hashes OPTION_KEYS: dropping the key would give those sets their base's id)
+RETIRED_OPTIONS = [("skip_coins", True, "the coins to avoid skipped (removed Oct 07, 2026)")]
+_LABELS = OPTIONS + RETIRED_OPTIONS
 OPTION_KEYS = ("skip_coins", "skip_jp", "own_market", "max_cost", "only_tf",
                "skip_families", "kind", "no_ny_morning", "day_loss", "stop_vs_move")
+# the keys a NEW rule set may carry (a what-if, a run): every option key but
+# the retired ones, which only old sets still hold
+LIVE_OPTION_KEYS = tuple(k for k in OPTION_KEYS if k not in {r[0] for r in RETIRED_OPTIONS})
 # the cost the replay already holds every strategy under: replay_shard only
 # writes a strategy whose round trip is under 20% of its target (its gate)
 REPLAY_COST_CEILING = 20.0
@@ -172,7 +181,7 @@ def words(cfg: dict) -> str:
         out.append(f"stop {float(cfg['max_sl']):g}% or tighter")
     if float(cfg.get("min_tp") or 0) > 0:
         out.append(f"target {float(cfg['min_tp']):g}% or wider")
-    for key, val, w in OPTIONS:
+    for key, val, w in _LABELS:
         if key == "coin_slices":
             continue
         if cfg.get(key) == val:
@@ -185,13 +194,13 @@ def words(cfg: dict) -> str:
 
 def options_of(cfg: dict) -> list[str]:
     """The plain words of the options this rule set carries (empty = base)."""
-    return [w for key, val, w in OPTIONS if cfg.get(key) == val
+    return [w for key, val, w in _LABELS if cfg.get(key) == val
             and not (key == "coin_slices" and int(val) == COIN_SLICES)]
 
 
 def deployable(cfg: dict) -> tuple[bool, str]:
     """Whether a room can run it today with its own switches."""
-    extra = [w for key, val, w in OPTIONS if cfg.get(key) == val and key != "coin_slices"]
+    extra = [w for key, val, w in _LABELS if cfg.get(key) == val and key != "coin_slices"]
     if str(cfg.get("tp_rule")) in ("1.5x", "2x"):
         # watcher_policy.passes_on knows ">", ">=", "=", "<" and "any" only
         extra.insert(0, TP_WORDS[str(cfg["tp_rule"])])
@@ -225,8 +234,8 @@ def tp_ok(tp, sl, rule: str):
 
 def row_mask(meta: list[dict], cfg: dict, ctx: dict) -> np.ndarray:
     """Which strategies may be switched on at all, by the rule set's
-    shape and its row options. `ctx`: avoid (coins), families (signal
-    families), move (coin -> its normal 15-minute move, %)."""
+    shape and its row options. `ctx`: families (signal families), move
+    (coin -> its normal 15-minute move, %)."""
     from tradingagents import forecast_v2 as f2, room_stats as rs
 
     n = len(meta)
@@ -247,9 +256,6 @@ def row_mask(meta: list[dict], cfg: dict, ctx: dict) -> np.ndarray:
     if cfg.get("skip_jp"):
         ok &= np.array([not (rs.is_stock(m["coin"]) and rs.home_market(m["coin"]) == "Tokyo")
                         for m in meta], bool)
-    if cfg.get("skip_coins"):
-        avoid = set(ctx.get("avoid") or ())
-        ok &= np.array([m["coin"] not in avoid for m in meta], bool)
     if cfg.get("skip_families"):
         fam = set(ctx.get("families") or ())
         ok &= np.array([f2.family(m["signal"]) not in fam for m in meta], bool)

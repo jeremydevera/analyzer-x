@@ -15,7 +15,7 @@
  *  auto trade"). This file only prints. */
 import { Fragment, type ReactNode, useCallback, useState } from "react";
 import {
-  api, fmtMoney, fmtWhen, fmtWhenMs, F2AvoidPage, F2FamilyPage, F2Group, F2Page, F2Rule, F2RulePage,
+  api, fmtMoney, fmtWhen, fmtWhenMs, F2FamilyPage, F2Group, F2Page, F2Rule, F2RulePage,
   F2RuleQuery, F2Streak, F2StreakPage, F2Summary, F2WhatIf, F2WhatIfCfg,
 } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
@@ -133,54 +133,9 @@ function StreakList({ kind, initial }: { kind: "win" | "loss"; initial: number }
   );
 }
 
-// -------------------------------------------------------- B. coins to avoid
-function Avoid({ s }: { s: F2Summary }) {
-  // TEN A PAGE FROM THE SERVER (Oct 02, 2026: "make it paginated just like
-  // in auto trade") — the whole list used to sit in one scroll box
-  const [page, setPage] = useState(1);
-  const [d, setD] = useState<F2AvoidPage | null>(null);
-  const [err, setErr] = useState("");
-  const load = useCallback(() => {
-    api.forecastV2Avoid(page).then((r) => { setD(r); setErr(""); })
-      .catch((e) => setErr(String(e?.message ?? e)));
-  }, [page]);
-  useLiveRefresh(load, 30_000, [load]);
-  const rows = d?.rows ?? [];
-  return (
-    <div className={card}>
-      <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Coins to avoid</h3>
-      {err && <p className="mt-1 text-theme-xs text-error-500">could not read the coins to avoid — {err}</p>}
-      {d && (
-        <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-          {d.total.toLocaleString()} of {d.examined.toLocaleString()} coins traded in practice {d.rule} · the backtest column is the same strategies&apos; last 30 days
-        </p>
-      )}
-      {d && (rows.length ? (
-        <div className="mt-2 overflow-x-auto">
-          <table className="w-full text-theme-xs">
-            <thead><tr>{["coin", "rooms", "trades", "won / lost", "win rate", "profit", "worst losing run", "backtest win rate"].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {rows.map((c) => (
-                <tr key={c.coin}>
-                  <td className={`${td} font-semibold`}>{c.coin}</td>
-                  <td className={td}>{c.rooms.length} ({c.rooms.map(roomName).join(", ")})</td>
-                  <td className={td}>{c.trades}</td>
-                  <td className={td}>{c.wins} / {c.losses}</td>
-                  <td className={td}>{pct(c.winrate)}</td>
-                  <td className={`${td} ${tone(c.profit)}`}>{fmtMoney(c.profit)}</td>
-                  <td className={`${td} text-error-500`}>{fmtMoney(c.worst_run)} over {c.worst_run_trades}</td>
-                  <td className={td}>{c.backtest.trades ? `${pct(c.backtest.winrate)} of ${c.backtest.trades.toLocaleString()}` : "not rebuilt yet"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : <p className="mt-2 text-theme-xs text-gray-400">no coin has lost money over {s.defaults.avoid_min_trades}+ practice trades in the {d.examined} coins examined</p>)}
-      {d && <PageButtons cur={d.page} pages={d.pages} goto={setPage} what="coins to avoid" />}
-    </div>
-  );
-}
-
+// B. coins to avoid: removed Oct 07, 2026 (operator: "remove the section
+// coins to avoid i dont need its logic") — the list, its route and its
+// what-if option went with it
 // --------------------------------------------------- C. where the money goes
 // the small splits only — the signal families are summed by the server and
 // paged there (Families)
@@ -607,46 +562,35 @@ function Tracker({ s }: { s: F2Summary }) {
   );
 }
 
-/** `beforeStreaks`: a section placed between the Forecast v2 header and the
- *  Streaks — Backtest a room on the merged page (operator, Oct 05, 2026:
- *  "put Backtest a room section above streak section"). */
+/** `beforeStreaks`: the sections placed above the Streaks — Backtest a room,
+ *  then Room strategies under it (operator, Oct 05, 2026: "put Backtest a
+ *  room section above streak section"; Oct 07, 2026: "put room strategies
+ *  under backtest a room"). */
 export default function ForecastV2({ beforeStreaks }: { beforeStreaks?: ReactNode } = {}) {
   const [s, setS] = useState<F2Summary | null>(null);
   const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
   const load = useCallback(() => {
     api.forecastV2().then((r) => { setS(r); setErr(""); }).catch((e) => setErr(String(e?.message ?? e)));
   }, []);
   useLiveRefresh(load, 30_000, [load]);
-  const toggle = async (on: boolean) => {
-    setBusy(true);
-    try { await api.forecastV2Switch(on); load(); } finally { setBusy(false); }
-  };
   const c = s?.chain;
+  const without = c?.missing ? Object.entries(c.missing) : [];
+  // NO BANNER (operator, Oct 07, 2026: "remove the banner 'Forecast v2' it
+  // should be 'run it everyday' enabled in the backend"): the daily run is
+  // always on, with no box to untick. What stays is a line ONLY when
+  // something is wrong — a failure is still named on the page (CLAUDE.md,
+  // "A job that cannot start must SAY SO"); when all is well, nothing shows.
+  const trouble = [
+    err ? `could not read Forecast v2 — ${err}` : "",
+    s?.refresh_error ? `the newest practice numbers ${s.refresh_error}` : "",
+    c?.error ? `the daily GitHub run: ${c.error}` : "",
+    without.length ? `the daily GitHub run was used without: ${without.map(([step, m]) => `${step} ${m.failed.length} of ${m.of} machines (${m.failed.slice(0, 4).join(", ")}${m.failed.length > 4 ? ", …" : ""})`).join("; ")}` : "",
+  ].filter(Boolean);
   return (
     <div className="flex flex-col gap-5">
-      <div className={card}>
-        <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Forecast v2</h3>
-        <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-          Which coins are on a streak, which to stay away from, what is losing the money, and which room rules should make the most this month —
-          from every room&apos;s practice trades (live) and a replay of every strategy on GitHub (once a day). A note only: nothing here switches a room on or off.
-        </p>
-        {err && <p className="mt-2 text-theme-xs text-error-500">could not read Forecast v2 — {err}</p>}
-        {!s && !err && <p className="mt-2 text-theme-xs text-gray-400">reading every room&apos;s trade record…</p>}
-        {s && (
-          <div className="mt-2 flex flex-col gap-1 text-[11px] text-gray-500 dark:text-gray-400">
-            <p>practice numbers read {fmtWhen(s.at)} in {s.took_ms.toLocaleString()} ms{s.refresh_error ? ` · the newest ${s.refresh_error}` : ""}</p>
-            <p>
-              daily GitHub run: {c?.on === false ? "switched off" : c?.why || "waiting"}{c?.error ? ` · last error: ${c.error}` : ""}
-              {c?.missing && Object.keys(c.missing).length > 0 && ` · used without: ${Object.entries(c.missing).map(([step, m]) => `${step} ${m.failed.length} of ${m.of} machines (${m.failed.slice(0, 4).join(", ")}${m.failed.length > 4 ? ", …" : ""})`).join("; ")}`}
-              <label className="ml-2 inline-flex items-center gap-1">
-                <input type="checkbox" checked={c?.on !== false} disabled={busy} onChange={(e) => toggle(e.target.checked)} /> run it every day
-              </label>
-            </p>
-          </div>
-        )}
-      </div>
+      {trouble.map((t) => <p key={t} className="text-theme-xs text-error-500">{t}</p>)}
       {beforeStreaks}
+      {!s && !err && <p className="text-theme-xs text-gray-400">reading every room&apos;s trade record…</p>}
       {s && (
         <>
           <div className={card}>
@@ -657,7 +601,6 @@ export default function ForecastV2({ beforeStreaks }: { beforeStreaks?: ReactNod
               <StreakList kind="loss" initial={s.defaults.loss_m} />
             </div>
           </div>
-          <Avoid s={s} />
           <Money s={s} />
           <Rules s={s} />
           <Tracker s={s} />

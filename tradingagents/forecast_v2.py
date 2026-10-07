@@ -36,8 +36,6 @@ THE DEFINITIONS (the same as everywhere else in the project):
 * break-even win rate of a strategy = (SL + cost) / (TP + SL), all in percent
   of the trade's size: a win pays TP less the cost, a loss costs SL plus the
   cost (CLAUDE.md rule 11). For a group of trades, the average over them.
-* a coin to avoid = lost money over at least AVOID_MIN_TRADES practice trades,
-  all rooms together.
 * a finding resting on fewer than THIN trades is "too few trades to mean
   anything", and the screen says so.
 * REALITY CHECK: the same rows over the same hours — every row a room
@@ -66,7 +64,6 @@ from tradingagents import room_stats as rs
 NY = ZoneInfo("America/New_York")
 WIN_N = 9                     # the winning streak shown by default
 LOSS_M = 5                    # the losing streak shown by default
-AVOID_MIN_TRADES = 5          # a coin to avoid has lost over at least this many trades
 THIN = 30                     # fewer trades than this: too few to mean anything
 OVERLAP_WARN = 3              # rooms holding one coin at once before it is flagged
 TFS = ("15m", "30m", "1h", "4h", "1d")
@@ -673,54 +670,8 @@ def practice_streaks(rooms: list[dict]) -> list[dict]:
     return out
 
 
-# ------------------------------------------------------- B. coins to avoid
-def _bt_of_slots(slots: set) -> dict:
-    """The rebuilt backtest trades (rolling30) of these rows: their last 30
-    days up to each one's own last candle."""
-    n = w = 0
-    have = 0
-    for slot in slots:
-        rec = _rolling(slot)
-        if rec is None:
-            continue
-        have += 1
-        for t in rec["trades"]:
-            n += 1
-            w += t[2] > 0
-    return {"rows": have, "of": len(slots), "trades": n, "wins": w,
-            "winrate": round(100 * w / n, 1) if n else None}
-
-
-def coins_to_avoid(rooms: list[dict]) -> dict:
-    """Coins that lost money over AVOID_MIN_TRADES+ practice trades, all rooms
-    together, worst first."""
-    by: dict = {}
-    for r in rooms:
-        for e in r["exits"]:
-            c = by.setdefault(e["symbol"], {"rooms": set(), "trades": [], "slots": set()})
-            c["rooms"].add(r["id"])
-            c["trades"].append(e)
-            if e["key"]:
-                c["slots"].add(f"{e['key']}|{e['symbol']}")
-    out = []
-    for sym, c in by.items():
-        trades = sorted(c["trades"], key=lambda e: (e["ts"], e["trade_id"]))
-        n = len(trades)
-        wins = sum(1 for t in trades if t["pnl"] > 0)
-        profit = round(sum(t["pnl"] for t in trades), 2)
-        if n < AVOID_MIN_TRADES or profit >= 0:
-            continue
-        run, run_n = _worst_run([t["pnl"] for t in trades])
-        out.append({"coin": sym.replace("_USDT", ""), "symbol": sym,
-                    "rooms": sorted(c["rooms"]), "trades": n, "wins": wins, "losses": n - wins,
-                    "winrate": round(100 * wins / n, 1), "profit": profit,
-                    "worst_run": run, "worst_run_trades": run_n,
-                    "backtest": _bt_of_slots(c["slots"])})
-    out.sort(key=lambda x: (x["profit"], x["coin"]))
-    return {"rule": f"lost money over at least {AVOID_MIN_TRADES} practice trades, all rooms together",
-            "coins": out, "examined": len(by)}
-
-
+# B. (coins to avoid) was removed on Oct 07, 2026 — the operator: "remove the
+# section coins to avoid i dont need its logic"
 # ------------------------------------------------ C. where the money goes
 def money(rooms: list[dict]) -> dict:
     """Practice trades split every way the prompt asks; each group carries
@@ -1001,8 +952,10 @@ def live(now: float | None = None) -> dict:
                                        "month": month_so_far(r, now)}
                                       for r in rooms],
             "on_ids": on_ids, "month": month,
-            "streaks": practice_streaks(rooms), "avoid": coins_to_avoid(rooms),
+            # NO COINS TO AVOID (operator, Oct 07, 2026: "remove the section
+            # coins to avoid i dont need its logic")
+            "streaks": practice_streaks(rooms),
             "money": money(rooms), "reality": reality(rooms),
-            "defaults": {"win_n": WIN_N, "loss_m": LOSS_M, "avoid_min_trades": AVOID_MIN_TRADES,
+            "defaults": {"win_n": WIN_N, "loss_m": LOSS_M,
                          "thin": THIN, "overlap_warn": OVERLAP_WARN},
             "took_ms": round(1000 * (time.perf_counter() - t0))}

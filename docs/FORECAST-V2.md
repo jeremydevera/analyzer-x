@@ -3,6 +3,21 @@
 *Auto Trade → Forecast v2 (`/forecast-v2`), built Oct 01, 2026. The first
 Forecast page (`/forecast`, room cards and saved forecasts) is unchanged.*
 
+> **Changed Oct 07, 2026** — the operator: *"remove the section coins to avoid
+> i dont need its logic then put room strategies under backtest a room / also
+> remove the banner 'Forecast v2' it should be 'run it everyday' enabled in the
+> backend"*. Section **B (coins to avoid) is gone** with all its logic: the
+> list (`forecast_v2.coins_to_avoid`), its route, the `skip_coins` option of
+> section D (21 options now; a set measured before keeps its label, "the coins
+> to avoid skipped (removed Oct 07, 2026)", and its id), the `avoid` input of
+> `forecast.yml` and the bell's "worst coin". The **top banner and its "run it
+> every day" box are gone**: the daily chain is always on
+> (`forecast_v2_daily.is_on()`), and a line shows only when a read or the daily
+> run fails. The page now reads: Backtest a room, Room strategies, Streaks,
+> Where the money goes, Best room rules this month, This month so far, Prompts.
+> Everything below is the account as built; where it describes section B or the
+> on/off box, this note supersedes it.
+
 ## What the operator asked for
 
 In their words, in the order they arrived (docs/OPERATOR-ASKS.md):

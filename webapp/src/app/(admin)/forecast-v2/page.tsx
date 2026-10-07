@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import ForecastV2 from "@/components/forecast/ForecastV2";
-import { RoomBacktest, RoomsAndBacktest } from "@/components/forecast/RoomForecasts";
+import { RoomBacktest, RoomsAndBacktest, RoomStrategiesSection } from "@/components/forecast/RoomForecasts";
 
 export const metadata: Metadata = {
   title: "Forecast | TradingAgents",
-  description: "Streaks, coins to avoid, where the money goes, and the room rules predicted for this month",
+  description: "Backtest a room, the room strategies prompt 4 kept, streaks, where the money goes, and the room rules predicted for this month",
 };
 
 // Auto Trade -> Forecast v2 (operator, Oct 01, 2026: "okay run that prompt and
@@ -16,8 +16,10 @@ export const metadata: Metadata = {
 export default function ForecastV2Page() {
   return (
     <div className="flex flex-col gap-5">
-      {/* Backtest a room sits above the Streaks (operator, Oct 05, 2026) */}
-      <ForecastV2 beforeStreaks={<RoomBacktest />} />
+      {/* Backtest a room sits above the Streaks (operator, Oct 05, 2026), and
+          Room strategies directly under it (Oct 07, 2026: "put room
+          strategies under backtest a room") */}
+      <ForecastV2 beforeStreaks={<><RoomBacktest /><RoomStrategiesSection /></>} />
       <RoomsAndBacktest />
     </div>
   );

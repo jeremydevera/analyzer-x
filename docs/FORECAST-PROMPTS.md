@@ -16,7 +16,7 @@ forecast with an artifact; it must use the room ids this machine has, and
 every number in it must be a number (the save refuses anything else, naming
 what is wrong).*
 
-*Forecast v2 (Auto Trade -> Forecast v2, Oct 01, 2026) — streaks, coins to avoid, where the money goes and the room rules predicted for this month — has its own page and its own account: docs/FORECAST-V2.md.*
+*Forecast v2 (Auto Trade -> Forecast v2, Oct 01, 2026) — streaks, where the money goes and the room rules predicted for this month (its coins to avoid were removed on Oct 07, 2026) — has its own page and its own account: docs/FORECAST-V2.md.*
 
 ## 1. Make a new forecast
 
@@ -203,7 +203,7 @@ A room strategy is one set of room rules, every one of these varied:
 - target vs stop: any, target wider, target at least 1.5x or 2x the stop, equal,
   stop wider
 - widest stop allowed: none, 1%, 1.5%, 2%, 3%; smallest target: none, 1%, 2%, 3%
-- Forecast v2's 22 options (forecast_rules.OPTIONS), one at a time and in pairs
+- Forecast v2's 21 options (forecast_rules.OPTIONS), one at a time and in pairs
 Every one raw, with the runner's 4 open trades per coin, $5 at 20x, all three
 costs charged (entry, exit and holding).
 

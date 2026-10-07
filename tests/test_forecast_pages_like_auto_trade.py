@@ -54,7 +54,9 @@ def test_the_pager_is_auto_trades_own_buttons():
 def test_every_list_on_the_forecast_page_uses_it():
     v2 = _src("forecast/ForecastV2.tsx")
     rooms = _src("forecast/RoomForecasts.tsx")
-    for src, lists in ((v2, ("{`${kind} streak`}", '"coins to avoid"', '"signal family"',
+    # (no "coins to avoid" list since Oct 07, 2026 — the operator: "remove the
+    # section coins to avoid i dont need its logic")
+    for src, lists in ((v2, ("{`${kind} streak`}", '"signal family"',
                              '"rule set"', '"what-if"')),
                        (rooms, ('"saved forecasts"', '"room backtest"', '"room strategies"'))):
         assert 'import PageButtons from "@/components/common/PageButtons"' in src
@@ -68,29 +70,17 @@ def test_every_list_on_the_forecast_page_uses_it():
 
 def test_no_long_list_is_cut_or_scrolled_in_the_browser():
     v2 = _src("forecast/ForecastV2.tsx")
-    avoid = v2.split("function Avoid")[1].split("\nfunction ")[0]
-    assert "api.forecastV2Avoid(page)" in avoid and "s.avoid.coins" not in avoid
+    assert "function Avoid" not in v2 and "forecastV2Avoid" not in v2, "Coins to avoid: removed Oct 07, 2026"
     assert "max-h-[480px]" not in v2, "46 coins sat in one scroll box"
     assert "by_family.slice(" not in v2 and "api.forecastV2Families(page)" in v2
     assert "api.forecastV2WhatIfs(page)" in v2
 
 
 # ----------------------------------------------------------- the server
-def _live(coins=0, families=0):
-    return {"avoid": {"coins": [{"coin": f"C{i:02d}", "profit": -50 + i} for i in range(coins)],
-                      "examined": 101, "rule": "lost money over 5+ practice trades"},
-            "money": {"by_family": [{"group": f"fam{i:02d}", "trades": 10, "wins": 4, "losses": 6,
+def _live(families=0):
+    return {"money": {"by_family": [{"group": f"fam{i:02d}", "trades": 10, "wins": 4, "losses": 6,
                                      "profit": -20.0 + i, "per_trade": None, "winrate": 40.0,
                                      "thin": False} for i in range(families)]}}
-
-
-def test_the_coins_to_avoid_page_on_the_server(monkeypatch):
-    monkeypatch.setattr(f2a, "live", lambda: _live(coins=23))
-    first, last = f2a.avoid(1), f2a.avoid(3)
-    assert (first["total"], first["pages"], first["per"]) == (23, 3, 10)
-    assert [c["coin"] for c in first["rows"]] == [f"C{i:02d}" for i in range(10)], "worst first, as ranked"
-    assert len(last["rows"]) == 3 and last["examined"] == 101 and "5+" in last["rule"]
-    assert f2a.avoid(99)["page"] == 3, "a page past the end is the last page"
 
 
 def test_every_signal_family_pages_with_its_backtest_beside_it(monkeypatch):
@@ -141,14 +131,13 @@ def test_the_room_lists_get_the_same_size_through_their_routes(api_mod, monkeypa
 
 
 def test_the_new_routes_answer_a_page(api_mod, monkeypatch):
-    monkeypatch.setattr(f2a, "live", lambda: _live(coins=12, families=12))
+    monkeypatch.setattr(f2a, "live", lambda: _live(families=12))
     monkeypatch.setattr(f2a, "latest", lambda: None)
-    assert len(api_mod.forecast_v2_avoid_route(page=2)["rows"]) == 2
     assert api_mod.forecast_v2_families_route(page=1)["pages"] == 2
     src = (ROOT / "tradingagents/api.py").read_text(encoding="utf-8")
-    for route in ('@app.get("/api/forecast-v2/avoid")', '@app.get("/api/forecast-v2/families")',
-                  "return _f2a.whatifs(page)"):
+    for route in ('@app.get("/api/forecast-v2/families")', "return _f2a.whatifs(page)"):
         assert route in src, route
+    assert '@app.get("/api/forecast-v2/avoid")' not in src, "the coins to avoid went on Oct 07, 2026"
     assert "rows[:20]" not in src.split('@app.get("/api/forecast-v2/whatif")')[1].split("@app.")[0]
 
 

@@ -701,6 +701,27 @@ Three things that table is worth knowing for:
   publishes to `rows_rebuild.json` while it runs, because three separate
   phases went silent in one afternoon and each one got called a stall.
 
+## An idle row index keeps no big journal (MANDATORY — Oct 07, 2026)
+
+The Backtest tab's list answered nothing from at least 7:15am to 8:00am on
+Oct 07, 2026: `~/.tradingagents/v2/rows.db-wal` held **6.05 GB of valid
+frames** from the Oct 06 index builds, and SQLite re-reads every valid frame
+whenever a process opens the file while no other process has it open. The
+site opens one connection per query, so one open measured **324.7 s**.
+
+* **A big journal is a slow OPEN, not only a full disk.** The 2026-08-24 guard
+  was bought by disk space (27.4 GB); nobody had measured what a valid journal
+  costs an open. Measure both.
+* **The fold is run by the site's 30-second tick for EVERY store**
+  (`rows_index.fold_idle_wal`, over 64 MB, nothing writing, its own thread) —
+  never by an indexer: the v1 indexer that used to call the guard has been
+  switched off since Sep 24, 2026, and a guard asserted present in a loop
+  that is later switched off keeps passing while it never runs.
+* **Every journal helper takes the store** (`wal_bytes(db_path)`,
+  `checkpoint_if_bloated(db_path=)`): `DB_PATH` is v1, never "the" store.
+
+Guard: `tests/test_an_idle_store_keeps_no_big_journal.py`; RCA-2026-10-07-C.
+
 ## The fold streams; the page is capped and says so (MANDATORY — 2026-08-26)
 
 A market-wide sweep cannot be summarised in RAM. Measured on this PC's own

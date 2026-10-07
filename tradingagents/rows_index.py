@@ -5501,14 +5501,19 @@ def stop_keeping_up() -> None:
 WAL_CAP_BYTES = 2_000_000_000        # 2 GB before a blocking truncate is worth it
 
 
-def wal_bytes() -> int:
+def wal_bytes(db_path=None) -> int:
+    """The journal size of `db_path`, else of the store this call reads
+    (`_db()`: the `using_db` override, else DB_PATH). It read DB_PATH alone
+    until Oct 07, 2026, so asked about Backtest v2 it measured v1."""
+    p = Path(db_path) if db_path else _db()
     try:
-        return (DB_PATH.parent / (DB_PATH.name + "-wal")).stat().st_size
+        return (p.parent / (p.name + "-wal")).stat().st_size
     except OSError:
         return 0
 
 
-def checkpoint_if_bloated(cap: int = WAL_CAP_BYTES) -> dict:
+def checkpoint_if_bloated(cap: int = WAL_CAP_BYTES, db_path=None,
+                          busy_ms: int = 60_000) -> dict:
     """Fold an oversized write-ahead log back into the database.
 
     Only when it is genuinely large, because TRUNCATE takes an exclusive lock
@@ -5516,20 +5521,86 @@ def checkpoint_if_bloated(cap: int = WAL_CAP_BYTES) -> dict:
     unbounded: a single abandoned reader pinned it on 2026-08-24 and it grew to
     27.4 GB beside a 13.8 GB database, taking the volume to 3.5 GB free — the
     same wall that had already killed the sweep and the trading runner.
+
+    A BIG LOG IS ALSO A SLOW OPEN (Oct 07, 2026). SQLite re-reads every valid
+    frame whenever a process opens the file while no other process has it
+    open, and the site opens one connection per query: v2's 6.05 GB journal
+    (the Oct 06 index builds) cost 324.7 s for one open on G: and the Backtest
+    list stopped answering. Measures and folds `db_path`, else the store this
+    call reads — never DB_PATH by default (RCA-2026-10-07-C).
     """
-    before = wal_bytes()
+    p = Path(db_path) if db_path else _db()
+    before = wal_bytes(p)
     if before < cap:
         return {"checkpointed": False, "wal": before}
     try:
-        with _open() as con:
-            con.execute("PRAGMA busy_timeout=60000")
+        with _open(db_path=p) as con:
+            con.execute(f"PRAGMA busy_timeout={int(busy_ms)}")
             r = con.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()
     except sqlite3.Error as exc:
         return {"checkpointed": False, "wal": before, "error": str(exc)[:80]}
-    after = wal_bytes()
-    print(f"[rows-index] WAL {before/1e9:.1f} GB -> {after/1e9:.1f} GB "
+    after = wal_bytes(p)
+    print(f"[rows-index] {p}: WAL {before/1e9:.2f} GB -> {after/1e9:.2f} GB "
           f"(busy={r[0] if r else '?'})", flush=True)
-    return {"checkpointed": True, "wal": after, "was": before}
+    return {"checkpointed": True, "wal": after, "was": before,
+            "busy": bool(r and r[0])}
+
+
+# AN IDLE STORE KEEPS NO BIG JOURNAL (RCA-2026-10-07-C). The guard above ran
+# from the v1 indexer loop only — switched off by the operator on Sep 24,
+# 2026 — so nothing ever folded Backtest v2's journal: the Oct 06 index builds
+# left 6.05 GB of valid frames, and every fresh open re-read all of it (324.7 s
+# measured at Oct 07, 2026 7:44am; a coin=DODO list request did not answer in
+# 600 s). The site's 30-second tick now asks for each store; small enough
+# that a fresh open re-reads a few seconds' worth at the ~18 MB/s measured.
+IDLE_WAL_CAP = 64 * 1024 * 1024
+IDLE_FOLD_EVERY_S = 300              # one attempt per store per 5 minutes
+IDLE_FOLD_BUSY_MS = 10_000           # a reader mid-query wins; try again later
+_FOLDING: dict = {}                  # store key -> the folding thread
+_FOLD_TRIED: dict = {}               # store key -> when it was last attempted
+
+
+def fold_idle_wal(live) -> str:
+    """Fold `live`'s journal when it is over IDLE_WAL_CAP and nothing is
+    writing the store. "" when there is nothing to do, else one sentence.
+
+    Called by the API's 30-second tick for each store, beside
+    `swap_ready_rebuild`. The fold runs on its OWN thread: a big journal can
+    take minutes to open, and the tick is the loop that restarts dead
+    runners. It stands back while a job files rows into this store, an index
+    is being built on it, or a cleanup holds it — they own the file, and the
+    next tick after them folds what they left.
+    """
+    live = Path(live)
+    size = wal_bytes(live)
+    if size < IDLE_WAL_CAP:
+        return ""
+    key = _gate_key(live)
+    running = _FOLDING.get(key)
+    if running is not None and running.is_alive():
+        return ""
+    if time.time() - _FOLD_TRIED.get(key, 0.0) < IDLE_FOLD_EVERY_S:
+        return ""
+    with using_db(live):
+        holder = busy_job() or build_running() or lock_holder()
+    if holder:
+        return ""
+    _FOLD_TRIED[key] = time.time()
+
+    def _fold() -> None:
+        try:
+            checkpoint_if_bloated(cap=IDLE_WAL_CAP, db_path=live,
+                                  busy_ms=IDLE_FOLD_BUSY_MS)
+        except Exception as exc:                               # noqa: BLE001
+            print(f"[rows-index] {live}: folding the journal failed: "
+                  f"{type(exc).__name__}: {exc}", flush=True)
+
+    th = threading.Thread(target=_fold, name=f"wal-fold-{live.parent.name}",
+                          daemon=True)
+    _FOLDING[key] = th
+    th.start()
+    return (f"folding a {size / 1e9:.2f} GB journal back into {live.name} "
+            f"(nothing is writing it)")
 
 
 def main(argv: list | None = None) -> int:

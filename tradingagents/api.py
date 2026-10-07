@@ -274,6 +274,13 @@ def _keep_the_row_index_current() -> None:
                         _said = _ri.swap_ready_rebuild(_live)
                         if _said:
                             print(f"[supervisor] {_live}: {_said}", flush=True)
+                        # AN IDLE STORE KEEPS NO BIG JOURNAL: v2's 6.05 GB one
+                        # froze the Backtest list on Oct 07, 2026, because only
+                        # the switched-off v1 indexer ever folded one
+                        # (RCA-2026-10-07-C). Its own thread; "" when idle.
+                        _said = _ri.fold_idle_wal(_live)
+                        if _said:
+                            print(f"[supervisor] {_live}: {_said}", flush=True)
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[supervisor] rebuild swap failed: {exc!r}",
                           flush=True)

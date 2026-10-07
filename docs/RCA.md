@@ -172,6 +172,97 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-C — the Backtest tab's list stopped answering: a 6 GB journal nothing ever folded, re-read on every fresh open
+
+**CEO**
+
+* The Backtest tab's list stopped loading this morning: a request for one
+  coin (DODO) got no answer in 10 minutes.
+* Why: the list's database keeps a change-log beside itself, and after
+  yesterday's rebuild that log was left at 6 GB. Every time the site opened
+  the list fresh it re-read the whole log first — about 5 minutes on this
+  drive — and the one piece of code meant to clean it up only ever looked at
+  the old v1 list, which you switched off on Sep 24, 2026.
+* What stops it now: the log was folded back at 7:59am and the list answers in
+  half a second; the site now checks both lists every 30 seconds and folds
+  any log over 64 MB whenever nothing is writing to it.
+
+**DEV**
+
+* `rows_index.wal_bytes()` measured `DB_PATH` (v1) for every caller, and
+  `checkpoint_if_bloated()` ran only from the v1 indexer loop
+  (`start_keeping_up`, rows_index.py `checkpoint_if_bloated()` after `sync`),
+  switched off since Sep 24, 2026 → `~/.tradingagents/v2/rows.db-wal` held
+  **6,049,021,112 bytes, 1,468,209 valid frames** from the Oct 06 index
+  builds; the API's per-query connections (`_open`) meant SQLite's WAL
+  recovery re-read all of it whenever no other process had the file open
+  (one open measured at **324.7 s**).
+* Invariants broken: **a request for store X reads store X**
+  (RCA-2026-09-18-B..J) — the journal guard was the path that review missed —
+  and **an idle store keeps no big journal**: the fold must be run by
+  something that is always running, for every store.
+* Guard: `tests/test_an_idle_store_keeps_no_big_journal.py`
+  (`test_the_guard_measures_the_store_it_is_asked_about`,
+  `test_the_site_folds_an_idle_stores_journal`,
+  `test_a_store_being_written_is_left_alone`,
+  `test_the_site_tick_folds_every_store`).
+
+**SAW** — found while answering the operator's *"is the coin backtest
+updated? when was the last update im referring to backtest tab"*: the data
+was current (GitHub's Oct 06, 2026 9:20am run, filed by 3:57pm), but a
+`/api/v2/strategies?coin=DODO` request to the site gave no answer at all.
+
+**TIMELINE**
+
+1. Oct 06, 2026 3:57pm — the TP > SL rebuild of the v2 index swapped in
+   (40,119,913 rows); its sort indexes were then built in detached processes
+   (`rows_pr2` 2,898 s, `rows_wr4` 1,582 s, ...), every page of them written
+   into the journal.
+2. Oct 07, 2026 12:21am — the last journal write; a partial checkpoint at
+   12:29am. Journal: **6.05 GB, 1,468,209 frames**, never truncated — v2 has no
+   long-running writer, and the only fold lived in the switched-off v1 loop.
+3. Oct 07, 2026 5:12am, 7:25am, 7:38am — the site restarted three times (two
+   Forecast deploys, one for the daytime rule). Each new process had to
+   re-read the whole journal before any Backtest list query could run.
+4. Oct 07, 2026 ~7:15am – 7:37am — a coin=DODO list request answered nothing
+   in **600 s** (7:27am – 7:37am); the 7:25am process's log holds **0**
+   finished `/api/v2/strategies?` requests; a direct read-only open answered
+   `database is locked` after 5.5 s.
+5. Oct 07, 2026 7:44am — measured the re-read: the shared index file reset
+   to 1.5 MB and regrew 32 KB every 2-3 s; one fresh open took **324.7 s**.
+6. Oct 07, 2026 7:59am — one-off repair: all 1,468,209 frames checkpointed,
+   TRUNCATE in 1 s, the journal deleted; `rows.db` now 18.72 GB.
+7. Oct 07, 2026 8:00am — the same DODO request: **0.55 s**, then **0.09 s**
+   (39,815 rows; top `#WAXKY2LZ` DODO 30m fade15, 64 trades, 71.88%, +$64.22).
+
+**ROOT CAUSE** — `wal_bytes()` returned `DB_PATH`'s journal size whatever store
+was asked about, and the guard that used it had one caller, in a loop the
+operator had switched off, so no code anywhere folded Backtest v2's journal.
+
+**WHY IT WAS NOT CAUGHT** — the 2026-08-24 guard's tests pinned it to that
+loop (`"checkpoint_if_bloated()" in inspect.getsource(ri.start_keeping_up)`),
+and a guard asserted present inside a loop that is later switched off keeps
+passing while it never runs. The Sep 18 review threaded `_db()` through every
+reader and the write and spawn paths, but `wal_bytes` is a size check, so it
+was read as neither. And the guard's cost model was disk SPACE (27.4 GB on a
+nearly full drive) — nobody had measured what a big VALID journal costs an
+OPEN, which is what froze the screen at 6 GB with space to spare.
+
+**COST** — none in money and no data lost; the Backtest tab's list could not
+load from at least 7:15am until 8:00am on Oct 07, 2026.
+
+**FIX** — this commit: `wal_bytes(db_path)` and `checkpoint_if_bloated(...,
+db_path, busy_ms)` measure the store they are asked about (`_db()` by
+default); `fold_idle_wal(live)` (over `IDLE_WAL_CAP` = 64 MB, nothing writing,
+at most once per 5 minutes per store, on its own thread) is called for both
+stores by the site's 30-second tick beside `swap_ready_rebuild`.
+
+**GUARD** — `tests/test_an_idle_store_keeps_no_big_journal.py` (9 tests; the
+first went red on the old code with v1's 37,112-byte journal reported for
+v2's 840,512).
+
+---
+
 ## RCA-2026-10-07-B — Room strategies said "Load failed" for the first minute or two after every restart
 
 **CEO**

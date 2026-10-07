@@ -5159,8 +5159,18 @@ def _order_live_from(pos: dict) -> int:
     return int(pos.get("opened_at") or pos.get("entry_ts") or 0)
 
 
-def _bars_exposed_to(df, since: int, bar_seconds: int) -> tuple[list, list]:
-    """(highs, lows) of the bars this trade could really have filled on.
+def _exposed(t: int, bar_seconds: int, since: int) -> bool:
+    """THE exposure rule, in its one expression — see `_bars_exposed_to`. Also
+    asked directly by `_settle_on_minutes`, for the minutes a candle SHOULD
+    hold, which no frame can answer when one of them is missing."""
+    return since > 0 and int(t) + int(bar_seconds or 0) > since
+
+
+def _bars_exposed_to(df, since: int, bar_seconds: int, *,
+                     opens: bool = False) -> tuple[list, ...]:
+    """(highs, lows) of the bars this trade could really have filled on —
+    and, with `opens=True`, each kept bar's open in epoch seconds as a third
+    list, so a walk that stops on bar `i` can say WHICH bar it was.
 
     A bar counts when it was STILL RUNNING at `since`, or started after it:
     ``t + bar_seconds > since``. That is exactly the backtest's convention —
@@ -5173,32 +5183,38 @@ def _bars_exposed_to(df, since: int, bar_seconds: int) -> tuple[list, list]:
     """
     hi: list[float] = []
     lo: list[float] = []
-    if since <= 0:
-        return hi, lo
-    step = int(bar_seconds or 0)
+    starts: list[int] = []
     for h, low_, t in zip(df["High"], df["Low"],
                           (int(d.timestamp()) for d in df["Date"]),
                           strict=False):
-        if int(t) + step > since:
+        if _exposed(t, bar_seconds, since):
             hi.append(float(h))
             lo.append(float(low_))
-    return hi, lo
+            starts.append(int(t))
+    return (hi, lo, starts) if opens else (hi, lo)
 
 
-def _dry_fill(pos: dict, high: list, low: list) -> str | None:
+def _dry_fill(pos: dict, high: list, low: list, *, both=None) -> str | None:
     """Walk bars since entry; SL first when both barriers sit in one bar —
-    the same worst-case rule the backtest used."""
-    for hi, lo in zip(high, low, strict=False):
+    the same worst-case rule the backtest used.
+
+    `both(i)` may settle bar `i` when it held BOTH barriers, from finer
+    prices: "TP" or "SL", whichever was touched first, or None to keep the
+    worst case. Backtest v2 asks its minutes the same question
+    (`backtest_strategy(fine=)`); the practice exit asks through
+    `_settle_on_minutes`, which answers with THIS walk over the minutes —
+    one barrier rule, at every resolution."""
+    for i, (hi, lo) in enumerate(zip(high, low, strict=False)):
         if pos["side"] > 0:
-            if lo <= pos["sl"]:
-                return "SL"
-            if hi >= pos["tp"]:
-                return "TP"
+            hit_sl, hit_tp = lo <= pos["sl"], hi >= pos["tp"]
         else:
-            if hi >= pos["sl"]:
-                return "SL"
-            if lo <= pos["tp"]:
-                return "TP"
+            hit_sl, hit_tp = hi >= pos["sl"], lo <= pos["tp"]
+        if hit_sl and hit_tp and both is not None:
+            return both(i) or "SL"
+        if hit_sl:
+            return "SL"
+        if hit_tp:
+            return "TP"
     return None
 
 
@@ -5458,6 +5474,91 @@ def _feed_minutes(symbol: str, since: int):
         "Low": [float(lo) for _t, _h, lo in rows]})
 
 
+def _practice_minutes(symbol: str, since: int, *, fx):
+    """The closed one-minute bars a practice exit walks: the feed's own when
+    it holds every one since `since`, else the REST read every room on this
+    PC shares. ONE read path for the exit walk and for settling a candle
+    that held both barriers, so the two can never read different minutes."""
+    fine = _feed_minutes(symbol, since)
+    if fine is None:
+        fine = _closed_bars(shared_market.klines(
+            fx, symbol, "Min1", PAPER_MINUTES), 60)
+    return fine
+
+
+def _settle_on_minutes(symbol: str, pos: dict, bar_open: int,
+                       bar_seconds: int, since: int, *, fx) -> str | None:
+    """Which barrier a practice trade reached FIRST inside the candle that
+    opened at `bar_open` and held BOTH — "TP" or "SL", or None to keep the
+    stop.
+
+    Backtest v2's rule (`backtest_strategy(fine=)`), walked by `_dry_fill`
+    itself over the candle's minutes: the first price touched wins, both
+    inside one minute is still the stop, and minutes that touch neither keep
+    the candle's own rule (the backtest's "NONE"). Only minutes the ORDER
+    was exposed to (`_bars_exposed_to`, RCA-2026-09-12-A), and only when
+    every one of them is there: a runner reads back `PAPER_MINUTES`, so
+    after a long outage the candle's first minutes may be gone, and a stop
+    touched in a minute nobody read must never be overruled by a target
+    found later.
+
+    Every way out prints ONE line that says which of those it was: a stop
+    booked by the worst-case rule may not read as a stop the minutes saw.
+
+    Total: a read that fails or a frame that misbehaves keeps the stop — the
+    rule before this existed — and never raises into the cycle, where it
+    would leave the coin's every slot unwatched.
+    """
+    when = _pv_fmt(bar_open)
+    try:
+        fine = _practice_minutes(symbol, since, fx=fx)
+        mins = [int(d.timestamp()) for d in fine["Date"]]
+        inside = [bar_open <= t < bar_open + bar_seconds for t in mins]
+        have = {t for t, ok in zip(mins, inside, strict=True) if ok}
+        need = {t for t in range(bar_open, bar_open + bar_seconds, 60)
+                if _exposed(t, 60, since)}
+        if not need or not need <= have:
+            logger.info(
+                "%s %s: the %s candle held both the target and the stop, and "
+                "%d of the %d minute(s) it ran with the order open are not "
+                "readable (a runner reads back %d) — booked as the stop, the "
+                "candle's worst case.", symbol, pos.get("strategy"), when,
+                len(need - have), len(need), PAPER_MINUTES)
+            return None
+        _m_hi, _m_lo, _m_at = _bars_exposed_to(fine[inside], since, 60,
+                                               opens=True)
+        # BOTH PRICES INSIDE ONE MINUTE HAVE NO ORDER. `_dry_fill`'s own hook
+        # names that minute and answers None, so the walk keeps its worst
+        # case ("SL") without a second copy of the barrier rule — and the
+        # line below can say so, instead of claiming the minutes saw the stop
+        # come first.
+        tie: list[int] = []
+        got = _dry_fill(pos, _m_hi, _m_lo, both=tie.append)
+        tied_at = _pv_fmt(_m_at[tie[0]]) if tie else None
+    except Exception as exc:                                   # noqa: BLE001
+        logger.warning(
+            "%s %s: could not read the one-minute candles to settle the %s "
+            "candle, which held both the target and the stop (%s) — booked "
+            "as the stop, the candle's worst case.", symbol,
+            pos.get("strategy"), when, exc)
+        return None
+    if tied_at:
+        logger.info("%s %s: the %s candle held both the target and the stop, "
+                    "and so did its %s minute, which cannot say which came "
+                    "first — booked as the stop, the worst case.", symbol,
+                    pos.get("strategy"), when, tied_at)
+    elif got:
+        logger.info("%s %s: the %s candle held both the target and the stop "
+                    "— its one-minute candles say %s came first.", symbol,
+                    pos.get("strategy"), when, got)
+    else:
+        logger.info("%s %s: the %s candle held both the target and the stop, "
+                    "but none of the %d minute(s) it ran with the order open "
+                    "touched either — booked as the stop, the candle's worst "
+                    "case.", symbol, pos.get("strategy"), when, len(need))
+    return got
+
+
 def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                   dry: bool, tripped: frozenset, only: str | None,
                   slot_key: str, entries: bool = True) -> None:
@@ -5564,8 +5665,23 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
         # The floor is WHEN THE ORDER WENT OUT, never the signal candle's
         # start — see `_order_live_from`.
         _since = _order_live_from(pos)
-        _hi, _lo = _bars_exposed_to(df, _since, seconds_of[_iv])
-        outcome = _dry_fill(pos, _hi, _lo)
+        _hi, _lo, _at = _bars_exposed_to(df, _since, seconds_of[_iv],
+                                         opens=True)
+        # A CANDLE THAT HELD BOTH PRICES IS ASKED ITS MINUTES (Oct 07, 2026).
+        # While the runner is up the minute walk below books the first touch
+        # inside the running candle, so this walk only decides what happened
+        # while nobody was looking — and there "the stop wins any candle that
+        # holds both" was booking practice trades the minutes say were won.
+        # #4FC03172, the Oct 02, 2026 7:32pm power cut: NVD_USDT K96XNZSD and
+        # FYWQFLWV, SHORT 3.45, target 3.4086, stop 3.4845; the 10:30pm
+        # candle went 3.66 to 3.39, the minutes touched the target at 10:51pm
+        # and the stop at 10:55pm, and the restart at Oct 03, 2026 2:08am
+        # booked "SL -1.30" twice for two +0.90 wins. The real book's exit is
+        # MEXC's own bracket and is never re-decided here.
+        outcome = _dry_fill(pos, _hi, _lo, both=(
+            (lambda i: _settle_on_minutes(symbol, pos, _at[i],
+                                          seconds_of[_iv], _since, fx=fx))
+            if pos_dry else None))
         if not outcome and pos_dry:
             # A real bracket rests AT THE EXCHANGE and fills the instant any
             # trade prints through the barrier — on a wick, intrabar, at 3am.
@@ -5582,10 +5698,7 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                 # order went out, that IS the REST read, with no call. Any
                 # hole (restart, reconnect, a coin with no push) and the REST
                 # read decides, fetched once for every room on this PC.
-                fine = _feed_minutes(symbol, _since)
-                if fine is None:
-                    fine = _closed_bars(shared_market.klines(
-                        fx, symbol, "Min1", PAPER_MINUTES), 60)
+                fine = _practice_minutes(symbol, _since, fx=fx)
                 # THIS is where the reach-back did its damage: one-minute
                 # resolution against a floor expressed in STRATEGY-BAR time
                 # replayed the whole hour (or four) before the order existed.

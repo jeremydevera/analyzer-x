@@ -172,6 +172,162 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-H — after the Oct 02 power cut, two practice trades the minutes say were won were booked as losses
+
+**CEO**
+
+* What you lost: when room #4FC03172 came back from the Oct 02, 2026 power
+  cut, it closed its two NVD practice trades (K96XNZSD and FYWQFLWV) at the
+  stop, -1.30 each, at Oct 03, 2026 2:08am — but the price had reached their
+  profit target first, at 10:51pm, four minutes before it reached the stop.
+  Two +0.90 wins were written down as two losses: 4.40 of practice money, in
+  the win rate the watcher switches strategies on and off by.
+* Why: coming back, the room looked at its half-hour candles first, and a
+  candle that touched both the target and the stop was always counted as the
+  stop; the one-minute candles that say which came first were only read when
+  the half-hour candles showed nothing.
+* What stops it now: a candle that touched both is checked minute by minute,
+  the same way Backtest v2 settles it; when a single minute touched both, or
+  any of its minutes cannot be read, it still counts the stop rather than
+  guess, and the runner's log says which of these it was. Real money is not
+  touched — its exit is MEXC's own resting order.
+
+**DEV**
+
+* `tradingagents/auto_trader.py:5504-5505` at 7a9a16fcb6e9 (`_process_slot`
+  → `_bars_exposed_to(df, _since, 1800)` → `_dry_fill`) returned "SL" for the
+  Oct 02, 2026 10:30pm Min30 candle (high 3.66, low 3.39), and the one-minute
+  walk at `:5506-5530` ran only `if not outcome`, so the minutes that said TP
+  at 10:51pm — inside the 300 a runner reads back at 2:08am — were never
+  asked.
+* Invariant broken: **one exit rule at every resolution.** Backtest v2 has
+  settled a both-prices candle on its minutes since Sep 17, 2026
+  (`backtest_strategy(fine=)`: first price touched wins, both in one minute
+  is SL, minutes that touch nothing or no minutes keep the bar rule); the
+  practice book kept "SL wins the candle". Now `_dry_fill(both=)` hands a
+  both-prices candle to `_settle_on_minutes`, which walks that candle's
+  minutes with `_dry_fill` itself — read through `_practice_minutes` (the
+  feed's own minutes, else the shared REST read: the exit walk's own path)
+  and `_bars_exposed_to` (never a minute before the order, RCA-2026-09-12-A)
+  — keeps SL unless every minute the order was exposed to is there
+  (`_exposed`, the exposure rule's one expression), and tells a tie inside
+  one minute from an order through `_dry_fill`'s own hook
+  (`both=tie.append`), so its Runner-feed line never claims an order the
+  minutes do not show. Practice positions only.
+* Guard: `tests/test_demo_settles_a_both_prices_bar_on_its_minutes.py` (11,
+  every one driven through `run_cycle` at Oct 03, 2026 2:08am) —
+  `test_the_power_cut_trades_are_settled_on_their_minutes` reproduced
+  `{'K96XNZSD': ('SL', 3.4845, -1.3), 'FYWQFLWV': ('SL', 3.4845, -1.3)}` on
+  the old code; 9 of the 11 fail there.
+
+**SAW** — the operator, Oct 07, 2026 7:03am: *"could you check the error tabs
+and fix the errors you see"*. The Errors tab's "Runner went quiet" rows were
+four power cuts (Windows event 6008: Sep 29, 2026 1:48am, Main only; then
+Oct 02, 2026 7:32pm, Oct 04, 2026 10:25pm and Oct 06, 2026 4:15am, all six
+rooms). Re-settling, on MEXC's own one-minute candles, the practice exits each
+restart caught up on found two that disagree, in #4FC03172: its runner log says
+"EXIT NVD_USDT SHORT SL at 3.4845 → pnl -1.30", twice, at Oct 03, 2026 2:08am,
+and its trade record holds the two exit rows (SL, exit 3.4845, -1.30 each).
+
+**TIMELINE**
+
+1. `Oct 02, 2026 4:00pm` — the 3:30pm half-hour candle closes and
+   stoch14_30m_sl1tp12 (`K96XNZSD`) and willr14_30m_sl1tp12 (`FYWQFLWV`) go
+   SHORT NVD_USDT at 3.45 on #4FC03172's practice account: target 3.4086
+   (1.2%), stop 3.4845 (1%), $5 at 20x. Both ids recompute from that entry
+   candle.
+2. `Oct 02, 2026 7:32pm` — the PC loses power or freezes hard (event 6008; Kernel-Power 41
+   with BugcheckCode 0); all six rooms stop with it.
+3. `Oct 02, 2026 10:30pm` — MEXC's half-hour candle to 11:00pm: high 3.66,
+   low 3.39 — both prices. MEXC's one-minute candles: `10:51pm` low 3.39
+   touches the target; the stop is first touched at `10:55pm` (high 3.52).
+4. `Oct 03, 2026 1:57am` boot; `2:06am` all six runners restart in the same
+   second, 394 minutes after the cut.
+5. `Oct 03, 2026 2:08am` — #4FC03172 walks the half-hour candles first; the
+   10:30pm candle holds both, so the rule books the stop: "EXIT NVD_USDT
+   SHORT SL at 3.4845 → pnl -1.30", twice. A one-minute read at that moment
+   reaches back 300 minutes, to 9:09pm, so it held the whole 10:30pm candle —
+   but the minute walk runs only when the half-hour candles show nothing, so
+   nothing asked it.
+6. Re-settled on MEXC's one-minute candles: 113 of the 115 practice exits
+   caught up in the first 30 minutes after the four restarts agree; these 2
+   do not. On Oct 06, 2026, 42 of that restart's 44 catch-up exits (-28.63
+   in all) have cached minutes, and all 42 agree.
+7. After this fix, the same cycle on one timeline (the half-hour candles
+   built from the minutes, the clock at Oct 03, 2026 2:08am) books both at
+   the target: `TP 3.4086 → +0.90`, ids K96XNZSD and FYWQFLWV, and prints
+   "the Oct 02, 2026 10:30pm candle held both the target and the stop — its
+   one-minute candles say TP came first" for each.
+
+**ROOT CAUSE** — `outcome = _dry_fill(pos, _hi, _lo)` over the strategy's own
+candles, whose rule is "SL first when both barriers sit in one bar", decided
+before the one-minute walk, which ran only `if not outcome`; a candle that
+held both was never asked which came first.
+
+**WHY IT WAS NOT CAUGHT** — no practice-exit fixture ever put BOTH prices
+inside one of the strategy's own candles. A probe on that walk, run over the
+30 test files that drive the runner's cycle (444 tests), counted 55 walks of
+the strategy's own candles, 36 of them for practice trades; 3 decided an exit,
+and the only practice one
+(`tests/test_a_switched_off_practice_trade_is_finished.py:91`) crosses the
+target only; 0 stopped on a candle holding both prices. The minute and tick
+suites keep theirs benign on purpose (the `_hours()` of
+`tests/test_demo_cannot_fill_before_it_opened.py` is "Benign hourly history:
+nothing here may breach either barrier"; the `_bars()` of
+`tests/test_demo_exits_on_the_live_tick.py` says "nothing here may cross a
+barrier"), and
+`test_auto_trader.py::test_dry_fill_is_stop_first_when_both_barriers_sit_in_one_bar`
+pinned "the stop wins the candle" as the rule itself, called directly rather
+than through the practice exit. While a runner looks at a coin every round,
+the one-minute walk books the first touch inside the running candle, so the
+coarse both-prices case only exists when no cycle looked at the coin between
+the first touch and the candle's close — a power cut, or a round slower than
+that gap — the one state no fixture built. And when Backtest v2 learned to
+settle a both-prices candle on its minutes (Sep 17, 2026), nothing compared
+the practice book's exit rule with it: two implementations of one question,
+each tested against its own incident.
+
+**COST** — none in real money: practice only (every room's runner was
+"PAPER — simulated", with 0 real entries or exits; a real exit is MEXC's
+resting bracket). Practice: 2 wins booked as 2 losses in #4FC03172 — -2.60
+booked against +1.80 true, 4.40 of practice money, and 2 of the room's wins
+counted as losses. Those rows now live only in the `before-reset-20261006`
+backups (the trade record was reset Oct 06, 2026 6:55pm). The same path ran at
+every restart: four power cuts in eight days.
+
+**FIX** — this commit. Practice exits only: a both-prices candle is settled
+on its minutes by `_dry_fill` itself, through the same minute read as the exit
+walk. Every way out keeps the stop unless the minutes show an order, and says
+which in the Runner feed: both prices in one minute (the guard's 10:51pm
+minute running 3.52 to 3.39 prints "...and so did its Oct 02, 2026 10:51pm
+minute, which cannot say which came first — booked as the stop, the worst
+case."), minutes that touch neither while the order was open (the
+backtest's "NONE"), a candle whose minutes are not all readable (a runner
+reads back 300 minutes, so after the 394-minute outage no candle that began
+before 9:09pm could be settled — never a guess), and a read that fails. Left
+for a separate change: the exit row is still stamped with the restart time
+(Oct 03, 2026 2:08am, not 10:51pm), which moves the trade onto the next day's
+calendar — a `crossed_at` field needs every reader of exit rows checked
+first.
+
+**GUARD** — `tests/test_demo_settles_a_both_prices_bar_on_its_minutes.py`, 11
+tests, every one through `run_cycle`, 9 of them red on the old code. Each edge
+was also run against a naive version of the fix and went red:
+`test_a_candle_whose_minutes_are_not_all_there_keeps_the_stop` (both cases)
+against one without the coverage check; both
+`test_no_minute_before_the_order_decides` cases and
+`test_minutes_that_touch_neither_keep_the_stop_and_say_so` against one that
+walked every minute of the candle; `test_minutes_that_reach_the_stop_first_keep_the_stop`
+(stop first, both in one minute) and the touch-neither test against one that
+let any target minute win; `test_a_real_money_position_is_never_settled_on_minutes`
+against one that settled the real book too; and
+`test_minutes_that_reach_the_stop_first_keep_the_stop[both-in-one-minute]`
+plus the touch-neither test against this fix's own first build, which printed
+"its one-minute candles say SL came first" for a tie inside one minute and
+nothing at all when the minutes touched neither.
+
+---
+
 ## RCA-2026-10-07-I — a coin whose order book could not be read held three rooms' rounds in silence during the Oct 07, 2026 1:18am network drop
 
 **CEO**

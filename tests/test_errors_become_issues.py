@@ -589,6 +589,24 @@ def test_a_self_retrying_supervisor_line_is_not_a_fault(tmp_path, monkeypatch):
     assert [e["message"][:9] for e in got] == ["[handoff]"]
 
 
+def test_the_filers_own_status_line_is_never_an_error(tmp_path, monkeypatch):
+    """Found on the first live hour (Oct 07, 2026 2:38pm): issue #2 was the
+    filer filing its OWN line, "[error-issues] {'filed': 1, ..., 'failed': 0}"
+    — a count of zero failures read as a failure. Neither a quoted 'failed'
+    key nor any [error-issues] line is a fault; a real "failed:" still is."""
+    log = tmp_path / "api.log"
+    log.write_text(
+        "[error-issues] {'filed': 1, 'commented': 0, 'reopened': 0, 'waiting': 0, 'failed': 0}\n"
+        "[error-issues] fixer: {'applied': [], 'started': 'b414f6fd6231'}\n"
+        "[error-issues] filing failed: GhFailed('gh: could not resolve host')\n"
+        "[forecast] chain {'done': 3, 'failed': 0}\n"
+        "[cloud-autopilot] collect failed: CloudError('gh timed out')\n", encoding="utf-8")
+    monkeypatch.setattr(ei, "SITE_LOG", log)
+    monkeypatch.setattr(ei, "_SITE_TAIL", {})
+    got = ei.from_site_log(now=T0)
+    assert [e["message"] for e in got] == ["[cloud-autopilot] collect failed: CloudError('gh timed out')"]
+
+
 def test_issues_are_filed_as_the_projects_owner(monkeypatch):
     """On this PC gh's ACTIVE account is the fork's (jeremydvera, checked
     Oct 07, 2026); the issues belong to jeremydevera/analyzer-x, so the filer

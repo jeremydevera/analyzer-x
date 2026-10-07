@@ -183,6 +183,30 @@ def test_the_run_cannot_reach_the_public_issue_or_the_web(home):
     assert "#101" not in prompt and "issues/" not in prompt
 
 
+def test_the_run_keeps_the_git_bash_setting_and_finds_it_if_missing(home, monkeypatch):
+    """Found on the FIRST live run (Oct 07, 2026 2:36pm): stripping every
+    CLAUDE* setting removed CLAUDE_CODE_GIT_BASH_PATH — Git lives on G: on this
+    PC — so the run had no Bash tool at all ("requires bash but Git Bash was
+    not found"). It is configuration, not the parent session's identity."""
+    monkeypatch.setenv("CLAUDE_CODE_GIT_BASH_PATH", r"G:\Git\bin\bash.exe")
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "parent-session")
+    env = fx._env()
+    assert env["CLAUDE_CODE_GIT_BASH_PATH"] == r"G:\Git\bin\bash.exe"
+    assert "CLAUDE_CODE_SESSION_ID" not in env
+    # a site started from a plain console has no such setting: the run is
+    # still given Git Bash when it can be found
+    monkeypatch.delenv("CLAUDE_CODE_GIT_BASH_PATH")
+    monkeypatch.setattr(fx, "_git_bash", lambda: r"G:\Git\bin\bash.exe")
+    assert fx._env()["CLAUDE_CODE_GIT_BASH_PATH"] == r"G:\Git\bin\bash.exe"
+
+
+def test_the_public_issue_is_out_of_reach_from_powershell_too():
+    """With Bash missing, the first live run worked through PowerShell — where
+    the Bash(gh issue:*) rule never applied."""
+    for tool in ("PowerShell(gh issue:*)", "PowerShell(gh api:*)", "PowerShell(gh search:*)"):
+        assert tool in fx.DENIED_TOOLS, tool
+
+
 def test_the_run_does_not_inherit_the_parent_claude_session(home, monkeypatch):
     """M7: the site may have been started from a Claude session; its
     CLAUDE* settings (session id, attended flag, messaging socket) are not
@@ -193,7 +217,8 @@ def test_the_run_does_not_inherit_the_parent_claude_session(home, monkeypatch):
     p = FakePopen(writes=(fx.result_path("aaaa00000001"),
                           {"verdict": "not_a_fault", "summary": "x"}))
     fx.run("aaaa00000001", popen=p, now=T0)
-    assert not [k for k in p.kw["env"] if k.upper().startswith("CLAUDE")]
+    assert not [k for k in p.kw["env"]
+                if k.upper().startswith("CLAUDE") and k.upper() not in fx._KEEP_ENV]
     assert p.kw["env"]["TA_FIXER"] == "1"
 
 

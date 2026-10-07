@@ -172,6 +172,88 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-K — the error-to-issue system's first live hour: the filer filed its own status line, and the fixer's first check had no Bash
+
+**CEO**
+
+* What happened: in its first hour live, the new system opened a second
+  GitHub issue (#2) that was not an error at all — it was the system's own
+  "filed 1, failed 0" progress line — and its first automatic check ran
+  without its main command tool.
+* Why: the word "failed" in "failed: 0" (zero failures) was read as a
+  failure, and a clean-up that removed the parent session's settings also
+  removed the one that tells Claude where Git is installed on this PC (G:).
+* What stops it now: the system never reads its own lines as errors, a
+  "failed" inside a count is not a failure, the Git setting is kept (and found
+  when missing), and reading GitHub issues is blocked from PowerShell too.
+
+**DEV**
+
+* `tradingagents/error_issues.py` `from_site_log` → `_FAILING.search` matched
+  `'failed': 0` in `[error-issues] {'filed': 1, ..., 'failed': 0}` (printed by
+  `api.py`'s `_error_issues_loop` after every tick that files), so the filer
+  filed itself as issue #2; and `error_fixer._env()` dropped every `CLAUDE*`
+  variable, including `CLAUDE_CODE_GIT_BASH_PATH=G:\Git\bin\bash.exe`, so the
+  run's init listed PowerShell and no Bash, where the `Bash(gh issue:*)` deny
+  rules never applied.
+* Invariants broken: **a matcher is only as narrow as its negatives** — a
+  failure word inside a quoted key or the filer's own tag is never a fault —
+  and **strip identity, keep configuration**: only the parent session's
+  identity variables leave the run's environment (`_KEEP_ENV`), and every deny
+  rule covers every shell the run can have.
+* Guard: `tests/test_errors_become_issues.py::test_the_filers_own_status_line_is_never_an_error`,
+  `tests/test_the_fixer_checks_each_issue.py::test_the_run_keeps_the_git_bash_setting_and_finds_it_if_missing`
+  and `::test_the_public_issue_is_out_of_reach_from_powershell_too`.
+
+**SAW** — found while watching the system's first live ticks after it went
+live with the Oct 07, 2026 2:31pm site restart: issue #2 on
+jeremydevera/analyzer-x was titled "[The site's error-issues failed]
+[error-issues] {'filed': 1, 'commented': 0, 'reopened': 0, 'waiting': 0,
+'failed': 0}", and the first fixer check's log opened with "requires bash but
+Git Bash was not found".
+
+**TIMELINE**
+
+1. `Oct 07, 2026 2:31pm` — another session's `start.py start` loads the
+   system; `[error-issues] up` in the site log.
+2. `2:33pm` — the first tick records the baseline: 8 faults, nothing filed.
+3. `2:34pm` — the rooms' runners are restarted on the new code (9 rooms).
+4. `2:36pm` — the second tick files issue #1, "Runner started again" (127 in
+   the logs read, now including the 2:34pm restarts), and prints
+   `[error-issues] {'filed': 1, ..., 'failed': 0}`; the fixer starts its first
+   check at 2:36:10pm. Its init lists `PowerShell` and no `Bash`.
+5. `2:38pm` — the next tick reads that line in the site log as a supervisor
+   failure and files issue #2.
+6. The check itself worked through PowerShell: branch check, the evidence
+   file, `runs.json`, `git log`, the room logs, the site log — and 0 `gh`
+   commands, so the public issue's text was never read (NEVER HAPPENED YET).
+
+**ROOT CAUSE** — `_FAILING = re.compile(r"failed|could not|COULD NOT")` (the
+final review's M3 widening) had no negatives for counts or the filer's own
+tag; and `_env()` implemented the review's "strip CLAUDE*" literally, without
+separating configuration from identity.
+
+**WHY IT WAS NOT CAUGHT** — the M3 test fed real failure lines and one
+self-retrying line, never a status line with a `'failed'` count, though the
+filer prints one on every tick that files: a matcher test made only of lines
+that SHOULD match proves nothing about what must not. And the environment
+test asserted "no CLAUDE* key at all" — the rule as worded, not its reason —
+and no test runs a real `claude.exe`, so a missing tool could only show in a
+live run; the deny rules were checked for presence, never against the shell
+the run actually had.
+
+**COST** — none in money; one wrong public issue (#2, closed as filed by
+mistake) and one check run without Bash.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_errors_become_issues.py::test_the_filers_own_status_line_is_never_an_error`,
+`tests/test_the_fixer_checks_each_issue.py::test_the_run_keeps_the_git_bash_setting_and_finds_it_if_missing`,
+`::test_the_public_issue_is_out_of_reach_from_powershell_too` — all red on the
+code before this commit.
+
+---
+
 ## RCA-2026-10-07-J — #6B08FF64's Trade history said "0 on this book" on DEMO while its practice book held 104 trades
 
 **CEO**

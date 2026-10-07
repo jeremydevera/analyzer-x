@@ -120,8 +120,15 @@ _SITE_TAIL: dict = {}
 # review, M3) — but never a line that says it is simply trying again, which
 # the rebuild swap prints every 30 s while it waits
 _TAGGED = re.compile(r"^\[([a-z0-9-]+)\] ")
-_FAILING = re.compile(r"failed|could not|COULD NOT")
+# A WORD, never a quoted key: the filer's own "[error-issues] {..., 'failed': 0}"
+# — zero failures — was filed as issue #2 in its first live hour (Oct 07, 2026
+# 2:38pm, RCA-2026-10-07-K)
+_FAILING = re.compile(r"(?<!['\"])\b(?:failed|could not|COULD NOT)\b(?!['\"])")
 _SELF_RETRYING = ("tries again", "trying again", "will retry", "try again")
+# the filer's own lines are never a fault to file: its counts are status, and
+# its own failures are reported by the tab and the bell, not by filing through
+# the GitHub call that just failed
+_OWN_TAGS = ("error-issues",)
 _FRAME = re.compile(r'^\s*File "([^"]+)", line \d+, in (\S+)')
 _LAST = re.compile(r"^([A-Za-z_][\w.]*(?:Error|Exception|Exit|Interrupt|Warning)\b.*)$")
 
@@ -168,7 +175,7 @@ def from_site_log(now: float) -> list[dict]:
                 in_tb = False
             continue
         m = _TAGGED.match(ln)
-        if (m and _FAILING.search(ln)
+        if (m and m.group(1) not in _OWN_TAGS and _FAILING.search(ln)
                 and not any(p in ln.lower() for p in _SELF_RETRYING)):
             out.append({"source": "site", "kind": "supervisor",
                         "label": f"The site's {m.group(1)} failed", "message": ln[:400],

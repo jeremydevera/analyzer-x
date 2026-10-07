@@ -237,7 +237,33 @@ FINISH by writing {res} with exactly this JSON, LAST:
 # or the web (final review, I7). Deny rules still hold under
 # --dangerously-skip-permissions in this claude.exe.
 DENIED_TOOLS = ("Bash(gh issue:*)", "Bash(gh api:*)", "Bash(gh search:*)",
+                # the same through PowerShell: the first live run (Oct 07, 2026
+                # 2:36pm) had no Bash and worked in PowerShell, where the Bash
+                # rules never applied
+                "PowerShell(gh issue:*)", "PowerShell(gh api:*)", "PowerShell(gh search:*)",
                 "WebFetch", "WebSearch")
+
+# CLAUDE* settings that are CONFIGURATION, not the parent session's identity
+_KEEP_ENV = ("CLAUDE_CODE_GIT_BASH_PATH", "CLAUDE_CONFIG_DIR")
+
+
+def _git_bash() -> str:
+    """Git Bash on this PC, for a site started without the setting: next to
+    `git` (G:\\Git\\cmd\\git.exe -> G:\\Git\\bin\\bash.exe), else the usual place."""
+    import shutil
+
+    git = shutil.which("git")
+    cands = []
+    if git:
+        # git.exe sits in Git\cmd or, from Git Bash's own PATH, in
+        # Git\mingw64\bin (measured here: G:\Git\mingw64\bin\git.EXE)
+        for up in Path(git).resolve().parents[:3]:
+            cands.append(up / "bin" / "bash.exe")
+    cands.append(Path(r"C:\Program Files\Git\bin\bash.exe"))
+    for c in cands:
+        if c.exists():
+            return str(c)
+    return ""
 
 
 def _write_result(fp: str, verdict: str, summary: str, commit: str = "") -> dict:
@@ -251,7 +277,14 @@ def _env() -> dict:
     whichever Claude session started the site (its session id, its attended
     flag, its messaging socket - final review, M7), plus TA_FIXER=1, which the
     asks hook reads so the fixer's prompt is never filed as the operator's."""
-    env = {k: v for k, v in os.environ.items() if not k.upper().startswith("CLAUDE")}
+    env = {k: v for k, v in os.environ.items()
+           if not k.upper().startswith("CLAUDE") or k.upper() in _KEEP_ENV}
+    # WITHOUT GIT BASH THE RUN HAS NO BASH TOOL: Git lives on G: on this PC,
+    # and the first live run lost the setting with the session's (2:36pm)
+    if not env.get("CLAUDE_CODE_GIT_BASH_PATH"):
+        bash = _git_bash()
+        if bash:
+            env["CLAUDE_CODE_GIT_BASH_PATH"] = bash
     env["TA_FIXER"] = "1"
     return env
 

@@ -389,6 +389,30 @@ def test_a_baseline_fault_that_happens_again_is_filed(filer):
     assert len(gh.made()) == 1
 
 
+def test_issues_are_filed_as_the_projects_owner(monkeypatch):
+    """On this PC gh's ACTIVE account is the fork's (jeremydvera, checked
+    Oct 07, 2026); the issues belong to jeremydevera/analyzer-x, so the filer
+    asks gh for the owner's own token and acts as them — and falls back to
+    the active account when that cannot be read."""
+    import subprocess as sp
+
+    asked: list = []
+
+    class Out:
+        def __init__(self, code, text):
+            self.returncode, self.stdout = code, text
+
+    monkeypatch.setattr(ei, "_OWNER_TOKEN", {})
+    monkeypatch.setattr(sp, "run", lambda cmd, **kw: asked.append(cmd) or Out(0, "gho_owner\n"))
+    env = ei._gh_env()
+    assert env["GH_TOKEN"] == "gho_owner"
+    assert asked[0][-3:] == ["token", "-u", "jeremydevera"]
+    monkeypatch.setattr(ei, "_OWNER_TOKEN", {})
+    monkeypatch.setattr(sp, "run", lambda cmd, **kw: Out(1, ""))
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    assert "GH_TOKEN" not in ei._gh_env()
+
+
 def test_github_is_never_called_from_a_test():
     """Like the live door (`live_ingest.ensure`), the filer refuses to touch
     the real GitHub while a test runs — a public project's issues are not a

@@ -243,6 +243,37 @@ class GhFailed(RuntimeError):
     """gh is missing, signed out, offline or refused — the tick tries again."""
 
 
+GH_OWNER = GH_REPO.split("/")[0]
+_OWNER_TOKEN: dict = {}
+
+
+def _gh_env() -> dict:
+    """Act as the project's OWNER whatever account gh has active: on this PC
+    the active one is the fork's (jeremydvera, checked Oct 07, 2026), and the
+    issues belong to jeremydevera/analyzer-x. Read once per process; when it
+    cannot be read, the active account files (it has write access there)."""
+    import shutil
+    import subprocess
+
+    tok = _OWNER_TOKEN.get("t")
+    if tok is None:
+        tok = ""
+        try:
+            out = subprocess.run([shutil.which("gh") or "gh", "auth", "token", "-u", GH_OWNER],
+                                 capture_output=True, text=True, encoding="utf-8",
+                                 errors="replace", timeout=30,
+                                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            if out.returncode == 0:
+                tok = (out.stdout or "").strip()
+        except (OSError, subprocess.TimeoutExpired):
+            tok = ""
+        _OWNER_TOKEN["t"] = tok
+    env = dict(os.environ)
+    if tok:
+        env["GH_TOKEN"] = tok
+    return env
+
+
 def _gh(args: list, input_text: str | None = None) -> str:
     """One `gh` call. UTF-8 always (RCA-2026-10-02-G); no console window — it
     runs from the site's background thread."""
@@ -257,6 +288,7 @@ def _gh(args: list, input_text: str | None = None) -> str:
     try:
         out = subprocess.run([exe, *args], input=input_text, capture_output=True,
                              text=True, encoding="utf-8", errors="replace", timeout=90,
+                             env=_gh_env(),
                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise GhFailed(f"{type(exc).__name__}: {exc}") from exc

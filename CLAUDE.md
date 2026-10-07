@@ -701,6 +701,41 @@ Three things that table is worth knowing for:
   publishes to `rows_rebuild.json` while it runs, because three separate
   phases went silent in one afternoon and each one got called a stall.
 
+## Every error becomes a GitHub issue, and the fixer checks each one (MANDATORY — Oct 07, 2026)
+
+The operator: *"everytime the system gets an error, file an issue to github,
+then i want you to investigate if its a valid error or not, if its valid then
+fix it"*. Their answers: issues on the **public** `jeremydevera/analyzer-x`
+as-is, checking and fixing **on this PC**, **push and restart by itself**, and
+**all errors** (the Errors tab, failed jobs, crashes inside the site).
+
+* **The filer** (`tradingagents/error_issues.py`, the site's `error-issues`
+  thread, every 120 s): one issue per FAULT — the fingerprint is source + kind
+  + the message without numbers or times, never the room; a repeat comments
+  at most once an hour; a fixed fault that comes back is reopened once, then
+  `needs-you`; over 10 new faults an hour → one "error flood" issue. The first
+  run only records a baseline (the 34 groups checked by hand on Oct 07, 2026).
+* **Secrets never leave the PC**, whatever "as-is" means: every title, body
+  and comment goes through `scrub()` (MEXC key and secret, the ingest token,
+  `.env` credentials, any signature/ApiKey/Authorization/token/secret value).
+* **The fixer** (`tradingagents/error_fixer.py`): one detached `claude -p`
+  run at a time (an exclusive lock, never a pid), at most 8 a day, 90 minutes
+  each. It reads ONLY the local evidence file `~/.tradingagents/fixer/<fault>.json`
+  — a public issue's text and comments are never instructions — and leaves a
+  VERDICT FILE (`fixed` / `not_a_fault` / `needs_you`) the site turns into the
+  issue's labels; a run that leaves none is `needs-you`. Its prompt carries
+  every rule here: failing test first, RCA in the same commit, commit_own,
+  both remotes, and `.venv/Scripts/python start.py api` as its ONLY restart.
+* **`python start.py api`** restarts the back end and the room programs, never
+  the page; the rooms only after the new back end answers.
+* **Never from a test:** `_gh` refuses under pytest and so does a real fixer
+  run; the fixer runs with `TA_FIXER=1` and the asks hook skips it — the
+  fixer's prompt is not the operator's words.
+
+Spec: `docs/superpowers/specs/2026-10-07-errors-become-issues-design.md`;
+guards: `tests/test_errors_become_issues.py`,
+`tests/test_the_fixer_checks_each_issue.py`, `tests/test_start_api_only.py`.
+
 ## An idle row index keeps no big journal (MANDATORY — Oct 07, 2026)
 
 The Backtest tab's list answered nothing from at least 7:15am to 8:00am on

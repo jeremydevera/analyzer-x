@@ -172,6 +172,71 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-O — the 1-4 day rooms judged a row's age by its coin's newest date, so an old row in a fresh file could pass as "this week" (NEVER HAPPENED YET)
+
+**CEO**
+
+* Nothing went wrong yet. Found an hour after the four new rooms shipped,
+  while watching the first update land. A room could have switched on a
+  strategy for a strong "last 2 days" that were really a week old.
+* Why: a coin's result file keeps old strategy rows that a later test list
+  no longer measures. The age check looked at the file's newest date, which
+  is today, and not at the row's own date.
+* What stops it now: each row's own last date decides. A row whose results
+  end more than 36 hours ago is skipped and counted on the room's line.
+
+**DEV**
+
+* `tradingagents/strategy_watcher.py` `_as_the_off_check_sees`: the
+  short-window age check compared `now` with `wc._last_ms(coin, tf)` (the
+  pair's watermark). It used that for every row in the pair, while each row
+  carries its own `last_ms` (`.github/scripts/sweep_shard.py`, `int(ts[-1])`).
+* Invariant broken: **an age check reads the age of the thing it judges,
+  never its container's.**
+* Guard: `tests/test_rooms_judge_on_short_windows.py::test_an_old_row_in_a_fresh_file_is_not_this_weeks`
+  (red on 741bf2bf, green with the fix).
+
+**SAW** — nothing on screen. The rooms had not switched anything on yet; they
+were waiting for the update to land. It never fired.
+
+**TIMELINE**
+
+1. Oct 07, 2026 4:58pm (741bf2bf). The four rooms shipped. A row older than
+   `fresh_hours` (36) was skipped by the PAIR's newest bar.
+2. 5:02pm. UPDATE ALL BACKTESTS was pressed on Backtest v2. GitHub runs
+   37686577894 and 37686561679 started, 536 coins each.
+3. 5:03pm. `ALNYSTOCK-1h.json` landed with **11,142 rows**:
+   * 1,125 measured to Oct 07, 2026 4:00pm, carrying `t1`..`t4`;
+   * **10,017 last measured Oct 06, 2026 8:00am or Sep 29, 2026 10:00am**
+     (e.g. `mom6`: 27 new rows beside 243 old).
+
+   By 5:13pm, 98 of the 437 files that had landed ended on an old row.
+4. Today the old rows carry no `t1`..`t4`, so no room could pick one. The
+   first grid change after today would leave rows holding Oct 07's 1-4 day
+   counts, and the pair's fresh watermark would have let them through as
+   current.
+
+**ROOT CAUSE** — the age of a whole pair file stood in for the age of each
+row in it.
+
+**WHY IT WAS NOT CAUGHT** — every fixture row in the new tests had no
+`last_ms`, and every fixture pair held one measurement. Nothing put an old
+row beside a new one in the same file, and that is the shape the real store
+has. The reviewer's finding ("a row on an old backtest") was fixed at the
+pair level, which matched the fixture and not the store.
+
+**COST** — none. It never fired.
+
+**FIX** — this commit. `own = row["last_ms"] or the pair's watermark`.
+
+**GUARD** — `tests/test_rooms_judge_on_short_windows.py::test_an_old_row_in_a_fresh_file_is_not_this_weeks`.
+
+**STILL OPEN** — the same store shape reaches the 15-day rooms: `t15` on a
+row the grid stopped measuring keeps its old value, and the 15-day search
+reads it as current. Not changed here; named so it is not forgotten.
+
+---
+
 ## RCA-2026-10-07-N — Room strategies listed rule sets that never traded as passing "min win 90%", and showed "992 of 992" under a box that said 90
 
 **CEO**

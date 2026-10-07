@@ -1195,10 +1195,15 @@ def _as_the_off_check_sees(rows: list, now: float, cfg: dict) -> list:
                 # figure, as the operator asked.
                 row = {**fresh, "off_row": _judged(slot, wc._fresh(coin, tf, got, last, judge),
                                                    now, judge)}
-            if window in br.SHORT_DAYS and last and now * 1000 - last > stale_ms:
+            # THE ROW'S OWN LAST BAR, then the pair's: a pair file keeps rows
+            # of combinations a later grid no longer measures (ALNYSTOCK-1h on
+            # Oct 07, 2026: 1,125 rows to 4:00pm that day beside 10,017 last
+            # measured Oct 06 or Sep 29), so a fresh watermark can hold an old row
+            own = float(got.get("last_ms") or 0) or float(last or 0)
+            if window in br.SHORT_DAYS and own and now * 1000 - own > stale_ms:
                 # "its last 1 day" from a backtest that ended days ago is not
                 # this week's day (final review): skipped, and counted
-                row = {**row, "stale_h": round((now * 1000 - last) / 3_600_000)}
+                row = {**row, "stale_h": round((now * 1000 - own) / 3_600_000)}
             out.append(row)
     return out
 

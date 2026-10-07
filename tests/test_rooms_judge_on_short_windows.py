@@ -775,3 +775,28 @@ def test_one_day_reads_that_day():
     panel = (ROOT / "webapp/src/components/trade/WatcherPanel.tsx").read_text(encoding="utf-8")
     assert "in those ${d(days)}" not in panel
     assert 'days === 1 ? "in that day"' in panel
+
+
+def test_an_old_row_in_a_fresh_file_is_not_this_weeks(monkeypatch):
+    """Found watching the Oct 07, 2026 5:02pm run land: a pair file keeps the
+    rows of combinations a later grid no longer measures (ALNYSTOCK-1h: 1,125
+    rows measured to 4:00pm today beside 10,017 last measured Oct 06 or
+    Sep 29). The pair's watermark is today's, so a row whose OWN `last_ms` is
+    a week old would pass a watermark check with "its last 2 days" from a
+    week ago. The row's own last bar decides."""
+    from tradingagents import strategy_watcher as sw
+    now = 1_790_100_000.0
+    fresh_pair = (now - 3600) * 1000
+    old_row = {**_in_file("KII", t2=32, w2=30, trades=100, wins=90),
+               "last_ms": int((now - 7 * 86_400) * 1000)}
+    new_row = {**_in_file("VUG", t2=32, w2=30, trades=100, wins=90),
+               "last_ms": int((now - 3600) * 1000)}
+    files = {"KII": old_row, "VUG": new_row}
+    listed = [wc._fresh(c, "15m", r, 0.0, 2) for c, r in files.items()]
+    monkeypatch.setattr(wc, "matched_rows", lambda coin, tf, wants:
+                        {wc._sig(w): files[coin] for w in wants})
+    monkeypatch.setattr(wc, "_last_ms", lambda coin, tf: fresh_pair)
+    monkeypatch.setattr(sw, "_judged", lambda slot, fresh, now, window=30: fresh)
+    seen = {r["coin"]: r for r in sw._as_the_off_check_sees(listed, now, _room_cfg())}
+    assert seen["KII"].get("stale_h") == 168
+    assert "stale_h" not in seen["VUG"]

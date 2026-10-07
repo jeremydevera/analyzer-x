@@ -172,6 +172,145 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-D — the daily switch-on put SUPRA_USDT back on after MEXC dropped it, 110 more failures in two rooms
+
+**CEO**
+
+* What you saw: the Errors tab still listed "auto-trader cycle failed for
+  SUPRA_USDT: no Min15 candles for SUPRA_USDT" after the Oct 05 fix — 43 times
+  in #4FC03172 and 39 in #55D32617, between Oct 06, 2026 12:09am and
+  Oct 07, 2026 2:21am.
+* Why: the Oct 05 fix taught the hourly check to switch off a coin MEXC no
+  longer sells, but the once-a-day check that switches strategies ON never
+  asked, so it put SUPRA back on from its old backtest numbers — once in the
+  same minute the hourly check had switched it off — and the hourly check took
+  it off again about an hour later.
+* What stops it now: the daily check asks MEXC the same question first, never
+  switches on a coin MEXC no longer sells, and the Watcher panel says how many
+  it skipped and which coins.
+
+**DEV**
+
+* `tradingagents/strategy_watcher.py:924` `_on_pass` → `wp.pick` →
+  `_try_picks` armed rows nominated by `wc.raw_candidates` (no `fresh_hours`
+  on the raw path, so SUPRA's frozen rows still read 70%+) without asking
+  `_delisted`, whose only caller was `_off_pass` (`:643`); a raw room waits
+  0 s after a switch-off (`watcher_policy.py:111`), so the cooling stamp the
+  off pass wrote stopped nothing.
+* Invariant broken: **the switch-on asks every question the switch-off
+  asks** — a row the hourly pass would switch off for its coin is never
+  switched on. `_on_pass` now drops rows whose coin `_delisted()` names,
+  before the daytime screen and before any pick, and counts them in their own
+  clause, never inside "fail one".
+* Guard: `tests/test_the_strategy_watcher.py::test_a_dropped_coin_stays_off_the_next_day_in_a_raw_room`,
+  `::test_a_coin_mexc_dropped_is_never_switched_on`,
+  `::test_the_skipped_coins_are_named_ten_at_most`, and the seam with the
+  daytime screen, `tests/test_daytime_rule.py::test_a_coin_mexc_dropped_gets_no_trade_list`.
+
+**SAW** — the operator, Oct 07, 2026 7:03am: *"could you check the error tabs
+and fix the errors you see"*. The Errors tab's "A check failed" group read
+"auto-trader cycle failed for SUPRA_USDT: no Min15 candles for SUPRA_USDT":
+43 in #4FC03172 (first Oct 06, 2026 12:20am, last Oct 07, 2026 2:21am) and 39
+in #55D32617 (Oct 06, 2026 12:09am to 12:57am).
+
+**TIMELINE**
+
+1. `Oct 03, 2026 9:30am` — the last candle SUPRA_USDT's Backtest v2 pair was
+   measured through: its state file's watermark, which the re-armed rows carry
+   as `measured_ms` 1791034200000 (the rows file itself last changed
+   Oct 01, 2026 9:51am). Nothing refreshes a coin MEXC no longer sells, so
+   these figures froze.
+2. `Oct 04, 2026 3:15am` — the first "no Min15 candles for SUPRA_USDT" in both
+   rooms: MEXC has dropped the contract (read again Oct 07, 2026: `code 1001:
+   Contract not exists`, and absent from all 1,049 contracts `list_contracts`
+   returns).
+3. `Oct 05, 2026 12:18am` — RCA-2026-10-05-A (9e40acc8666f) adds
+   `_delisted` to the HOURLY switch-off only.
+4. `Oct 05, 2026 12:58am` — #4FC03172's switch-off takes #ESCTKZW8 (ibs 15m,
+   TP 0.4% / SL 0.3%) and #9ER4H9XV (lx_SUPRA_15m_3) off, and the switch-on
+   pass in the SAME tick (`at` 1791176322.017 on all four lines) puts both
+   back on at 73.15% over 607 trades and 70.51% over 668. Written 1:13am,
+   28 failures 1:14am–1:58am, off again 1:59am.
+5. `Oct 06, 2026 12:00am` — #55D32617 switches #VETXYH8X (71.7% over 53
+   trades in 15 days) and #EH52GY82 (70.59% over 51) back on, written
+   12:08am: 39 failures 12:09am–12:57am, off at 12:56am.
+6. `Oct 06, 2026 12:08am` — #4FC03172 switches both back on (73.1% over 591,
+   70.4% over 652), written 12:19am: 10 failures 12:20am–12:35am, off at
+   12:34am.
+7. `Oct 07, 2026 12:03am` — #55D32617 does NOT switch it on, but only because
+   its 15-day counts had slid to 49 and 47, under its 50-trade floor — luck,
+   not a check.
+8. `Oct 07, 2026 1:20am` — #4FC03172 switches both back on (73.29% over 569,
+   70.49% over 627), written 1:28am: 33 failures 1:29am–2:21am, off at
+   2:20am (disarm written 2:21am). 28 + 43 + 39 = 110 failures from these
+   re-arms since the Oct 05 fix; the Errors tab lists the 82 since Oct 06.
+9. Still due without this fix: #4FC03172's daytime trial (on since
+   `Oct 07, 2026 5:14am`) refuses both rows on the fee — a win pays
+   0.25%/0.24% against a 0.45%/0.46% loss — but only while the trial is on;
+   and #55D32617's 15-day window empties around `Oct 18, 2026 7:36am` (SUPRA's
+   last backtest trade, Oct 03, 2026 7:36am), after which `_judged` falls back
+   to the frozen file figures (59 trades at 71.19%, 56 at 71.43%, 54 at
+   74.07%) — a re-arm, and about an hour of failures, every day from Oct 19.
+10. After this fix, the tests' copy of that sequence — switched on, the coin
+    gone, switched off, the next day's pass due (`_on_due` True on
+    the test's own clock) — switches nothing on and the status line reads
+    "1 skipped: MEXC no longer lists their coin (GPNSTOCK_USDT)"; on the code
+    before it, the same pass switched #77Y3BPFG straight back on.
+
+**ROOT CAUSE** — `_on_pass` built `rows` from `wp.passes_on` alone (win rate,
+trades, TP against SL, the stop cap) and never asked whether MEXC still lists
+the coin: RCA-2026-10-05-A put that question only in `_off_pass`. A raw room's
+zero wait after a switch-off (`wait = 0 if cfg.get("raw")`) then turned every
+hourly switch-off into a switch-off and, at the next daily pass — or the same
+tick — a switch-on.
+
+**WHY IT WAS NOT CAUGHT** — RCA-2026-10-05-A's guard,
+`test_a_coin_mexc_dropped_is_switched_off_whatever_its_win_rate`, marks the
+coin gone only AFTER the first pass and looks again at NOW + 3601 — the same
+local day, when `_on_due` is False — so no switch-on pass ever ran while a
+coin was gone, and it ran in a room with the default 7-day wait, which would
+have hidden the re-arm anyway. The fix was tested on the half that changed.
+A rule that guards a switch-off has a mirror in the switch-on, and the test
+has to drive both with the same fact: the NEXT day's pass, asserted due, in
+the room shape the operator actually runs (raw, no wait).
+
+**COST** — none in money: practice only (every SUPRA slot was `["paper"]`),
+no SUPRA position opened in any episode, and the per-coin catch in the runner
+kept the other coins scanning (96 scanned in the 1:30am cycle on Oct 07). 110
+failures from the re-arms since the Oct 05 fix: 28 on Oct 05, 2026
+1:14am–1:58am that the Errors tab does not list, plus its 82 since Oct 06 —
+each one an `error` row in the trade record and a wasted candle request in its
+room.
+
+**FIX** — this commit. `_on_pass` asks `_delisted` — the switch-off's own
+test, where an unreadable or short list is "do not know", never "gone" — for
+the coins of the rows that pass the line, drops those rows before the daytime
+screen (so no trade list or minute download is built for a dead coin) and
+before any pick, and names them in their own clause: "N skipped: MEXC no
+longer lists their coin (SUPRA_USDT)" — rows counted, coins named, ten at
+most then "and N more". The "fail one" count subtracts them, so pass + fail
+one + skipped + could not be read is the number the list gave. `tests/test_rooms_judge_on_15_days.py::test_the_status_line_says_how_many_pass_every_rule`
+now stubs `_delisted`: with the fix and no stub it made one
+`db_jobs.live_symbols` call, conftest refused the socket, `live_symbols`
+swallowed it and set `_LIVE_CACHE["failed_at"]` for the whole test process,
+and the test passed for the wrong reason. Left out on purpose, for the
+operator to decide: hand deploys (`deploy_preset`) still have no delisted
+check, and a coin MEXC still lists whose pair file stopped updating can still
+be switched on from frozen figures in a raw room (the raw path has no
+`fresh_hours`).
+
+**GUARD** — `tests/test_the_strategy_watcher.py::test_a_dropped_coin_stays_off_the_next_day_in_a_raw_room`
+(asserts `_on_due` is True for the day-2 tick, so it cannot pass vacuously),
+`::test_a_coin_mexc_dropped_is_never_switched_on` (the exact status line:
+1 pass + 1 fail one + 1 skipped = the 3 given; a copy without the "fail one"
+subtraction fails it), `::test_the_skipped_coins_are_named_ten_at_most`, and
+`tests/test_daytime_rule.py::test_a_coin_mexc_dropped_gets_no_trade_list` (in
+a daytime room no trade list is asked for RCATSTOCK, one of the 23 dropped
+coins the v2 store still holds, and the daytime count reads "1 of 1") — all
+four fail on the code before this commit.
+
+---
+
 ## RCA-2026-10-07-C — the Backtest tab's list stopped answering: a 6 GB journal nothing ever folded, re-read on every fresh open
 
 **CEO**

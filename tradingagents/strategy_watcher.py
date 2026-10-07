@@ -922,6 +922,23 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     # minutes later at 69.06% from its file, twice in five hours.
     cands = _as_the_off_check_sees(got["rows"], now, cfg)
     rows = [r for r in cands if not wp.passes_on(r, cfg)]
+    # A COIN MEXC NO LONGER LISTS IS NEVER SWITCHED ON (RCA-2026-10-07-D): the
+    # switch-off's own test, asked before any pick or daytime list. Only the
+    # hourly switch-off asked, and a raw room has no wait after one: #4FC03172
+    # switched SUPRA_USDT off and on in one tick (Oct 05, 2026 12:58am) and on
+    # again Oct 06 and Oct 07, #55D32617 on Oct 06, all from frozen figures —
+    # 110 errors in two rooms.
+    dead = _delisted({f"{r['coin']}_USDT" for r in rows})
+    n_dead = sum(f"{r['coin']}_USDT" in dead for r in rows)
+    rows = [r for r in rows if f"{r['coin']}_USDT" not in dead]
+    dead_why = ""
+    if n_dead:
+        # its OWN count, never inside "fail one": these passed the room's line.
+        # Rows counted, coins named — ten at most, the line is one line
+        names = sorted(dead)
+        dead_why = (f" · {n_dead:,} skipped: MEXC no longer lists their coin ("
+                    + ", ".join(names[:10])
+                    + (f" and {len(names) - 10:,} more" if len(names) > 10 else "") + ")")
     # THE DAYTIME RULE (Oct 07, 2026; room setting `daytime_rule`): of the rows
     # that pass the line, only those whose win pays a loss after fees, whose
     # daytime record (stock tokens) and last 7 days still win, may go on; a
@@ -1014,11 +1031,13 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     # (RCA-2026-09-30-C): "1,511 meet the criteria" over 539 switched on read
     # as 972 rows lost
     gone = len(got["rows"]) - len(cands)
+    failed_one = len(cands) - len(rows) - n_dead
     st["last_candidates"] = (f"{got.get('why', '')} — {len(rows):,} pass every rule "
                              f"on their own result file"
-                             + (f" ({len(cands) - len(rows):,} fail one, most often "
+                             + (f" ({failed_one:,} fail one, most often "
                                 f"{_top_fail(cands, cfg)})"
-                                if len(cands) > len(rows) else "")
+                                if failed_one > 0 else "")
+                             + dead_why
                              + (f" · {gone:,} could not be read from their file"
                                 if gone else "")
                              + daytime_why)

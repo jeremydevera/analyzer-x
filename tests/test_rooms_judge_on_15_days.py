@@ -315,6 +315,10 @@ def test_the_status_line_says_how_many_pass_every_rule(monkeypatch):
     monkeypatch.setattr(at, "load_settings", lambda: {})
     monkeypatch.setattr(sw, "_try_picks", lambda *a, **k: None)
     monkeypatch.setattr(sw, "_as_the_off_check_sees", lambda rows, now, cfg: rows)
+    # the switch-on pass asks MEXC which coins it still lists (RCA-2026-10-07-D):
+    # never the venue from a test, which conftest would refuse and
+    # db_jobs.live_symbols would swallow — passing for the wrong reason
+    monkeypatch.setattr(sw, "_delisted", lambda syms: set())
     st: dict = {}
     cfg = {**sw.wp.DEFAULTS, "tp_rule": ">", "on_winrate": 80.0, "min_trades": 30,
            "max_sl": 2.0, "raw": True, "max_new_per_day": 0, "max_slots": 0, "max_per_coin": 0}

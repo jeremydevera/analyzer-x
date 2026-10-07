@@ -524,6 +524,25 @@ def test_the_pass_keeps_a_count_per_check(room):
     assert d["passed"] == 1 and d["checks"]["fee"] == 1 and d["checks"]["daytime record"] == 1
 
 
+# RCA-2026-10-07-D: a coin MEXC no longer lists is dropped BEFORE this screen
+def test_a_coin_mexc_dropped_gets_no_trade_list(room, monkeypatch):
+    """No trade list — so no minute download — is built for a coin MEXC
+    dropped (RCATSTOCK is one of the 23 the v2 store still holds), the
+    daytime count is over the rows that are left, and the skipped one is
+    named on its own: 1 pass + 1 skipped = the 2 the list gave."""
+    room["cands"] = [_cand("AAAA1111", "GPNSTOCK", 1.5, 1.0),
+                     _cand("DDDD4444", "RCATSTOCK", 1.5, 1.0)]
+    room["lists"] = {"AAAA1111": GOOD, "DDDD4444": GOOD}
+    monkeypatch.setattr(sw, "_delisted", lambda syms: set(syms) & {"RCATSTOCK_USDT"})
+    got = sw.consider(now=NOW)
+    assert [d["id"] for d in got["decisions"] if d["action"] == "on"] == ["AAAA1111"]
+    assert room["asked"] == ["AAAA1111"], "no list is built for a coin MEXC dropped"
+    assert sw._read()["daytime"]["line_passed"] == 1
+    assert sw._read()["last_candidates"] == (
+        "fake — 1 pass every rule on their own result file · 1 skipped: MEXC no "
+        "longer lists their coin (RCATSTOCK_USDT) · daytime rule: 1 of 1 pass")
+
+
 def test_mexcs_own_label_decides_which_tokens_keep_us_hours(monkeypatch):
     """The first preview passed XLI (a US industrials fund) as crypto because
     the hand list missed it. MEXC labels every one: read Oct 07, 2026."""

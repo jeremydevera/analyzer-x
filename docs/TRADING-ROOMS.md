@@ -117,7 +117,9 @@ IF ANYTHING FAILS
 - the results list is busy (being rebuilt), or a 15-day room's counts are in
   the coin files but not yet in the table → the room waits and tries again
   every 30 minutes
-- a coin is delisted → its rows are switched off
+- a coin is delisted → its rows are switched off within the hour, and the
+  daily check skips them; if MEXC's coin list cannot be read, neither check
+  treats any coin as delisted
 - you untick Smart Watcher → nothing is added or removed; trades keep running
 ```
 

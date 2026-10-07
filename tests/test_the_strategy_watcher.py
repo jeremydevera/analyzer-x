@@ -795,3 +795,72 @@ def test_a_coin_list_that_cannot_be_read_switches_nothing_off(monkeypatch):
     full = {f"C{i}_USDT" for i in range(sw.MIN_LIVE_LIST)} | {"BTC_USDT"}
     monkeypatch.setattr(db_jobs, "live_symbols", lambda *a, **k: full)
     assert sw._delisted({"SUPRA_USDT", "BTC_USDT"}) == {"SUPRA_USDT"}
+
+
+# ------------------------------------------------------------------------
+# RCA-2026-10-07-D: the SWITCH-ON pass asks the same question. The guard
+# above marks the coin gone only after the first pass and checks the same
+# day, so no switch-on pass ever ran with the coin gone — while #4FC03172, a
+# raw room with no wait after a switch-off, put SUPRA_USDT back on in the
+# same tick it went off (Oct 05, 2026 12:58am), then again Oct 06 and Oct 07.
+
+def _raw_room():
+    st = sw._read()
+    st["cfg"] = {"raw": True}
+    sw._write(st)
+
+
+def test_a_coin_mexc_dropped_is_never_switched_on(world):
+    """The coin gone BEFORE the pass: its row is not switched on, the
+    healthy row beside it is (so the pass really ran), and the status line
+    counts the skipped row on its own — never inside "fail one", whose
+    reason it does not share. 1 + 1 + 1 is the 3 the list gave."""
+    _raw_room()
+    world["cands"] = [R6,
+                      {**R6, "id": "OTHER001", "coin": "KKRSTOCK"},
+                      {**R6, "id": "LOW00001", "coin": "VUG", "winrate": 60.0}]
+    world["gone"] = {"GPNSTOCK_USDT"}
+    got = sw.consider(now=NOW)
+    assert [d["id"] for d in got["decisions"] if d["action"] == "on"] == ["OTHER001"]
+    s = world["settings"]
+    assert "GPNSTOCK_USDT" not in (s["strategy_coins"].get(KEY) or [])
+    assert SLOT not in s["watcher_slots"]
+    assert sw._read()["last_candidates"] == (
+        "fake — 1 pass every rule on their own result file (1 fail one, most "
+        "often win rate is under) · 1 skipped: MEXC no longer lists their coin "
+        "(GPNSTOCK_USDT)")
+
+
+def test_a_dropped_coin_stays_off_the_next_day_in_a_raw_room(world):
+    """The sequence the guard above stopped short of: switched on, the coin
+    goes, the hourly pass switches it off — and the NEXT DAY's switch-on
+    pass, due and with no wait in a raw room, must not put it back."""
+    _raw_room()
+    sw.consider(now=NOW)
+    assert world["settings"]["strategy_coins"][KEY] == ["GPNSTOCK_USDT"]
+    world["gone"] = {"GPNSTOCK_USDT"}
+    got = sw.consider(now=NOW + 3601)
+    assert [d["action"] for d in got["decisions"]] == ["off"]
+    day2 = NOW + 86_400 + 3601
+    assert sw._on_due(day2, float(sw._read()["last_on_pass"]), raw=True), \
+        "the switch-on pass must run on day 2, or this test proves nothing"
+    got = sw.consider(now=day2)
+    assert not [d for d in got["decisions"] if d["action"] == "on"], got["decisions"]
+    s = world["settings"]
+    assert s["strategy_coins"][KEY] == [] and SLOT not in s["watcher_slots"]
+    assert "MEXC no longer lists their coin (GPNSTOCK_USDT)" in sw._read()["last_candidates"]
+
+
+def test_the_skipped_coins_are_named_ten_at_most(world):
+    """The count is ROWS, the names are COINS (two rows on D00), and past
+    ten names the rest is a number — the v2 store holds 23 coins MEXC no
+    longer lists, and the line is one line on the Watcher panel."""
+    _raw_room()
+    world["cands"] = ([{**R6, "id": f"DEAD{i:04d}", "coin": f"D{i:02d}"} for i in range(12)]
+                      + [{**R6, "id": "DEAD0100", "coin": "D00", "tp": 1.2}])
+    world["gone"] = {f"D{i:02d}_USDT" for i in range(12)}
+    got = sw.consider(now=NOW)
+    assert not [d for d in got["decisions"] if d["action"] == "on"]
+    names = ", ".join(f"D{i:02d}_USDT" for i in range(10))
+    assert sw._read()["last_candidates"].endswith(
+        f" · 13 skipped: MEXC no longer lists their coin ({names} and 2 more)")

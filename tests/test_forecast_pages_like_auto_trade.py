@@ -58,7 +58,8 @@ def test_every_list_on_the_forecast_page_uses_it():
     # section coins to avoid i dont need its logic")
     for src, lists in ((v2, ("{`${kind} streak`}", '"signal family"',
                              '"rule set"', '"what-if"')),
-                       (rooms, ('"saved forecasts"', '"room backtest"', '"room strategies"'))):
+                       (rooms, ('"saved forecasts"', '"room backtest"', '"room strategies"',
+                                '"room strategy trades"'))):
         assert 'import PageButtons from "@/components/common/PageButtons"' in src
         for what in lists:
             assert f"what={what}" in src, what

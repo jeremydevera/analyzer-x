@@ -13,7 +13,7 @@
  * since — paged and checked by the server, never filtered here.
  */
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { api, dateBoxValue, fmtMoney, fmtWhen, fmtWhenMs, Forecast, Forecasts, ForecastsLive, RoomGroup, RoomNow, RoomReplay, RoomStrategies, RRDay, RREvent, RRSide, RRTrade } from "@/lib/api";
+import { api, dateBoxAt, dateBoxValue, fmtMoney, fmtWhen, fmtWhenMs, Forecast, Forecasts, ForecastsLive, RoomGroup, RoomNow, RoomReplay, RoomStrategies, RoomStrategyTrades, RRDay, RREvent, RRSide, RRTrade } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
 import PageButtons from "@/components/common/PageButtons";
 import DayPicker from "@/components/form/DayPicker";
@@ -1008,108 +1008,293 @@ export function RoomsAndBacktest() {
  *  it in room strategy"). Re-measured on the server over exactly the dates
  *  chosen, from each winner's own stored trades; filtered, sorted and paged
  *  there (tradingagents/room_strategies.table). Never deleted: a winner whose
- *  newest 15 days lost says "stopped working". */
+ *  newest 15 days lost says "stopped working".
+ *
+ *  NOTHING IS ASKED UNTIL APPLY (operator, Oct 07, 2026: "i want a button to
+ *  apply filters on this"). Every box is a draft; Apply (or Enter in any box)
+ *  sends them together, and an answer is shown only if it answers what was
+ *  last applied — so a list can never sit under a box it does not match. The
+ *  two "last 15 days" / "last 30 days" buttons became ONE box ("what i want is
+ *  for it to be textbox, if i input 3 days show me the room strat and its
+ *  trade for past 3 days"): the last N x 24 hours up to the moment Apply is
+ *  pressed. Click a row for its trades in the same dates. */
+type RsDraft = { from: string; to: string; days: string; minWin: string; minProfit: string;
+  win: string; dep: string; find: string; sort: string };
+type RsAsk = { from_s: number; to_s: number; days: number | null; min_winrate: number;
+  min_profit: number | null; window: number; deployable: string; find: string; sort: string };
+
+const rsDefault = (): RsDraft => ({ from: dateBoxValue(30), to: dateBoxValue(0), days: "", minWin: "",
+  minProfit: "", win: "", dep: "", find: "", sort: "worst_month" });
+
+/** The days box: "" = use the dates, a number above 0 = that many days,
+ *  anything else = NaN, which Apply refuses out loud. */
+function daysOf(v: string): number | null {
+  const s = v.trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0 && n <= 1000 ? n : NaN;
+}
+
+/** Why Apply cannot send these boxes, or null when it can. A box that is
+ *  typed in but not a number is refused — never quietly sent as no filter. */
+function rsProblem(f: RsDraft): string | null {
+  if (Number.isNaN(daysOf(f.days))) return "last N days takes a number of days above 0, like 3";
+  if (f.minWin.trim() !== "" && !Number.isFinite(Number(f.minWin))) return "min win % takes a number, like 90";
+  if (f.minProfit.trim() !== "" && !Number.isFinite(Number(f.minProfit))) return "min profit $ takes a number, like 5";
+  if (daysOf(f.days) === null && (!f.from || !f.to)) return "pick both dates, or type a number of days";
+  if (daysOf(f.days) === null && f.from > f.to) return "the 'from' date is after the 'to' date";
+  return null;
+}
+
+function rsAsk(f: RsDraft, nowS: number): RsAsk {
+  const days = daysOf(f.days);
+  return {
+    from_s: days ? nowS - Math.round(days * 86_400) : dayStart(f.from),
+    to_s: days ? nowS : dayStart(f.to) + 86_399,
+    days: days || null,
+    min_winrate: f.minWin.trim() === "" ? 0 : Number(f.minWin),
+    min_profit: f.minProfit.trim() === "" ? null : Number(f.minProfit),
+    window: Number(f.win) || 0, deployable: f.dep, find: f.find.trim(), sort: f.sort,
+  };
+}
+
+/** The filters an answer was asked with, in words, for the line above the
+ *  table — the line names what the rows were filtered by, never the boxes. */
+function rsFilterWords(a: RsAsk): string[] {
+  const out: string[] = [];
+  if (a.find) out.push(`id #${a.find.replace(/^#/, "").toUpperCase()}`);
+  if (a.min_winrate) out.push(`win rate ${a.min_winrate}% or better`);
+  if (a.min_profit != null) out.push(`profit ${fmtMoney(a.min_profit)} or more`);
+  if (a.window) out.push(`judged on ${a.window} days`);
+  if (a.deployable === "yes") out.push("a room can run it");
+  if (a.deployable === "no") out.push("needs a new switch");
+  return out;
+}
+
+const heldFor = (ms: number) => {
+  const m = Math.max(0, Math.round(ms / 60_000));
+  if (m < 60) return `${m}m`;
+  if (m < 1440) return `${Math.floor(m / 60)}h ${m % 60}m`;
+  return `${Math.floor(m / 1440)}d ${Math.floor((m % 1440) / 60)}h`;
+};
+
 export function RoomStrategiesSection() {
-  const [from, setFrom] = useState(dateBoxValue(30));
-  const [to, setTo] = useState(dateBoxValue(0));
-  const [minWin, setMinWin] = useState("");
-  const [minProfit, setMinProfit] = useState("");
-  const [win, setWin] = useState("");
-  const [dep, setDep] = useState("");
-  const [find, setFind] = useState("");
-  const [sort, setSort] = useState("worst_month");
+  const [draft, setDraft] = useState<RsDraft>(rsDefault);
+  const [applied, setApplied] = useState<{ f: RsDraft; ask: RsAsk }>(() => {
+    const f = rsDefault();
+    return { f, ask: rsAsk(f, Math.floor(Date.now() / 1000)) };
+  });
   const [page, setPage] = useState(1);
-  const [d, setD] = useState<RoomStrategies | null>(null);
+  const [shown, setShown] = useState<{ key: string; ask: RsAsk; d: RoomStrategies } | null>(null);
   const [err, setErr] = useState("");
+  const [bad, setBad] = useState("");
+  const [open, setOpen] = useState<string | null>(null);
+  // THE ANSWER MUST ANSWER WHAT WAS LAST APPLIED: Oct 07, 2026 3:37pm the
+  // boxes said "min win 90" over a list reading "992 of 992 kept" — the page
+  // was still showing an answer to an earlier ask (the server answers 2 of
+  // 992 for 90%). An answer to anything else is dropped, and until the right
+  // one lands the row says it is measuring.
+  const wantKey = JSON.stringify([applied.ask, page]);
+  const want = useRef(wantKey);
+  useEffect(() => { want.current = wantKey; }, [wantKey]);
   const load = useCallback(() => {
-    if (!from || !to) return;
-    api.roomStrategies({ from_s: dayStart(from), to_s: dayStart(to) + 86_399,
-      min_winrate: Number(minWin) || 0, min_profit: minProfit === "" ? null : Number(minProfit),
-      window: Number(win) || 0, deployable: dep, find, sort, page })
-      .then((x) => { setD(x); setErr(""); })
-      .catch((e) => setErr(String(e?.message ?? e)));
-  }, [from, to, minWin, minProfit, win, dep, find, sort, page]);
+    const ask = applied.ask;
+    const key = JSON.stringify([ask, page]);
+    api.roomStrategies({ from_s: ask.from_s, to_s: ask.to_s, min_winrate: ask.min_winrate,
+      min_profit: ask.min_profit, window: ask.window, deployable: ask.deployable, find: ask.find,
+      sort: ask.sort, page })
+      .then((x) => { if (key === want.current) { setShown({ key, ask, d: x }); setErr(""); } })
+      .catch((e) => { if (key === want.current) setErr(String(e?.message ?? e)); });
+  }, [applied, page]);
   useLiveRefresh(load, 60_000, [load]);
+  const apply = (f: RsDraft = draft) => {
+    const why = rsProblem(f);
+    setBad(why ?? "");
+    if (why) return;
+    setApplied({ f, ask: rsAsk(f, Math.floor(Date.now() / 1000)) });
+    setPage(1);
+    setOpen(null);
+  };
+  const clear = () => { const f = rsDefault(); setDraft(f); apply(f); };
+  const set = (p: Partial<RsDraft>) => setDraft((f) => ({ ...f, ...p }));
+  // typing a number of days shows the dates it covers in the date boxes,
+  // which wait (greyed) until the days box is emptied again
+  const setDays = (v: string) => {
+    const n = daysOf(v);
+    if (n !== null && !Number.isNaN(n)) {
+      const now = Math.floor(Date.now() / 1000);
+      set({ days: v, from: dateBoxAt(now - Math.round(n * 86_400)), to: dateBoxAt(now) });
+    } else set({ days: v });
+  };
+  const byDays = daysOf(draft.days) !== null && !Number.isNaN(daysOf(draft.days));
+  const unsent = JSON.stringify(draft) !== JSON.stringify(applied.f);
+  const waiting = !err && (!shown || shown.key !== wantKey);
+  const d = shown?.d ?? null;
+  const asked = shown?.ask ?? null;
   const sel = "rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:[color-scheme:dark]";
   const th = "px-2 py-1.5 text-start font-medium whitespace-nowrap";
   const td = "px-2 py-1.5 whitespace-nowrap";
-  const reset = () => setPage(1);
-  const quick = (back: number) => { setFrom(dateBoxValue(back)); setTo(dateBoxValue(0)); reset(); };
+  const cols = ["ID", "Rules", "Found", "Trades", "A day", "Won / lost", "Win rate", "Break-even", "Profit",
+    "After reality check", "Worst day", "Worst losing run", "Most open", "Money needed", "Worst month", "Room can run it"];
+  const words = asked ? rsFilterWords(asked) : [];
+  const pastEnd = !!(d && d.data_end != null && d.to * 1000 > d.data_end);
   return (
     <div className={card}>
       <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Room strategies</h3>
       <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
         Every winner prompt 4 found and kept, never deleted. A winner made money after the reality check in every
-        complete month and in its newest 15 days. The numbers below are measured over exactly the dates you pick.
+        complete month and in its newest 15 days. The numbers below are measured over exactly the dates you pick, or
+        the last N days you type. Nothing changes until you press Apply. Click a row to see its trades.
       </p>
-      <div className="mt-3 flex flex-wrap items-end gap-2 text-theme-xs text-gray-600 dark:text-gray-300">
-        <label className="flex flex-col gap-1">from<input type="date" className={sel} value={from} max={to} onChange={(e) => { setFrom(e.target.value); reset(); }} /></label>
-        <label className="flex flex-col gap-1">to<input type="date" className={sel} value={to} min={from} onChange={(e) => { setTo(e.target.value); reset(); }} /></label>
-        <button type="button" className={btn} onClick={() => quick(15)}>last 15 days</button>
-        <button type="button" className={btn} onClick={() => quick(30)}>last 30 days</button>
-        <label className="flex flex-col gap-1">min win %<input className={`${sel} w-20`} inputMode="decimal" value={minWin} onChange={(e) => { setMinWin(e.target.value); reset(); }} /></label>
-        <label className="flex flex-col gap-1">min profit $<input className={`${sel} w-20`} inputMode="decimal" value={minProfit} onChange={(e) => { setMinProfit(e.target.value); reset(); }} /></label>
+      <form className="mt-3 flex flex-wrap items-end gap-2 text-theme-xs text-gray-600 dark:text-gray-300"
+        onSubmit={(e) => { e.preventDefault(); apply(); }}>
+        <label className="flex flex-col gap-1">from<input type="date" className={`${sel} disabled:opacity-50`} value={draft.from} max={draft.to} disabled={byDays} onChange={(e) => set({ from: e.target.value })} /></label>
+        <label className="flex flex-col gap-1">to<input type="date" className={`${sel} disabled:opacity-50`} value={draft.to} min={draft.from} disabled={byDays} onChange={(e) => set({ to: e.target.value })} /></label>
+        <label className="flex flex-col gap-1">or last N days<input className={`${sel} w-24`} inputMode="decimal" placeholder="e.g. 3" value={draft.days} onChange={(e) => setDays(e.target.value)} /></label>
+        <label className="flex flex-col gap-1">min win %<input className={`${sel} w-20`} inputMode="decimal" value={draft.minWin} onChange={(e) => set({ minWin: e.target.value })} /></label>
+        <label className="flex flex-col gap-1">min profit $<input className={`${sel} w-20`} inputMode="decimal" value={draft.minProfit} onChange={(e) => set({ minProfit: e.target.value })} /></label>
         <label className="flex flex-col gap-1">judged on
-          <select className={sel} value={win} onChange={(e) => { setWin(e.target.value); reset(); }}>
+          <select className={sel} value={draft.win} onChange={(e) => set({ win: e.target.value })}>
             <option value="">any days</option><option value="7">7 days</option><option value="15">15 days</option><option value="30">30 days</option>
           </select></label>
         <label className="flex flex-col gap-1">a room can run it
-          <select className={sel} value={dep} onChange={(e) => { setDep(e.target.value); reset(); }}>
+          <select className={sel} value={draft.dep} onChange={(e) => set({ dep: e.target.value })}>
             <option value="">all</option><option value="yes">yes</option><option value="no">needs a new switch</option>
           </select></label>
         <label className="flex flex-col gap-1">sort
-          <select className={sel} value={sort} onChange={(e) => { setSort(e.target.value); reset(); }}>
+          <select className={sel} value={draft.sort} onChange={(e) => set({ sort: e.target.value })}>
             <option value="worst_month">worst month (best first)</option><option value="corrected">profit after reality check</option>
             <option value="profit">profit</option><option value="winrate">win rate</option><option value="found">newest found</option>
           </select></label>
-        <label className="flex flex-col gap-1">find by id<input className={`${sel} w-28`} value={find} placeholder="#ID" onChange={(e) => { setFind(e.target.value); reset(); }} /></label>
-      </div>
+        <label className="flex flex-col gap-1">find by id<input className={`${sel} w-28`} value={draft.find} placeholder="#ID" onChange={(e) => set({ find: e.target.value })} /></label>
+        <button type="submit" className="rounded-lg border border-brand-500 bg-brand-500 px-4 py-1 text-theme-xs font-semibold text-white hover:bg-brand-600">Apply</button>
+        <button type="button" className={btn} onClick={clear}>clear</button>
+        {bad ? <span className="self-center text-error-500">{bad}</span>
+          : waiting ? <span className="self-center text-gray-400">measuring…</span>
+          : unsent ? <span className="self-center text-warning-600">changed — press Apply to use it</span> : null}
+      </form>
       {err && <p className="mt-3 text-theme-xs text-error-500">could not read the room strategies — {err}</p>}
-      {d && (
+      {d && asked && (
         <>
           <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
-            {d.matched.toLocaleString()} of {d.kept.toLocaleString()} kept · {fmtWhen(d.from)} to {fmtWhen(d.to)} · ${d.margin} a trade at {d.leverage}x
+            {d.matched.toLocaleString()} of {d.kept.toLocaleString()} kept · {asked.days ? `last ${asked.days} day${asked.days === 1 ? "" : "s"}: ` : ""}{fmtWhen(d.from)} to {fmtWhen(d.to)}
+            {words.length > 0 && ` · ${words.join(" · ")}`} · ${d.margin} a trade at {d.leverage}x
             {d.reality.took != null ? ` · reality check: practice takes ${(100 * d.reality.took).toFixed(0)}% of the backtest's trades, ${fmtMoney(-(d.reality.gap ?? 0))} a trade worse`
               : d.reality_pending ? " · the reality check is still being worked out (about a minute after a restart) — the column after it fills in then" : ""}
           </p>
+          {d.kept > 0 && pastEnd && d.data_end != null && (
+            <p className="mt-2 rounded-lg border border-warning-200 bg-warning-50 px-3 py-2 text-theme-xs text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-400">
+              {d.with_trades === 0
+                ? `None of the ${d.kept.toLocaleString()} has a trade in these dates: their saved trades end ${fmtWhenMs(d.data_end)}. `
+                : `${d.with_trades.toLocaleString()} of the ${d.kept.toLocaleString()} have a trade in these dates, and their saved trades end ${fmtWhenMs(d.data_end)}, so nothing after that is in these numbers. `}
+              Prompt 4 measured them up to then; run it again (Prompts, at the bottom of this page) to measure them up to today.
+              {(asked.min_winrate > 0 || asked.min_profit != null) && " A row with no trade in these dates passes no win % or profit floor."}
+            </p>
+          )}
           {d.kept === 0 ? (
             <p className="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">No winner kept yet — run prompt 4 and its winners land here.</p>
           ) : (
             <div className="mt-2 overflow-x-auto">
               <table className="w-full min-w-[1200px] text-theme-xs">
                 <thead><tr className="border-b border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                  {["ID", "Rules", "Found", "Trades", "A day", "Won / lost", "Win rate", "Break-even", "Profit",
-                    "After reality check", "Worst day", "Worst losing run", "Most open", "Money needed", "Worst month", "Room can run it"].map((h) => <th key={h} className={th}>{h}</th>)}
+                  {cols.map((h) => <th key={h} className={th}>{h}</th>)}
                 </tr></thead>
                 <tbody className="divide-y divide-gray-100 text-gray-700 dark:divide-white/[0.05] dark:text-gray-300">
                   {d.rows.map((r) => (
-                    <tr key={r.id}>
-                      <td className={td}><CopyId id={r.id} /></td>
-                      <td className="min-w-[280px] max-w-[360px] px-2 py-1.5 text-gray-700 dark:text-gray-300">{r.words}
-                        {!r.still_works && <span className="ml-1 rounded bg-warning-50 px-1 text-[10px] text-warning-700 dark:bg-warning-500/10">stopped working</span>}</td>
-                      <td className={td}>{r.found_by} · {fmtWhen(r.found_at)}</td>
-                      <td className={td}>{r.trades.toLocaleString()}</td>
-                      <td className={td}>{r.per_day}</td>
-                      <td className={td}>{r.wins.toLocaleString()} / {r.losses.toLocaleString()}</td>
-                      <td className={td}>{pct(r.winrate)}</td>
-                      <td className={td}>{pct(r.break_even)}</td>
-                      <td className={`${td} font-semibold ${tone(r.profit)}`}>{fmtMoney(r.profit)}</td>
-                      <td className={`${td} ${tone(r.corrected)}`}>{fmtMoney(r.corrected)}</td>
-                      <td className={`${td} ${tone(r.worst_day)}`}>{fmtMoney(r.worst_day)}</td>
-                      <td className={td}>{r.worst_run_n ? `${fmtMoney(r.worst_run)} over ${r.worst_run_n}` : "—"}</td>
-                      <td className={td}>{r.max_open}</td>
-                      <td className={td}>${r.money_needed.toLocaleString()}</td>
-                      <td className={`${td} ${tone(r.worst_month)}`}>{fmtMoney(r.worst_month)}</td>
-                      <td className={td}>{r.deployable ? "yes" : <span title={r.deploy_why} className="text-gray-400">needs a new switch</span>}</td>
-                    </tr>
+                    <Fragment key={r.id}>
+                      <tr className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03]" title="show its trades in these dates"
+                        tabIndex={0} onClick={() => setOpen(open === r.id ? null : r.id)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) setOpen(open === r.id ? null : r.id); }}>
+                        <td className={td} onClick={(e) => e.stopPropagation()}><CopyId id={r.id} /></td>
+                        <td className="min-w-[280px] max-w-[360px] px-2 py-1.5 text-gray-700 dark:text-gray-300">{r.words}
+                          {!r.still_works && <span className="ml-1 rounded bg-warning-50 px-1 text-[10px] text-warning-700 dark:bg-warning-500/10">stopped working</span>}</td>
+                        <td className={td}>{r.found_by} · {fmtWhen(r.found_at)}</td>
+                        <td className={td}>{r.trades.toLocaleString()} <span className="text-gray-400">{open === r.id ? "▾" : "▸"}</span></td>
+                        <td className={td}>{r.per_day}</td>
+                        <td className={td}>{r.wins.toLocaleString()} / {r.losses.toLocaleString()}</td>
+                        <td className={td}>{pct(r.winrate)}</td>
+                        <td className={td}>{pct(r.break_even)}</td>
+                        <td className={`${td} font-semibold ${tone(r.profit)}`}>{fmtMoney(r.profit)}</td>
+                        <td className={`${td} ${tone(r.corrected)}`}>{fmtMoney(r.corrected)}</td>
+                        <td className={`${td} ${tone(r.worst_day)}`}>{fmtMoney(r.worst_day)}</td>
+                        <td className={td}>{r.worst_run_n ? `${fmtMoney(r.worst_run)} over ${r.worst_run_n}` : "—"}</td>
+                        <td className={td}>{r.max_open}</td>
+                        <td className={td}>${r.money_needed.toLocaleString()}</td>
+                        <td className={`${td} ${tone(r.worst_month)}`}>{fmtMoney(r.worst_month)}</td>
+                        <td className={td}>{r.deployable ? "yes" : <span title={r.deploy_why} className="text-gray-400">needs a new switch</span>}</td>
+                      </tr>
+                      {open === r.id && (
+                        <tr><td colSpan={cols.length} className="bg-gray-50 px-3 py-3 dark:bg-white/[0.02]">
+                          <StrategyTrades id={r.id} from_s={d.from} to_s={d.to} />
+                        </td></tr>
+                      )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
-          <PageButtons cur={d.page} pages={d.pages} goto={setPage} what="room strategies" />
+          <PageButtons cur={d.page} pages={d.pages} goto={(n) => { setPage(n); setOpen(null); }} what="room strategies" />
         </>
       )}
+    </div>
+  );
+}
+
+/** One room strategy's trades that closed in the dates its row was measured
+ *  over — the same trades the row counts — oldest first, with the running
+ *  total and the TOTAL PROFIT for the dates; ten a page, paged by the server. */
+function StrategyTrades({ id, from_s, to_s }: { id: string; from_s: number; to_s: number }) {
+  const [page, setPage] = useState(1);
+  const [got, setGot] = useState<{ key: string; d: RoomStrategyTrades } | null>(null);
+  const [err, setErr] = useState("");
+  const key = `${id}|${from_s}|${to_s}|${page}`;
+  useEffect(() => {
+    let live = true;
+    api.roomStrategyTrades({ id, from_s, to_s, page })
+      .then((x) => { if (live) { setGot({ key: `${id}|${from_s}|${to_s}|${page}`, d: x }); setErr(""); } })
+      .catch((e) => { if (live) setErr(String(e?.message ?? e)); });
+    return () => { live = false; };
+  }, [id, from_s, to_s, page]);
+  const th = "px-2 py-1 text-start font-medium whitespace-nowrap";
+  const td = "px-2 py-1 whitespace-nowrap";
+  if (err) return <p className="text-theme-xs text-error-500">could not read #{id}&apos;s trades — {err}</p>;
+  if (!got) return <p className="text-theme-xs text-gray-400">reading #{id}&apos;s trades…</p>;
+  const d = got.d;
+  return (
+    <div className={got.key === key ? "" : "opacity-60"}>
+      <p className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">
+        TOTAL PROFIT <span className={tone(d.profit)}>{fmtMoney(d.profit)}</span>
+        <span className="font-normal text-gray-500 dark:text-gray-400"> over {d.trades.toLocaleString()} trade{d.trades === 1 ? "" : "s"} ({d.wins.toLocaleString()} won, {d.losses.toLocaleString()} lost) that closed {fmtWhen(d.from)} to {fmtWhen(d.to)} · ${d.margin} a trade at {d.leverage}x</span>
+      </p>
+      {d.trades === 0 ? (
+        <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
+          No trade of #{d.id} closed in these dates.{d.first != null && d.last != null
+            ? ` Its ${d.saved.toLocaleString()} saved trades closed ${fmtWhenMs(d.first)} to ${fmtWhenMs(d.last)}.` : " It has no saved trades."}
+        </p>
+      ) : (
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full min-w-[560px] text-theme-xs">
+            <thead><tr className="border-b border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400">
+              {["#", "Opened", "Closed", "Held", "Profit", "Running total"].map((h) => <th key={h} className={th}>{h}</th>)}
+            </tr></thead>
+            <tbody className="divide-y divide-gray-100 text-gray-700 dark:divide-white/[0.05] dark:text-gray-300">
+              {d.rows.map((t) => (
+                <tr key={t.n}>
+                  <td className={td}>{t.n}</td>
+                  <td className={td}>{fmtWhenMs(t.opened)}</td>
+                  <td className={td}>{fmtWhenMs(t.closed)}</td>
+                  <td className={td}>{heldFor(t.closed - t.opened)}</td>
+                  <td className={`${td} ${tone(t.profit)}`}>{fmtMoney(t.profit)}</td>
+                  <td className={`${td} ${tone(t.total)}`}>{fmtMoney(t.total)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="mt-1 text-[10px] text-gray-400">The replay kept when each trade opened and closed and what it made — not which coin it was on.</p>
+      <PageButtons cur={d.page} pages={d.pages} goto={setPage} what="room strategy trades" />
     </div>
   );
 }

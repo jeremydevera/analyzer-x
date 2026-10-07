@@ -1224,6 +1224,14 @@ export function dateBoxValue(daysBack = 0): string {
   return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
 }
 
+/** The VALUE of an <input type="date"> for the local day that holds the
+ *  instant `seconds` — again a box's value, never a printed date. */
+export function dateBoxAt(seconds: number): string {
+  const d = new Date(seconds * 1000);
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+}
+
 export type RoomStrategies = {
   rows: { id: string; words: string; found_at: number; found_by: string; run: string | null;
     deployable: boolean; deploy_why: string; window: number; tp: string; max_sl: number;
@@ -1235,6 +1243,20 @@ export type RoomStrategies = {
   reality: { took: number | null; gap: number | null }; margin: number; leverage: number;
   /** the reality check is still being worked out (the first minute or two after a restart) */
   reality_pending?: boolean;
+  /** how many of ALL kept have a trade in the dates, before any filter */
+  with_trades: number;
+  /** the first and last close across every kept winner's saved trades, ms */
+  data_start: number | null; data_end: number | null;
+};
+/** One room strategy's trades that closed in the chosen dates, oldest first,
+ *  paged by the server (room_strategies.trades). No coin: the replay kept only
+ *  when each trade opened, closed and what it made. */
+export type RoomStrategyTrades = {
+  id: string; words: string; from: number; to: number;
+  trades: number; wins: number; losses: number; profit: number;
+  rows: { n: number; opened: number; closed: number; profit: number; total: number }[];
+  page: number; pages: number; per: number;
+  saved: number; first: number | null; last: number | null; margin: number; leverage: number;
 };
 export type RoomBtSide = { trades: number; wins: number; losses: number; winrate: number | null;
   profit: number; worst_run: number; worst_run_trades: number };
@@ -1421,6 +1443,11 @@ export const api = {
     if (q.deployable) p.set("deployable", q.deployable);
     if (q.find) p.set("find", q.find);
     return get<RoomStrategies>(`/api/forecasts/room-strategies?${p}`);
+  },
+  roomStrategyTrades: (q: { id: string; from_s: number; to_s: number; page?: number }) => {
+    const p = new URLSearchParams({ id: q.id, from_s: String(Math.floor(q.from_s)),
+      to_s: String(Math.floor(q.to_s)), page: String(q.page ?? 1) });
+    return get<RoomStrategyTrades>(`/api/forecasts/room-strategies/trades?${p}`);
   },
   // Backtest a room = a replay of its own rules, day by day (Oct 02, 2026);
   // paged and filtered by the server, ten a page

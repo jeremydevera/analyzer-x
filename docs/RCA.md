@@ -172,6 +172,96 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-N — Room strategies listed rule sets that never traded as passing "min win 90%", and showed "992 of 992" under a box that said 90
+
+**CEO**
+
+* You typed 90 in "min win %" and the Room strategies list still said
+  "992 of 992 kept"; the real answer for 90% over those dates was 2. And on
+  the old "last 15 days" button, a 90% floor listed 32 rule sets when only 6
+  had really won 90% — the other 26 had not made a single trade in those
+  days.
+* Why: the list asked the server on every keystroke and showed whichever
+  answer it had, even one for an older box; and a rule set with no trades
+  has no win rate, which the filter read as "nothing to fail".
+* What stops it now: nothing is asked until you press Apply, an answer that
+  does not match what you applied is thrown away, the line says
+  "measuring…" while it waits, and a rule set with no trade in the dates
+  passes no win-rate or profit floor.
+
+**DEV**
+
+* `tradingagents/room_strategies.py:529` `table()` — the floor was
+  `row["winrate"] is not None and row["winrate"] < min_winrate`, so a row
+  with 0 trades in the window (`winrate` None) passed every win-rate floor,
+  and `row["profit"] < min_profit` passed it through any profit floor at or
+  below 0. In the browser, `RoomStrategiesSection`'s `load` depended on every
+  box and `.then(setD)` took any answer, in arrival order.
+* Invariants broken: **a filter is a claim a row has to MEET, and a row with
+  nothing to measure meets none**; and **an answer is shown only under the
+  ask it answers** (`RoomForecasts.tsx:1106`, `key === want.current`).
+* Guards: `tests/test_prompt4_room_strategies.py::test_a_row_with_no_trade_in_the_dates_passes_no_floor`,
+  `::test_an_answer_is_shown_only_if_it_answers_what_was_applied`,
+  `::test_nothing_is_asked_until_apply`.
+
+**SAW** — the operator's screenshot, Oct 07, 2026 3:37pm: Room strategies
+with "min win %" 90, from Sep 08, 2026 to Oct 08, 2026, and under it
+"992 of 992 kept · Sep 08, 2026 12:00am to Oct 08, 2026 11:59pm"; their
+words: *"i want a button to apply filters on this"*.
+
+**TIMELINE**
+
+1. Oct 02, 2026 — prompt 4's five rounds keep 992 winners holding
+   4,302,254 saved trades. Measured on Oct 07: the oldest closes
+   Jul 01, 2026 1:00am, the newest **Oct 02, 2026 8:00am** — the end of the
+   replay they were measured on. Nothing has measured them since.
+2. From then, any date range that holds a rule set's quiet days gives that
+   row 0 trades and win rate "—" — and the floor let it through.
+3. Measured on the real store, Oct 07, 2026, over the old "last 15 days"
+   button's dates (Sep 23 to Oct 08, 2026 on the operator's screen): 26 of
+   the 992 had no trade; with 90% typed the old code listed **32** rows, the
+   fixed code **6** (#4C3A97F6, #93EC0CAD, #BAA630BE, #EBC4E81D, #5B73FFD6,
+   #1FC0DC96). Over the last 30 days no row was empty, so both give **2**
+   (#6F6097F0 91.3%, #93EC0CAD 90.6%). Over the last 3 days every one of the
+   992 is empty: the old code would list all **992** at 90%, the fixed code 0.
+4. Oct 07, 2026 3:37pm — the screenshot: 90 in the box, "992 of 992" on the
+   list. The server answers that window at 90% with 2 of 992 (asked directly
+   minutes later), so the list on screen was an answer to an earlier ask: every
+   keystroke sent its own request, nothing checked an answer against the
+   boxes, and nothing on screen said a newer answer was still coming.
+5. This fix: Apply (or Enter) sends the boxes together; answers to anything
+   but the applied ask are dropped; "measuring…" shows while the right one
+   is coming; the line names the filters of the answer it sits over; a row
+   with no trade in the dates passes no floor; and a range past the saved
+   trades says where they end and that prompt 4 is how to get newer ones.
+
+**ROOT CAUSE** — `if row["winrate"] is not None and row["winrate"] <
+min_winrate: continue` (and the same shape for profit): "no number" was
+treated as "nothing to fail". In the page, `.then((x) => { setD(x) })` with
+no check that `x` answered the boxes now on screen.
+
+**WHY IT WAS NOT CAUGHT** — the one table test,
+`test_the_table_re_measures_over_exactly_the_chosen_dates`, used a winner
+with trades inside every window it asked about, so no row ever reached the
+floor without a win rate; and every test of this panel reads its source for
+the call it makes — none asks what is on screen when two answers come back,
+or when an answer comes back for a box the operator has already changed.
+
+**COST** — none in money. The list the operator picks room rules from could
+show rule sets that never traded in the chosen days as clearing a win-rate
+floor — 26 of 32 rows on a 15-day 90% filter.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_prompt4_room_strategies.py`:
+`::test_a_row_with_no_trade_in_the_dates_passes_no_floor` (red on the old
+`table()`: 2 rows where it wants 1, for both a 60% and a $0 floor),
+`::test_an_answer_is_shown_only_if_it_answers_what_was_applied`,
+`::test_nothing_is_asked_until_apply`,
+`::test_a_range_past_the_saved_trades_says_where_they_end`.
+
+---
+
 ## RCA-2026-10-07-M — two minutes after the 3:37pm restart the Forecast page crashed 21 times while its practice numbers were still being made
 
 **CEO**

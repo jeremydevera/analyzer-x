@@ -142,9 +142,150 @@ def test_the_page_shows_the_room_strategies_and_asks_the_server():
     # shown on the Forecast page directly under Backtest a room (Oct 07, 2026)
     page = (ROOT / "webapp/src/app/(admin)/forecast-v2/page.tsx").read_text(encoding="utf-8")
     assert "<RoomBacktest /><RoomStrategiesSection />" in page
-    assert "api.roomStrategies({ from_s: dayStart(from), to_s: dayStart(to) + 86_399," in src
+    # the server is asked with what was APPLIED, never with the boxes as typed
+    assert "api.roomStrategies({ from_s: ask.from_s, to_s: ask.to_s, min_winrate: ask.min_winrate," in src
     api_py = (ROOT / "tradingagents/api.py").read_text(encoding="utf-8")
     assert '@app.get("/api/forecasts/room-strategies")' in api_py
+    assert '@app.get("/api/forecasts/room-strategies/trades")' in api_py
+
+
+# ------------------------------------------- Apply, last N days, a row's trades
+# Operator, Oct 07, 2026 3:37pm: "i want a button to apply filters on this /
+# also why do i have last 15 days and last 30 days dropdown? / what i want is
+# for it to be textbox, if i input 3 days show me the room strat and its trade
+# for past 3 days". Trades on the file's one timeline: every one closes by
+# Oct 02, 2026 (END), as every trade prompt 4 saved does.
+def _keep_two():
+    """#A traded inside Sep 20-30 (2 wins, 1 loss); #B only in July."""
+    a = rst.cfg(15, 70, 50, ">", 2.0)
+    b = rst.cfg(30, 80, 20, ">", 2.0)
+    ta = _trades([(2026, 9, 21, 1.0), (2026, 9, 22, -0.5), (2026, 9, 25, 1.0), (2026, 7, 5, 1.0)])
+    ta.sort(key=lambda x: x[1])                              # saved by close, as the store is
+    tb = _trades([(2026, 7, 10, 1.0), (2026, 7, 11, 1.0)])
+    rst.keep([{"id": rst.sid(c), "cfg": c, "words": fr.words(c), "deployable": True, "deploy_why": "",
+               "p4": rst.measure(t, END, REAL), "trades": t} for c, t in ((a, ta), (b, tb))],
+             "r1", "RUN", now=1000)
+    return rst.sid(a), rst.sid(b)
+
+
+def test_a_row_with_no_trade_in_the_dates_passes_no_floor():
+    """On the old "last 15 days" button 26 of the 992 kept had no trade and a
+    90% floor listed 32 rows — those 26 beside the 6 that really won 90%
+    (RCA-2026-10-07-N). No win rate cannot clear a win-rate floor, and making
+    nothing in the dates cannot clear a profit floor."""
+    a, b = _keep_two()
+    lo, hi = ms(2026, 9, 20, 0) / 1000, ms(2026, 9, 30, 23) / 1000
+    plain = rst.table(lo, hi, reality=REAL)
+    assert plain["matched"] == 2 and plain["with_trades"] == 1, "no floor: every kept row, zeros and all"
+    for floor in ({"min_winrate": 60}, {"min_profit": 0.0}, {"min_profit": -100.0}):
+        got = rst.table(lo, hi, reality=REAL, **floor)
+        assert [r["id"] for r in got["rows"]] == [a], floor
+    assert rst.table(lo, hi, reality=REAL, min_winrate=90)["matched"] == 0, "#A won 2 of 3 = 66.7%"
+    # where the saved trades begin and end rides with every answer
+    assert plain["data_start"] == ms(2026, 7, 5) and plain["data_end"] == ms(2026, 9, 25)
+    past = rst.table(ms(2026, 10, 4, 0) / 1000, ms(2026, 10, 7, 0) / 1000, reality=REAL, min_winrate=90)
+    assert past["with_trades"] == 0 and past["matched"] == 0 and past["kept"] == 2
+
+
+def test_a_rows_trades_are_exactly_the_ones_its_row_counts():
+    """Click a row: its trades that CLOSED in the same dates, oldest first,
+    the running total, the TOTAL for the dates — and the row's own numbers."""
+    a, _ = _keep_two()
+    lo, hi = ms(2026, 9, 20, 0) / 1000, ms(2026, 9, 30, 23) / 1000
+    row = rst.table(lo, hi, reality=REAL, find=a)["rows"][0]
+    got = rst.trades("#" + a.lower(), lo, hi)
+    assert (got["trades"], got["wins"], got["losses"], got["profit"]) == \
+        (row["trades"], row["wins"], row["losses"], row["profit"]) == (3, 2, 1, 1.5)
+    assert [t["closed"] for t in got["rows"]] == [ms(2026, 9, 21), ms(2026, 9, 22), ms(2026, 9, 25)]
+    assert [t["total"] for t in got["rows"]] == [1.0, 0.5, 1.5], "a running total, oldest first"
+    assert got["rows"][0]["opened"] == ms(2026, 9, 21) - 3_600_000 and got["saved"] == 4
+    assert got["first"] == ms(2026, 7, 5) and got["last"] == ms(2026, 9, 25)
+    paged = rst.trades(a, lo, hi, page=2, per=2)
+    assert paged["pages"] == 2 and [t["n"] for t in paged["rows"]] == [3]
+    assert paged["rows"][0]["total"] == 1.5, "the running total runs across pages"
+    none = rst.trades(a, ms(2026, 10, 4, 0) / 1000, ms(2026, 10, 7, 0) / 1000)
+    assert none["trades"] == 0 and none["rows"] == [] and none["profit"] == 0.0 and none["saved"] == 4
+    with pytest.raises(KeyError):
+        rst.trades("NOSUCHID", lo, hi)
+
+
+def test_the_trades_route_pages_ten_and_names_a_missing_id():
+    from fastapi import HTTPException
+
+    from tradingagents import api
+    from tradingagents import forecast_v2_api as f2a
+
+    a, _ = _keep_two()
+    lo, hi = ms(2026, 7, 1, 0) / 1000, ms(2026, 9, 30, 23) / 1000
+    got = api.room_strategy_trades_route(a, lo, hi)
+    assert got["per"] == f2a.PER_PAGE and got["trades"] == 4
+    with pytest.raises(HTTPException) as e:
+        api.room_strategy_trades_route("NOSUCHID", lo, hi)
+    assert e.value.status_code == 404 and "NOSUCHID" in e.value.detail
+    with pytest.raises(HTTPException) as e:
+        api.room_strategy_trades_route(a, hi, lo)
+    assert e.value.status_code == 400
+
+
+def _section() -> str:
+    src = (ROOT / "webapp/src/components/forecast/RoomForecasts.tsx").read_text(encoding="utf-8")
+    return src.split("export function RoomStrategiesSection()")[1].split("\nfunction StrategyTrades(")[0]
+
+
+def test_nothing_is_asked_until_apply():
+    """Every box is a draft. Apply (or Enter in a box) sends them together;
+    the boxes never ask the server or move the page while being typed in."""
+    s = _section()
+    assert 'onSubmit={(e) => { e.preventDefault(); apply(); }}' in s
+    assert '<button type="submit"' in s and ">Apply</button>" in s and ">clear</button>" in s
+    for line in [l for l in s.splitlines() if "onChange=" in l]:
+        assert "setPage" not in line and "reset()" not in line and "api." not in line, line
+    assert "useLiveRefresh(load, 60_000, [load])" in s and "}, [applied, page]);" in s
+    assert "changed — press Apply to use it" in s, "a box typed in but not applied says so"
+    # a box typed in but not a number is refused out loud, never sent as no filter
+    assert "min win % takes a number" in _src_all() and "last N days takes a number of days above 0" in _src_all()
+
+
+def _src_all() -> str:
+    return (ROOT / "webapp/src/components/forecast/RoomForecasts.tsx").read_text(encoding="utf-8")
+
+
+def test_an_answer_is_shown_only_if_it_answers_what_was_applied():
+    """Oct 07, 2026 3:37pm: the boxes said min win 90 over "992 of 992 kept"
+    — an answer to an earlier ask (the server answers 2 of 992 for 90%)."""
+    s = _section()
+    assert "if (key === want.current) { setShown({ key, ask, d: x });" in s
+    assert "const waiting = !err && (!shown || shown.key !== wantKey);" in s and "measuring…" in s
+    # the line above the table names the filters of the ANSWER, not the boxes
+    assert "const words = asked ? rsFilterWords(asked) : [];" in s
+    assert "{words.length > 0 && ` · ${words.join(\" · \")}`}" in s
+
+
+def test_last_n_days_is_one_box_not_two_buttons():
+    src = _src_all()
+    assert ">last 15 days</button>" not in src and ">last 30 days</button>" not in src
+    assert "const quick = " not in src
+    s = _section()
+    assert ">or last N days<input" in s and 'placeholder="e.g. 3"' in s
+    # the last N x 24 hours up to the moment Apply is pressed
+    assert "from_s: days ? nowS - Math.round(days * 86_400) : dayStart(f.from)," in src
+    assert "to_s: days ? nowS : dayStart(f.to) + 86_399," in src
+    assert "disabled={byDays}" in s, "the dates wait while a number of days decides"
+
+
+def test_a_range_past_the_saved_trades_says_where_they_end():
+    """Every saved trade closes by Oct 02, 2026 8:00am, so "last 3 days" holds
+    none: the page names what it examined and how to get newer trades,
+    instead of 992 rows of zeros reading as strategies that did nothing."""
+    s = _section()
+    assert "d.to * 1000 > d.data_end" in s and "d.with_trades === 0" in s
+    assert "their saved trades end ${fmtWhenMs(d.data_end)}" in s
+    assert "run it again (Prompts, at the bottom of this page) to measure them up to today" in s
+    trades = _src_all().split("\nfunction StrategyTrades(")[1]
+    assert "TOTAL PROFIT" in trades and "not which coin it was on" in trades
+    assert "api.roomStrategyTrades({ id, from_s, to_s, page })" in trades
+    assert '<StrategyTrades id={r.id} from_s={d.from} to_s={d.to} />' in s, \
+        "a row's trades are read over the dates its row was measured on"
 
 
 def test_the_merge_scores_every_rule_set_and_keeps_trades_for_winners_only(tmp_path, monkeypatch):

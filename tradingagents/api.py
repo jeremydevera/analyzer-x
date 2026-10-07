@@ -1337,6 +1337,23 @@ def room_strategies_route(from_s: float, to_s: float, min_winrate: float = 0,
         raise HTTPException(400, str(exc)) from exc
 
 
+@app.get("/api/forecasts/room-strategies/trades")
+def room_strategy_trades_route(id: str, from_s: float, to_s: float, page: int = 1) -> dict:
+    """Forecast -> Room strategies -> a row clicked: that rule set's trades
+    that closed in the chosen dates — the same trades its row counts — oldest
+    first with the running total and the TOTAL for the dates, ten a page
+    (operator, Oct 07, 2026: "if i input 3 days show me the room strat and its
+    trade for past 3 days")."""
+    from tradingagents import forecast_v2_api as _f2a, room_strategies as _rst
+
+    if to_s < from_s:
+        raise HTTPException(400, "the end of the range is before its start")
+    try:
+        return _rst.trades(id, from_s, to_s, page=page, per=_f2a.PER_PAGE)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc.args[0])) from exc
+
+
 @app.get("/api/forecasts/room-backtest")
 def room_backtest_route(room: str, from_s: float, to_s: float, sort: str = "gap",
                         page: int = 1) -> dict:

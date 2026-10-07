@@ -467,6 +467,22 @@ def _measured(from_s: float, to_s: float, reality: dict) -> list[dict]:
     return rows
 
 
+def span() -> tuple[int | None, int | None]:
+    """When the saved trades begin and end: the first and the last CLOSE
+    across every kept winner, in ms. A winner's trades are measured once, on
+    the replay prompt 4 ran on (Oct 02, 2026: every trade closes by 8:00am
+    that day), so a date range past the end holds nothing until prompt 4 runs
+    again — and the page has to say so rather than print zeros as a result."""
+    lo = hi = None
+    for w in kept():
+        t = w["trades"]
+        if len(t):
+            a, b = float(t[:, 1].min()), float(t[:, 1].max())
+            lo = a if lo is None else min(lo, a)
+            hi = b if hi is None else max(hi, b)
+    return (int(lo) if lo is not None else None, int(hi) if hi is not None else None)
+
+
 def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: float | None = None,
           window: int = 0, deployable: str = "", find: str = "", sort: str = "worst_month",
           page: int = 1, per: int = 25, reality: dict | None = None) -> dict:
@@ -477,7 +493,16 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
     do not need walking again to answer the same question. `reality` is
     the reality check to use — the API hands in the Forecast page's own copy
     (forecast_v2_api.live), because working it out took 14 s a request (122 s
-    on the first after a restart) while the page asks every minute."""
+    on the first after a restart) while the page asks every minute.
+
+    A ROW WITH NO TRADE IN THE DATES PASSES NO FLOOR (Oct 07, 2026). It has
+    no win rate and made nothing, so "win rate 90% or better" and "made at
+    least $X" are claims it cannot meet. It used to pass both: on the old
+    "last 15 days" button (Sep 23 to Oct 08, 2026 on the operator's screen)
+    26 of the 992 kept had no trade, and a 90% floor listed 32 rows — those
+    26 beside the 6 that really won 90% or more. Over the last 3 days all 992
+    have none (every saved trade closes by Oct 02, 2026 8:00am), so the floor
+    would have kept every one. RCA-2026-10-07-N."""
     if reality is None:
         from tradingagents import forecast_v2 as f2
 
@@ -501,9 +526,9 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
     for row in measured:
         if want and row["id"] != want:
             continue
-        if row["winrate"] is not None and row["winrate"] < min_winrate:
+        if min_winrate and (row["winrate"] is None or row["winrate"] < min_winrate):
             continue
-        if min_profit is not None and row["profit"] < min_profit:
+        if min_profit is not None and (not row["trades"] or row["profit"] < min_profit):
             continue
         if window and row["window"] != int(window):
             continue
@@ -518,9 +543,56 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
     rows.sort(key=key, reverse=True)
     pages = max(1, -(-len(rows) // per))
     page = min(max(1, int(page)), pages)
+    first, last = span()
     return {"rows": rows[(page - 1) * per: page * per], "matched": len(rows), "kept": total,
             "page": page, "pages": pages, "from": from_s, "to": to_s,
+            # how many of ALL kept have a trade in the dates, before any filter,
+            # and where the saved trades begin and end — so an empty range names
+            # what it examined (CLAUDE.md, "an empty page may never speak for
+            # the store") instead of reading as 992 strategies that did nothing
+            "with_trades": sum(1 for r in measured if r["trades"]),
+            "data_start": first, "data_end": last,
             "reality": {k: reality.get(k) for k in ("took", "gap")}, "margin": 5.0, "leverage": 20}
+
+
+def trades(rid: str, from_s: float, to_s: float, *, page: int = 1, per: int = 10) -> dict:
+    """One kept winner's trades that CLOSED in [from_s, to_s] — exactly the
+    trades its row in `table` counts — oldest first, each with the running
+    total, and the total for the dates (operator, Oct 07, 2026: "if i input 3
+    days show me the room strat and its trade for past 3 days"). Paged here,
+    ten a page like every list on the Forecast page.
+
+    What a trade carries is what the replay kept: when it opened, when it
+    closed and what it made at $5 x 20x — NOT which coin (research_merge keeps
+    `p4_trades` as (entry, exit, profit)). The page says so; it never guesses."""
+    import numpy as np
+
+    want = (rid or "").strip().lstrip("#").upper()
+    w = next((x for x in kept() if x["id"] == want), None)
+    if w is None:
+        raise KeyError(f"no room strategy #{want} is kept")
+    t = np.asarray(w["trades"], dtype=np.float64).reshape(-1, 3)
+    lo, hi = from_s * 1000, to_s * 1000
+    sel = t[(t[:, 1] >= lo) & (t[:, 1] <= hi)] if len(t) else t
+    sel = sel[np.lexsort((sel[:, 0], sel[:, 1]))] if len(sel) else sel   # by close, then open
+    n = len(sel)
+    p = sel[:, 2] if n else np.zeros(0)
+    run = np.cumsum(p) if n else np.zeros(0)
+    pages = max(1, -(-n // per))
+    page = min(max(1, int(page)), pages)
+    a, b = (page - 1) * per, page * per
+    rows = [{"n": a + i + 1, "opened": int(o), "closed": int(c), "profit": round(float(v), 2),
+             "total": round(float(r), 2)}
+            for i, (o, c, v, r) in enumerate(zip(sel[a:b, 0], sel[a:b, 1], p[a:b], run[a:b]))]
+    wins = int((p > 0).sum())
+    return {"id": want, "words": w["words"], "from": from_s, "to": to_s,
+            "trades": n, "wins": wins, "losses": n - wins,
+            "profit": round(float(p.sum()), 2) if n else 0.0,
+            "rows": rows, "page": page, "pages": pages, "per": per,
+            # this rule set's own saved trades, whatever the dates
+            "saved": len(t), "first": int(t[:, 1].min()) if len(t) else None,
+            "last": int(t[:, 1].max()) if len(t) else None,
+            "margin": 5.0, "leverage": 20}
 
 
 

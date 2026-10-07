@@ -1069,7 +1069,8 @@ export function RoomStrategiesSection() {
         <>
           <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
             {d.matched.toLocaleString()} of {d.kept.toLocaleString()} kept · {fmtWhen(d.from)} to {fmtWhen(d.to)} · ${d.margin} a trade at {d.leverage}x
-            {d.reality.took != null ? ` · reality check: practice takes ${(100 * d.reality.took).toFixed(0)}% of the backtest's trades, ${fmtMoney(-(d.reality.gap ?? 0))} a trade worse` : ""}
+            {d.reality.took != null ? ` · reality check: practice takes ${(100 * d.reality.took).toFixed(0)}% of the backtest's trades, ${fmtMoney(-(d.reality.gap ?? 0))} a trade worse`
+              : d.reality_pending ? " · the reality check is still being worked out (about a minute after a restart) — the column after it fills in then" : ""}
           </p>
           {d.kept === 0 ? (
             <p className="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">No winner kept yet — run prompt 4 and its winners land here.</p>

@@ -1207,6 +1207,8 @@ export type RoomStrategies = {
     worst_month: number | null; still_works: boolean }[];
   matched: number; kept: number; page: number; pages: number; from: number; to: number;
   reality: { took: number | null; gap: number | null }; margin: number; leverage: number;
+  /** the reality check is still being worked out (the first minute or two after a restart) */
+  reality_pending?: boolean;
 };
 export type RoomBtSide = { trades: number; wins: number; losses: number; winrate: number | null;
   profit: number; worst_run: number; worst_run_trades: number };

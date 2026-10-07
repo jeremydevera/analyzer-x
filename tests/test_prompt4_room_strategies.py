@@ -291,9 +291,36 @@ def test_the_route_uses_the_forecast_pages_own_reality_check(store, monkeypatch)
     def boom(*a, **k):
         raise AssertionError("worked the reality check out again")
     monkeypatch.setattr(f2, "live", boom)
-    monkeypatch.setattr(f2a, "live", lambda: {"reality": {"all": REAL}, "at": 0})
+    monkeypatch.setitem(f2a._LIVE, "value", {"reality": {"all": REAL}, "at": 0})
     got = api.room_strategies_route(ms(2026, 9, 1, 0) / 1000, ms(2026, 9, 30, 23) / 1000)
-    assert got["reality"] == REAL and got["kept"] == 0
+    assert got["reality"] == REAL and got["kept"] == 0 and got["reality_pending"] is False
+
+
+def test_the_first_ask_after_a_restart_answers_at_once(store, monkeypatch):
+    """Oct 07, 2026: while the first kept copy after a restart was being
+    made, the route worked the reality check out itself — 82 s — and the
+    page's proxy cut it ("Load failed" in Safari). Now it answers at once with
+    the check marked as still being worked out, and never computes it."""
+    from tradingagents import api
+    from tradingagents import forecast_v2 as f2
+    from tradingagents import forecast_v2_api as f2a
+
+    def boom(*a, **k):
+        raise AssertionError("worked the reality check out in the request")
+    monkeypatch.setattr(f2, "live", boom)
+    monkeypatch.setattr(f2a, "live", boom)
+    monkeypatch.setitem(f2a._LIVE, "value", None)
+    monkeypatch.setitem(f2a._LIVE, "busy", True)          # the first copy is being made
+    c = rst.cfg(30, 80, 20, ">", 2.0)
+    t = _trades([(2026, 9, 10, 1.0), (2026, 9, 12, -0.5)])
+    rst.keep([{"id": rst.sid(c), "cfg": c, "words": fr.words(c), "deployable": True, "deploy_why": "",
+               "p4": rst.measure(t, END, REAL), "trades": t}], "r1", "RUN", now=1000)
+    got = api.room_strategies_route(ms(2026, 9, 1, 0) / 1000, ms(2026, 9, 30, 23) / 1000)
+    assert got["reality_pending"] is True and got["kept"] == 1
+    row = got["rows"][0]
+    assert row["trades"] == 2 and row["corrected"] is None, "the column waits, the rows do not"
+    src = (ROOT / "webapp/src/components/forecast/RoomForecasts.tsx").read_text(encoding="utf-8")
+    assert "d.reality_pending" in src and "still being worked out" in src
 
 
 def test_a_round_is_dealt_across_every_account(monkeypatch):

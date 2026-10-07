@@ -1280,11 +1280,22 @@ def room_strategies_route(from_s: float, to_s: float, min_winrate: float = 0,
         raise HTTPException(400, "the end of the range is before its start")
     try:
         # the Forecast page's own reality check, kept fresh in the background —
-        # never worked out again per request (14 s each, 122 s after a restart)
-        reality = ((_f2a.live() or {}).get("reality") or {}).get("all")
-        return _rst.table(from_s, to_s, min_winrate=min_winrate, min_profit=min_profit,
-                          window=window, deployable=deployable, find=find, sort=sort, page=page,
-                          per=_f2a.PER_PAGE, reality=reality)
+        # never worked out again per request (14 s each, 122 s after a restart).
+        # NOT EVEN THE FIRST TIME (Oct 07, 2026): while the first copy after a
+        # restart was being made, `live()` answered {} and `table()` then
+        # worked the whole check out itself — 82 s, and the page's proxy cut
+        # the request, so Safari printed "Load failed". Now the kept copy is
+        # read as it is; until it exists the rows come back at once with the
+        # reality check marked as still being worked out.
+        have = _f2a._LIVE["value"]
+        if have is None and not _f2a._LIVE["busy"]:
+            threading.Thread(target=_f2a.live_refresh, name="forecast-v2-live", daemon=True).start()
+        reality = ((have or {}).get("reality") or {}).get("all")
+        out = _rst.table(from_s, to_s, min_winrate=min_winrate, min_profit=min_profit,
+                         window=window, deployable=deployable, find=find, sort=sort, page=page,
+                         per=_f2a.PER_PAGE, reality=reality if reality is not None else {})
+        out["reality_pending"] = reality is None
+        return out
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 

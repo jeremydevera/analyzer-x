@@ -172,6 +172,68 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-B — Room strategies said "Load failed" for the first minute or two after every restart
+
+**CEO**
+
+* Right after the site restarted, the Room strategies table on the Forecast
+  page said "could not read the room strategies — Load failed" instead of
+  showing its winners; a minute later it filled in by itself.
+* Why: the first time after a restart, the server worked out the reality
+  check from every room's trade record inside the request — 82 seconds — and
+  the page gave up waiting long before that.
+* What stops it now: the table answers at once from what is already kept,
+  and while the reality check is still being worked out it says so in one
+  line and fills that one column in a minute later.
+
+**DEV**
+
+* `tradingagents/api.py` `room_strategies_route` → `forecast_v2_api.live()`:
+  with no kept copy and one being made (`_LIVE["busy"]`), `live_refresh()`
+  returned `{}`, so `reality` was None and `room_strategies.table()` fell back
+  to `forecast_v2.live()` — the full 82 s rebuild — inside the request.
+* Invariant broken: **a request never does the background's work** — the
+  route reads the kept copy as it is (`_LIVE["value"]`), starts the refresh in
+  a thread if none is running, and serves `reality_pending` until it lands.
+* Guard: `tests/test_prompt4_room_strategies.py::test_the_first_ask_after_a_restart_answers_at_once`.
+
+**SAW** — found while checking the Forecast page after the operator's
+Oct 07, 2026 changes (Safari's engine, night mode, right after the rebuild):
+"could not read the room strategies — Load failed" under Room strategies.
+
+**TIMELINE**
+
+1. Oct 02, 2026 — RCA-2026-10-02-F moved the route onto the kept copy:
+   0.005 s once warm, but 134 s on the FIRST ask after a restart (noted then
+   as the Forecast page's own warm-up).
+2. Oct 07, 2026, after the site rebuild — the page asked first, the copy was
+   still being made, and the route computed the check itself: the page's
+   request was cut ("Load failed"); a direct ask took **82.2 s** and answered
+   200.
+3. Minutes later, the copy warm: `/api/forecast-v2` **0.02 s**, Room
+   strategies over a new date range **4.4 s**.
+4. After this fix the route never computes the check: a cold ask answers at
+   once with `reality_pending: true` and the rows (the test asserts the
+   expensive call is never made).
+
+**ROOT CAUSE** — `reality = (_f2a.live() or {})...` followed by
+`table(reality=None)`, whose None meant "work it out here".
+
+**WHY IT WAS NOT CAUGHT** — RCA-2026-10-02-F's guard stubbed
+`forecast_v2_api.live` to return a ready copy, so the one state that hurt —
+no copy yet, one being made — never appeared in a test; and every manual
+check after it was made with a warm server.
+
+**COST** — none in money; the table read as broken for up to two minutes
+after each restart.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_prompt4_room_strategies.py::test_the_first_ask_after_a_restart_answers_at_once`
+and the updated `::test_the_route_uses_the_forecast_pages_own_reality_check`.
+
+---
+
 ## RCA-2026-10-07-A — the Forecast page's tables were dark grey on dark at night, and Safari drew their dropdowns in day colours
 
 **CEO**

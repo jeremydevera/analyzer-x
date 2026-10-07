@@ -60,6 +60,20 @@ def test_a_prompt_is_written_verbatim_and_quoted(tmp_path):
     assert "> please fix the thing" in body
 
 
+def test_the_fixers_own_instructions_are_not_an_ask(tmp_path):
+    """The unattended fixer (error_fixer, Oct 07, 2026) runs `claude -p` with
+    TA_FIXER=1. Its prompt is the app's instructions, not the operator's
+    words, and this log is evidence of what THEY asked for."""
+    (tmp_path / "docs").mkdir()
+    subprocess.run([sys.executable, str(HOOK)],
+                   input=json.dumps({"prompt": "You are the FIXER for the analyzer-x app"}),
+                   text=True, capture_output=True, timeout=30,
+                   env={**os.environ, "CLAUDE_PROJECT_DIR": str(tmp_path), "TA_FIXER": "1"},
+                   check=False)
+    log = tmp_path / "docs/OPERATOR-ASKS.md"
+    assert not log.exists() or "FIXER" not in log.read_text(encoding="utf-8")
+
+
 def test_the_same_prompt_in_the_same_minute_is_written_once(tmp_path):
     """A model switch re-submitted one prompt and the file grew three
     identical blocks in a minute (Sep 21, 2026 9:15pm)."""

@@ -68,6 +68,12 @@ def _ends_blank(log) -> bool:
 
 
 def main() -> int:
+    # THE FIXER IS NOT THE OPERATOR (Oct 07, 2026). The unattended fixer runs
+    # `claude -p` with TA_FIXER=1 (tradingagents/error_fixer.py); its prompt
+    # is the app's own instructions, and this log is evidence of what THEY
+    # asked for.
+    if os.environ.get("TA_FIXER"):
+        return 0
     try:
         payload = json.loads(sys.stdin.read() or "{}")
     except Exception:

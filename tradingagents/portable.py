@@ -82,6 +82,44 @@ def unlock(fh) -> None:
         msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
 
 
+# ------------------------------------------------------------------ file swap
+def replace_retry(tmp, path, budget_s: float) -> None:
+    """Swap the finished file `tmp` onto `path`, retrying while Windows
+    refuses; past `budget_s`, remove `tmp` and raise the refusal.
+
+    Windows refuses a rename with PermissionError while another handle holds
+    either file open — WinError 5 when a reader holds the destination, 32
+    when one holds `tmp` (a scan of the new file) — usually for milliseconds.
+    POSIX never refuses a rename for a reader. A bare swap killed a room's
+    runner 9 times between Sep 13 and Oct 02, 2026 (RCA-2026-10-07-E); the
+    same refusal ended a backtest at 3,948 of 4,124 pairs (RCA-2026-09-18-B).
+
+    The pause starts at 5 ms and grows x1.5 to 100 ms. The budget is passed
+    at the CALL, so a module that shortens its own in a test keeps that
+    power. Only the refusal is retried; any other error is raised at once,
+    and `tmp` never outlives a failed swap.
+    """
+    tmp = Path(tmp)
+    deadline = time.monotonic() + budget_s
+    pause = 0.005
+    while True:
+        try:
+            tmp.replace(path)
+            return
+        except PermissionError:
+            if time.monotonic() < deadline:
+                time.sleep(pause)
+                pause = min(pause * 1.5, 0.1)
+                continue
+            with contextlib.suppress(OSError):
+                tmp.unlink()
+            raise
+        except OSError:
+            with contextlib.suppress(OSError):
+                tmp.unlink()
+            raise
+
+
 # ------------------------------------------------------------------ processes
 def pid_alive(pid) -> bool:
     """True when a process with this pid exists and is ours to see.

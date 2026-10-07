@@ -59,6 +59,19 @@ def home(tmp_path, monkeypatch):
     return tmp_path
 
 
+def test_a_half_written_save_is_not_a_backup(home):
+    """A settings save writes its own temp copy, `auto_trade.json.<pid>.<thread>.tmp`
+    (RCA-2026-10-07-E), and a runner killed mid-save leaves it behind — a copy
+    that may never have landed. Read as a backup, it would date a pair by a
+    settings file that never existed."""
+    import os
+
+    leftover = _snap(home, "4242.9.tmp", {KEY: ["GHOST_USDT"]})
+    os.utime(leftover, (1789490000, 1789490000))
+    assert leftover not in [f for _t, f in lh._snapshots()]
+    assert f"{KEY}|GHOST_USDT" not in lh.first_seen_in_settings()
+
+
 # ------------------------------------------------- 1. the fallback itself
 def test_a_pair_is_dated_by_the_first_backup_that_holds_it(home):
     got = lh.first_seen_in_settings()

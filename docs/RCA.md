@@ -172,6 +172,178 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-E — a room's runner died 9 times when Windows refused its save, and the Errors tab never said it had crashed
+
+**CEO**
+
+* What you saw: when a runner stopped and came back, the Errors tab only said
+  "Runner started again" and never said it had crashed, yet one refused save
+  had stopped a room's runner nine times since Sep 13, 2026. The last two were
+  #55D32617 at Oct 01, 2026 5:10pm and #CC94D9FB at Oct 02, 2026 7:08am.
+* Why: something reading a room's list of open trades, most likely the app
+  itself, held that file at the moment the runner saved it, so Windows refused
+  the save and the runner stopped. Its error message had no date, so the tab
+  could not see it, and it was written over the first lines of the room's own
+  log.
+* What stops it now: the save waits up to 3 seconds for the file to be free
+  (it landed after 0.35 seconds while a reader held it for 0.3 seconds). If a
+  runner ever does crash, the tab shows one dated "Program error" line saying
+  why, the trade record gets a crash row, and the log keeps every line.
+
+**DEV**
+
+* `tradingagents/auto_trader.py:6905` `run_cycle` → `save_state` (`:2111`) →
+  `_write_json` (`:1873`): `tmp.replace(path)` raised `PermissionError:
+  [WinError 5] Access is denied`. WinError 5 means another handle held the
+  DESTINATION, `auto_trade_state.json`, most likely a reader outside the state
+  lock such as `load_state` on the `/api/trade/*` routes or
+  `room_stats.open_trades` for the Forecast page. Nothing in `run_forever`
+  caught the error. `start_runner` (`:7085-7088`) hands the child the log at
+  its spawn offset, so the undated traceback overwrote the run's first lines
+  and never matched `room_errors._LINE`.
+* Invariants broken: **every swap the runner makes is retried while Windows
+  refuses it**, and **a crash is one dated line where its reader looks**. The
+  swaps in `auto_trader.py` (`_write_json`, `backfill_ledger_ids`) now go
+  through `portable.replace_retry(tmp, path, budget_s)`, with 3 s from
+  `auto_trader.REPLACE_BUDGET_S`. Each `_write_json` call writes its own temp
+  copy (`<name>.<pid>.<thread>.tmp`), because `auto_trade.json` has writers in
+  two processes and no lock between them. `db_jobs._write`
+  (`db_jobs.py:153-185`) and `forecast_v2.replace_retry`
+  (`forecast_v2.py:91-109`) keep their own copies of the same loop until
+  their owners move them onto the helper, and other modules still swap bare
+  (`cloud_sweep`, `live_ingest`, `market_sweep`, `storage_months` and
+  `sweep_orchestrator` among them). `run_forever` now logs `runner crashed on
+  an unhandled Exception — <Type>: <msg>`, which the tab files as
+  `exception`, appends a `runner_crash` row and exits 1. Before `run_forever`,
+  `__main__` uses `os.dup2` to put an `O_APPEND` handle of the room's log onto
+  fds 1 and 2.
+* Guard: `tests/test_runner_survives_a_busy_state_file.py` (10 tests), among
+  them:
+  * `test_a_refused_state_swap_does_not_end_the_cycle` (through `run_cycle`)
+  * `test_a_reader_holding_the_state_file_only_delays_the_save` (the real
+    WinError 5)
+  * `test_every_swap_in_the_runner_goes_through_the_retry` (reads the parsed
+    code of `auto_trader.py` only, never the other modules)
+  * `test_a_crash_is_one_dated_program_error_and_a_trade_record_row`
+  * `test_a_later_stderr_write_lands_after_the_lines_it_used_to_overwrite`
+    (the real `start_runner`)
+
+**SAW** — the operator asked three times. Oct 01, 2026 5:51pm, 41 minutes
+after #55D32617's 5:10pm crash: *"can you check my auto trade error tab and see
+what went wrong"*. The tab had existed since 10:03am that morning, and it could
+show that crash only as a restart. Oct 05, 2026 12:08am: *"can you check my
+errors in error tab, and see what can be fixed"*. Oct 07, 2026 7:03am: *"could
+you check the error tabs and fix the errors you see"*. The trade records hold
+49 restarts in the 7 days to Oct 07, 2026, and Auto Trade → Errors → Deployed
+Tabs words every one of them "the runner was started again". Its Program error
+filter (`kind=exception`) returned 0 groups and 0 events in all six rooms, so
+neither crash showed as a Program error; each was just one more of the 49
+"started again" rows.
+
+**TIMELINE**
+
+1. `Aug 19, 2026`: `_write_json` is written with a bare `tmp.replace(path)`
+   (97bdc4d8d7e8), on the Mac, where a reader never makes a rename fail. The
+   project moves to the Windows PC on Aug 25, 2026.
+2. `Sep 13, 2026` to `Sep 29, 2026`: Main's runner dies 5 times on that line,
+   in runs started Sep 13, Sep 14, Sep 18 and twice on Sep 29. The tracebacks
+   sit at log lines 137,050, 146,565, 234,192, 569,825 and 570,006. The
+   retired #DC57174E (line 1) and #B52662ED (line 3,344) die once each. Nine
+   is a minimum: only today's logs were searched, and a later stderr write can
+   erase an earlier traceback.
+3. `Sep 17, 2026 7:31pm`: the same refusal ends a v1 backtest at 3,948 of
+   4,124 pairs. RCA-2026-09-18-B raises `db_jobs._write`'s retry from 0.2 s to
+   3 s. Nobody looks at the runner's own swap.
+4. `Oct 01, 2026 10:03am`: the Errors tab ships (c9bfd01c), and moves under
+   Auto Trade at 10:09am. It counts every `runner_start` after a room's first
+   as "the runner was started again", and it reads dated log lines only.
+5. `Oct 01, 2026 5:10pm`: #55D32617 dies with `[WinError 5] Access is denied:
+   '...profiles\55D32617\auto_trade_state.json.tmp' ->
+   '...auto_trade_state.json'`, raised from `save_state` at the end of
+   `run_cycle`. Its last scan is that minute, and the supervisor starts it
+   again the same minute. The traceback lands on log lines 2-23, over that
+   run's own Oct 01, 2026 10:21am "loop starting" line.
+6. `Oct 01, 2026 5:51pm`: the operator asks the tab what went wrong. The only
+   trace of the 5:10pm crash it can show is one more "the runner was started
+   again".
+7. `Oct 02, 2026 7:08am`: #CC94D9FB dies the same way. Its last scan is at
+   7:07am and its new loop starts at 7:08am. The traceback sits on log lines
+   1-21, among the lines of the run started Sep 30, 2026 7:26pm.
+8. `Oct 02, 2026 8:41am` and `4:09pm`: second launches turned away ("another
+   auto-trader is already running", pids 6396, 25556 and 28452) write over
+   more first lines. "Loop starting" lines against starts read 9 of 10 on
+   #55D32617, 6 of 9 on #CC94D9FB and 8 of 9 on #6B08FF64.
+9. `Oct 05, 2026 12:08am` and `Oct 07, 2026 7:03am`: the operator asks twice
+   more. On Oct 07, 2026 the Program error filter answers 0 groups and 0
+   events in every room.
+10. `Oct 07, 2026`, measured on this PC with the fix: a reader holds the state
+    file for 0.05 s, 0.3 s and 1 s. The swap is refused 5, 9 and 16 times, and
+    the first refusal is `[WinError 5] Access is denied`, the production text.
+    The save lands after about 0.07 s, 0.35 s and 1.06 s, with no temp file
+    left; two runs agree. Before the fix, the first refusal raised. Through the
+    real `start_runner`, a refusal printed after 5 appended lines used to leave
+    only the fragment "e 0 of the runner already up" of the first of them. Now
+    every line is intact and the refusal comes after them.
+
+**ROOT CAUSE** — `_write_json` swapped its temp copy in with a bare
+`tmp.replace(path)`, and Windows refuses that rename for as long as any other
+handle holds the destination. Separately, `start_runner` hands the child the
+log at its spawn offset, and on Windows that handle does not carry append
+mode. The crash's undated traceback therefore landed over earlier lines,
+where the Errors tab could never read it.
+
+**WHY IT WAS NOT CAUGHT** — the swap was written on Aug 19, 2026 on the Mac,
+where a reader never makes a rename fail, and no test ever held the state file
+open during a save. When the identical refusal ended a backtest
+(RCA-2026-09-18-B), it was fixed in `db_jobs._write` alone. Nobody searched
+the other modules for the same bare swap, and no guard read the code for one.
+The invisibility had no test either. Every Errors-tab test feeds
+`room_errors` dated lines the test wrote itself, and no test spawned the
+runner and read its log back. "A crash prints an undated traceback, at the
+wrong offset" was a state no fixture contained.
+
+**COST** — none in money for the two crashes this week, the only two checked.
+#55D32617 and #CC94D9FB ran the practice book only ("PAPER — simulated" on
+every start), and each was unchecked for under a minute: #55D32617 at
+Oct 01, 2026 5:10pm, #CC94D9FB from 7:07am to 7:08am on Oct 02, 2026. Neither
+lost or doubled a trade. The backups show no enter or exit row in either crash
+cycle, and the one exit after #CC94D9FB's restart (INDA_USDT, Oct 02, 2026
+7:16am) appears once. **Main's five September crashes, and the two retired
+rooms' crashes, were NOT checked for a lost or doubled exit.** Main still
+traded real money then: its feed scanned GPNSTOCK on the real-money book at
+Sep 13, 2026 4:01pm (RCA-2026-09-13-A), and its last start with real money
+switched on was Sep 15, 2026. So the crashes in the runs started Sep 13 and
+Sep 14 may have hit with real money armed. What to look for: two exit rows for
+one trade id on either side of a `runner_start` in Main's trade record, around
+each crash. The risk is larger than any cost measured so far, because the
+same save closes the real-money book. An exit row written without its saved
+state is replayed on the next start, which counts the loss twice against the
+loss cap (2026-08-22).
+
+**FIX** — this commit. In the same commit, `local_history._snapshots` skips
+`.tmp` files: a runner killed mid-save leaves its per-call temp copy behind,
+and the settings-backup list would have dated a deployment by a file that
+may never have landed (guard
+`tests/test_the_deployed_date_is_filled_in.py::test_a_half_written_save_is_not_a_backup`).
+
+**GUARD** — `tests/test_runner_survives_a_busy_state_file.py`, 10 tests, all
+red on the old file:
+
+* `test_a_refused_state_swap_does_not_end_the_cycle`
+* `test_a_reader_holding_the_state_file_only_delays_the_save` (Windows, the
+  real refusal)
+* `test_a_swap_still_refused_after_the_budget_fails_loudly_and_leaves_nothing`
+* `test_two_writers_of_one_settings_file_never_share_a_temp_copy`
+* `test_every_swap_in_the_runner_goes_through_the_retry`
+* `test_a_crash_is_one_dated_program_error_and_a_trade_record_row`
+* `test_any_error_type_is_filed_as_a_program_error`
+* `test_a_trade_record_that_cannot_be_written_never_hides_the_crash`
+* `test_the_runner_points_its_output_at_the_end_of_its_log_before_it_runs`
+* `test_a_later_stderr_write_lands_after_the_lines_it_used_to_overwrite`
+  (Windows, the real `start_runner` and the module's own `__main__`)
+
+---
+
 ## RCA-2026-10-07-H — after the Oct 02 power cut, two practice trades the minutes say were won were booked as losses
 
 **CEO**

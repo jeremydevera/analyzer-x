@@ -240,7 +240,10 @@ def _snapshots() -> list[tuple[int, Path]]:
     """
     out: list[tuple[int, Path]] = []
     for f in SETTINGS_SNAPSHOTS.glob("auto_trade.json*"):
-        if f.suffix in (".lock", ".WANT") or f.name.endswith(".pid"):
+        # .tmp: a save's own temp copy, left behind when a kill lands mid-save
+        # (`auto_trade.json.<pid>.<thread>.tmp`, RCA-2026-10-07-E) — it may
+        # never have landed, so it never dates anything
+        if f.suffix in (".lock", ".WANT", ".tmp") or f.name.endswith(".pid"):
             continue
         stamp = 0
         tail = f.name.rsplit("-", 1)[-1]

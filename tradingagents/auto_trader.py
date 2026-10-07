@@ -1866,11 +1866,31 @@ def _read_json(path: Path) -> dict:
         return {}
 
 
+# How long a state or settings write keeps retrying a swap Windows refused.
+# A reader holding the room's state file (the API reading a book, the
+# Forecast page re-reading every room's) refuses the rename while it holds
+# it, and with no retry that refusal ended run_cycle's final save_state and
+# the runner with it: 9 times from Sep 13 to Oct 02, 2026, the last #CC94D9FB
+# at Oct 02, 2026 7:08am (RCA-2026-10-07-E). db_jobs' 3 s (RCA-2026-09-18-B).
+REPLACE_BUDGET_S = 3.0
+
+
 def _write_json(path: Path, payload: dict) -> None:
+    # A temp copy PER CALL, process and thread in its name: auto_trade.json
+    # has four writers and no lock between them (the API's save, the watcher,
+    # a deploy, the runner's own disarm), and with one fixed `.tmp` a writer
+    # retrying a refused swap could move ANOTHER writer's copy into place,
+    # then find its own gone.
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    tmp.replace(path)
+    tmp = path.with_name(
+        f"{path.name}.{os.getpid()}.{_threading.get_ident()}.tmp")
+    try:
+        tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    except BaseException:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        raise
+    portable.replace_retry(tmp, path, REPLACE_BUDGET_S)
 
 
 def load_settings() -> dict:
@@ -2264,7 +2284,9 @@ def backfill_ledger_ids(path=None, *, dry_run: bool = False,
                              + "\n")
                 for ln in tail:
                     fh.write(ln + "\n")
-            tmp.replace(p)
+            # the trade record is read all day (the Errors tab, the history),
+            # so this swap meets the same refusal as the state file's
+            portable.replace_retry(tmp, p, REPLACE_BUDGET_S)
         finally:
             portable.unlock(lock)
     return {"rows": len(rows), "entered": n_enter, "exited": n_exit,
@@ -7281,6 +7303,46 @@ def start_runner() -> int:
     return proc.pid
 
 
+def _append_std_streams_to(log: Path) -> bool:
+    """Send this process's stdout and stderr (fds 1 and 2) to the END of
+    `log` for the rest of its life. True when it did.
+
+    `start_runner` hands the child the log, opened by the PARENT, as stdout
+    and stderr. On Windows the child inherits the handle but not the append
+    mode, so the handle keeps the offset the log had at the spawn while the
+    child's own FileHandler appends past it — and the next thing printed to
+    stderr (a crash's traceback, "another auto-trader is already running")
+    lands back at that offset, OVER the lines written since. On the
+    operator's logs: #CC94D9FB's Oct 02, 2026 7:08am traceback sits on line 1
+    among Sep 30 lines, and a refused second launch erased #6B08FF64's
+    Oct 02, 2026 4:09pm 'loop starting' line (RCA-2026-10-07-E).
+
+    At the DESCRIPTOR, never by reassigning sys.stderr: faulthandler, a fatal
+    interpreter error and C code write to fd 2 directly. Binary, or Windows
+    would turn every "\\r\\n" Python writes into "\\r\\r\\n". A console keeps
+    its console, and a log it cannot open leaves the output where it was —
+    this must never be the reason a runner does not start.
+    """
+    if os.isatty(2):
+        return False
+    for stream in (sys.stdout, sys.stderr):
+        with contextlib.suppress(Exception):
+            stream.flush()
+    try:
+        fd = os.open(str(log), os.O_WRONLY | os.O_APPEND | os.O_CREAT
+                     | getattr(os, "O_BINARY", 0))
+    except OSError:
+        return False
+    try:
+        os.dup2(fd, 1)
+        os.dup2(fd, 2)
+        return True
+    except OSError:
+        return False
+    finally:
+        os.close(fd)
+
+
 def stop_runner() -> bool:
     """Terminate by recorded PID — never by process name.
 
@@ -7548,6 +7610,23 @@ def run_forever() -> None:
             _why = _wait_for_something(next_sleep_seconds(), _stopping)
             if _why == "feed":
                 _log_what_woke_us()
+    except Exception as exc:                                   # noqa: BLE001
+        # A CRASH IS SAID ONCE, DATED, WHERE THE ERRORS TAB LOOKS
+        # (RCA-2026-10-07-E). One refused file swap killed a runner nine
+        # times and the tab never named one crash — only the restart after
+        # it — because it reads dated lines and a bare traceback has none.
+        # So: ONE ERROR line, worded so the tab files any error type as a
+        # Program error (it knows one by `Exception`), then a trade-record
+        # row that can never take the crash's place on a full disk
+        # (2026-08-22), then exit 1 for the supervisor to restart.
+        # Re-raising would print the traceback into the log a second time;
+        # Exception, not BaseException, leaves Ctrl-C and SystemExit theirs.
+        logger.exception("runner crashed on an unhandled Exception — %s: %s",
+                         type(exc).__name__, exc)
+        with contextlib.suppress(Exception):
+            append_ledger({"action": "runner_crash",
+                           "error": f"{type(exc).__name__}: {exc}"[:500]})
+        raise SystemExit(1) from None
     finally:
         if runner_pid() == os.getpid():
             _pp(PID_PATH).unlink(missing_ok=True)
@@ -7750,4 +7829,6 @@ if __name__ == "__main__":
         with reads_once_per_cycle():
             run_cycle()
     else:
+        # BEFORE run_forever: its first words can be a refusal on stderr
+        _append_std_streams_to(_pp(LOG_PATH))
         run_forever()

@@ -1141,9 +1141,16 @@ def room_follow(room: str, pr: dict, cands: list, books: dict, start_ms: int,
     frac = float(getattr(_at, "MAX_SIGNAL_AGE_FRACTION", 0) or 0)
     grace = {rid: int(_bar_s_of_key(sl.split("|", 1)[0]) * 1000 * frac)
              for rid, sl in slot_of.items()}
+    # THE DAYTIME RULE (Oct 07, 2026): from the moment the room switched it on,
+    # its runner opens no stock token outside 9:30am-4pm New York
+    from tradingagents import daytime_rule as _dr
+    from tradingagents import forecast_v2 as _f2
+
+    daytime_since = _dr.enabled(_f2._settings(room))
     return ({"from_ms": from_ms, "lead_from_ms": lead_from, "why": why, "slots": out,
              "slot_of": slot_of,
              "grace_ms": grace,
+             "daytime_since": daytime_since,
              "refuse": _room_refusals(pr, slot_of)},
             {"from_ms": from_ms, "slots": len(out), "strategies": len({f["id"] for f in out}),
              "missing": missing})
@@ -1209,6 +1216,7 @@ def room_lists(follow: dict, pr: dict, meta: dict, store, progress=None) -> tupl
         spans[f["id"]].append((int(f["on_ms"]) - int(grace.get(f["id"], 0)),
                                float("inf") if f["off_ms"] is None else int(f["off_ms"])))
     slot_of = follow.get("slot_of") or {}
+    dsince = follow.get("daytime_since")         # the daytime rule's start, or None
     down = follow.get("down") or []
     # THE CANDLES THE ROOM REALLY TOOK (each practice trade's signal candle):
     # the cost check's quiet-hour reading is a guess, and a guess may never
@@ -1245,10 +1253,12 @@ def room_lists(follow: dict, pr: dict, meta: dict, store, progress=None) -> tupl
             took = entered.get(slot) or set()
 
             def skip(open_ms, bar_ms=bar_ms, mine=mine, ts_list=ts_list, dead=dead, on=on,
-                     g=int(grace.get(rid, 0)), took=took):
+                     g=int(grace.get(rid, 0)), took=took, coin=c["coin"]):
                 if open_ms // 1000 in took:
                     return False                     # the room DID take this candle
                 entry = open_ms + bar_ms
+                if _daytime_masks(coin, entry, dsince):
+                    return True                      # the daytime rule: no stock token after hours
                 if not any(a <= entry < b for a, b in on):
                     return True                      # the room had it switched off
                 if any(a <= entry < b - g for a, b in down):
@@ -1281,6 +1291,19 @@ def room_lists(follow: dict, pr: dict, meta: dict, store, progress=None) -> tupl
     follow["took"] = {(rid, (int(x) + _bar_s_of_key(slot.split("|", 1)[0])) * 1000)
                       for rid, slot in slot_of.items() for x in entered.get(slot, ())}
     return out, {"rebuilt": len(out), "plain": failed, "rebuild_s": round(time.time() - t0, 1)}
+
+
+def _daytime_masks(coin: str, entry_ms: int, since_s) -> bool:
+    """A backtest entry the room's runner would not open under the daytime
+    rule: a stock token, at or after the rule's start, outside 9:30am-4pm New
+    York (daytime_rule.in_market_hours). Before the start the room traded
+    nights, and those trades stay in the replay."""
+    if not since_s:
+        return False
+    from tradingagents import daytime_rule as _dr
+
+    return (_dr.is_stock(coin) and int(entry_ms) >= float(since_s) * 1000
+            and not _dr.in_market_hours(int(entry_ms) / 1000))
 
 
 # a refusal the replay's own coin cap already makes, so never taken out twice

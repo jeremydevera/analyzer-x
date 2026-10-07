@@ -367,3 +367,27 @@ def test_crypto_is_traded_at_night(runner):
 def test_without_the_flag_a_stock_token_trades_at_night_as_before(runner):
     runner["cycle"](T_NIGHT + 10, flag=False)
     assert runner["fx"].books >= 1 and not runner["rows"]("market_closed")
+
+
+# -------------------------------------------- Backtest a room follows it
+def test_the_replay_masks_a_stock_token_entry_after_hours_from_the_rules_start():
+    from tradingagents import room_replay as rr
+
+    since = T_NIGHT - 3600
+    night_ms = (T_NIGHT + 900) * 1000
+    day_ms = T_DAY * 1000
+    assert rr._daytime_masks("WIDESTOCK", night_ms, since)
+    assert not rr._daytime_masks("WIDESTOCK", day_ms, since)
+    assert not rr._daytime_masks("WIDE", night_ms, since), "crypto trades all night"
+    assert not rr._daytime_masks("WIDESTOCK", (since - 7200) * 1000, since), \
+        "before the rule was switched on, the room traded nights"
+    assert not rr._daytime_masks("WIDESTOCK", night_ms, None)
+
+
+def test_the_room_rebuild_applies_the_mask():
+    import inspect
+
+    from tradingagents import room_replay as rr
+
+    assert "_daytime_masks(" in inspect.getsource(rr.room_lists)
+    assert "daytime_since" in inspect.getsource(rr.room_follow)

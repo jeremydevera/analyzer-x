@@ -1224,9 +1224,9 @@ export function RoomStrategiesSection() {
                         <td className={td}>{r.deployable ? "yes" : <span title={r.deploy_why} className="text-gray-400">needs a new switch</span>}</td>
                       </tr>
                       {open === r.id && (
-                        <tr><td colSpan={cols.length} className="bg-gray-50 px-3 py-3 dark:bg-white/[0.02]">
+                        <tr><td colSpan={cols.length} className="bg-gray-50 px-3 py-3 dark:bg-white/[0.02]"><div className="sticky left-0 max-w-[calc(100vw-4rem)] lg:max-w-[880px]">
                           <StrategyTrades id={r.id} from_s={d.from} to_s={d.to} />
-                        </td></tr>
+                        </div></td></tr>
                       )}
                     </Fragment>
                   ))}
@@ -1274,7 +1274,7 @@ function StrategyTrades({ id, from_s, to_s }: { id: string; from_s: number; to_s
         </p>
       ) : (
         <div className="mt-2 overflow-x-auto">
-          <table className="w-full min-w-[560px] text-theme-xs">
+          <table className="w-auto text-theme-xs">
             <thead><tr className="border-b border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400">
               {["#", "Opened", "Closed", "Held", "Profit", "Running total"].map((h) => <th key={h} className={th}>{h}</th>)}
             </tr></thead>

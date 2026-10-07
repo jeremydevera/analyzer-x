@@ -389,6 +389,69 @@ def test_a_baseline_fault_that_happens_again_is_filed(filer):
     assert len(gh.made()) == 1
 
 
+def test_github_is_never_called_from_a_test():
+    """Like the live door (`live_ingest.ensure`), the filer refuses to touch
+    the real GitHub while a test runs — a public project's issues are not a
+    scratchpad."""
+    with pytest.raises(ei.GhFailed, match="test"):
+        ei._gh(["--version"])
+
+
+def test_a_fixer_run_is_never_started_from_a_test(tmp_path, monkeypatch):
+    from tradingagents import error_fixer as fx
+
+    monkeypatch.setattr(ei, "HOME", tmp_path)
+    monkeypatch.setattr(ei, "STATE", tmp_path / "error_issues.json")
+    monkeypatch.setattr(ei, "FIXER_DIR", tmp_path / "fixer")
+    monkeypatch.setattr(ei, "_LABELS_MADE", set(ei.LABELS))
+    st = {"baseline": T0, "faults": {"aaaa00000001": {
+        "state": "queued", "issue": 101, "filed_at": T0, "label": "x", "url": "u"}}}
+    ei._write(st)
+    started: list = []
+    monkeypatch.setattr(fx.subprocess, "Popen", lambda *a, **k: started.append(a))
+    got = fx.tick(T0 + 10, gh=FakeGh())
+    assert started == [] and "test" in got.get("refused", "")
+
+
+def test_the_site_runs_the_filer_and_the_fixer_on_their_own_thread():
+    """Never inside the supervisor loop: a GitHub call or a fixer start must
+    not delay the loop that restarts dead runners."""
+    src = Path("tradingagents/api.py").read_text(encoding="utf-8")
+    at = src.index("def _error_issues_loop()")
+    loop = src[at:src.index("_th.Thread(target=_error_issues_loop", at)]
+    assert "_ei.tick()" in loop and "_ef.tick()" in loop
+    assert 'name="error-issues"' in src
+    sup = src[src.index("def _watch() -> None:"):src.index('name="job-supervisor"')]
+    assert "error_issues" not in sup and "error_fixer" not in sup
+
+
+def test_each_row_on_the_errors_tab_names_its_issue(tmp_path, monkeypatch):
+    from tradingagents import api, room_errors as rerr
+
+    monkeypatch.setattr(ei, "STATE", tmp_path / "error_issues.json")
+    row = {"room": "4FC03172", "kind": "cycle_failed", "label": "A check failed",
+           "message": SUPRA, "count": 43, "first": 1.0, "last": 2.0}
+    monkeypatch.setattr(rerr, "report", lambda **kw: {"rows": [dict(row)], "pages": 1})
+    fp = ei.fingerprint({"source": "room", "kind": "cycle_failed", "message": SUPRA})
+    ei._write({"baseline": 1.0, "faults": {fp: {
+        "state": "fixed", "issue": 77, "url": "https://github.com/x/issues/77",
+        "commit": "abc1234"}}})
+    got = api.room_errors_route(room="", kind="", hours=0, page=1)
+    assert got["rows"][0]["issue"] == {"number": 77, "url": "https://github.com/x/issues/77",
+                                       "state": "fixed", "commit": "abc1234"}
+
+
+def test_the_tab_says_each_issues_state_in_words():
+    """The badge's words come from the row's state — never a literal that can
+    say "fixed" over an issue nobody has checked."""
+    tsx = Path("webapp/src/components/errors/DeployedTabsErrors.tsx").read_text(encoding="utf-8")
+    for state in ("queued", "checking", "fixed", "not_a_fault", "needs_you"):
+        assert f"{state}:" in tsx, state
+    assert "g.issue" in tsx and "g.issue.url" in tsx
+    ts = Path("webapp/src/lib/api.ts").read_text(encoding="utf-8")
+    assert "issue?:" in ts
+
+
 def test_nothing_posted_carries_a_secret(filer, monkeypatch):
     events, _ = filer
     monkeypatch.setenv("MEXC_API_KEY", "mx0KEYVALUE1234")

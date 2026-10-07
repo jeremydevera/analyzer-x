@@ -403,6 +403,36 @@ def _keep_the_row_index_current() -> None:
                 print(f"[errors] first read of the room logs failed: {exc!r}", flush=True)
 
         _th.Thread(target=_room_errors_warm, name="room-errors", daemon=True).start()
+
+        # EVERY ERROR BECOMES A GITHUB ISSUE, AND THE FIXER CHECKS EACH ONE
+        # (operator, Oct 07, 2026: "everytime the system gets an error, file
+        # an issue to github, then i want you to investigate if its a valid
+        # error or not, if its valid then fix it"). Its own thread, never the
+        # supervisor loop: a GitHub call or a fixer start must not delay the
+        # loop that restarts dead runners. Every 120 s; the first pass waits
+        # for the room logs' first read above.
+        def _error_issues_loop() -> None:
+            from tradingagents import error_fixer as _ef
+            from tradingagents import error_issues as _ei
+
+            print("[error-issues] up: filing errors to GitHub and starting the "
+                  "fixer on this PC", flush=True)
+            while True:
+                _time.sleep(120)
+                try:
+                    got = _ei.tick()
+                    if got.get("filed") or got.get("failed") or got.get("waiting"):
+                        print(f"[error-issues] {got}", flush=True)
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[error-issues] filing failed: {exc!r}", flush=True)
+                try:
+                    got = _ef.tick()
+                    if got.get("started") or got.get("applied"):
+                        print(f"[error-issues] fixer: {got}", flush=True)
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[error-issues] fixer failed: {exc!r}", flush=True)
+
+        _th.Thread(target=_error_issues_loop, name="error-issues", daemon=True).start()
         print("[supervisor] watching for crashed jobs", flush=True)
     except Exception as exc:
         # The API must still start -- but SILENTLY skipping this is how
@@ -1490,8 +1520,20 @@ def room_errors_route(room: str = "", kind: str = "", hours: float = 24.0,
         raise HTTPException(404, f"no room {room!r}; the rooms are {_pf.shown()}")
     if kind and kind not in _re.LABELS:
         raise HTTPException(400, f"unknown kind {kind!r}; use one of {sorted(_re.LABELS)}")
-    return _re.report(room=room or None, kind=kind or None, hours=max(0.0, hours),
-                      page=page)
+    got = _re.report(room=room or None, kind=kind or None, hours=max(0.0, hours),
+                     page=page)
+    # EACH GROUP'S GITHUB ISSUE and what the fixer made of it (Oct 07, 2026),
+    # by the same fingerprint the filer files under
+    try:
+        from tradingagents import error_issues as _ei
+
+        st = _ei._read()
+        for g in got.get("rows") or []:
+            g["issue"] = _ei.issue_for(_ei.fingerprint(
+                {"source": "room", "kind": g["kind"], "message": g["message"]}), st)
+    except Exception:                                          # noqa: BLE001
+        pass
+    return got
 
 
 @app.get("/api/trade/profiles")

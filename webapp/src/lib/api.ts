@@ -1288,9 +1288,12 @@ export type ForecastsLive = {
   refresh_error?: string;
 };
 
+/** A fault's GitHub issue and what the fixer made of it (Oct 07, 2026). */
+export type ErrorIssue = { number: number; url: string; state: string; commit: string };
+
 export type RoomErrors = {
   rows: { room: string; kind: string; label: string; message: string; count: number;
-          first: number; last: number }[];
+          first: number; last: number; issue?: ErrorIssue | null }[];
   groups: number;
   events: number;
   page: number;

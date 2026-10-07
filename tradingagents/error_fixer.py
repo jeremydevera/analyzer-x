@@ -131,6 +131,11 @@ def tick(now: float | None = None, spawn=None, gh=None) -> dict:
     if not queued:
         return out
     fp = queued[0][1]
+    if spawn is None and os.environ.get("PYTEST_CURRENT_TEST"):
+        # an unattended Claude run with every permission, started by a test,
+        # would edit and push the real repo
+        out["refused"] = "no real fixer run from a test"
+        return out
     ei.mark_checking(fp, gh=gh)
     spawn = spawn or subprocess.Popen
     ei.FIXER_DIR.mkdir(parents=True, exist_ok=True)

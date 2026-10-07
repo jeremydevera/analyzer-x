@@ -249,6 +249,10 @@ def _gh(args: list, input_text: str | None = None) -> str:
     import shutil
     import subprocess
 
+    # a public project's issues are not a scratchpad: no test ever reaches
+    # the real GitHub (the live door's rule, live_ingest.ensure)
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        raise GhFailed("refused: no real GitHub call from a test")
     exe = shutil.which("gh") or "gh"
     try:
         out = subprocess.run([exe, *args], input=input_text, capture_output=True,

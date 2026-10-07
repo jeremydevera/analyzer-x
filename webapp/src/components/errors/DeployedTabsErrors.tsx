@@ -13,11 +13,27 @@
  * on purpose. An empty list names what it EXAMINED.
  */
 import { useCallback, useState } from "react";
-import { api, fmtWhen, RoomErrors } from "@/lib/api";
+import { api, ErrorIssue, fmtWhen, RoomErrors } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
 
 const WINDOWS: [number, string][] = [[1, "last hour"], [6, "last 6 hours"],
   [24, "last 24 hours"], [168, "last 7 days"], [0, "everything read"]];
+
+// EVERY ERROR BECOMES A GITHUB ISSUE (operator, Oct 07, 2026). The words come
+// from the issue's state as the fixer left it — never a literal "fixed".
+const ISSUE_WORDS: Record<string, string> = {
+  queued: "filed, waiting to be checked",
+  checking: "being checked",
+  fixed: "fixed",
+  not_a_fault: "not a fault",
+  needs_you: "needs you",
+  waiting: "not filed yet",
+};
+
+function issueWords(i: ErrorIssue): string {
+  const words = ISSUE_WORDS[i.state] ?? i.state;
+  return i.state === "fixed" && i.commit ? `${words} in ${i.commit.slice(0, 7)}` : words;
+}
 
 export default function DeployedTabsErrors() {
   const [d, setD] = useState<RoomErrors | null>(null);
@@ -122,6 +138,7 @@ export default function DeployedTabsErrors() {
                     <th className="px-2 py-1.5 text-start font-medium">First</th>
                     <th className="px-2 py-1.5 text-start font-medium">Last</th>
                     <th className="px-2 py-1.5 text-start font-medium">Latest message</th>
+                    <th className="px-2 py-1.5 text-start font-medium">GitHub issue</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
@@ -133,6 +150,15 @@ export default function DeployedTabsErrors() {
                       <td className="px-2 py-1.5 whitespace-nowrap text-gray-500">{fmtWhen(g.first)}</td>
                       <td className="px-2 py-1.5 whitespace-nowrap text-gray-500">{fmtWhen(g.last)}</td>
                       <td className="px-2 py-1.5 break-words text-gray-600 dark:text-gray-400">{g.message}</td>
+                      <td className="px-2 py-1.5 whitespace-nowrap">
+                        {g.issue ? (
+                          <a href={g.issue.url} target="_blank" rel="noreferrer" className="text-brand-500 hover:underline">
+                            #{g.issue.number} · {issueWords(g.issue)}
+                          </a>
+                        ) : (
+                          <span className="text-gray-400">not filed</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

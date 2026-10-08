@@ -245,8 +245,7 @@ The table, whatever dates are chosen: the id first; the rules in words; found by
 (the daily grid, or this prompt on <date>); the range's trades and trades a day,
 wins and losses, win rate, break-even win rate after costs (never 50%), profit
 straight and after the reality check, worst day, worst losing run (dollars and
-how many trades), most open at once, money needed; "a stretch this long usually
-makes"; beat random; can a room run it today, or which switch it needs. Margin
+how many trades); "a stretch this long usually makes"; beat random; can a room run it today, or which switch it needs. Margin
 $5 x 20x and the number of rule sets tested stated above it; filters done by the
 server (min win rate, min profit, the TP rule, stop at most %, judged on 7, 15 or
 30 days, found by, a room can run it today); a find-by-id box; a click on a row

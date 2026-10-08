@@ -1244,8 +1244,7 @@ export type RoomStrategies = {
     deployable: boolean; deploy_why: string; window: number; tp: string; max_sl: number;
     trades: number; per_day: number; wins: number; losses: number; winrate: number | null;
     break_even: number | null; profit: number; corrected: number | null; worst_day: number | null;
-    worst_run: number; worst_run_n: number; max_open: number; money_needed: number;
-    worst_month: number | null; still_works: boolean }[];
+    worst_run: number; worst_run_n: number; still_works: boolean }[];
   matched: number; kept: number; page: number; pages: number; from: number; to: number;
   reality: { took: number | null; gap: number | null }; margin: number; leverage: number;
   /** the reality check is still being worked out (the first minute or two after a restart) */
@@ -1455,7 +1454,7 @@ export const api = {
   roomStrategies: (q: { from_s: number; to_s: number; min_winrate?: number; min_profit?: number | null;
     window?: number; deployable?: string; find?: string; sort?: string; page?: number }) => {
     const p = new URLSearchParams({ from_s: String(Math.floor(q.from_s)), to_s: String(Math.floor(q.to_s)),
-      sort: q.sort ?? "worst_month", page: String(q.page ?? 1) });
+      sort: q.sort ?? "profit", page: String(q.page ?? 1) });
     if (q.min_winrate) p.set("min_winrate", String(q.min_winrate));
     if (q.min_profit != null) p.set("min_profit", String(q.min_profit));
     if (q.window) p.set("window", String(q.window));

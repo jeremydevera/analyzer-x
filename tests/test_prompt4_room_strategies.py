@@ -307,7 +307,8 @@ def test_apply_shows_loading_and_cannot_be_pressed_until_its_answer_lands():
 
 def test_judged_on_room_can_run_it_and_sort_are_gone():
     """Operator, Oct 07, 2026: "also remove these fields its not needed" —
-    the three dropdowns. The list keeps one order, worst month first."""
+    the three dropdowns. The list keeps one order: the dates' profit, highest
+    first, since the worst month went on Oct 08, 2026."""
     s = _section()
     assert "<select" not in s, "no dropdown is left in the filter row"
     for gone in (">judged on", ">a room can run it", ">sort", "draft.win", "draft.dep", "draft.sort",
@@ -316,7 +317,42 @@ def test_judged_on_room_can_run_it_and_sort_are_gone():
     head = _src_all().split("export function RoomStrategiesSection()")[0]
     assert "win: string; dep: string" not in head and "judged on ${a.window}" not in head
     # the server's own default order is the one the list keeps
-    assert 'sort: q.sort ?? "worst_month"' in (ROOT / "webapp/src/lib/api.ts").read_text(encoding="utf-8")
+    assert 'sort: q.sort ?? "profit"' in (ROOT / "webapp/src/lib/api.ts").read_text(encoding="utf-8")
+
+
+def test_worst_month_money_needed_and_most_open_are_gone():
+    """Operator, Oct 08, 2026: "in forecast room strategies i dont need worst
+    month no need to compute it, money needed, most open". Not hidden: not
+    worked out, not sent, not drawn — and the one order they set became the
+    dates' profit. #Y made more in the dates while #X had the better worst
+    month, so the old order and the new one disagree here."""
+    x = rst.cfg(15, 70, 50, ">", 2.0)
+    y = rst.cfg(30, 80, 20, ">", 2.0)
+    tx = _trades([(2026, 7, 10, 1.0), (2026, 8, 10, 1.0), (2026, 9, 10, 1.0), (2026, 9, 25, 1.0)])
+    ty = _trades([(2026, 7, 10, 0.3), (2026, 8, 10, 0.3), (2026, 9, 22, 3.0)])
+    rst.keep([{"id": rst.sid(c), "cfg": c, "words": fr.words(c), "deployable": True, "deploy_why": "",
+               "p4": rst.measure(t, END, REAL), "trades": t} for c, t in ((x, tx), (y, ty))],
+             "r1", "RUN", now=1000)
+    assert rst.rank_key(rst.measure(tx, END, REAL)) > rst.rank_key(rst.measure(ty, END, REAL)),         "the fixture must put #X first by worst month"
+    lo, hi = ms(2026, 9, 20, 0) / 1000, ms(2026, 9, 30, 23) / 1000
+    got = rst.table(lo, hi, reality=REAL)
+    assert [r["id"] for r in got["rows"]] == [rst.sid(y), rst.sid(x)], "profit, highest first"
+    assert [r["profit"] for r in got["rows"]] == [3.0, 1.0]
+    for row in got["rows"]:
+        for gone in ("worst_month", "money_needed", "max_open"):
+            assert gone not in row, gone
+    assert not hasattr(rst, "_max_open"), "most open is not worked out at all"
+    # a page still open from before the change asks for the old order
+    old_page = rst.table(lo, hi, reality=REAL, sort="worst_month")
+    assert [r["id"] for r in old_page["rows"]] == [r["id"] for r in got["rows"]]
+    sec = _section()
+    for gone in ('"Most open"', '"Money needed"', '"Worst month"', "r.max_open", "r.money_needed",
+                 "r.worst_month"):
+        assert gone not in sec, gone
+    ts = (ROOT / "webapp/src/lib/api.ts").read_text(encoding="utf-8")
+    rows_type = ts.split("export type RoomStrategies = {")[1].split("}[];")[0]
+    for gone in ("max_open", "money_needed", "worst_month"):
+        assert gone not in rows_type, gone
 
 
 def test_last_n_days_is_one_box_not_two_buttons():

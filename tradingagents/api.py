@@ -1315,7 +1315,7 @@ def _forecast_live_refresh() -> dict:
 @app.get("/api/forecasts/room-strategies")
 def room_strategies_route(from_s: float, to_s: float, min_winrate: float = 0,
                           min_profit: float | None = None, window: int = 0,
-                          deployable: str = "", find: str = "", sort: str = "worst_month",
+                          deployable: str = "", find: str = "", sort: str = "profit",
                           page: int = 1) -> dict:
     """Forecast -> Room strategies: every winner prompt 4 kept, RE-MEASURED over
     exactly the chosen dates from its own stored trades (operator, Oct 02, 2026:

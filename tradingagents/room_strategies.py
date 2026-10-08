@@ -509,22 +509,18 @@ def finish(name: str, art_dir: str, data_dir: str, replay_run: str) -> dict:
 
 
 # --------------------------------------------------------- the page's table
-def _max_open(t) -> int:
-    import numpy as np
-    if not len(t):
-        return 0
-    ev = np.concatenate([np.c_[t[:, 0], np.ones(len(t))], np.c_[t[:, 1], -np.ones(len(t))]])
-    ev = ev[np.lexsort((ev[:, 1], ev[:, 0]))]          # a close before an open at a tie
-    return int(np.cumsum(ev[:, 1]).max())
-
-
 _TABLE: dict = {}         # (from, to, store, reality) -> every kept winner measured
 _TABLE_KEPT = 8
 
 
 def _measured(from_s: float, to_s: float, reality: dict) -> list[dict]:
     """Every kept winner re-measured over [from_s, to_s], unfiltered — over
-    the trades that OPENED AND CLOSED inside those dates (`inside`)."""
+    the trades that OPENED AND CLOSED inside those dates (`inside`).
+
+    NO WORST MONTH, MONEY NEEDED OR MOST OPEN (operator, Oct 08, 2026: "in
+    forecast room strategies i dont need worst month no need to compute it,
+    money needed, most open"): none of the three is worked out here any
+    more, so the table's one order is the dates' profit, highest first."""
     import numpy as np
 
     from tradingagents import forecast_v2 as f2
@@ -555,8 +551,6 @@ def _measured(from_s: float, to_s: float, reality: dict) -> list[dict]:
         day = (t[:, 1] // 86_400_000).astype(np.int64) if n else np.zeros(0, np.int64)
         worst_day = float(min(np.bincount(day - day.min(), weights=p))) if n else None
         days = max(1.0, (to_s - from_s) / 86_400)
-        mx = _max_open(t)
-        months = [m for m in w["p4"]["months"] if m["complete"]]
         row = {"id": w["id"], "words": w["words"], "found_at": w["found_at"],
                "found_by": w.get("found_by", "prompt 4"), "run": w.get("run"),
                "deployable": w["deployable"], "deploy_why": w.get("deploy_why", ""),
@@ -566,10 +560,7 @@ def _measured(from_s: float, to_s: float, reality: dict) -> list[dict]:
                "winrate": round(100 * wins / n, 1) if n else None, "break_even": be,
                "profit": round(float(p.sum()), 2), "corrected": f2.corrected(float(p.sum()), n, reality),
                "worst_day": round(worst_day, 2) if worst_day is not None else None,
-               "worst_run": round(worst, 2), "worst_run_n": wn, "max_open": mx,
-               "money_needed": round(mx * 5.0, 2),
-               "worst_month": min((m["corrected"] for m in months if m["corrected"] is not None),
-                                  default=None),
+               "worst_run": round(worst, 2), "worst_run_n": wn,
                "still_works": (w["p4"]["last15"]["corrected"] or 0) > 0}
         rows.append(row)
     return rows
@@ -592,7 +583,7 @@ def span() -> tuple[int | None, int | None]:
 
 
 def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: float | None = None,
-          window: int = 0, deployable: str = "", find: str = "", sort: str = "worst_month",
+          window: int = 0, deployable: str = "", find: str = "", sort: str = "profit",
           page: int = 1, per: int = 25, reality: dict | None = None) -> dict:
     """Every kept winner, RE-MEASURED over exactly [from_s, to_s] from its own
     stored trades (never a month scaled up or down), filtered and paged here.
@@ -645,9 +636,11 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
         if deployable == "yes" and not row["deployable"] or deployable == "no" and row["deployable"]:
             continue
         rows.append(row)
-    key = {"worst_month": lambda r: r["worst_month"] if r["worst_month"] is not None else -1e9,
-           "profit": lambda r: r["profit"], "corrected": lambda r: r["corrected"] or -1e9,
-           "winrate": lambda r: r["winrate"] or -1, "found": lambda r: r["found_at"]}.get(sort)
+    key = {"profit": lambda r: r["profit"], "corrected": lambda r: r["corrected"] or -1e9,
+           "winrate": lambda r: r["winrate"] or -1, "found": lambda r: r["found_at"],
+           # the worst month is no longer worked out (Oct 08, 2026); a page
+           # still open from before asks for it, and gets the profit order
+           "worst_month": lambda r: r["profit"]}.get(sort)
     if key is None:
         raise ValueError(f"unknown sort {sort!r}")
     rows.sort(key=key, reverse=True)

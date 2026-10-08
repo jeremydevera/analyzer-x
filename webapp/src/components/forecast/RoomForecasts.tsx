@@ -1021,7 +1021,9 @@ export function RoomsAndBacktest() {
  *  pressed. Click a row for its trades in the same dates.
  *
  *  NO "judged on", "a room can run it" OR "sort" (Oct 07, 2026: "remove these
- *  fields its not needed"): one order, the worst month first. And Apply shows
+ *  fields its not needed"): one order — the dates' profit, highest first, since
+ *  Oct 08, 2026, when worst month, money needed and most open went ("i dont need
+ *  worst month no need to compute it, money needed, most open"). And Apply shows
  *  Loading... and cannot be pressed until its answer lands ("when i click
  *  apply, i want to see loading, then make apply button disabled"). */
 type RsDraft = { from: string; to: string; days: string; minWin: string; minProfit: string; find: string };
@@ -1137,7 +1139,7 @@ export function RoomStrategiesSection() {
   const th = "px-2 py-1.5 text-start font-medium whitespace-nowrap";
   const td = "px-2 py-1.5 whitespace-nowrap";
   const cols = ["ID", "Rules", "Found", "Trades", "A day", "Won / lost", "Win rate", "Break-even", "Profit",
-    "After reality check", "Worst day", "Worst losing run", "Most open", "Money needed", "Worst month", "Room can run it"];
+    "After reality check", "Worst day", "Worst losing run", "Room can run it"];
   const words = asked ? rsFilterWords(asked) : [];
   const pastEnd = !!(d && d.data_end != null && d.to * 1000 > d.data_end);
   return (
@@ -1208,7 +1210,7 @@ export function RoomStrategiesSection() {
             <p className="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">No winner kept yet — run prompt 4 and its winners land here.</p>
           ) : (
             <div className={`mt-2 overflow-x-auto transition-opacity ${waiting ? "opacity-50" : ""}`}>
-              <table className="w-full min-w-[1200px] text-theme-xs">
+              <table className="w-full min-w-[1000px] text-theme-xs">
                 <thead><tr className="border-b border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400">
                   {cols.map((h) => <th key={h} className={th}>{h}</th>)}
                 </tr></thead>
@@ -1234,9 +1236,6 @@ export function RoomStrategiesSection() {
                         <td className={`${td} ${tone(r.corrected)}`}>{fmtMoney(r.corrected)}</td>
                         <td className={`${td} ${tone(r.worst_day)}`}>{fmtMoney(r.worst_day)}</td>
                         <td className={td}>{r.worst_run_n ? `${fmtMoney(r.worst_run)} over ${r.worst_run_n}` : "—"}</td>
-                        <td className={td}>{r.max_open}</td>
-                        <td className={td}>${r.money_needed.toLocaleString()}</td>
-                        <td className={`${td} ${tone(r.worst_month)}`}>{fmtMoney(r.worst_month)}</td>
                         <td className={td}>{r.deployable ? "yes" : <span title={r.deploy_why} className="text-gray-400">needs a new switch</span>}</td>
                       </tr>
                     </Fragment>

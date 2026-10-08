@@ -342,7 +342,11 @@ def test_a_range_past_the_saved_trades_says_where_they_end():
     # says the next re-test brings them up to date, never "run prompt 4"
     assert "the next one brings them up to last night" in s and "run it again" not in s
     trades = _src_all().split("\nfunction StrategyTrades(")[1]
-    assert "TOTAL PROFIT" in trades and "not which coin it was on" in trades
+    assert "TOTAL PROFIT" in trades
+    # the coin behind every trade since Sep 01, 2026; a trade without one says why
+    assert "the replay names the strategy behind a trade only from ${fmtWhenMs(d.named_from)} on." in trades
+    assert '<td className={`${td} font-medium`}>{t.coin ?? "—"}</td>' in trades
+    assert '"#", "Coin", "Timeframe", "Signal", "TP %", "SL %", "Opened", "Closed", "Held",' in trades
     assert "api.roomStrategyTrades({ id, from_s, to_s, page })" in trades
     assert '<StrategyTrades id={open.id} words={open.words} from_s={d.from} to_s={d.to} />' in s, \
         "a row's trades are read over the dates its row was measured on"
@@ -374,6 +378,13 @@ def test_the_id_opens_a_pop_up_with_its_trades_and_export_csv():
     assert 'q("TOTAL PROFIT")' in rows[-2] and 'q("WIN RATE")' in rows[-1], rows
     assert "a.download = `room-strategy-${id}-${dateBoxAt(from_s)}-to-${dateBoxAt(to_s)}.csv`;" in trades
     assert "const EXPORT_MAX = 100_000;" in src and api.TRADES_EXPORT_MAX == 100_000
+    # the page behind stays readable (Oct 08, 2026: "when it pop up why cant i
+    # see the contents behind?") — a light dim here; every other pop-up keeps
+    # its own blur, the shared component's default
+    assert 'backdropClassName="bg-gray-900/20"' in s and "backdrop-blur" not in s
+    modal = (ROOT / "webapp/src/components/ui/modal/index.tsx").read_text(encoding="utf-8")
+    assert 'backdropClassName = "bg-gray-400/50 backdrop-blur-[32px]",' in modal
+    assert "className={`fixed inset-0 h-full w-full ${backdropClassName}`}" in modal
 
 
 def test_the_merge_scores_every_rule_set_and_keeps_trades_for_winners_only(tmp_path, monkeypatch):

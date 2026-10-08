@@ -110,7 +110,7 @@ def kept() -> list[dict]:
         return hit[1]
     by, made = now["by_id"], float(now["meta"].get("made_at") or 0)
     out = [{**w, "trades": by[w["id"]]["trades"], "p4": by[w["id"]]["p4"], "measured_at": made,
-            "retested": True}
+            "retested": True, "strat": by[w["id"]].get("strat")}
            if w["id"] in by and made >= float(w.get("measured_at") or 0) else w
            for w in base]
     _KEPT["retested"] = (sig, out)
@@ -174,9 +174,13 @@ _NOW: dict = {}
 
 
 def retested() -> dict:
-    """{"meta": {...}, "by_id": {id: {"trades": (n, 3), "p4": {...}}}} — the
-    newest daily re-test, or {} before the first one. A file that cannot be
-    read is {} and SAID, so the kept numbers stay on the page — never zeros."""
+    """{"meta": {...}, "by_id": {id: {"trades": (n, 3), "p4": {...}, "strat":
+    (n,) or None}}, "strategies": [[id, coin, tf, signal, th, tp, sl], ...]} —
+    the newest daily re-test, or {} before the first one. `strat` is each
+    trade's index into `strategies`, -1 where the replay never named it (a
+    trade before Sep 01, 2026); None for a file written before it was kept.
+    A file that cannot be read is {} and SAID, so the kept numbers stay on the
+    page — never zeros."""
     import numpy as np
 
     from tradingagents.research_merge import T0_MIN
@@ -192,6 +196,7 @@ def retested() -> dict:
         with np.load(p, allow_pickle=False) as z:
             meta = json.loads(str(z["meta"]))
             e, x, pr, offs = z["e"], z["x"], z["p"], z["offs"]
+            st = z["s"] if "s" in z.files else None
             by = {}
             for k, rid in enumerate(meta["ids"]):
                 a, b = int(offs[k]), int(offs[k + 1])
@@ -201,11 +206,13 @@ def retested() -> dict:
                                       (x[a:b].astype(np.int64) + T0_MIN) * 60_000,
                                       np.round(pr[a:b].astype(np.float64), 4)]).astype(np.float64)
                      if b > a else np.zeros((0, 3)))
-                by[rid] = {"trades": t, "p4": meta["p4"][k]}
+                by[rid] = {"trades": t, "p4": meta["p4"][k],
+                           "strat": st[a:b].astype(np.int64) if st is not None else None}
     except (OSError, ValueError, KeyError, IndexError) as exc:
         print(f"[room strategies] the daily re-test file {p} could not be read: {exc!r}", flush=True)
         return {}
-    out = {"meta": {k: v for k, v in meta.items() if k not in ("ids", "p4")}, "by_id": by}
+    out = {"meta": {k: v for k, v in meta.items() if k not in ("ids", "p4", "strategies")}, "by_id": by,
+           "strategies": meta.get("strategies") or []}
     _NOW[str(p)] = (sig, out)
     return out
 
@@ -668,6 +675,15 @@ def inside(t, lo_ms: float, hi_ms: float):
     return (t[:, 0] >= lo_ms) & (t[:, 1] <= hi_ms)
 
 
+def _named_from() -> int:
+    """From when the replay names the strategy behind a trade: research_shard
+    keeps it for its TEST part only, which starts TEST_START (2026-09-01,
+    local midnight on the operator's clock, as the runners keep it)."""
+    from tradingagents.research_merge import ms
+
+    return ms("2026-09-01")
+
+
 def trades(rid: str, from_s: float, to_s: float, *, page: int = 1, per: int = 10) -> dict:
     """One kept winner's trades that OPENED AND CLOSED in [from_s, to_s] —
     exactly the trades its row in `table` counts — oldest first, each with the
@@ -687,17 +703,33 @@ def trades(rid: str, from_s: float, to_s: float, *, page: int = 1, per: int = 10
         raise KeyError(f"no room strategy #{want} is kept")
     t = np.asarray(w["trades"], dtype=np.float64).reshape(-1, 3)
     lo, hi = from_s * 1000, to_s * 1000
-    sel = t[inside(t, lo, hi)] if len(t) else t
-    sel = sel[np.lexsort((sel[:, 0], sel[:, 1]))] if len(sel) else sel   # by close, then open
+    # each trade's strategy rides through the same cut and the same order
+    strat = w.get("strat")
+    s_all = (np.asarray(strat, dtype=np.int64) if strat is not None and len(strat) == len(t)
+             else np.full(len(t), -1, np.int64))
+    m = inside(t, lo, hi) if len(t) else np.zeros(0, bool)
+    sel, s_sel = (t[m], s_all[m]) if len(t) else (t, s_all)
+    if len(sel):
+        order = np.lexsort((sel[:, 0], sel[:, 1]))                         # by close, then open
+        sel, s_sel = sel[order], s_sel[order]
+    names = (retested().get("strategies") or []) if strat is not None else []
     n = len(sel)
     p = sel[:, 2] if n else np.zeros(0)
     run = np.cumsum(p) if n else np.zeros(0)
     pages = max(1, -(-n // per))
     page = min(max(1, int(page)), pages)
     a, b = (page - 1) * per, page * per
+    def named(k: int) -> dict:
+        # coin, timeframe, signal, TP and SL of the strategy that made it —
+        # None each when the replay never named it (before Sep 01, 2026)
+        if 0 <= k < len(names):
+            _id, coin, tf, sig, _th, tp, sl = names[k][:7]
+            return {"coin": coin, "tf": tf, "signal": sig, "tp": tp, "sl": sl}
+        return {"coin": None, "tf": None, "signal": None, "tp": None, "sl": None}
     rows = [{"n": a + i + 1, "opened": int(o), "closed": int(c), "profit": round(float(v), 2),
-             "total": round(float(r), 2)}
-            for i, (o, c, v, r) in enumerate(zip(sel[a:b, 0], sel[a:b, 1], p[a:b], run[a:b]))]
+             "total": round(float(r), 2), **named(int(k))}
+            for i, (o, c, v, r, k) in enumerate(zip(sel[a:b, 0], sel[a:b, 1], p[a:b], run[a:b],
+                                                    s_sel[a:b]))]
     wins = int((p > 0).sum())
     return {"id": want, "words": w["words"], "from": from_s, "to": to_s,
             "trades": n, "wins": wins, "losses": n - wins,
@@ -706,6 +738,11 @@ def trades(rid: str, from_s: float, to_s: float, *, page: int = 1, per: int = 10
             "winrate": round(100 * wins / n, 1) if n else None,
             "profit": round(float(p.sum()), 2) if n else 0.0,
             "rows": rows, "page": page, "pages": pages, "per": per,
+            # trades in the dates whose coin is not known, and from when the
+            # replay names them (research_shard's TEST part); None for a
+            # winner the daily re-test has not reached yet
+            "unnamed": int(((s_sel < 0) | (s_sel >= len(names))).sum()),
+            "named_from": _named_from() if names else None,
             # this rule set's own saved trades, whatever the dates
             "saved": len(t), "first": int(t[:, 1].min()) if len(t) else None,
             "last": int(t[:, 1].max()) if len(t) else None,

@@ -1249,7 +1249,8 @@ export function RoomStrategiesSection() {
           {/* A ROOM STRATEGY'S TRADES IN A POP-UP (operator, Oct 08, 2026: "when
               i click the id, i want it on pop up then i should have option to
               export via csv") — over the dates the table above answered */}
-          <Modal isOpen={!!open} onClose={() => setOpen(null)} className="m-4 max-w-[960px] p-5 lg:p-6">
+          <Modal isOpen={!!open} onClose={() => setOpen(null)} backdropClassName="bg-gray-900/20"
+            className="m-4 max-w-[1080px] p-5 shadow-2xl ring-1 ring-gray-200 lg:p-6 dark:ring-gray-700">
             {open && (
               <div role="dialog" aria-modal="true" aria-label={`Room strategy #${open.id}`}
                 className="max-h-[80vh] overflow-y-auto pr-10 sm:pr-14">
@@ -1282,15 +1283,18 @@ function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string
     api.roomStrategyTrades({ id, from_s, to_s, page: 1, per: EXPORT_MAX })
       .then((all) => {
         const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-        const lines = [["#", "Opened", "Closed", "Held", "Profit", "Running total"].map(q).join(",")];
+        const lines = [["#", "Coin", "Timeframe", "Signal", "TP %", "SL %", "Opened", "Closed", "Held",
+          "Profit", "Running total"].map(q).join(",")];
         for (const t of all.rows) {
-          lines.push([t.n, fmtWhenMs(t.opened), fmtWhenMs(t.closed), heldFor(t.closed - t.opened),
+          lines.push([t.n, t.coin ?? "", t.tf ?? "", t.signal ?? "", t.tp ?? "", t.sl ?? "",
+            fmtWhenMs(t.opened), fmtWhenMs(t.closed), heldFor(t.closed - t.opened),
             t.profit.toFixed(2), t.total.toFixed(2)].map(q).join(","));
         }
-        lines.push([q("TOTAL PROFIT"), "", "", "", "", q(all.profit.toFixed(2))].join(","));
+        const blank = ["", "", "", "", "", "", "", "", ""];
+        lines.push([q("TOTAL PROFIT"), ...blank, q(all.profit.toFixed(2))].join(","));
         // THE DATES' WIN RATE AS THE LAST ROW (operator, Oct 08, 2026: "when i
         // export the csv, show me the winrate for last row")
-        lines.push([q("WIN RATE"), "", "", "", "",
+        lines.push([q("WIN RATE"), ...blank,
           q(`${pct(all.winrate)} (${all.wins.toLocaleString()} won, ${all.losses.toLocaleString()} lost)`)].join(","));
         const url = URL.createObjectURL(new Blob(["\uFEFF" + lines.join("\r\n") + "\r\n"],
           { type: "text/csv;charset=utf-8" }));
@@ -1344,12 +1348,15 @@ function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string
         <div className="mt-2 overflow-x-auto">
           <table className="w-auto text-theme-xs">
             <thead><tr className="border-b border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400">
-              {["#", "Opened", "Closed", "Held", "Profit", "Running total"].map((h) => <th key={h} className={th}>{h}</th>)}
+              {["#", "Coin", "Strategy", "TP / SL", "Opened", "Closed", "Held", "Profit", "Running total"].map((h) => <th key={h} className={th}>{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100 text-gray-700 dark:divide-white/[0.05] dark:text-gray-300">
               {d.rows.map((t) => (
                 <tr key={t.n}>
                   <td className={td}>{t.n}</td>
+                  <td className={`${td} font-medium`}>{t.coin ?? "—"}</td>
+                  <td className={td}>{t.tf ? `${t.tf} ${t.signal}` : "—"}</td>
+                  <td className={td}>{t.tp != null && t.sl != null ? `${t.tp}% / ${t.sl}%` : "—"}</td>
                   <td className={td}>{fmtWhenMs(t.opened)}</td>
                   <td className={td}>{fmtWhenMs(t.closed)}</td>
                   <td className={td}>{heldFor(t.closed - t.opened)}</td>
@@ -1361,7 +1368,14 @@ function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string
           </table>
         </div>
       )}
-      <p className="mt-1 text-[10px] text-gray-400">The replay kept when each trade opened and closed and what it made — not which coin it was on.</p>
+      {d.unnamed > 0 && (
+        <p className="mt-1 text-[10px] text-gray-400">
+          {d.unnamed.toLocaleString()} of these {d.trades.toLocaleString()} trades show — for the coin:{" "}
+          {d.named_from != null
+            ? `the replay names the strategy behind a trade only from ${fmtWhenMs(d.named_from)} on.`
+            : "this rule set has not been through a daily re-test yet; its coins come with the next one."}
+        </p>
+      )}
       <PageButtons cur={d.page} pages={d.pages} goto={setPage} what="room strategy trades" />
     </div>
   );

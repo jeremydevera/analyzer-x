@@ -7,6 +7,11 @@ interface ModalProps {
   className?: string;
   children: React.ReactNode;
   showCloseButton?: boolean; // New prop to control close button visibility
+  /** the layer over the page behind; the default blurs it away. Room
+   *  strategies passes a light dim so the table stays readable behind its
+   *  pop-up (operator, Oct 08, 2026: "when it pop up why cant i see the
+   *  contents behind?") */
+  backdropClassName?: string;
   isFullscreen?: boolean; // Default to false for backwards compatibility
 }
 
@@ -17,6 +22,7 @@ export const Modal: React.FC<ModalProps> = ({
   className,
   showCloseButton = true, // Default to true for backwards compatibility
   isFullscreen = false,
+  backdropClassName = "bg-gray-400/50 backdrop-blur-[32px]",
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -58,7 +64,7 @@ export const Modal: React.FC<ModalProps> = ({
     <div className="fixed inset-0 flex items-center justify-center overflow-y-auto modal z-99999">
       {!isFullscreen && (
         <div
-          className="fixed inset-0 h-full w-full bg-gray-400/50 backdrop-blur-[32px]"
+          className={`fixed inset-0 h-full w-full ${backdropClassName}`}
           onClick={onClose}
         ></div>
       )}

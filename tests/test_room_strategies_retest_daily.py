@@ -61,10 +61,17 @@ def _keep(now=1000.0):
              "round1c", "RUN", now=now)
 
 
+def _strat(coin: str) -> list:
+    """A strategy as research_shard names it: id, coin, tf, signal, th, TP, SL."""
+    return [f"S-{coin}", coin, "1h", "rsi14", 0.0, 1.5, 1.0]
+
+
 def _art(folder: Path, shard: int, chunk: int, chunks: int, rules: list, end_ms: int = NEW_END):
     """One research machine's artifact, as research_shard writes it: per rule
-    j and part, entry/exit minutes since T0 and the profit."""
-    arrays, meta_rules = {}, []
+    j and part, entry/exit minutes since T0 and the profit; for the TEST part
+    each trade's index into the machine's own strategy list (a trade's 5th
+    item names its strategy, BTC when it names none)."""
+    arrays, meta_rules, strategies, at = {}, [], [], {}
     for j, (cfg, trades) in enumerate(rules):
         rule = {"cfg": cfg}
         for part in ("train", "test"):
@@ -73,7 +80,14 @@ def _art(folder: Path, shard: int, chunk: int, chunks: int, rules: list, end_ms:
             arrays[f"{j}_{part}_x"] = np.array([t[1] // 60_000 - T0_MIN for t in sel], np.int32)
             arrays[f"{j}_{part}_p"] = np.array([t[2] for t in sel], np.float32)
             if part == "test":
-                arrays[f"{j}_test_s"] = np.zeros(len(sel), np.int32)
+                idx = []
+                for t in sel:
+                    row = t[4] if len(t) > 4 else _strat("BTC")
+                    if row[0] not in at:
+                        at[row[0]] = len(strategies)
+                        strategies.append(row)
+                    idx.append(at[row[0]])
+                arrays[f"{j}_test_s"] = np.array(idx, np.int32)
             rule[part] = {"slots": len(sel), "open": 0}
         meta_rules.append(rule)
     name = f"research-{shard}" + (f"-{chunk}" if chunks > 1 else "")
@@ -82,7 +96,7 @@ def _art(folder: Path, shard: int, chunk: int, chunks: int, rules: list, end_ms:
     np.savez_compressed(d / f"{name}.npz", **arrays)
     (d / f"{name}.json").write_text(json.dumps({
         "shard": shard, "chunk": chunk, "chunks": chunks, "end_ms": end_ms, "books": 10, "trades": 0,
-        "batches": 1, "rules": meta_rules, "strategies": []}), encoding="utf-8")
+        "batches": 1, "rules": meta_rules, "strategies": strategies}), encoding="utf-8")
 
 
 def _report(folder: Path, shard: int, coins: int = 3):
@@ -93,13 +107,13 @@ def _report(folder: Path, shard: int, coins: int = 3):
 def _two_accounts(tmp: Path):
     """Account 0 measured coins on shards 0 and 1, account 1 on shard 0; the
     rule list in two slices (A in slice 0, B in slice 1). C is not in it."""
-    def tr(d, p, part):
+    def tr(d, p, part, coin=None):
         x = ms(*d)
-        return (x - 3_600_000, x, p, part)
+        return (x - 3_600_000, x, p, part) + ((_strat(coin),) if coin else ())
     a0, a1 = tmp / "acc0", tmp / "acc1"
-    _art(a0, 0, 0, 2, [(A, [tr((2026, 7, 10), 1.0, "train"), tr((2026, 9, 20), 1.0, "test")])])
-    _art(a0, 1, 0, 2, [(A, [tr((2026, 10, 5), -0.4, "test")])])                # after Oct 02
-    _art(a1, 0, 0, 2, [(A, [tr((2026, 10, 6), 0.8, "test")])])
+    _art(a0, 0, 0, 2, [(A, [tr((2026, 7, 10), 1.0, "train"), tr((2026, 9, 20), 1.0, "test", "ETH")])])
+    _art(a0, 1, 0, 2, [(A, [tr((2026, 10, 5), -0.4, "test", "GPNSTOCK")])])    # after Oct 02
+    _art(a1, 0, 0, 2, [(A, [tr((2026, 10, 6), 0.8, "test", "SOL")])])
     _art(a0, 0, 1, 2, [(B, [tr((2026, 8, 3), 0.5, "train")])])
     _art(a0, 1, 1, 2, [(B, [])])
     _art(a1, 0, 1, 2, [(B, [tr((2026, 10, 4), 0.3, "test")])])
@@ -179,6 +193,30 @@ def test_the_page_reads_a_new_retest_on_its_very_next_ask(store, tmp_path):
     assert (row["trades"], row["wins"], row["profit"]) == (2, 1, 0.4)
     got = rst.trades(rst.sid(A), lo, hi)
     assert [t["profit"] for t in got["rows"]] == [-0.4, 0.8] and got["profit"] == 0.4
+
+
+def test_every_trade_from_sep_01_names_its_coin(store, tmp_path):
+    """Operator, Oct 08, 2026: "when i click the trade and pop up eappears why
+    can't i see the coin?". research_shard names the strategy behind every
+    TEST-part trade (Sep 01, 2026 on), each machine numbering its own list;
+    the add-up keeps it through both accounts and the sort, and a train-part
+    trade (July) says it is not known — never a guess."""
+    _keep()
+    got = _merge(tmp_path)
+    assert got["named"] == 4, "A's three Sep-Oct trades on two accounts, and B's Oct 04"
+    rows = rst.trades(rst.sid(A), ms(2026, 7, 1, 0) / 1000, ms(2026, 10, 7, 0) / 1000)
+    assert [r["coin"] for r in rows["rows"]] == [None, "ETH", "GPNSTOCK", "SOL"]
+    eth = rows["rows"][1]
+    assert (eth["tf"], eth["signal"], eth["tp"], eth["sl"]) == ("1h", "rsi14", 1.5, 1.0)
+    assert rows["unnamed"] == 1 and rows["named_from"] == int(dt.datetime(2026, 9, 1).timestamp() * 1000)
+    # a winner the re-test did not reach: no coin, and the page says why
+    c = rst.trades(rst.sid(C), ms(2026, 7, 1, 0) / 1000, ms(2026, 10, 7, 0) / 1000)
+    assert {r["coin"] for r in c["rows"]} == {None} and c["named_from"] is None and c["unnamed"] == 2
+
+
+def test_a_strategy_number_outside_its_machines_list_is_unknown_not_a_crash():
+    assert list(rsd._named_by([7, 9], [0, 1, 2, -1])) == [7, 9, -1, -1]
+    assert list(rsd._named_by([], [0])) == [-1]
 
 
 def test_an_older_retest_never_hides_a_newer_prompt_4_measure(store, tmp_path):

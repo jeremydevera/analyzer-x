@@ -1266,7 +1266,12 @@ export type RoomStrategyTrades = {
   trades: number; wins: number; losses: number; profit: number;
   /** the dates' own win rate, % (null with no trade) */
   winrate: number | null;
-  rows: { n: number; opened: number; closed: number; profit: number; total: number }[];
+  rows: { n: number; opened: number; closed: number; profit: number; total: number;
+    /** the strategy that made it — null when the replay never named it */
+    coin: string | null; tf: string | null; signal: string | null; tp: number | null; sl: number | null }[];
+  /** trades in the dates whose coin is not known, and from when the replay
+   *  names them (ms; null before this rule set's first daily re-test) */
+  unnamed: number; named_from: number | null;
   page: number; pages: number; per: number;
   saved: number; first: number | null; last: number | null; margin: number; leverage: number;
 };

@@ -477,6 +477,18 @@ def run_merge(spec: dict) -> dict:
     return json.loads(Path(spec["result"]).read_text(encoding="utf-8"))
 
 
+def _named_by(loc, raw):
+    """A machine's strategy numbers through its list into the run's one list;
+    -1 for any number its list does not hold."""
+    import numpy as np
+
+    raw = np.asarray(raw, dtype=np.int64)
+    out = np.full(len(raw), -1, np.int64)
+    ok = (raw >= 0) & (raw < len(loc))
+    out[ok] = np.asarray(loc, dtype=np.int64)[raw[ok]]
+    return out
+
+
 def merge(spec: dict) -> dict:
     """Every kept rule set's trades over every account's machines, measured
     the way prompt 4 measured it (room_strategies.measure, is_winner), written
@@ -492,10 +504,26 @@ def merge(spec: dict) -> dict:
     if not metas:
         raise ValueError(f"no research results under {spec['arts']}")
     end, reality = int(spec["end_ms"]), spec["reality"]
+    # WHICH STRATEGY MADE EACH TRADE (operator, Oct 08, 2026: "why can't i
+    # see the coin?"): research_shard names it for the TEST part (Sep 01,
+    # 2026 on) as an index into its machine's own list — one list for the
+    # whole run here, each strategy once (research_merge's own second pass)
+    strategies: list = []
+    where: dict = {}
+    remap = []
+    for m in metas:
+        loc = []
+        for row in m.get("strategies") or []:
+            k = where.get(row[0])
+            if k is None:
+                k = where[row[0]] = len(strategies)
+                strategies.append(row)
+            loc.append(k)
+        remap.append(np.asarray(loc, dtype=np.int64))
     slices: dict = {}
     for i, m in enumerate(metas):
         slices.setdefault(int(m.get("chunk") or 0), []).append(i)
-    ids, p4s, es, xs, ps, offs, seen = [], [], [], [], [], [0], set()
+    ids, p4s, es, xs, ps, ss, offs, seen = [], [], [], [], [], [], [0], set()
     for c_ in sorted(slices):
         items = slices[c_]
         rules = metas[items[0]]["rules"]
@@ -512,12 +540,16 @@ def merge(spec: dict) -> dict:
             e = np.concatenate([q[0] for q in parts])
             x = np.concatenate([q[1] for q in parts])
             p = np.concatenate([q[2] for q in parts])
+            # -1 = a train-part trade, whose strategy the shard never names,
+            # or a number outside its machine's own list (never a crash)
+            s_test = np.concatenate([_named_by(remap[i], packs[i][f"{j}_test_s"]) for i in items])
+            s = np.concatenate([np.full(len(parts[0][0]), -1, np.int64), s_test])
             # BY CLOSE, ties kept in machine order — research_merge's own
             # order, which the worst losing run is counted along (checked
             # Oct 07, 2026 on prompt 4's round 5 artifacts: all 91 rule sets
             # trade for trade identical to the store)
             order = np.argsort(x, kind="stable")
-            e, x, p = e[order], x[order], p[order]
+            e, x, p, s = e[order], x[order], p[order], s[order]
             t = np.column_stack([e, x, p]).astype(np.float64) if len(e) else np.zeros((0, 3))
             p4 = rst.measure(t, end, reality)
             p4["winner"], p4["why"] = rst.is_winner(p4)
@@ -526,6 +558,7 @@ def merge(spec: dict) -> dict:
             es.append((e // 60_000 - rm.T0_MIN).astype(np.int32))
             xs.append((x // 60_000 - rm.T0_MIN).astype(np.int32))
             ps.append(p.astype(np.float32))
+            ss.append(s.astype(np.int32))
             offs.append(offs[-1] + len(e))
     total = int(offs[-1])
     if not ids or not total:
@@ -541,15 +574,17 @@ def merge(spec: dict) -> dict:
     meta = {"made_at": float(spec["made_at"]), "end_ms": end, "runs": spec.get("runs") or {},
             "write_rule": spec.get("write_rule"), "universe": spec.get("universe") or {},
             "retested": len(ids), "trades": total,
+            "named": int(sum(int((a >= 0).sum()) for a in ss)),
             "overlap": {"until": int(old_end), "kept": was, "retest": now_},
-            "ids": ids, "p4": p4s}
+            "ids": ids, "p4": p4s, "strategies": strategies}
     out = Path(spec["out"])
     tmp = out.with_name(f"{out.name}.{os.getpid()}.tmp")
     with tmp.open("wb") as fh:
         np.savez(fh, e=np.concatenate(es), x=np.concatenate(xs), p=np.concatenate(ps),
-                 offs=np.asarray(offs, dtype=np.int64), meta=np.array(json.dumps(meta, allow_nan=False)))
+                 s=np.concatenate(ss), offs=np.asarray(offs, dtype=np.int64),
+                 meta=np.array(json.dumps(meta, allow_nan=False)))
     f2.replace_retry(tmp, out)
-    summary = {k: v for k, v in meta.items() if k not in ("ids", "p4")}
+    summary = {k: v for k, v in meta.items() if k not in ("ids", "p4", "strategies")}
     if spec.get("result"):
         Path(spec["result"]).write_text(json.dumps(summary), encoding="utf-8")
     print(json.dumps(summary), flush=True)

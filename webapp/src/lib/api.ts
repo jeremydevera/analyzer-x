@@ -1456,9 +1456,10 @@ export const api = {
     if (q.find) p.set("find", q.find);
     return get<RoomStrategies>(`/api/forecasts/room-strategies?${p}`);
   },
-  roomStrategyTrades: (q: { id: string; from_s: number; to_s: number; page?: number }) => {
+  roomStrategyTrades: (q: { id: string; from_s: number; to_s: number; page?: number; per?: number }) => {
     const p = new URLSearchParams({ id: q.id, from_s: String(Math.floor(q.from_s)),
       to_s: String(Math.floor(q.to_s)), page: String(q.page ?? 1) });
+    if (q.per) p.set("per", String(q.per));          // the CSV export: every trade at once
     return get<RoomStrategyTrades>(`/api/forecasts/room-strategies/trades?${p}`);
   },
   // Backtest a room = a replay of its own rules, day by day (Oct 02, 2026);

@@ -516,7 +516,8 @@ _TABLE_KEPT = 8
 
 
 def _measured(from_s: float, to_s: float, reality: dict) -> list[dict]:
-    """Every kept winner re-measured over [from_s, to_s], unfiltered."""
+    """Every kept winner re-measured over [from_s, to_s], unfiltered — over
+    the trades that OPENED AND CLOSED inside those dates (`inside`)."""
     import numpy as np
 
     from tradingagents import forecast_v2 as f2
@@ -526,7 +527,7 @@ def _measured(from_s: float, to_s: float, reality: dict) -> list[dict]:
     for w in kept():
         t = np.asarray(w.get("trades") if w.get("trades") is not None else [],
                        dtype=np.float64).reshape(-1, 3)
-        t = t[(t[:, 1] >= lo) & (t[:, 1] <= hi)] if len(t) else t
+        t = t[inside(t, lo, hi)] if len(t) else t
         n = len(t)
         p = t[:, 2] if n else np.zeros(0)
         wins = int((p > 0).sum())
@@ -657,12 +658,23 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
             "reality": {k: reality.get(k) for k in ("took", "gap")}, "margin": 5.0, "leverage": 20}
 
 
+def inside(t, lo_ms: float, hi_ms: float):
+    """Which trades belong to the dates [lo_ms, hi_ms]: those that OPENED and
+    CLOSED inside them (operator, Oct 08, 2026, on "last 1 day": "i want to
+    see the trades for past 1 day only because currently i see all past
+    trades" — the list held every trade that CLOSED in the day, so one opened
+    Oct 05, 2026 7:30pm showed in a day starting Oct 07, 2026 7:58pm). One
+    rule for a row's numbers and its trade list, so the two always agree."""
+    return (t[:, 0] >= lo_ms) & (t[:, 1] <= hi_ms)
+
+
 def trades(rid: str, from_s: float, to_s: float, *, page: int = 1, per: int = 10) -> dict:
-    """One kept winner's trades that CLOSED in [from_s, to_s] — exactly the
-    trades its row in `table` counts — oldest first, each with the running
-    total, and the total for the dates (operator, Oct 07, 2026: "if i input 3
-    days show me the room strat and its trade for past 3 days"). Paged here,
-    ten a page like every list on the Forecast page.
+    """One kept winner's trades that OPENED AND CLOSED in [from_s, to_s] —
+    exactly the trades its row in `table` counts — oldest first, each with the
+    running total, and the total for the dates (operator, Oct 07, 2026: "if i
+    input 3 days show me the room strat and its trade for past 3 days"). Paged
+    here, ten a page like every list on the Forecast page; the pop-up's CSV
+    export asks for all of them in one page.
 
     What a trade carries is what the replay kept: when it opened, when it
     closed and what it made at $5 x 20x — NOT which coin (research_merge keeps
@@ -675,7 +687,7 @@ def trades(rid: str, from_s: float, to_s: float, *, page: int = 1, per: int = 10
         raise KeyError(f"no room strategy #{want} is kept")
     t = np.asarray(w["trades"], dtype=np.float64).reshape(-1, 3)
     lo, hi = from_s * 1000, to_s * 1000
-    sel = t[(t[:, 1] >= lo) & (t[:, 1] <= hi)] if len(t) else t
+    sel = t[inside(t, lo, hi)] if len(t) else t
     sel = sel[np.lexsort((sel[:, 0], sel[:, 1]))] if len(sel) else sel   # by close, then open
     n = len(sel)
     p = sel[:, 2] if n else np.zeros(0)

@@ -1356,19 +1356,28 @@ def room_strategies_route(from_s: float, to_s: float, min_winrate: float = 0,
         raise HTTPException(400, str(exc)) from exc
 
 
+# the most trades one export reads: the 992 kept hold 4.9 million, the biggest
+# rule set 17,711 over its whole history (measured Oct 08, 2026)
+TRADES_EXPORT_MAX = 100_000
+
+
 @app.get("/api/forecasts/room-strategies/trades")
-def room_strategy_trades_route(id: str, from_s: float, to_s: float, page: int = 1) -> dict:
-    """Forecast -> Room strategies -> a row clicked: that rule set's trades
-    that closed in the chosen dates — the same trades its row counts — oldest
-    first with the running total and the TOTAL for the dates, ten a page
-    (operator, Oct 07, 2026: "if i input 3 days show me the room strat and its
-    trade for past 3 days")."""
+def room_strategy_trades_route(id: str, from_s: float, to_s: float, page: int = 1,
+                               per: int = 0) -> dict:
+    """Forecast -> Room strategies -> an id clicked: that rule set's trades
+    that opened and closed in the chosen dates — the same trades its row
+    counts — oldest first with the running total and the TOTAL for the dates,
+    ten a page (operator, Oct 07, 2026: "if i input 3 days show me the room
+    strat and its trade for past 3 days"). `per` is the pop-up's CSV export
+    asking for every trade at once ("i should have option to export via
+    csv", Oct 08, 2026), at most TRADES_EXPORT_MAX."""
     from tradingagents import forecast_v2_api as _f2a, room_strategies as _rst
 
     if to_s < from_s:
         raise HTTPException(400, "the end of the range is before its start")
     try:
-        return _rst.trades(id, from_s, to_s, page=page, per=_f2a.PER_PAGE)
+        return _rst.trades(id, from_s, to_s, page=page,
+                           per=min(int(per), TRADES_EXPORT_MAX) if per > 0 else _f2a.PER_PAGE)
     except KeyError as exc:
         raise HTTPException(404, str(exc.args[0])) from exc
 

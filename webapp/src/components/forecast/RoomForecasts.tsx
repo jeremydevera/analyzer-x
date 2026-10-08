@@ -17,6 +17,7 @@ import { api, dateBoxAt, dateBoxValue, fmtMoney, fmtWhen, fmtWhenMs, Forecast, F
 import { useLiveRefresh } from "@/lib/live";
 import PageButtons from "@/components/common/PageButtons";
 import DayPicker from "@/components/form/DayPicker";
+import { Modal } from "@/components/ui/modal";
 
 const roomName = (id: string) => (id === "main" ? "Main" : `#${id}`);
 const pct = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(1)}%`);
@@ -1089,7 +1090,8 @@ export function RoomStrategiesSection() {
   const [shown, setShown] = useState<{ key: string; ask: RsAsk; d: RoomStrategies } | null>(null);
   const [err, setErr] = useState("");
   const [bad, setBad] = useState("");
-  const [open, setOpen] = useState<string | null>(null);
+  // the room strategy whose trades are open in the pop-up
+  const [open, setOpen] = useState<{ id: string; words: string } | null>(null);
   // THE ANSWER MUST ANSWER WHAT WAS LAST APPLIED: Oct 07, 2026 3:37pm the
   // boxes said "min win 90" over a list reading "992 of 992 kept" — the page
   // was still showing an answer to an earlier ask (the server answers 2 of
@@ -1144,8 +1146,9 @@ export function RoomStrategiesSection() {
       <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
         Every winner prompt 4 found and kept, never deleted, and re-tested every day on GitHub so its numbers reach
         last night. A winner made money after the reality check in every complete month and in its newest 15 days.
-        The numbers below are measured over exactly the dates you pick, or the last N days you type. Nothing changes
-        until you press Apply. Click a row to see its trades.
+        The numbers below are measured over exactly the dates you pick, or the last N days you type — a trade counts
+        when it opened and closed inside them. Nothing changes until you press Apply. Click an id to open its trades,
+        with Export CSV.
       </p>
       {/* THE DAILY RE-TEST (operator, Oct 07, 2026: "it should be updated
           everyday justd like the backtest") — when the numbers were last
@@ -1212,14 +1215,17 @@ export function RoomStrategiesSection() {
                 <tbody className="divide-y divide-gray-100 text-gray-700 dark:divide-white/[0.05] dark:text-gray-300">
                   {d.rows.map((r) => (
                     <Fragment key={r.id}>
-                      <tr className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03]" title="show its trades in these dates"
-                        tabIndex={0} onClick={() => setOpen(open === r.id ? null : r.id)}
-                        onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) setOpen(open === r.id ? null : r.id); }}>
-                        <td className={td} onClick={(e) => e.stopPropagation()}><CopyId id={r.id} /></td>
+                      <tr className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.03]" title="open its trades"
+                        tabIndex={0} onClick={() => setOpen({ id: r.id, words: r.words })}
+                        onKeyDown={(e) => { if (e.key === "Enter" && e.target === e.currentTarget) setOpen({ id: r.id, words: r.words }); }}>
+                        <td className={td}>
+                          <button type="button" title="open its trades" className="font-mono font-medium text-brand-600 underline-offset-2 hover:underline dark:text-brand-400"
+                            onClick={(e) => { e.stopPropagation(); setOpen({ id: r.id, words: r.words }); }}>#{r.id}</button>
+                        </td>
                         <td className="min-w-[280px] max-w-[360px] px-2 py-1.5 text-gray-700 dark:text-gray-300">{r.words}
                           {!r.still_works && <span className="ml-1 rounded bg-warning-50 px-1 text-[10px] text-warning-700 dark:bg-warning-500/10">stopped working</span>}</td>
                         <td className={td}>{r.found_by} · {fmtWhen(r.found_at)}</td>
-                        <td className={td}>{r.trades.toLocaleString()} <span className="text-gray-400">{open === r.id ? "▾" : "▸"}</span></td>
+                        <td className={td}>{r.trades.toLocaleString()}</td>
                         <td className={td}>{r.per_day}</td>
                         <td className={td}>{r.wins.toLocaleString()} / {r.losses.toLocaleString()}</td>
                         <td className={td}>{pct(r.winrate)}</td>
@@ -1233,11 +1239,6 @@ export function RoomStrategiesSection() {
                         <td className={`${td} ${tone(r.worst_month)}`}>{fmtMoney(r.worst_month)}</td>
                         <td className={td}>{r.deployable ? "yes" : <span title={r.deploy_why} className="text-gray-400">needs a new switch</span>}</td>
                       </tr>
-                      {open === r.id && (
-                        <tr><td colSpan={cols.length} className="bg-gray-50 px-3 py-3 dark:bg-white/[0.02]"><div className="sticky left-0 max-w-[calc(100vw-4rem)] lg:max-w-[880px]">
-                          <StrategyTrades id={r.id} from_s={d.from} to_s={d.to} />
-                        </div></td></tr>
-                      )}
                     </Fragment>
                   ))}
                 </tbody>
@@ -1245,19 +1246,63 @@ export function RoomStrategiesSection() {
             </div>
           )}
           <PageButtons cur={d.page} pages={d.pages} goto={(n) => { setPage(n); setOpen(null); }} what="room strategies" />
+          {/* A ROOM STRATEGY'S TRADES IN A POP-UP (operator, Oct 08, 2026: "when
+              i click the id, i want it on pop up then i should have option to
+              export via csv") — over the dates the table above answered */}
+          <Modal isOpen={!!open} onClose={() => setOpen(null)} className="m-4 max-w-[960px] p-5 lg:p-6">
+            {open && (
+              <div role="dialog" aria-modal="true" aria-label={`Room strategy #${open.id}`}
+                className="max-h-[80vh] overflow-y-auto pr-10 sm:pr-14">
+                <StrategyTrades id={open.id} words={open.words} from_s={d.from} to_s={d.to} />
+              </div>
+            )}
+          </Modal>
         </>
       )}
     </div>
   );
 }
 
-/** One room strategy's trades that closed in the dates its row was measured
- *  over — the same trades the row counts — oldest first, with the running
- *  total and the TOTAL PROFIT for the dates; ten a page, paged by the server. */
-function StrategyTrades({ id, from_s, to_s }: { id: string; from_s: number; to_s: number }) {
+/** The most trades one CSV export reads (api.py TRADES_EXPORT_MAX). */
+const EXPORT_MAX = 100_000;
+
+/** One room strategy's trades that opened and closed in the dates its row was
+ *  measured over — the same trades the row counts — oldest first, with the
+ *  running total and the TOTAL PROFIT for the dates; ten a page, paged by the
+ *  server. Export CSV writes every one of them, each date as the screen
+ *  prints it (fmtWhenMs, this browser's clock). */
+function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string; from_s: number; to_s: number }) {
   const [page, setPage] = useState(1);
   const [got, setGot] = useState<{ key: string; d: RoomStrategyTrades } | null>(null);
   const [err, setErr] = useState("");
+  // "" idle, "busy" while the export reads, else what it has to say
+  const [csv, setCsv] = useState("");
+  const exportCsv = () => {
+    setCsv("busy");
+    api.roomStrategyTrades({ id, from_s, to_s, page: 1, per: EXPORT_MAX })
+      .then((all) => {
+        const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+        const lines = [["#", "Opened", "Closed", "Held", "Profit", "Running total"].map(q).join(",")];
+        for (const t of all.rows) {
+          lines.push([t.n, fmtWhenMs(t.opened), fmtWhenMs(t.closed), heldFor(t.closed - t.opened),
+            t.profit.toFixed(2), t.total.toFixed(2)].map(q).join(","));
+        }
+        lines.push([q("TOTAL PROFIT"), "", "", "", "", q(all.profit.toFixed(2))].join(","));
+        const url = URL.createObjectURL(new Blob(["\uFEFF" + lines.join("\r\n") + "\r\n"],
+          { type: "text/csv;charset=utf-8" }));
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `room-strategy-${id}-${dateBoxAt(from_s)}-to-${dateBoxAt(to_s)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        setCsv(all.rows.length < all.trades
+          ? `exported the first ${all.rows.length.toLocaleString()} of ${all.trades.toLocaleString()} trades`
+          : `exported ${all.trades.toLocaleString()} trade${all.trades === 1 ? "" : "s"}`);
+      })
+      .catch((e) => setCsv(`could not export — ${String(e?.message ?? e)}`));
+  };
   const key = `${id}|${from_s}|${to_s}|${page}`;
   useEffect(() => {
     let live = true;
@@ -1273,13 +1318,22 @@ function StrategyTrades({ id, from_s, to_s }: { id: string; from_s: number; to_s
   const d = got.d;
   return (
     <div className={got.key === key ? "" : "opacity-60"}>
-      <p className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-theme-sm font-semibold"><CopyId id={d.id} /></span>
+        <button type="button" onClick={exportCsv} disabled={csv === "busy" || d.trades === 0}
+          className="rounded-lg border border-brand-500 px-3 py-1 text-theme-xs font-medium text-brand-600 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-brand-400 dark:hover:bg-brand-500/10">
+          {csv === "busy" ? "Exporting…" : "Export CSV"}
+        </button>
+        {csv && csv !== "busy" && <span className="text-theme-xs text-gray-500 dark:text-gray-400">{csv}</span>}
+      </div>
+      <p className="mt-1 text-theme-xs text-gray-600 dark:text-gray-300">{words}</p>
+      <p className="mt-2 text-theme-sm font-semibold text-gray-800 dark:text-white/90">
         TOTAL PROFIT <span className={tone(d.profit)}>{fmtMoney(d.profit)}</span>
-        <span className="font-normal text-gray-500 dark:text-gray-400"> over {d.trades.toLocaleString()} trade{d.trades === 1 ? "" : "s"} ({d.wins.toLocaleString()} won, {d.losses.toLocaleString()} lost) that closed {fmtWhen(d.from)} to {fmtWhen(d.to)} · ${d.margin} a trade at {d.leverage}x</span>
+        <span className="font-normal text-gray-500 dark:text-gray-400"> over {d.trades.toLocaleString()} trade{d.trades === 1 ? "" : "s"} ({d.wins.toLocaleString()} won, {d.losses.toLocaleString()} lost) that opened and closed between {fmtWhen(d.from)} and {fmtWhen(d.to)} · ${d.margin} a trade at {d.leverage}x</span>
       </p>
       {d.trades === 0 ? (
         <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-          No trade of #{d.id} closed in these dates.{d.first != null && d.last != null
+          No trade of #{d.id} opened and closed in these dates.{d.first != null && d.last != null
             ? ` Its ${d.saved.toLocaleString()} saved trades closed ${fmtWhenMs(d.first)} to ${fmtWhenMs(d.last)}.` : " It has no saved trades."}
         </p>
       ) : (

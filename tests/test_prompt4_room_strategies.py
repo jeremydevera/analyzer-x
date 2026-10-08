@@ -188,8 +188,9 @@ def test_a_row_with_no_trade_in_the_dates_passes_no_floor():
 
 
 def test_a_rows_trades_are_exactly_the_ones_its_row_counts():
-    """Click a row: its trades that CLOSED in the same dates, oldest first,
-    the running total, the TOTAL for the dates — and the row's own numbers."""
+    """Click an id: its trades that OPENED AND CLOSED in the same dates,
+    oldest first, the running total, the TOTAL for the dates — and the row's
+    own numbers."""
     a, _ = _keep_two()
     lo, hi = ms(2026, 9, 20, 0) / 1000, ms(2026, 9, 30, 23) / 1000
     row = rst.table(lo, hi, reality=REAL, find=a)["rows"][0]
@@ -209,6 +210,31 @@ def test_a_rows_trades_are_exactly_the_ones_its_row_counts():
         rst.trades("NOSUCHID", lo, hi)
 
 
+def test_a_trade_counts_only_when_it_opened_and_closed_inside_the_dates():
+    """Operator, Oct 08, 2026, on "last 1 day": "i want to see the trades for
+    past 1 day only because currently i see all past trades". The list held
+    every trade that CLOSED in the day, so one opened Oct 05, 2026 7:30pm
+    showed in a day starting Oct 07, 2026 7:58pm. A row and its list now
+    count a trade only when it opened AND closed inside the dates."""
+    def at(d, h, mi=0):
+        return int(dt.datetime(2026, 10, d, h, mi).timestamp() * 1000)
+    c = rst.cfg(15, 70, 40, "1.5x", 2.0, 2.0)
+    t = [[at(5, 19, 30), at(7, 20), -2.24],        # opened two days before: out
+         [at(7, 19), at(7, 20), 1.75],             # opened a minute before the day: out
+         [at(7, 20, 0), at(7, 20, 45), -1.38],     # opened as the day starts: in
+         [at(8, 10), at(8, 11), 1.69],             # in
+         [at(8, 19, 30), at(8, 20, 30), 2.0]]      # still open when the day ends: out
+    t.sort(key=lambda r: r[1])
+    rst.keep([{"id": rst.sid(c), "cfg": c, "words": fr.words(c), "deployable": True, "deploy_why": "",
+               "p4": rst.measure(t, END, REAL), "trades": t}], "r1", "RUN", now=1000)
+    lo, hi = at(7, 20) / 1000, at(8, 20) / 1000
+    row = rst.table(lo, hi, reality=REAL)["rows"][0]
+    got = rst.trades(rst.sid(c), lo, hi)
+    assert (row["trades"], row["wins"], row["profit"]) == (got["trades"], got["wins"], got["profit"]) \
+        == (2, 1, 0.31)
+    assert [r["opened"] for r in got["rows"]] == [at(7, 20), at(8, 10)]
+
+
 def test_the_trades_route_pages_ten_and_names_a_missing_id():
     from fastapi import HTTPException
 
@@ -219,6 +245,10 @@ def test_the_trades_route_pages_ten_and_names_a_missing_id():
     lo, hi = ms(2026, 7, 1, 0) / 1000, ms(2026, 9, 30, 23) / 1000
     got = api.room_strategy_trades_route(a, lo, hi)
     assert got["per"] == f2a.PER_PAGE and got["trades"] == 4
+    # the pop-up's CSV export asks for every trade in one page, never past the cap
+    every = api.room_strategy_trades_route(a, lo, hi, per=100_000)
+    assert len(every["rows"]) == 4 and every["pages"] == 1
+    assert api.room_strategy_trades_route(a, lo, hi, per=10 ** 9)["per"] == api.TRADES_EXPORT_MAX == 100_000
     with pytest.raises(HTTPException) as e:
         api.room_strategy_trades_route("NOSUCHID", lo, hi)
     assert e.value.status_code == 404 and "NOSUCHID" in e.value.detail
@@ -314,8 +344,30 @@ def test_a_range_past_the_saved_trades_says_where_they_end():
     trades = _src_all().split("\nfunction StrategyTrades(")[1]
     assert "TOTAL PROFIT" in trades and "not which coin it was on" in trades
     assert "api.roomStrategyTrades({ id, from_s, to_s, page })" in trades
-    assert '<StrategyTrades id={r.id} from_s={d.from} to_s={d.to} />' in s, \
+    assert '<StrategyTrades id={open.id} words={open.words} from_s={d.from} to_s={d.to} />' in s, \
         "a row's trades are read over the dates its row was measured on"
+
+
+def test_the_id_opens_a_pop_up_with_its_trades_and_export_csv():
+    """Operator, Oct 08, 2026: "when i click the id, i want it on pop up then
+    i should have option to export via csv"."""
+    from tradingagents import api
+
+    src = _src_all()
+    s = _section()
+    assert 'import { Modal } from "@/components/ui/modal";' in src
+    assert 'onClick={(e) => { e.stopPropagation(); setOpen({ id: r.id, words: r.words }); }}>#{r.id}</button>' in s
+    assert '<Modal isOpen={!!open} onClose={() => setOpen(null)}' in s
+    assert "<td colSpan={cols.length}" not in s, "no trade list opens inside the table any more"
+    trades = src.split("\nfunction StrategyTrades(")[1].split("\nfunction CopyId(")[0]
+    assert '"Exporting…" : "Export CSV"' in trades and "<CopyId id={d.id} />" in trades
+    assert "api.roomStrategyTrades({ id, from_s, to_s, page: 1, per: EXPORT_MAX })" in trades
+    # every date as the screen prints it, each cell quoted: "Oct 07, 2026 8:00pm" holds a comma
+    assert "fmtWhenMs(t.opened), fmtWhenMs(t.closed)" in trades
+    assert """const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;""" in trades
+    assert 'q("TOTAL PROFIT")' in trades and "that opened and closed between" in trades
+    assert "a.download = `room-strategy-${id}-${dateBoxAt(from_s)}-to-${dateBoxAt(to_s)}.csv`;" in trades
+    assert "const EXPORT_MAX = 100_000;" in src and api.TRADES_EXPORT_MAX == 100_000
 
 
 def test_the_merge_scores_every_rule_set_and_keeps_trades_for_winners_only(tmp_path, monkeypatch):

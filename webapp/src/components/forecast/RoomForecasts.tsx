@@ -1288,6 +1288,10 @@ function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string
             t.profit.toFixed(2), t.total.toFixed(2)].map(q).join(","));
         }
         lines.push([q("TOTAL PROFIT"), "", "", "", "", q(all.profit.toFixed(2))].join(","));
+        // THE DATES' WIN RATE AS THE LAST ROW (operator, Oct 08, 2026: "when i
+        // export the csv, show me the winrate for last row")
+        lines.push([q("WIN RATE"), "", "", "", "",
+          q(`${pct(all.winrate)} (${all.wins.toLocaleString()} won, ${all.losses.toLocaleString()} lost)`)].join(","));
         const url = URL.createObjectURL(new Blob(["\uFEFF" + lines.join("\r\n") + "\r\n"],
           { type: "text/csv;charset=utf-8" }));
         const a = document.createElement("a");
@@ -1329,7 +1333,7 @@ function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string
       <p className="mt-1 text-theme-xs text-gray-600 dark:text-gray-300">{words}</p>
       <p className="mt-2 text-theme-sm font-semibold text-gray-800 dark:text-white/90">
         TOTAL PROFIT <span className={tone(d.profit)}>{fmtMoney(d.profit)}</span>
-        <span className="font-normal text-gray-500 dark:text-gray-400"> over {d.trades.toLocaleString()} trade{d.trades === 1 ? "" : "s"} ({d.wins.toLocaleString()} won, {d.losses.toLocaleString()} lost) that opened and closed between {fmtWhen(d.from)} and {fmtWhen(d.to)} · ${d.margin} a trade at {d.leverage}x</span>
+        <span className="font-normal text-gray-500 dark:text-gray-400"> over {d.trades.toLocaleString()} trade{d.trades === 1 ? "" : "s"} ({d.wins.toLocaleString()} won, {d.losses.toLocaleString()} lost, win rate {pct(d.winrate)}) that opened and closed between {fmtWhen(d.from)} and {fmtWhen(d.to)} · ${d.margin} a trade at {d.leverage}x</span>
       </p>
       {d.trades === 0 ? (
         <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">

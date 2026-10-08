@@ -195,8 +195,8 @@ def test_a_rows_trades_are_exactly_the_ones_its_row_counts():
     lo, hi = ms(2026, 9, 20, 0) / 1000, ms(2026, 9, 30, 23) / 1000
     row = rst.table(lo, hi, reality=REAL, find=a)["rows"][0]
     got = rst.trades("#" + a.lower(), lo, hi)
-    assert (got["trades"], got["wins"], got["losses"], got["profit"]) == \
-        (row["trades"], row["wins"], row["losses"], row["profit"]) == (3, 2, 1, 1.5)
+    assert (got["trades"], got["wins"], got["losses"], got["profit"], got["winrate"]) == \
+        (row["trades"], row["wins"], row["losses"], row["profit"], row["winrate"]) == (3, 2, 1, 1.5, 66.7)
     assert [t["closed"] for t in got["rows"]] == [ms(2026, 9, 21), ms(2026, 9, 22), ms(2026, 9, 25)]
     assert [t["total"] for t in got["rows"]] == [1.0, 0.5, 1.5], "a running total, oldest first"
     assert got["rows"][0]["opened"] == ms(2026, 9, 21) - 3_600_000 and got["saved"] == 4
@@ -366,6 +366,12 @@ def test_the_id_opens_a_pop_up_with_its_trades_and_export_csv():
     assert "fmtWhenMs(t.opened), fmtWhenMs(t.closed)" in trades
     assert """const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;""" in trades
     assert 'q("TOTAL PROFIT")' in trades and "that opened and closed between" in trades
+    # the dates' own win rate in the pop-up, and as the CSV's LAST row (Oct 08,
+    # 2026: "when i export the csv, show me the winrate for last row")
+    assert "lost, win rate {pct(d.winrate)})" in trades
+    rows = [ln.strip() for ln in trades.split("const lines = ")[1].split("const url")[0].splitlines()
+            if "lines.push(" in ln]
+    assert 'q("TOTAL PROFIT")' in rows[-2] and 'q("WIN RATE")' in rows[-1], rows
     assert "a.download = `room-strategy-${id}-${dateBoxAt(from_s)}-to-${dateBoxAt(to_s)}.csv`;" in trades
     assert "const EXPORT_MAX = 100_000;" in src and api.TRADES_EXPORT_MAX == 100_000
 

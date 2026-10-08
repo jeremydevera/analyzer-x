@@ -1264,6 +1264,8 @@ export type RoomStrategies = {
 export type RoomStrategyTrades = {
   id: string; words: string; from: number; to: number;
   trades: number; wins: number; losses: number; profit: number;
+  /** the dates' own win rate, % (null with no trade) */
+  winrate: number | null;
   rows: { n: number; opened: number; closed: number; profit: number; total: number }[];
   page: number; pages: number; per: number;
   saved: number; first: number | null; last: number | null; margin: number; leverage: number;

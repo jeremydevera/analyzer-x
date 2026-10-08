@@ -701,6 +701,9 @@ def trades(rid: str, from_s: float, to_s: float, *, page: int = 1, per: int = 10
     wins = int((p > 0).sum())
     return {"id": want, "words": w["words"], "from": from_s, "to": to_s,
             "trades": n, "wins": wins, "losses": n - wins,
+            # the dates' own win rate, by the table's own formula (_measured),
+            # so the pop-up, its CSV and the row print one number
+            "winrate": round(100 * wins / n, 1) if n else None,
             "profit": round(float(p.sum()), 2) if n else 0.0,
             "rows": rows, "page": page, "pages": pages, "per": per,
             # this rule set's own saved trades, whatever the dates

@@ -37,6 +37,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import threading
 import time
 from pathlib import Path
 
@@ -306,28 +307,34 @@ PER_PAGE = 10
 # counts only the newlines appended since the last one
 _COUNT = {"path": None, "size": 0, "lines": 0}
 _COUNTS: dict = {}          # one count per profile's log
+_COUNT_LOCK = threading.Lock()
 
 
 def _log_lines() -> int:
-    try:
-        size = _log_path().stat().st_size
-    except OSError:
-        return 0
-    key = str(_log_path())
-    if _COUNT["path"] != key:
-        # another room's log: keep this one's count, pick up that one's
-        if _COUNT["path"] is not None:
-            _COUNTS[_COUNT["path"]] = dict(_COUNT)
-        _COUNT.update(_COUNTS.get(key) or {"path": key, "size": 0, "lines": 0})
-    if size < _COUNT["size"]:
-        _COUNT.update(path=key, size=0, lines=0)
-    if size > _COUNT["size"]:
-        with contextlib.suppress(OSError), _log_path().open("rb") as fh:
-            fh.seek(_COUNT["size"])
-            chunk = fh.read(size - _COUNT["size"])
-            _COUNT["lines"] += chunk.count(b"\n")
-            _COUNT["size"] = size
-    return _COUNT["lines"]
+    # ONE count shared by every room, and the API answers rooms on parallel
+    # threads: without the lock room B swapped in its bigger count between
+    # room A's size check and A's read, and A asked for a negative length
+    # (Oct 07, 2026 7:52pm, RCA-2026-10-08-A)
+    with _COUNT_LOCK:
+        try:
+            size = _log_path().stat().st_size
+        except OSError:
+            return 0
+        key = str(_log_path())
+        if _COUNT["path"] != key:
+            # another room's log: keep this one's count, pick up that one's
+            if _COUNT["path"] is not None:
+                _COUNTS[_COUNT["path"]] = dict(_COUNT)
+            _COUNT.update(_COUNTS.get(key) or {"path": key, "size": 0, "lines": 0})
+        if size < _COUNT["size"]:
+            _COUNT.update(path=key, size=0, lines=0)
+        if size > _COUNT["size"]:
+            with contextlib.suppress(OSError), _log_path().open("rb") as fh:
+                fh.seek(_COUNT["size"])
+                chunk = fh.read(size - _COUNT["size"])
+                _COUNT["lines"] += chunk.count(b"\n")
+                _COUNT["size"] = size
+        return _COUNT["lines"]
 
 
 def decisions_page(page: int = 1, per: int = PER_PAGE) -> dict:

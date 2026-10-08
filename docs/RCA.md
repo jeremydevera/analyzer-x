@@ -172,6 +172,66 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-08-A — the Watcher box failed to load for one room now and then, because rooms counting their decisions at the same moment tripped over one shared count
+
+**CEO**
+
+* What happened: at 7:52pm on Oct 07, 2026 the Watcher box for one room
+  failed to load; it happened 5 times out of 7,403 loads that evening.
+* Why: the screen asks every room's watcher at once, and all rooms shared one
+  running tally of "how many decisions are in the log", so one room changed
+  the tally while another was half-way through reading it.
+* What stops it now: only one room may touch the tally at a time; the others
+  wait a few milliseconds.
+
+**DEV**
+
+* `tradingagents/api.py:1229` `watcher_status` → `strategy_watcher.status`
+  → `decisions_page` → `strategy_watcher.py:_log_lines` runs on Starlette's
+  thread pool, one thread per room. `_COUNT` is one module dict swapped per
+  room's log path; room B swapped in its bigger `size` between room A's
+  `size > _COUNT["size"]` check and A's `fh.read(size - _COUNT["size"])`, so
+  A asked for a negative length → `ValueError`, HTTP 500.
+* Invariant broken: **a module-level cache shared by every room is touched by
+  one thread at a time.** `_COUNT_LOCK` now holds the whole check-and-read.
+  (Same shape as RCA-2026-10-07-F: two reads of one record at once.)
+* Guard: `tests/test_watcher_pages_and_demo_all_time.py::test_two_rooms_counting_at_once_never_read_a_negative_length`
+  (red on the old code with the exact production error; room B is run on a
+  second thread at the instant room A opens its log).
+
+**SAW** — the fixer's evidence for fault `9733ea44f628`, "The site itself
+failed", `ValueError: read length must be non-negative or -1` in
+`strategy_watcher.py:_log_lines`, one occurrence at `Oct 07, 2026 7:52pm`.
+
+**TIMELINE**
+
+1. `Oct 07, 2026 6:43pm` — the site starts (pid 26696).
+2. `7:52pm` — the page asks ten rooms' watchers within the same second (site
+   log lines 32,436-32,528); nine answer 200, one answers 500 with this
+   traceback.
+3. Through to `Oct 08, 2026 12:09am` (the next restart) — the same failure
+   5 times in 7,403 watcher loads; the box shows nothing for that room until
+   the next refresh 30 seconds later.
+4. After the fix — the guard test passes; 103 tests across the watcher,
+   panel and room files pass.
+
+**ROOT CAUSE** — a per-room count was kept in ONE shared dict and read
+without a lock by an API that serves rooms on parallel threads.
+
+**WHY IT WAS NOT CAUGHT** — every `decisions_page` test runs one room on one
+thread; the count was written when the screen asked one room at a time, and
+nobody re-asked what it shares once the page started asking every room at
+once.
+
+**COST** — none. A room's Watcher box was blank for 30 seconds, 5 times; no
+trade, no setting, no switch was affected.
+
+**FIX** — this commit: `_COUNT_LOCK` around `strategy_watcher._log_lines`.
+
+**GUARD** — `tests/test_watcher_pages_and_demo_all_time.py::test_two_rooms_counting_at_once_never_read_a_negative_length`.
+
+---
+
 ## RCA-2026-10-07-R — one slow cloud-progress read was filed twice, because a web request got stuck onto the end of its line
 
 **CEO**

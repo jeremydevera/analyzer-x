@@ -102,3 +102,39 @@ def test_the_tile_prints_the_practice_money_and_when_it_started():
     assert "money(s.paper_all_time.total)" in src
     assert "since ${fmtWhen(s.paper_all_time.since)}" in src
     assert "${s.paper_positions.length} open" in src, "the open count is still there"
+
+
+def test_two_rooms_counting_at_once_never_read_a_negative_length(tmp_path, monkeypatch):
+    """Oct 07, 2026 7:52pm: the site failed with "read length must be
+    non-negative" in _log_lines. The count is ONE memory for every room, and
+    the API answers rooms on parallel threads: room A checked its log was
+    bigger than the count, then room B swapped in its own (bigger) count
+    before A read, so A asked for a negative number of bytes. Room B runs
+    exactly between A's check and A's read here — the moment A opens its log."""
+    import threading
+
+    a, b = tmp_path / "a.jsonl", tmp_path / "b.jsonl"
+    a.write_bytes(b"{}\n" * 3)
+    b.write_bytes(b"{}\n" * 500)
+    sw._COUNT.update(path=None, size=0, lines=0)
+    monkeypatch.setattr(sw, "_COUNTS", {})
+    room = threading.local()
+    calls = {"a": 0}
+
+    def path():
+        if getattr(room, "name", "a") == "b":
+            return b
+        calls["a"] += 1
+        if calls["a"] == 3:                     # A is about to read
+            def other():
+                room.name = "b"
+                sw._log_lines()
+            t = threading.Thread(target=other)
+            t.start()
+            t.join(timeout=0.5)
+        return a
+
+    monkeypatch.setattr(sw, "_log_path", path)
+    assert sw._log_lines() == 3
+    room.name = "b"
+    assert sw._log_lines() == 500

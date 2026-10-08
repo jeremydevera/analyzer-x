@@ -131,6 +131,12 @@ _SELF_RETRYING = ("tries again", "trying again", "will retry", "try again")
 # its own failures are reported by the tab and the bell, not by filing through
 # the GitHub call that just failed
 _OWN_TAGS = ("error-issues",)
+# uvicorn's own line ("INFO:     127.0.0.1 - GET ...") GLUED onto the end of
+# another: `print()` writes its text and its newline in two writes, so a web
+# request logged by another thread in between lands on the same line. Issue
+# 7812369f14f9 (Oct 07, 2026 7:26pm) was issue #7's fault with a request
+# stuck to it, filed again as #8 (RCA-2026-10-07-R)
+_GLUED = re.compile(r"(?<=\S)(?=(?:DEBUG|INFO|WARNING|ERROR|CRITICAL):\s{2,})")
 _FRAME = re.compile(r'^\s*File "([^"]+)", line \d+, in (\S+)')
 _LAST = re.compile(r"^([A-Za-z_][\w.]*(?:Error|Exception|Exit|Interrupt|Warning)\b.*)$")
 
@@ -152,7 +158,8 @@ def from_site_log(now: float) -> list[dict]:
         fh.seek(off)
         data = fh.read(size - off)
     _SITE_TAIL["offset"] = size
-    lines = data.decode("utf-8", "replace").splitlines()
+    lines = [part for ln in data.decode("utf-8", "replace").splitlines()
+             for part in _GLUED.split(ln)]
     out: list[dict] = []
     frame = ""
     in_tb = False

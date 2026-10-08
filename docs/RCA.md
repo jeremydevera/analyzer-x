@@ -172,6 +172,73 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-07-R — one slow cloud-progress read was filed twice, because a web request got stuck onto the end of its line
+
+**CEO**
+
+* What happened: at 7:26pm the error system opened issue #8 for "could not
+  read the cloud machines' progress" — the same slow read it had already
+  filed as issue #7 at 6:12pm and checked as not a fault.
+* Why: the site's log line for it had a web page request glued onto its end,
+  so the system thought it was a different error.
+* What stops it now: a web request glued onto a line is cut off before the
+  error is named, so the same error always gets the same issue.
+
+**DEV**
+
+* `tradingagents/cloud_sweep.py:905` `live_progress` prints its failure with
+  `print(..., flush=True)`, which writes the text and the `\n` in two writes;
+  uvicorn's access logger (another thread, one write) landed between them,
+  giving `...no answer in 180s — killedINFO:     127.0.0.1:57321 - "GET
+  /api/trade/log?n=200 HTTP/1.1" 200 OK` and an empty line after it.
+  `tradingagents/error_issues.py:from_site_log` keyed the whole line, so the
+  request path became part of the fault id (`7812369f14f9` instead of
+  `936f76c8c751`).
+* Invariant broken: **one fault = one id, whatever another thread wrote
+  beside it.** `from_site_log` now splits each line before a glued uvicorn
+  level prefix (`_GLUED`: `INFO:`/`WARNING:`/`ERROR:`... followed by two or
+  more spaces, not at the start of the line).
+* Guard: `tests/test_errors_become_issues.py::test_a_web_request_line_glued_onto_a_fault_is_the_same_fault`
+  (red on the old reader: the glued line was a second fault, and a glued
+  `WARNING:` stayed inside a `[handoff]` message).
+
+**SAW** — the fixer's evidence for fault `7812369f14f9`, "The site's cloud
+failed", one occurrence at `Oct 07, 2026 7:26pm`, its message ending in an
+unrelated `GET /api/trade/log` request.
+
+**TIMELINE**
+
+1. `Oct 07, 2026 6:12pm` — fault `936f76c8c751`, the progress fetch timing
+   out after 180 s, filed as issue #7; the fixer found the G: drive flat out
+   saving a running backtest and called it not a fault.
+2. `6:43pm` — the site restarts (pid 26696), a fresh `.run/api.log`.
+3. `7:26pm` — the same timeout again (site log line 19,634); the Auto Trade
+   screen's `/api/trade/log` request was logged between the message and its
+   newline. The filer saw a new fault and filed issue #8, then queued a
+   fixer run for it.
+4. `Oct 08, 2026 12:04am` — checked by hand: a progress fetch started
+   12:04:20 and finished by 12:04:59, well inside its 180 s; the same
+   timeout appears 27 times in 5 h 21 min of site log, each followed by the
+   screen keeping its last progress.
+5. After the fix, the whole current site log read again gives
+   `936f76c8c751` x 27 and no `7812369f14f9`.
+
+**ROOT CAUSE** — the filer assumed one log line is one message; the site's
+log is written by many threads and `print()` is two writes.
+
+**WHY IT WAS NOT CAUGHT** — every `from_site_log` test writes its fixture
+log as clean lines, one message each; none had two writers sharing a file,
+which is the only way the real one is ever written.
+
+**COST** — none. One duplicate public issue and one of the fixer's 8 daily
+runs; no trade, no setting.
+
+**FIX** — this commit: `_GLUED` split in `error_issues.from_site_log`.
+
+**GUARD** — `tests/test_errors_become_issues.py::test_a_web_request_line_glued_onto_a_fault_is_the_same_fault`.
+
+---
+
 ## RCA-2026-10-07-Q — the Forecast v2 tests failed 1-2 times whenever the pager tests ran first
 
 **CEO**

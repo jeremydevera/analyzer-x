@@ -624,6 +624,29 @@ def test_a_count_of_zero_failures_is_never_an_error(tmp_path, monkeypatch):
     assert [e["message"][:14] for e in got] == ["[rolling30] re", "[forecast] 10 "]
 
 
+def test_a_web_request_line_glued_onto_a_fault_is_the_same_fault(tmp_path, monkeypatch):
+    """Issue 7812369f14f9 (Oct 07, 2026 7:26pm): `print()` writes its text and
+    its newline in two writes, so a web request logged by another thread in
+    between landed on the SAME line — "...no answer in 180s — killedINFO:
+    127.0.0.1:57321 - "GET /api/trade/log?n=200 ..." 200 OK" — and the filer
+    opened issue #8 for a fault already filed and checked as issue #7. The
+    glued request is cut off, so both lines are ONE fault with one id."""
+    clean = "[cloud] could not fetch sweep-progress: git fetch: no answer in 180s — killed"
+    log = tmp_path / "api.log"
+    log.write_text(
+        clean + "\n"
+        + clean + 'INFO:     127.0.0.1:57321 - "GET /api/trade/log?n=200 HTTP/1.1" 200 OK\n'
+        "\n"
+        "[handoff] failed: CloudError('gh timed out')WARNING:  Invalid HTTP request received.\n",
+        encoding="utf-8")
+    monkeypatch.setattr(ei, "SITE_LOG", log)
+    monkeypatch.setattr(ei, "_SITE_TAIL", {})
+    got = ei.from_site_log(now=T0)
+    assert [(e["message"], e["count"]) for e in got] == [
+        (clean, 2), ("[handoff] failed: CloudError('gh timed out')", 1)]
+    assert ei.fingerprint(got[0]) == "936f76c8c751"      # issue #7's own id
+
+
 def test_issues_are_filed_as_the_projects_owner(monkeypatch):
     """On this PC gh's ACTIVE account is the fork's (jeremydvera, checked
     Oct 07, 2026); the issues belong to jeremydevera/analyzer-x, so the filer

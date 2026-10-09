@@ -285,6 +285,14 @@ def _keep_the_row_index_current() -> None:
                         _said = _ri.swap_ready_rebuild(_live)
                         if _said:
                             print(f"[supervisor] {_live}: {_said}", flush=True)
+                        # THE INDEXES THE SWAP RETIRED, built again one after
+                        # another: only the first ever started, and the rooms'
+                        # midnight switch-on waited for rows_wr4 two nights
+                        # running (RCA-2026-10-09-A). "" when nothing is queued.
+                        with _ri.using_db(_live):
+                            _said = _ri.continue_index_queue()
+                        if _said:
+                            print(f"[supervisor] {_live}: {_said}", flush=True)
                         # AN IDLE STORE KEEPS NO BIG JOURNAL: v2's 6.05 GB one
                         # froze the Backtest list on Oct 07, 2026, because only
                         # the switched-off v1 indexer ever folded one

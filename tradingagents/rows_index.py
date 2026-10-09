@@ -1530,6 +1530,9 @@ def swap_ready_rebuild(live: Path) -> str:
                 f"is being built on the current file")
     if held:
         return f"a verified rebuild waits to be swapped in — {held}"
+    # what the file about to be retired carries, to be built again after
+    with using_db(live):
+        had = _indexes_on_file()
     key = _gate_key(live)
     with _SWAP_GATE:
         _SWAP_CLOSED.add(key)
@@ -1563,6 +1566,7 @@ def swap_ready_rebuild(live: Path) -> str:
         got["phase"] = "done"
         prog.write_text(json.dumps(got), encoding="utf-8")
     with using_db(live):
+        _remember_indexes(had)
         queued = _after_fill_indexes()
     return (f"swapped the rebuilt index into {live.name}"
             + (f"; building {', '.join(queued)}" if queued else "")
@@ -2102,6 +2106,8 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
         mode = f"NOT SET: {type(exc).__name__}: {exc}"
         print(f"[rows-index] could not put the new index in WAL: {mode}",
               flush=True)
+    # what the file about to be retired carries (RCA-2026-10-09-A)
+    had = _indexes_on_file()
     with _lock:
         _ready.discard(str(DB_PATH))
         forget_indexes()
@@ -2133,7 +2139,10 @@ def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
     # floors, the #id lookup, the signal filter — answers 503 until somebody
     # builds them, and on this store they are hours each and had already been
     # paid for. Every other fill path queues them; rebuild() never did, which
-    # is the kind of gap a function with no production caller keeps.
+    # is the kind of gap a function with no production caller keeps. Only
+    # the FIRST starts here (one writer at a time): every other one the
+    # retired file had is queued for the site's tick (RCA-2026-10-09-A).
+    _remember_indexes(had)
     queued = _after_fill_indexes()
     _say("done")
     after = DB_PATH.stat().st_size
@@ -2297,6 +2306,101 @@ def _after_fill_indexes() -> list:
         print(f"[rows-index] could not start the missing index builds: "
               f"{type(exc).__name__}: {exc}", flush=True)
         return []
+
+
+# THE INDEXES A SWAP RETIRED ARE PUT BACK, ONE AFTER ANOTHER (RCA-2026-10-09-A).
+#
+# A rebuilt file carries the kept four only. `_after_fill_indexes` starts the
+# FIRST missing index and every other one prints "waits: rows_wr2 is building"
+# and is never asked for again — builds run one at a time and nothing came
+# back for the rest. Backtest v2 is rebuilt every evening after the daily
+# update; the retired file held rows_wr2 and rows_wr4, the new one rows_wr2
+# only, and the rooms' midnight switch-on (win % with filters beside it) waited
+# on Oct 08, 2026 12:02am and Oct 09, 2026 12:00am while rows_wr4 was built
+# from scratch on demand. Only what the retired file HAD is queued: the other
+# sixteen were never asked for, and each is minutes to an hour of this disk.
+INDEX_QUEUE_TRIES = 3
+
+
+def _index_queue_path(live=None) -> Path:
+    return Path(live or _db()).parent / ".index-queue.json"
+
+
+def _indexes_on_file() -> list:
+    """The on-demand indexes the file at `_db()` holds right now, in
+    INDEX_DDL order. [] when it cannot be read — never raises."""
+    try:
+        kept = _kept_index_names()
+        return [n for n in INDEX_DDL
+                if n not in kept and has_index(n) is True]
+    except Exception:                                          # noqa: BLE001
+        return []
+
+
+def _write_index_queue(path: Path, got: dict) -> None:
+    tmp = path.with_name(path.name + f".{os.getpid()}.tmp")
+    with contextlib.suppress(OSError):
+        tmp.write_text(json.dumps(got), encoding="utf-8")
+        os.replace(tmp, path)
+
+
+def _remember_indexes(had) -> None:
+    """After a swap: queue every index in `had` (read off the RETIRED file)
+    that the new file at `_db()` lacks. The site's tick builds them in turn
+    (`continue_index_queue`). Never raises."""
+    try:
+        missing = [n for n in had if has_index(n) is not True]
+        if missing:
+            _write_index_queue(_index_queue_path(),
+                               {"names": missing, "tries": {},
+                                "at": int(time.time())})
+    except Exception as exc:                                   # noqa: BLE001
+        print(f"[rows-index] could not queue {', '.join(had)} to be built "
+              f"again: {type(exc).__name__}: {exc}", flush=True)
+
+
+def continue_index_queue() -> str:
+    """Start the next queued index on `_db()` when nothing is building.
+    "" when there is nothing to do, else one sentence. Never raises.
+
+    Called by the API's 30-second tick for each store: a detached build
+    ends without telling anyone, so the tick is what starts the next one.
+    """
+    path = _index_queue_path()
+    try:
+        got = json.loads(path.read_text(encoding="utf-8"))
+        names = [n for n in got.get("names") or [] if n in INDEX_DDL]
+        tries = dict(got.get("tries") or {})
+    except (OSError, ValueError, AttributeError, TypeError):
+        return ""
+    if build_running():
+        return ""                       # one writer at a time; next tick
+    forget_indexes()
+    left, gave_up = [], []
+    for n in names:
+        seen = has_index(n)
+        if seen is True:
+            continue
+        if seen is not None and int(tries.get(n) or 0) >= INDEX_QUEUE_TRIES:
+            gave_up.append(n)
+            continue
+        left.append(n)
+    for n in gave_up:
+        print(f"[rows-index] gave up building {n} again after "
+              f"{INDEX_QUEUE_TRIES} tries — rows_index.log says why; the "
+              f"next search that needs it starts it", flush=True)
+    if not left:
+        with contextlib.suppress(OSError):
+            path.unlink()
+        return ""
+    said = ""
+    if has_index(left[0]) is False and _build_index(left[0]):
+        tries[left[0]] = int(tries.get(left[0]) or 0) + 1
+        said = (f"building {left[0]} again — the file a rebuild swapped "
+                f"out had it" + (f"; then {', '.join(left[1:])}"
+                                 if left[1:] else ""))
+    _write_index_queue(path, {**got, "names": left, "tries": tries})
+    return said
 
 
 def sync_in_background(budget_s: float = 0.0, *, force: bool = False) -> bool:

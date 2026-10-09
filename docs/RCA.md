@@ -172,6 +172,90 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-09-A — the rooms' midnight look for new strategies waited two nights running, because the nightly rebuild of the Backtest v2 list put back only one of its two search lists
+
+**CEO**
+
+* Two nights in a row the rooms' midnight look for new strategies to switch
+  on had to wait: Main at Oct 08, 2026 12:02am, then Main and #4FC03172 at
+  Oct 09, 2026 12:00am. Each time the list they search had lost one of its
+  fast search lists and it was made again from scratch (37 minutes the first
+  night, 12 the second).
+* Why: every evening the Backtest v2 list is rebuilt into a fresh file, and
+  the old file's fast search lists have to be made again. Only one is made at
+  a time, so the app started the first one and forgot the rest.
+* What stops it now: before the swap the app writes down which search lists
+  the old file had, and the site's 30-second check makes each one again in
+  turn, so they are ready long before midnight.
+
+**DEV**
+
+* `tradingagents/rows_index.py` `rebuild()` (and `swap_ready_rebuild`) →
+  `_after_fill_indexes` → `build_missing_indexes` → `_build_index`: one build
+  at a time, so the first missing index (`rows_wr2`) started and every other
+  printed `waits: rows_wr2 is building` and returned False — nothing asked
+  again. The retired file held `rows_wr2` and `rows_wr4`; the new one only got
+  `rows_wr2`, and `watcher_candidates`' win % query raised `SortNotReady`
+  until a reader's on-demand build of `rows_wr4` finished.
+* Invariant broken: **a swap puts back what it retired**. "Queue" meant
+  "start one"; a queue has to outlive the call that fills it, and only
+  something that runs after a detached build ends can start the next.
+* Guard: `tests/test_a_rebuild_puts_back_the_indexes_it_swapped_out.py` (7) —
+  the swap then the tick, over a fake file whose indexes are read from WHICH
+  file is at the path; never-had indexes stay unbuilt; a build that fails
+  every time is given up after `INDEX_QUEUE_TRIES` and named; the API tick
+  calls `continue_index_queue()` for every store.
+
+**SAW** — the error system filed the watcher's wait twice: Oct 08, 2026
+12:02am for Main (checked, "not a fault": it waited and retried as designed)
+and Oct 09, 2026 12:08am for #4FC03172, the same wait on the next night.
+
+**TIMELINE**
+
+1. **Oct 07, 2026 8:44pm.** The nightly rebuild swapped a fresh Backtest v2
+   file in: 40,356,912 rows. `rows_wr2` started; `rows_wr3`, `rows_wr4`,
+   `rows_pr2` and 14 more printed "waits".
+2. **Oct 08, 2026 12:01am–12:38am.** Main's switch-on pass asked for win %
+   90 with filters beside it, got `SortNotReady`, and its on-demand build of
+   `rows_wr4` took 2,222 s.
+3. **Oct 08, 2026 ~8:07pm.** The next rebuild: 40,459,855 rows, 5,282 pairs.
+   The retired file held `rows_wr2` and `rows_wr4`; the new one got
+   `rows_wr2` only.
+4. **Oct 09, 2026 12:00am.** Main (90%) and at 12:08am #4FC03172 (70%) both
+   waited; `rows_wr4` was built again on demand in 701 s (pid 4380).
+5. **After the fix.** The rebuild writes `.index-queue.json` beside the file
+   naming `rows_wr2, rows_wr4`; the tick starts `rows_wr4` the moment
+   `rows_wr2` ends (495 s on Oct 08, 2026), so both are back within about
+   20 minutes of the swap, hours before midnight. The sixteen indexes the old file never had are not built.
+
+**ROOT CAUSE** — `build_missing_indexes` promises "a DETACHED build for every
+missing index", and the one-writer rule added later made it start one and
+drop the rest without anyone coming back for them.
+
+**WHY IT WAS NOT CAUGHT**
+* Every rebuild test checks the FILE: rows, pairs, the verify, the swap, the
+  ready marker. The swap test stubs `_after_fill_indexes` to return
+  `["rows_wr2"]` — the one it starts — so "only one" looked like success.
+* The wait is a designed state (`SortNotReady` → retry in 30 minutes), so it
+  never failed a test or a run. It only showed as the same wait at the same
+  hour each night, and the first night was correctly judged as working as
+  designed on its own.
+
+**COST** — none in money. Two midnight switch-on passes started 30–40
+minutes late; no practice or real trade was placed or missed by it. A win %
+search with filters beside it on the Backtest v2 tab answered "being built"
+from the swap until someone happened to ask for it.
+
+**FIX** — this commit: `_indexes_on_file()` before the swap,
+`_remember_indexes(had)` after it, `continue_index_queue()` on the API's
+30-second tick for each store (after `swap_ready_rebuild`, so a waiting swap
+still goes first).
+
+**GUARD** — `tests/test_a_rebuild_puts_back_the_indexes_it_swapped_out.py`,
+all 7 red before the fix.
+
+---
+
 ## RCA-2026-10-08-B — one 10:08pm internet blip became two GitHub issues, because one line said "1 practice strategy" and the other "20 practice strategies"
 
 **CEO**

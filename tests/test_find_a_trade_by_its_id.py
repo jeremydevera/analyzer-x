@@ -148,7 +148,12 @@ def test_every_row_says_which_book_it_is_on():
 
 
 def test_the_page_resets_when_the_search_changes():
-    """Page 4 of the old result is not page 4 of the new one."""
+    """Page 4 of the old result is not page 4 of the new one. In the SAME
+    change as the search since Oct 07, 2026 (RCA-2026-10-07-J): an effect ran
+    after the change had already asked for the old page of the new result.
+    This assertion still read the effect for a day after it went."""
     p = open("webapp/src/components/trade/TradeHistory.tsx",
              encoding="utf-8").read()
-    assert "setPage(1); }, [dry, q]" in p
+    assert "const search = (v: string) => { setQ(v); setPage(1); };" in p
+    assert "onChange={(e) => search(e.target.value)}" in p, "the box goes through it"
+    assert "useEffect(() => { setPage(1); }" not in p

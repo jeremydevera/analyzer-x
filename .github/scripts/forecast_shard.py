@@ -19,10 +19,14 @@ in that order (forecast_rules).
 STAGES (env STAGE):
   base     the 576 base rule sets + the rooms' own rules, the STREAKS of every
            strategy at the data's end with what followed past streaks, and the
-           rooms' rules split every way "where the money goes" asks
+           rooms' rules split every way the old "where the money goes" asked
+           (the page dropped that section on Oct 08, 2026; each room's record
+           still carries its rule set's id, which the merge and the month
+           tracker's bells read)
   options  every option, one at a time, on BASES (the best base sets and the
            rooms' rules, chosen by the PC from the base stage)
-  custom   one rule set (CUSTOM, JSON) — the page's what-if box
+  custom   one rule set (CUSTOM, JSON) — the what-if box's stage; nothing
+           starts it since the box went on Oct 08, 2026
 
 Out: out/forecast-<SHARD>.npz — per rule set j: j_e / j_x entry and exit
      (int32 minutes from Jan 01, 2026 UTC), j_p profit (float32), j_r / j_rn the
@@ -61,6 +65,16 @@ STREAK_FLOOR = 5                      # streaks this long or longer are written
 FOLLOW_K = 30                         # what followed streaks of 1..30
 RECENT_MS = 30 * wr.DAY_MS            # the rooms' breakdowns cover the last 30 days
 SHIFT = 42                            # book index << SHIFT | entry ms, for one sort
+# THE BREAKDOWN'S OWN BUCKETS (Oct 08, 2026). They were forecast_v2.HOURS and
+# .HELD, kept there for the page's "Where the money goes"; that section went
+# with them, and this file was the one reader left — every machine of every
+# base run would have died on the first room trade it split, all 40 of them,
+# every day (found by the code review before it was pushed). When a trade
+# OPENED, New York time; how long a losing trade was held, in seconds.
+HOURS = ((0, 6, "12am to 6am"), (6, 9, "6am to 9am"), (9, 12, "9am to noon"),
+         (12, 16, "noon to 4pm"), (16, 20, "4pm to 8pm"), (20, 24, "8pm to midnight"))
+HELD = ((0, 900, "within 15 minutes"), (900, 3600, "15 to 60 minutes"),
+        (3600, float("inf"), "after an hour"))
 
 
 def ms(s: str) -> int:
@@ -332,14 +346,14 @@ def breakdown(slots, meta_by_id, end_ms):
                 cell[0] += 1
                 cell[1] += int(win)
                 cell[2] += float(pnl)
-            h = next(label for a, b, label in f2.HOURS if a * 60 <= minute < b * 60)
+            h = next(label for a, b, label in HOURS if a * 60 <= minute < b * 60)
             cell = out["hour"].setdefault(h, [0, 0, 0.0])
             cell[0] += 1
             cell[1] += int(win)
             cell[2] += float(pnl)
             if not win:
                 held = (exit_ - entry) / 1000.0
-                lab = next(label for a, b, label in f2.HELD if a <= held < b)
+                lab = next(label for a, b, label in HELD if a <= held < b)
                 cell = out["stops"].setdefault(lab, [0, 0, 0.0])
                 cell[0] += 1
                 cell[2] += float(pnl)

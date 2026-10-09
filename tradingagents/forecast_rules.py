@@ -1,7 +1,7 @@
 """The room rule sets Forecast v2 predicts, and the options it tests one at a
 time — ONE definition, read by the GitHub shard (.github/scripts/
-forecast_shard.py), the merge (forecast_v2_merge.py) and the page's what-if
-box (api.py).
+forecast_shard.py) and the merge (forecast_v2_merge.py). (The page's what-if
+box read it too until it went on Oct 08, 2026.)
 
 Operator, Oct 01, 2026: *"then predict what combination of room will be
 effective, for example: 90% winrate with 40trade, tp is greater than SL will
@@ -71,9 +71,6 @@ RETIRED_OPTIONS = [("skip_coins", True, "the coins to avoid skipped (removed Oct
 _LABELS = OPTIONS + RETIRED_OPTIONS
 OPTION_KEYS = ("skip_coins", "skip_jp", "own_market", "max_cost", "only_tf",
                "skip_families", "kind", "no_ny_morning", "day_loss", "stop_vs_move")
-# the keys a NEW rule set may carry (a what-if, a run): every option key but
-# the retired ones, which only old sets still hold
-LIVE_OPTION_KEYS = tuple(k for k in OPTION_KEYS if k not in {r[0] for r in RETIRED_OPTIONS})
 # the cost the replay already holds every strategy under: replay_shard only
 # writes a strategy whose round trip is under 20% of its target (its gate)
 REPLAY_COST_CEILING = 20.0

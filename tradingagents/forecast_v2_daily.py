@@ -99,7 +99,7 @@ def _gh(*args: str, timeout: int = 120) -> str:
 
 def slug() -> str:
     """The account a chain from before the accounts were dealt ran on
-    (`origin`) — how a state, a `ready` or a what-if with no account is read."""
+    (`origin`) — how a state or a `ready` with no account is read."""
     from tradingagents import cloud_sweep as cs
 
     return cs.origin_fleet() or cs.repo_slug()
@@ -812,9 +812,10 @@ def _step(st: dict, now: float) -> None:
         st.update(phase="done", done_day=dt.date.fromtimestamp(made).isoformat(), done_at=made,
                   error="", failed_at=0,
                   options_dirs=dirs, why=f"made at {fmt_when(made)}",
-                  # what the what-if box measures on: the LAST FINISHED data,
-                  # never a replay still running (bug hunt, round 4) — every
-                  # account whose replay finished
+                  # the LAST FINISHED data, never a replay still running (bug
+                  # hunt, round 4) — every account whose replay finished. The
+                  # what-if box measured on it; nothing reads it since the box
+                  # went on Oct 08, 2026, and it is kept as the chain's record
                   # .get: a key missing here must never stop a finished day
                   # reaching "done", or the merge re-runs every RETRY_S
                   ready={"replay_runs": dict(st.get("replay_runs") or {}),

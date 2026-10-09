@@ -1,5 +1,7 @@
-"""Forecast v2 — what is hot, what loses, where the money goes, and which room
-rules will make the most this month.
+"""Forecast v2 — which coins are on a streak, and which room rules will make
+the most this month. ("Where the money goes", the what-if box and "This month
+so far" left the page on Oct 08, 2026; the month so far is still worked out
+for the bells.)
 
 Operator, Oct 01, 2026: *"when i say forecast, i mean you should be predicting
 what's the best combination of criteria to be using for deployed rooms, based
@@ -574,7 +576,7 @@ def room_data(pid: str, now_s: float) -> dict:
     """Everything Forecast v2 reads about one room."""
     from tradingagents import profiles
 
-    ledger_path, state_path = rs._paths(pid)
+    ledger_path, _state = rs._paths(pid)      # open trades: not read since Oct 08, 2026
     led = rs.ledger(ledger_path)
     exits = [e for e in led["exits"] if e["dry"]]
     exits.sort(key=lambda e: (e["ts"], e["trade_id"]))
@@ -583,9 +585,8 @@ def room_data(pid: str, now_s: float) -> dict:
     settings = _settings(pid)
     return {"id": pid, "name": "Main" if pid == profiles.MAIN else f"#{pid}",
             "retired": profiles.retired(pid), "exits": exits, "enters": led["enters"],
-            "costs": costs, "cost_pct": cost_pct,
+            "cost_pct": cost_pct,
             "avg_cost_pct": (sum(cost_pct.values()) / len(cost_pct)) if cost_pct else 0.0,
-            "open": [o for o in rs.open_trades(state_path) if o["dry"]],
             "slots": settings.get("watcher_slots") or {},
             "coins_on": {c for cs in (settings.get("strategy_coins") or {}).values()
                          for c in (cs or [])},
@@ -656,7 +657,7 @@ def practice_streaks(rooms: list[dict]) -> list[dict]:
 
 # B. (coins to avoid) was removed on Oct 07, 2026 — the operator: "remove the
 # section coins to avoid i dont need its logic"
-# ------------------------------------------------ C. where the money goes
+# ------------------------------------- the signal families (skip option)
 def families(rooms: list[dict]) -> list[dict]:
     """Practice trades by signal family, worst first, each with `thin` when it
     rests on too few trades to mean anything — what the forecast's "skip the

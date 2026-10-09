@@ -4,7 +4,7 @@ import { RoomBacktest, RoomsAndBacktest, RoomStrategiesSection } from "@/compone
 
 export const metadata: Metadata = {
   title: "Forecast | TradingAgents",
-  description: "Backtest a room, the room strategies prompt 4 kept, streaks, where the money goes, and the room rules predicted for this month",
+  description: "Backtest a room, the room strategies prompt 4 kept, streaks, and the room rules predicted for this month",
 };
 
 // Auto Trade -> Forecast v2 (operator, Oct 01, 2026: "okay run that prompt and

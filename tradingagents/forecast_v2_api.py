@@ -354,14 +354,8 @@ def tracker(now: float | None = None) -> dict:
         out.append({"room": r["id"], "name": r["name"], "id": rid, "words": (s or {}).get("words"),
                     "month": r["month"], "predicted": p or None, "so_far": band,
                     "below": below})
-    tops = list(lt.get("sets") or [])[:5]
     cur = dt.datetime.fromtimestamp(now).strftime("%Y-%m")
-    top_rows = []
-    for s in tops:
-        m = next((x for x in s["months"] if x["month"] == cur), None)
-        top_rows.append({"id": s["id"], "words": s["words"], "predicted": s["predicted"],
-                         "month": m})
-    return {"rooms": out, "tops": top_rows, "month": cur, "day": today.day, "days": days_in}
+    return {"rooms": out, "month": cur, "day": today.day, "days": days_in}
 
 
 def tracker_alarms(now: float | None = None) -> list:

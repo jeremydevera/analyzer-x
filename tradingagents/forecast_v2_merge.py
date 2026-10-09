@@ -13,8 +13,10 @@ What comes out, beside the store (~/.tradingagents/forecast_v2/):
 * latest.json — every rule set: its months, its prediction for this month
   (the typical past month and the range), the same corrected by the reality
   check, how often it beat random picks, the money it needs, its id and its
-  words; the rooms' rules split the way "where the money goes" splits
-  practice; what followed past streaks.
+  words; the rooms' rules split the way the old "where the money goes" split
+  practice (the page dropped it on Oct 08, 2026; each room's record still
+  names its rule set, which the month tracker's bells read); what followed
+  past streaks.
 * streaks.npz — EVERY strategy on a run of 5+ at the data's end, as columns
   (650,000 rows measured on run 36936689969: as JSON dicts in the API that
   would have been over a gigabyte; as arrays it is tens of megabytes and the

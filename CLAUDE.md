@@ -1518,10 +1518,10 @@ first Forecast page is off the menu, still at `/forecast`.
 * **A month's prediction is kept only by the daily chain's final merge**
   (`--keep`; a merge run by hand keeps nothing — it claimed October twice on
   research data, RCA-2026-10-01-K), and it carries what the replay covered
-  (write rule, signal groups, coins, strategies) so a grade over other
-  strategies says so.
+  (write rule, signal groups, coins, strategies). Nothing grades it on the
+  page since "This month so far" went on Oct 08, 2026.
 
-Guard: `tests/test_forecast_v2.py` (56, on one timeline; the two-account chain from `test_the_replay_is_dealt_between_both_accounts` on).
+Guard: `tests/test_forecast_v2.py` (on one timeline; the two-account chain from `test_the_replay_is_dealt_between_both_accounts` on), and `tests/test_ci_scripts_use_names_that_exist.py` — every name a GitHub script reads from `tradingagents` must exist (Oct 08, 2026: removing "Where the money goes" took `forecast_v2.HOURS`/`HELD`, which `forecast_shard.py` still read; the code review caught it before the push).
 
 ## Room strategies are re-tested every day (MANDATORY — Oct 07, 2026)
 

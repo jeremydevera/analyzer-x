@@ -127,7 +127,9 @@ function StreakList({ kind, initial }: { kind: "win" | "loss"; initial: number }
 // B. coins to avoid: removed Oct 07, 2026 (operator: "remove the section
 // coins to avoid i dont need its logic") — the list, its route and its
 // what-if option went with it
-// --------------------------------------------------- C. where the money goes
+// C. where the money goes, the what-if box and E. this month so far: removed
+// Oct 08, 2026 (operator: "i dont need it anymore") — with every route and
+// number only they used
 // ------------------------------------------------------- D. best room rules
 function range(p: { profit: number; low: number; high: number } | null | undefined) {
   if (!p) return "—";

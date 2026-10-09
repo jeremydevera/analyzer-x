@@ -163,10 +163,26 @@ def test_the_coins_to_avoid_are_gone_and_old_sets_still_read_true():
     assert not hasattr(f2, "coins_to_avoid") and not hasattr(f2a, "avoid")
     assert not hasattr(api_mod, "forecast_v2_avoid_route")
     assert all(k != "skip_coins" for k, _v, _w in fr.OPTIONS), "never measured again"
-    assert "skip_coins" not in fr.LIVE_OPTION_KEYS, "nor used for a new rule set"
     old = {**fr.cfg_of(30, 90, 20, ">", 2.0), "skip_coins": True}
     assert "the coins to avoid skipped (removed Oct 07, 2026)" in fr.words(old)
     assert fr.rule_id(old) != fr.rule_id(fr.cfg_of(30, 90, 20, ">", 2.0)), "its id is kept"
+
+
+def test_the_github_shard_splits_a_room_with_its_own_buckets():
+    """Found by the code review on Oct 08, 2026, before it was pushed: the
+    shard's breakdown read forecast_v2.HOURS and .HELD, which went with
+    "Where the money goes", so every machine of every daily base run would
+    have died on the first room trade it split — 40 machines a day. This is
+    the shard's real breakdown, on the file's one timeline."""
+    end_ms = int(NOW * 1000)                                    # Oct 01, 2026 2:00pm New York
+    t = np.array([[end_ms - 5 * 3_600_000, end_ms - 4 * 3_600_000, 1.0, 1],     # opened 9:00am, won
+                  [end_ms - 3 * 3_600_000, end_ms - 2 * 3_600_000, -1.0, 1]],   # opened 11:00am, lost after an hour
+                 dtype=np.float64)
+    meta = {"x": {"tf": "15m", "signal": "stoch14", "coin": "BTC_USDT", "tp": 1.5, "cost_of_tp": 10.0}}
+    got = fs.breakdown([{"id": "x", "trades": t}], meta, end_ms)
+    assert got["trades"] == 2 and got["tf"] == {"15m": [2, 1, 0.0]}
+    assert got["hour"] == {"9am to noon": [2, 1, 0.0]}
+    assert got["stops"] == {"after an hour": [1, 0, -1.0]}
 
 
 def test_only_the_family_list_the_skip_option_reads_is_worked_out():
@@ -887,13 +903,26 @@ def test_the_page_names_the_machines_a_run_was_used_without(monkeypatch):
     were "named in the state and on the page" — the page was never sent them."""
     from tradingagents import forecast_v2_daily as fd
 
-    monkeypatch.setattr(f2a, "live", lambda: {"at": 1, "took_ms": 1, "rooms": [], "money": {},
+    monkeypatch.setattr(f2a, "live", lambda: {"at": 1, "took_ms": 1, "rooms": [], "families": [],
                                               "reality": {}, "defaults": {}, "streaks": []})
     gone = {"base": {"of": 20, "failed": ["forecast (3)"]}}
     fd._write({"phase": "options", "missing": gone})
     assert f2a.summary()["chain"]["missing"] == gone
     src = (ROOT / "webapp/src/components/forecast/ForecastV2.tsx").read_text(encoding="utf-8")
     assert "PART OF THE MARKET" in src and "used without:" in src
+
+
+def test_the_summary_sends_only_what_the_page_draws(monkeypatch):
+    """Oct 08, 2026: "Where the money goes", the what-if box and "This month
+    so far" left the page, and the summary stopped sending their numbers —
+    the month tracker and the grades were worked out on every 30-second ask.
+    A key put back here is work the page throws away."""
+    monkeypatch.setattr(f2a, "live", lambda: {"at": 1, "took_ms": 1, "rooms": [], "families": [],
+                                              "reality": {}, "defaults": {}, "streaks": []})
+    got = f2a.summary()
+    assert set(got) == {"at", "took_ms", "refresh_error", "reality", "defaults", "streak_counts",
+                        "backtest", "chain", "grid"}
+    assert not hasattr(f2a, "grading") and "tops" not in f2a.tracker.__code__.co_names
 
 
 # ----------------------------------------------------- bug hunt, round 16

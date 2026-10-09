@@ -14,7 +14,8 @@ name: Forecast v2 (room rule predictions, streaks, split by coin)
 # Nothing here writes the market grid's rows, saved positions or any room.
 
 # the custom stage's rule set rides in the title (its id first), so two
-# what-ifs asked a second apart can never be mistaken for each other
+# what-ifs asked a second apart can never be mistaken for each other (the
+# page's what-if box went on Oct 08, 2026; nothing starts a custom run now)
 run-name: "Forecast v2 · ${{ inputs.stage }} · replay ${{ inputs.source_run }} ${{ inputs.custom }}"
 
 on:
@@ -47,7 +48,7 @@ on:
         description: "The worst signal families, comma-separated (the skip-families option)"
         default: ""
       custom:
-        description: "custom stage: one rule set as JSON (the page's what-if box)"
+        description: "custom stage: one rule set as JSON (the what-if box, removed Oct 08, 2026)"
         default: ""
 
 permissions:

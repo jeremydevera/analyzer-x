@@ -94,7 +94,7 @@ def test_asset_stacks_with_the_other_filters_as_AND(store):
 def test_a_wrong_value_is_refused_not_ignored():
     """A typo that silently matched EVERYTHING would put a wrong caption over
     a full table (label-must-match-data)."""
-    with pytest.raises(ValueError, match="crypto or stocks"):
+    with pytest.raises(ValueError, match="use crypto, stocks"):
         ri._where(asset="junk")
 
 
@@ -147,20 +147,21 @@ def test_the_panel_has_the_dropdown_and_its_chip():
                 "tokenized stocks only"):
         assert f">{opt}</option>" in p, opt
     # the chip the AND-line prints, one text per direction
-    assert 'text: "Crypto coins only"' in p
-    assert 'text: "Tokenized stocks only"' in p
+    # one label map for every kind, MEXC-only included (Oct 09, 2026)
+    assert 'crypto: "Crypto coins only", stocks: "Tokenized stocks only"' in p
+    assert 'out.push({ k: "asset", text: ASSET_LABEL[f.asset] });' in p
     # the AND-line (the spinner's "asking …" and the filter sentence) names
     # the kind, on or off: a slow crypto-only request once waited under a
     # line that never said crypto, and the operator read that as "the crypto
     # coins only filter is not working" (2026-09-06)
-    assert 'f.asset === "crypto" ? "crypto coins only"' in p
-    assert '"coins and stocks",' in p
+    assert 'f.asset && ASSET_WORDS[f.asset] ? ASSET_WORDS[f.asset] : "coins and stocks",' in p
+    assert 'crypto: "crypto coins only", stocks: "tokenized stocks only",' in p
     # cleared with the rest, sent with the rest, kept for the CSV
     assert p.count('asset: ""') >= 3, "NO_FILTERS + applied + servedFilters"
     assert "asset: setAsset" in p
     # ONE place builds the filter half now (the table, "+500 more", the CSV
     # and the exact count all spread filterQuery(applied), Sep 25, 2026)
-    assert p.count('"crypto" | "stocks" | undefined') == 1, "the shared builder"
+    assert p.count('asset: (f.asset || undefined) as StrategyQuery["asset"],') == 1, "the shared builder"
     assert p.count("...filterQuery(applied)") >= 3, "table, load-more and CSV"
 
 
@@ -168,4 +169,4 @@ def test_the_browser_api_sends_the_param():
     t = open(API_TS, encoding="utf-8").read()
     assert t.count('if (q.asset) p.set("asset", q.asset);') == 2, \
         "the table's query AND the CSV url"
-    assert t.count('asset?: "crypto" | "stocks";') == 2
+    assert t.count('asset?: "crypto" | "stocks" | "mexc" | "mexc_crypto" | "mexc_stocks";') == 2

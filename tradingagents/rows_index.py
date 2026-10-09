@@ -3239,14 +3239,28 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
     # runs `sql % "*"`, and a literal '%STOCK' inside that string is a
     # broken format spec (found by this filter's own first test run). LIKE
     # cannot drive an index, so no `+` hint is needed either way.
-    if asset == "stocks":
+    if asset in ("stocks", "mexc_stocks"):
         sql.append("coin LIKE ?")
         args.append("%STOCK")
-    elif asset == "crypto":
+    elif asset in ("crypto", "mexc_crypto"):
         sql.append("coin NOT LIKE ?")
         args.append("%STOCK")
-    elif asset:
-        raise ValueError(f"unknown asset {asset!r}; use crypto or stocks")
+    elif asset and asset != "mexc":
+        raise ValueError(f"unknown asset {asset!r}; use crypto, stocks, mexc, "
+                         f"mexc_crypto or mexc_stocks")
+    # MEXC ONLY — the coins MEXC trades that OKX does not list (operator, Oct
+    # 09, 2026: "just add filter 'Show mexc coin only' meaning show coins that
+    # exist in mexc that are not existing in okx"; tradingagents/venues.py).
+    # The names ride in args. The `+` keeps this ~600-name list from driving
+    # the plan: it is over half the store, so letting rows_coin seek it means
+    # sorting millions of rows to return a page — the same reason tf steps
+    # aside — while rows_wr4 carries coin and answers it index-only.
+    if asset in ("mexc", "mexc_crypto", "mexc_stocks"):
+        from tradingagents import venues
+
+        names = venues.mexc_only()
+        sql.append(f"+coin IN ({','.join('?' * len(names))})" if names else "0")
+        args.extend(names)
 
 
     return (" WHERE " + " AND ".join(sql) if sql else ""), args

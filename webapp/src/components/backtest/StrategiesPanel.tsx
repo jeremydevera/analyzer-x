@@ -84,6 +84,19 @@ function Field({ label, hint, children }: {
 
 /** The group dropdown's two options, in the operator's own words — used by
  *  both the <select> and the chip that names it, so they cannot drift. */
+// THE KIND BOX, named the same on its chip and in the filter sentence. The
+// MEXC ones (operator, Oct 09, 2026: "just add filter 'Show mexc coin only'")
+// keep only coins MEXC trades that OKX does not list (tradingagents/venues.py).
+const ASSET_LABEL: Record<string, string> = {
+  crypto: "Crypto coins only", stocks: "Tokenized stocks only",
+  mexc: "MEXC only (not on OKX)", mexc_crypto: "MEXC-only crypto coins (not on OKX)",
+  mexc_stocks: "MEXC-only tokenized stocks (not on OKX)",
+};
+const ASSET_WORDS: Record<string, string> = {
+  crypto: "crypto coins only", stocks: "tokenized stocks only",
+  mexc: "MEXC-only coins and stocks (not on OKX)", mexc_crypto: "MEXC-only crypto coins (not on OKX)",
+  mexc_stocks: "MEXC-only tokenized stocks (not on OKX)",
+};
 const GROUP_LABEL: Record<string, string> = {
   preset: "Preset Confluence", classic: "Classic",
   // the learned formulas, one set per coin and timeframe (operator,
@@ -431,7 +444,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
     minTrades: f.minTrades, minWinrate: f.minWinrate,
     maxTp: f.maxTp, maxSl: f.maxSl, minTp: f.minTp, minSl: f.minSl,
     tpOverSl: f.tpOverSl,
-    asset: (f.asset || undefined) as "crypto" | "stocks" | undefined,
+    asset: (f.asset || undefined) as StrategyQuery["asset"],
     sizing: f.sizing || undefined, rowId: f.rowId || undefined,
     measuredDays: f.measuredDays || undefined,
     group: (f.group || undefined) as "preset" | "classic" | "sep25" | "sep27ml" | undefined,
@@ -782,10 +795,8 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                  text: `Backtested within ${f.measuredDays} day`
                        + `${f.measuredDays > 1 ? "s" : ""}` });
     }
-    if (f.asset === "crypto") {
-      out.push({ k: "asset", text: "Crypto coins only" });
-    } else if (f.asset === "stocks") {
-      out.push({ k: "asset", text: "Tokenized stocks only" });
+    if (f.asset && ASSET_LABEL[f.asset]) {
+      out.push({ k: "asset", text: ASSET_LABEL[f.asset] });
     }
     if (f.coin) out.push({ k: "coin", text: f.coin });
     if (f.tf) out.push({ k: "tf", text: `${f.tf} timeframe` });
@@ -858,8 +869,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
     // "crypto coins only" request waited under a line that never said crypto
     // — which the operator read as "the filter is not working" (2026-09-06).
     // Every box this panel sends is named here, on or off.
-    f.asset === "crypto" ? "crypto coins only"
-      : f.asset === "stocks" ? "tokenized stocks only" : "coins and stocks",
+    f.asset && ASSET_WORDS[f.asset] ? ASSET_WORDS[f.asset] : "coins and stocks",
     f.coin || "all coins",
     f.tf || "all timeframes",
     f.signal || "all signals",
@@ -1383,6 +1393,13 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                   <option value="">coins and stocks</option>
                   <option value="crypto">crypto coins only</option>
                   <option value="stocks">tokenized stocks only</option>
+                  {/* MEXC ONLY (operator, Oct 09, 2026: "just add filter 'Show
+                      mexc coin only' meaning show coins that exist in mexc
+                      that are not existing in okx") — the server holds the
+                      two exchanges' lists (tradingagents/venues.py) */}
+                  <option value="mexc">MEXC only (not on OKX): coins and stocks</option>
+                  <option value="mexc_crypto">MEXC only (not on OKX): crypto coins</option>
+                  <option value="mexc_stocks">MEXC only (not on OKX): tokenized stocks</option>
                 </select>
               </Field>
               <Field label="coin">

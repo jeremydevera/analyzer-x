@@ -1002,7 +1002,7 @@ export interface StrategyQuery {
   tpOverSl?: boolean;
   /** "crypto" keeps real coins; "stocks" keeps the tokenized stocks (the
    *  STOCK-suffix contracts that go quiet outside US market hours) */
-  asset?: "crypto" | "stocks";
+  asset?: "crypto" | "stocks" | "mexc" | "mexc_crypto" | "mexc_stocks";
   /** "flat" or "martingale" — the ladder is a sizing CHOICE, not a
    *  measurement (rule 19), so it has to be possible to see one alone */
   sizing?: string;
@@ -1521,7 +1521,7 @@ export const api = {
     tpOverSl?: boolean;
     /** "crypto" or "stocks" — tokenized stocks carry a STOCK suffix and go
      *  quiet outside US market hours */
-    asset?: "crypto" | "stocks";
+    asset?: "crypto" | "stocks" | "mexc" | "mexc_crypto" | "mexc_stocks";
     /** the DAYS window, so the file holds the same measurement the table
      *  showed rather than every row's whole history */
     days?: number; months?: number;

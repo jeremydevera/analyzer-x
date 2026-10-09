@@ -744,3 +744,70 @@ def test_nothing_posted_carries_a_secret(filer, monkeypatch):
     ei.tick(T0 + 120, gh=gh)
     posted = json.dumps(gh.calls)
     assert "mx0KEYVALUE1234" not in posted and "abcdef0123456789" not in posted
+
+
+# ------------------------------- one fault, however its count is worded
+# Oct 08, 2026 10:08pm: one lost internet lookup was filed TWICE, #14 and
+# #15, because one room line said "refused 1 practice strategy" and the other
+# "refused 20 practice strategies" - the numbers were taken out, the plural
+# was not.
+ONE = ("AJINOMOTOSTOCK_USDT: the order book could not be read (transport failure: "
+       "<urlopen error [Errno 11001] getaddrinfo failed> after 3 attempts) - the cost "
+       "check refused 1 practice strategy on it this round")
+MANY = ("UMCSTOCK_USDT: the order book could not be read (transport failure: "
+        "<urlopen error [Errno 11001] getaddrinfo failed> after 3 attempts) - the cost "
+        "check refused 20 practice strategies on it this round")
+
+
+def test_one_and_twenty_strategies_are_one_event(monkeypatch):
+    from tradingagents import room_errors as rerr
+
+    monkeypatch.setattr(rerr, "report", _report([
+        {"room": "CC94D9FB", "kind": "book_unreadable", "label": "Order book could not be read",
+         "message": ONE, "count": 1, "first": 1791511680.0, "last": 1791511680.0},
+        {"room": "CC94D9FB", "kind": "book_unreadable", "label": "Order book could not be read",
+         "message": MANY, "count": 1, "first": 1791511680.0, "last": 1791511690.0},
+    ]))
+    got = ei.from_rooms()
+    assert len(got) == 1, [g["message"] for g in got]
+    assert got[0]["count"] == 2
+
+
+def test_a_wording_of_a_filed_fault_lands_on_its_issue(filer):
+    """The issue filed for "1 practice strategy" takes "20 practice
+    strategies" as a repeat: a comment, never issue #2 for one outage."""
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev(ONE, last=T0 + 60, kind="book_unreadable", room="CC94D9FB"))
+    ei.tick(T0 + 120, gh=FakeGh())
+    events[0] = _ev(MANY, last=T0 + 5000, kind="book_unreadable", room="CC94D9FB")
+    gh = FakeGh()
+    ei.tick(T0 + 5100, gh=gh)
+    assert gh.made() == []
+    assert gh.did("comment") and gh.did("comment")[0][0][2] == "101"
+
+
+def test_an_old_fault_keeps_its_id():
+    """Every fault already filed keeps its id - the fingerprint itself did
+    not change, only the matching beside it (COPPER's no-price fault was filed
+    as #13 under ee07783fae5f)."""
+    ev = {"source": "room", "kind": "no_price",
+          "key": ("COPPER_USDT: no live price for the paper exit check (transport failure: "
+                  "<urlopen error [Errno #] getaddrinfo failed> after # attempts) — leaving "
+                  "the position open.")}
+    assert ei.fingerprint(ev) == "ee07783fae5f"
+
+
+def test_the_errors_tab_links_every_wording_to_the_fault_s_issue(filer):
+    """The Errors tab's row for "20 practice strategies" links to the issue
+    filed for "1 practice strategy" - the filer's own matching, not an exact
+    id that was never filed."""
+    events, _ = filer
+    ei.tick(T0, gh=FakeGh())
+    events.append(_ev(ONE, last=T0 + 60, kind="book_unreadable", room="CC94D9FB"))
+    ei.tick(T0 + 120, gh=FakeGh())
+    got = ei.issue_of_event({"source": "room", "kind": "book_unreadable", "message": MANY})
+    assert got and got["number"] == 101
+    src = (Path(__file__).resolve().parents[1] / "tradingagents/api.py").read_text(encoding="utf-8")
+    assert "_ei.issue_of_event(" in src
+

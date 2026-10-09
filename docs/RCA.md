@@ -172,6 +172,95 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-08-B — one 10:08pm internet blip became two GitHub issues, because one line said "1 practice strategy" and the other "20 practice strategies"
+
+**CEO**
+
+* At 10:08pm the PC could not look up MEXC's address for about a minute, and
+  GitHub got two issues for that one blip: #14 (AJINOMOTOSTOCK) and #15
+  (UMCSTOCK). The checker then spent two of its eight daily runs on the same
+  thing.
+* Why: the system takes the numbers out of an error before deciding which
+  issue it belongs to. It left the word that changes with the number:
+  "strategy" against "strategies".
+* What stops it now: two wordings that differ only by a plural count as one
+  fault. Every fault already filed keeps its issue, and the Errors tab links
+  every wording to that one issue.
+
+**DEV**
+
+* `tradingagents/error_issues.py` `fingerprint` (via `room_errors._norm`)
+  turns digits into `#` and keeps the rest of the words. So `"refused #
+  practice strategy on it"` and `"refused # practice strategies on it"` hashed
+  to `1386c1503ed6` and `4b8b412d56eb`.
+  * `from_rooms` merged events by that hash.
+  * `tick` looked faults up by it.
+* Invariant broken: **one fault, one issue, however its count is worded**.
+  Taking a number out of a sentence has to take its grammar with it, or the
+  fault id depends on whether the count was 1.
+* Guards in `tests/test_errors_become_issues.py`:
+  * `::test_one_and_twenty_strategies_are_one_event`
+  * `::test_a_wording_of_a_filed_fault_lands_on_its_issue`
+  * `::test_the_errors_tab_links_every_wording_to_the_fault_s_issue`
+  * `::test_an_old_fault_keeps_its_id`, which pins `ee07783fae5f`, filed as #13
+
+**SAW** — the operator asked *"is there issues today on github?"*, then *"fix
+the issues ion github once done resolve it"* (Oct 08, 2026). Three issues
+were open, all filed at 10:09pm:
+
+* #13: COPPER, no live price
+* #14: AJINOMOTOSTOCK, the order book could not be read
+* #15: UMCSTOCK, the order book could not be read
+
+**TIMELINE**
+
+1. **Oct 08, 2026 10:08pm.** For one round, room #CC94D9FB could not read two
+   order books, both with `[Errno 11001] getaddrinfo failed after 3 attempts`:
+   * AJINOMOTOSTOCK: "the cost check refused 1 practice strategy on it this
+     round"
+   * UMCSTOCK: "... refused 20 practice strategies ..."
+
+   Windows' own DNS Client logged one failure at 10:08pm. Three rooms also
+   missed COPPER's live price.
+2. **10:09pm.** The filer opened #13, #14 and #15. #14 and #15 are one blip
+   under two ids.
+3. **10:09pm to 10:11pm.** The checker ran on #14: not a fault. Both coins
+   were read normally at 10:09pm, and neither had a buy signal before or after.
+4. The other blip on record is Oct 07, 2026, 44 lines at 1:19am. The Intel
+   I211 network adapter dropped at 1:18:44am, reset at 1:19:06am and was back
+   at 1:20:04am.
+
+**ROOT CAUSE** — the fault id held the plural that follows a count, so one
+fault split by whether the count was 1.
+
+**WHY IT WAS NOT CAUGHT**
+* Every fingerprint test varies the NUMBER: `SUPRA ... 43` against `... 39`,
+  `refused 3` against `refused 7`, always with the same noun.
+* No fixture ever had a count of exactly 1 beside a count of many. Only that
+  pair changes a word.
+* RCA-2026-10-07-R had found a second way one fault splits, a web request
+  stuck onto the line, and was fixed for that shape alone.
+
+**COST** — none in money. Two issues and two checker runs for one minute of
+lost internet. Nothing was traded or missed: no buy signal on either coin, and
+the practice exits were checked again the next round.
+
+**FIX** — this commit:
+* `_loose_id` makes every word singular for MATCHING only.
+* `from_rooms` and the site log merge by it.
+* `tick` and the Errors tab (`issue_of_event`) resolve each event to the fault
+  that owns its wording, the first one filed (`_owners`).
+* `fingerprint` is unchanged, so no filed fault changes id. Checked on the real
+  state: of 21 faults only #15's wording moves, onto #14.
+
+**GUARD** — `tests/test_errors_become_issues.py::test_one_and_twenty_strategies_are_one_event`,
+`::test_a_wording_of_a_filed_fault_lands_on_its_issue` and
+`::test_the_errors_tab_links_every_wording_to_the_fault_s_issue` (each red
+before the fix), and `::test_an_old_fault_keeps_its_id`, which holds what must
+NOT change.
+
+---
+
 ## RCA-2026-10-08-A — the Watcher box failed to load for one room now and then, because rooms counting their decisions at the same moment tripped over one shared count
 
 **CEO**

@@ -1583,8 +1583,10 @@ def room_errors_route(room: str = "", kind: str = "", hours: float = 24.0,
 
         st = _ei._read()
         for g in got.get("rows") or []:
-            g["issue"] = _ei.issue_for(_ei.fingerprint(
-                {"source": "room", "kind": g["kind"], "message": g["message"]}), st)
+            # the filer's own matching: every wording of a fault links to its
+            # one issue (Oct 08, 2026: #14/#15)
+            g["issue"] = _ei.issue_of_event(
+                {"source": "room", "kind": g["kind"], "message": g["message"]}, st)
     except Exception:                                          # noqa: BLE001
         pass
     return got

@@ -50,6 +50,44 @@ def fingerprint(ev: dict) -> str:
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
 
 
+# ONE FAULT HOWEVER ITS COUNT IS WORDED (Oct 08, 2026): one lost internet
+# lookup at 10:08pm was filed twice, #14 and #15, because one room's line said
+# "refused 1 practice strategy" and another's "refused 20 practice
+# strategies" - the numbers were taken out, the plural was not. Matching uses
+# every word made singular; the fingerprint itself is unchanged, so every
+# fault already filed keeps its id.
+_PLURAL = re.compile(r"\b([A-Za-z]{2,}?)(ies|s)\b")
+
+
+def _loose(key: str) -> str:
+    return _PLURAL.sub(lambda m: m.group(1) + ("y" if m.group(2) == "ies" else ""), key)
+
+
+def _loose_id(ev: dict) -> str:
+    """The id two wordings of one fault share: `fingerprint` over the key
+    with every word singular. For MATCHING only, never stored as an id."""
+    key = ev.get("key") or _norm(str(ev.get("message") or ""))
+    raw = f"{ev.get('source')}|{ev.get('kind')}|{_loose(_COIN.sub('<coin>', key))}"
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
+
+
+def _owners(faults: dict) -> dict:
+    """{loose id: the fault every wording of it belongs to} - the one with an
+    issue filed first, else the first one seen."""
+    out: dict = {}
+    for fp, rec in faults.items():
+        lid = _loose_id(rec)
+        cur = out.get(lid)
+        if cur is None:
+            out[lid] = fp
+            continue
+        old = faults[cur]
+        if rec.get("issue") and (not old.get("issue")
+                                 or float(rec.get("filed_at") or 0) < float(old.get("filed_at") or 0)):
+            out[lid] = fp
+    return out
+
+
 # ----------------------------------------------------------------- sources
 
 def from_rooms() -> list[dict]:
@@ -66,7 +104,7 @@ def from_rooms() -> list[dict]:
                   "label": g.get("label") or g["kind"],
                   "message": str(g.get("message") or ""),
                   "key": _norm(str(g.get("message") or ""))}
-            fp = fingerprint(ev)
+            fp = _loose_id(ev)
             cur = merged.get(fp)
             if cur is None:
                 merged[fp] = {**ev, "rooms": [g["room"]], "count": int(g["count"]),
@@ -192,7 +230,7 @@ def from_site_log(now: float) -> list[dict]:
                         "first": now, "last": now})
     merged: dict = {}
     for ev in out:
-        fp = fingerprint(ev)
+        fp = _loose_id(ev)
         if fp in merged:
             merged[fp]["count"] += 1
         else:
@@ -580,14 +618,19 @@ def tick(now: float | None = None, gh=None) -> dict:
         return out
     # A FAULT NOT FILED YET IS RETRIED even when no source reports it this
     # tick: a crash in the site's own log is read ONCE (final review, I2)
-    present = {fingerprint(ev) for ev in events}
+    owners = _owners(faults)
+
+    def _fp(ev: dict) -> str:
+        # a known fault in another wording is that fault (#14/#15, Oct 08, 2026)
+        return owners.get(_loose_id(ev)) or fingerprint(ev)
+    present = {_fp(ev) for ev in events}
     for fp, rec in list(faults.items()):
         if rec.get("state") == "waiting" and fp not in present and rec.get("message"):
             events.append(_rec_of(rec))
     filed = [t for t in st.get("filed_times", []) if now - t < 3600]
     waiting: list = []
     for ev in events:
-        fp = fingerprint(ev)
+        fp = _fp(ev)
         rec = faults.get(fp)
         try:
             fresh = (rec is None or rec.get("state") == "waiting"
@@ -763,6 +806,15 @@ def set_verdict(fp: str, verdict: str, *, commit: str = "", summary: str = "",
     rec["commented_at"] = now
     rec["count_at_verdict"] = int(rec.get("count") or 0)
     _write(st)
+
+
+def issue_of_event(ev: dict, st: dict | None = None) -> dict | None:
+    """`issue_for` an Errors-tab group, by the filer's own matching: a row
+    worded "20 practice strategies" belongs to the issue filed for "1 practice
+    strategy" (Oct 08, 2026)."""
+    st = st or _read()
+    fp = _owners(st["faults"]).get(_loose_id(ev)) or fingerprint(ev)
+    return issue_for(fp, st)
 
 
 def issue_for(fp: str, st: dict | None = None) -> dict | None:

@@ -16,7 +16,7 @@ forecast with an artifact; it must use the room ids this machine has, and
 every number in it must be a number (the save refuses anything else, naming
 what is wrong).*
 
-*Forecast v2 (Auto Trade -> Forecast v2, Oct 01, 2026) — streaks, where the money goes and the room rules predicted for this month (its coins to avoid were removed on Oct 07, 2026) — has its own page and its own account: docs/FORECAST-V2.md.*
+*Forecast v2 (Auto Trade -> Forecast v2, Oct 01, 2026) — streaks and the room rules predicted for this month (its coins to avoid were removed on Oct 07, 2026; where the money goes, the what-if box and this month so far on Oct 08, 2026) — has its own page and its own account: docs/FORECAST-V2.md.*
 
 ## 1. Make a new forecast
 
@@ -245,13 +245,12 @@ The table, whatever dates are chosen: the id first; the rules in words; found by
 (the daily grid, or this prompt on <date>); the range's trades and trades a day,
 wins and losses, win rate, break-even win rate after costs (never 50%), profit
 straight and after the reality check, worst day, worst losing run (dollars and
-how many trades); "a stretch this long usually makes"; beat random; can a room run it today, or which switch it needs. Margin
-$5 x 20x and the number of rule sets tested stated above it; filters done by the
-server (min win rate, min profit, the TP rule, stop at most %, judged on 7, 15 or
-30 days, found by, a room can run it today); a find-by-id box; a click on a row
-shows its trades in the range one by one with a TOTAL. The what-if box answers for
-the chosen dates too, and the month tracker and the month's graded prediction keep
-working.
+how many trades); "a stretch this long usually makes"; beat random; can a room
+run it today, or which switch it needs. Margin $5 x 20x and the number of rule
+sets tested stated above it; filters done by the server (min win rate, min
+profit, the TP rule, stop at most %, judged on 7, 15 or 30 days, found by, a
+room can run it today); a find-by-id box; a click on a row shows its trades in
+the range one by one with a TOTAL.
 
 Build it with the harddev skill; tests on one timeline in tests/test_forecast_v2.py,
 at least one red on the old code; update docs/FORECAST-V2.md; an RCA entry for any

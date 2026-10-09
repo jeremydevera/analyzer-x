@@ -18,6 +18,26 @@ Forecast page (`/forecast`, room cards and saved forecasts) is unchanged.*
 > Everything below is the account as built; where it describes section B or the
 > on/off box, this note supersedes it.
 
+> **Changed Oct 08, 2026** — the operator: *"delete Where the money goes section
+> i dont need it anymore, delete What if — type any rules and see the same
+> prediction section as well, delete This month so far — Oct 2026, day 8 of 31
+> as well"*. **Section C (Where the money goes), the what-if box and the "This
+> month so far" section are gone**, and so is the work only they needed: the
+> `/api/forecast-v2/families` and `/api/forecast-v2/whatif` routes; the
+> practice money split (`forecast_v2.money`, `overlap` — the live copy keeps
+> only the signal-family list, `families`, which the "skip the worst families"
+> option reads); the what-if runs on GitHub (`forecast_v2_daily.whatif` —
+> nothing starts one, `whatif.json` is no longer read or written, and
+> `forecast.yml` keeps its `custom` input unused); and the graded predictions
+> (`forecast_v2_api.grading` — the chain still keeps each month's first
+> prediction in `predictions.jsonl`). The page summary no longer sends the
+> money split, the rooms' backtest breakdowns, the month tracker, the grades or
+> the what-if options. **The month tracker is still worked out for its two
+> bells** — a room under its predicted worst case, and each room's line in the
+> daily summary. The page now reads: Backtest a room, Room strategies, Streaks,
+> Best room rules this month, Prompts. Where anything below describes section
+> C, the what-if or the month tracker's section, this note supersedes it.
+
 ## What the operator asked for
 
 In their words, in the order they arrived (docs/OPERATOR-ASKS.md):
@@ -344,14 +364,14 @@ GitHub with all 20 machines green and none missing:
 | `.github/workflows/forecast.yml` | the research run (ten inputs — the most a dispatch may carry) |
 | `.github/workflows/replay.yml` | the replay, now also uploading `replay-report-<N>` |
 | `tradingagents/forecast_v2_merge.py` | the machines added together, scored, saved |
-| `tradingagents/forecast_v2_daily.py` | the daily chain and the what-if box |
+| `tradingagents/forecast_v2_daily.py` | the daily chain (the what-if box went on Oct 08, 2026) |
 | `tradingagents/forecast_v2_api.py` | the page's answers, filtered and paged |
 | `webapp/src/components/forecast/ForecastV2.tsx` | the page |
 | `tests/test_forecast_v2.py` | the guards, on one timeline |
 
 On disk, beside the store (G:): `~/.tradingagents/forecast_v2/` — `latest.json`,
 `streaks.npz`, `predictions.jsonl`, `state.json`, `switch.json` (the on/off
-box, written by nothing else), `whatif.json`, `alarms.json`,
+box, written by nothing else), `whatif.json` (no longer read or written since Oct 08, 2026), `alarms.json`,
 `streak_bells.json`, `merge.log`, `runs/<id>/` (the last 3 downloads).
 
 ## Running it by hand

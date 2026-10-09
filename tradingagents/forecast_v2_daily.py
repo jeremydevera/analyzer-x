@@ -1,4 +1,4 @@
-"""Forecast v2, once a day — and the page's what-if box.
+"""Forecast v2, once a day.
 
 The build prompt (docs/FORECAST-V2.md): *"Heavy work runs as a job (on GitHub
 if the research already does, collected like the replay), once a day after
@@ -31,11 +31,9 @@ A failure is NAMED in the state and on the page, and that step is tried again
 after RETRY_S — never every tick, never silently. GitHub is asked at most
 every POLL_S. Never under pytest against the real files.
 
-WHAT-IF: a rule set the operator types is one `custom` forecast run on the
-last FINISHED replay (`ready`); its answer is kept by rule id with the data it
-was measured on, so asking again returns at once. Every save of whatif.json is
-one record over a fresh read, under one lock; a start a restart cut off is
-marked so it can be asked again, and the re-ask adopts any run it made.
+NO WHAT-IF since Oct 08, 2026 (operator: "delete What if — type any rules and
+see the same prediction section as well"): nothing here starts a `custom`
+forecast run any more, and whatif.json is no longer read or written.
 """
 from __future__ import annotations
 
@@ -60,7 +58,6 @@ RETRY_S = 30 * 60
 KEEP_RUNS = 3                 # downloaded forecast runs kept beside the store
 WORST_FAMILIES = 5            # the skip-families option skips this many
 _LOCK = threading.Lock()
-_WHATIF_LOCK = threading.Lock()
 
 
 def home() -> Path:
@@ -367,7 +364,7 @@ def skip_families(live: dict | None = None) -> list:
     """The worst signal families from practice right now (the "skip the worst
     families" option). The coins to avoid went on Oct 07, 2026."""
     live = live or f2.live()
-    fam = sorted((g for g in live["money"]["by_family"]
+    fam = sorted((g for g in live["families"]
                   if g["trades"] >= f2.THIN and g["profit"] < 0), key=lambda g: g["profit"])
     return [g["group"] for g in fam[:WORST_FAMILIES]]
 
@@ -421,8 +418,8 @@ def due(now: float, st: dict) -> tuple[bool, str]:
 # ------------------------------------------------------------- one tick
 def tick(now: float | None = None) -> dict:
     """The supervisor's 30-second call, in its own thread: at most one step of
-    the chain, the what-if runs' polls, and the bells (a new practice streak,
-    a room under its predicted worst case)."""
+    the chain and the bells (a new practice streak, a room under its predicted
+    worst case)."""
     if os.environ.get("PYTEST_CURRENT_TEST"):
         return {"why": "never under a test run"}
     if not _LOCK.acquire(blocking=False):
@@ -434,12 +431,7 @@ def tick(now: float | None = None) -> dict:
             _step(st, now)
         except Exception as exc:                               # noqa: BLE001
             _fail(st, now, f"{type(exc).__name__}: {str(exc)[:300]}")
-        try:
-            _whatifs(st, now)
-            st.pop("whatif_error", None)
-        except Exception as exc:                               # noqa: BLE001
-            # the newest failure, never the first one kept for ever
-            st["whatif_error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
+        st.pop("whatif_error", None)             # a state kept from when it had a what-if
         try:
             from tradingagents import forecast_v2_api as f2a
 
@@ -957,199 +949,3 @@ def bell(out: dict, live: dict, rooms: list | None = None) -> None:
                      if c is not None else f"best rule set #{top['id']}: about {p['profit']:+.2f}")
     nt.record("forecast", "Forecast v2 is ready", detail=fit(parts),
               ok=not any(r.get("below") for r in rooms), meta={"made_at": out["made_at"]})
-
-
-# ------------------------------------------------------------- what-if
-def _whatif_path() -> Path:
-    return home() / "whatif.json"
-
-
-def whatifs() -> dict:
-    try:
-        return json.loads(_whatif_path().read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-
-
-def _whatif_save(d: dict) -> None:
-    f2.publish(_whatif_path(), json.dumps(d, separators=(",", ":"), allow_nan=False))
-
-
-_STARTING: set = set()            # what-if ids this process is asking GitHub for right now
-
-
-def _whatif_runs(rec: dict) -> dict:
-    """{account: run} of a what-if — one asked before the accounts were dealt
-    kept a single `run`, on `origin`."""
-    if rec.get("runs"):
-        return {k: int(v) for k, v in rec["runs"].items()}
-    return {slug(): int(rec["run"])} if rec.get("run") else {}
-
-
-def _whatif_edit(rid: str, fields: dict, run=None) -> None:
-    """ONE what-if's fields saved over a FRESH read, under the lock (bug hunt,
-    round 6): the poll held its own copy of the file across a download of
-    minutes and saved it whole, so a what-if asked meanwhile vanished from
-    the file while its run went on on GitHub. `run` — its run (or its
-    {account: run}): only if the record still belongs to it (it may have been
-    asked again since)."""
-    with _WHATIF_LOCK:
-        w = whatifs()
-        rec = w.get(rid)
-        if rec is None or (run is not None and (rec.get("runs") if isinstance(run, dict)
-                                                else rec.get("run")) != run):
-            return
-        rec.update(fields)
-        _whatif_save(w)
-
-
-def whatif(cfg: dict) -> dict:
-    """Ask for one rule set. An answer measured on the newest data returns at
-    once; otherwise a custom forecast run is started (or the one already
-    running for it is reported)."""
-    cfg = fr.cfg_of(int(cfg["window_days"]), float(cfg["on_winrate"]), int(cfg["min_trades"]),
-                    str(cfg["tp_rule"]), float(cfg.get("max_sl") or 0),
-                    # never a retired option (skip_coins, Oct 07, 2026), even asked by hand
-                    **{k: cfg.get(k) for k in fr.LIVE_OPTION_KEYS if cfg.get(k) not in (None, "", False)},
-                    **({"coin_slices": int(cfg["coin_slices"])} if cfg.get("coin_slices") else {}))
-    rid = fr.rule_id(cfg)
-    st = _ready_of(read().get("ready") or {})
-    if not st.get("replay_runs") or not st.get("end_ms"):
-        return {"id": rid, "status": "no replay yet",
-                "why": "the daily Forecast v2 has not finished a replay yet — a what-if needs one"}
-    with _WHATIF_LOCK:
-        w = whatifs()
-        have = w.get(rid)
-        same = bool(have) and have.get("end_ms") == st["end_ms"]
-        if same and (have.get("status") in ("done", "working")
-                     or (have.get("status") == "starting" and rid in _STARTING)):
-            return have
-        # an earlier start that failed, or was cut off by a restart, may
-        # still have reached GitHub: its run is adopted, never asked twice
-        since = (have.get("tried_at") or have.get("asked_at")) if same and not have.get("run") else None
-        now = time.time()
-        rec = {"id": rid, "cfg": cfg, "words": fr.words(cfg), "status": "starting", "run": None,
-               "end_ms": st["end_ms"], "asked_at": now, "tried_at": since or now, "result": None,
-               "why": "asking GitHub to start it"}
-        w[rid] = rec
-        _whatif_save(w)
-        _STARTING.add(rid)
-    # STARTED BEHIND THE ANSWER (bug hunt, round 3): GitHub takes up to a
-    # minute to show a dispatched run, and the page must not wait for it
-    custom = json.dumps({"id": rid, **cfg}, separators=(",", ":"))
-    threading.Thread(target=_start_whatif, args=(rid, st, custom, since),
-                     name="forecast-v2-whatif", daemon=True).start()
-    return rec
-
-
-def _start_whatif(rid: str, st: dict, custom: str, since: float | None = None) -> None:
-    """One custom run on EVERY account the finished replay ran on, each on
-    its own replay — a what-if over one account's coins would answer about
-    half the market. An account refusing fails the what-if, named; asking
-    again adopts every run that did start."""
-    runs, refused = {}, []
-    try:
-        for repo in (st.get("replay_runs") or {}):
-            try:
-                runs[repo] = dispatch(FORECAST_WF, _forecast_inputs(st, "custom", repo, {"custom": custom}),
-                                      repo, since=since)
-            except Exception as exc:                           # noqa: BLE001
-                refused.append(f"{owner(repo)}: {type(exc).__name__}: {str(exc)[:160]}")
-        if refused:
-            _whatif_edit(rid, {"status": "failed", "runs": runs or None,
-                               "why": f"could not start it on {'; '.join(refused)}"})
-        else:
-            _whatif_edit(rid, {"runs": runs, "status": "working", "why": "started on GitHub"})
-    finally:
-        _STARTING.discard(rid)
-
-
-def _cut_starts(now: float) -> list:
-    """A what-if left "starting" with no thread of this process asking GitHub
-    for it — the site restarted mid-ask — is marked so it can be asked again,
-    instead of answering "starting" for ever. Checked UNDER the lock that
-    `whatif` adds to _STARTING under, so a start a second old is never cut."""
-    cut = []
-    with _WHATIF_LOCK:
-        w = whatifs()
-        for r in w.values():
-            if r.get("status") == "starting" and r.get("id") not in _STARTING \
-                    and now - float(r.get("asked_at") or 0) > 60:
-                r.update(status="failed", why=(
-                    "the start was cut off (the site restarted while asking GitHub) — ask "
-                    "again: a run it did start is picked up, never started twice"))
-                cut.append(r["id"])
-        if cut:
-            _whatif_save(w)
-    return cut
-
-
-def _reality_of_table() -> dict:
-    """The reality-check numbers the rule-set table was corrected with, so a
-    what-if's "after the reality check" can be read beside it (bug hunt,
-    round 6: it used the live numbers, which move every refresh)."""
-    try:
-        r = _latest().get("reality") or {}
-        if r.get("took") is not None:
-            return r
-    except (OSError, ValueError):
-        pass
-    return f2.live()["reality"]["all"]
-
-
-def _whatifs(st: dict, now: float) -> None:
-    from tradingagents import forecast_v2_merge as fm
-
-    _cut_starts(now)
-    w = whatifs()
-    busy = [r for r in w.values() if r.get("status") == "working" and (r.get("runs") or r.get("run"))]
-    if not busy or now - float(st.get("whatif_polled") or 0) < POLL_S:
-        return
-    st["whatif_polled"] = now
-    chain = st.get("phase") in ("replay", "base", "options")
-    also = (f" — the daily Forecast v2's {st.get('phase')} run is on GitHub too" if chain else "")
-    for r in busy:
-        runs = _whatif_runs(r)
-        if not r.get("runs") and st.get("repo"):
-            runs = {st["repo"]: int(r["run"])}          # a one-account chain's own record
-        mark = r.get("runs") or r.get("run")             # the guard: still this record's run(s)
-        try:
-            stat = {repo: run_status(run, repo) for repo, run in runs.items()}
-            waiting = [s for s in stat.values() if s["status"] != "completed"]
-            if waiting:
-                _whatif_edit(r["id"], {"why": run_words(waiting[0], also)}, run=mark)
-                continue
-            red = [f"{owner(repo)} {s['conclusion']}" if len(runs) > 1 else str(s["conclusion"])
-                   for repo, s in stat.items() if s["conclusion"] != "success"]
-            if red:
-                _whatif_edit(r["id"], {"status": "failed", "why": f"the run ended {', '.join(red)}"},
-                             run=mark)
-                continue
-            # every account's machines, account i's machine k numbered i*100 + k
-            arts = [(i, download(run, repo, "forecast-*")) for i, (repo, run) in enumerate(runs.items())]
-            try:
-                metas, packs = fm.load(arts)
-                try:
-                    start = metas[0]["start"]
-                    start_ms = int(dt.datetime(*map(int, start.split("-"))).timestamp() * 1000)
-                    months, complete = fm.months_of(start_ms, int(metas[0]["end_ms"]))
-                    result = fm.summarize(0, metas, packs, start_ms, int(metas[0]["end_ms"]),
-                                          months, complete, _reality_of_table())
-                finally:
-                    # CLOSED BEFORE THE DELETE (bug hunt, round 14): an open
-                    # .npz cannot be deleted on Windows, and ignore_errors hid
-                    # it — #2F39EAEC's 20 .npz files stayed on disk at 8:35pm
-                    # while its .json files went
-                    for pk in packs:
-                        pk.close()
-            finally:
-                for _i, art in arts:
-                    shutil.rmtree(art, ignore_errors=True)
-            _whatif_edit(r["id"], {"result": result, "status": "done", "why": "", "done_at": now},
-                         run=mark)
-        except Exception as exc:                               # noqa: BLE001
-            # one what-if GitHub could not answer never stops the others
-            _whatif_edit(r["id"], {"why": f"could not read it from GitHub at this check: "
-                                          f"{type(exc).__name__}: {str(exc)[:160]}"}, run=mark)
-
-

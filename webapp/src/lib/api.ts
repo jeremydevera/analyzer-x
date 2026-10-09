@@ -1096,8 +1096,6 @@ export type Forecasts = {
 /** One room's numbers RIGHT NOW (tradingagents/room_stats.py — the one place
  *  they are worked out; this screen only prints them). */
 // ------------------------------------------------------------ Forecast v2
-export type F2Group = { group: string; trades: number; wins: number; losses: number;
-  profit: number; per_trade: number | null; winrate: number | null; thin: boolean };
 export type F2Follow = { k: number; cases: number; enough: boolean; next_win?: number;
   cases10?: number; next10?: number | null; capped?: boolean } | null;
 export type F2Streak = { source: "practice" | "backtest"; kind: "win" | "loss"; length: number;
@@ -1131,37 +1129,10 @@ export type F2RulePage = { rows: F2Rule[]; total: number; page: number; pages: n
   tested: { base: number; options: number; total: number } | null; filters?: string[]; sort?: string; why?: string };
 export type F2RuleQuery = { sort?: string; page?: number; base?: string; deployable?: boolean;
   min_beat?: number; tp_rule?: string; window?: number; max_sl?: number; q?: string };
-export type F2WhatIfCfg = { window_days: number; on_winrate: number; min_trades: number;
-  tp_rule: string; max_sl: number; coin_slices?: number } & Record<string, unknown>;
-export type F2Universe = { write?: { wr: number; trades: number; tp: string; windows: number[] };
-  groups?: string[]; coins?: number; strategies?: number };
-export type F2WhatIf = { id: string; words?: string; status: string; why: string; run?: number;
-  /** the end of the replay it was measured on — the table's may be newer */
-  asked_at?: number; end_ms?: number; result?: F2Rule | null };
-/** one page of a Forecast page list, paged by the server (forecast_v2_api._page) */
-export type F2Page<T> = { rows: T[]; total: number; page: number; pages: number; per: number };
-/** a signal family with the rooms' backtest beside it, [trades, wins, profit];
- *  `has_backtest` false = no backtest at all, so the column reads — not 0 */
-export type F2FamilyPage = F2Page<F2Group & { bt: [number, number, number] | null }> & { has_backtest: boolean };
-export type F2Breakdown = { id: string; tf: Record<string, [number, number, number]>;
-  family: Record<string, [number, number, number]>; kind: Record<string, [number, number, number]>;
-  hour: Record<string, [number, number, number]>; stops: Record<string, [number, number, number]>;
-  sizes: [number, number, number, number]; costs: number; trades: number; profit: number };
 export type F2Summary = {
   at: number; took_ms: number; refresh_error: string;
-  rooms: { id: string; name: string; retired: boolean; trades: number; unreadable: number;
-    month: { trades: number; wins: number; losses: number; profit: number; days: { day: string; total: number }[] } }[];
-  money: {
-    costs: { rooms: { room: string; name: string; retired: boolean; trades: number; profit: number;
-      costs: number; matched: number; without_costs: number;
-      worst_day: { day: string; profit: number; at: number } | null }[]; profit: number; costs: number; without_costs: number };
-    sizes: { avg_win: number | null; avg_loss: number | null; break_even: number | null;
-      winrate: number | null; trades: number; wins: number; losses: number };
-    by_tf: F2Group[]; by_family: F2Group[]; by_kind: F2Group[]; by_hour: F2Group[]; stop_outs: F2Group[];
-    overlap: { coin: string; rooms: string[]; count: number; trades: number; flag: boolean }[];
-    thin_below: number };
   reality: { rooms: (F2Reality & { room: string; name: string; cap: number })[]; all: F2Reality; rule: string };
-  defaults: { win_n: number; loss_m: number; thin: number; overlap_warn: number };
+  defaults: { win_n: number; loss_m: number; thin: number };
   streak_counts: { practice: { win: number; loss: number }; backtest: { count: number; win: number; loss: number; floor: number } | null };
   backtest: null | { made_at: number; runs: Record<string, unknown>; reality: F2Reality;
     data: { start: string; end_ms: number; months: string[]; complete: string[];
@@ -1169,26 +1140,12 @@ export type F2Summary = {
       /** machines whose coins are in the numbers, of how many the run had */
       machines: number; of?: number; shards?: number[]; strategies: number; trades: number };
     tested: { base: number; options: number; total: number };
-    rooms: Record<string, F2Breakdown>;
     follow: { win?: { k: number; cases: number; next_win: number; cases10: number; pnl10: number }[];
       loss?: { k: number; cases: number; next_win: number; cases10: number; pnl10: number }[] } };
   chain: { phase?: string; why?: string; error?: string; done_at?: number;
     replay_run?: number; base_run?: number; options_run?: number; repo?: string;
     /** per step, the machines its run was used without */
     missing?: Record<string, { of: number; failed: string[] }> | null };
-  tracker: null | { month: string; day: number; days: number;
-    rooms: { room: string; name: string; id: string | null; words: string | null; below: boolean;
-      month: { trades: number; wins: number; losses: number; profit: number; days: { day: string; total: number }[] };
-      predicted: F2Predicted;
-      /** what the room's own rules made by the END of this day of each past
-       *  month — measured, never a month divided by its days (RCA-2026-10-01-J) */
-      so_far: (Record<"low" | "profit" | "high" | "corrected_low" | "corrected" | "corrected_high", number | null>
-        & { day: number; months: string[] }) | null }[];
-    tops: { id: string; words: string; predicted: F2Predicted; month: F2Months | null }[] };
-  grading: null | { months: { month: string; made_at: number; graded: boolean; why?: string; inside?: number; judged?: number;
-    /** the strategies the prediction covered, and — when they differ — the newest data's */
-    universe?: F2Universe; now?: F2Universe | null; differs?: boolean }[] };
-  options: { key: string; value: unknown; words: string }[];
   grid: { window_days: number[]; on_winrate: number[]; min_trades: number[]; tp_rule: string[]; max_sl: number[] };
 };
 
@@ -1488,9 +1445,10 @@ export const api = {
   // postDetail: a refusal ("a forecast was just saved at ...") reaches the
   // screen as its own sentence, not as "HTTP 409"
   forecastNew: () => postDetail<{ saved: Forecast }>("/api/forecasts/new", {}),
-  // Auto Trade -> Forecast v2 (Oct 01, 2026): streaks, coins to avoid, where the
-  // money goes, and the room rules predicted for this month — every list
-  // filtered and paged by the server (tradingagents/forecast_v2_api.py)
+  // Auto Trade -> Forecast v2 (Oct 01, 2026): streaks and the room rules
+  // predicted for this month — every list filtered and paged by the server
+  // (tradingagents/forecast_v2_api.py). No coins to avoid since Oct 07, 2026;
+  // no "Where the money goes", what-if or month tracker since Oct 08, 2026.
   forecastV2: () => get<F2Summary>("/api/forecast-v2"),
   forecastV2Streaks: (q: { source: "practice" | "backtest"; kind: "win" | "loss"; min?: number; page?: number }) => {
     const p = new URLSearchParams({ source: q.source, kind: q.kind, page: String(q.page ?? 1) });
@@ -1508,11 +1466,6 @@ export const api = {
     if (q.q) p.set("q", q.q);
     return get<F2RulePage>(`/api/forecast-v2/rules?${p}`);
   },
-  forecastV2WhatIf: (cfg: F2WhatIfCfg) => postDetail<F2WhatIf>("/api/forecast-v2/whatif", { cfg }),
-  // ten a page, like every list on the Forecast page (Oct 02, 2026: "make it
-  // paginated just like in auto trade")
-  forecastV2WhatIfs: (page = 1) => get<F2Page<F2WhatIf>>(`/api/forecast-v2/whatif?page=${page}`),
-  forecastV2Families: (page = 1) => get<F2FamilyPage>(`/api/forecast-v2/families?page=${page}`),
   roomErrors: (q: { room?: string; kind?: string; hours?: number; page?: number }) => {
     const p = new URLSearchParams();
     if (q.room) p.set("room", q.room);

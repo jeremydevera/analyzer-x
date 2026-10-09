@@ -161,7 +161,7 @@ machines were idle. First asked `Sep 21, 2026`: *"i want 40"*.
 | resolve the pending, the hand-off | `dispatch_across`, the board named from the store (Oct 02, 2026) |
 | prompt 4 / research rounds | `python -m tradingagents.room_strategies dispatch ...` deals the replay's shards by size (`research.yml` takes `shards=[..]` and `source_repo`); `... fetch` downloads every account's share into one folder; `check_complete` refuses a round with a share missing; the slices are raised until each account has at least 20 jobs (`MACHINES_PER_ACCOUNT`) — 20 shards with coins at one slice left 10 machines idle on each |
 | learn.yml, ml.yml | started by hand — start one on each account |
-| Forecast v2's daily chain and its what-ifs (`replay.yml` then `forecast.yml`, `forecast_v2_daily`) | `_dispatch_replays` names the market (`market()`, sweep_shard.eligible's rule) and deals it with `split_coins` — each account's claim board is in its own repo, so two unnamed runs would measure every coin twice; each account's base, options and what-if runs read ITS OWN replay; the merge numbers account i's machine k as i*100 + k (`forecast_v2_merge.folders`); an account refusing or red twice is dropped and named (Oct 02, 2026) |
+| Forecast v2's daily chain (`replay.yml` then `forecast.yml`, `forecast_v2_daily`; no what-ifs since Oct 08, 2026) | `_dispatch_replays` names the market (`market()`, sweep_shard.eligible's rule) and deals it with `split_coins` — each account's claim board is in its own repo, so two unnamed runs would measure every coin twice; each account's base and options runs read ITS OWN replay; the merge numbers account i's machine k as i*100 + k (`forecast_v2_merge.folders`); an account refusing or red twice is dropped and named (Oct 02, 2026) |
 | Room strategies, re-tested every day (`replay.yml` then `research.yml`, `room_strategies_daily`) | the market dealt with `split_coins` exactly as Forecast v2 deals it; each account's research reads ITS OWN replay (`source_repo`), the slices raised until its 20 machines are busy; an account refusing, unsynced (`sync_fleet`) or red twice ENDS the day, named — a re-test missing half the coins is never published (Oct 07, 2026) |
 
 * A new workflow or dispatch path follows this from its first commit.
@@ -1430,10 +1430,18 @@ the build prompt word for word and the measured first run:
 `docs/FORECAST-V2.md`. Auto Trade → Forecast (`/forecast-v2`, ONE page since
 Oct 02, 2026: *"can i merge forecast to forecast v2 ... what matters to me is this
 prompt and ability to backtest a room strategy"*). Top to bottom since
-Oct 07, 2026: Backtest a room, **Room strategies directly under it** (*"put
-room strategies under backtest a room"*), Streaks, Where the money goes, Best
-room rules this month, This month so far, then the prompts with their copy
-buttons (`RoomForecasts.RoomsAndBacktest`). **No "Forecast v2" banner and no
+Oct 08, 2026: Backtest a room, **Room strategies directly under it** (*"put
+room strategies under backtest a room"*), Streaks, Best room rules this month,
+then the prompts with their copy buttons (`RoomForecasts.RoomsAndBacktest`).
+**No "Where the money goes", no what-if box and no "This month so far"**
+(*"delete Where the money goes section i dont need it anymore, delete What if
+— type any rules and see the same prediction section as well, delete This
+month so far ... as well"*): their routes (`/api/forecast-v2/families`,
+`/api/forecast-v2/whatif`), the practice money split (only the signal-family
+list stays, `forecast_v2.families`, for the "skip the worst families"
+option), the what-if runs on GitHub and the graded predictions went. The
+month tracker is still worked out for its two bells (a room under its worst
+case, each room's line in the daily summary). **No "Forecast v2" banner and no
 Coins to avoid** (*"remove the section coins to avoid i dont need its logic
 ... also remove the banner 'Forecast v2' it should be 'run it everyday'
 enabled in the backend"*) — the list, its route, its what-if option

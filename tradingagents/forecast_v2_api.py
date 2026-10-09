@@ -24,9 +24,10 @@ LIVE_FRESH_S = 30
 # TEN A PAGE, THE AUTO TRADE SIZE (operator, Oct 02, 2026: "in forecast, make
 # it paginated just like in auto trade" — Positions and the Watcher there page
 # ten rows at a time under numbered buttons). Every list on the Forecast page
-# pages at this size: the streaks, the rule sets, the signal families and
-# the what-ifs here, and Backtest a room and Room
-# strategies through their routes in api.py.
+# pages at this size: the streaks and the rule sets here, and Backtest a room
+# and Room strategies through their routes in api.py. (The signal families
+# and the what-ifs went on Oct 08, 2026, with "Where the money goes" and the
+# what-if box.)
 PER_PAGE = 10
 _LIVE: dict = {"value": None, "busy": False, "error": ""}
 _LIVE_LOCK = threading.Lock()
@@ -227,37 +228,6 @@ def streaks(source: str = "practice", kind: str = "win", min_len: int | None = N
     return out
 
 
-def families(page: int = 1) -> dict:
-    """Where the money goes, by signal family, worst first: EVERY family,
-    paged here — the page used to cut it to the 15 that lost the most (15 of
-    33 on Oct 02, 2026). Each row carries the rooms' backtest beside it,
-    [trades, wins, profit] summed over the rooms' breakdowns, the same sum
-    the page makes for the other splits; `has_backtest` says whether a
-    backtest exists at all, so a family it never traded reads 0, not —."""
-    rows = list((live().get("money") or {}).get("by_family") or [])
-    rooms = (latest() or {}).get("rooms") or {}
-    sums: dict = {}
-    for r in rooms.values():
-        for k, v in (r.get("family") or {}).items():
-            c = sums.get(k, (0, 0, 0.0))
-            sums[k] = (c[0] + v[0], c[1] + v[1], c[2] + v[2])
-    out = _page(rows, page)
-    # new dicts: the rows belong to the shared practice copy every request reads
-    out["rows"] = [{**g, "bt": list(sums[g["group"]]) if g["group"] in sums else None}
-                   for g in out["rows"]]
-    out["has_backtest"] = bool(rooms)
-    return out
-
-
-def whatifs(page: int = 1) -> dict:
-    """Every what-if asked, newest first, paged here — the route used to send
-    the newest 20 and nothing older."""
-    from tradingagents import forecast_v2_daily as fd
-
-    rows = sorted(fd.whatifs().values(), key=lambda r: -float(r.get("asked_at") or 0))
-    return _page(rows, page)
-
-
 SORTS = {"rank": lambda s: s["rank"],
          "predicted": lambda s: -((s["predicted"] or {}).get("profit") or -1e18),
          "corrected": lambda s: -((s["predicted"] or {}).get("corrected") or -1e18),
@@ -394,48 +364,6 @@ def tracker(now: float | None = None) -> dict:
     return {"rooms": out, "tops": top_rows, "month": cur, "day": today.day, "days": days_in}
 
 
-def grading() -> dict:
-    """Every month's FIRST prediction against what happened, for the months
-    the newest data covers: the backtest's result for every rule set, and the
-    rooms' own practice result for their own rule set."""
-    p = f2._home() / "predictions.jsonl"
-    lines = []
-    try:
-        lines = [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines() if x.strip()]
-    except (OSError, ValueError):
-        lines = []
-    lt = latest() or {}
-    complete = set((lt.get("data") or {}).get("complete") or [])
-    now_uni = (lt.get("data") or {}).get("universe") or {}
-    by = _by_id()
-    out = []
-    for line in lines:
-        m = line["month"]
-        # OVER WHICH STRATEGIES (bug hunt, round 16): a prediction graded
-        # against a result measured over other signal groups or coins says
-        # so — the store grows (Oct 01, 2026: 2 groups -> 4, 1,079 coins -> 1,092)
-        uni = line.get("universe") or {}
-        differs = bool(uni and now_uni and any(uni.get(k) != now_uni.get(k)
-                                               for k in ("groups", "coins", "write")))
-        side = {"universe": uni, "now": now_uni if differs else None, "differs": differs}
-        if m not in complete:
-            out.append({"month": m, "made_at": line["made_at"], "graded": False,
-                        "why": "the month is not over in the newest data yet", **side})
-            continue
-        inside = judged = 0
-        for s in line["sets"]:
-            got = by.get(s["id"])
-            row = next((x for x in (got or {}).get("months", []) if x["month"] == m), None)
-            pr = s.get("predicted") or {}
-            if row is None or pr.get("low") is None:
-                continue
-            judged += 1
-            inside += pr["low"] <= row["profit"] <= pr["high"]
-        out.append({"month": m, "made_at": line["made_at"], "graded": True,
-                    "inside": inside, "judged": judged, **side})
-    return {"months": out}
-
-
 def tracker_alarms(now: float | None = None) -> list:
     """The bell, ONCE per room per month, when a room's practice month falls
     under its predicted worst case after the reality check."""
@@ -467,24 +395,25 @@ def tracker_alarms(now: float | None = None) -> list:
 
 def summary(now: float | None = None) -> dict:
     """Everything on the page except the lists that page on their own routes
-    (streaks, rule sets, signal families, what-ifs). `money` still carries its
-    whole lists for the counts and the small splits; the page reads the long
-    ones a page at a time. (No coins to avoid since Oct 07, 2026.)"""
+    (streaks, rule sets). No coins to avoid since Oct 07, 2026; and since
+    Oct 08, 2026 no "Where the money goes", what-if or "This month so far"
+    (operator: "i dont need it anymore"), so neither the practice money
+    split, the rooms' backtest breakdowns, the month tracker, the graded
+    predictions nor the what-if options are sent. The month tracker is still
+    worked out for the bells (`tracker_alarms`, the daily summary)."""
     from tradingagents import forecast_v2_daily as fd
 
     lv = live()
     lt = latest()
     st = fd.read()
     return {"at": lv["at"], "took_ms": lv["took_ms"], "refresh_error": _LIVE["error"],
-            "rooms": lv["rooms"], "money": lv["money"],
             "reality": lv["reality"], "defaults": lv["defaults"],
             "streak_counts": {"practice": {"win": sum(1 for s in lv["streaks"] if s["kind"] == "win"),
                                            "loss": sum(1 for s in lv["streaks"] if s["kind"] == "loss")},
                               "backtest": (lt or {}).get("streaks")},
             "backtest": None if lt is None else {
                 "made_at": lt["made_at"], "runs": lt["runs"], "data": lt["data"],
-                "tested": lt["tested"], "reality": lt["reality"], "rooms": lt["rooms"],
-                "follow": lt["follow"]},
+                "tested": lt["tested"], "reality": lt["reality"], "follow": lt["follow"]},
             # the machines a run was used WITHOUT, named (bug hunt, round 12: the
             # chain said "named on the page" and the page was never sent them)
             # and, since Oct 02, 2026, every ACCOUNT's runs and any account
@@ -493,6 +422,4 @@ def summary(now: float | None = None) -> dict:
                                              "replay_run", "base_run", "options_run", "repo",
                                              "missing", "fleets", "replay_runs", "base_runs",
                                              "options_runs", "lost")},
-            "tracker": tracker(now) if lt else None, "grading": grading() if lt else None,
-            "options": [{"key": k, "value": v, "words": w} for k, v, w in fr.OPTIONS],
             "grid": fr.BASE}

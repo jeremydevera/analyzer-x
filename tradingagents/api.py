@@ -1503,16 +1503,6 @@ def forecast_v2_route() -> dict:
         raise HTTPException(503, str(exc)) from exc
 
 
-@app.get("/api/forecast-v2/families")
-def forecast_v2_families_route(page: int = 1) -> dict:
-    from tradingagents import forecast_v2_api as _f2a
-
-    try:
-        return _f2a.families(page)
-    except _f2a.NotReady as exc:
-        raise HTTPException(503, str(exc)) from exc
-
-
 @app.get("/api/forecast-v2/streaks")
 def forecast_v2_streaks_route(source: str = "practice", kind: str = "win",
                               min: int | None = None, page: int = 1) -> dict:  # noqa: A002
@@ -1538,26 +1528,11 @@ def forecast_v2_rules_route(sort: str = "rank", page: int = 1, base: str = "",
         raise HTTPException(400, str(exc)) from exc
 
 
-@app.post("/api/forecast-v2/whatif")
-def forecast_v2_whatif_route(body: dict) -> dict:
-    """The what-if box: one rule set, measured on GitHub on the newest
-    replay; an answer already measured on that data comes back at once."""
-    from tradingagents import forecast_rules as _fr, forecast_v2_daily as _f2d
-
-    cfg = (body or {}).get("cfg") or {}
-    try:
-        if str(cfg.get("tp_rule")) not in _fr.TP_WORDS:
-            raise ValueError(f"unknown TP rule {cfg.get('tp_rule')!r}")
-        return _f2d.whatif(cfg)
-    except (KeyError, TypeError, ValueError) as exc:
-        raise HTTPException(422, f"not a rule set: {exc}") from exc
-
-
-@app.get("/api/forecast-v2/whatif")
-def forecast_v2_whatifs_route(page: int = 1) -> dict:
-    from tradingagents import forecast_v2_api as _f2a
-
-    return _f2a.whatifs(page)
+# NO SIGNAL-FAMILY LIST AND NO WHAT-IF (operator, Oct 08, 2026: "delete Where
+# the money goes section i dont need it anymore, delete What if — type any
+# rules and see the same prediction section as well"): their routes,
+# /api/forecast-v2/families and /api/forecast-v2/whatif, went with the page's
+# sections, and nothing on this PC starts a what-if run on GitHub any more.
 
 
 @app.get("/api/errors/rooms")

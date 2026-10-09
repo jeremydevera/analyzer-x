@@ -163,40 +163,30 @@ def test_the_coins_to_avoid_are_gone_and_old_sets_still_read_true():
     assert not hasattr(f2, "coins_to_avoid") and not hasattr(f2a, "avoid")
     assert not hasattr(api_mod, "forecast_v2_avoid_route")
     assert all(k != "skip_coins" for k, _v, _w in fr.OPTIONS), "never measured again"
-    assert all(o["key"] != "skip_coins" for o in f2a.summary()["options"]), "nor offered as a what-if"
+    assert "skip_coins" not in fr.LIVE_OPTION_KEYS, "nor used for a new rule set"
     old = {**fr.cfg_of(30, 90, 20, ">", 2.0), "skip_coins": True}
     assert "the coins to avoid skipped (removed Oct 07, 2026)" in fr.words(old)
     assert fr.rule_id(old) != fr.rule_id(fr.cfg_of(30, 90, 20, ">", 2.0)), "its id is kept"
 
 
-def test_where_the_money_goes_splits_by_hour_held_and_kind():
+def test_only_the_family_list_the_skip_option_reads_is_worked_out():
+    """Operator, Oct 08, 2026: "delete Where the money goes section i dont
+    need it anymore". Its costs, sizes and splits are not worked out any
+    more; what stays is the signal-family list the forecast's "skip the
+    worst families" option reads (forecast_v2_daily.skip_families)."""
+    from tradingagents import forecast_v2_daily as fd
     settings()
-    nine_thirty = dt.datetime(2026, 10, 1, 9, 30, tzinfo=NY).timestamp()
-    write(trades([-1.0, -1.0], start=nine_thirty, held=600))                  # 9am to noon, fast stops
-    write(trades([1.0], symbol="BTC_USDT", start=NOW - 2 * HOUR, held=7200))  # noon to 4pm, crypto
-    m = f2.money([room()])
-    hours = {g["group"]: g for g in m["by_hour"]}
-    assert hours["9am to noon"]["trades"] == 2 and hours["noon to 4pm"]["trades"] == 1
-    stops = {g["group"]: g for g in m["stop_outs"]}
-    assert stops["within 15 minutes"]["trades"] == 2 and stops["after an hour"]["trades"] == 0
-    kinds = {g["group"]: g["trades"] for g in m["by_kind"]}
-    assert kinds == {"stocks": 2, "crypto": 1}
-    assert all(g["thin"] for g in m["by_tf"]), "3 trades is too few to mean anything"
-    z = m["sizes"]
-    assert (z["avg_win"], z["avg_loss"], z["break_even"]) == (1.0, -1.0, 50.0)
-    # the costs: price move x size less what was booked, $100 of coin, 0.2% charged
-    assert m["costs"]["costs"] == pytest.approx(0.6, abs=0.01)
-    assert m["costs"]["without_costs"] == pytest.approx(m["costs"]["profit"] + 0.6, abs=0.01)
-
-
-def test_one_coin_in_many_rooms_is_flagged():
-    for pid in ("main", "55D32617", ROOM):
-        _file("auto_trade_state.json", pid).write_text(json.dumps(
-            {"VUG_USDT#paper#k": {"position": {"side": 1, "entry": 100, "sl": 99, "margin": 5, "dry": True}}}),
-            encoding="utf-8")
-    ov = f2.overlap([f2.room_data(pid, NOW) for pid in ("main", "55D32617", ROOM)])
-    assert ov[0]["coin"] == "VUG" and ov[0]["count"] == 3 and ov[0]["flag"]
-
+    write(trades([-1.0] * 30))                                                  # stoch14, 30 losses
+    write(trades([1.0], symbol="BTC_USDT", key="bb20_15m_sl1tp15", start=NOW - 2 * HOUR))
+    lv = f2.live(NOW)
+    assert "money" not in lv and lv["defaults"] == {"win_n": f2.WIN_N, "loss_m": f2.LOSS_M,
+                                                     "thin": f2.THIN}
+    fams = lv["families"]
+    assert [g["group"] for g in fams] == ["stoch14", "bb20"], "worst first"
+    assert fams[0]["trades"] == 30 and not fams[0]["thin"] and fams[1]["thin"]
+    assert fd.skip_families(lv) == ["stoch14"], "lost money on 30 trades or more"
+    for gone in ("money", "overlap", "_hour_bucket", "HOURS", "HELD", "OVERLAP_WARN", "TFS", "NY"):
+        assert not hasattr(f2, gone), gone
 
 # ------------------------------------------------------- the reality check
 def test_the_reality_check_compares_the_same_rows_over_the_same_hours():
@@ -420,24 +410,22 @@ def test_the_lists_are_filtered_and_paged_by_the_server():
 def test_the_page_prints_and_works_nothing_out():
     src = (ROOT / "webapp/src/components/forecast/ForecastV2.tsx").read_text(encoding="utf-8")
     assert "Coins to avoid" not in src and "forecastV2Avoid" not in src
-    for words in ("Streaks", "Where the money goes", "Best room rules this month",
-                  "Reality check", "What if", "This month so far", "could be luck",
-                  "api.forecastV2Streaks", "api.forecastV2Rules", "api.forecastV2WhatIf"):
+    for words in ("Streaks", "Best room rules this month", "Reality check", "could be luck",
+                  "api.forecastV2Streaks", "api.forecastV2Rules"):
         assert words in src, words
+    # GONE (operator, Oct 08, 2026: "delete Where the money goes section i dont
+    # need it anymore, delete What if ... as well, delete This month so far ...
+    # as well") — not hidden: not drawn, not asked for
+    for gone in ("function Money(", "<Money ", "function Families(", "function WhatIf(", "<WhatIf ",
+                 "function Tracker(", "<Tracker ", "api.forecastV2Families", "api.forecastV2WhatIf",
+                 "s.money", "s.tracker", "s.grading", "s.options", "Past predictions, graded"):
+        assert gone not in src, gone
     assert "toLocale" not in src.replace("toLocaleString()", "")
     assert "new Date(" not in src
-    assert ".filter(" not in src.split("function sumBreakdown")[0], "the streak lists are filtered by the server"
-    # a day reaches the screen through fmtWhen, never as its "2026-10-01" key
-    # (found on the phone pass, Oct 01, 2026 7:35pm)
-    assert "worst_day.day" not in src and "fmtWhen(r.worst_day.at)" in src
+    assert ".filter(" not in src.split("D. best room rules")[0], "the streak lists are filtered by the server"
     # every card and grid column may shrink: a wide table scrolls inside its
     # own box instead of widening the page (1,590px at 1,440; 489px at 390)
-    assert 'const card = "min-w-0 ' in src and src.count("[&>*]:min-w-0") >= 2
-    # the month tracker is measured by the day, never a month shared out
-    # (RCA-2026-10-01-J), and a what-if prints the server's own words for
-    # where its run is, never a fixed "about 10-15 minutes" (bug hunt, round 6)
-    assert "shared out over the days" not in src and "pastMonths(t.rooms)" in src
-    assert "10-15 minutes" not in src
+    assert 'const card = "min-w-0 ' in src and "[&>*]:min-w-0" in src
     side = (ROOT / "webapp/src/layout/AppSidebar.tsx").read_text(encoding="utf-8")
     # ONE Forecast item since Oct 02, 2026 (the merge): it opens this page
     assert '{ name: "Forecast", path: "/forecast-v2" }' in side
@@ -515,23 +503,6 @@ def test_the_chain_never_runs_under_a_test():
     assert fd.tick()["why"] == "never under a test run"
 
 
-def test_a_what_if_answers_at_once_and_starts_behind_the_answer(monkeypatch):
-    from tradingagents import forecast_v2_daily as fd
-
-    # a replay still running (6) is never what a what-if measures on: the
-    # last FINISHED data (5) is (bug hunt, round 4)
-    fd._write({"phase": "replay", "replay_run": 6, "end_ms": None, "start": "2026-07-01", "repo": "x/y",
-               "ready": {"replay_run": 5, "end_ms": 1, "start": "2026-07-01", "repo": "x/y"}})
-    started = []
-    monkeypatch.setattr(fd.threading, "Thread", lambda target, args, name, daemon: type(
-        "T", (), {"start": lambda self: started.append(args)})())
-    got = fd.whatif({"window_days": 30, "on_winrate": 90, "min_trades": 40, "tp_rule": ">", "max_sl": 2})
-    assert got["status"] == "starting" and started and json.loads(started[0][2])["id"] == got["id"]
-    assert started[0][1]["replay_runs"] == {"x/y": 5}, "measured on the finished replay, not the running one"
-    again = fd.whatif({"window_days": 30, "on_winrate": 90, "min_trades": 40, "tp_rule": ">", "max_sl": 2})
-    assert again["id"] == got["id"] and len(started) == 1, "asked twice, started once"
-
-
 # ------------------------------------------------------ bug hunt, round 6
 def test_the_month_tracker_holds_a_day_against_the_same_day_of_past_months(tmp_path, monkeypatch):
     """RCA-2026-10-01-J: the "worst case by today" was a month's worst case
@@ -603,32 +574,6 @@ def test_the_daily_run_is_always_on():
     assert "run it every day" not in src and "forecastV2Switch" not in src
 
 
-def test_a_what_if_asked_while_another_is_polled_is_kept(monkeypatch):
-    """Bug hunt, round 6: the poll saved its own copy of the what-if file
-    after minutes at GitHub, and a what-if asked meanwhile vanished from it
-    while its run went on."""
-    from tradingagents import forecast_v2_daily as fd
-
-    fd._whatif_save({"A": {"id": "A", "status": "working", "run": 5, "end_ms": 1,
-                           "asked_at": NOW - HOUR}})
-
-    def status(run, repo):
-        # while the poll is out at GitHub, the operator asks B
-        with fd._WHATIF_LOCK:
-            w = fd.whatifs()
-            w["B"] = {"id": "B", "status": "working", "run": 9, "end_ms": 1, "asked_at": NOW}
-            fd._whatif_save(w)
-        return {"status": "queued", "machines": 0, "done": 0, "failed": [], "created": None}
-
-    monkeypatch.setattr(fd, "run_status", status)
-    fd._whatifs({"repo": "x/y", "phase": "replay"}, NOW)
-    w = fd.whatifs()
-    assert set(w) == {"A", "B"}, "the what-if asked meanwhile is still there"
-    # a QUEUED what-if names the chain's run beside it — what it waits behind
-    assert w["A"]["why"] == ("waiting in GitHub's queue, not started yet — the daily Forecast v2's "
-                             "replay run is on GitHub too")
-
-
 def test_a_run_github_listed_late_is_adopted_never_started_twice(monkeypatch):
     """Bug hunt, round 6: a dispatch that raised because GitHub listed its
     run late was tried again 30 minutes later — and started a SECOND replay,
@@ -691,29 +636,6 @@ def test_a_cut_title_still_finds_its_run():
     assert not fd.same_title(want.replace("2F39EAEC", "AAAAAAAA")[:70], want)
 
 
-def test_a_what_if_cut_off_by_a_restart_is_asked_again_and_its_run_adopted(monkeypatch):
-    """Bug hunt, round 6: a site restart between "starting" and GitHub's
-    answer left the what-if "starting" for ever — and asking again returned
-    that same stuck answer."""
-    from tradingagents import forecast_v2_daily as fd
-
-    monkeypatch.setattr(fd, "_STARTING", set())
-    fd._write({"phase": "idle", "ready": {"replay_run": 5, "end_ms": 1, "start": "2026-07-01", "repo": "x/y"}})
-    started = []
-    monkeypatch.setattr(fd.threading, "Thread", lambda target, args, name, daemon: type(
-        "T", (), {"start": lambda self: started.append(args)})())
-    cfg = {"window_days": 30, "on_winrate": 85, "min_trades": 30, "tp_rule": ">", "max_sl": 2}
-    got = fd.whatif(cfg)
-    assert fd._cut_starts(got["asked_at"] + 61) == [], "a start this process is still making is never cut"
-    fd._STARTING.clear()                        # the site restarted: nothing is asking GitHub for it
-    assert fd._cut_starts(got["asked_at"] + 30) == [], "a second-old start is never cut"
-    assert fd._cut_starts(got["asked_at"] + 61) == [got["id"]]
-    assert fd.whatifs()[got["id"]]["status"] == "failed"
-    again = fd.whatif(cfg)
-    assert again["status"] == "starting" and len(started) == 2
-    assert started[1][3] == got["tried_at"], "the re-ask adopts a run the cut-off start made"
-
-
 def test_a_chain_that_ran_past_midnight_does_not_hold_back_the_next_update(monkeypatch):
     """Bug hunt, round 6: "one a day" counted by the day the chain FINISHED,
     so a chain started Sep 30 11pm and done Oct 01 1:30am held Oct 01's
@@ -730,15 +652,6 @@ def test_a_chain_that_ran_past_midnight_does_not_hold_back_the_next_update(monke
     # a state from before started_day was kept counts the day it started at
     ok, _why = fd.due(NOW, {k: v for k, v in st.items() if k != "started_day"})
     assert ok
-
-
-def test_a_what_if_is_corrected_with_the_tables_own_numbers():
-    from tradingagents import forecast_v2_daily as fd
-
-    fd.home().mkdir(parents=True, exist_ok=True)
-    (fd.home() / "latest.json").write_text(json.dumps({"reality": {"took": 0.1799, "gap": 0.2225}}),
-                                           encoding="utf-8")
-    assert fd._reality_of_table() == {"took": 0.1799, "gap": 0.2225}
 
 
 def test_only_the_days_final_merge_keeps_the_months_prediction(monkeypatch, tmp_path):
@@ -983,55 +896,6 @@ def test_the_page_names_the_machines_a_run_was_used_without(monkeypatch):
     assert "PART OF THE MARKET" in src and "used without:" in src
 
 
-def test_a_what_if_says_which_data_it_was_measured_on():
-    """Bug hunt, round 13: once the daily run lands, the table is measured on
-    a newer replay (tonight's ends Oct 01, 2026 4:00pm) than a what-if asked
-    the day before (Sep 30, 2026 12:00pm), and the row never said which."""
-    from tradingagents import forecast_v2_daily as fd
-
-    src = (ROOT / "webapp/src/components/forecast/ForecastV2.tsx").read_text(encoding="utf-8")
-    assert '"measured on"' in src and "data to ${fmtWhenMs(w.end_ms)}" in src
-    assert "older than the table's; ask again to measure it on the newest" in src
-    # and asking again really does measure it on the newest data
-    fd._write({"phase": "done", "ready": {"replay_run": 9, "end_ms": 2, "start": "2026-07-01", "repo": "x/y"}})
-    cfg = {"window_days": 30, "on_winrate": 85, "min_trades": 30, "tp_rule": ">", "max_sl": 2}
-    rid = fr.rule_id(fr.cfg_of(30, 85.0, 30, ">", 2.0))
-    fd._whatif_save({rid: {"id": rid, "status": "done", "run": 4, "end_ms": 1, "result": {}}})
-    import threading as _t
-
-    started = []
-    real = _t.Thread
-    try:
-        fd.threading.Thread = lambda target, args, name, daemon: type(
-            "T", (), {"start": lambda self: started.append(args)})()
-        got = fd.whatif(cfg)
-    finally:
-        fd.threading.Thread = real
-        fd._STARTING.discard(rid)
-    assert got["status"] == "starting" and got["end_ms"] == 2 and started[0][1]["replay_runs"] == {"x/y": 9}
-
-
-def test_a_what_ifs_download_is_gone_once_it_is_read(tmp_path, monkeypatch):
-    """Bug hunt, round 14: the what-if's download was deleted while its .npz
-    files were still open, which Windows refuses; ignore_errors hid it, and
-    #2F39EAEC's 20 .npz files stayed on disk at Oct 01, 2026 8:35pm while its
-    .json files went. (On Windows this test is red on the old code.)"""
-    from tradingagents import forecast_v2_daily as fd
-
-    cfg = fr.cfg_of(30, 85, 30, ">", 2.0)
-    art = _fake_run(tmp_path / "w", [(cfg, [(_ms(2026, 8, 5), _ms(2026, 8, 5, 13), 4.0)])])
-    monkeypatch.setattr(fd, "run_status", lambda run, repo: {
-        "status": "completed", "conclusion": "success", "machines": 2, "done": 2, "failed": [],
-        "created": None})
-    monkeypatch.setattr(fd, "download", lambda run, repo, pattern: art)
-    monkeypatch.setattr(fd, "_reality_of_table", lambda: {"took": 0.5, "gap": 1.0})
-    fd._whatif_save({"W": {"id": "W", "status": "working", "run": 5, "end_ms": 1, "asked_at": NOW}})
-    fd._whatifs({"repo": "x/y"}, NOW)
-    w = fd.whatifs()["W"]
-    assert w["status"] == "done" and w["result"]["total"]["profit"] == 4.0
-    assert not art.exists(), "the download is gone once it is read"
-
-
 # ----------------------------------------------------- bug hunt, round 16
 def test_a_prediction_carries_the_strategies_it_was_measured_over(tmp_path):
     """Bug hunt, round 16: the same rule set on two replays — #562C0147 made
@@ -1087,31 +951,6 @@ def test_only_the_chain_keeps_a_months_prediction(tmp_path, monkeypatch):
     fd.run_merge("b", None, {}, keep=False)
     fd.run_merge("b", "o", {}, keep=True)
     assert "--keep" not in calls[0] and "--no-keep" not in calls[0] and calls[1][-1] == "--keep"
-
-
-def test_a_grade_says_when_it_covers_other_strategies():
-    """Bug hunt, round 16: the store grows — Oct 01, 2026 went from 2 signal
-    groups and 1,079 coins to 4 and 1,092 — so a month graded on newer data
-    says what each side covered when they differ."""
-    old = {"write": {"wr": 70.0, "trades": 20, "tp": "any", "windows": [15, 30]},
-           "groups": ["classic", "preset", "sep25", "sep27ml"], "coins": 1092, "strategies": 695845}
-    new = {**old, "groups": old["groups"] + ["oct12"], "coins": 1100}
-    home = f2._home()
-    home.mkdir(parents=True, exist_ok=True)
-    (home / "predictions.jsonl").write_text(json.dumps(
-        {"month": "2026-10", "made_at": NOW, "data_end_ms": 1, "universe": old, "sets": []}) + "\n",
-        encoding="utf-8")
-    (home / "latest.json").write_text(json.dumps({"data": {"complete": [], "universe": new}, "sets": []}),
-                                      encoding="utf-8")
-    g = f2a.grading()["months"][0]
-    assert g["differs"] and g["universe"] == old and g["now"] == new
-    f2a._FILES.clear()
-    (home / "latest.json").write_text(json.dumps({"data": {"complete": [], "universe": old}, "sets": []}),
-                                      encoding="utf-8")
-    g = f2a.grading()["months"][0]
-    assert not g["differs"] and g["now"] is None
-    src = (ROOT / "webapp/src/components/forecast/ForecastV2.tsx").read_text(encoding="utf-8")
-    assert "the newest data covers" in src
 
 
 # ------------------------------------- every GitHub account (Oct 02, 2026)
@@ -1283,30 +1122,6 @@ def test_a_red_account_is_started_again_alone_then_dropped_and_named(monkeypatch
     assert sent[-1] == (ME, "options"), "options only where base results exist"
 
 
-def test_a_what_if_runs_on_every_account_and_reads_both(tmp_path, monkeypatch):
-    fd = _two(monkeypatch)
-    fd._write({"phase": "done", "ready": {"replay_runs": {ME: 11, FORK: 12}, "fleets": [ME, FORK],
-                                          "end_ms": 2, "start": "2026-07-01"}})
-    sent = []
-    monkeypatch.setattr(fd, "dispatch", lambda wf, inputs, repo, since=None: sent.append(
-        (repo, inputs["source_run"], inputs["stage"])) or (31 if repo == ME else 32))
-    monkeypatch.setattr(fd.threading, "Thread", lambda target, args, name, daemon: type(
-        "T", (), {"start": lambda self: target(*args)})())
-    got = fd.whatif({"window_days": 30, "on_winrate": 85, "min_trades": 30, "tp_rule": ">", "max_sl": 2})
-    rid = got["id"]
-    assert sent == [(ME, 11, "custom"), (FORK, 12, "custom")], "each account on its own replay"
-    assert fd.whatifs()[rid]["runs"] == {ME: 31, FORK: 32} and fd.whatifs()[rid]["status"] == "working"
-    good = fr.cfg_of(30, 85, 30, ">", 2.0)
-    arts = {31: _fake_run(tmp_path / "w31", [(good, [(_ms(2026, 8, 5), _ms(2026, 8, 5, 13), 4.0)])], shards=1),
-            32: _fake_run(tmp_path / "w32", [(good, [(_ms(2026, 8, 6), _ms(2026, 8, 6, 13), 3.0)])], shards=1)}
-    monkeypatch.setattr(fd, "run_status", lambda run, repo: {**DONE, "machines": 1, "done": 1})
-    monkeypatch.setattr(fd, "download", lambda run, repo, pattern: arts[run])
-    monkeypatch.setattr(fd, "_reality_of_table", lambda: {"took": 0.5, "gap": 1.0})
-    fd._whatifs({"phase": "done"}, NOW)
-    w = fd.whatifs()[rid]
-    assert w["status"] == "done" and w["result"]["total"]["profit"] == 7.0, "both accounts' machine 0"
-
-
 def test_a_chain_from_before_the_accounts_carries_on(monkeypatch):
     """The chain running when this arrived (Oct 02, 2026: replay 37051918240 on
     jeremydevera, started 3:06pm) kept one `repo` and `replay_run`: it carries
@@ -1355,16 +1170,6 @@ def test_a_deal_left_by_an_earlier_day_is_never_reused(monkeypatch):
     assert sent == [(ME, None), (FORK, None)], "nothing adopted from yesterday's attempts"
 
 
-def test_a_what_if_never_carries_a_retired_option(monkeypatch):
-    """The coins to avoid went on Oct 07, 2026: a what-if asked by hand with
-    `skip_coins` is measured without it, never labelled as skipping coins."""
-    from tradingagents import forecast_v2_daily as fd
-    assert "skip_coins" in fr.OPTION_KEYS and "skip_coins" not in fr.LIVE_OPTION_KEYS
-    got = fd.whatif({"window_days": 30, "on_winrate": 90, "min_trades": 20, "tp_rule": ">",
-                     "max_sl": 2.0, "skip_coins": True})
-    assert got["id"] == fr.rule_id(fr.cfg_of(30, 90, 20, ">", 2.0)), "the base set, not a skip_coins one"
-
-
 def test_the_first_ask_after_a_restart_says_it_is_being_worked_out(monkeypatch):
     """Oct 07, 2026 3:39pm, two minutes after the 3:37pm restart: the page
     asked while the first practice copy was still being made, `live()`
@@ -1383,8 +1188,7 @@ def test_the_first_ask_after_a_restart_says_it_is_being_worked_out(monkeypatch):
     monkeypatch.setitem(f2a._LIVE, "busy", True)          # the first copy is being made
     for ask in (lambda: api.forecast_v2_streaks_route("practice", "win", 9, 1),
                 lambda: api.forecast_v2_streaks_route("backtest", "loss", 5, 1),
-                lambda: api.forecast_v2_route(),
-                lambda: api.forecast_v2_families_route(1)):
+                lambda: api.forecast_v2_route()):
         with pytest.raises(HTTPException) as got:
             ask()
         assert got.value.status_code == 503

@@ -1,7 +1,8 @@
 "use client";
-/** AUTO TRADE -> FORECAST V2 — which coins are hot, which to stay away from,
- *  what is losing the money, and which room rules will make the most this
- *  month.
+/** AUTO TRADE -> FORECAST V2 — which coins are on a streak, and which room
+ *  rules will make the most this month. ("Where the money goes", the what-if
+ *  box and "This month so far" went on Oct 08, 2026: "i dont need it
+ *  anymore".)
  *
  *  Operator, Oct 01, 2026: "you are seeing a coin is winning 9 streak then
  *  inform me that specific coin i want it in a Streak section / then predict
@@ -15,8 +16,8 @@
  *  auto trade"). This file only prints. */
 import { Fragment, type ReactNode, useCallback, useState } from "react";
 import {
-  api, fmtMoney, fmtWhen, fmtWhenMs, F2FamilyPage, F2Group, F2Page, F2Rule, F2RulePage,
-  F2RuleQuery, F2Streak, F2StreakPage, F2Summary, F2WhatIf, F2WhatIfCfg,
+  api, fmtMoney, fmtWhen, fmtWhenMs, F2Rule, F2RulePage, F2RuleQuery, F2Streak, F2StreakPage,
+  F2Summary,
 } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
 import PageButtons from "@/components/common/PageButtons";
@@ -36,16 +37,6 @@ const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "O
 const monthName = (key: string) => {
   const [y, m] = key.split("-");
   return `${MONTH[Number(m) - 1] ?? m} ${y}`;
-};
-/** the past months a tracker band was measured on, "Jul, Aug and Sep 2026" —
- *  read off the rows, never a literal (label-must-match-data) */
-const pastMonths = (rows: { so_far: { months: string[] } | null }[]) => {
-  const keys = rows.find((r) => r.so_far?.months?.length)?.so_far?.months ?? [];
-  if (!keys.length) return "past months";
-  const names = keys.map(monthName);
-  const oneYear = new Set(keys.map((k) => k.slice(0, 4))).size === 1;
-  const shown = oneYear ? [...names.slice(0, -1).map((n) => n.slice(0, 3)), names[names.length - 1]] : names;
-  return shown.length === 1 ? shown[0] : `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`;
 };
 
 function Badge({ kind, children }: { kind: "good" | "bad" | "info"; children: React.ReactNode }) {
@@ -137,135 +128,6 @@ function StreakList({ kind, initial }: { kind: "win" | "loss"; initial: number }
 // coins to avoid i dont need its logic") — the list, its route and its
 // what-if option went with it
 // --------------------------------------------------- C. where the money goes
-// the small splits only — the signal families are summed by the server and
-// paged there (Families)
-function sumBreakdown(s: F2Summary, key: "tf" | "kind" | "hour" | "stops") {
-  const out: Record<string, [number, number, number]> = {};
-  const rooms = s.backtest?.rooms ?? {};
-  for (const r of Object.values(rooms)) {
-    for (const [k, v] of Object.entries(r[key] ?? {})) {
-      const c = out[k] ?? [0, 0, 0];
-      out[k] = [c[0] + v[0], c[1] + v[1], c[2] + v[2]];
-    }
-  }
-  return out;
-}
-
-function SideBySide({ title, rows, bt, note, backtest }: {
-  title: string; rows: F2Group[]; bt: Record<string, [number, number, number]>; note?: string;
-  /** whether any backtest exists — a paged list cannot tell from its own rows */
-  backtest?: boolean;
-}) {
-  const hasBt = backtest ?? Object.keys(bt).length > 0;
-  return (
-    <div>
-      <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">{title}</p>
-      {note && <p className="text-[10px] text-gray-400">{note}</p>}
-      <div className="overflow-x-auto">
-        <table className="mt-1 w-full text-theme-xs">
-          <thead><tr>
-            <th className={th}></th><th className={th}>practice</th><th className={th}>win rate</th><th className={th}>profit</th>
-            <th className={th}>backtest</th><th className={th}>win rate</th><th className={th}>profit</th>
-          </tr></thead>
-          <tbody>
-            {rows.map((g) => {
-              const b = bt[g.group];
-              return (
-                <tr key={g.group}>
-                  <td className={`${td} font-medium`}>{g.group}{g.thin && <span className="ml-1 text-[10px] text-gray-400">(too few trades)</span>}</td>
-                  <td className={td}>{g.trades.toLocaleString()}</td>
-                  <td className={td}>{pct(g.winrate)}</td>
-                  <td className={`${td} ${tone(g.profit)}`}>{fmtMoney(g.profit)}</td>
-                  <td className={td}>{b ? b[0].toLocaleString() : hasBt ? "0" : "—"}</td>
-                  <td className={td}>{b && b[0] ? pct((100 * b[1]) / b[0]) : "—"}</td>
-                  <td className={`${td} ${tone(b ? b[2] : null)}`}>{b ? fmtMoney(b[2]) : "—"}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function Money({ s }: { s: F2Summary }) {
-  const m = s.money;
-  const z = m.sizes;
-  const btNote = s.backtest ? "backtest = the rooms' own rules replayed over their last 30 days" : "backtest: not measured yet";
-  return (
-    <div className={card}>
-      <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Where the money goes</h3>
-      <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">practice trades of every room, split every way; a row under {m.thin_below} trades is marked as too few to mean anything · {btNote}</p>
-      <div className="mt-3 grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
-        <div>
-          <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">Costs: fees, spread and funding</p>
-          <p className="text-theme-xs text-gray-600 dark:text-gray-300">All rooms made <b className={tone(m.costs.profit)}>{fmtMoney(m.costs.profit)}</b>; costs took {fmtMoney(-m.costs.costs)} of it — without costs it would be <span className={tone(m.costs.without_costs)}>{fmtMoney(m.costs.without_costs)}</span>.</p>
-          <div className="overflow-x-auto">
-            <table className="mt-1 w-full text-theme-xs">
-              <thead><tr>{["room", "trades", "profit", "costs", "without costs", "worst day"].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
-              <tbody>{m.costs.rooms.map((r) => (
-                <tr key={r.room}>
-                  <td className={`${td} font-medium`}>{r.name}{r.retired && <span className="text-[10px] text-gray-400"> (off)</span>}</td>
-                  <td className={td}>{r.trades.toLocaleString()}</td>
-                  <td className={`${td} ${tone(r.profit)}`}>{fmtMoney(r.profit)}</td>
-                  <td className={td}>{fmtMoney(-r.costs)}</td>
-                  <td className={`${td} ${tone(r.without_costs)}`}>{fmtMoney(r.without_costs)}</td>
-                  <td className={`${td} ${tone(r.worst_day?.profit)}`}>{r.worst_day ? `${fmtMoney(r.worst_day.profit)} · the day from ${fmtWhen(r.worst_day.at)}` : "—"}</td>
-                </tr>))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div className="flex flex-col gap-2">
-          <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">A win against a loss</p>
-          <p className="text-theme-xs text-gray-600 dark:text-gray-300">
-            An average win paid <b className="text-success-600">{fmtMoney(z.avg_win)}</b> and an average loss cost <b className="text-error-500">{fmtMoney(z.avg_loss)}</b>, so the rooms need {pct(z.break_even)} wins to break even — they won {pct(z.winrate)} ({z.wins.toLocaleString()} of {z.trades.toLocaleString()}).
-          </p>
-          <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">One coin in many rooms right now</p>
-          <p className="text-[10px] text-gray-400">with real money MEXC merges a coin into ONE position across rooms</p>
-          <div className="flex flex-wrap gap-1">
-            {m.overlap.slice(0, 12).map((o) => (
-              <Badge key={o.coin} kind={o.flag ? "bad" : "info"}>{o.coin} · {o.count} room{o.count === 1 ? "" : "s"}</Badge>
-            ))}
-            {!m.overlap.length && <span className="text-theme-xs text-gray-400">no practice trade open right now</span>}
-          </div>
-        </div>
-        <SideBySide title="By timeframe" rows={m.by_tf} bt={sumBreakdown(s, "tf")} />
-        <SideBySide title="Stocks or crypto" rows={m.by_kind} bt={sumBreakdown(s, "kind")} />
-        <SideBySide title="By the hour it opened (New York time)" rows={m.by_hour} bt={sumBreakdown(s, "hour")} />
-        <SideBySide title="Stop-outs: how long a losing trade lasted" rows={m.stop_outs} bt={sumBreakdown(s, "stops")}
-          note="practice: trades closed by their stop · backtest: every losing trade" />
-        <Families />
-      </div>
-    </div>
-  );
-}
-
-/** By signal family, worst first: EVERY family, ten a page from the server
- *  (it used to show the 15 that lost the most and nothing else), each row
- *  with the rooms' backtest the server summed beside it. */
-function Families() {
-  const [page, setPage] = useState(1);
-  const [d, setD] = useState<F2FamilyPage | null>(null);
-  const [err, setErr] = useState("");
-  const load = useCallback(() => {
-    api.forecastV2Families(page).then((r) => { setD(r); setErr(""); })
-      .catch((e) => setErr(String(e?.message ?? e)));
-  }, [page]);
-  useLiveRefresh(load, 30_000, [load]);
-  const bt: Record<string, [number, number, number]> = {};
-  for (const g of d?.rows ?? []) if (g.bt) bt[g.group] = g.bt;
-  return (
-    <div className="lg:col-span-2">
-      {err && <p className="text-theme-xs text-error-500">could not read the signal families — {err}</p>}
-      {d && <SideBySide title="By signal family (worst first)" rows={d.rows} bt={bt} backtest={d.has_backtest}
-        note={`${d.total.toLocaleString()} families traded, worst first`} />}
-      {d && <PageButtons cur={d.page} pages={d.pages} goto={setPage} what="signal family" />}
-    </div>
-  );
-}
-
 // ------------------------------------------------------- D. best room rules
 function range(p: { profit: number; low: number; high: number } | null | undefined) {
   if (!p) return "—";
@@ -432,137 +294,6 @@ function Rules({ s }: { s: F2Summary }) {
         </div>
       )}
       {d && <PageButtons cur={d.page} pages={d.pages} goto={(n) => setQ((x) => ({ ...x, page: n }))} what="rule set" />}
-      <WhatIf s={s} />
-    </div>
-  );
-}
-
-function WhatIf({ s }: { s: F2Summary }) {
-  const [cfg, setCfg] = useState<F2WhatIfCfg>({ window_days: 30, on_winrate: 90, min_trades: 40, tp_rule: ">", max_sl: 2 });
-  const [note, setNote] = useState("");
-  // every what-if asked, newest first, ten a page from the server (it used to
-  // send the newest 20 and nothing older)
-  const [page, setPage] = useState(1);
-  const [asked, setAsked] = useState<F2Page<F2WhatIf> | null>(null);
-  const load = useCallback(() => {
-    api.forecastV2WhatIfs(page).then(setAsked).catch(() => { /* the list is a convenience */ });
-  }, [page]);
-  useLiveRefresh(load, 30_000, [load]);
-  const rows = asked?.rows ?? [];
-  const ask = async () => {
-    setNote("asking…");
-    try {
-      const got = await api.forecastV2WhatIf(cfg);
-      // the server's own words for where the run is — a queued run behind the
-      // daily replay can wait an hour, so no fixed estimate is printed here
-      setNote(got.status === "done" ? `#${got.id} is measured — below`
-        : got.status === "working" ? `#${got.id}: ${got.why}` : `#${got.id} ${got.status}: ${got.why}`);
-      // the newest is on page 1; moving there loads it, and only one request
-      // is in flight, so an older page's answer cannot land on top of it
-      if (page === 1) load(); else setPage(1);
-    } catch (e) { setNote(`not asked — ${String((e as Error)?.message ?? e)}`); }
-  };
-  const opt = (key: string, value: unknown) => setCfg((c) => {
-    const next = { ...c } as Record<string, unknown>;
-    if (next[key] === value) delete next[key]; else next[key] = value;
-    return next as F2WhatIfCfg;
-  });
-  return (
-    <div className="mt-4 rounded-xl border border-dashed border-gray-300 p-3 dark:border-gray-700">
-      <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">What if — type any rules and see the same prediction</p>
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-theme-xs">
-        <label className="flex items-center gap-1">win rate <input aria-label="what-if win rate" className={`${field} w-14`} value={cfg.on_winrate} onChange={(e) => setCfg({ ...cfg, on_winrate: Number(e.target.value.replace(/[^0-9.]/g, "")) || 0 })} />%</label>
-        <label className="flex items-center gap-1">trades <input aria-label="what-if trades" className={`${field} w-14`} value={cfg.min_trades} onChange={(e) => setCfg({ ...cfg, min_trades: Number(e.target.value.replace(/[^0-9]/g, "")) || 0 })} /></label>
-        <select aria-label="what-if days" className={field} value={cfg.window_days} onChange={(e) => setCfg({ ...cfg, window_days: Number(e.target.value) })}>
-          <option value={15}>judged on 15 days</option><option value={30}>judged on 30 days</option>
-        </select>
-        <select aria-label="what-if TP rule" className={field} value={cfg.tp_rule} onChange={(e) => setCfg({ ...cfg, tp_rule: e.target.value })}>
-          <option value=">">TP wider than SL</option><option value="1.5x">TP at least 1.5x SL</option><option value="2x">TP at least 2x SL</option><option value="any">any TP</option>
-        </select>
-        <label className="flex items-center gap-1">stop at most <input aria-label="what-if stop" className={`${field} w-14`} value={cfg.max_sl} onChange={(e) => setCfg({ ...cfg, max_sl: Number(e.target.value.replace(/[^0-9.]/g, "")) || 0 })} />%</label>
-      </div>
-      <div className="mt-2 flex flex-wrap gap-2 text-theme-xs">
-        {s.options.filter((o) => o.key !== "only_tf" && o.key !== "coin_slices" && o.key !== "max_cost" && o.key !== "day_loss" && o.key !== "kind").map((o) => (
-          <label key={`${o.key}-${String(o.value)}`} className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
-            <input type="checkbox" checked={(cfg as Record<string, unknown>)[o.key] === o.value} onChange={() => opt(o.key, o.value)} /> {o.words}
-          </label>
-        ))}
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button type="button" onClick={ask} disabled={!s.backtest}
-          className="rounded-lg bg-brand-500 px-4 py-1.5 text-theme-xs font-medium text-white hover:bg-brand-600 disabled:opacity-50">predict these rules</button>
-        {note && <span className="text-theme-xs text-gray-600 dark:text-gray-300">{note}</span>}
-        {!s.backtest && <span className="text-theme-xs text-gray-400">needs the first daily run first</span>}
-      </div>
-      {asked && asked.total > 0 && (
-        <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">{asked.total.toLocaleString()} asked, newest first</p>
-      )}
-      {rows.length > 0 && (
-        <div className="mt-2 overflow-x-auto">
-          <table className="w-full text-theme-xs">
-            <thead><tr>{["asked", "rule set", "status", "measured on", "this month after the reality check", "backtest says"].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
-            <tbody>{rows.map((w) => (
-              <tr key={w.id}>
-                <td className={td}>{w.asked_at ? fmtWhen(w.asked_at) : "—"}</td>
-                <td className="py-1.5 pr-3 text-gray-700 dark:text-gray-300">#{w.id} {w.words}</td>
-                {/* a run with an id says where it is in its own words — "working —
-                    waiting in GitHub's queue, not started yet" read as two answers */}
-                <td className={td}>{w.status === "working" && w.why ? w.why : `${w.status}${w.why ? ` — ${w.why}` : ""}`}</td>
-                {/* WHICH DATA (bug hunt, round 13): after a daily run the table is
-                    measured on a newer replay than an older what-if */}
-                <td className={td}>{w.end_ms ? `data to ${fmtWhenMs(w.end_ms)}` : "—"}{w.end_ms && s.backtest && w.end_ms !== s.backtest.data.end_ms ? " — older than the table's; ask again to measure it on the newest" : ""}</td>
-                <td className={`${td} ${tone(w.result?.predicted?.corrected)}`}>{w.result ? corrRange(w.result.predicted) : "—"}</td>
-                <td className={td}>{w.result ? range(w.result.predicted) : "—"}</td>
-              </tr>))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      {asked && <PageButtons cur={asked.page} pages={asked.pages} goto={setPage} what="what-if" />}
-    </div>
-  );
-}
-
-function Tracker({ s }: { s: F2Summary }) {
-  const t = s.tracker;
-  if (!t) return null;
-  return (
-    <div className={card}>
-      <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">This month so far — {monthName(t.month)}, day {t.day} of {t.days}</h3>
-      <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">each room&apos;s practice month against what its own rules made by the end of day {t.day} of {pastMonths(t.rooms)} in the backtest; the bell rings once a month if a room falls under the worst of those after the reality check</p>
-      <div className="mt-2 overflow-x-auto">
-        <table className="w-full text-theme-xs">
-          <thead><tr>{["room", "its rules", "made so far", "trades", `by the end of day ${t.day} (after the reality check)`, `by the end of day ${t.day} (backtest)`].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-            {t.rooms.map((r) => (
-              <tr key={r.room}>
-                <td className={`${td} font-semibold`}>{r.name}{r.below && <span className="ml-1"><Badge kind="bad">under its worst case</Badge></span>}</td>
-                <td className="py-1.5 pr-3 text-gray-600 dark:text-gray-300">{r.id ? `#${r.id}` : "not in the newest run"}</td>
-                <td className={`${td} font-semibold ${tone(r.month.profit)}`}>{fmtMoney(r.month.profit)}</td>
-                <td className={td}>{r.month.trades.toLocaleString()} ({r.month.wins} won)</td>
-                <td className={td}>{r.so_far && r.so_far.corrected != null ? `${fmtMoney(r.so_far.corrected)} (${fmtMoney(r.so_far.corrected_low)} to ${fmtMoney(r.so_far.corrected_high)})` : "—"}</td>
-                <td className={td}>{r.so_far ? `${fmtMoney(r.so_far.profit)} (${fmtMoney(r.so_far.low)} to ${fmtMoney(r.so_far.high)})` : "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {t.tops.length > 0 && (
-        <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
-          The 5 best rule sets this month in the backtest: {t.tops.map((x) => `#${x.id} ${x.month ? fmtMoney(x.month.profit) : "not in the data yet"}`).join(" · ")}
-        </p>
-      )}
-      {s.grading && s.grading.months.length > 0 && (
-        <div className="mt-3">
-          <p className="text-theme-xs font-medium text-gray-700 dark:text-gray-300">Past predictions, graded</p>
-          <ul className="mt-1 text-theme-xs text-gray-600 dark:text-gray-300">
-            {s.grading.months.map((g) => (
-              <li key={g.month}>{monthName(g.month)} (made {fmtWhen(g.made_at)}): {g.graded ? `the backtest landed inside its range ${g.inside} of ${g.judged} times` : g.why}
-                {g.differs && g.universe && g.now ? ` · predicted over ${g.universe.groups?.length ?? "?"} signal groups and ${(g.universe.coins ?? 0).toLocaleString()} coins, the newest data covers ${g.now.groups?.length ?? "?"} and ${(g.now.coins ?? 0).toLocaleString()}` : ""}</li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }
@@ -606,9 +337,11 @@ export default function ForecastV2({ beforeStreaks }: { beforeStreaks?: ReactNod
               <StreakList kind="loss" initial={s.defaults.loss_m} />
             </div>
           </div>
-          <Money s={s} />
+          {/* NO "Where the money goes", "What if" OR "This month so far"
+              (operator, Oct 08, 2026: "delete Where the money goes section i
+              dont need it anymore, delete What if ... as well, delete This
+              month so far ... as well") */}
           <Rules s={s} />
-          <Tracker s={s} />
         </>
       )}
     </div>

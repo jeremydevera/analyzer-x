@@ -50,29 +50,18 @@ import collections
 import contextlib
 import datetime as dt
 import json
-import math
 import os
 import re
 import threading
 import time
 from functools import lru_cache
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 from tradingagents import room_stats as rs
 
-NY = ZoneInfo("America/New_York")
 WIN_N = 9                     # the winning streak shown by default
 LOSS_M = 5                    # the losing streak shown by default
 THIN = 30                     # fewer trades than this: too few to mean anything
-OVERLAP_WARN = 3              # rooms holding one coin at once before it is flagged
-TFS = ("15m", "30m", "1h", "4h", "1d")
-# when the trade OPENED, New York time — the buckets the money is split by
-HOURS = ((0, 6, "12am to 6am"), (6, 9, "6am to 9am"), (9, 12, "9am to noon"),
-         (12, 16, "noon to 4pm"), (16, 20, "4pm to 8pm"), (20, 24, "8pm to midnight"))
-# how long a stopped-out trade was held
-HELD = ((0, 900, "within 15 minutes"), (900, 3600, "15 to 60 minutes"),
-        (3600, math.inf, "after an hour"))
 
 
 # ------------------------------------------------------------------ helpers
@@ -178,11 +167,6 @@ def break_even(tp: float | None, sl: float | None, cost_pct: float) -> float | N
     if not tp or not sl or tp + sl <= 0:
         return None
     return 100.0 * (float(sl) + max(float(cost_pct), 0.0)) / (float(tp) + float(sl))
-
-
-def _hour_bucket(ts: float) -> str:
-    h = dt.datetime.fromtimestamp(ts, NY).hour
-    return next(label for lo, hi, label in HOURS if lo <= h < hi)
 
 
 def _group(rows: list[dict]) -> dict:
@@ -673,89 +657,22 @@ def practice_streaks(rooms: list[dict]) -> list[dict]:
 # B. (coins to avoid) was removed on Oct 07, 2026 — the operator: "remove the
 # section coins to avoid i dont need its logic"
 # ------------------------------------------------ C. where the money goes
-def money(rooms: list[dict]) -> dict:
-    """Practice trades split every way the prompt asks; each group carries
-    `thin` when it rests on too few trades to mean anything."""
-    all_exits = [(r, e) for r in rooms for e in r["exits"]]
-    pnls = [e["pnl"] for _, e in all_exits]
-    wins = [p for p in pnls if p > 0]
-    losses = [-p for p in pnls if p <= 0]
-    avg_w = sum(wins) / len(wins) if wins else None
-    avg_l = sum(losses) / len(losses) if losses else None
-    per_room = []
+def families(rooms: list[dict]) -> list[dict]:
+    """Practice trades by signal family, worst first, each with `thin` when it
+    rests on too few trades to mean anything — what the forecast's "skip the
+    worst families" option skips (forecast_v2_daily.skip_families).
+
+    The rest of "Where the money goes" — costs per room, a win against a
+    loss, the splits by timeframe, market, hour and stop-out, and one coin in
+    many rooms — went with its section on Oct 08, 2026 (operator: "delete
+    Where the money goes section i dont need it anymore"), so none of it is
+    worked out any more."""
+    groups: dict = {}
     for r in rooms:
-        c = r["costs"]
-        profit = round(sum(e["pnl"] for e in r["exits"]), 2)
-        days: dict = {}
         for e in r["exits"]:
-            days[rs._day(e["ts"])] = days.get(rs._day(e["ts"]), 0.0) + e["pnl"]
-        worst = min(days.items(), key=lambda kv: kv[1]) if days else None
-        per_room.append({"room": r["id"], "name": r["name"], "retired": r["retired"],
-                         "trades": len(r["exits"]), "profit": profit,
-                         "costs": c["total"] if c["matched"] else 0.0,
-                         "matched": c["matched"], "without_costs": round(profit + (c["total"] or 0), 2),
-                         # the day's own local midnight rides along, so the page
-                         # prints it through fmtWhen, never as "2026-10-01"
-                         "worst_day": ({"day": worst[0], "profit": round(worst[1], 2),
-                                        "at": int(time.mktime(dt.date.fromisoformat(worst[0]).timetuple()))}
-                                       if worst else None)})
-
-    def split(fn) -> list[dict]:
-        groups: dict = {}
-        for r, e in all_exits:
-            k = fn(r, e)
-            if k is not None:
-                groups.setdefault(k, []).append(e)
-        out = [{"group": k, **_group(v)} for k, v in groups.items()]
-        out.sort(key=lambda g: (g["profit"], str(g["group"])))
-        return out
-
-    tf_ix = {t: i for i, t in enumerate(TFS)}
-    by_tf = split(lambda r, e: spec_of(e["key"])["tf"] or "unknown")
-    by_tf.sort(key=lambda g: tf_ix.get(g["group"], 99))
-    hours_ix = {label: i for i, (_lo, _hi, label) in enumerate(HOURS)}
-    by_hour = split(lambda r, e: _hour_bucket(e.get("opened_at") or e["ts"]))
-    by_hour.sort(key=lambda g: hours_ix[g["group"]])
-    stops: dict = {label: [] for _lo, _hi, label in HELD}
-    for _r, e in all_exits:
-        if e["why"] != "SL" or e["held"] is None:
-            continue
-        stops[next(label for lo, hi, label in HELD if lo <= e["held"] < hi)].append(e)
-    total_cost = round(sum(p["costs"] for p in per_room), 2)
-    total_profit = round(sum(pnls), 2)
-    return {
-        "costs": {"rooms": per_room, "profit": total_profit, "costs": total_cost,
-                  "without_costs": round(total_profit + total_cost, 2)},
-        "sizes": {"avg_win": round(avg_w, 2) if avg_w is not None else None,
-                  "avg_loss": round(-avg_l, 2) if avg_l is not None else None,
-                  "break_even": (round(100 * avg_l / (avg_w + avg_l), 1)
-                                 if avg_w is not None and avg_l is not None else None),
-                  "winrate": round(100 * len(wins) / len(pnls), 1) if pnls else None,
-                  "trades": len(pnls), "wins": len(wins), "losses": len(losses)},
-        "by_tf": by_tf,
-        "by_family": split(lambda r, e: family(spec_of(e["key"])["signal"])),
-        "by_kind": split(lambda r, e: "stocks" if rs.is_stock(e["symbol"]) else "crypto"),
-        "by_hour": by_hour,
-        "stop_outs": [{"group": k, **_group(v)} for k, v in stops.items()],
-        "overlap": overlap(rooms),
-        "thin_below": THIN,
-    }
-
-
-def overlap(rooms: list[dict]) -> list[dict]:
-    """How many rooms hold each coin RIGHT NOW (practice). With real money
-    MEXC merges a coin into ONE position across rooms (CLAUDE.md, every
-    trading profile is its own room)."""
-    by: dict = {}
-    for r in rooms:
-        for o in r["open"]:
-            c = by.setdefault(o["symbol"], {"rooms": set(), "trades": 0})
-            c["rooms"].add(r["id"])
-            c["trades"] += 1
-    out = [{"coin": s.replace("_USDT", ""), "rooms": sorted(v["rooms"]), "count": len(v["rooms"]),
-            "trades": v["trades"], "flag": len(v["rooms"]) >= OVERLAP_WARN}
-           for s, v in by.items()]
-    out.sort(key=lambda x: (-x["count"], -x["trades"], x["coin"]))
+            groups.setdefault(family(spec_of(e["key"])["signal"]), []).append(e)
+    out = [{"group": k, **_group(v)} for k, v in groups.items()]
+    out.sort(key=lambda g: (g["profit"], str(g["group"])))
     return out
 
 
@@ -955,7 +872,6 @@ def live(now: float | None = None) -> dict:
             # NO COINS TO AVOID (operator, Oct 07, 2026: "remove the section
             # coins to avoid i dont need its logic")
             "streaks": practice_streaks(rooms),
-            "money": money(rooms), "reality": reality(rooms),
-            "defaults": {"win_n": WIN_N, "loss_m": LOSS_M,
-                         "thin": THIN, "overlap_warn": OVERLAP_WARN},
+            "families": families(rooms), "reality": reality(rooms),
+            "defaults": {"win_n": WIN_N, "loss_m": LOSS_M, "thin": THIN},
             "took_ms": round(1000 * (time.perf_counter() - t0))}

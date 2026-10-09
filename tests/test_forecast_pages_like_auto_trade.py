@@ -55,9 +55,10 @@ def test_every_list_on_the_forecast_page_uses_it():
     v2 = _src("forecast/ForecastV2.tsx")
     rooms = _src("forecast/RoomForecasts.tsx")
     # (no "coins to avoid" list since Oct 07, 2026 — the operator: "remove the
-    # section coins to avoid i dont need its logic")
-    for src, lists in ((v2, ("{`${kind} streak`}", '"signal family"',
-                             '"rule set"', '"what-if"')),
+    # section coins to avoid i dont need its logic" — and no signal-family or
+    # what-if list since Oct 08, 2026, when "Where the money goes" and the
+    # what-if box went: "i dont need it anymore")
+    for src, lists in ((v2, ("{`${kind} streak`}", '"rule set"')),
                        (rooms, ('"saved forecasts"', '"room backtest"', '"room strategies"',
                                 '"room strategy trades"'))):
         assert 'import PageButtons from "@/components/common/PageButtons"' in src
@@ -73,45 +74,11 @@ def test_no_long_list_is_cut_or_scrolled_in_the_browser():
     v2 = _src("forecast/ForecastV2.tsx")
     assert "function Avoid" not in v2 and "forecastV2Avoid" not in v2, "Coins to avoid: removed Oct 07, 2026"
     assert "max-h-[480px]" not in v2, "46 coins sat in one scroll box"
-    assert "by_family.slice(" not in v2 and "api.forecastV2Families(page)" in v2
-    assert "api.forecastV2WhatIfs(page)" in v2
+    # the signal families and the what-ifs went with their sections (Oct 08, 2026)
+    assert "forecastV2Families" not in v2 and "forecastV2WhatIfs" not in v2
 
 
 # ----------------------------------------------------------- the server
-def _live(families=0):
-    return {"money": {"by_family": [{"group": f"fam{i:02d}", "trades": 10, "wins": 4, "losses": 6,
-                                     "profit": -20.0 + i, "per_trade": None, "winrate": 40.0,
-                                     "thin": False} for i in range(families)]}}
-
-
-def test_every_signal_family_pages_with_its_backtest_beside_it(monkeypatch):
-    lv = _live(families=13)
-    monkeypatch.setattr(f2a, "live", lambda: lv)
-    monkeypatch.setattr(f2a, "latest", lambda: {"rooms": {
-        "main": {"family": {"fam00": [5, 2, -3.0], "fam11": [1, 1, 0.5]}},
-        "55D32617": {"family": {"fam00": [4, 3, 1.5]}}}})
-    got = f2a.families(1)
-    assert (got["total"], got["pages"], got["has_backtest"]) == (13, 2, True)
-    assert got["rows"][0]["group"] == "fam00" and got["rows"][0]["bt"] == [9, 5, -1.5]
-    assert got["rows"][1]["bt"] is None, "a family the backtest never traded"
-    assert f2a.families(2)["rows"][1]["bt"] == [1, 1, 0.5]
-    assert all("bt" not in g for g in lv["money"]["by_family"]), "the shared practice copy is never written"
-    monkeypatch.setattr(f2a, "latest", lambda: None)
-    none = f2a.families(1)
-    assert none["has_backtest"] is False and none["rows"][0]["bt"] is None
-
-
-def test_every_what_if_pages_newest_first_with_no_cap(monkeypatch):
-    from tradingagents import forecast_v2_daily as fd
-
-    monkeypatch.setattr(fd, "whatifs", lambda: {f"W{i:02d}": {"id": f"W{i:02d}", "asked_at": 1000 + i,
-                                                              "status": "done", "why": ""}
-                                                for i in range(23)})
-    first, last = f2a.whatifs(1), f2a.whatifs(3)
-    assert first["total"] == 23 and first["pages"] == 3 and first["rows"][0]["id"] == "W22"
-    assert [w["id"] for w in last["rows"]] == ["W02", "W01", "W00"], "older than the newest 20 is reachable"
-
-
 @pytest.fixture
 def api_mod():
     from tradingagents import api as _api
@@ -136,15 +103,17 @@ def test_the_room_lists_get_the_same_size_through_their_routes(api_mod, monkeypa
     assert seen["strategies"]["per"] == f2a.PER_PAGE and seen["strategies"]["page"] == 2
 
 
-def test_the_new_routes_answer_a_page(api_mod, monkeypatch):
-    monkeypatch.setattr(f2a, "live", lambda: _live(families=12))
-    monkeypatch.setattr(f2a, "latest", lambda: None)
-    assert api_mod.forecast_v2_families_route(page=1)["pages"] == 2
+def test_the_removed_lists_have_no_route(api_mod):
+    """The coins to avoid went on Oct 07, 2026; the signal families and the
+    what-ifs on Oct 08, 2026 ("delete Where the money goes section i dont
+    need it anymore, delete What if ... as well") — their routes with them."""
     src = (ROOT / "tradingagents/api.py").read_text(encoding="utf-8")
-    for route in ('@app.get("/api/forecast-v2/families")', "return _f2a.whatifs(page)"):
-        assert route in src, route
-    assert '@app.get("/api/forecast-v2/avoid")' not in src, "the coins to avoid went on Oct 07, 2026"
-    assert "rows[:20]" not in src.split('@app.get("/api/forecast-v2/whatif")')[1].split("@app.")[0]
+    for path in ("/api/forecast-v2/avoid", "/api/forecast-v2/families", "/api/forecast-v2/whatif"):
+        for verb in ("get", "post"):
+            assert f'@app.{verb}("{path}")' not in src, (verb, path)
+    for name in ("forecast_v2_families_route", "forecast_v2_whatif_route", "forecast_v2_whatifs_route"):
+        assert not hasattr(api_mod, name), name
+    assert not hasattr(f2a, "families") and not hasattr(f2a, "whatifs")
 
 
 def test_every_forecast_table_reads_at_night():

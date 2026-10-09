@@ -1320,6 +1320,68 @@ def _forecast_live_refresh() -> dict:
         _FORECAST_LIVE["busy"] = False
 
 
+# DOWNLOADS FOR A MACHINE THAT ONLY HAS THE SITE (operator, Oct 09, 2026: "then
+# download in my mac", "i cant even see the chat"). Files this PC wrote under
+# G:\Download (the operator's own folder, csv_download.dated_target) are sent
+# to the browser that asks — the Mac reaches the site over Tailscale, and a
+# file a chat sends never reached it. Read-only; nothing outside the folder.
+DOWNLOAD_DIR = Path("G:/Download")
+
+
+def _download_files(limit: int = 200) -> list:
+    """Every file under DOWNLOAD_DIR (two levels), newest first."""
+    base = DOWNLOAD_DIR
+    if not base.is_dir():
+        return []
+    out = []
+    for p in list(base.glob("*")) + list(base.glob("*/*")) + list(base.glob("*/*/*")):
+        try:
+            if p.is_file():
+                st = p.stat()
+                out.append((st.st_mtime, p.relative_to(base).as_posix(), st.st_size))
+        except OSError:
+            continue
+    out.sort(reverse=True)
+    return out[:limit]
+
+
+@app.get("/api/downloads/file")
+def download_file_route(name: str):
+    """One file under DOWNLOAD_DIR, as an attachment — never a path outside it."""
+    from fastapi.responses import FileResponse
+
+    base = DOWNLOAD_DIR.resolve()
+    path = (base / name).resolve()
+    if base not in path.parents or not path.is_file():
+        raise HTTPException(404, f"no file {name!r} in {DOWNLOAD_DIR}")
+    return FileResponse(path, filename=path.name)
+
+
+@app.get("/api/downloads/page")
+def downloads_page_route():
+    """A plain page of links to every file in G:\\Download, newest first — open
+    it on any machine that reaches the site and click to save."""
+    import html
+    import urllib.parse
+
+    from fastapi.responses import HTMLResponse
+
+    from tradingagents.positions_view import fmt_when
+
+    rows = "".join(
+        f"<tr><td><a href=\"/api/downloads/file?name={urllib.parse.quote(rel)}\">{html.escape(rel)}</a></td>"
+        f"<td style=\"text-align:right\">{size / 2 ** 20:,.1f} MB</td><td>{fmt_when(when)}</td></tr>"
+        for when, rel, size in _download_files())
+    return HTMLResponse(
+        "<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width\">"
+        "<title>Downloads</title><body style=\"font-family:system-ui;margin:16px\">"
+        f"<h2>Downloads on this PC ({html.escape(str(DOWNLOAD_DIR))})</h2>"
+        "<p>Click a file to save it to this computer. Newest first.</p>"
+        "<table cellpadding=6 style=\"border-collapse:collapse\">"
+        "<tr><th align=left>File</th><th align=right>Size</th><th align=left>Made</th></tr>"
+        f"{rows or '<tr><td colspan=3>No file yet.</td></tr>'}</table></body>")
+
+
 @app.get("/api/forecasts/room-strategies")
 def room_strategies_route(from_s: float, to_s: float, min_winrate: float = 0,
                           min_profit: float | None = None, window: int = 0,

@@ -172,6 +172,57 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-09-B — the stop-loss filter's guard failed for eight days, because it counted a line in the whole file instead of in the two places it guards
+
+**CEO**
+
+* Nothing on your screen was wrong: one automatic check over the Stored
+  strategies stop-loss box had failed on every run since Oct 01, 2026.
+* Why: the check counted how many times the website's code sends "max SL"
+  anywhere, and the Forecast v2 page (built Oct 01) added a third, unrelated
+  one — so the count said 3 where it expected 2, while both real places were
+  fine.
+* What stops it now: the check reads the table's request and the CSV's
+  request on their own, and fails only when one of THOSE loses the box.
+
+**DEV**
+
+* `tests/test_max_sl_filter.py::test_the_panel_has_the_box_and_says_so` —
+  `api_ts.count('p.set("max_sl"') == 2`; 78dbb38f99e7 (Oct 01, 2026) added
+  `forecastV2Rules`'s `p.set("max_sl", ...)` at `webapp/src/lib/api.ts:1465`.
+* Invariant broken: **a guard is only as wide as its pattern** — a COUNT over
+  a file is a statement about the file, not about the two builders it means.
+* Guard: the same test now slices `strategyParams` and `strategiesCsvUrl` and
+  asserts each carries `max_sl`; checked to fail when the CSV builder drops it.
+
+**SAW** — while testing the Stored strategies "MEXC only (not on OKX)"
+filter, Oct 09, 2026: the test failed on the saved code before any change of
+this session touched `api.ts`.
+
+**TIMELINE**
+
+1. Oct 01, 2026 — 78dbb38f99e7 (Forecast v2) sends `max_sl` from a third
+   function; the test starts failing.
+2. Oct 01 – Oct 09, 2026 — every full run carried the failure; sessions read
+   it as "pre-existing, not mine".
+3. Oct 09, 2026 — traced by analyzer-x-d9 to that commit; the test now reads
+   the two builders it guards (9 passed), and a CSV builder without `max_sl`
+   is caught.
+
+**ROOT CAUSE** — `api_ts.count('p.set("max_sl"') == 2` counted the whole file.
+
+**WHY IT WAS NOT CAUGHT** — a test that fails for a reason everyone believes
+is someone else's is read past; eight days of runs treated it as noise.
+
+**COST** — none in money; a guard that was red for every reason could not
+have shown a real loss of the box.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_max_sl_filter.py::test_the_panel_has_the_box_and_says_so`.
+
+---
+
 ## RCA-2026-10-09-A — the rooms' midnight look for new strategies waited two nights running, because the nightly rebuild of the Backtest v2 list put back only one of its two search lists
 
 **CEO**

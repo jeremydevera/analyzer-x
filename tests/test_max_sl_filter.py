@@ -122,7 +122,14 @@ def test_the_panel_has_the_box_and_says_so():
     # sent through the ONE filter builder (Sep 25, 2026)
     assert "maxSl: f.maxSl" in panel and "...filterQuery(applied)" in panel
     api_ts = open("webapp/src/lib/api.ts", encoding="utf-8").read()
-    assert api_ts.count('p.set("max_sl"') == 2, \
+    # THE TWO BUILDERS THIS GUARDS, each read on its own: the table's
+    # (strategyParams) and the CSV download's (strategiesCsvUrl). It used to
+    # count the whole file, and a third, unrelated `p.set("max_sl"` —
+    # Forecast v2's rule-set call (78dbb38f99e7, Oct 01, 2026) — made it
+    # fail for eight days while both builders were right.
+    table = api_ts.split("export function strategyParams(")[1].split("\n}\n")[0]
+    csv = api_ts.split("  strategiesCsvUrl: (q: {")[1].split("\n  },\n")[0]
+    assert 'p.set("max_sl"' in table and 'p.set("max_sl"' in csv, \
         "the table AND the CSV download must both carry it"
     assert "maxSl?: number" in api_ts
     assert "sls?: number[]" in api_ts, "the box offers the measured values"

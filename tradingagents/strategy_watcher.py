@@ -946,6 +946,10 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     # check applies. #FR34HHN4 went on at 71.13% from the list and off 33
     # minutes later at 69.06% from its file, twice in five hours.
     cands = _as_the_off_check_sees(got["rows"], now, cfg)
+    # what the result files could NOT answer, counted before the stale skip
+    # shrinks `cands` — after it, every stale row read as unreadable too
+    # (RCA-2026-10-10-A: "4 pass · 6 skipped · 6 could not be read" of 10)
+    gone = len(got["rows"]) - len(cands)
     # A 1-4 DAY ROW ON AN OLD BACKTEST (final review, Oct 07, 2026): its "last
     # N days" ended long ago — skipped before the line, and counted
     stale = [r for r in cands if r.get("stale_h") is not None]
@@ -1084,7 +1088,6 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     # the count that passes EVERY rule, beside the one the list was asked for
     # (RCA-2026-09-30-C): "1,511 meet the criteria" over 539 switched on read
     # as 972 rows lost
-    gone = len(got["rows"]) - len(cands)
     failed_one = len(cands) - len(rows) - n_dead - len(at_once)
     st["last_candidates"] = (f"{got.get('why', '')} — {len(rows):,} pass every rule "
                              f"on their own result file"

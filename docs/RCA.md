@@ -172,6 +172,68 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-A — three rooms' status lines counted every too-old row twice, once as "could not be read", and the error filer took the made-up failure for a real one
+
+**CEO**
+
+* At Oct 10, 2026 12:16am the Watcher boxes of #C7396286, #1D4274C1 and
+  #8F0C7926 said some strategies "could not be read from their file" — 6, 5
+  and 16 of them. None of that was true: those were the same rows the line
+  had just said were skipped for a backtest more than 36 hours old, so
+  #C7396286 read "10 rows: 4 pass, 6 too old, 6 unreadable" — 16 of 10.
+* Why: the count of unreadable rows was worked out from a list the too-old
+  rows had already been taken out of. No strategy was switched on or off
+  wrongly; only the words were wrong, and the error filer opened a GitHub
+  issue for the false "could not be read".
+* What stops it now: the unreadable count is taken before the too-old rows
+  are set aside, and a test checks every part of the line adds up to the rows.
+
+**DEV**
+
+* `tradingagents/strategy_watcher.py` `_on_pass`: `gone = len(got["rows"]) -
+  len(cands)` sat after `cands = [r for r in cands if r.get("stale_h") is
+  None]` (741bf2bf7f0c, Oct 07, 2026), so `gone` = unreadable + stale.
+* Invariant broken: **itemised parts sum to the total shown**
+  (label-must-match-data) — a list narrowed for one count was reused as the
+  base of another.
+* Guard: `tests/test_rooms_judge_on_short_windows.py::test_an_old_backtest_is_counted_once_never_also_as_unreadable`
+  (red on the old file: "2 rows — 1 pass · 1 skipped · 1 could not be read").
+
+**SAW** — the error filer opened fault 3339de8d2aea ("The site's watcher
+failed") at Oct 10, 2026 12:17am from #8F0C7926's line, with two siblings for
+#1D4274C1 and #C7396286.
+
+**TIMELINE**
+
+1. Oct 07, 2026 — 741bf2bf7f0c adds the four short-window rooms and the
+   stale skip, which shrinks `cands` before the unreadable count reads it.
+2. Oct 10, 2026 12:16am — the midnight switch-on pass: #8F0C7926 57 rows =
+   23 pass + 18 would be switched off at once + 16 too old, and the line
+   adds "16 could not be read" (#1D4274C1: 43 = 25 + 13 + 5, plus "5";
+   #C7396286: 10 = 4 + 6, plus "6"). In every room the true unreadable count
+   was 0.
+3. Oct 10, 2026 12:17am — the error filer reads "could not" with a non-zero
+   count as a failure and files three faults.
+4. After the fix, the same rows give "· N skipped ..." and no "could not be
+   read" part; a row whose file really has no answer is still counted, once.
+
+**ROOT CAUSE** — the unreadable count subtracted from a list the stale skip
+had already shortened.
+
+**WHY IT WAS NOT CAUGHT** — the stale-skip test
+(`test_a_short_window_on_an_old_backtest_is_not_this_weeks`) asserted that the
+skipped phrase was PRESENT; nothing asserted what else the line said, so a
+second, false phrase beside it passed.
+
+**COST** — none in money and no wrong switch: three false lines on the
+Watcher boxes and three needless error issues.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_rooms_judge_on_short_windows.py::test_an_old_backtest_is_counted_once_never_also_as_unreadable`.
+
+---
+
 ## RCA-2026-10-09-B — the stop-loss filter's guard failed for eight days, because it counted a line in the whole file instead of in the two places it guards
 
 **CEO**

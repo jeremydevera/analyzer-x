@@ -745,6 +745,45 @@ def test_a_short_window_on_an_old_backtest_is_not_this_weeks(monkeypatch):
     assert not any("stale_h" in r for r in seen)
 
 
+def test_an_old_backtest_is_counted_once_never_also_as_unreadable(monkeypatch):
+    """RCA-2026-10-10-A: at Oct 10, 2026 12:16am #C7396286 said "10 row(s) ...
+    4 pass every rule · 6 skipped: their backtest ends more than 36 hours ago
+    · 6 could not be read from their file" — 16 of 10. The six were read; the
+    stale skip shrank the list the unreadable count subtracts from, so every
+    stale row was counted twice, and the made-up "could not be read" got
+    filed as an error. Every part of the line must add up to the rows."""
+    from tradingagents import strategy_watcher as sw
+    now = 1_790_100_000.0
+    files = {"KII": {**_in_file("KII", t2=32, w2=30, trades=100, wins=90)},
+             "VUG": {**_in_file("VUG", t2=32, w2=30, trades=100, wins=90)}}
+    last = {"KII": (now - 10 * 3600) * 1000, "VUG": (now - 60 * 3600) * 1000}
+    listed = [wc._fresh(c, "15m", r, 0.0, 2) for c, r in files.items()]
+    monkeypatch.setattr(sw, "_candidates", lambda cfg, now: {
+        "rows": listed, "why": "2 row(s) in the Backtest v2 table meet the criteria"})
+    monkeypatch.setattr(at, "load_settings", lambda: {})
+    monkeypatch.setattr(sw, "_delisted", lambda syms: set())
+    monkeypatch.setattr(wc, "matched_rows", lambda coin, tf, wants:
+                        {wc._sig(w): files[coin] for w in wants})
+    monkeypatch.setattr(wc, "_last_ms", lambda coin, tf: last[coin])
+    monkeypatch.setattr(sw, "_judged", lambda slot, fresh, now, window=30: fresh)
+    monkeypatch.setattr(sw, "_try_picks", lambda picks, now, st, act, out, settings,
+                        ws, arm, refused: refused.update(p["row"]["id"] for p in picks))
+    st: dict = {}
+    sw._on_pass(now, _room_cfg(), st, False, [])
+    line = st["last_candidates"]
+    assert "1 pass every rule" in line and "1 skipped: its backtest ends" in line
+    assert "could not be read" not in line, line
+    # and a row that really cannot be read is still counted, once
+    listed.append({**listed[0], "coin": "ZZZ", "id": "ZZZ"})
+    monkeypatch.setattr(wc, "matched_rows", lambda coin, tf, wants:
+                        {} if coin == "ZZZ" else {wc._sig(w): files[coin] for w in wants})
+    last["ZZZ"] = last["KII"]
+    st = {}
+    sw._on_pass(now, _room_cfg(), st, False, [])
+    assert " · 1 could not be read from their file" in st["last_candidates"], \
+        st["last_candidates"]
+
+
 def test_the_research_never_measures_a_two_window_room_as_one(tmp_path, monkeypatch):
     """Review finding 3: prompt 4's round 1 adds every room's rules through
     its six dials, which have no `judge_days` — it would research "2 days,

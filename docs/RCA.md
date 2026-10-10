@@ -203,8 +203,12 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 **SAW** — runs 38034731467 (created Oct 10, 2026 3:31am, ran 1.3 minutes,
 48,640 rows over "A 1h" and "A 4h", later downloaded by the collector and
 refused as MEXC's — RCA-2026-10-10-C) and 38038620940 (created 4:39am,
-queued behind the costs run; cancelled), neither recorded anywhere on this
-PC, both by the jeremydvera account this PC's gh is logged in as.
+queued behind the costs run; cancelled), both by the jeremydvera account
+this PC's gh is logged in as. The stray thread also ran the REAL
+`cs.remember`: 38034731467 sits in the operator's `backtest/cloud_run.json`,
+`cloud_run_res.json` and `cloud_state_runs.json` (moved into
+`archive-mexc-2026-10-10-0356/` by the cutover); 38038620940 is recorded
+nowhere.
 
 **TIMELINE**
 

@@ -3198,6 +3198,38 @@ def _book_for(symbol: str, notional: float, *, fx, shared: bool):
     return m, True
 
 
+def cost_verdict(*, tp: float, sl: float, spread: float, slippage: float,
+                 fee: float, fund_cost: float, fund_per_day: float,
+                 fund_known: bool, hold_s: float, liq, exhausted: bool) -> dict:
+    """The runner's cost rule as a PURE function (Oct 10, 2026).
+
+    `edge_check` reads the live book, the fee, the funding and the
+    liquidation distance and decides through THIS; the backtest asks the same
+    question of the order book Gate recorded at the trade's own minute
+    (book_history) — so a trade the runner would refuse is refused in the
+    measurement too, by the same arithmetic, never a copy of it.
+
+    All amounts are fractions of notional. Returns the verdict and every
+    reason that forced a block, by name.
+    """
+    round_trip = 2 * (slippage + fee) + fund_cost
+    ratio = round_trip / tp if tp else float("inf")
+    verdict = ("block" if ratio >= COST_RATIO_BLOCK
+               else "warn" if ratio >= COST_RATIO_WARN else "ok")
+    if exhausted:
+        verdict = "block"
+    stop_dead = bool(sl and spread >= sl)
+    funding_eats = bool(fund_known and tp
+                        and fund_per_day >= COST_RATIO_BLOCK * tp)
+    funding_blind = bool(not fund_known and hold_s >= FUNDING_UNKNOWN_HOLD_S)
+    stop_past_liq = bool(sl and liq and sl >= liq * STOP_LIQ_CEILING)
+    if stop_dead or funding_eats or funding_blind or stop_past_liq:
+        verdict = "block"
+    return {"verdict": verdict, "round_trip": round_trip, "ratio": ratio,
+            "stop_dead": stop_dead, "funding_eats": funding_eats,
+            "funding_blind": funding_blind, "stop_past_liq": stop_past_liq}
+
+
 def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
                side: int = 0) -> dict:
     """Can this strategy's edge survive this contract's real trading cost?
@@ -3243,49 +3275,28 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
     tp = spec["tp"]
     hold_s = float(spec.get("bar_seconds") or 0) * FUNDING_HOLD_BARS
     fund = funding_cost(symbol, side, hold_s, fx=fx)
-    round_trip = (2 * (m["slippage"] + taker_fee(symbol, fx=fx))
-                  + fund["cost"])
+    sl = float(spec.get("sl") or 0)
+    # THE RULE ITSELF lives in cost_verdict, which the backtest also calls on
+    # the book of each trade's own minute (Oct 10, 2026). Its four blocks:
+    # A STOP INSIDE THE SPREAD IS DEAD ON ARRIVAL (PSXSTOCK, 2026-09-05: gap
+    # 1.66%, SL 1.0% — MEXC refused the stop three times, -5.36 USDT);
+    # FUNDING THAT EATS THE TARGET IN A DAY makes the trade unwinnable the
+    # moment it fails to resolve quickly; a hold long enough to span a
+    # settlement on a contract whose funding cannot be measured is a cost
+    # nobody counted (rule 12); and a stop the venue would liquidate THROUGH
+    # is not a stop.
+    liq = liquidation_distance(symbol, fx=fx)
+    cv = cost_verdict(tp=tp, sl=sl, spread=m["spread"], slippage=m["slippage"],
+                      fee=taker_fee(symbol, fx=fx), fund_cost=fund["cost"],
+                      fund_per_day=fund["per_day"], fund_known=fund["known"],
+                      hold_s=hold_s, liq=liq, exhausted=m["book_exhausted"])
+    round_trip, ratio, verdict = cv["round_trip"], cv["ratio"], cv["verdict"]
+    stop_dead, funding_eats = cv["stop_dead"], cv["funding_eats"]
+    funding_blind, stop_past_liq = cv["funding_blind"], cv["stop_past_liq"]
     # a reading is filed when it was TAKEN: a shared one re-filed later in the
     # cycle would stamp an old book with a new time
     if fresh:
         _record_book_reading(symbol, round_trip, m)
-    ratio = round_trip / tp if tp else float("inf")
-    verdict = ("block" if ratio >= COST_RATIO_BLOCK
-               else "warn" if ratio >= COST_RATIO_WARN else "ok")
-    if m["book_exhausted"]:
-        verdict = "block"
-    # A STOP INSIDE THE SPREAD IS DEAD ON ARRIVAL. The fill lands on one side
-    # of the gap and the venue checks the stop against the other side, so a
-    # stop closer than the gap is already passed when it is placed. PSXSTOCK,
-    # 2026-09-05: gap 1.66%, SL 1.0% — MEXC refused the stop (5003) three
-    # times, the runner force-closed three times, -5.36 USDT.
-    sl = float(spec.get("sl") or 0)
-    stop_dead = bool(sl and m["spread"] >= sl)
-    if stop_dead:
-        verdict = "block"
-    # FUNDING THAT EATS THE TARGET IN A DAY makes the trade unwinnable the
-    # moment it fails to resolve quickly, whatever the hold estimate says —
-    # so this test needs no hold estimate at all. It is the guard that would
-    # have caught a contract whose settlements, not whose spread, are the
-    # thing that takes the money.
-    funding_eats = bool(fund["known"] and tp
-                        and fund["per_day"] >= COST_RATIO_BLOCK * tp)
-    if funding_eats:
-        verdict = "block"
-    # ...and a hold long enough to span a settlement, on a contract whose
-    # funding cannot be measured, is a cost nobody has counted. Unknown is
-    # not ok when it is money (rule 12).
-    funding_blind = bool(not fund["known"]
-                         and hold_s >= FUNDING_UNKNOWN_HOLD_S)
-    if funding_blind:
-        verdict = "block"
-    # ...and a stop the venue would liquidate THROUGH is not a stop. Losing
-    # the whole margin is a different trade from losing the stop, and no row
-    # in any backtest measured that one.
-    liq = liquidation_distance(symbol, fx=fx)
-    stop_past_liq = bool(sl and liq and sl >= liq * STOP_LIQ_CEILING)
-    if stop_past_liq:
-        verdict = "block"
     return {"verdict": verdict, "strategy": key, "symbol": symbol,
             "tp": tp, "spread": m["spread"], "slippage": m["slippage"],
             "round_trip_cost": round_trip, "cost_ratio": ratio,
@@ -3811,7 +3822,9 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                       fine: tuple | None = None,
                       recent_from_ms: int | None = None,
                       recent_windows: dict | None = None,
-                      reenter: bool = False) -> dict:
+                      reenter: bool = False,
+                      book: dict | None = None,
+                      book_hold_s: float | None = None) -> dict:
     """Run one strategy's exact live rules over a candle history.
 
     ``reenter=True`` (Oct 05, 2026, Backtest a room only) also reads the
@@ -3917,15 +3930,57 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     # move — the reason that helper exists — and an invented boundary is worse
     # than none, so `None` means "do not model it" rather than "assume".
     liq = None if liq_move_pct is None else abs(float(liq_move_pct)) / 100.0
+    # THE ORDER BOOK OF EACH TRADE'S OWN MINUTE (phase 4, Oct 10, 2026).
+    # `book` is Gate's recorded readings (tradingagents.book_history, packed):
+    # at an entry the engine reads the book at the entry bar's open and asks
+    # the runner's own `cost_verdict` — a trade the runner would refuse is
+    # refused here and counted (`gate_blocked`) — and a trade it lets in pays
+    # THAT minute's fill on its side, and the exit minute's on the way out.
+    # A minute with no reading (older than an hour, or none) pays the flat
+    # `slippage` of before and is counted (`cost_unmeasured`). `book=None`
+    # is the engine of before, byte for byte.
+    _taker = float(fee)
+    _flat_slip = float(slippage)
     fee = fee + slippage
+    # an EMPTY book still counts: every entry is then unmeasured, by name
+    _bk = book
+    _bk_on = book is not None
+    n_gate = n_unmeasured = 0
+    if _bk is not None:
+        from tradingagents import book_history as _bh
+
+        _bk_ms = (df["Date"].to_numpy().astype("datetime64[ms]")
+                  .astype("int64"))
+        try:
+            _bk_bar_s = max(1, int((_bk_ms[1] - _bk_ms[0]) // 1000))
+        except IndexError:
+            _bk_bar_s = 3600
+        _bk_hold = (float(book_hold_s) if book_hold_s is not None
+                    else float(_bk_bar_s * FUNDING_HOLD_BARS))
     # Funding settlements as two sorted arrays, so each trade can bisect the
     # window it actually spanned instead of scanning the whole history.
     _f_ms: list[int] = []
     _f_rate: list[float] = []
+    _f_cyc: list[float] = []
     if funding:
         for f in sorted(funding, key=lambda d: d["settle_ms"]):
             _f_ms.append(int(f["settle_ms"]))
             _f_rate.append(float(f["rate"]))
+            _f_cyc.append(float(f.get("cycle_h") or 8) or 8.0)
+
+    def _fund_day_at(ms: int, side: int) -> float:
+        """What this SIDE pays a day at the rate last settled before `ms` —
+        the forward figure the runner's gate reads (`funding_now`). A credit
+        is never a cost (a receipt depends on the rate holding)."""
+        if not _f_ms:
+            return 0.0
+        import bisect as _bs
+
+        k = _bs.bisect_right(_f_ms, int(ms)) - 1
+        if k < 0:
+            return 0.0
+        per_day_long = _f_rate[k] * 24.0 / _f_cyc[k]
+        return max(0.0, per_day_long if side > 0 else -per_day_long)
     # A market-wide sweep runs thousands of combinations per coin and reads
     # only the totals, yet every trade allocated a 16-key dict. Counting what
     # the log was being scanned for (liquidations, funding) and skipping the
@@ -4166,6 +4221,7 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             if i >= n - 1:
                 break
         if _open is not None:
+            _slip_in = None
             # carried across the boundary: same side, entry, rung and barriers
             s = int(_open["side"])
             margin = float(_open["margin"])
@@ -4179,6 +4235,28 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             if s == 0:
                 i += 1
                 continue
+            _slip_in = None
+            if _bk is not None:
+                _t_in = int(_bk_ms[i + 1] // 1000)
+                _r_in = _bh.reading_at(_bk, _t_in)
+                if _r_in is None:
+                    n_unmeasured += 1
+                else:
+                    _slip_in = float(_r_in["buy"] if s == 1 else _r_in["sell"])
+                    _fd = _fund_day_at(_t_in * 1000, s)
+                    _cv = cost_verdict(
+                        tp=tp, sl=sl, spread=float(_r_in["spread"]),
+                        slippage=_slip_in, fee=_taker,
+                        fund_cost=_fd * _bk_hold / 86400.0, fund_per_day=_fd,
+                        # funding the BACKTEST cannot read is our data gap,
+                        # not the market's: the runner's "unknown" is a live
+                        # outage, never modelled here
+                        fund_known=True, hold_s=_bk_hold, liq=liq,
+                        exhausted=bool(_r_in["exhausted"]))
+                    if _cv["verdict"] == "block":
+                        n_gate += 1
+                        i += 1
+                        continue
             margin = (base_margin if sizing == "flat"
                       else ladder_margin(base_margin, step))
             entry = opens[i + 1]
@@ -4325,8 +4403,18 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                 break
             out, why = s * (close[-1] / entry - 1), "END"
             j = n - 1
+        _c_in = _c_out = None
         if not _skip_single:
-            pnl = (out - 2 * fee) * notional
+            if _bk is not None:
+                _c_in = _slip_in if _slip_in is not None else _flat_slip
+                _x_ms = (int(_exit_min) if _exit_min is not None
+                         else int(_bk_ms[j]))
+                _r_out = _bh.reading_at(_bk, _x_ms // 1000)
+                _c_out = (float(_r_out["sell"] if s == 1 else _r_out["buy"])
+                          if _r_out is not None else _c_in)
+                pnl = (out - 2 * _taker - _c_in - _c_out) * notional
+            else:
+                pnl = (out - 2 * fee) * notional
         # Holding cost: every settlement between the entry fill and the exit.
         # A long pays when the rate is positive, a short receives it.
         if not _skip_single:
@@ -4412,6 +4500,9 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                     "why": why, "WIN/LOSE": "WIN" if pnl > 0 else "LOSE",
                     "funding $": round(fund, 4),
                     "pnl $": round(pnl, 2), "running total $": round(equity, 2),
+                    **({"cost in %": round(_c_in * 100, 6),
+                        "cost out %": round(_c_out * 100, 6)}
+                       if _c_in is not None else {}),
                     **({"slices": _sl_det} if _sl_det else {})})
         step = 0 if pnl > 0 else step + 1
         _open = None
@@ -4444,7 +4535,9 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                if recent_from_ms is not None else {}),
             **({"recents": {d: {"trades": n_, "wins": int(w_), "profit": round(p_, 2)}
                             for d, _ms, n_, w_, p_ in _recs}}
-               if recent_windows is not None else {})}
+               if recent_windows is not None else {}),
+            **({"gate_blocked": n_gate, "cost_unmeasured": n_unmeasured}
+               if _bk_on else {})}
 
 
 def daily_pnl(dry: bool | None = None) -> dict:

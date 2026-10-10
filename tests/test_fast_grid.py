@@ -281,3 +281,33 @@ def test_end_state_also_carries_the_losing_streak():
                 fund=_funding(len(df)))["martingale"]["full"]
     assert round(got["worst_streak"], 2) == rep["worst_streak"]
     assert got["worst_streak_len"] == rep["worst_streak_len"]
+
+
+def test_a_refused_signal_frees_the_walk_for_the_next_one():
+    """The runner's cost check, asked at each entry (Oct 10, 2026, the move to
+    Gate): a refused signal is not a trade, and the NEXT signal can be taken
+    at once — exactly what happens live, where nothing was ever opened."""
+    from tradingagents import fast_grid as fg
+
+    n = 12
+    opens = [100.0] * n
+    high = [100.2] * n
+    low = [99.8] * n
+    close = [100.0] * n
+    high[4] = 101.5                       # a long from bar 2 or 3 hits +1% here
+    dirs = [0] * n
+    dirs[1], dirs[2] = 1, 1
+    idx = [1, 2]
+    plain = fg.walk(idx, dirs, opens, high, low, close, tp=0.01, sl=0.01, liq=None)
+    assert [t[0] for t in plain] == [1], "unrefused, bar 1's trade blocks bar 2"
+    asked = []
+
+    def refuse(i, s):
+        asked.append((i, s))
+        return i == 1
+    got = fg.walk(idx, dirs, opens, high, low, close, tp=0.01, sl=0.01, liq=None,
+                  refuse=refuse)
+    assert asked == [(1, 1), (2, 1)]
+    assert [t[0] for t in got] == [2], "bar 1 refused, bar 2 trades"
+    assert fg.walk(idx, dirs, opens, high, low, close, tp=0.01, sl=0.01, liq=None,
+                   refuse=None) == plain

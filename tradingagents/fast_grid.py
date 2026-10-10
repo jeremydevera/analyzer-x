@@ -35,7 +35,7 @@ WHY_TP, WHY_SL, WHY_LIQ, WHY_END = 0, 1, 2, 3
 def walk(dirs_idx: Sequence[int], dirs, opens, high, low, close, *,
          tp: float, sl: float, liq: float | None,
          start: int = 0, end: int | None = None,
-         f_ms=None, f_cum=None, bar_ms=None) -> list[tuple]:
+         f_ms=None, f_cum=None, bar_ms=None, refuse=None) -> list[tuple]:
     """The engine's bar walk, once, sizing-free.
 
     Returns one tuple per trade:
@@ -44,6 +44,12 @@ def walk(dirs_idx: Sequence[int], dirs, opens, high, low, close, *,
     ``fund_frac`` is the funding paid per unit of notional (sign applied).
     ``start``/``end`` bound the walk in GLOBAL bar indices, exactly like
     running the engine over ``df.iloc[start:end]`` with ``dirs[start:end]``.
+
+    ``refuse(sig_bar, side) -> bool`` is the runner's cost check asked at an
+    entry (Oct 10, 2026, the move to Gate: the order book of that minute):
+    a refused signal is no trade and the walk moves on to the next signal at
+    once, exactly as live, where nothing was ever opened. None = the walk of
+    before, unchanged.
     """
     n = len(close) if end is None else int(end)
     out: list[tuple] = []
@@ -60,6 +66,9 @@ def walk(dirs_idx: Sequence[int], dirs, opens, high, low, close, *,
             break
         s = dirs[i]
         if s == 0:            # cannot happen (dirs_idx is nonzero), kept 1:1
+            i += 1
+            continue
+        if refuse is not None and refuse(i, s):
             i += 1
             continue
         entry = opens[i + 1]

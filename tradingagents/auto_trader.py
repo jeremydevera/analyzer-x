@@ -3231,6 +3231,37 @@ def cost_verdict(*, tp: float, sl: float, spread: float, slippage: float,
             "funding_blind": funding_blind, "stop_past_liq": stop_past_liq}
 
 
+def funding_day_at(f_ms, f_rate, f_cyc, ms: int, side: int) -> float:
+    """What `side` pays a day at the funding rate last settled before `ms` —
+    the forward figure the runner's gate reads live (`funding_now`), taken
+    from a settlement history. A credit is never a cost (0, never negative):
+    a receipt depends on the rate holding, the spread is paid at once."""
+    if not f_ms:
+        return 0.0
+    import bisect as _bs
+
+    k = _bs.bisect_right(f_ms, int(ms)) - 1
+    if k < 0:
+        return 0.0
+    per_day_long = float(f_rate[k]) * 24.0 / (float(f_cyc[k]) or 8.0)
+    return max(0.0, per_day_long if side > 0 else -per_day_long)
+
+
+def minute_verdict(reading: dict, *, side: int, tp: float, sl: float, fee: float,
+                   hold_s: float, liq, fund_day: float) -> dict:
+    """The runner's cost check asked of ONE recorded minute of the order book
+    (tradingagents.book_history) — what `edge_check` would have said had the
+    signal fired then. One function for the engine and the replay, so the
+    backtest and the replay can never refuse by two rules. Funding the
+    backtest cannot read is our data gap, never the market's: `fund_known`."""
+    slip = float(reading["buy"] if side == 1 else reading["sell"])
+    out = cost_verdict(tp=tp, sl=sl, spread=float(reading["spread"]),
+                       slippage=slip, fee=fee, fund_cost=fund_day * hold_s / 86400.0,
+                       fund_per_day=fund_day, fund_known=True, hold_s=hold_s,
+                       liq=liq, exhausted=bool(reading["exhausted"]))
+    return {**out, "slippage": slip}
+
+
 def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
                side: int = 0) -> dict:
     """Can this strategy's edge survive this contract's real trading cost?
@@ -3970,18 +4001,7 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             _f_cyc.append(float(f.get("cycle_h") or 8) or 8.0)
 
     def _fund_day_at(ms: int, side: int) -> float:
-        """What this SIDE pays a day at the rate last settled before `ms` —
-        the forward figure the runner's gate reads (`funding_now`). A credit
-        is never a cost (a receipt depends on the rate holding)."""
-        if not _f_ms:
-            return 0.0
-        import bisect as _bs
-
-        k = _bs.bisect_right(_f_ms, int(ms)) - 1
-        if k < 0:
-            return 0.0
-        per_day_long = _f_rate[k] * 24.0 / _f_cyc[k]
-        return max(0.0, per_day_long if side > 0 else -per_day_long)
+        return funding_day_at(_f_ms, _f_rate, _f_cyc, ms, side)
     # A market-wide sweep runs thousands of combinations per coin and reads
     # only the totals, yet every trade allocated a 16-key dict. Counting what
     # the log was being scanned for (liquidations, funding) and skipping the
@@ -4243,17 +4263,10 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                 if _r_in is None:
                     n_unmeasured += 1
                 else:
-                    _slip_in = float(_r_in["buy"] if s == 1 else _r_in["sell"])
-                    _fd = _fund_day_at(_t_in * 1000, s)
-                    _cv = cost_verdict(
-                        tp=tp, sl=sl, spread=float(_r_in["spread"]),
-                        slippage=_slip_in, fee=_taker,
-                        fund_cost=_fd * _bk_hold / 86400.0, fund_per_day=_fd,
-                        # funding the BACKTEST cannot read is our data gap,
-                        # not the market's: the runner's "unknown" is a live
-                        # outage, never modelled here
-                        fund_known=True, hold_s=_bk_hold, liq=liq,
-                        exhausted=bool(_r_in["exhausted"]))
+                    _cv = minute_verdict(_r_in, side=s, tp=tp, sl=sl, fee=_taker,
+                                         hold_s=_bk_hold, liq=liq,
+                                         fund_day=_fund_day_at(_t_in * 1000, s))
+                    _slip_in = _cv["slippage"]
                     if _cv["verdict"] == "block":
                         n_gate += 1
                         i += 1

@@ -140,3 +140,18 @@ def test_coins_are_counted_per_group_set_never_summed_across_runs(tmp_path):
                                    "groups": ["sep25", "sep27ml"]}))
     got = rc.merge([str(a), str(b), str(c)])["totals"]["coins_by_groups"]
     assert got == {"classic,preset": 2, "sep25,sep27ml": 2}
+
+
+def test_the_cost_checks_refusals_are_added_across_machines(tmp_path):
+    """Oct 10, 2026, the move to Gate: each machine counts the entries the
+    runner's cost check refused on the recorded book and the trades that had
+    no recorded book; the run's totals carry both, summed, and a report from
+    before the count reads as 0."""
+    a = _combo("GOOD0001", "GPNSTOCK", 40, _ms(2026, 8, 3, 5))
+    _machine(tmp_path, 0, [a], {"GPNSTOCK 1h": [0, _ms(2026, 9, 28, 14)]}, 7000)
+    _machine(tmp_path, 1, [], {"KKRSTOCK 1h": [0, _ms(2026, 9, 28, 15)]}, 5000)
+    rep = tmp_path / "replay-0" / "replay-report-0.json"
+    got = json.loads(rep.read_text())
+    rep.write_text(json.dumps({**got, "gate_blocked": 31, "cost_unmeasured": 4}))
+    tot = rc.merge(str(tmp_path))["totals"]
+    assert tot["gate_blocked"] == 31 and tot["cost_unmeasured"] == 4

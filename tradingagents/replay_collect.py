@@ -61,7 +61,8 @@ def merge(folder, _combos: bool = True) -> dict:
     combination written twice (a retried coin) and is kept once."""
     combos: dict[str, dict] = {}
     totals = {"coins_board": 0, "coins_done": 0, "pairs": 0, "tested": 0,
-              "kept": 0, "machines": 0, "failed": {}, "short": [],
+              "kept": 0, "gate_blocked": 0, "cost_unmeasured": 0,
+              "machines": 0, "failed": {}, "short": [],
               "spans": {}, "start": "", "tz": "", "cfg": {}, "groups": [],
               # the WRITE RULE: which combinations the data holds at all — a
               # rule looser than it can only pick from rows that passed it
@@ -86,7 +87,8 @@ def merge(folder, _combos: bool = True) -> dict:
             r = json.load(fh)
         totals["machines"] += 1
         totals["coins_board"] = max(totals["coins_board"], int(r.get("coins_board") or 0))
-        for k in ("coins_done", "pairs", "tested", "kept"):
+        for k in ("coins_done", "pairs", "tested", "kept", "gate_blocked",
+                  "cost_unmeasured"):
             totals[k] += int(r.get(k) or 0)
         totals["failed"].update(r.get("failed") or {})
         totals["short"] += list(r.get("short") or [])

@@ -51,7 +51,9 @@ from learn_shard import charged, usual_costs
 
 import tradingagents.auto_trader as at
 from tradingagents import backtest_report as br
+from tradingagents import book_history as bh
 from tradingagents import fast_grid as fg
+from tradingagents import venue as _venue
 from tradingagents import watcher_policy as wp
 from tradingagents import watcher_replay as wr
 from tradingagents.dataflows import exchange as fx
@@ -204,10 +206,18 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
     vol = [float(x) for x in df["Volume"]] if "Volume" in df.columns else None
     ts = [int(x) for x in df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")]
     fund = cost["fund"]
-    f_ms, f_rate = [], []
+    f_ms, f_rate, f_cyc = [], [], []
     for f_ in sorted(fund or [], key=lambda d: d["settle_ms"]):
         f_ms.append(int(f_["settle_ms"]))
         f_rate.append(float(f_["rate"]))
+        f_cyc.append(float(f_.get("cycle_h") or 8) or 8.0)
+    # THE ORDER BOOK OF EACH MINUTE (Oct 10, 2026, the move to Gate): the
+    # runner's cost check asked at every entry, and each trade priced at its
+    # own entry and exit minutes - the backtest's rule (minute_verdict), so
+    # a replayed room trades what the runner would have let it trade.
+    minute_book = cost.get("book")
+    hold_s = bs * at.FUNDING_HOLD_BARS
+    liq_frac = None if cost["liq"] is None else abs(cost["liq"]) / 100.0
     f_cum = [0.0]
     for r_ in f_rate:
         f_cum.append(f_cum[-1] + r_)
@@ -243,16 +253,33 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
                 stats["tested"] += 1
                 if not dirs_idx:
                     continue
+                refuse = None
+                if minute_book is not None:
+                    def refuse(i, side, tp=tp, sl=sl):
+                        r = bh.reading_at(minute_book, ts[i + 1] // 1000)
+                        if r is None:
+                            return False
+                        v = at.minute_verdict(
+                            r, side=side, tp=tp, sl=sl, fee=cost["fee"],
+                            hold_s=hold_s, liq=liq_frac,
+                            fund_day=at.funding_day_at(f_ms, f_rate, f_cyc,
+                                                       ts[i + 1], side))
+                        if v["verdict"] == "block":
+                            stats["gate_blocked"] = stats.get("gate_blocked", 0) + 1
+                            return True
+                        return False
                 walked = fg.walk(dirs_idx, dirs, op, hi, lo, cl, tp=tp, sl=sl,
-                                 liq=None if liq is None else abs(liq) / 100.0,
-                                 f_ms=f_ms, f_cum=f_cum, bar_ms=ts)
+                                 liq=liq_frac, f_ms=f_ms, f_cum=f_cum, bar_ms=ts,
+                                 refuse=refuse)
                 if len(walked) < WRITE["trades"]:
                     continue
                 trades = [[ts[e], ts[x] + bs * 1000,
                            round(fg.trade_pnl(o, w, ff, margin=ss.BASE_MARGIN,
-                                              lev=at.LEVERAGE, fee=fee), 4),
+                                              lev=at.LEVERAGE,
+                                              fee=trade_fee(minute_book, cost, side, ts[e], ts[x],
+                                                            stats)), 4),
                            int(w != fg.WHY_END)]
-                          for (_s, e, x, _side, o, w, ff) in walked]
+                          for (_s, e, x, side, o, w, ff) in walked]
                 combo = {"id": br.row_code(coin, tf, sig, thp, round(sl * 100, 3),
                                            round(tp * 100, 3), "flat", res="1m"),
                          "coin": coin, "tf": tf, "signal": sig, "th": thp,
@@ -272,6 +299,26 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
     return lines
 
 
+def trade_fee(book, cost: dict, side: int, entry_ms: int, exit_ms: int,
+              stats: dict) -> float:
+    """The per-side cost one replayed trade pays: the fee, plus HALF of its
+    entry minute's fill on its side and its exit minute's fill on the other
+    (`fg.trade_pnl` charges 2 x fee). No reading -> the coin's usual flat
+    slippage, counted as unmeasured. No book (MEXC) -> the flat fee of before."""
+    flat = cost["fee"] + cost["slip"]
+    if book is None:
+        return flat
+    r_in = bh.reading_at(book, entry_ms // 1000)
+    r_out = bh.reading_at(book, exit_ms // 1000)
+    if r_in is None:
+        stats["cost_unmeasured"] = stats.get("cost_unmeasured", 0) + 1
+        return flat
+    s_in = float(r_in["buy"] if side == 1 else r_in["sell"])
+    s_out = (float(r_out["sell"] if side == 1 else r_out["buy"])
+             if r_out is not None else s_in)
+    return cost["fee"] + (s_in + s_out) / 2.0
+
+
 def coin_costs(sym: str, usual: dict) -> dict:
     """The costs a Backtest v2 row of this coin is charged — read ONCE."""
     coin = sym.replace("_USDT", "")
@@ -281,7 +328,21 @@ def coin_costs(sym: str, usual: dict) -> dict:
     book = fx.book_cost(sym, ss.BASE_MARGIN * at.LEVERAGE)
     fresh = float(book.get("slippage") or 0.0) or 0.0003
     slip, _readings = charged(fee, fresh, usual.get(coin))
-    return {"fee": fee, "liq": liq, "fund": fund, "slip": slip,
+    # every minute's book over the replay's whole span (Gate only; the
+    # costs job's day files - cost_store), read once per coin
+    minute_book = None
+    if _venue.current() == "gate":
+        from tradingagents import cost_store
+
+        now_s = int(time.time())
+        first_s = (start_ms() - max(WRITE["windows"]) * wr.DAY_MS) // 1000 - 2 * 86400
+        try:
+            minute_book = cost_store.book_for(sym, first_s, now_s)
+        except Exception as exc:                               # noqa: BLE001
+            print(f"{sym}: per-minute costs could not be read ({exc}); every "
+                  f"trade pays the flat cost and is counted unmeasured", flush=True)
+            minute_book = cost_store.empty()
+    return {"fee": fee, "liq": liq, "fund": fund, "slip": slip, "book": minute_book,
             "rt": br.round_trip_cost(fee, {"slippage": slip})}
 
 
@@ -326,7 +387,7 @@ def main() -> int:
              "groups": list(GROUPS), "write": WRITE,
              "cfg": CFG, "coins_board": len(coins), "coins_done": 0,
              "pairs": 0, "tested": 0, "kept": 0, "short": [], "failed": {},
-             "spans": {}}
+             "spans": {}, "gate_blocked": 0, "cost_unmeasured": 0}
     ss.log(f"watcher replay from {START}: {len(coins)} coin(s), {TFS}")
     ss.report.board = len(coins)
     failed: dict = {}
@@ -339,7 +400,8 @@ def main() -> int:
                 if not queue:
                     break
                 sym = queue.pop(0)
-            before = {k: stats[k] for k in ("pairs", "tested", "kept")}
+            before = {k: stats.get(k, 0) for k in ("pairs", "tested", "kept",
+                                                   "gate_blocked", "cost_unmeasured")}
             before_short, before_spans = list(stats["short"]), dict(stats["spans"])
             try:
                 cost = coin_costs(sym, usual)
@@ -367,7 +429,9 @@ def main() -> int:
                            f"passing of {stats['tested']:,} tested")
     _save(stats)
     ss.log(f"done: {stats['coins_done']} coin(s), {stats['tested']:,} tested, "
-           f"{stats['kept']:,} could pass, in {(time.time() - t0) / 60:.0f} min")
+           f"{stats['kept']:,} could pass, {stats['gate_blocked']:,} entries the "
+           f"cost check refused, {stats['cost_unmeasured']:,} trades with no "
+           f"recorded book, in {(time.time() - t0) / 60:.0f} min")
     return 0
 
 

@@ -299,3 +299,56 @@ def test_a_write_rule_can_keep_every_target_shape(rs):
     assert rs._tp_written(1.0, 2.0, "any") and rs._tp_written(1.0, 2.0, "<")
     assert not rs._tp_written(2.0, 2.0, "<") and not rs._tp_written(1.0, 2.0, ">=")
     assert rs._tp_written(2.0, 2.0, ">=") and not rs._tp_written(2.0, 2.0, ">")
+
+
+def _hourly_book(world, *, spread, buy, sell):
+    """One order-book reading at every bar's open (age 0 at each entry and
+    exit) — the shape `cost_store.book_for` hands the replay on Gate."""
+    from tradingagents import book_history as bh
+
+    return bh.pack([{"t": int(d.timestamp()), "bid": 100.0, "ask": 100.0,
+                     "spread": spread, "buy": buy, "sell": sell,
+                     "exhausted": False, "source": "full"}
+                    for d in world["df"]["Date"]])
+
+
+def test_a_minute_the_runner_would_refuse_is_never_traded_in_the_replay(rs, world):
+    """Oct 10, 2026, the move to Gate: the replay asks the runner's cost check
+    of each entry minute's recorded book (`at.minute_verdict`, the backtest's
+    own rule) — a 2% spread on a 1% target is refused, counted, and not
+    traded, so a replayed room never books a trade the runner would refuse."""
+    world["cost"]["book"] = _hourly_book(world, spread=0.02, buy=0.01, sell=0.01)
+    combos, stats = _run(rs, world)
+    assert stats["tested"] == 2
+    assert stats.get("gate_blocked", 0) > 0
+    assert combos == [], "every entry refused: nothing reaches the write rule"
+
+
+def test_each_replayed_trade_pays_its_own_minutes(rs, world):
+    """The entry minute's fill on its side and the exit minute's on the other,
+    halved because `trade_pnl` charges the fee twice: 0.0002 + (0.0004 +
+    0.0002) / 2 = 0.0005 a side for a long — never the coin's flat 0.0003."""
+    from tradingagents import fast_grid as fg
+
+    world["cost"]["book"] = _hourly_book(world, spread=0.0001, buy=0.0004,
+                                         sell=0.0002)
+    combos, stats = _run(rs, world)
+    assert not stats.get("gate_blocked")
+    c = next(c for c in combos if c["tp"] == 1.0)
+    won = [t for t in c["trades"] if t[3] and t[2] > 0]
+    expect = fg.trade_pnl(0.01, fg.WHY_TP, 0.0, margin=5.0, lev=20, fee=0.0005)
+    assert won[0][2] == pytest.approx(round(expect, 4))
+    assert won[0][2] != pytest.approx(round(
+        fg.trade_pnl(0.01, fg.WHY_TP, 0.0, margin=5.0, lev=20, fee=0.0003), 4))
+
+
+def test_a_minute_with_no_reading_pays_the_flat_cost_and_is_counted(rs, world):
+    from tradingagents import cost_store, fast_grid as fg
+
+    world["cost"]["book"] = cost_store.empty()
+    combos, stats = _run(rs, world)
+    assert stats.get("cost_unmeasured", 0) > 0
+    c = next(c for c in combos if c["tp"] == 1.0)
+    won = [t for t in c["trades"] if t[3] and t[2] > 0]
+    expect = fg.trade_pnl(0.01, fg.WHY_TP, 0.0, margin=5.0, lev=20, fee=0.0003)
+    assert won[0][2] == pytest.approx(round(expect, 4))

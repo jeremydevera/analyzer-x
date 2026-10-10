@@ -110,6 +110,9 @@ def min_trades(tf: str, days: int | float | None = None) -> int:
 WINDOW_LEAD_DAYS = 7
 GATE_BLOCK = 0.50         # cost >= half the target: the trade cannot win
 CONTEXT_BARS = 300        # lookback a signal needs before the first new bar
+# the GitHub shard's lead-in (sweep_shard.WARMUP_BARS): history the rules
+# READ in front of the measured window, never bars they trade
+GATE_WARMUP_BARS = 300
 
 
 def deployed_combos() -> set:
@@ -1071,7 +1074,9 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     coin = symbol.replace("_USDT", "")
     iv, bs, cap = br.TFS[tf]
     fine = None
-    if FINE_TF and _gate_v2():
+    gate_warm = 0
+    _on_gate_v2 = bool(FINE_TF) and _gate_v2()
+    if _on_gate_v2:
         # GATE: the frame's own candles and the finest exit bars Gate sells —
         # the GitHub shard's way; minutes alone have a hole each month
         # (RCA-2026-10-10-L)
@@ -1080,6 +1085,20 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
         except Exception as exc:                               # noqa: BLE001
             return {"coin": coin, "tf": tf, "rows": [], "added": 0,
                     "source": "gate", "why": f"{symbol} {tf}: {str(exc)[:80]}"}
+        # THE SHARD'S WINDOW (sweep_shard.window): the last `days` days, with
+        # GATE_WARMUP_BARS of lead-in the rules read and never trade — never
+        # the year of candles Gate hands back (RCA-2026-10-10-L)
+        import pandas as _pd
+
+        _cut = _pd.Timestamp.now("UTC").tz_localize(None) - _pd.Timedelta(days=days)
+        _measured = int((df["Date"] >= _cut).sum())
+        if _measured < max(2, br.min_bars(tf)):
+            return {"coin": coin, "tf": tf, "rows": [], "added": 0,
+                    "source": "gate",
+                    "why": (f"{symbol} {tf}: Gate has {_measured} candle(s) inside "
+                            f"the last {days} days")}
+        gate_warm = min(GATE_WARMUP_BARS, len(df) - _measured)
+        df = df.iloc[len(df) - _measured - gate_warm:].reset_index(drop=True)
         added, source = 0, f"{tf} candles + finest exit bars ({_n5} five-minute)"
     elif FINE_TF:
         # v2: the bars come from the minutes, and so does the exit.
@@ -1249,6 +1268,8 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     lo = max(0, start_at - CONTEXT_BARS) if incremental else 0
     frame = df.iloc[lo:].reset_index(drop=True)
     off = start_at - lo if incremental else 0
+    if gate_warm and not incremental:
+        off = gate_warm                    # no trade inside the lead-in
     hi_l = [float(x) for x in frame["High"]]
     lo_l = [float(x) for x in frame["Low"]]
     cl_l = [float(x) for x in frame["Close"]]
@@ -1262,7 +1283,8 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
              if "Volume" in frame.columns else None)
     ts_l = list(frame["Date"].to_numpy().astype("datetime64[ms]")
                 .astype("int64"))
-    days_have = int((df["Date"].iloc[-1] - df["Date"].iloc[0]).days)
+    # the MEASURED span, never the lead-in's (as the shard says it)
+    days_have = int((df["Date"].iloc[-1] - df["Date"].iloc[gate_warm]).days)
     n = len(frame)
     n // 2
 
@@ -1360,11 +1382,23 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                         key, frame, base_margin, fee=fee, sizing=sz, dirs=dirs,
                         slippage=slip,
                         tp=tp, sl=sl, liq_move_pct=liq, funding=fund,
-                        keep_log=False, resume=prev or {}, start_at=off,
+                        keep_log=False,
+                        # ON GATE a v2 pair is measured in full, never resumed
+                        # (as GitHub measures it): no resume, so a trade still
+                        # open at the window's end is COUNTED, as the shard
+                        # and the trade list count it (RCA-2026-10-10-L)
+                        resume=(None if _on_gate_v2 else (prev or {})),
+                        start_at=off,
                         # v2: the minutes; None on v1 (`_settle_fine` indexes
                         # them by time, so a sliced `frame` is fine)
                         fine=fine, book=minute_book,
-                        book_hold_s=bs * at.FUNDING_HOLD_BARS)
+                        book_hold_s=bs * at.FUNDING_HOLD_BARS,
+                        # the row's last 15 days and last 1-4 days, as the
+                        # shard measures them — the rooms switch on by these
+                        **({"recent_from_ms": int(ms[-1]) - br.RECENT_DAYS * 86_400_000,
+                            "recent_windows": {d: int(ms[-1]) - d * 86_400_000
+                                               for d in br.SHORT_DAYS}}
+                           if gate_warm or (FINE_TF and _gate_v2()) else {}))
                 except Exception:
                     continue
                 states[ck] = r["state"]
@@ -1457,7 +1491,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                     # (a row with none is MEXC's — cloud_sweep.land_rows)
                     **({"venue": "gate"} if _gate_v2() else {}),
                     "stop_reachable": True, "days": days_have,
-                    "bars": len(df),
+                    "bars": len(df) - gate_warm,
                     # WHERE THE WINDOW ENDED. The pair has one watermark and it
                     # moves: a later pass that only ADDS signals advances it,
                     # and an older row measured to Aug 27 12:00am can then no
@@ -1475,7 +1509,10 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                     "monthly": {k2: round(v2, 2) for k2, v2 in m.items()},
                     "cost_of_tp": round(rt / tp * 100, 1),
                     "rt": round(rt * 100, 4),
-                    "gate": "warn" if rt / tp >= .2 else "ok"})
+                    "gate": "warn" if rt / tp >= .2 else "ok",
+                    # LAST, as GitHub writes them: watcher_candidates reads
+                    # a pair file's tail for t15 / t1..t4 (Gate only here)
+                    **(br.recent_fields(r) if FINE_TF and _gate_v2() else {})})
             at.STRATEGY_SPECS.pop(key, None)
     states["__last_ms__"] = max(int(ms[-1]),
                                 int(states.get("__last_ms__") or 0)) \

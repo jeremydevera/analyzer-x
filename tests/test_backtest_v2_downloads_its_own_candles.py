@@ -228,10 +228,17 @@ def test_a_v2_pair_measured_on_this_pc_pays_each_minutes_book(v2, monkeypatch, t
     # on Gate the frame and exit bars come the shard's way (RCA-2026-10-10-L)
     import numpy as np
 
-    frame = msw.bars_from_1m(_minutes(5_000), "1h")
+    import pandas as pd
+
+    now = pd.Timestamp.now("UTC").tz_localize(None).floor("h")
+    n = 24 * 40
+    px = 100 + np.sin(np.arange(n) / 7.0) * 3
+    frame = pd.DataFrame({"Date": [now - pd.Timedelta(hours=n - k) for k in range(n)],
+                          "Open": px, "High": px * 1.01, "Low": px * 0.99,
+                          "Close": px, "Volume": 1.0})
     no_fine = (np.zeros(0, "int64"), np.zeros(0), np.zeros(0))
     monkeypatch.setattr(msw, "gate_v2_bars", lambda sym, tf: (frame, no_fine, 0))
-    got = msw.run_pair("TEST_USDT", "1h", signals=["mom6"])
+    got = msw.run_pair("TEST_USDT", "1h", signals=["mom6"], days=30)
     assert asked == ["TEST_USDT"], "the book is read once for the pair"
     assert seen and all(b is not None for b in seen)
     for r in got.get("rows") or []:
@@ -262,3 +269,62 @@ def test_gate_v2_bars_reads_the_frames_own_candles_and_the_finest_bars_once(monk
     df, fine, n5 = msw.gate_v2_bars("TEST_USDT", "1h")
     msw.gate_v2_bars("TEST_USDT", "4h")
     assert df is frame and n5 == 722 and calls == ["TEST_USDT"]
+
+
+def test_on_gate_one_pair_is_measured_over_githubs_window_with_the_rows_recent_counts(
+        v2, monkeypatch, tmp_path):
+    """RCA-2026-10-10-L, second half: `gate_v2_bars` hands back a year of 1h
+    candles, and run_pair measured all of it — rows from Aug 2025 under a
+    30-day v2 store — and wrote no t15/t1..t4, so a pair re-measured here
+    vanished from the rooms that switch on by them. The shard's window
+    (DAYS + 300 lead-in bars, trades only after the lead-in) and its recent
+    counts, here too."""
+    import numpy as np
+    import pandas as pd
+
+    import tradingagents.auto_trader as at
+    from tradingagents import backtest_report as br, cost_store
+    from tradingagents.dataflows import exchange as fx
+
+    monkeypatch.setenv("TA_VENUE", "gate")
+    for name in ("HOME", "STATES", "ROWDIR", "COSTS"):
+        monkeypatch.setattr(msw, name, tmp_path / name.lower())
+        (tmp_path / name.lower()).mkdir()
+    monkeypatch.setattr(fx, "funding_history", lambda *a, **k: [])
+    monkeypatch.setattr(fx, "liquidation_move_pct", lambda *a, **k: 4.5)
+    monkeypatch.setattr(fx, "book_cost", lambda *a, **k: {"slippage": 0.0003})
+    monkeypatch.setattr(at, "taker_fee", lambda *a, **k: 0.00075)
+    monkeypatch.setattr(msw, "charge_cost", lambda *a, **k: (0.0003, []))
+    monkeypatch.setattr(msw, "deployed_combos", lambda: set())
+    monkeypatch.setattr(cost_store, "book_for", lambda *a, **k: cost_store.empty())
+    now = pd.Timestamp.now("UTC").tz_localize(None).floor("h")
+    n = 24 * 400
+    dates = [now - pd.Timedelta(hours=n - k) for k in range(n)]
+    px = 100 + np.sin(np.arange(n) / 7.0) * 3
+    year = pd.DataFrame({"Date": dates, "Open": px, "High": px * 1.01,
+                         "Low": px * 0.99, "Close": px, "Volume": 1.0})
+    no_fine = (np.zeros(0, "int64"), np.zeros(0), np.zeros(0))
+    monkeypatch.setattr(msw, "gate_v2_bars", lambda sym, tf: (year, no_fine, 0))
+    seen = []
+    real = at.backtest_strategy
+
+    def spy(key, df, *a, **k):
+        seen.append((len(df), k.get("start_at"), k.get("recent_windows")))
+        # a trade still open at the window's end is COUNTED, as GitHub counts
+        # it and the trade list shows it (BTC 1h mom6: the row said 72 trades,
+        # its list 73 with the open one) — no resume on Gate's full measure
+        assert k.get("resume") is None, "Gate v2 is measured in full, never resumed"
+        return real(key, df, *a, **k)
+    monkeypatch.setattr(at, "backtest_strategy", spy)
+    got = msw.run_pair("TEST_USDT", "1h", signals=["mom6"], days=30)
+    n_df, start_at, recents = seen[0]
+    assert start_at == 300, "no trade inside the lead-in"
+    assert 30 * 24 - 1 <= n_df - 300 <= 30 * 24, \
+        "the window and its lead-in, never the year"
+    assert recents and set(recents) == set(br.SHORT_DAYS)
+    rows = got["rows"]
+    assert rows, "a sine wave trades"
+    for r in rows:
+        assert 30 * 24 - 1 <= r["bars"] <= 30 * 24 and r["days"] <= 30
+        want = ["t15", "w15", "p15"] + [k for d in br.SHORT_DAYS for k in br.recent_keys(d)]
+        assert list(r)[-len(want):] == want, "at the END of the row, as GitHub writes them"

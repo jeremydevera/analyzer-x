@@ -200,6 +200,7 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
   paths were never moved).
 * Guards: `tests/test_the_window_reads_the_minutes_book.py::test_on_gate_a_window_never_rebuilds_bars_from_the_minute_store`,
   `tests/test_backtest_v2_downloads_its_own_candles.py::test_gate_v2_bars_reads_the_frames_own_candles_and_the_finest_bars_once`,
+  `tests/test_backtest_v2_downloads_its_own_candles.py::test_on_gate_one_pair_is_measured_over_githubs_window_with_the_rows_recent_counts`,
   `tests/test_sep27_ml.py::test_an_update_that_could_not_measure_says_why_never_an_index_error`.
 
 **SAW** — `[pairbt_v2] BTC 1h · mom6: 0 row(s), 0 indexed · measured, but
@@ -215,9 +216,19 @@ run_pair itself: `BTC_USDT: 1m frame has 3611 missing minute(s) between
    to Oct 10 6:44am (the last minute equal to Gate's own: open 82769.1,
    close 82764.2), with the Oct 01-03 hole Gate cannot fill.
 3. ~5:40am — UPDATE THIS BACKTEST on BTC 1h: 0 rows, an index error.
-4. After the fix — the same press measures 297 rows from Gate's 1h candles
-   with the finest exit bars, each carrying `venue: gate`, the 0.075% fee
-   and the cost check's counts.
+4. After the first fix — the same press measured 297 rows from Gate's 1h
+   candles with the finest exit bars, each carrying `venue: gate`, the
+   0.075% fee and the cost check's counts — but over the whole YEAR Gate
+   hands back (rows of 416 days in a 30-day store), with no t15 / t1..t4,
+   and the trade list of #(BTC 1h mom6 0.3/2/8) read 113 trades against
+   the row's 112.
+5. ~6:20am, aligned with the shard: the last 30 days with 300 lead-in bars,
+   trades only after the lead-in, the 15-day and 1-4-day counts at the end
+   of the row, and no `resume` (GitHub counts a trade still open at the
+   window's end; `resume={}` handed it to a continuation instead — the row
+   said 72 trades, its list 73). The next press: 271 rows, 719 bars, 29
+   days, and 7 of 7 rows checked reproduce their trade list exactly
+   (188 / 87 / -$23.88 both ways).
 
 **ROOT CAUSE** — Gate's minute history has a hole every month that MEXC's
 never had, and the PC's v2 paths assumed whole minutes.

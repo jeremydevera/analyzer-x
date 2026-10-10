@@ -138,6 +138,99 @@ saw "no changes" on GitHub and was right to.
 DO NOT commit the operator's private notes (`.obsidian/`, `*.md` scratch files
 in the repo root) — those are theirs, not the project's.
 
+## The app trades on Gate, through one door (MANDATORY — Oct 10, 2026)
+
+The operator, `Oct 10, 2026`: *"okay switch to gate from now on, this means
+every logic in my app will be gate instead of mexc, like the backtest, the
+coins, downloading candles, updating the backtest to have cost using 1 min
+candle, the forecast room, everything"*. The asks behind it: *"can the
+backtest use other api to know their past cost like okx?"*, *"so for rate
+limit which is better mexc or gate?"* — and the month-long goal, *"my goal is
+to align it with practice so I know exactly how much will i earn"*. Spec,
+with every fact measured on Gate first:
+`docs/superpowers/specs/2026-10-10-switch-to-gate-design.md`.
+
+**"MEXC" in the older rules of this file now reads "the exchange".** Every
+rule above and below was bought on MEXC and still holds; only the venue
+changed. Where a rule names a MEXC number (code 510, 20 asks per 2 s, a 4.50%
+liquidation at 20x), Gate's own number applies: HTTP 429 and
+`TOO_MANY_REQUESTS`, 200 keyless asks per 10 s per endpoint, the contract's
+own `maintenance_rate`.
+
+* **One switch.** `tradingagents/venue.py`: `TA_VENUE`, else
+  `~/.tradingagents/venue.json` (`{"venue": "gate", "since": ...}`), else
+  `mexc` — a restart before a cutover must never flip production into the
+  other exchange's folders. `venue.name()` is the word every screen and every
+  message prints; never write "MEXC" or "Gate" as a literal in a message
+  (`tests/test_the_backend_names_the_exchange.py`,
+  `tests/test_the_screen_names_the_exchange.py` — the web app reads
+  `/api/venue` through `useVenueName`).
+* **One door.** Every caller imports `tradingagents.dataflows.exchange as fx`,
+  which hands each name to `gate_futures` or `mexc_futures` at CALL time.
+  Never import either adapter directly
+  (`tests/test_one_door_to_the_exchange.py`). Errors are the neutral
+  `exchange_errors` classes.
+* **What a coin IS comes from the venue's list, never its name.**
+  `venue.kind(sym)` reads Gate's `contract_type` (588 crypto, 402 stocks, 18
+  indices, 12 metals, 4 forex, 3 commodities of 1,027): Gate names stocks
+  `AAPL_USDT`, so a `STOCK` suffix test finds none of them. The daytime rule,
+  the asset filter and room stats all ask `kind()`.
+* **Ids carry the venue.** `row_code(..., venue=)` hashes `|venue=gate`, so a
+  Gate row can never equal its MEXC twin, and every MEXC id is unchanged.
+  `cloud_sweep.land_rows` refuses a row measured on another venue (a row with
+  no venue is MEXC's), and the collector skips any run created before
+  `venue.since()` without downloading it (RCA-2026-10-10-C).
+* **The cutover moved MEXC aside; nothing was deleted.**
+  `python -m tradingagents.venue_switch gate` ran `Oct 10, 2026 3:56am`: 79
+  folders and files renamed into
+  `~/.tradingagents/archive-mexc-2026-10-10-0356/` (summary in its
+  `switch.json`), 91 open practice trades closed at MEXC's last price, every
+  room's MEXC rows switched off with the reason in the deploy log (3,075 rows
+  across 13 rooms), the 992 Room strategies rule sets carried across as RULES
+  ONLY (`room_strategies.carry_rule_sets`, never MEXC's trades). Moving the
+  folder back and writing `mexc` reverses it. It refuses while a job runs —
+  judged by the job's own status and the indexer's run lock, never a pid
+  (RCA-2026-10-10-B).
+* **GitHub runs Gate.** Every workflow sets `TA_VENUE: gate` in its `env`
+  (`tests/test_every_workflow_names_the_exchange.py`); `sweep.yml` has no
+  free input, so the venue is never an input.
+* **Minutes for v2 exits:** Gate serves only 10,000 recent points per bar
+  size over REST (1m = 6.9 days), so `backtest_report.fine_bars` joins the
+  monthly 1m archive (`download.gatedata.org`), REST 5m for the gap, and REST
+  1m for the last week. A 5-minute bar settles an exit the way a minute does;
+  both prices in one is SL and counted in `unclear`.
+* **EVERY TRADE PAYS THE ORDER BOOK OF ITS OWN MINUTE.** `costs.yml` (daily,
+  both accounts, `costs_daily` ticks it after 3:00 UTC, backfilling 30 days)
+  replays Gate's hourly order-book files (`book_history`: `make` ADDS, `take`
+  SUBTRACTS — 41,387 of 41,387 levels matched the next snapshot) into one
+  reading per minute at the runner's $100, saved as release assets per coin
+  per month on each account (`cost_store`). A backtest (`backtest_strategy(
+  book=)`) and the watcher replay (`replay_shard`) ask the RUNNER'S OWN cost
+  rule of each entry minute — `auto_trader.cost_verdict` through
+  `minute_verdict`, one function, so the measurement can never refuse by a
+  second rule — count a refusal as `gate_blocked` and take no trade, and
+  charge entry and exit at their own minutes' fills. A minute with no
+  reading in the hour before it pays the coin's flat cost and is counted
+  `cost_unmeasured`, never hidden. A costs run that runs out of time is
+  RESUMED by the next press: days a coin's month already holds are skipped
+  (RCA-2026-10-10-D).
+* **Gate's fee is 0.075% taker on every contract** (`fee_floor()`), against
+  MEXC's 0.02% floor. Funding cycles are 8 h, 4 h or 1 h per contract.
+* **Real money on Gate is built and shut.** Orders, the resting stop (Gate
+  `price_orders`), positions, history, wallet and the connection test answer
+  in the runner's shapes behind `gate_credentials`; without a key that passes
+  `preflight()` every real-money path refuses by name. No room had a
+  real-money row at the switch, and the practice account needs no key.
+* **The live feed speaks each exchange's protocol** (`live_price.
+  protocol_for_venue`); an entry still reads a CLOSED candle.
+
+Guards: `tests/test_gate_*.py`, `tests/test_venue_switch.py`,
+`tests/test_book_history.py`, `tests/test_cost_verdict_is_the_runners.py`,
+`tests/test_backtest_pays_the_minute.py`, `tests/test_cost_store.py`,
+`tests/test_costs_daily.py`, `tests/test_costs_shard_resumes.py`,
+`tests/test_the_replay_shard.py` (the per-minute replay). `conftest.py` pins
+`TA_VENUE=mexc` for every test, so a Gate test names Gate itself.
+
 ## Every GitHub job uses ALL 40 machines — both accounts (MANDATORY — Oct 02, 2026)
 
 The operator, `Oct 02, 2026 3:52pm`: *"moving forward i want 40 machines to be

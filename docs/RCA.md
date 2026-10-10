@@ -208,8 +208,12 @@ rebuild of it is already running (715 of 953)`.
    they wait.
 3. Without the fix: the rebuild swaps in at ~10:25am holding 953 pairs, and
    876 stay unfiled until the next collect after Oct 11, 2026 4:31am.
-4. After the fix: a finished rebuild calls `file_after_collect` once;
-   today's 876 are filed by hand when pid 10676 ends (it runs the old code).
+4. After the fix: a finished rebuild calls `file_after_collect` once.
+   9:31am — the rebuild swapped in (953 pairs, 5,041,604 rows), and the
+   first ask after it answered "being written by another process": the
+   rebuild's own index builds held the file. So the call now WAITS for the
+   file to be free (up to 3 hours, a minute at a time) before it asks; by
+   hand the same ask started a fresh rebuild of all 1,829 pairs (pid 19568).
 
 **ROOT CAUSE** — the hand-off from collect to index assumed one collect at
 a time, and two accounts now finish within minutes of each other.

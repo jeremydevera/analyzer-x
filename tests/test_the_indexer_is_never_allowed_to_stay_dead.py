@@ -285,8 +285,16 @@ def test_pairs_that_arrived_during_a_rebuild_are_filed_when_it_ends(monkeypatch,
     monkeypatch.setattr(ri, "rebuild", lambda **k: {"rebuilt": True, "pairs": 953})
     monkeypatch.setattr(ri, "file_after_collect",
                         lambda: asked.append(1) or "filed 876 pair(s) into the table")
+    # the rebuild's own index builds hold the file for a while after it
+    # swaps in (9:31am: "being written by another process") — it WAITS for
+    # them, never answers "wait for the table" and leaves
+    busy = ["the row index (rows.db) is being written by another process",
+            "the row index (rows.db) is being written by another process", ""]
+    monkeypatch.setattr(ri, "write_available", lambda *a, **k: busy.pop(0))
+    slept = []
+    monkeypatch.setattr(ri, "_after_rebuild_pause", lambda s: slept.append(s))
     assert ri.main(["--rebuild"]) == 0
-    assert asked == [1]
+    assert asked == [1] and len(slept) == 2
     assert "876" in capsys.readouterr().out
     asked.clear()
     monkeypatch.setattr(ri, "rebuild", lambda **k: {"rebuilt": False, "why": "locked"})

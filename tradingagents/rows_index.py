@@ -5488,6 +5488,15 @@ def spawn_indexer() -> int | None:
     return proc.pid
 
 
+AFTER_REBUILD_WAITS = 180      # minutes a finished rebuild waits for its index builds
+
+
+def _after_rebuild_pause(seconds: float) -> None:
+    import time as _t
+
+    _t.sleep(seconds)
+
+
 def file_after_collect() -> str:
     """Bring THIS store's table up to its pair files after a cloud collect,
     and say what was done — one sentence the collect's note carries.
@@ -5811,8 +5820,15 @@ def main(argv: list | None = None) -> int:
         # PAIRS THAT LANDED WHILE IT RAN (RCA-2026-10-10-O): a rebuild files
         # the pair files that existed when it started; a second collect's
         # pairs were told "wait for the table" and nothing else would file
-        # them (v2 has no indexer). Once, after a SUCCESS — never a loop.
+        # them (v2 has no indexer). Once, after a SUCCESS — never a loop —
+        # and only once the file is free: the rebuild's own index builds
+        # hold it for a while after the swap (9:31am, "being written by
+        # another process"), and asking then would leave them waiting again.
         try:
+            for _ in range(AFTER_REBUILD_WAITS):
+                if not write_available():
+                    break
+                _after_rebuild_pause(60)
             print(f"[rows-index] after the rebuild: {file_after_collect()}",
                   flush=True)
         except Exception as exc:                               # noqa: BLE001

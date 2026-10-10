@@ -44,6 +44,7 @@ from pathlib import Path
 from tradingagents import strategy_keys as sk
 from tradingagents import watcher_policy as wp
 from tradingagents import daytime_rule as dr
+from tradingagents import venue as _venue  # the exchange's name (Oct 10, 2026)
 
 HOME = Path(os.path.expanduser("~/.tradingagents"))
 STATE = HOME / "strategy_watcher.json"
@@ -688,7 +689,7 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
             # nothing can trade it: no candles, no book, no price — switched
             # off at once, whatever its win rate
             drop.append((slot, meta["id"], len(out)))
-            out.append(_d(now, st, "off", meta, f"MEXC no longer lists {sym} — "
+            out.append(_d(now, st, "off", meta, f"{_venue.name()} no longer lists {sym} — "
                           f"it cannot trade"))
             continue
         fresh, readable = _fresh_row(meta, now, cfg)
@@ -724,7 +725,7 @@ def _off_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> list[str
             rid = _row_id(settings, key, sym, m) if _meta_of_key(key, sym) else key
             drop.append((f"{key}|{sym}", rid, len(out)))
             out.append(_d(now, st, "off", {**m, "id": rid}, f"one of YOUR practice rows: "
-                          f"MEXC no longer lists {sym} — it cannot trade"))
+                          f"{_venue.name()} no longer lists {sym} — it cannot trade"))
             continue
         # THE ROOM'S TP RULE FIRST, whichever backtest the row was armed from
         # (Oct 06, 2026: Main ran 16 hand-picked practice rows whose stop was
@@ -994,7 +995,7 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
         # its OWN count, never inside "fail one": these passed the room's line.
         # Rows counted, coins named — ten at most, the line is one line
         names = sorted(dead)
-        dead_why = (f" · {n_dead:,} skipped: MEXC no longer lists their coin ("
+        dead_why = (f" · {n_dead:,} skipped: {_venue.name()} no longer lists their coin ("
                     + ", ".join(names[:10])
                     + (f" and {len(names) - 10:,} more" if len(names) > 10 else "") + ")")
     # THE DAYTIME RULE (Oct 07, 2026; room setting `daytime_rule`): of the rows

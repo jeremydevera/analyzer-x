@@ -104,7 +104,7 @@ ASSUMPTIONS = (
     "a real fill can be worse than the book (fill_slippage)",
     "the live capital ceiling is not applied — this replays the demo book, "
     "which has no wallet; a live account can also be refused for funds",
-    "nobody closes a position by hand at MEXC — the only exits are the two "
+    "nobody closes a position by hand at the exchange — the only exits are the two "
     "prices and liquidation",
     "a signal with no recorded book reading within three days is refused as "
     "'book unknown', the way the runner refuses a book it cannot read — it is "

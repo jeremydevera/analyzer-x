@@ -31,6 +31,7 @@ import math
 import os
 from collections.abc import Callable, Sequence
 from html import escape as html_escape
+from tradingagents import venue as _venue  # the exchange's name (Oct 10, 2026)
 
 # Every entry rule the engine implements. Seven shipped originally; fifteen
 # were added 2026-08-19 when the operator asked why Fibonacci, support and
@@ -963,9 +964,9 @@ def render(payload: dict, *, title: str, headline: str = "",
         f"{payload['base']:g} USDT base ({payload['base'] * payload['lev']:g} "
         f"notional). Candles fetched <b>{payload['fetched']}</b> for the past "
         f"{payload['days_asked']} days &mdash; measured depth: {hist}. "
-        f"Worst-case fills: stop checked before target inside a bar, MEXC "
+        f"Worst-case fills: stop checked before target inside a bar, {_venue.name()} "
         f"taker fee plus 0.03%/side slippage. <b>Liquidation modelled</b> from "
-        f"MEXC's published maintenance margin ({liqs}), so a stop wider than "
+        f"{_venue.name()}'s published maintenance margin ({liqs}), so a stop wider than "
         f"that is marked STOP UNREACHABLE and excluded from survivors. Rows "
         f"under {payload.get('min_trades', MIN_TRADES)} trades dropped "
         f"(RECOMMENDED needs {payload.get('rec_min_trades', 100)}+). "

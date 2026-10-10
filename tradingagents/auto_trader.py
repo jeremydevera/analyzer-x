@@ -37,6 +37,7 @@ from pathlib import Path
 import pandas as _pd
 
 from tradingagents import live_price, portable, shared_market
+from tradingagents import venue as _venue  # the exchange's name (Oct 10, 2026)
 
 logger = logging.getLogger(__name__)
 
@@ -2905,7 +2906,7 @@ def liquidation_warning(symbol: str, pos: dict, venue: dict) -> dict | None:
             "stop": sl, "liquidation": liq,
             "stop_pct": round(stop_at, 5), "liquidation_pct": round(room, 5),
             "why": (f"the stop at {sl:.6g} is PAST the venue's liquidation "
-                    f"price {liq:.6g} — MEXC would close this position and "
+                    f"price {liq:.6g} — {_venue.name()} would close this position and "
                     f"take the whole margin ({room:.2%} from entry) before "
                     f"the {stop_at:.2%} stop could fire")}
 
@@ -5649,9 +5650,9 @@ def _rest_bracket(symbol: str, pos: dict, *, fx, partial: bool = False) -> bool:
                            "why": "placed but not resting on the exchange"})
             return False
         logger.info(
-            "BRACKET verified resting on MEXC for %s position %s: TP %.6g / "
+            "BRACKET verified resting on %s for %s position %s: TP %.6g / "
             "SL %.6g — exits fire on the exchange even if this process dies",
-            symbol, pos.get("position_id"), pos["tp"], pos["sl"])
+            _venue.name(), symbol, pos.get("position_id"), pos["tp"], pos["sl"])
         return True
     except Exception as exc:
         pos["bracket"] = False
@@ -6990,9 +6991,9 @@ def adopt_orphans(settings: dict, state: dict, *, fx, dry: bool) -> None:
                     "dry": False, "bracket": False}
                 logger.error(
                     "ORPHAN ADOPTED: %s %s (vol %s, entry %.6g) was open on "
-                    "MEXC with no book entry — now tracked under %s and "
+                    "%s with no book entry — now tracked under %s and "
                     "being bracketed.", symbol,
-                    "LONG" if side > 0 else "SHORT", vol, entry, key)
+                    "LONG" if side > 0 else "SHORT", vol, entry, _venue.name(), key)
                 append_ledger({"symbol": symbol, "action": "orphan_adopted",
                                "strategy": key, "vol": vol, "entry": entry})
                 _rest_bracket(symbol, st["position"], fx=fx)
@@ -7356,9 +7357,9 @@ def run_cycle(*, fx=None) -> None:
             if any(t in msg.lower() for t in ("429", "too many", "rate limit",
                                               "510", "request frequency")):
                 logger.warning(
-                    "RATE LIMITED by MEXC while scanning %s — skipping this "
+                    "RATE LIMITED by %s while scanning %s — skipping this "
                     "cycle; the next poll retries automatically. Persistent "
-                    "rate limits mean too many coins/timeframes are enabled.",
+                    "rate limits mean too many coins/timeframes are enabled.", _venue.name(),
                     symbol)
                 append_ledger({"symbol": symbol, "action": "rate_limited",
                                "why": msg})
@@ -7667,7 +7668,7 @@ def _log_what_woke_us() -> None:
     if personal:
         kinds = sorted({str(e.get("channel", "")).rsplit(".", 1)[-1]
                         for e in personal})
-        parts.append(f"MEXC pushed {len(personal)} account event(s): "
+        parts.append(f"{_venue.name()} pushed {len(personal)} account event(s): "
                      + ", ".join(kinds))
     if parts:
         logger.info("woken by the live feed — %s", " · ".join(parts))

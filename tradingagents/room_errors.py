@@ -42,14 +42,16 @@ _LINE = re.compile(r"^([A-Z][a-z]{2} \d{2}, \d{4} \d{1,2}:\d{2}[ap]m) (\w+) (.*)
 
 # ONE table, in the order tried: the first pattern that matches names the line
 ERROR_KINDS = (
-    ("rate_limit", "MEXC said too many requests",
-     re.compile(r"code.?=?\s?510\b|Requests are too frequent", re.I)),
+    # MEXC's "code 510 / Requests are too frequent" and Gate's HTTP 429
+    # "TOO_MANY_REQUESTS" (Oct 10, 2026, the move to Gate) are one kind
+    ("rate_limit", "The exchange said too many requests",
+     re.compile(r"code.?=?\s?510\b|Requests are too frequent|TOO_MANY_REQUESTS|\b429\b", re.I)),
     ("book_unreadable", "Order book could not be read",
      re.compile(r"order book could not be read", re.I)),
     ("no_price", "No live price", re.compile(r"no live price", re.I)),
     ("cycle_failed", "A check failed", re.compile(r"cycle failed", re.I)),
     ("exception", "Program error", re.compile(r"Traceback|\bException\b|\w+Error\b")),
-    ("venue_error", "MEXC refused", re.compile(r"\bcode[ =]\d{3,5}\b", re.I)),
+    ("venue_error", "The exchange refused", re.compile(r"\bcode[ =]\d{3,5}\b", re.I)),
 )
 SAFETY_KINDS = (
     # both cost checks: the one before the order (LIQUIDITY) and the second

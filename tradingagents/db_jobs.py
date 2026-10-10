@@ -24,6 +24,7 @@ import time
 from pathlib import Path
 
 from tradingagents import capacity as cap, portable
+from tradingagents import venue as _venue  # the exchange's name (Oct 10, 2026)
 
 
 def _sweep_days() -> int:
@@ -913,7 +914,7 @@ def live_symbols(max_age_s: float = 300.0):
     try:
         got = {str(r["symbol"]) for r in fx.list_contracts() if r.get("symbol")}
     except Exception as exc:                                   # noqa: BLE001
-        print(f"[download] could not list MEXC contracts: "
+        print(f"[download] could not list {_venue.name()} contracts: "
               f"{type(exc).__name__}: {str(exc)[:80]}", flush=True)
         c["failed_at"] = now
         return None
@@ -1392,7 +1393,7 @@ def _run_download(spec: dict, kind: str = "download") -> None:
                     # run can ever fetch it and it must not be queued again
                     delisted.append(f"{c} {tf}")
                     print(f"[download] {fmt_when(time.time())} {c} {tf} is "
-                          f"DELISTED on MEXC — skipped, not counted as an "
+                          f"DELISTED on {_venue.name()} — skipped, not counted as an "
                           f"error", flush=True)
                 else:
                     # LISTED, and the venue serves no candles for this pair.

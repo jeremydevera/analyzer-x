@@ -46,6 +46,7 @@ import time
 from pathlib import Path
 
 from tradingagents import forecast_rules as fr, forecast_v2 as f2
+from tradingagents import venue as _venue  # the exchange's name (Oct 10, 2026)
 
 MONTHS_BACK = 3
 WRITE_RULE = "wr=70,trades=20,tp=any,windows=15|30"      # the loosest base rule set, every shape
@@ -555,7 +556,7 @@ def _dispatch_replays(st: dict, start: str, now: float) -> tuple[dict, dict, lis
         else:
             coins = market()
             if not coins:
-                raise RuntimeError("MEXC listed no live contract to deal between the accounts")
+                raise RuntimeError(f"{_venue.name()} listed no live contract to deal between the accounts")
             piles = dict(zip(ready, cs.split_coins(coins, len(ready)), strict=False))
         plan = {"start": start, "day": day, "piles": piles, "runs": {}, "tries": {}, "lost": [],
                 "refused": refused}

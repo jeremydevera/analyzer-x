@@ -82,7 +82,8 @@ def test_errors_are_grouped_refusals_are_counted_and_a_retired_room_has_no_row(r
     assert room["errors"] == 3 and room["safety"] == {"cost_gate": 2, "chase": 1}
     by = {g["kind"]: g for g in r["rows"]}
     assert by["cycle_failed"]["count"] == 2, "the same failure twice is one row, counted"
-    assert by["rate_limit"]["label"] == "MEXC said too many requests"
+    # the exchange is named by the setting, never spelled (Oct 10, 2026)
+    assert by["rate_limit"]["label"] == "The exchange said too many requests"
     assert r["events"] == sum(g["count"] for g in r["rows"]) == 3
 
 
@@ -390,3 +391,13 @@ def test_errors_sits_under_auto_trade_and_the_screen_asks_the_server():
     assert "api.roomErrors({ room, kind, hours, page })" in comp
     assert not re.search(r"d\.rows\.filter\(", comp), "filter where the data is"
     assert "fmtWhen" in comp and "new Date(" not in comp
+
+
+def test_gates_too_many_requests_is_the_same_kind_as_mexcs():
+    """Gate answers a rate limit with HTTP 429 TOO_MANY_REQUESTS where MEXC
+    said code 510 (Oct 10, 2026, the move to Gate) — one row on the tab."""
+    from tradingagents import room_errors as re_
+
+    line = ("ERROR scan BTC_USDT failed: 429 TOO_MANY_REQUESTS: slow down "
+            "(https://api.gateio.ws/api/v4/futures/usdt/candlesticks)")
+    assert re_.classify("ERROR", line)[1] == "rate_limit"

@@ -45,6 +45,7 @@ import time
 from pathlib import Path
 
 from tradingagents import market_sweep as msw, portable
+from tradingagents import venue as _venue  # the exchange's name (Oct 10, 2026)
 
 MONTH_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 KINDS = ("candles", "results", "delisted")
@@ -376,7 +377,7 @@ def delisted_report(index: dict | None = None, live=None) -> dict:
         return {"known": False, "coins": [], "candle_pairs": 0,
                 "candle_bytes": 0, "result_pairs": 0, "result_rows": 0,
                 "result_bytes": 0, "bytes": 0,
-                "why": "MEXC's contract list could not be read just now, so "
+                "why": f"{_venue.name()}'s contract list could not be read just now, so "
                        "nothing can be called delisted — try again in a minute"}
     live = {str(s) for s in live}
     live_coins = {s.rsplit("_", 1)[0] for s in live}

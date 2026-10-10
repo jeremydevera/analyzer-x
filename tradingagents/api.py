@@ -24,6 +24,7 @@ from pydantic import BaseModel
 
 from tradingagents import stores as _stores
 from tradingagents.slow_cache import BackgroundValue
+from tradingagents import venue as _venue  # the exchange's name (Oct 10, 2026)
 
 # `logger.exception(...)` was called at line 3693 with no `logger` anywhere in
 # this module (commit aa29e8f6571c, Sep 22, 2026). It sits INSIDE the portfolio
@@ -4852,7 +4853,7 @@ def _store_completeness(store=None) -> dict:
     try:
         contracts = [r["symbol"] for r in fx.list_contracts()]
     except Exception as exc:
-        payload = {"ok": False, "why": f"could not list MEXC contracts: {str(exc)[:80]}",
+        payload = {"ok": False, "why": f"could not list {_venue.name()} contracts: {str(exc)[:80]}",
                    "contracts": None, "wanted": None, "stored": None,
                    "missing": [], "complete": None}
         c.update(at=now - 270, payload=payload)
@@ -4907,7 +4908,7 @@ def _download_resolution(row: dict) -> tuple[bool | None, str]:
         # resolved as it will ever be — and it says WHY rather than pretending
         return True, ("resolved — " + ", ".join(gone)
                       + f" {'is' if len(gone) == 1 else 'are'} DELISTED on "
-                        f"MEXC and cannot be fetched by any run")
+                        f"{_venue.name()} and cannot be fetched by any run")
     if unnamed:
         comp = _store_completeness()
         if not comp["ok"]:

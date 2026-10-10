@@ -108,7 +108,7 @@ def emergencies(rows: list[dict]) -> list[dict]:
             if sym in held:
                 bad.append({"ts": r.get("ts"), "what": "a SECOND real entry "
                             "on a coin already holding a real position — "
-                            "MEXC nets them into one (the PROVE class); the "
+                            "the exchange nets them into one (the PROVE class); the "
                             "one-position rule should make this impossible",
                             "symbol": sym,
                             "why": f"{held[sym].get('strategy')} still held "

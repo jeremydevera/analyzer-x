@@ -344,12 +344,28 @@ def _red(st: dict, phase: str, stat: dict, now: float) -> bool:
     if not bad:
         return False
     redo = st.setdefault("redo", {}).setdefault(phase, {})
+    # NOT AT ONCE (RCA-2026-10-10-Q): a run that failed on GitHub's request
+    # budget, started again the same minute, fails again in the same storm
+    # and gives the day up. A red step waits RETRY_S before its second try.
+    waits = st.setdefault("red_seen", {})
     for repo, s in bad.items():
         why = (f"{phase} run {st[key][repo]}{_on(st, repo)} ended {s['conclusion']} "
                f"({', '.join(s['failed'][:3]) or 'no machine named'})")
         if redo.get(repo, 0) >= RETRIES:
             _give_up(st, f"{why}, on every try")
             return True
+    from tradingagents.positions_view import fmt_when
+
+    first = min(float(waits.setdefault(str(st[key][repo]), now)) for repo in bad)
+    if now - first < RETRY_S:
+        st["why"] = "; ".join(
+            f"{phase} run {st[key][repo]}{_on(st, repo)} ended {s['conclusion']}"
+            for repo, s in bad.items()) + f" — started again at {fmt_when(first + RETRY_S)}"
+        return True
+    for repo, s in bad.items():
+        why = (f"{phase} run {st[key][repo]}{_on(st, repo)} ended {s['conclusion']} "
+               f"({', '.join(s['failed'][:3]) or 'no machine named'})")
+        waits.pop(str(st[key][repo]), None)
         inputs = (_replay_inputs(st["write_rule"], st["piles"].get(repo)) if phase == "replay"
                   else _research_inputs(st, repo))
         wf = REPLAY_WF if phase == "replay" else RESEARCH_WF

@@ -172,6 +172,61 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-Q — today's Room strategies re-test was given up: a run that failed on GitHub's request limit was started again the same minute and failed again
+
+**CEO**
+
+* The Room strategies page was not re-tested on Gate today: its research
+  step failed twice, at Oct 10, 2026 9:18am and 9:20am, and the day was
+  given up.
+* Why: GitHub had run out of requests for that account for the hour, and
+  the re-test started the failed step again straight away — inside the same
+  hour, so it failed the same way.
+* What stops it now: a failed step waits 30 minutes before its one second
+  try, long enough for GitHub's budget to come back; today's re-test was
+  resumed from the research step.
+
+**DEV**
+
+* `tradingagents/room_strategies_daily.py` `_red` dispatched the redo in the
+  same `_step` that saw the red run; `RETRIES = 1`, so the second red ended
+  the day. Both research runs (38055155096, 38055163638) died on "Unable to
+  download artifact(s): API rate limit exceeded for installation".
+* Invariant broken: **a retry has to outlast the cause it retries** — an
+  hourly budget is not retried within the same minute.
+* Guard: `tests/test_room_strategies_retest_daily.py::test_a_red_run_is_started_again_once_then_the_day_is_given_up`
+  (now drives the 30-minute wait).
+
+**SAW** — `room strategies: idle | today's re-test was given up`; error
+`research: research run 38055155096 on jeremydevera ended failure (research
+(0, 1), research (0, 0), research (5, 0)), on every try`.
+
+**TIMELINE**
+
+1. Oct 10, 2026 ~9:00-9:30am — two Gate backtests, two replays, two costs
+   runs and the research run share each account's hourly request budget
+   (RCA-2026-10-10-N).
+2. 9:18am — research run 38054785141 / 38055155096 cannot download the
+   replay's results; started again at once.
+3. ~9:20am — the second try fails the same way; the day is given up.
+4. After the fix — a red step waits 30 minutes, then its one second try.
+   Today's state was set back to the research step, so it re-runs today.
+
+**ROOT CAUSE** — the retry was immediate while the failure it retried was
+an hourly budget.
+
+**WHY IT WAS NOT CAUGHT** — the retry test drove a red run and checked it
+was started again, never WHEN.
+
+**COST** — none in money; the Room strategies page keeps yesterday's
+re-test until today's resumed one lands.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_room_strategies_retest_daily.py::test_a_red_run_is_started_again_once_then_the_day_is_given_up`.
+
+---
+
 ## RCA-2026-10-10-P — every room would have sat empty on Gate for a day: the watcher counted the midnight pass on MEXC as today's
 
 **CEO**

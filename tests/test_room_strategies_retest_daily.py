@@ -380,10 +380,15 @@ def test_a_red_run_is_started_again_once_then_the_day_is_given_up(gh):
     run = st["replay_runs"]["pal/analyzer-x"]
     gh.status[run] = red
     rsd._step(st, AT_2AM + 600)
+    # NOT AT ONCE (RCA-2026-10-10-Q): Oct 10, 2026 the research run failed on
+    # GitHub's rate limit and was started again the same minute, inside the
+    # same storm — it failed again and the day was given up. It waits.
+    assert st["replay_runs"]["pal/analyzer-x"] == run and "again at" in st["why"]
+    rsd._step(st, AT_2AM + 600 + rsd.RETRY_S + rsd.POLL_S)
     new = st["replay_runs"]["pal/analyzer-x"]
     assert new != run and st["phase"] == "replay", "that account alone, started again"
     gh.status[new] = red
-    rsd._step(st, AT_2AM + 1200)
+    rsd._step(st, AT_2AM + 600 + 2 * (rsd.RETRY_S + rsd.POLL_S))
     assert st["phase"] == "idle" and "on every try" in st["error"]
 
 

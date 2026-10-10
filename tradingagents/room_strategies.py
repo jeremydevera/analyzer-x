@@ -158,6 +158,43 @@ def _kept_lines() -> list[dict]:
     return out
 
 
+def carry_rule_sets(src: Path, *, from_venue: str) -> int:
+    """Bring the kept winners' RULES across an exchange switch — never their
+    trades (Oct 10, 2026, the move to Gate).
+
+    A winner is a rule set: it belongs to no exchange. Its trades and its
+    prompt-4 months were measured on the old exchange's candles, so each comes
+    across with NO trades, `measured_at` 0 and empty months, and the first
+    daily re-test on the new exchange lays its own trades over every one
+    (`kept()` takes a re-test newer than the line). Its id, rules and the day
+    it was found stay. Returns how many were carried; a store that already
+    holds them carries nothing."""
+    src = Path(src)
+    if not src.exists() or store_path().exists():
+        return 0
+    first: dict = {}
+    latest: dict = {}
+    order: list = []
+    for line in src.read_text(encoding="utf-8").splitlines():
+        try:
+            w = json.loads(line)
+        except ValueError:
+            continue
+        if w["id"] not in first:
+            first[w["id"]] = w.get("found_at")
+            order.append(w["id"])
+        latest[w["id"]] = w
+    out = []
+    for i in order:
+        w = {k: v for k, v in latest[i].items() if k not in ("trades", "p4", "strat")}
+        out.append(json.dumps({**w, "found_at": first[i], "measured_at": 0,
+                               "trades": [], "carried_from": from_venue,
+                               "p4": {"months": [], "last15": {"corrected": None}}}))
+    path = store_path()
+    path.write_text("\n".join(out) + ("\n" if out else ""), encoding="utf-8")
+    return len(out)
+
+
 # ------------------------------------------------ the daily re-test's file
 LIST_NAME = "kept"          # research/p4/kept.json — the list GitHub re-tests every day
 

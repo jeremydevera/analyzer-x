@@ -422,3 +422,32 @@ def test_the_research_run_is_named_the_way_the_dispatcher_finds_it():
     assert f2d.title_of("research.yml", {"scenarios": "file:research/p4/kept.json", "output": "full",
                                          "source_run": 7}) == \
         "Watcher rules research · file:research/p4/kept.json · full · replay 7"
+
+
+def test_an_exchange_switch_carries_the_rule_sets_and_never_their_trades(tmp_path, monkeypatch):
+    """The move to Gate (Oct 10, 2026) archived the never-delete store with
+    the rest of MEXC's data. The 992 kept winners are RULES — they belong to
+    no exchange — but their trades were measured on MEXC's candles. So the
+    rules come across with NO trades, measured_at 0, and the first daily
+    re-test on Gate lays its own trades over every one of them."""
+    import json as _json
+
+    from tradingagents import room_strategies as rst
+
+    src = tmp_path / "old.jsonl"
+    old = {"id": "11823416", "cfg": {"window_days": 30, "tp_rule": "1.5x", "max_sl": 1.0},
+           "words": "70% wins", "deployable": False, "deploy_why": "x",
+           "found_at": 1790000000, "measured_at": 1791000000,
+           "trades": [[1, 2, 0.5], [3, 4, -0.2]],
+           "p4": {"months": [{"month": "2026-09"}], "last15": {"corrected": 12.0}}}
+    src.write_text(_json.dumps({**old, "measured_at": 1790500000}) + "\n"
+                   + _json.dumps(old) + "\n", encoding="utf-8")
+    monkeypatch.setenv("ROOM_STRATEGIES_HOME", str(tmp_path / "gate"))
+    n = rst.carry_rule_sets(src, from_venue="mexc")
+    assert n == 1
+    (w,) = rst.kept()
+    assert w["id"] == "11823416" and w["cfg"]["tp_rule"] == "1.5x"
+    assert len(w["trades"]) == 0 and w["measured_at"] == 0
+    assert w["found_at"] == 1790000000, "the day it was found stays"
+    assert w["p4"]["last15"]["corrected"] is None and w["carried_from"] == "mexc"
+    assert rst.carry_rule_sets(src, from_venue="mexc") == 0, "never twice"

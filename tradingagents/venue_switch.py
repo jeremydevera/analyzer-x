@@ -243,9 +243,20 @@ def switch(target: str, *, rooms=None, price_of=None, now: float | None = None,
         dst = arch / src.name
         os.replace(src, dst) if src.is_file() else shutil.move(str(src), str(dst))
         moved.append(src.name)
+    # 4b. the Room strategies' RULE SETS come across — rules belong to no
+    # exchange; their trades were measured on the old one's candles, so they
+    # come with none and the first daily re-test measures them here
+    try:
+        from tradingagents import room_strategies as _rst
+
+        carried = _rst.carry_rule_sets(
+            arch / "backtest" / "forecast_v2" / "room_strategies.jsonl",
+            from_venue=frm)
+    except Exception as exc:                                   # noqa: BLE001
+        carried = f"failed: {type(exc).__name__}: {exc}"
     summary = {"from": frm, "to": target, "at": now, "when": when,
                "archive": str(arch), "moved": moved, "closed": closed,
-               "switched_off": switched_off}
+               "switched_off": switched_off, "rule_sets_carried": carried}
     (arch / "switch.json").write_text(json.dumps(summary, indent=1),
                                       encoding="utf-8")
     # 5. last: the switch itself

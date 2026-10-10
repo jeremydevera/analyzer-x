@@ -153,3 +153,20 @@ def test_a_stale_job_pid_that_now_belongs_to_another_program_does_not_block(monk
     monkeypatch.setattr(dj, "status",
                         lambda k: {"running": k == "collect_v2", "pid": 77})
     assert vs._blockers() == ["the collect_v2 job (pid 77)"]
+
+
+def test_the_room_strategies_rule_sets_come_across_without_their_trades(home, monkeypatch, tmp_path):
+    import json as _json
+
+    from tradingagents import room_strategies as rst
+
+    (home / "backtest" / "forecast_v2").mkdir(parents=True)
+    (home / "backtest" / "forecast_v2" / "room_strategies.jsonl").write_text(_json.dumps({
+        "id": "55D32617", "cfg": {"window_days": 15, "tp_rule": "any", "max_sl": 2.0},
+        "words": "70% wins", "deployable": True, "found_at": 1, "measured_at": 2,
+        "trades": [[1, 2, 3.0]], "p4": {"last15": {"corrected": 5.0}}}) + chr(10), encoding="utf-8")
+    monkeypatch.setenv("ROOM_STRATEGIES_HOME", str(tmp_path / "gate_rs"))
+    got = vs.switch("gate", rooms=["main"], price_of=lambda s: 1.0, now=3)
+    assert got["rule_sets_carried"] == 1
+    (w,) = rst.kept()
+    assert w["id"] == "55D32617" and len(w["trades"]) == 0

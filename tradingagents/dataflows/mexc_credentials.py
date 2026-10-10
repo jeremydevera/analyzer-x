@@ -34,6 +34,19 @@ KEY_ENV = "MEXC_API_KEY"
 SECRET_ENV = "MEXC_API_SECRET"
 
 
+def _where() -> tuple:
+    """(file, key variable, secret variable, exchange name) of the exchange
+    the app trades (Oct 10, 2026, the move to Gate). Under MEXC the module's
+    own names, unchanged; under Gate its own file and variables, so a MEXC
+    key is never offered to Gate (gate_futures reads GATE_API_KEY)."""
+    from tradingagents import venue
+
+    if venue.current() == "gate":
+        return (STORE_DIR / "gate_credentials.json", "GATE_API_KEY",
+                "GATE_API_SECRET", "Gate")
+    return (STORE_PATH, KEY_ENV, SECRET_ENV, "MEXC")
+
+
 def fingerprint(value: str | None) -> str:
     """A safe-to-display stub: length plus the last four characters.
 
@@ -58,32 +71,34 @@ def save(api_key: str, api_secret: str) -> None:
     api_secret = (api_secret or "").strip()
     if not api_key or not api_secret:
         raise ValueError("both the API key and the secret are required")
+    store, _k, _s, name = _where()
     STORE_DIR.mkdir(parents=True, exist_ok=True)
     # Create with 0600 from the outset — writing then chmod'ing leaves a window
     # where the secret is world-readable.
-    fd = os.open(STORE_PATH, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    fd = os.open(store, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
         json.dump({"api_key": api_key, "api_secret": api_secret}, fh)
-    os.chmod(STORE_PATH, 0o600)
+    os.chmod(store, 0o600)
     load_into_env(override=True)
-    logger.info("MEXC credentials saved to %s (key %s)",
-                STORE_PATH, fingerprint(api_key))
+    logger.info("%s credentials saved to %s (key %s)",
+                name, store, fingerprint(api_key))
 
 
 def clear() -> bool:
     """Delete the stored pair and remove it from this process's environment."""
-    existed = STORE_PATH.exists()
-    STORE_PATH.unlink(missing_ok=True)
-    for var in (KEY_ENV, SECRET_ENV):
+    store, key_env, secret_env, name = _where()
+    existed = store.exists()
+    store.unlink(missing_ok=True)
+    for var in (key_env, secret_env):
         os.environ.pop(var, None)
     if existed:
-        logger.info("MEXC credentials cleared")
+        logger.info("%s credentials cleared", name)
     return existed
 
 
 def _read() -> dict:
     try:
-        with STORE_PATH.open(encoding="utf-8") as fh:
+        with _where()[0].open(encoding="utf-8") as fh:
             data = json.load(fh)
         return data if isinstance(data, dict) else {}
     except (OSError, json.JSONDecodeError):
@@ -109,10 +124,11 @@ def load_into_env(override: bool = True) -> bool:
     key, secret = data.get("api_key"), data.get("api_secret")
     if not (key and secret):
         return False
-    if override or not os.getenv(KEY_ENV):
-        os.environ[KEY_ENV] = key
-    if override or not os.getenv(SECRET_ENV):
-        os.environ[SECRET_ENV] = secret
+    _store, key_env, secret_env, _name = _where()
+    if override or not os.getenv(key_env):
+        os.environ[key_env] = key
+    if override or not os.getenv(secret_env):
+        os.environ[secret_env] = secret
     return True
 
 
@@ -134,7 +150,7 @@ def env_conflict() -> dict:
         try:
             for line in dotenv.read_text(encoding="utf-8").splitlines():
                 line = line.strip()
-                if line.startswith(f"{KEY_ENV}="):
+                if line.startswith(f"{_where()[1]}="):
                     val = line.split("=", 1)[1].strip().strip('"').strip("'")
                     if val and val != stored:
                         others.append(("project .env", fingerprint(val)))
@@ -151,11 +167,12 @@ def status() -> dict:
     rendering this dict.
     """
     stored = _read()
-    env_key = os.getenv(KEY_ENV, "").strip()
-    env_secret = os.getenv(SECRET_ENV, "").strip()
+    store, key_env, secret_env, name = _where()
+    env_key = os.getenv(key_env, "").strip()
+    env_secret = os.getenv(secret_env, "").strip()
     mode = None
-    if STORE_PATH.exists():
-        mode = stat.filemode(STORE_PATH.stat().st_mode)
+    if store.exists():
+        mode = stat.filemode(store.stat().st_mode)
     source = "none"
     if env_key and env_secret:
         source = "saved in app" if stored.get("api_key") == env_key else "shell environment"
@@ -164,8 +181,9 @@ def status() -> dict:
         "source": source,
         "key_fingerprint": fingerprint(env_key),
         "secret_fingerprint": fingerprint(env_secret),
-        "stored_on_disk": STORE_PATH.exists(),
-        "store_path": str(STORE_PATH),
+        "stored_on_disk": store.exists(),
+        "store_path": str(store),
+        "exchange": name,
         "file_mode": mode,
         "file_mode_ok": mode in ("-rw-------", None),
     }

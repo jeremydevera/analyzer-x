@@ -547,10 +547,19 @@ def funding_summary(symbol: str) -> dict:
 
 
 # ------------------------------------------------------- the private half
-# Orders, the resting stop, positions and the wallet need a Gate API key
-# (spec D12, phase 6). Until a key exists every one of them refuses BY NAME —
-# a practice room needs none of them, and a real-money path that answered
-# "no positions" without asking would be the most dangerous lie here.
+# Real money on Gate (spec D12, phase 6, Oct 10, 2026). Built so the runner's
+# real-money code runs unchanged: positions, orders, the resting stop,
+# closed-position history and the wallet answer in the SHAPES it reads from
+# MEXC (`positionId`, `holdVol`, `holdAvgPrice`, `positionType`, `realised`,
+# `equity`, `availableOpen`, `positionMargin`).
+#
+# NOT YET MET THE REAL EXCHANGE: there is no Gate key on this PC. Every path
+# is tested against a fake Gate that checks the signature, and the runner
+# arms real money only after `preflight` passes on a real key.
+#
+# Signed exactly as Gate's own example (gateio/gateapi-python): HMAC-SHA512 of
+# "METHOD\n/api/v4/PATH\nQUERY\nsha512(BODY)\nTIMESTAMP", headers KEY,
+# Timestamp, SIGN. NOTHING SIGNED IS RETRIED: a second order is a second order.
 def credentials() -> tuple[str | None, str | None]:
     key = os.getenv("GATE_API_KEY", "").strip() or None
     secret = os.getenv("GATE_API_SECRET", "").strip() or None
@@ -558,60 +567,404 @@ def credentials() -> tuple[str | None, str | None]:
 
 
 def has_credentials() -> bool:
-    return False
+    return all(credentials())
 
 
-def _no_key(what: str):
-    raise GateFuturesError(
-        f"{what} needs a Gate API key, and real-money trading on Gate is not "
-        f"switched on yet — the practice account trades without one")
+AUTH_LABELS = {"INVALID_KEY", "INVALID_SIGNATURE", "INVALID_CREDENTIALS",
+               "REQUEST_EXPIRED", "MISSING_REQUIRED_HEADER", "IP_FORBIDDEN"}
+AUTH_REMEDY = ("Gate rejected the key itself, not its permissions. Check, in "
+               "this order: the secret was pasted in full; this machine's "
+               "clock is right to within a few seconds; and the key's IP "
+               "allowlist includes this machine's public IP.")
+SCOPE_REMEDY = ("On Gate: API Management -> edit this key -> Perpetual "
+                "Futures: Read and Trade. Leave Withdrawal OFF.")
+
+
+def _send(method: str, url: str, headers: dict, body: bytes | None) -> tuple[int, bytes]:
+    """ONE signed request on the wire: (HTTP status, body)."""
+    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
+            return int(resp.status), resp.read()
+    except urllib.error.HTTPError as exc:
+        return int(exc.code), exc.read() or b""
+
+
+def sign(secret: str, method: str, path: str, query: str, payload: str,
+         ts: str) -> str:
+    """Gate's signature: HMAC-SHA512 hex (see above)."""
+    import hashlib
+    import hmac
+
+    target = "\n".join([method, path, query,
+                        hashlib.sha512(payload.encode()).hexdigest(), ts])
+    return hmac.new(secret.encode(), target.encode(), hashlib.sha512).hexdigest()
+
+
+def _signed(method: str, path: str, *, params: dict | None = None,
+            body=None):
+    key, secret = credentials()
+    if not (key and secret):
+        raise GateFuturesError(
+            "GATE_API_KEY / GATE_API_SECRET are not set — real-money trading "
+            "on Gate needs a key; the practice account trades without one")
+    full = "/api/v4" + path
+    query = urllib.parse.urlencode(params) if params else ""
+    payload = json.dumps(body, separators=(",", ":")) if body is not None else ""
+    ts = str(int(time.time()))
+    headers = {"KEY": key, "Timestamp": ts,
+               "SIGN": sign(secret, method, full, query, payload, ts),
+               "Accept": "application/json", "Content-Type": "application/json",
+               "User-Agent": _UA}
+    url = f"https://{HOST}{full}" + (f"?{query}" if query else "")
+    try:
+        status, raw = _send(method, url, headers, payload.encode() if payload else None)
+    except (OSError, urllib.error.URLError, http.client.HTTPException) as exc:
+        raise GateFuturesError(f"transport failure: {exc} ({method} {path})") from exc
+    if status in (200, 201, 202, 204):
+        try:
+            return json.loads(raw) if raw else {}
+        except ValueError as exc:
+            raise GateFuturesError(f"malformed response from {path}") from exc
+    try:
+        err = json.loads(raw or b"{}")
+    except ValueError:
+        err = {}
+    label = str(err.get("label") or "") if isinstance(err, dict) else ""
+    msg = f"{status} {_label(raw)} ({method} {path})"
+    if status == 401 or label in AUTH_LABELS:
+        raise GateFuturesAuthFailed(msg, code=label or status, remedy=AUTH_REMEDY)
+    if status == 403 or label == "FORBIDDEN":
+        raise GateFuturesForbidden(msg, code=status, scope="futures trade",
+                                   remedy=SCOPE_REMEDY)
+    if status == 429:
+        err429 = GateFuturesThrottled(msg)
+        err429.code = 429
+        raise err429
+    raise GateFuturesError(msg)
+
+
+def server_time_ms() -> int:
+    return int(_get_public(f"{BASE}/spot/time").get("server_time") or 0)
+
+
+def clock_skew_ms() -> int:
+    return int(time.time() * 1000) - server_time_ms()
 
 
 def assets() -> dict:
-    _no_key("reading the Gate wallet")
+    """The futures wallet in the runner's names."""
+    a = _signed("GET", "/futures/usdt/accounts") or {}
+    total = float(a.get("total") or 0.0)
+    unreal = float(a.get("unrealised_pnl") or 0.0)
+    avail = float(a.get("available") or 0.0)
+    return {"USDT": {"currency": "USDT", "equity": total + unreal,
+                     "availableOpen": avail, "availableBalance": avail,
+                     "positionMargin": float(a.get("position_margin") or 0.0),
+                     "unrealized": unreal}}
 
 
 def usdt_equity() -> float:
-    _no_key("reading the Gate wallet")
+    return float(assets()["USDT"]["equity"])
+
+
+def _pos(p: dict) -> dict | None:
+    """One Gate position in the runner's shape; None when flat. Gate's single
+    mode has no position id, so a position is named by when it was first
+    opened — the same number its close record carries (`first_open_time`)."""
+    try:
+        size = int(float(p.get("size") or 0))
+    except (TypeError, ValueError):
+        return None
+    if size == 0:
+        return None
+    entry = float(p.get("entry_price") or 0.0)
+    return {"symbol": p.get("contract"), "positionId": int(p.get("open_time") or 0),
+            "holdVol": abs(size), "holdAvgPrice": entry, "openAvgPrice": entry,
+            "positionType": 1 if size > 0 else 2,
+            "liquidatePrice": float(p.get("liq_price") or 0.0),
+            "im": float(p.get("margin") or 0.0),
+            "leverage": int(float(p.get("leverage") or 0)),
+            "realised": float(p.get("realised_pnl") or 0.0)}
 
 
 def open_positions(symbol: str | None = None) -> list:
-    _no_key("reading Gate positions")
+    if symbol:
+        try:
+            rows = [_signed("GET", f"/futures/usdt/positions/{urllib.parse.quote(symbol)}")]
+        except GateFuturesError as exc:
+            if "NOT_FOUND" in str(exc):
+                return []
+            raise
+    else:
+        rows = _signed("GET", "/futures/usdt/positions") or []
+    return [x for x in (_pos(r) for r in rows if isinstance(r, dict)) if x]
 
 
 def position_history(symbol: str | None = None, page_size: int = 20) -> list:
-    _no_key("reading Gate's closed positions")
+    """Closed positions, newest first, with Gate's own realised PnL."""
+    params: dict = {"limit": int(page_size)}
+    if symbol:
+        params["contract"] = symbol
+    out = []
+    for h in _signed("GET", "/futures/usdt/position_close", params=params) or []:
+        long = str(h.get("side") or "") == "long"
+        close_px = h.get("short_price") if long else h.get("long_price")
+        out.append({"symbol": h.get("contract"),
+                    "positionId": int(h.get("first_open_time") or 0),
+                    "realised": float(h.get("pnl") or 0.0),
+                    "closeAvgPrice": float(close_px or 0.0),
+                    "positionType": 1 if long else 2,
+                    "updateTime": int(float(h.get("time") or 0)) * 1000})
+    return out
 
 
-def submit(symbol: str, side: int, vol: int, *, leverage: int, **_kw) -> dict:
-    _no_key("placing a Gate order")
+def _text(tag: str) -> str:
+    import uuid
+
+    return f"t-{tag}{uuid.uuid4().hex[:10]}"
 
 
-def place_position_stop(symbol: str, position_id: int, vol: int, **_kw) -> dict:
-    _no_key("resting a stop on Gate")
+def submit(symbol: str, side: int, vol: int, *, leverage: int,
+           order_type: int = TYPE_MARKET, price: float | None = None,
+           open_type: int = 1, dry_run: bool = True) -> dict:
+    """One futures order, in the runner's side codes. `dry_run=True` returns
+    the payload unsent. Never retried (a timed-out order may have landed)."""
+    if vol <= 0:
+        raise GateFuturesError(f"refusing to submit vol={vol}")
+    opening = side in (SIDE_OPEN_LONG, SIDE_OPEN_SHORT)
+    signed = int(vol) if side in (SIDE_OPEN_LONG, SIDE_CLOSE_SHORT) else -int(vol)
+    if order_type == TYPE_LIMIT:
+        if not price:
+            raise GateFuturesError("a limit order needs a price")
+        body = {"contract": symbol, "size": signed, "price": str(price), "tif": "gtc",
+                "text": _text("o")}
+    else:
+        body = {"contract": symbol, "size": signed, "price": "0", "tif": "ioc",
+                "text": _text("o")}
+    if not opening:
+        body["reduce_only"] = True
+    if dry_run:
+        logger.info("DRY RUN Gate order: %s", body)
+        return {"dry_run": True, "request": body}
+    if opening:
+        _signed("POST", f"/futures/usdt/positions/{urllib.parse.quote(symbol)}/leverage",
+                params={"leverage": str(int(leverage))})
+    logger.warning("LIVE Gate order: %s", body)
+    data = _signed("POST", "/futures/usdt/orders", body=body) or {}
+    return {"dry_run": False, "request": body,
+            "response": {**data, "orderId": data.get("id")}}
+
+
+def open_long(symbol: str, vol: int, *, leverage: int, dry_run: bool = True) -> dict:
+    return submit(symbol, SIDE_OPEN_LONG, vol, leverage=leverage, dry_run=dry_run)
+
+
+def close_long(symbol: str, vol: int, *, leverage: int, dry_run: bool = True) -> dict:
+    return submit(symbol, SIDE_CLOSE_LONG, vol, leverage=leverage, dry_run=dry_run)
+
+
+def limit_close_long(symbol: str, vol: int, price: float, *, leverage: int,
+                     dry_run: bool = True) -> dict:
+    """The take-profit as a resting LIMIT close (a maker), as on MEXC."""
+    return submit(symbol, SIDE_CLOSE_LONG, vol, leverage=leverage,
+                  order_type=TYPE_LIMIT, price=price, dry_run=dry_run)
+
+
+def _trigger_close(symbol: str, long: bool, price: float, rule: int, tag: str) -> dict:
+    return {"initial": {"contract": symbol, "size": 0, "price": "0", "tif": "ioc",
+                        "close": True, "text": _text(tag)},
+            "trigger": {"strategy_type": 0, "price_type": 0, "price": str(price),
+                        "rule": rule, "expiration": 0},
+            "order_type": "close-long-position" if long else "close-short-position"}
+
+
+def place_position_stop(symbol: str, position_id: int, vol: int, *,
+                        stop_loss_price: float, take_profit_price: float | None = None,
+                        dry_run: bool = True, **_kw) -> dict:
+    """Rest the stop (and optionally a market take-profit) on GATE's servers:
+    a price-triggered close of the WHOLE position (`close: true`, size 0)
+    on the last traded price — the series the backtest measures. A long's
+    stop fires at or below (rule 2), a short's at or above (rule 1)."""
+    if vol <= 0:
+        raise GateFuturesError(f"refusing to place a stop for vol={vol}")
+    if stop_loss_price <= 0:
+        raise GateFuturesError("stop_loss_price must be positive")
+    held = open_positions(symbol)
+    if not held:
+        raise GateFuturesError(f"no open {symbol} position to rest a stop on")
+    long = held[0]["positionType"] == 1
+    bodies = [_trigger_close(symbol, long, stop_loss_price, 2 if long else 1, "sl")]
+    if take_profit_price:
+        bodies.append(_trigger_close(symbol, long, take_profit_price, 1 if long else 2, "tp"))
+    if dry_run:
+        logger.info("DRY RUN Gate resting stop: %s", bodies)
+        return {"dry_run": True, "request": bodies}
+    logger.warning("LIVE Gate resting stop: %s", bodies)
+    ids = [(_signed("POST", "/futures/usdt/price_orders", body=b) or {}).get("id")
+           for b in bodies]
+    return {"dry_run": False, "request": bodies,
+            "response": {"stop_id": ids[0], "tp_id": ids[1] if len(ids) > 1 else None}}
+
+
+def list_position_stops(symbol: str | None = None) -> list:
+    params: dict = {"status": "open"}
+    if symbol:
+        params["contract"] = symbol
+    return _signed("GET", "/futures/usdt/price_orders", params=params) or []
+
+
+def stop_is_active(record: dict) -> bool:
+    return str(record.get("status") or "") == "open"
 
 
 def verify_position_stop(symbol: str, position_id: int) -> dict:
-    _no_key("reading a Gate stop")
+    """Read back what Gate actually holds for this contract's position."""
+    recs = [r for r in list_position_stops(symbol)
+            if str((r.get("initial") or {}).get("contract") or symbol) == symbol
+            and str(r.get("order_type") or "").startswith("close-")]
+    active = [r for r in recs if stop_is_active(r)]
+    failed = [r for r in recs if str(r.get("finish_as") or "") == "failed"]
+    return {"protected": bool(active), "active": active, "failed": failed,
+            "error_codes": sorted({str(r.get("reason") or "failed") for r in failed})}
+
+
+def _order_side(o: dict) -> int:
+    size = int(float(o.get("size") or 0))
+    if o.get("is_reduce_only") or o.get("reduce_only"):
+        return SIDE_CLOSE_LONG if size < 0 else SIDE_CLOSE_SHORT
+    return SIDE_OPEN_LONG if size > 0 else SIDE_OPEN_SHORT
 
 
 def open_orders(symbol: str | None = None) -> list:
-    _no_key("reading Gate orders")
+    """Resting orders — where the take-profit lives — in the runner's shape."""
+    params: dict = {"status": "open"}
+    if symbol:
+        params["contract"] = symbol
+    return [{"orderId": o.get("id"), "symbol": o.get("contract"),
+             "side": _order_side(o), "price": float(o.get("price") or 0.0),
+             "vol": abs(int(float(o.get("size") or 0)))}
+            for o in (_signed("GET", "/futures/usdt/orders", params=params) or [])]
 
 
 def cancel_all_orders(symbol: str) -> dict:
-    _no_key("cancelling Gate orders")
+    return {"response": _signed("DELETE", "/futures/usdt/orders",
+                                params={"contract": symbol})}
+
+
+def verify_bracket(symbol: str, position_id: int, take_profit_price=None) -> dict:
+    """Both barriers read back separately: the stop from the price-triggered
+    orders, the target as a resting limit close."""
+    stop = verify_position_stop(symbol, position_id)
+    target = None
+    if take_profit_price:
+        for o in open_orders(symbol):
+            if o["side"] in (SIDE_CLOSE_LONG, SIDE_CLOSE_SHORT) and \
+                    abs(o["price"] - float(take_profit_price)) < 1e-9:
+                target = o
+                break
+    return {"stop_active": stop["protected"], "target_resting": target is not None,
+            "protected": stop["protected"] and (target is not None if take_profit_price else True),
+            "stop_error_codes": stop["error_codes"],
+            "target_order_id": (target or {}).get("orderId")}
+
+
+def _probe(path: str) -> dict:
+    """Cancel an id that cannot exist on a permission-gated path: a NOT_FOUND
+    answer means the key may write there; no position is ever touched."""
+    try:
+        data = _signed("DELETE", path)
+        return {"reached": True, "response": data}
+    except (GateFuturesAuthFailed, GateFuturesForbidden):
+        raise
+    except GateFuturesError as exc:
+        if "NOT_FOUND" in str(exc):
+            return {"reached": True, "response": str(exc)}
+        raise
+
+
+def write_probe() -> dict:
+    return _probe("/futures/usdt/orders/1")
+
+
+def stop_probe() -> dict:
+    try:
+        r = _probe("/futures/usdt/price_orders/1")
+        return {"permitted": True, "reason": f"reachable ({r['response']})"}
+    except GateFuturesForbidden as exc:
+        return {"permitted": False, "blocked_by": "key scope", "reason": str(exc),
+                "remedy": exc.remedy}
+    except GateFuturesAuthFailed as exc:
+        return {"permitted": False, "blocked_by": "credentials", "reason": str(exc),
+                "remedy": exc.remedy}
+    except GateFuturesError as exc:
+        return {"permitted": False, "blocked_by": "error", "reason": str(exc)}
 
 
 def preflight(symbol: str) -> dict:
-    """What a key can do. With none on this PC: nothing, and it says so."""
-    return {"credentials": False, "read_assets": False, "read_positions": False,
-            "order_permission": None, "equity_usdt": None,
-            "notes": ["no Gate API key on this PC — the practice account "
-                      "trades without one"],
-            "missing_scopes": [], "remedies": [], "edge_blocked": False,
-            "auth_failed": False, "can_rest_stop": None, "clock_ok": None,
-            "clock_skew_ms": None, "ready": False, "venue": NAME}
+    """What this key can actually do, before any real money trusts it."""
+    report = {"credentials": has_credentials(), "read_assets": False,
+              "read_positions": False, "order_permission": None,
+              "equity_usdt": None, "notes": [], "missing_scopes": [],
+              "remedies": [], "edge_blocked": False, "auth_failed": False,
+              "can_rest_stop": None, "clock_ok": None, "clock_skew_ms": None,
+              "ready": False, "venue": NAME}
+    if not report["credentials"]:
+        report["notes"].append("no Gate API key on this PC — the practice "
+                               "account trades without one")
+        return report
+    try:
+        skew = clock_skew_ms()
+        report["clock_skew_ms"] = skew
+        report["clock_ok"] = abs(skew) <= 5_000
+        if not report["clock_ok"]:
+            report["remedies"].append(f"This machine's clock is {skew / 1000:+.1f}s "
+                                      f"away from Gate's; fix the system clock.")
+    except Exception as exc:                                   # noqa: BLE001
+        report["notes"].append(f"could not check the clock: {exc}")
+    for label, fn, field in (("balance", usdt_equity, "read_assets"),
+                             ("positions", open_positions, "read_positions")):
+        try:
+            got = fn()
+            report[field] = True
+            if field == "read_assets":
+                report["equity_usdt"] = got
+        except GateFuturesAuthFailed as exc:
+            report["auth_failed"] = True
+            report["remedies"].append(exc.remedy)
+        except GateFuturesForbidden as exc:
+            report["missing_scopes"].append(exc.scope)
+            report["remedies"].append(exc.remedy)
+            report["notes"].append(f"cannot read {label}: {exc}")
+        except GateFuturesError as exc:
+            report["notes"].append(f"{label} failed: {exc}")
+    try:
+        write_probe()
+        report["order_permission"] = True
+        report["notes"].append("the order endpoint accepts writes from this key")
+    except GateFuturesAuthFailed as exc:
+        report["order_permission"] = False
+        report["auth_failed"] = True
+        report["remedies"].append(exc.remedy)
+    except GateFuturesForbidden as exc:
+        report["order_permission"] = False
+        report["missing_scopes"].append(exc.scope)
+        report["remedies"].append(exc.remedy)
+        report["notes"].append(f"cannot place orders: {exc}")
+    except GateFuturesError as exc:
+        report["order_permission"] = False
+        report["notes"].append(f"order write probe failed: {exc}")
+    if report["order_permission"]:
+        st = stop_probe()
+        report["can_rest_stop"] = bool(st.get("permitted"))
+        if not st.get("permitted") and st.get("remedy"):
+            report["remedies"].append(st["remedy"])
+    report["missing_scopes"] = sorted(set(report["missing_scopes"]))
+    report["remedies"] = list(dict.fromkeys(report["remedies"]))
+    report["ready"] = bool(report["read_assets"] and report["read_positions"]
+                           and report["order_permission"] and report["can_rest_stop"]
+                           and report["clock_ok"] is not False)
+    return report
 
 
 # ---------------------------------------------------------------- candles

@@ -148,3 +148,23 @@ def test_a_window_spanning_two_months_reads_both_and_keeps_only_the_window(home)
                       fetch=fetch)
     assert list(got["t"]) == [SEP + 29 * 86400, SEP + 29 * 86400 + 60, OCT, OCT + 60], \
         "a reading just before the window still answers its first minute"
+
+
+def test_a_coin_named_in_chinese_gets_a_plain_name_and_a_quoted_address():
+    """Oct 10, 2026 (RCA-2026-10-10-S): Gate lists four contracts named in
+    Chinese; the costs job built `.../releases/download/<tag>/龙虾_USDT-202610.npz`
+    and urlopen raised UnicodeEncodeError — two machines of run 38058335262
+    died on it. The file's name is plain ASCII for such a coin (one function,
+    so the writer and every reader agree) and every address is quoted."""
+    name = cs.asset("龙虾_USDT", "202610")
+    assert name.isascii() and name.endswith("-202610.npz")
+    assert name != cs.asset("牛市_USDT", "202610"), "two coins never share a file"
+    assert cs.asset("BTC_USDT", "202610") == "BTC_USDT-202610.npz", "every ASCII coin keeps its name"
+    assert cs.url("o/r", "龙虾_USDT", "202610").isascii()
+
+
+def test_the_order_book_archive_address_is_quoted():
+    from tradingagents import book_history as bh
+
+    u = bh.hour_url("龙虾_USDT", 1791504000)
+    assert u.isascii() and "%E9%BE%99" in u

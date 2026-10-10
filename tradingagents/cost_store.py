@@ -48,12 +48,21 @@ def tag(sym: str, ym: str) -> str:
 
 
 def asset(sym: str, ym: str) -> str:
-    return f"{sym}-{ym}.npz"
+    """The coin-month file's name. A coin Gate names in Chinese (four of
+    them, e.g. 龙虾_USDT) gets a plain-ASCII name — `x` + its UTF-8 in hex —
+    because a release asset name is part of an address (RCA-2026-10-10-S).
+    One function, so the costs job and every reader agree."""
+    s = str(sym)
+    if not s.isascii():
+        s = "x" + s.encode("utf-8").hex()
+    return f"{s}-{ym}.npz"
 
 
 def url(repo: str, sym: str, ym: str) -> str:
+    import urllib.parse as _up
+
     return (f"https://github.com/{repo}/releases/download/"
-            f"{tag(sym, ym)}/{asset(sym, ym)}")
+            f"{tag(sym, ym)}/{_up.quote(asset(sym, ym))}")
 
 
 def empty() -> dict:

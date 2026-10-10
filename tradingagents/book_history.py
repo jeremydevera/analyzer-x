@@ -181,8 +181,11 @@ ARCHIVE = "https://download.gatedata.org/futures_usdt/orderbooks"
 def hour_url(symbol: str, hour_start: int) -> str:
     import time
 
+    import urllib.parse as _up
+
     g = time.gmtime(hour_start)
-    return (f"{ARCHIVE}/{g.tm_year:04d}{g.tm_mon:02d}/{symbol}-"
+    # quoted: four Gate contracts are named in Chinese (RCA-2026-10-10-S)
+    return (f"{ARCHIVE}/{g.tm_year:04d}{g.tm_mon:02d}/{_up.quote(symbol)}-"
             f"{g.tm_year:04d}{g.tm_mon:02d}{g.tm_mday:02d}{g.tm_hour:02d}.csv.gz")
 
 

@@ -172,6 +172,54 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-S — two machines of today's trading-cost run crashed on Gate's coins named in Chinese
+
+**CEO**
+
+* Today's per-minute cost run failed a third time (Oct 10, 2026 10:06am):
+  18 of 20 machines on one account finished, two crashed.
+* Why: Gate lists four contracts named in Chinese, and the job wrote their
+  names straight into web addresses, which only take plain letters.
+* What stops it now: such a coin's cost file gets a plain name, and every
+  address spells the name the way the web expects.
+
+**DEV**
+
+* `tradingagents/cost_store.py` `url()` interpolated `asset(sym, ym)`
+  unquoted and `asset()` used the raw symbol; `book_history.hour_url` did
+  the same for Gate's archive. `urllib.request.urlopen` raised
+  `UnicodeEncodeError: 'ascii' codec can't encode characters in position
+  62-65`, outside `_fetch`'s `(OSError, URLError)`.
+* Invariant broken: **a name from the exchange is data, never a URL
+  fragment** — `gate_futures.archive_month` already quoted it.
+* Guards: `tests/test_cost_store.py::test_a_coin_named_in_chinese_gets_a_plain_name_and_a_quoted_address`,
+  `::test_the_order_book_archive_address_is_quoted`.
+
+**SAW** — run 38058335262: `failure x2, success x19`, both tracebacks ending
+in `cost_store._get → urllib.request.urlopen` with `UnicodeEncodeError`.
+
+**TIMELINE**
+
+1. Oct 10, 2026 4:01am-8:09am — the backfill finishes green.
+2. 10:06am — today's costs press (no claims, RCA-2026-10-10-N): machines
+   holding a Chinese-named coin crash at its first download; the run is red.
+3. After the fix — the coin's file is `x<utf-8 hex>-YYYYMM.npz` and every
+   address is quoted; every ASCII coin keeps its file name.
+
+**ROOT CAUSE** — MEXC never listed a non-ASCII contract, and the cost store
+was written against MEXC's names.
+
+**WHY IT WAS NOT CAUGHT** — every test used ASCII symbols; the four names
+appear only in Gate's live list.
+
+**COST** — none; today's costs wait for the next press.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_cost_store.py::test_a_coin_named_in_chinese_gets_a_plain_name_and_a_quoted_address`.
+
+---
+
 ## RCA-2026-10-10-R — Forecast v2's first Gate run was stuck re-reading two replays that measured nothing
 
 **CEO**

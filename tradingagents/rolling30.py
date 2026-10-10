@@ -152,10 +152,12 @@ def rebuild(slot: str, settings: dict) -> dict:
     warm = max(0, len(df) - int(row["bars"]))
     fine = None
     if ident["res"] == "1m":
-        iv1, bs1, cap1 = br.TFS["1m"]
-        m1 = at._closed_bars(fx.klines(ident["sym"], iv1, cap1), bs1)
-        fine = (m1["Date"].to_numpy().astype("datetime64[ms]").astype("int64"),
-                np.asarray(m1["High"], float), np.asarray(m1["Low"], float))
+        # the finest bars the exchange has, the way every v2 caller reads
+        # them (backtest_report.fine_bars; on Gate 5-minute bars over the
+        # current month's hole, Oct 10, 2026)
+        _t, _h, _l, _n5 = br.fine_bars(ident["sym"], int(time.time()) - 31 * 86400,
+                                       fx=fx)
+        fine = (_t, _h, _l)
     hi, lo, cl, op = ([float(x) for x in df[c]] for c in ("High", "Low", "Close", "Open"))
     vol = [float(x) for x in df["Volume"]] if "Volume" in df.columns else None
     ts = [int(x) for x in df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")]

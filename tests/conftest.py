@@ -419,6 +419,7 @@ def _isolate_kline_disk_cache(tmp_path, monkeypatch):
     _gf.clear_spec_cache()
     _gf._PRICES.update(at=0.0, px={})
     _gf._KLINE_CACHE.clear()
+    _gf._FUND_CACHE.clear()
     from tradingagents import shared_market as _sm
 
     monkeypatch.setattr(_sm, "SHARED_DIR", tmp_path / "shared")

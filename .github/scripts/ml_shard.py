@@ -89,11 +89,9 @@ def ml_coin(sym: str, out, formulas: dict, report: list, usual: dict,
     book = fx.book_cost(sym, ss.BASE_MARGIN * at.LEVERAGE)
     fresh = float(book.get("slippage") or 0.0) or 0.0003
     slip, readings = charged(fee, fresh, usual.get(coin))
-    iv1, bs1, cap1 = br.TFS["1m"]
-    m1 = at._closed_bars(fx.klines(sym, iv1, cap1), bs1)
-    fine = (m1["Date"].to_numpy().astype("datetime64[ms]").astype("int64"),
-            np.asarray(m1["High"], dtype="float64"),
-            np.asarray(m1["Low"], dtype="float64"))
+    # the finest bars the exchange has (backtest_report.fine_bars, Oct 10, 2026)
+    _t, _h, _l, _n5 = br.fine_bars(sym, int(time.time()) - 31 * 86400, fx=fx)
+    fine = (_t, _h, _l)
     rows = 0
     for tf in TFS:
         iv, bs, cap = br.TFS[tf]

@@ -148,8 +148,9 @@ def test_v2_ADDS_the_minutes_it_does_not_replace_the_bars_with_them():
         "the frame's OWN candles, for v1 and v2 alike"
     assert "msw.bars_from_1m" not in code, \
         "rebuilding the frame from minutes is what capped history at 30 days"
-    # the minutes are still fetched, for the EXIT
-    assert "br.TFS[RES]" in code and "fine = (" in code
+    # the minutes are still fetched, for the EXIT — through the one helper
+    # every v2 caller shares since the move to Gate (Oct 10, 2026)
+    assert "fine = fine_bars(sym)" in code and "br.fine_bars(sym," in code
 
 
 def test_the_warmup_floor_still_applies_to_v2():

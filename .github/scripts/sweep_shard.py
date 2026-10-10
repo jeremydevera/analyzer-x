@@ -323,6 +323,23 @@ class PairFailed(Exception):
 WARMUP_BARS = 300
 
 
+def funding_since_ms() -> int:
+    """The first settlement a trade in this run's window can pay, with two
+    days in hand (the warm-up bars trade nothing)."""
+    return int((time.time() - (DAYS + 2) * 86400) * 1000)
+
+
+FINE5: dict = {}          # "COIN" -> how many 5-minute bars stood in for minutes
+
+
+def fine_bars(sym):
+    """(minute opens in ms, highs, lows) over the window — through
+    `backtest_report.fine_bars`, the one helper every v2 caller uses."""
+    t, hi, lo, n5 = br.fine_bars(sym, int(time.time()) - (DAYS + 1) * 86400, fx=fx)
+    FINE5[sym] = n5
+    return (t, hi, lo)
+
+
 def window(df):
     """`(df, warm)` -- the measured window with WARMUP_BARS of history in
     front of it, and how many leading bars are warm-up only.
@@ -556,7 +573,8 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
     try:
         fee = at.taker_fee(sym, fx=fx)
         liq = fx.liquidation_move_pct(sym, at.LEVERAGE)
-        fund = fx.funding_history(sym)
+        # the window's own settlements (Gate pages ~30 days at a time)
+        fund = fx.funding_history(sym, since_ms=funding_since_ms())
         book = fx.book_cost(sym, BASE_MARGIN * at.LEVERAGE)
         # THE BOOK'S SLIPPAGE, charged in the P&L — not only in the gate.
         # The engine's flat 0.03%/side under-charged the operator's coins by
@@ -745,7 +763,8 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
             raise _Prefetched
         fee = at.taker_fee(sym, fx=fx)
         liq = fx.liquidation_move_pct(sym, at.LEVERAGE)
-        fund = fx.funding_history(sym)
+        # the window's own settlements (Gate pages ~30 days at a time)
+        fund = fx.funding_history(sym, since_ms=funding_since_ms())
         book = fx.book_cost(sym, BASE_MARGIN * at.LEVERAGE)
         # THE BOOK'S SLIPPAGE, charged in the P&L — not only in the gate.
         # The engine's flat 0.03%/side under-charged the operator's coins by
@@ -785,13 +804,13 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
         # a bar without them falls back to the bar rule by design.
         df = at._closed_bars(fx.klines(sym, iv, cap), bs)
         if RES:
-            iv1, bs1, cap1 = br.TFS[RES]
-            m1 = at._closed_bars(fx.klines(sym, iv1, cap1), bs1)
-            import numpy as _np
-            fine = (m1["Date"].to_numpy().astype("datetime64[ms]")
-                    .astype("int64"),
-                    _np.asarray(m1["High"], dtype="float64"),
-                    _np.asarray(m1["Low"], dtype="float64"))
+            # THE FINEST BARS THE EXCHANGE HAS over the window (spec D10):
+            # on Gate the archive's minutes, 5-minute bars over the current
+            # month's hole, then REST's last week of minutes; on MEXC the
+            # 44,000-minute read it always was. A 5-minute bar settles an
+            # exit the way a minute does; both prices inside one is still
+            # booked SL and counted in `unclear`.
+            fine = fine_bars(sym)
     except _Prefetched:
         # the learner's own candles and costs — the ones it graded on
         fee, liq, fund = learned["fee"], learned["liq"], learned["fund"]
@@ -1069,6 +1088,9 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                              # same store rule as the rows beside it
                              **({"res": RES} if RES else {}),
                              **VENUE_FIELD,
+                             # how many 5-minute bars settled exits in the
+                             # current month's hole (Gate, spec D10)
+                             **({"fine5": FINE5.get(sym, 0)} if RES else {}),
                              "rows": kept, "bars": nbars}) + "\n")
     out.write("".join(lines))
     out.flush()

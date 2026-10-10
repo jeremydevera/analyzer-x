@@ -1,0 +1,63 @@
+name: Gate trial sweep
+run-name: "Gate trial · ${{ inputs.coin_list }} · ${{ inputs.timeframes }} · res ${{ inputs.res }}"
+# ONE shard of the real sweep script on Gate, for a handful of coins, so the
+# move to Gate (Oct 10, 2026) is proven end to end before the cutover. Its own
+# NAME on purpose: the PC's collector walks the "Market sweep" workflow's runs
+# and would try to land these Gate rows into the MEXC store (refused by
+# cloud_sweep.land_rows, but loudly). Started by hand only; the rows are read
+# by hand from the artifact.
+on:
+  workflow_dispatch:
+    inputs:
+      coin_list:
+        description: "Comma-separated symbols"
+        default: "BTC_USDT,AAPL_USDT"
+      timeframes:
+        description: "Comma-separated frames"
+        default: "15m,1h"
+      res:
+        description: "empty = v1, 1m = Backtest v2"
+        default: "1m"
+      days:
+        description: "History window in days"
+        default: "30"
+
+permissions:
+  contents: write        # the claim board, namespaced by this run's id
+
+env:
+  TA_VENUE: gate
+
+jobs:
+  trial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests
+      - name: Sweep shard on Gate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHARD: "0"
+          SHARDS: "1"
+          COINS: "0"
+          TFS: ${{ inputs.timeframes }}
+          RES: ${{ inputs.res }}
+          DAYS: ${{ inputs.days }}
+          BASE_MARGIN: "5"
+          MODE: full
+          COIN_LIST: ${{ inputs.coin_list }}
+        run: python .github/scripts/sweep_shard.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gate-trial-rows
+          path: out/rows-*.jsonl
+          if-no-files-found: warn
+          retention-days: 7

@@ -1550,3 +1550,14 @@ def klines_page(symbol: str, interval: str, limit: int, end: int):
     """One page of candles ending at `end` (unix seconds). No caching."""
     return _klines_page(symbol, interval, limit, end)
 
+
+def minutes(symbol: str, start_s: int, end_s: int):
+    """The minutes between two instants for a v2 exit, through the door
+    (Oct 10, 2026). MEXC sells ~30 days of minutes, so this is the read v2
+    always made — 44,000 one-minute bars — cut to the window, every bar
+    `Seconds` 60."""
+    df = klines(symbol, "Min1", 44_000)
+    t = df["Date"].to_numpy().astype("datetime64[s]").astype("int64")
+    keep = (t >= int(start_s)) & (t <= int(end_s))
+    return df[keep].reset_index(drop=True).assign(Seconds=60)
+

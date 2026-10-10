@@ -378,6 +378,33 @@ def slices_for(plan: str | None, sl: float, tp: float) -> list | None:
     return out
 
 
+def fine_bars(sym: str, start_s: int, end_s: int | None = None, *, fx=None):
+    """`(opens_ms, highs, lows, five_minute_bars)` — the finest bars the
+    exchange has between two instants, for a v2 exit (spec D10, Oct 10, 2026).
+
+    ONE helper for every v2 caller (the GitHub shard, rolling30, learn, ml):
+    on Gate `fx.minutes` gives the archive's minutes, 5-minute bars over the
+    current month's hole and REST's last week of minutes; on MEXC it is the
+    44,000-minute read v2 always made. The forming minute is dropped — it is
+    not final. `five_minute_bars` says how many 5-minute bars stood in."""
+    import time as _time
+
+    import numpy as _np
+
+    if fx is None:
+        from tradingagents.dataflows import exchange as fx
+    end_s = int(_time.time()) if end_s is None else int(end_s)
+    m = fx.minutes(sym, int(start_s), end_s)
+    t = m["Date"].to_numpy().astype("datetime64[s]").astype("int64")
+    secs = (m["Seconds"].to_numpy() if "Seconds" in m.columns
+            else _np.full(len(m), 60))
+    keep = t + secs <= int(_time.time())
+    t, secs = t[keep], secs[keep]
+    return (t * 1000, _np.asarray(m["High"], dtype="float64")[keep],
+            _np.asarray(m["Low"], dtype="float64")[keep],
+            int((secs == 300).sum()))
+
+
 def row_code(coin: str, tf: str, signal: str, th: float, sl: float,
              tp: float, sizing: str, plan: str | None = None,
              res: str | None = None, venue: str | None = None) -> str:

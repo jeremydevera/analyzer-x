@@ -452,8 +452,33 @@ def book_cost(symbol: str, notional_usd: float = 200.0, *,
 
 
 # ---------------------------------------------------------------- funding
+# Gate serves ~30 days of settlements a page. A read that names no window is
+# not "since 2019": it covers FUNDING_DEFAULT_DAYS — the longest backtest
+# window offered is 180 days — and one coin's read is kept for half an hour,
+# because a shard measures five timeframes of one coin back to back and ~20
+# callers across the app ask for "all of it" (Oct 10, 2026).
+FUNDING_DEFAULT_DAYS = 200
+_FUND_TTL_S = 1800
+_FUND_CACHE: dict = {}
+
+
 def funding_history(symbol: str, max_pages: int = 200, *,
                     since_ms: int | None = None) -> list:
+    """See `_funding_read`; this keeps one read per coin for half an hour and
+    answers any NARROWER ask from it."""
+    now = time.time()
+    if since_ms is None:
+        since_ms = int((now - FUNDING_DEFAULT_DAYS * 86400) * 1000)
+    hit = _FUND_CACHE.get(symbol)
+    if hit and now - hit[0] < _FUND_TTL_S and hit[1] <= since_ms:
+        return list(hit[2])
+    rows = _funding_read(symbol, max_pages, since_ms=since_ms)
+    _FUND_CACHE[symbol] = (now, since_ms, rows)
+    return list(rows)
+
+
+def _funding_read(symbol: str, max_pages: int = 200, *,
+                  since_ms: int | None = None) -> list:
     """Published funding settlements, oldest first:
     ``[{"settle_ms", "rate", "cycle_h"}, ...]``. Keyless.
 

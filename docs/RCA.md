@@ -203,7 +203,7 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
   `tests/test_sep27_ml.py::test_an_update_that_could_not_measure_says_why_never_an_index_error`.
 
 **SAW** — `[pairbt_v2] BTC 1h · mom6: 0 row(s), 0 indexed · measured, but
-NOT indexed: FileNotFoundError: ... v2ows\BTC-1h.json`; the reason, from
+NOT indexed: FileNotFoundError: ... v2/rows/BTC-1h.json`; the reason, from
 run_pair itself: `BTC_USDT: 1m frame has 3611 missing minute(s) between
 2026-09-30 23:59:00 and 2026-10-03 12:11:00`.
 

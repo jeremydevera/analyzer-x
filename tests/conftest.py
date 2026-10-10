@@ -24,6 +24,17 @@ def pytest_configure(config):
 
 
 @pytest.fixture(autouse=True)
+def _pinned_to_mexc(monkeypatch):
+    """Every test runs against MEXC unless it says otherwise.
+
+    The app moved to Gate on Oct 10, 2026 (tradingagents/venue.py). The
+    suite before that day was written against MEXC's answers, and no test may
+    read the operator's own ~/.tradingagents/venue.json. A Gate test sets
+    `TA_VENUE=gate` itself."""
+    monkeypatch.setenv("TA_VENUE", "mexc")
+
+
+@pytest.fixture(autouse=True)
 def _no_real_market_db(monkeypatch, tmp_path):
     """Cut every test off from the real market database.
 
@@ -394,6 +405,20 @@ def _isolate_kline_disk_cache(tmp_path, monkeypatch):
     # would pause them. Sharing starts OFF in every test.
     monkeypatch.setattr(_fx, "PUBLIC_PAUSE_PATH",
                         tmp_path / "shared" / "public_pause.json")
+    # GATE'S OWN (Oct 10, 2026): its candle cache and archive months, its
+    # pause, its kept contract list, and the venue switch itself.
+    from tradingagents import venue as _venue
+    from tradingagents.dataflows import gate_futures as _gf
+
+    monkeypatch.setattr(_gf, "KLINE_DISK_DIR", tmp_path / "kline_cache" / "gate")
+    monkeypatch.setattr(_gf, "PUBLIC_PAUSE_PATH",
+                        tmp_path / "shared" / "public_pause_gate.json")
+    monkeypatch.setattr(_gf, "CONTRACTS_FILE",
+                        tmp_path / "shared" / "gate_contracts.json")
+    monkeypatch.setattr(_venue, "VENUE_FILE", tmp_path / "venue.json")
+    _gf.clear_spec_cache()
+    _gf._PRICES.update(at=0.0, px={})
+    _gf._KLINE_CACHE.clear()
     from tradingagents import shared_market as _sm
 
     monkeypatch.setattr(_sm, "SHARED_DIR", tmp_path / "shared")

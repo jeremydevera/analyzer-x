@@ -40,8 +40,16 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from tradingagents.dataflows.exchange_common import (  # noqa: F401  (re-exported)
+    book_cost_from, chase_guard, funding_summary_from)
+from tradingagents.dataflows.exchange_errors import (  # noqa: F401  (re-exported)
+    VenueAuthFailed, VenueEdgeBlocked, VenueError, VenueForbidden,
+    VenueThrottled)
+
 logger = logging.getLogger(__name__)
 
+NAME = "MEXC"
+HOST = "contract.mexc.com"
 BASE = "https://contract.mexc.com"
 _TIMEOUT = 20.0
 _RECV_WINDOW_MS = 10_000
@@ -109,11 +117,11 @@ EDGE_BLOCK_REMEDY = (
 
 
 
-class MexcFuturesError(RuntimeError):
+class MexcFuturesError(VenueError):
     """A futures request could not be made or was rejected by the exchange."""
 
 
-class MexcFuturesThrottled(MexcFuturesError):
+class MexcFuturesThrottled(MexcFuturesError, VenueThrottled):
     """The venue refused because we asked too often — retryable, unlike a
     rejection on the merits. MEXC sends this as HTTP 200 with `code: 510` in
     the BODY, so it never reaches the HTTP-status retry list."""
@@ -121,7 +129,7 @@ class MexcFuturesThrottled(MexcFuturesError):
     code = None                    # the venue's own code (510, 1002, 1004)
 
 
-class MexcFuturesAuthFailed(MexcFuturesError):
+class MexcFuturesAuthFailed(MexcFuturesError, VenueAuthFailed):
     """The key, the secret, the clock or the source IP is wrong.
 
     Deliberately NOT a :class:`MexcFuturesForbidden` subclass, for the same
@@ -144,7 +152,7 @@ class MexcFuturesAuthFailed(MexcFuturesError):
         self.remedy = self.REMEDY
 
 
-class MexcFuturesEdgeBlocked(MexcFuturesError):
+class MexcFuturesEdgeBlocked(MexcFuturesError, VenueEdgeBlocked):
     """Blocked by MEXC's edge proxy, never reaching the API.
 
     Deliberately NOT a subclass of :class:`MexcFuturesForbidden`: this is not a
@@ -158,7 +166,7 @@ class MexcFuturesEdgeBlocked(MexcFuturesError):
         self.remedy = EDGE_BLOCK_REMEDY
 
 
-class MexcFuturesForbidden(MexcFuturesError):
+class MexcFuturesForbidden(MexcFuturesError, VenueForbidden):
     """Authenticated fine, but this key lacks a permission the call needs.
 
     Carries the MEXC code, the missing scope, and the exact remedy so a caller
@@ -669,35 +677,14 @@ def book_cost(symbol: str, notional_usd: float = 200.0) -> dict:
         asks, bids = book["asks"], book["bids"]
     if not asks or not bids:
         raise MexcFuturesError(f"no order book for {symbol}")
-    mid = (asks[0][0] + bids[0][0]) / 2.0
     size = float(contract_spec(symbol).get("contractSize") or 0.0)
-    if size <= 0 or mid <= 0:
-        raise MexcFuturesError(f"cannot measure {symbol}: size={size} mid={mid}")
-    want = notional_usd / (size * mid)
-    need, cost, got = want, 0.0, 0.0
-    for px, vol in asks:
-        take = min(need, vol)
-        cost += take * px
-        got += take
-        need -= take
-        if need <= 0:
-            break
-    if got <= 0:
-        raise MexcFuturesError(f"empty book for {symbol}")
-    slippage = cost / got / mid - 1.0
-    exhausted = need > 0
-    if exhausted:
-        # The whole visible book cannot fill this order; the true cost is
-        # worse than anything measurable here.
-        slippage = max(slippage, asks[-1][0] / mid - 1.0)
-    return {
-        "symbol": symbol,
-        "mid": mid,
-        "spread": (asks[0][0] - bids[0][0]) / mid,
-        "slippage": slippage,
-        "book_exhausted": exhausted,
-        "notional_tested": notional_usd,
-    }
+    # the walk itself is shared with every venue (exchange_common, Oct 10,
+    # 2026); only the MEXC error class is this module's
+    try:
+        return book_cost_from(book, contract_size=size,
+                              notional_usd=notional_usd, symbol=symbol)
+    except VenueError as exc:
+        raise MexcFuturesError(str(exc)) from exc
 
 
 # ---------------------------------------------------------------- preflight
@@ -1440,23 +1427,9 @@ def round_vol(symbol: str, vol: float) -> int:
     return snapped if snapped >= min_vol else 0
 
 
-def chase_guard(entry_ref: float, live: float, max_chase_pct: float) -> tuple[bool, str]:
-    """Refuse an entry that has already run away from the reference price.
-
-    Also from the reference project: a signal computed a minute ago is not a
-    licence to buy at any price. Returns (ok_to_enter, reason).
-    """
-    if entry_ref <= 0 or live <= 0:
-        return False, "no reference price"
-    drift = (live / entry_ref - 1) * 100
-    if drift > max_chase_pct:
-        return False, (f"price ran {drift:+.2f}% past the reference "
-                       f"(limit {max_chase_pct:.2f}%)")
-    return True, f"drift {drift:+.2f}% within {max_chase_pct:.2f}%"
-
-
 # ---------------------------------------------------------------- funding
-def funding_history(symbol: str, max_pages: int = 200) -> list:
+def funding_history(symbol: str, max_pages: int = 200, *,
+                    since_ms: int | None = None) -> list:
     """Every published funding settlement, oldest last. Keyless.
 
     ``max_pages`` is a runaway backstop, NOT a limit on real history. It was 20,
@@ -1469,6 +1442,9 @@ def funding_history(symbol: str, max_pages: int = 200) -> list:
     Returned as ``[{"settle_ms": int, "rate": float, "cycle_h": int}, ...]``.
     Sign convention is MEXC's: a POSITIVE rate means longs pay shorts, so a
     long position's funding PnL is ``-rate * notional`` per settlement.
+
+    `since_ms` exists for the door's sake (Gate pages ~30 days at a time and
+    stops at the window); MEXC returns its whole history either way.
     """
     # `total` is read by the failure message below, which runs BEFORE the
     # first page assigns it. Today the ternary there short-circuits on
@@ -1551,24 +1527,26 @@ def funding_now(symbol: str) -> dict:
 
 def funding_summary(symbol: str) -> dict:
     """Headline funding numbers for a contract, from the long side."""
-    hist = funding_history(symbol)
-    if not hist:
-        return {"symbol": symbol, "settlements": 0, "available": False}
-    rates = [h["rate"] for h in hist]
-    span_days = (hist[-1]["settle_ms"] - hist[0]["settle_ms"]) / 86400_000
-    cycle = hist[0]["cycle_h"] or 8
-    mean = sum(rates) / len(rates)
-    return {
-        "symbol": symbol, "available": True, "settlements": len(rates),
-        "span_days": span_days, "cycle_h": cycle,
-        "mean_rate": mean,
-        "pct_positive": sum(1 for r in rates if r > 0) / len(rates) * 100,
-        # A long's cumulative funding as a fraction of notional. Derived from
-        # the actual settlement sum and elapsed span rather than the recorded
-        # cycle: MEXC changed this contract from a 24h to an 8h cycle mid-life,
-        # so any single cycle value misstates the daily rate.
-        "long_total": -sum(rates),
-        "long_daily": (-sum(rates) / span_days) if span_days > 0 else 0.0,
-        "long_annual": ((-sum(rates) / span_days) * 365) if span_days > 0 else 0.0,
-    }
+    return funding_summary_from(funding_history(symbol), symbol)
+
+
+def trading_symbols() -> list[str]:
+    """Every `_USDT` contract MEXC is trading now (state 0), sorted — the
+    market a sweep or a replay measures. Five callers built this from the
+    raw detail list themselves; through the door they ask here."""
+    raw = _get_public(f"{BASE}/api/v1/contract/detail").get("data") or []
+    return sorted(x["symbol"] for x in raw
+                  if str(x.get("symbol", "")).endswith("_USDT")
+                  and int(x.get("state", 1)) == 0)
+
+
+def contract_types() -> dict:
+    """{symbol: kind}: MEXC names every tokenized stock with a STOCK suffix."""
+    return {s: ("stocks" if s.removesuffix("_USDT").endswith("STOCK")
+                else "crypto") for s in trading_symbols()}
+
+
+def klines_page(symbol: str, interval: str, limit: int, end: int):
+    """One page of candles ending at `end` (unix seconds). No caching."""
+    return _klines_page(symbol, interval, limit, end)
 

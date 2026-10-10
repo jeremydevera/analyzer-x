@@ -167,11 +167,33 @@ def collect_finished(*, now: float, state: dict) -> dict:
             # takes the other account's turn
             return {"started": False,
                     "why": f"cannot list {slug}'s runs: {exc}"}
+    # A RUN STARTED BEFORE THE SWITCH TO THIS EXCHANGE measured the other
+    # one (Oct 10, 2026: the first collect after the cutover downloaded a
+    # MEXC run's 48,640 rows only for the Gate store to refuse every pair).
+    # It is remembered as done without a byte downloaded.
+    from tradingagents import venue as _venue
+
+    _switched = _venue.since()
     for r in runs:
         rid = r.get("databaseId")
         slug = r.get("repo")
         if rid in done or r.get("status") != "completed":
             continue
+        if _switched and r.get("createdAt"):
+            try:
+                import datetime as _dt
+
+                _made = _dt.datetime.fromisoformat(
+                    str(r["createdAt"]).replace("Z", "+00:00")).timestamp()
+            except ValueError:
+                _made = None
+            if _made is not None and _made < _switched:
+                done.add(rid)
+                # saved NOW: a collect started below returns before the
+                # ledger at the end is written
+                state["collected"] = sorted(done)
+                _write(state)
+                continue
         if r.get("conclusion") not in ("success", "failure"):
             continue           # cancelled/skipped produced nothing to collect
         try:

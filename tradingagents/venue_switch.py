@@ -65,7 +65,7 @@ class SwitchRefused(RuntimeError):
 
 def _blockers() -> list[str]:
     """Everything that holds the store open right now, named."""
-    from tradingagents import auto_trader as at, portable, profiles
+    from tradingagents import auto_trader as at, profiles
 
     out = []
     try:
@@ -80,20 +80,25 @@ def _blockers() -> list[str]:
             rp = at.runner_pid()
             if rp:
                 out.append(f"room {pid}'s runner (pid {rp})")
-    for f in HOME.glob("db_*.pid"):
+    # EACH PROCESS'S OWN RULE FOR "RUNNING", never a bare pid: the first
+    # real run of this refused on `db_backtest_v2.pid` = 21144, written
+    # Sep 17, 2026 and since reused by Microsoft Teams (pids are recycled,
+    # RCA-2026-09-12-B). A job is running when its progress says so AND its
+    # pid lives (db_jobs.status); the indexer when its run lock is held.
+    from tradingagents import db_jobs as _dj, rows_index as _ri
+
+    for kind in sorted(_dj.FILES):
         try:
-            p = int(f.read_text().strip())
-        except (OSError, ValueError):
+            st = _dj.status(kind)
+        except Exception:                                      # noqa: BLE001
             continue
-        if portable.pid_alive(p):
-            out.append(f"the {f.stem} job (pid {p})")
-    for f in (HOME / "backtest" / "rows_index.pid", HOME / "v2" / "rows_index.pid"):
-        try:
-            p = int(f.read_text().strip())
-        except (OSError, ValueError):
-            continue
-        if portable.pid_alive(p):
-            out.append(f"the row indexer (pid {p})")
+        if st.get("running"):
+            out.append(f"the {kind} job (pid {st.get('pid')})")
+    try:
+        if _ri.run_lock_held():
+            out.append("the row indexer (it holds its run lock)")
+    except Exception:                                          # noqa: BLE001
+        pass
     return out
 
 

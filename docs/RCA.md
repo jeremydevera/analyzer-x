@@ -172,6 +172,123 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-C — after the switch to Gate, the collector downloaded an old MEXC run only for the Gate store to refuse every pair of it
+
+**CEO**
+
+* Minutes after the app moved to Gate (Oct 10, 2026 3:56am), it downloaded
+  48,640 measured rows from an earlier MEXC run and then rightly refused to
+  file a single one — "measured on 'mexc' and this store is Gate's".
+* Why: the list of runs already collected had been moved aside with the rest
+  of MEXC's data, so the collector thought every recent MEXC run was new.
+  Nothing wrong was stored; the download and a held-up daily update were the
+  whole waste, and the next nine runs would each have been downloaded the
+  same way (a full sweep is gigabytes).
+* What stops it now: a run started before the switch is skipped without
+  downloading anything and remembered as done.
+
+**DEV**
+
+* `tradingagents/cloud_autopilot.py` `collect_finished` walked `cs._runs()`
+  and collected every completed run missing from `state["collected"]`; the
+  cutover (`venue_switch`) moves `cloud_autopilot.json` into the archive, so
+  that ledger was empty and run 38034731467 (MEXC) was collected.
+* Invariant broken: **a run may only land in the store it was measured for**
+  — `land_rows` held it (every pair refused, named), but the collector paid
+  the whole download before asking.
+* Guard: `tests/test_autopilot_remembers_what_it_collected.py::test_a_run_from_before_the_switch_to_gate_is_skipped_not_downloaded`.
+
+**SAW** — `[collect] run 38034731467: 48,640 row(s) over 0 pair(s) from 1
+shard file(s) · 2 pair(s) REFUSED, measured for the other store: A 1h: these
+rows were measured on 'mexc' and this store is Gate's ('gate')`, and the daily
+update's line "due, waiting for collect to finish".
+
+**TIMELINE**
+
+1. Oct 10, 2026 3:56am — `venue_switch` moves 79 MEXC items aside, among them
+   `cloud_autopilot.json` (its `collected` list), and writes venue.json.
+2. Oct 10, 2026 ~4:00am — the site starts; the collector lists the last 10
+   Market sweep runs of one account, finds 38034731467 "uncollected", starts
+   a collect, downloads 48,640 rows and refuses both pairs.
+3. Oct 10, 2026 4:00am — the daily UPDATE ALL BACKTESTS is due but waits
+   ("waiting for collect to finish", next try 4:30am).
+4. After the fix, a run whose `createdAt` is before venue.json's `since`
+   (1791619184) is added to `collected` with nothing downloaded.
+
+**ROOT CAUSE** — the collector's memory of collected runs is exchange data
+that the cutover archived, and nothing else told it which runs predate the
+switch.
+
+**WHY IT WAS NOT CAUGHT** — the cutover's tests (`test_venue_switch.py`)
+check what moves and what stays; none started the site after the move and
+watched the first supervisor tick, where the collector reads the ledger the
+move had just emptied. The store's own refusal worked, which made the waste
+look like protection.
+
+**COST** — no money and nothing wrongly stored: one MEXC run's artifact
+downloaded and refused, and the daily update held for up to 30 minutes.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_autopilot_remembers_what_it_collected.py::test_a_run_from_before_the_switch_to_gate_is_skipped_not_downloaded`.
+
+---
+
+## RCA-2026-10-10-B — the switch to Gate refused to start because a job's process number from Sep 17 now belonged to Microsoft Teams
+
+**CEO**
+
+* The first real run of the switch to Gate (Oct 10, 2026 ~3:55am) refused:
+  "stop these first — they hold the store: the db_backtest_v2 job (pid
+  21144)". No backtest was running; 21144 was Microsoft Teams.
+* Why: the check believed any living process with the number written in an
+  old job file, and Windows reuses process numbers — the same trap this
+  project hit with the runner on Sep 11, 2026.
+* What stops it now: the switch asks each part of the app its own question —
+  the job system whether a job is running, the indexer whether it holds its
+  lock — never a bare process number.
+
+**DEV**
+
+* `tradingagents/venue_switch.py` `_blockers()` read every `db_*.pid` and
+  called `portable.pid_alive(pid)`; `db_backtest_v2.pid` held 21144 (written
+  Sep 17, 2026 7:51am), alive as `ms-teams.exe` since Oct 09, 2026 10:47am.
+* Invariant broken: **a pid is not an identity** (RCA-2026-09-12-B) — the
+  liveness of a job is `db_jobs.status(kind)["running"]` (progress says
+  running AND the pid lives), of the indexer `rows_index.run_lock_held()`.
+* Guard: `tests/test_venue_switch.py::test_a_stale_job_pid_that_now_belongs_to_another_program_does_not_block`.
+
+**SAW** — `refused: stop these first — they hold the store: the
+db_backtest_v2 job (pid 21144)` with the site already stopped.
+
+**TIMELINE**
+
+1. Sep 17, 2026 7:51am — the last Backtest v2 job on this PC writes
+   `db_backtest_v2.pid` = 21144 and later ends; the file stays.
+2. Oct 09, 2026 10:47am — Windows gives pid 21144 to Microsoft Teams.
+3. Oct 10, 2026 ~3:55am — the cutover's dry run lists the API (30508) and 13
+   runners; after they stop, the real run refuses on 21144 alone, with the
+   site down.
+4. After the fix the same dry run reports `blocked_by: []` and the switch
+   runs at 3:56am: 91 practice trades closed, 3,075 practice rows off.
+
+**ROOT CAUSE** — `_blockers` judged a job by a recorded pid instead of by the
+job system's own running state.
+
+**WHY IT WAS NOT CAUGHT** — `test_venue_switch.py` stubbed `_blockers` out
+entirely for every cutover test, so the real check never ran against a pid
+file at all, let alone a recycled one; the rule it broke was written down in
+`rows_index.run_lock_held`'s own docstring.
+
+**COST** — none: the switch refused (the safe direction) and the site stayed
+down about two minutes longer.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_venue_switch.py::test_a_stale_job_pid_that_now_belongs_to_another_program_does_not_block`.
+
+---
+
 ## RCA-2026-10-10-A — three rooms' status lines counted every too-old row twice, once as "could not be read", and the error filer took the made-up failure for a real one
 
 **CEO**

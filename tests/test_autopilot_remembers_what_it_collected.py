@@ -112,3 +112,32 @@ def test_every_state_write_merges_rather_than_replaces():
         assert arg.startswith("state") or arg.startswith("d"), (
             f"_write({arg}...) — a fresh-literal write is how the ledger "
             f"was wiped on Sep 06, 2026")
+
+
+def test_a_run_from_before_the_switch_to_gate_is_skipped_not_downloaded(state_file, monkeypatch):
+    """The first collect after the cutover (Oct 10, 2026 3:56am) downloaded a
+    MEXC run, 48,640 rows, only for the Gate store to refuse every pair. A run
+    STARTED before the switch measured the other exchange: it is remembered
+    as done without a byte downloaded; a run started after is collected."""
+    from tradingagents import cloud_sweep as cs, db_jobs as dj, venue
+
+    monkeypatch.setenv("TA_VENUE", "gate")
+    monkeypatch.setattr(venue, "since", lambda: 1_791_619_184.0)
+    started: list = []
+    asked: list = []
+    monkeypatch.setattr(dj, "status", lambda k: {"running": False})
+    monkeypatch.setattr(dj, "start", lambda kind, spec: started.append(spec) or 9)
+    monkeypatch.setattr(cs, "fleets", lambda cwd=None: ["me/repo"])
+    monkeypatch.setattr(cs, "run_res", lambda rid: "1m")
+    monkeypatch.setattr(cs, "_runs", lambda slug, limit=10: [
+        {"databaseId": 111, "status": "completed", "conclusion": "success",
+         "createdAt": "2026-10-10T06:00:00Z"},              # 2:00am, before
+        {"databaseId": 222, "status": "completed", "conclusion": "success",
+         "createdAt": "2026-10-10T09:00:00Z"}])             # 5:00am, after
+    monkeypatch.setattr(cs, "artifact_names",
+                        lambda rid, slug=None: asked.append(rid) or ["rows-0"])
+
+    got = ca.collect_finished(now=2e9, state={})
+    assert 111 not in asked, "nothing downloaded for a run of the other exchange"
+    assert got.get("started") is True and started[0]["run"] == 222
+    assert 111 in set(json.loads(state_file.read_text()).get("collected") or [])

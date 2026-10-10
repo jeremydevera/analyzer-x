@@ -73,6 +73,17 @@ def current() -> str:
     return v
 
 
+def since() -> float:
+    """When this PC switched to the exchange it trades (venue.json's
+    `since`), or 0 when nothing was ever switched. A GitHub run STARTED
+    before it measured the other exchange (cloud_autopilot skips it)."""
+    try:
+        return float(json.loads(VENUE_FILE.read_text(encoding="utf-8"))
+                     .get("since") or 0.0)
+    except (OSError, ValueError, AttributeError, TypeError):
+        return 0.0
+
+
 def name() -> str:
     """The exchange as a screen prints it: "Gate" / "MEXC"."""
     return NAMES[current()]

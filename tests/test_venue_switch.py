@@ -133,3 +133,23 @@ def test_a_dry_run_moves_nothing(home):
     assert set(plan["would_move"]) >= {"v2", "backtest", "book_readings.jsonl"}
     assert (home / "v2").exists() and venue.current() == "mexc"
     assert at.load_state()["BTC_USDT#paper#bb20_1h_sl1tp2"]["position"]
+
+
+def test_a_stale_job_pid_that_now_belongs_to_another_program_does_not_block(monkeypatch, tmp_path):
+    """The first real run refused on db_backtest_v2.pid = 21144, written
+    Sep 17, 2026 and by Oct 10 reused by Microsoft Teams. A job blocks when
+    the job system says it is RUNNING, never on a pid alone."""
+    from tradingagents import db_jobs as dj, profiles, rows_index as ri
+
+    monkeypatch.setattr(vs, "HOME", tmp_path)
+    (tmp_path / "db_backtest_v2.pid").write_text("21144")
+    monkeypatch.setattr(dj, "status", lambda k: {"running": False, "pid": 21144})
+    monkeypatch.setattr(ri, "run_lock_held", lambda: False)
+    monkeypatch.setattr(profiles, "ids", lambda: [])
+    import start as _start
+
+    monkeypatch.setattr(_start, "port_pids", lambda port: [])
+    assert vs._blockers() == []
+    monkeypatch.setattr(dj, "status",
+                        lambda k: {"running": k == "collect_v2", "pid": 77})
+    assert vs._blockers() == ["the collect_v2 job (pid 77)"]

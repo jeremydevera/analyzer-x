@@ -2291,6 +2291,16 @@ def _run_btupdate_v2(spec: dict) -> None:
             _picked = [str(c) for c in (spec.get("coins") or [])]
             _coins_for_cloud = _picked or [s.replace("_USDT", "") for s in
                                            stored_symbols(store="v2")]
+            if not _coins_for_cloud:
+                # A STORE THAT HOLDS NOTHING YET (the first UPDATE after the
+                # move to Gate, Oct 10, 2026: the cutover moved MEXC's
+                # minutes aside) measures the exchange's whole market, NAMED:
+                # an empty list goes to ONE account (dispatch_across will not
+                # split a board it cannot name) — 20 machines of 40.
+                from tradingagents.dataflows import exchange as _fx
+
+                _coins_for_cloud = [s.replace("_USDT", "")
+                                    for s in _fx.trading_symbols()]
             dispatched = cs.dispatch_across(
                 shards=cap.CLOUD_RUNNERS, coins=0,
                 coin_list=_coins_for_cloud,

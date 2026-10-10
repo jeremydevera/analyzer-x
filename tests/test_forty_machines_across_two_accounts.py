@@ -327,3 +327,27 @@ def test_every_account_refusing_is_still_an_error(monkeypatch):
         cs.dispatch_across(coin_list=["A", "B"], shards=20, fleet_list=TWO,
                            timeframes="15m")
     assert "403" in str(err.value)
+
+
+def test_a_v2_store_with_nothing_yet_names_the_exchanges_whole_market(monkeypatch):
+    """The first UPDATE after the move to Gate (Oct 10, 2026): the cutover
+    moved MEXC's minutes aside, so the v2 store names no coin. An empty list
+    would go to ONE account (dispatch_across will not split a board it cannot
+    name) — 20 machines of 40 — so the exchange's own market is named."""
+    from tradingagents import cloud_sweep as cs, db_jobs as dj
+    from tradingagents.dataflows import mexc_futures as mf
+
+    got = {}
+    monkeypatch.setattr(dj, "stored_symbols", lambda store="v1": [])
+    monkeypatch.setattr(mf, "trading_symbols", lambda: ["AAA_USDT", "BBB_USDT"])
+    monkeypatch.setattr(cs, "available", lambda: (True, ""))
+    monkeypatch.setattr(cs, "remember", lambda d: None)
+    monkeypatch.setattr(dj, "_write_run_plan", lambda *a, **k: None)
+    monkeypatch.setattr(dj, "_finish_btupdate_cloud_only", lambda *a, **k: None)
+
+    def across(**kw):
+        got.update(kw)
+        return {"runs": [], "why": "ok"}
+    monkeypatch.setattr(cs, "dispatch_across", across)
+    dj._run_btupdate_v2({})
+    assert got["coin_list"] == ["AAA", "BBB"]

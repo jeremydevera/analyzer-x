@@ -55,6 +55,12 @@ permissions:
   contents: read
   actions: read          # to download the replay run's artifacts
 
+# THE EXCHANGE (Oct 10, 2026, the move to Gate): every script reads it
+# through tradingagents.venue; the rows carry it, and the PC refuses a row
+# measured on another exchange (cloud_sweep.land_rows).
+env:
+  TA_VENUE: gate
+
 jobs:
   plan:
     runs-on: ubuntu-latest

@@ -123,12 +123,21 @@ def _open_practice(state: dict) -> list[tuple[str, dict]]:
             if isinstance(st, dict) and at.is_paper_slot(k) and st.get("position")]
 
 
+_MEXC_BOARD: dict = {}
+
+
 def _mexc_price(symbol: str) -> float:
     """The last price on MEXC, read directly: the door may already point
-    elsewhere by the time a trade opened there is closed."""
+    elsewhere by the time a trade opened there is closed. EVERY contract's
+    price from ONE ticker call first — 91 open practice trades asked one by
+    one is the burst MEXC answers "too many requests" (20 per 2 s); a coin
+    the board lacks is asked by itself."""
     from tradingagents.dataflows import mexc_futures
 
-    return float(mexc_futures.last_price(symbol))
+    if not _MEXC_BOARD:
+        _MEXC_BOARD.update(mexc_futures.last_prices() or {})
+    px = _MEXC_BOARD.get(symbol)
+    return float(px) if px else float(mexc_futures.last_price(symbol))
 
 
 def switch(target: str, *, rooms=None, price_of=None, now: float | None = None,

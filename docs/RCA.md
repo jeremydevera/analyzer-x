@@ -172,6 +172,57 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-K — UPDATE THIS BACKTEST on Backtest v2 measured a Gate row on this PC without the order book of each minute
+
+NEVER HAPPENED YET — found while proving each part of the move to Gate end
+to end, Oct 10, 2026 ~5:45am; no v2 row had been measured on this PC since
+the switch.
+
+**CEO**
+
+* The one-row button that re-measures a strategy on this PC skipped the new
+  cost check, so a row it updated would count trades the runner refuses —
+  beside rows from GitHub that did refuse them.
+* Why: the cost check was added to GitHub's measuring and to the PC's
+  rebuilds, but not to the PC's own measuring of a pair.
+* What stops it now: the button reads the same per-minute book, measures
+  the pair in full, and writes the same refusal counts as GitHub.
+
+**DEV**
+
+* `tradingagents/market_sweep.py` `run_pair` (pairbt_v2 → UPDATE THIS
+  BACKTEST) called `at.backtest_strategy(..., fine=fine)` with no `book=`.
+* Invariant broken: **every path that measures a v2 row measures it the
+  same way** (CLAUDE.md: the analysis and the button run the same grid).
+* Guard: `tests/test_backtest_v2_downloads_its_own_candles.py::test_a_v2_pair_measured_on_this_pc_pays_each_minutes_book`.
+
+**SAW** — nothing; found by grepping every `backtest_strategy(` call
+without `book=` after RCA-2026-10-10-H.
+
+**TIMELINE**
+
+1. Oct 10, 2026 — the per-minute book reaches GitHub's v2 shard (2f1c59d),
+   then the PC's trade list, window and 30-day figure (c622bf3).
+2. ~5:45am — a grep for engine calls without a book finds `run_pair`.
+3. After the fix: a v2 pair on Gate reads `cost_store.engine_book` once,
+   is measured in full, and its rows carry `gate_blocked`,
+   `cost_unmeasured` and `book_to`.
+
+**ROOT CAUSE** — the book was threaded through the paths a review named,
+not through every caller of the engine.
+
+**WHY IT WAS NOT CAUGHT** — RCA-2026-10-10-H listed the PC's REBUILD paths;
+`run_pair` MEASURES, and no list of "who calls the engine" was made until
+now.
+
+**COST** — none.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_backtest_v2_downloads_its_own_candles.py::test_a_v2_pair_measured_on_this_pc_pays_each_minutes_book`.
+
+---
+
 ## RCA-2026-10-10-J — the test suite started real GitHub sweeps for its made-up coin "A", twice, from a thread that outlived its test
 
 **CEO**

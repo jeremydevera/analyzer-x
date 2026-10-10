@@ -193,3 +193,40 @@ def test_the_screen_still_only_speaks_for_ITS_row():
              encoding="utf-8").read()
     assert "const jobIsThisRow" in p
     assert "pairJob.pair === `${open.coin} ${open.tf}`" in p
+
+
+def test_a_v2_pair_measured_on_this_pc_pays_each_minutes_book(v2, monkeypatch, tmp_path):
+    """Oct 10, 2026 (RCA-2026-10-10-K): UPDATE THIS BACKTEST measures one v2
+    pair on this PC through `run_pair`, and on Gate it passed no order book —
+    a row re-measured here took every trade the runner's cost check would
+    refuse, beside GitHub's rows that refused them. It reads the same book,
+    measures the pair in full (refusal counts do not travel in a saved
+    position), and stamps every row with the cost check's own counts."""
+    import tradingagents.auto_trader as at
+    from tradingagents import cost_store
+    from tradingagents.dataflows import exchange as fx
+
+    monkeypatch.setenv("TA_VENUE", "gate")
+    for name in ("HOME", "STATES", "ROWDIR", "COSTS"):
+        monkeypatch.setattr(msw, name, tmp_path / name.lower())
+        (tmp_path / name.lower()).mkdir()
+    monkeypatch.setattr(fx, "funding_history", lambda *a, **k: [])
+    monkeypatch.setattr(fx, "liquidation_move_pct", lambda *a, **k: 4.5)
+    monkeypatch.setattr(fx, "book_cost", lambda *a, **k: {"slippage": 0.0003})
+    monkeypatch.setattr(at, "taker_fee", lambda *a, **k: 0.00075)
+    monkeypatch.setattr(msw, "charge_cost", lambda *a, **k: (0.0003, []))
+    monkeypatch.setattr(msw, "deployed_combos", lambda: set())
+    asked, seen = [], []
+    monkeypatch.setattr(cost_store, "book_for",
+                        lambda sym, s, e, **k: asked.append(sym) or cost_store.empty())
+    real = at.backtest_strategy
+
+    def spy(*a, **k):
+        seen.append(k.get("book"))
+        return real(*a, **k)
+    monkeypatch.setattr(at, "backtest_strategy", spy)
+    got = msw.run_pair("TEST_USDT", "1h", signals=["mom6"])
+    assert asked == ["TEST_USDT"], "the book is read once for the pair"
+    assert seen and all(b is not None for b in seen)
+    for r in got.get("rows") or []:
+        assert {"gate_blocked", "cost_unmeasured", "book_to"} <= set(r)

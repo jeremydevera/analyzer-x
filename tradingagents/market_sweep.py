@@ -1158,6 +1158,21 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
         elif states.get("__version__") not in (None, ver):
             states, last_ms = {}, 0
     states["__version__"] = ver
+    # THE ORDER BOOK OF EVERY MINUTE (Gate, v2): the runner's cost check at
+    # each entry and each trade's own fills, exactly as the GitHub shard
+    # measures (RCA-2026-10-10-K). Its counts do not travel in a saved
+    # position, so a pair measured with it is measured in FULL — as GitHub
+    # measures every v2 pair.
+    minute_book = None
+    if fine is not None:
+        from tradingagents import cost_store as _cst
+
+        minute_book = _cst.engine_book(symbol, int(df["Date"].iloc[0].timestamp()),
+                                       int(time.time()))
+        if minute_book is not None and last_ms and not merge:
+            states, last_ms = {"__version__": ver}, 0
+    book_to = (int(minute_book["t"][-1])
+               if minute_book is not None and len(minute_book["t"]) else 0)
     # State without rows shows the operator nothing. If the grid for this pair
     # is missing (first build, or a store wiped by hand), ignore the resume
     # point and measure it again rather than reporting "no new bars" forever.
@@ -1299,7 +1314,8 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                         keep_log=False, resume=prev or {}, start_at=off,
                         # v2: the minutes; None on v1 (`_settle_fine` indexes
                         # them by time, so a sliced `frame` is fine)
-                        fine=fine)
+                        fine=fine, book=minute_book,
+                        book_hold_s=bs * at.FUNDING_HOLD_BARS)
                 except Exception:
                     continue
                 states[ck] = r["state"]
@@ -1382,6 +1398,12 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                     # file is byte-identical to before.
                     **({"unclear": int(r.get("unclear", 0)), "res": FINE_TF}
                        if FINE_TF else {}),
+                    # the cost check's own counts and the last minute of book
+                    # it read — the same fields as a GitHub v2 row
+                    **({"gate_blocked": int(r.get("gate_blocked", 0)),
+                        "cost_unmeasured": int(r.get("cost_unmeasured", 0)),
+                        "book_to": book_to}
+                       if minute_book is not None else {}),
                     "stop_reachable": True, "days": days_have,
                     "bars": len(df),
                     # WHERE THE WINDOW ENDED. The pair has one watermark and it

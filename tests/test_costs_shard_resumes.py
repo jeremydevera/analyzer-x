@@ -212,6 +212,8 @@ def _board(monkeypatch, shard, answers, taken=()):
             return seq.pop(0) if len(seq) > 1 else seq[0]
     monkeypatch.setattr(shard, "ClaimBoard", Board)
     monkeypatch.setattr(shard, "_pause", lambda s: None)
+    # the board is OFF by default (RCA-2026-10-10-N); these tests switch it on
+    monkeypatch.setenv("COSTS_CLAIM_BOARD", "1")
     return calls
 
 
@@ -252,3 +254,44 @@ def test_a_coin_another_machine_took_is_never_claimed(shard, monkeypatch):
     _wire(shard, monkeypatch, [])
     calls = _board(monkeypatch, shard, {}, taken={"AAA_USDT"})
     assert shard.main() == 0 and calls == ["BBB_USDT"]
+
+
+def test_by_default_no_machine_spends_github_requests_on_claims(shard, monkeypatch):
+    """Oct 10, 2026 (RCA-2026-10-10-N): every claim is a GitHub request out
+    of the account's ~1,000 an hour, shared with the backtest and the
+    research; today's costs run ran it dry and the research run beside it
+    failed "API rate limit exceeded for installation". The coins are dealt
+    to the account already; each machine takes a fixed share of them."""
+    monkeypatch.setenv("COIN_LIST", "AAA_USDT,BBB_USDT,CCC_USDT,DDD_USDT")
+    monkeypatch.setenv("SHARDS", "2")
+    monkeypatch.setattr(shard, "SHARD", 1)
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "o/r")
+    monkeypatch.delenv("COSTS_CLAIM_BOARD", raising=False)
+    monkeypatch.setattr(shard, "ClaimBoard", lambda: pytest.fail("a claim was asked"))
+    replayed, uploaded = _wire(shard, monkeypatch, [])
+    asked = []
+    from tradingagents import book_history as bh
+
+    def day_readings(sym, d, hours=None, **k):
+        asked.append(sym)
+        return {**bh.pack([_reading(h + 60) for h in hours]), "hours_read": len(hours)}
+    monkeypatch.setattr(shard.bh, "day_readings", day_readings)
+    assert shard.main() == 0
+    assert sorted(set(asked)) == ["BBB_USDT", "DDD_USDT"], "machine 1 of 2: every other coin"
+
+
+def test_an_upload_refused_for_the_rate_limit_waits_and_tries_again(shard, monkeypatch, tmp_path):
+    """A rate-limit refusal is a wait, never a lost file: the hour's budget
+    comes back."""
+    import subprocess
+
+    calls, slept = [], []
+    answers = [subprocess.CompletedProcess([], 1, "", "HTTP 403: API rate limit exceeded for installation"),
+               subprocess.CompletedProcess([], 0, "", "")]
+    monkeypatch.setattr(shard, "gh", lambda *a: calls.append(a) or answers.pop(0))
+    monkeypatch.setattr(shard, "_pause", lambda s: slept.append(s))
+    f = tmp_path / "X.npz"
+    f.write_bytes(b"x")
+    assert shard.upload(f, "costs-202610-a") is True
+    assert len(calls) == 2 and slept and slept[0] >= 60

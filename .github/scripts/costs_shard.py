@@ -62,20 +62,34 @@ def gh(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["gh", *args], capture_output=True, text=True)
 
 
+UPLOAD_TRIES = 7
+
+
 def upload(path: Path, tag: str) -> bool:
     """Into this account's release `tag`, creating the release the first
     time any machine needs it (a race between machines is fine: the loser's
-    create fails and its upload then succeeds)."""
-    for attempt in range(3):
+    create fails and its upload then succeeds).
+
+    A RATE-LIMIT refusal is a WAIT, never a lost file (RCA-2026-10-10-N):
+    the account's ~1,000 requests an hour come back, and the job has hours.
+    It waits 1, 2, 4, 8, 10, 10 minutes before giving up."""
+    r = None
+    for attempt in range(UPLOAD_TRIES):
         r = gh("release", "upload", tag, str(path), "--clobber", "-R", REPO)
         if r.returncode == 0:
             return True
-        if "release not found" in (r.stderr + r.stdout).lower() or "not found" in r.stderr.lower():
+        said = (r.stderr + r.stdout).lower()
+        if "rate limit" in said:
+            _pause(min(60 * 2 ** attempt, 600))
+            continue
+        if "release not found" in said or "not found" in r.stderr.lower():
             gh("release", "create", tag, "-R", REPO, "--title", tag, "--latest=false", "--notes",
                "Per-minute trading costs replayed from Gate's order-book archive "
                "(tradingagents/book_history.py). One file per coin per month.")
-        time.sleep(2 + 3 * attempt)
-    log(f"could not upload {path.name} to {tag}: {r.stderr.strip()[:200]}")
+        if attempt >= 2:
+            break
+        _pause(2 + 3 * attempt)
+    log(f"could not upload {path.name} to {tag}: {(r.stderr if r else '').strip()[:200]}")
     return False
 
 
@@ -85,6 +99,13 @@ def _now() -> float:
 
 def _pause(seconds: float) -> None:
     time.sleep(seconds)
+
+
+class _NoBoard:
+    enabled = False
+
+
+_NO_BOARD = _NoBoard()
 
 
 def my_coins(board, todo: list, shards: int, redo: list):
@@ -161,7 +182,12 @@ def held_days(packed: dict) -> set[int]:
 
 def main() -> int:
     OUT.mkdir(exist_ok=True)
-    board = ClaimBoard()
+    # NO CLAIM BOARD BY DEFAULT (RCA-2026-10-10-N): every claim is a GitHub
+    # request out of the account's ~1,000 an hour, shared with the backtest
+    # and the research; the coins are already dealt to this account, so each
+    # machine takes a fixed share. COSTS_CLAIM_BOARD=1 switches it back on.
+    board = (ClaimBoard() if os.environ.get("COSTS_CLAIM_BOARD") == "1"
+             else _NO_BOARD)
     want = days()
     months: dict[str, list[int]] = {}
     for d in want:

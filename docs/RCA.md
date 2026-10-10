@@ -172,6 +172,70 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-N — the costs job spent the account's GitHub request budget on claims and uploads, and the Room strategies research beside it failed
+
+**CEO**
+
+* At Oct 10, 2026 9:06am today's trading-cost run failed again on both
+  accounts, and at 9:12am the Room strategies re-test's research step lost 3
+  machines with "API rate limit exceeded for installation".
+* Why: GitHub gives each account about 1,000 requests an hour for its
+  machines, shared by every job; the costs job spent one or more on every
+  coin just to decide which machine takes it, plus about three per file it
+  saves, while 40 backtest machines and the research were running.
+* What stops it now: the costs machines take fixed shares of the coins and
+  ask GitHub nothing for that, and a save GitHub refuses for the limit waits
+  for the budget to come back instead of failing.
+
+**DEV**
+
+* `.github/scripts/costs_shard.py` claimed every coin through
+  `progress.ClaimBoard` (a REST `PUT` per coin, six on contention) and
+  `upload()` retried `gh release upload --clobber` three times in 15 s;
+  `ClaimBoard.claim` returns None on 403s too, so the RCA-2026-10-10-M walk
+  stopped after three.
+* Invariant broken: **a GitHub job is costed in requests as well as
+  machines** — the per-account token budget is one pool for every workflow
+  on that account.
+* Guards: `tests/test_costs_shard_resumes.py::test_by_default_no_machine_spends_github_requests_on_claims`,
+  `::test_an_upload_refused_for_the_rate_limit_waits_and_tries_again`.
+
+**SAW** — run 38054476352 (head 38d9dcf, the RCA-M fix): machines starting
+at VANA_USDT, TOSHI_USDT, RED_USDT, NG_USDT, LINEA_USDT, each "the claim
+board stopped answering"; run 38054785141 (research): 3 machines "Unable to
+download artifact(s): API rate limit exceeded for installation".
+
+**TIMELINE**
+
+1. Oct 10, 2026 4:01am-8:09am — the 30-day backfill saves ~1,000 coin-months
+   per account over four hours (~880 requests an hour) and finishes green.
+2. 8:31am-9:08am — both Gate backtests run (40 machines claiming and
+   reporting progress), and the replays finish.
+3. 9:06am — today's costs press: 20 machines per account claim at once and
+   upload every coin's October file within minutes; the budget runs out.
+4. 9:12am — the research step cannot download the replay's results; three
+   machines fail; the re-test starts it again.
+5. After the fix — no claims at all for costs; an upload refused for the
+   limit waits 1, 2, 4, 8, 10, 10 minutes.
+
+**ROOT CAUSE** — the costs job copied the backtest's claim board, which
+pays in GitHub requests for balance the costs job does not need, and its
+daily run concentrates ~500 saves per account into minutes.
+
+**WHY IT WAS NOT CAUGHT** — the backfill that proved the job ran alone and
+spread over four hours; nothing measured how many requests one run spends
+or what else shares the account's budget when it runs.
+
+**COST** — none: the costs for Oct 10 wait for the next press; the research
+re-ran.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_costs_shard_resumes.py::test_by_default_no_machine_spends_github_requests_on_claims`,
+`tests/test_costs_shard_resumes.py::test_an_upload_refused_for_the_rate_limit_waits_and_tries_again`.
+
+---
+
 ## RCA-2026-10-10-M — today's trading-cost run stopped at its first coin on all 20 machines, because a busy claim board was read as a dead one
 
 **CEO**

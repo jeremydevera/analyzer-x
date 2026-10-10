@@ -83,6 +83,65 @@ def _now() -> float:
     return time.time()
 
 
+def _pause(seconds: float) -> None:
+    time.sleep(seconds)
+
+
+def my_coins(board, todo: list, shards: int, redo: list):
+    """The coins THIS machine replays, claimed one at a time — the backtest
+    shard's own walk (sweep_shard.coin_stream; RCA-2026-10-10-M):
+
+    * each machine starts in ITS OWN part of the list and staggers its first
+      claim, so twenty machines do not race one coin in the same second;
+    * a coin another machine took (read over git, free) is never claimed;
+    * ONE claim with no answer skips that coin — under contention the board
+      runs out of tries while someone else is taking it — and the coin gets
+      one more try at the end; three in a row is a board that is down, and
+      the walk stops. A coin nobody could claim is left `redo`, named.
+
+    Without a board (local runs) the old fixed slice."""
+    if not board.enabled:
+        for k, sym in enumerate(todo):
+            if k % shards == SHARD:
+                yield sym
+        return
+    _pause((SHARD % shards) * 0.7)
+    start = (SHARD * len(todo)) // shards
+    order = todo[start:] + todo[:start]
+    seen: set = set()
+    unanswered: list = []
+    dead = 0
+    for k, sym in enumerate(order):
+        seen |= board.taken()
+        if sym in seen:
+            continue
+        got = board.claim(sym)
+        if got is None:
+            dead += 1
+            if dead >= 3:
+                left = [c for c in order[k:] if c not in seen] + unanswered
+                redo.append(f"the claim board stopped answering at {sym}: "
+                            f"{len(left)} coin(s) left for the next press")
+                return
+            log(f"claim of {sym} got no answer — skipping it, not stopping")
+            unanswered.append(sym)
+            continue
+        dead = 0
+        if got is True:
+            yield sym
+        else:
+            seen.add(sym)
+    for sym in unanswered:                 # one more try, when the race is over
+        if sym in board.taken():
+            continue                       # another machine measured it
+        got = board.claim(sym)
+        if got is True:
+            yield sym
+        elif got is None:
+            redo.append(f"{sym}: its claim got no answer twice, so no machine "
+                        f"measured it")
+
+
 def held_hours(packed: dict) -> set[int]:
     """The hours (their first second) a month file has readings in. By the
     HOUR, not the day (RCA-2026-10-10-H): the 07:00 UTC press saves today so
@@ -116,20 +175,7 @@ def main() -> int:
     # done for ever, so it may only end green when nothing was lost
     redo: list[str] = []
     shards = max(1, int(os.environ.get("SHARDS") or 1))
-    for k, sym in enumerate(todo):
-        if board.enabled:
-            got = board.claim(sym)
-            if got is None:
-                # the board's own rule: unreachable -> stop claiming, never
-                # guess (progress.ClaimBoard.claim); what is left goes to the
-                # next press
-                redo.append(f"the claim board stopped answering at {sym}: "
-                            f"{len(todo) - k} coin(s) left for the next press")
-                break
-            if got is not True:
-                continue
-        elif k % shards != SHARD:          # no board: a fixed, stable slice
-            continue
+    for sym in my_coins(board, todo, shards, redo):
         try:
             size = float(fx.contract_spec(sym).get("contractSize") or 0.0)
         except Exception as exc:                               # noqa: BLE001

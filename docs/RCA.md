@@ -172,6 +172,71 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-M — today's trading-cost run stopped at its first coin on all 20 machines, because a busy claim board was read as a dead one
+
+**CEO**
+
+* At Oct 10, 2026 9:02am the run that saves today's per-minute trading costs
+  ended red on the jeremydvera account: every one of its 20 machines quit
+  at the first coin, 0G_USDT, and saved nothing.
+* Why: all 20 machines asked for the same first coin in the same second,
+  beside 40 backtest machines writing the same place; the board ran out of
+  tries, and a fix made earlier this morning had taught the job to read
+  "no answer" as "the board is down — stop".
+* What stops it now: each machine starts in its own part of the coin list,
+  one unanswered coin is skipped and tried again at the end, and only three
+  in a row stops a machine — the way the backtest machines have always done
+  it.
+
+**DEV**
+
+* `.github/scripts/costs_shard.py` `main` walked `todo` in the same order on
+  every machine and, since b3ee76d/268a515 (RCA-2026-10-10-F), broke out of
+  the loop on the first `board.claim(sym) is None`; `progress.ClaimBoard.claim`
+  returns None after six 409s, which is contention as often as an outage.
+* Invariant broken: **one race is not an outage** — sweep_shard.coin_stream
+  already encoded it (own region, stagger, `taken()` over git, skip one, stop
+  at three); the costs job did not reuse it.
+* Guards: `tests/test_costs_shard_resumes.py::test_one_unanswered_claim_skips_that_coin_and_the_walk_goes_on`,
+  `::test_each_machine_starts_its_walk_in_its_own_part_of_the_list`,
+  `::test_a_coin_unanswered_twice_is_left_for_the_next_press`,
+  `::test_a_coin_another_machine_took_is_never_claimed`.
+
+**SAW** — run 38050928260: `failure x20, success x1`, every machine logging
+`[costs N] TO DO AGAIN: the claim board stopped answering at 0G_USDT: 514
+coin(s) left for the next press` within 20 seconds of starting.
+
+**TIMELINE**
+
+1. Oct 10, 2026 ~5:50am — RCA-2026-10-10-F makes a `None` claim stop the
+   machine (the board's docstring says None = unreachable).
+2. 8:09am — the 30-day backfill is marked done and today's press goes out
+   (runs 38050934177 and 38050928260), queued behind the Gate backtest.
+3. 9:02am — 38050928260 starts: 20 machines claim 0G_USDT at once while
+   the backtest's 40 machines commit progress to the same branch; every
+   claim exhausts its six tries and every machine stops. Run red.
+4. After the fix — a press walks from each machine's own region, skips an
+   unanswered coin, retries it at the end, and goes red only for a coin
+   nobody could take.
+
+**ROOT CAUSE** — a fix trusted a docstring's meaning of `None` over the code
+that produces it, and wrote a second claim walk instead of using the one
+that had already met this race.
+
+**WHY IT WAS NOT CAUGHT** — the claim tests used a board that answered None
+for every coin or True for every coin; none had twenty machines racing one
+coin, which is the normal start of every run.
+
+**COST** — none: today's costs wait for the next press (the 30-day
+backfill was already saved, green, before this run).
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_costs_shard_resumes.py::test_one_unanswered_claim_skips_that_coin_and_the_walk_goes_on`,
+`tests/test_costs_shard_resumes.py::test_each_machine_starts_its_walk_in_its_own_part_of_the_list`.
+
+---
+
 ## RCA-2026-10-10-L — every Backtest v2 screen that re-measures on this PC refused Gate rows: Gate sells no minutes for the start of the current month
 
 **CEO**

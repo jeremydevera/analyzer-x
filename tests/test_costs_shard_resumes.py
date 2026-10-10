@@ -142,13 +142,7 @@ def test_an_upload_that_failed_ends_the_run_red(shard, monkeypatch):
 def test_a_claim_with_no_answer_ends_the_run_red(shard, monkeypatch):
     """A coin whose claim got no answer is measured by nobody on this run."""
     replayed, uploaded = _wire(shard, monkeypatch, [])
-
-    class Board:
-        enabled = True
-
-        def claim(self, sym):
-            return None
-    monkeypatch.setattr(shard, "ClaimBoard", Board)
+    _board(monkeypatch, shard, {"BTC_USDT": [None]})
     assert shard.main() == 1 and replayed == []
 
 
@@ -199,3 +193,62 @@ def test_an_hour_that_has_not_ended_is_not_asked_for(shard, monkeypatch):
     monkeypatch.setattr(shard, "_now", lambda: D3 + 5 * 3600 + 120)   # 05:02 UTC
     assert shard.main() == 0
     assert asked == [D3 + 3600 * h for h in range(5)], "hours 00-04 have ended"
+
+
+def _board(monkeypatch, shard, answers, taken=()):
+    """A claim board whose answer per coin comes from `answers` (a list of
+    True / False / None per call, by coin), like progress.ClaimBoard."""
+    calls = []
+
+    class Board:
+        enabled = True
+
+        def taken(self):
+            return set(taken)
+
+        def claim(self, sym):
+            calls.append(sym)
+            seq = answers.get(sym, [True])
+            return seq.pop(0) if len(seq) > 1 else seq[0]
+    monkeypatch.setattr(shard, "ClaimBoard", Board)
+    monkeypatch.setattr(shard, "_pause", lambda s: None)
+    return calls
+
+
+def test_one_unanswered_claim_skips_that_coin_and_the_walk_goes_on(shard, monkeypatch):
+    """Oct 10, 2026 1:02pm UTC (RCA-2026-10-10-M): today's costs run had all
+    20 machines claim 0G_USDT first, in the same second, beside 40 backtest
+    machines writing the same branch; every claim ran out of tries, `None`
+    was read as "the board is down", and every machine stopped at its first
+    coin — 0 files, run red. One no-answer skips ONE coin (as the backtest
+    shard does); the coin gets one more try at the end."""
+    monkeypatch.setenv("COIN_LIST", "AAA_USDT,BBB_USDT,CCC_USDT")
+    replayed, uploaded = _wire(shard, monkeypatch, [])
+    calls = _board(monkeypatch, shard, {"AAA_USDT": [None, True]})
+    assert shard.main() == 0
+    assert calls == ["AAA_USDT", "BBB_USDT", "CCC_USDT", "AAA_USDT"]
+    assert len(uploaded) == 3, "AAA's second try got it"
+
+
+def test_each_machine_starts_its_walk_in_its_own_part_of_the_list(shard, monkeypatch):
+    monkeypatch.setenv("COIN_LIST", "AAA_USDT,BBB_USDT,CCC_USDT,DDD_USDT")
+    monkeypatch.setenv("SHARDS", "2")
+    monkeypatch.setattr(shard, "SHARD", 1)
+    _wire(shard, monkeypatch, [])
+    calls = _board(monkeypatch, shard, {})
+    shard.main()
+    assert calls[0] == "CCC_USDT", "machine 1 of 2 starts halfway down the list"
+
+
+def test_a_coin_unanswered_twice_is_left_for_the_next_press(shard, monkeypatch):
+    monkeypatch.setenv("COIN_LIST", "AAA_USDT,BBB_USDT")
+    _wire(shard, monkeypatch, [])
+    _board(monkeypatch, shard, {"AAA_USDT": [None]})
+    assert shard.main() == 1, "a coin nobody measured keeps the run red"
+
+
+def test_a_coin_another_machine_took_is_never_claimed(shard, monkeypatch):
+    monkeypatch.setenv("COIN_LIST", "AAA_USDT,BBB_USDT")
+    _wire(shard, monkeypatch, [])
+    calls = _board(monkeypatch, shard, {}, taken={"AAA_USDT"})
+    assert shard.main() == 0 and calls == ["BBB_USDT"]

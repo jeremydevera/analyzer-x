@@ -990,3 +990,40 @@ def test_the_cycle_records_minutes_for_practice_coins_held_first(monkeypatch):
     monkeypatch.setattr(lp, "MINUTE_COINS_MAX", 1)
     at._feed_follow(state)
     assert feed._want_minutes == {HELD}, "the cap dropped a held coin"
+
+
+def test_the_board_forgets_the_forming_bar_under_the_exchanges_own_key(monkeypatch):
+    """Final review, Oct 10, 2026 (RCA-2026-10-10-G): the board popped
+    `(symbol, "Min1", 300)` from `fx._KLINE_CACHE`, but Gate caches under its
+    own name for the size, `(symbol, "1m", 300)` — so a copy fetched while
+    the minute was still forming came back as the closed one. Each exchange
+    forgets its own key (`forget_klines`), named the way the caller asked."""
+    import pandas as pd
+
+    from tradingagents.dataflows import gate_futures as gf, mexc_futures as mf
+
+    frame = pd.DataFrame({"Date": [pd.Timestamp("2026-10-10 08:00")], "Open": [1.0],
+                          "High": [1.0], "Low": [1.0], "Close": [1.0], "Volume": [1.0]})
+    gf._KLINE_CACHE[("BTC_USDT", "1m", 300)] = (0.0, frame)
+    gf.forget_klines("BTC_USDT", "Min1", 300)
+    assert ("BTC_USDT", "1m", 300) not in gf._KLINE_CACHE
+    mf._KLINE_CACHE[("BTC_USDT", "Min1", 300)] = (0.0, frame)
+    mf.forget_klines("BTC_USDT", "Min1", 300)
+    assert ("BTC_USDT", "Min1", 300) not in mf._KLINE_CACHE
+
+    asked = []
+
+    class Fx:
+        def forget_klines(self, s, iv, n):
+            asked.append(("forget", s, iv, n))
+
+        def klines(self, s, iv, n):
+            asked.append(("klines", s, iv, n))
+            return frame
+    sm.enable()
+    try:
+        sm.klines(Fx(), "BTC_USDT", "Min1", 300)
+    finally:
+        sm.enable(False)
+    assert asked[:2] == [("forget", "BTC_USDT", "Min1", 300),
+                         ("klines", "BTC_USDT", "Min1", 300)]

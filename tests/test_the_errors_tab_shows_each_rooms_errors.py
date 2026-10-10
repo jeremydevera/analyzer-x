@@ -401,3 +401,35 @@ def test_gates_too_many_requests_is_the_same_kind_as_mexcs():
     line = ("ERROR scan BTC_USDT failed: 429 TOO_MANY_REQUESTS: slow down "
             "(https://api.gateio.ws/api/v4/futures/usdt/candlesticks)")
     assert re_.classify("ERROR", line)[1] == "rate_limit"
+
+
+def test_a_price_ending_in_429_is_not_a_rate_limit():
+    """Final review, Oct 10, 2026 (RCA-2026-10-10-G): `\b429\b` matched any
+    number written 429 — `entry ~2.429` on the runner's scan line, every
+    cycle for a position's whole life — and the error filer turns the Errors
+    tab into public GitHub issues. Gate's real refusal always reads
+    "429 TOO_MANY_REQUESTS", which is what is matched."""
+    from tradingagents import room_errors as re_
+
+    assert re_.classify("INFO", "ENTER ZRO_USDT LONG entry ~2.429 tp 2.45") != \
+        ("error", "rate_limit")
+    assert re_.classify("INFO", "scan ZRO_USDT 15m: line 429 of the frame") != \
+        ("error", "rate_limit")
+    assert re_.classify(
+        "WARNING", "GET /api/v4/futures/usdt/candlesticks: 429 TOO_MANY_REQUESTS: slow"
+    ) == ("error", "rate_limit")
+    assert re_.classify("WARNING", "code=510 Requests are too frequent") == \
+        ("error", "rate_limit")
+
+
+def test_a_gate_429_without_its_label_still_reads_as_a_rate_limit(monkeypatch):
+    """A 429 from a proxy carries no Gate body; the words must still say
+    TOO_MANY_REQUESTS, the one thing the Errors tab matches."""
+    from tradingagents import room_errors as re_
+    from tradingagents.dataflows import gate_futures as gf
+
+    assert "TOO_MANY_REQUESTS" in gf._throttle_label(b"<html>busy</html>")
+    assert gf._throttle_label(b'{"label":"TOO_MANY_REQUESTS","message":"x"}') == \
+        "TOO_MANY_REQUESTS: x"
+    assert re_.classify("WARNING", f"429 {gf._throttle_label(b'')} (GET /x)") == \
+        ("error", "rate_limit")

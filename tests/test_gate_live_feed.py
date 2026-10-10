@@ -105,3 +105,20 @@ def test_the_feed_follows_the_venue(monkeypatch):
     assert isinstance(lp.protocol_for_venue(), lp.GateProtocol)
     monkeypatch.setenv("TA_VENUE", "mexc")
     assert isinstance(lp.protocol_for_venue(), lp.MexcProtocol)
+
+
+def test_a_liquidation_takeover_print_is_never_a_tick():
+    """Gate's `futures.trades` marks insurance-fund and ADL takeovers
+    `is_internal`: "the transaction price may deviate, and it will not be
+    recorded in the K-line". A practice exit walks these ticks, so one such
+    print could fill a practice trade that no candle — and so no backtest —
+    ever shows (final review, Oct 10, 2026; RCA-2026-10-10-G)."""
+    from tradingagents.live_price import GateProtocol
+
+    got = GateProtocol().parse({
+        "channel": "futures.trades", "event": "update",
+        "result": [{"contract": "BTC_USDT", "price": "60000", "size": 3,
+                    "create_time_ms": 1791600000123},
+                   {"contract": "BTC_USDT", "price": "57000", "size": -40,
+                    "create_time_ms": 1791600000150, "is_internal": True}]})
+    assert [e[2] for e in got if e[0] == "deal"] == [60000.0]

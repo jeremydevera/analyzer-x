@@ -411,9 +411,16 @@ def klines(fx, symbol: str, interval: str, limit: int = 300):
         # A copy fetched by this process before the bar closed must not be
         # filed as the fresh one: `fx.klines` keeps its own copy for up to
         # 30 s (Min1) - 300 s, which can still hold the bar as it was FORMING.
-        cache = getattr(fx, "_KLINE_CACHE", None)
-        if isinstance(cache, dict):
-            cache.pop((symbol, interval, limit), None)
+        # Each exchange forgets under ITS OWN key: Gate names a minute "1m"
+        # and the old pop of `(symbol, "Min1", limit)` missed it
+        # (RCA-2026-10-10-G).
+        forget = getattr(fx, "forget_klines", None)
+        if callable(forget):
+            forget(symbol, interval, limit)
+        else:
+            cache = getattr(fx, "_KLINE_CACHE", None)
+            if isinstance(cache, dict):
+                cache.pop((symbol, interval, limit), None)
         return fx.klines(symbol, interval, limit)
 
     def encode(f, at):

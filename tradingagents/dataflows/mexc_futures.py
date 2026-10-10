@@ -1290,6 +1290,13 @@ def _kline_db_store(symbol: str, interval: str, frame) -> None:
         pass                 # the archive must never break a fetch
 
 
+def forget_klines(symbol: str, interval: str, limit: int) -> None:
+    """Drop this process's copy of `klines(symbol, interval, limit)` — the
+    shared board's fetch must never re-file a copy taken while the bar was
+    still forming. One name on both adapters (RCA-2026-10-10-G)."""
+    _KLINE_CACHE.pop((symbol, interval, limit), None)
+
+
 def klines(symbol: str, interval: str = "Min5", limit: int = 300):
     """Recent futures candles as a DataFrame, for charting. Keyless.
 

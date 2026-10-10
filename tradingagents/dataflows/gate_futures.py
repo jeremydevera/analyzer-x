@@ -159,6 +159,14 @@ def _no_more_tries(attempt: int, t0: float) -> bool:
     return attempt >= _PUBLIC_RETRIES or _clock() - t0 >= _PUBLIC_RETRY_BUDGET_S
 
 
+def _throttle_label(raw: bytes) -> str:
+    """A 429's words ALWAYS carry TOO_MANY_REQUESTS — the Errors tab and the
+    error filer recognise a throttle by that word alone, never by a bare 429
+    (RCA-2026-10-10-G), and a 429 from a proxy has no Gate body at all."""
+    got = _label(raw)
+    return got if "TOO_MANY_REQUESTS" in got else f"TOO_MANY_REQUESTS: {got}".rstrip(": ")
+
+
 def _label(raw: bytes) -> str:
     """Gate's `label: message` out of an error body, or its first bytes."""
     try:
@@ -193,7 +201,7 @@ def _get_public(url: str):
             if status == 429:
                 _note_rate_limit()
                 if _no_more_tries(attempt, t0):
-                    err = GateFuturesThrottled(f"429 {_label(raw)} ({url})")
+                    err = GateFuturesThrottled(f"429 {_throttle_label(raw)} ({url})")
                     err.code = 429
                     raise err
             elif status in _RETRY_STATUSES:
@@ -638,7 +646,8 @@ def _signed(method: str, path: str, *, params: dict | None = None,
         raise GateFuturesForbidden(msg, code=status, scope="futures trade",
                                    remedy=SCOPE_REMEDY)
     if status == 429:
-        err429 = GateFuturesThrottled(msg)
+        err429 = GateFuturesThrottled(
+            f"429 {_throttle_label(raw)} ({method} {path})")
         err429.code = 429
         raise err429
     raise GateFuturesError(msg)
@@ -1280,6 +1289,14 @@ def clear_kline_cache(disk: bool = True) -> None:
                 f.unlink()
     except OSError:
         pass
+
+
+def forget_klines(symbol: str, interval: str, limit: int) -> None:
+    """Drop this process's copy of `klines(symbol, interval, limit)`, keyed
+    the way THIS adapter keys it (Gate names a minute "1m", the caller
+    "Min1"): the shared board's fetch must never re-file a copy taken while
+    the bar was still forming (RCA-2026-10-10-G)."""
+    _KLINE_CACHE.pop((symbol, _iv(interval), int(limit)), None)
 
 
 def klines(symbol: str, interval: str = "Min5", limit: int = 300):

@@ -242,6 +242,11 @@ class GateProtocol:
             if not isinstance(r, dict):
                 continue
             if ch == "futures.trades":
+                # an insurance-fund / ADL takeover: its price "may deviate"
+                # and never reaches a candle, so it must never fill a
+                # practice trade the backtest could not see (RCA-2026-10-10-G)
+                if r.get("is_internal"):
+                    continue
                 ts = r.get("create_time_ms")
                 if not ts and r.get("create_time"):
                     ts = _num(r.get("create_time")) * 1000

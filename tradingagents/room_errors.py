@@ -43,9 +43,11 @@ _LINE = re.compile(r"^([A-Z][a-z]{2} \d{2}, \d{4} \d{1,2}:\d{2}[ap]m) (\w+) (.*)
 # ONE table, in the order tried: the first pattern that matches names the line
 ERROR_KINDS = (
     # MEXC's "code 510 / Requests are too frequent" and Gate's HTTP 429
-    # "TOO_MANY_REQUESTS" (Oct 10, 2026, the move to Gate) are one kind
+    # "TOO_MANY_REQUESTS" (Oct 10, 2026, the move to Gate) are one kind.
+    # Never a bare 429: it matched every price written x.429 on the scan
+    # line (RCA-2026-10-10-G); Gate's refusal always carries the label.
     ("rate_limit", "The exchange said too many requests",
-     re.compile(r"code.?=?\s?510\b|Requests are too frequent|TOO_MANY_REQUESTS|\b429\b", re.I)),
+     re.compile(r"code.?=?\s?510\b|Requests are too frequent|TOO_MANY_REQUESTS", re.I)),
     ("book_unreadable", "Order book could not be read",
      re.compile(r"order book could not be read", re.I)),
     ("no_price", "No live price", re.compile(r"no live price", re.I)),

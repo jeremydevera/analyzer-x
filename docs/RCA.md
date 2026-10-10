@@ -172,6 +172,74 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-G — three ways the Gate practice account could read the market wrong: a price ending in 429 filed as "too many requests", a liquidation takeover taken for a trade, and a still-forming minute kept as closed
+
+NEVER HAPPENED YET (checked) — no room log line on Oct 10, 2026 held a bare
+429 outside a TOO_MANY_REQUESTS refusal; the other two leave no trace in the
+logs to count, so they are labelled not yet seen rather than not happened.
+
+**CEO**
+
+* The Errors tab, and from it the public GitHub issues, would have called any
+  price written like 2.429 "the exchange said too many requests", on every
+  check, for as long as that practice trade was open.
+* A Gate print from an insurance-fund takeover, which Gate itself keeps off
+  its candles, could have closed a practice trade at a price the backtest
+  never saw; and a minute candle read while still forming could be kept as
+  the closed one for up to 30 seconds.
+* What stops it now: only Gate's own "TOO_MANY_REQUESTS" word counts, takeover
+  prints are skipped, and each exchange forgets a forming candle under its
+  own name.
+
+**DEV**
+
+* `tradingagents/room_errors.py` `ERROR_KINDS["rate_limit"]` matched
+  `429` on every line `classify()` reads; `live_price.GateProtocol.parse`
+  turned every `futures.trades` row into a tick, `is_internal` included;
+  `shared_market.klines.fetch` popped `(symbol, "Min1", limit)` from
+  `fx._KLINE_CACHE` while `gate_futures.klines` keys it `(symbol, "1m", limit)`.
+* Invariant broken: **a label is matched on the source's own word, never on
+  a number that can appear anywhere**; and **practice may only fill on a
+  price the backtest's candles contain**.
+* Guards: `tests/test_the_errors_tab_shows_each_rooms_errors.py::test_a_price_ending_in_429_is_not_a_rate_limit`,
+  `::test_a_gate_429_without_its_label_still_reads_as_a_rate_limit`;
+  `tests/test_gate_live_feed.py::test_a_liquidation_takeover_print_is_never_a_tick`;
+  `tests/test_every_room_shares_one_board.py::test_the_board_forgets_the_forming_bar_under_the_exchanges_own_key`.
+
+**SAW** — nothing yet; the final review showed
+`classify('INFO', 'ENTER ZRO_USDT LONG ... entry ~2.429 ...')` returning
+`('error', 'rate_limit')`, and `('BTC_USDT', '1m', 300)` still cached after
+the board's pop.
+
+**TIMELINE**
+
+1. Oct 10, 2026 3:56am — the app moves to Gate; the rate-limit pattern gains
+   `429` beside TOO_MANY_REQUESTS, the feed speaks Gate's protocol, and
+   the shared board keeps popping MEXC's key.
+2. Oct 10, 2026 ~5:00am — the final review reproduces the first and third.
+3. After the fix: the price line classifies as nothing, a Gate 429 with or
+   without its body reads "429 TOO_MANY_REQUESTS", an `is_internal` print
+   is dropped, and `forget_klines` removes Gate's own key.
+
+**ROOT CAUSE** — each piece was written against one exchange's words and
+keys and carried to the other unread: a status number used as a word, a
+Gate field never looked up, and a cache key in MEXC's naming.
+
+**WHY IT WAS NOT CAUGHT** — the rate-limit test fed only real refusals, never
+an ordinary line that happens to hold the digits; the feed tests used plain
+trades only; and the shared-board tests run MEXC's adapter, whose key the pop
+happened to match.
+
+**COST** — none found.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_errors_tab_shows_each_rooms_errors.py::test_a_price_ending_in_429_is_not_a_rate_limit`,
+`tests/test_gate_live_feed.py::test_a_liquidation_takeover_print_is_never_a_tick`,
+`tests/test_every_room_shares_one_board.py::test_the_board_forgets_the_forming_bar_under_the_exchanges_own_key`.
+
+---
+
 ## RCA-2026-10-10-F — the order-book costs could be marked done with half the market missing, hidden in the account nobody read, or wiped by one busy answer from GitHub
 
 NEVER HAPPENED YET — found by the final review while the first backfill

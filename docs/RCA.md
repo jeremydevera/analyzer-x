@@ -172,6 +172,59 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-P — every room would have sat empty on Gate for a day: the watcher counted the midnight pass on MEXC as today's
+
+**CEO**
+
+* After the move to Gate every room had nothing switched on, and the
+  watcher said its next switch-on would be Oct 11, 2026 — even once Gate's
+  backtest (9,771,090 rows) was ready at 9:51am.
+* Why: the rooms pick strategies once a day; today's pick ran at midnight
+  on MEXC's strategies, the move to Gate then switched all of those off, and
+  the watcher still counted midnight as today's pick.
+* What stops it now: a pick made before the move does not count, so each
+  room picks from Gate's strategies on its next check.
+
+**DEV**
+
+* `tradingagents/strategy_watcher.py` `consider` and `status` passed
+  `st["last_on_pass"]` (Oct 10, 2026 12:00am) to `_on_due` / `next_on`;
+  `venue_switch` switched every MEXC row off at 3:56am (3,075 rows, 13
+  rooms) without touching the watchers' pass clocks.
+* Invariant broken: **a decision made on one exchange's data is not a
+  decision on the other's** — the same rule `cloud_autopilot` applies to
+  runs created before `venue.since()`.
+* Guard: `tests/test_the_strategy_watcher.py::test_a_switch_on_pass_made_before_the_move_to_gate_is_not_todays`.
+
+**SAW** — `/api/trade/watcher`: `last_on_pass Oct 10, 2026 12:00am`,
+`next_on_pass Oct 11, 2026 12:00pm`, `slots 0`, the why still describing
+MEXC's table ("121 row(s) ... 58 pass every rule").
+
+**TIMELINE**
+
+1. Oct 10, 2026 12:00am — each room's raw switch-on pass runs on MEXC's
+   v2 table.
+2. 3:56am — the cutover switches every MEXC row off; the rooms hold none.
+3. 9:51am — Gate's index is complete: 1,829 pairs, 9,771,090 rows.
+4. Without the fix: no room switches anything on until Oct 11, 2026.
+5. After the fix: `_last_on` reads a pre-switch pass as none, so raw rooms
+   pass on their next tick and the others at noon.
+
+**ROOT CAUSE** — the cutover reset rows and money but not the clocks that
+decide when rows are picked again.
+
+**WHY IT WAS NOT CAUGHT** — the cutover's tests checked what it switched
+off, never when anything would switch on again.
+
+**COST** — none in money; the rooms would have missed a day of practice on
+Gate.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_strategy_watcher.py::test_a_switch_on_pass_made_before_the_move_to_gate_is_not_todays`.
+
+---
+
 ## RCA-2026-10-10-O — half of Gate's first backtest would have stayed out of the search until the next day: its pairs landed while the index was being rebuilt
 
 **CEO**

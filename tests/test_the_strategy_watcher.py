@@ -870,3 +870,26 @@ def test_the_skipped_coins_are_named_ten_at_most(world):
     names = ", ".join(f"D{i:02d}_USDT" for i in range(10))
     assert sw._read()["last_candidates"].endswith(
         f" · 13 skipped: MEXC no longer lists their coin ({names} and 2 more)")
+
+
+def test_a_switch_on_pass_made_before_the_move_to_gate_is_not_todays(monkeypatch, tmp_path):
+    """Oct 10, 2026 (RCA-2026-10-10-P): every room's switch-on pass ran at
+    12:00am on MEXC's rows; the cutover at 3:56am switched those rows off,
+    and the watcher counted the 12:00am pass as today's — next pass Oct 11,
+    2026, so every room sat with nothing switched on for a day while Gate's
+    9,771,090 rows waited in the table. A pass made before the switch is not
+    a pass on this exchange."""
+    import calendar
+    import json as _json
+
+    from tradingagents import strategy_watcher as sw, venue
+
+    switched = calendar.timegm((2026, 10, 10, 7, 56, 0))
+    monkeypatch.setattr(venue, "VENUE_FILE", tmp_path / "venue.json")
+    monkeypatch.delenv("TA_VENUE", raising=False)
+    (tmp_path / "venue.json").write_text(_json.dumps({"venue": "gate", "since": switched}))
+    before = switched - 4 * 3600          # the 12:00am pass
+    assert sw._last_on({"last_on_pass": before}) == 0
+    after = switched + 3600
+    assert sw._last_on({"last_on_pass": after}) == after
+    assert sw._on_due(switched + 2 * 3600, sw._last_on({"last_on_pass": before}), raw=True)

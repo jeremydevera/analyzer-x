@@ -1229,6 +1229,18 @@ def _top_fail(rows: list, cfg: dict) -> str:
     return c.most_common(1)[0][0] if c else "?"
 
 
+def _last_on(st: dict) -> float:
+    """When the last switch-on pass ran — counted only if it ran on THIS
+    exchange. A pass before the move to Gate picked MEXC's rows, and the
+    cutover switched those off; counting it as today's left every room with
+    nothing switched on until the next day (RCA-2026-10-10-P)."""
+    from tradingagents import venue as _venue
+
+    last = float(st.get("last_on_pass") or 0)
+    since = float(_venue.since() or 0)
+    return 0.0 if (last and since and last < since) else last
+
+
 def _on_due(now: float, last: float, raw: bool = False) -> bool:
     """Once per local day, at or after ON_HOUR — any hour when RAW: the noon
     rule existed for the switch-on cost check (stock books are wide before
@@ -1274,7 +1286,7 @@ def consider(*, now: float | None = None) -> dict:
             st["why"] = f"the switch-off check failed: {type(exc).__name__}: {str(exc)[:160]}"
             _undo_if_unwritten(out[n0:], armed0, st["why"])
         st["practice"] = _practice_now(now, cfg)
-    due_on = _on_due(now, float(st.get("last_on_pass") or 0), bool(cfg.get("raw")))
+    due_on = _on_due(now, _last_on(st), bool(cfg.get("raw")))
     tried = now - float(st.get("last_on_try") or 0) >= RETRY_S
     if due_on and tried:
         st["last_on_try"] = now
@@ -1361,7 +1373,7 @@ def status(page: int = 1, per: int = PER_PAGE) -> dict:
             "mode": mode_of(st), "cfg": {k: cfg[k] for k in LIVE_RULES},
             "window_days": cfg["window_days"], "why": st.get("why", ""),
             "last_on_pass": st.get("last_on_pass"), "last_off_pass": st.get("last_off_pass"),
-            "next_on_pass": next_on(time.time(), float(st.get("last_on_pass") or 0)),
+            "next_on_pass": next_on(time.time(), _last_on(st)),
             "running": len(ws),
             "slots": [{"slot": k, **v, "practice": practice.get(k)} for k, v in sorted(ws.items())],
             "cooling": len(st.get("cooling") or {}), **decisions_page(page, per)}

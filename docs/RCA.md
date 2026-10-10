@@ -172,6 +172,64 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-D — the month of order-book costs would have run out of time every day and started again from the first day each time
+
+NEVER HAPPENED YET — found while the first backfill (runs 38036463794 and
+38036456161) was running, before either reached its time limit.
+
+**CEO**
+
+* The first job that works out each minute's trading cost on Gate was asked
+  for 30 days of about 513 coins on each account; one day of BTC took 132
+  seconds, so each machine had about 8.5 hours of work and 5.8 hours allowed.
+* Why: a job that runs out of time counts as failed, the next press asks for
+  the same 30 days, and every coin was worked out again from day one — so it
+  would have stopped in the same place every day and never finished.
+* What stops it now: a coin's days already saved are skipped, so each press
+  carries on where the last one stopped.
+
+**DEV**
+
+* `.github/scripts/costs_shard.py` `main` replayed `bh.day_readings` for every
+  day in `DAYS_LIST` after `cs.load_month`, whatever the month file already
+  held; `tradingagents/costs_daily.py` `_settle` gives a red run's days back
+  whole, so every press re-asked all 30.
+* Invariant broken: **a job too big for one run must resume, never restart**
+  — the per-coin-month upload kept the work, and nothing read it back.
+* Guard: `tests/test_costs_shard_resumes.py` (2 tests, red on the old file).
+
+**SAW** — nothing yet; both runs were 20 minutes in, 20 machines each.
+
+**TIMELINE**
+
+1. Oct 10, 2026 3:48am — trial run 38035675014: BTC_USDT one day in 132 s,
+   AAPL_USDT in 32 s.
+2. Oct 10, 2026 4:01am — the daily press starts the backfill: 30 days, 513
+   coins (jeremydevera) and 514 (jeremydvera), 20 machines each, limit 350
+   minutes; estimated ~8.5 hours of work per machine.
+3. Without the fix, ~10:00am: every machine stops at its limit, the run is
+   red, the next press asks for the same 30 days, and the same first coins
+   are worked out again.
+4. After the fix: the next press skips every coin-day already saved and
+   finishes the rest.
+
+**ROOT CAUSE** — the job sized its work by what it was ASKED for, never by
+what it had already saved, and the daily press re-asks a red run's days whole.
+
+**WHY IT WAS NOT CAUGHT** — the job had no test of its own, and the only run
+before the backfill was a two-coin, one-day trial that finished in three
+minutes; nobody multiplied 132 seconds by 30 days and 26 coins before pressing.
+
+**COST** — none yet. Without the fix: 40 machines for 5.8 hours every day,
+and the Room strategies re-test and the daily backtest queued behind them.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_costs_shard_resumes.py::test_a_day_the_month_file_already_holds_is_not_replayed_again`,
+`::test_a_coin_whose_month_holds_every_day_is_neither_replayed_nor_uploaded`.
+
+---
+
 ## RCA-2026-10-10-C — after the switch to Gate, the collector downloaded an old MEXC run only for the Gate store to refuse every pair of it
 
 **CEO**

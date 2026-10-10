@@ -79,6 +79,14 @@ def upload(path: Path, tag: str) -> bool:
     return False
 
 
+def held_days(packed: dict) -> set[int]:
+    """The UTC days (their midnight, in seconds) a month file has readings in."""
+    t = packed.get("t") if packed else None
+    if t is None or not len(t):
+        return set()
+    return {int(x) - int(x) % 86400 for x in t}
+
+
 def main() -> int:
     OUT.mkdir(exist_ok=True)
     board = ClaimBoard()
@@ -106,6 +114,15 @@ def main() -> int:
             continue
         for ym, ds in sorted(months.items()):
             merged = cs.load_month(sym, ym, repos=(REPO,), cache=False)
+            # RESUMED, never redone: a run that ran out of time leaves its
+            # days for the next press, which asks for all of them again — a
+            # day this month file already holds is skipped, so each press
+            # picks up where the last one stopped (30 days x ~26 coins a
+            # machine is past the 350-minute limit: BTC took 132 s a day)
+            held = held_days(merged)
+            ds = [d for d in ds if d not in held]
+            if not ds:
+                continue
             hours = 0
             for d in ds:
                 part = bh.day_readings(sym, d, contract_size=size, notional_usd=NOTIONAL)

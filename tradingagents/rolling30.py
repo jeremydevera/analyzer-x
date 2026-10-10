@@ -167,10 +167,27 @@ def rebuild(slot: str, settings: dict) -> dict:
     dirs = at._dirs_for_backtest(key, hi, lo, cl, opens=op, volume=vol, funding=fund, ts=ts)
     # the row's OWN cost, per side: its round trip is what the store charged
     side = float(row.get("rt") or 0) / 100 / 2
-    r = at.backtest_strategy(key, df, 5.0, fee=side, slippage=0.0, sizing="flat",
+    # A ROW MEASURED WITH THE ORDER BOOK OF EACH MINUTE (Gate) is rebuilt with
+    # the same book, up to the minute it was measured against, so it refuses
+    # what the row refused (RCA-2026-10-10-H). The book's fills are the
+    # slippage then: the fee is the taker's, and the coin's usual slippage
+    # (round trip / 2 - fee) pays only a minute with no reading — never the
+    # whole round trip as a fee, which would charge the spread twice.
+    from tradingagents import cost_store as _cst
+
+    _bend = _cst.row_book_end(row, wm // 1000)
+    _book = (_cst.engine_book(ident["sym"], int(df["Date"].iloc[0].timestamp()), _bend)
+             if _bend is not None and len(df) else None)
+    if _book is not None:
+        _fee = float(row.get("fee") or 0) or at.fee_floor()
+        _cost = dict(fee=_fee, slippage=max(0.0, side - _fee), book=_book,
+                     book_hold_s=bs * at.FUNDING_HOLD_BARS)
+    else:
+        _cost = dict(fee=side, slippage=0.0)
+    r = at.backtest_strategy(key, df, 5.0, sizing="flat",
                              dirs=dirs, tp=ident["tp"] / 100, sl=ident["sl"] / 100,
                              liq_move_pct=liq, funding=fund, keep_log=True,
-                             start_at=warm, fine=fine)
+                             start_at=warm, fine=fine, **_cost)
     rebuilt = {"trades": int(r["trades"]), "wins": int(r["wins"]),
                "profit": round(float(r["profit"]), 2)}
     stored = {"trades": int(row["trades"]), "wins": int(row["wins"]),

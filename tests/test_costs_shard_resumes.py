@@ -45,17 +45,23 @@ def _reading(t):
             "sell": 0.0002, "exhausted": False, "source": "full"}
 
 
+def _whole(d):
+    """A day held whole: a reading in every one of its 24 hours."""
+    return [d + 3600 * h + 60 for h in range(24)]
+
+
 def _wire(shard, monkeypatch, held_days):
     from tradingagents import book_history as bh
 
-    held = bh.pack([_reading(d + 60) for d in held_days])
+    held = bh.pack([_reading(t) for d in held_days for t in _whole(d)])
     replayed, uploaded = [], []
     monkeypatch.setattr(shard.cs, "load_month", lambda *a, **k: held)
     monkeypatch.setattr(shard.fx, "contract_spec", lambda sym: {"contractSize": 0.0001})
 
-    def day_readings(sym, d, **k):
+    def day_readings(sym, d, hours=None, **k):
         replayed.append(d)
-        return {**bh.pack([_reading(d + 60)]), "hours_read": 24}
+        hrs = list(hours) if hours is not None else [d + 3600 * h for h in range(24)]
+        return {**bh.pack([_reading(h + 60) for h in hrs]), "hours_read": len(hrs)}
 
     monkeypatch.setattr(shard.bh, "day_readings", day_readings)
     monkeypatch.setattr(shard, "upload", lambda path, tag: uploaded.append(
@@ -68,7 +74,7 @@ def test_a_day_the_month_file_already_holds_is_not_replayed_again(shard, monkeyp
     assert shard.main() == 0
     assert replayed == [D2, D3]
     assert len(uploaded) == 1
-    assert sorted(int(t) for t in uploaded[0]["t"]) == [D1 + 60, D2 + 60, D3 + 60], \
+    assert sorted(int(t) for t in uploaded[0]["t"]) == _whole(D1) + _whole(D2) + _whole(D3), \
         "the held day is kept beside the two new ones"
 
 
@@ -98,15 +104,17 @@ def test_a_day_with_a_failed_hour_is_left_to_be_read_again(shard, monkeypatch):
 
     replayed, uploaded = _wire(shard, monkeypatch, [D1])
 
-    def day_readings(sym, d, **k):
+    def day_readings(sym, d, hours=None, **k):
         replayed.append(d)
-        return {**bh.pack([_reading(d + 60)]), "hours_read": 23,
-                "hours_failed": [d + 3600] if d == D2 else [], "hours_missing": [],
+        got = [h for h in hours if not (d == D2 and h == D2 + 3600)]
+        return {**bh.pack([_reading(h + 60) for h in got]), "hours_read": len(got),
+                "hours_failed": [D2 + 3600] if d == D2 else [], "hours_missing": [],
                 "hours_bad": []}
     monkeypatch.setattr(shard.bh, "day_readings", day_readings)
     assert shard.main() == 1, "a day not wholly read keeps the run red"
-    assert sorted(int(t) for t in uploaded[0]["t"]) == [D1 + 60, D3 + 60], \
-        "the incomplete day is not saved, so it is not counted as held"
+    held = {int(t) // 3600 * 3600 for t in uploaded[0]["t"]}
+    assert D2 + 3600 not in held and D2 in held and D2 + 7200 in held, \
+        "the hours that were read are kept; the failed hour is asked again next time"
 
 
 def test_a_broken_hour_file_is_named_and_the_day_kept(shard, monkeypatch, capsys):
@@ -114,12 +122,14 @@ def test_a_broken_hour_file_is_named_and_the_day_kept(shard, monkeypatch, capsys
 
     replayed, uploaded = _wire(shard, monkeypatch, [D1, D2])
 
-    def day_readings(sym, d, **k):
-        return {**bh.pack([_reading(d + 60)]), "hours_read": 23, "hours_failed": [],
-                "hours_missing": [], "hours_bad": [(d + 9 * 3600, "EOFError: cut")]}
+    def day_readings(sym, d, hours=None, **k):
+        got = [h for h in hours if h != d + 9 * 3600]
+        return {**bh.pack([_reading(h + 60) for h in got]), "hours_read": len(got),
+                "hours_failed": [], "hours_missing": [],
+                "hours_bad": [(d + 9 * 3600, "EOFError: cut")]}
     monkeypatch.setattr(shard.bh, "day_readings", day_readings)
     assert shard.main() == 0, "the same broken file would fail every run for ever"
-    assert sorted(int(t) for t in uploaded[0]["t"]) == [D1 + 60, D2 + 60, D3 + 60]
+    assert len(uploaded) == 1 and D3 + 60 in {int(t) for t in uploaded[0]["t"]}
     assert "EOFError" in capsys.readouterr().out
 
 
@@ -154,3 +164,38 @@ def test_the_month_is_read_from_every_account(shard, monkeypatch):
     shard.main()
     assert "repos" not in seen or seen["repos"] is None, "both accounts, never its own"
     assert seen.get("strict") is True and seen.get("cache") is False
+
+
+def test_only_the_hours_the_month_does_not_hold_are_read(shard, monkeypatch):
+    """By the HOUR (final review, RCA-2026-10-10-H): the 07:00 UTC press reads
+    today so far, and the next one must add the hours after it — a day was
+    "held" once it had one reading, so its later hours were never read."""
+    from tradingagents import book_history as bh
+
+    _wire(shard, monkeypatch, [D1, D3])
+    half = bh.pack([_reading(t) for t in _whole(D1) + _whole(D3)
+                    + [D2 + 3600 * h + 60 for h in range(12)]])
+    monkeypatch.setattr(shard.cs, "load_month", lambda *a, **k: half)
+    asked = []
+
+    def day_readings(sym, d, hours=None, **k):
+        asked.extend(hours)
+        return {**bh.pack([_reading(h + 60) for h in hours]), "hours_read": len(hours)}
+    monkeypatch.setattr(shard.bh, "day_readings", day_readings)
+    assert shard.main() == 0
+    assert asked == [D2 + 3600 * h for h in range(12, 24)]
+
+
+def test_an_hour_that_has_not_ended_is_not_asked_for(shard, monkeypatch):
+    from tradingagents import book_history as bh
+
+    _wire(shard, monkeypatch, [D1, D2])
+    asked = []
+
+    def day_readings(sym, d, hours=None, **k):
+        asked.extend(hours)
+        return {**bh.pack([_reading(h + 60) for h in hours]), "hours_read": len(hours)}
+    monkeypatch.setattr(shard.bh, "day_readings", day_readings)
+    monkeypatch.setattr(shard, "_now", lambda: D3 + 5 * 3600 + 120)   # 05:02 UTC
+    assert shard.main() == 0
+    assert asked == [D3 + 3600 * h for h in range(5)], "hours 00-04 have ended"

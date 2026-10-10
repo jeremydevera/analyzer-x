@@ -172,6 +172,80 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-H — the cost check reached the stored backtest but not the numbers the rooms read: newest hours, minutes with no reading, and every rebuild on the PC went without it
+
+NEVER HAPPENED YET — found by the final review before any Gate v2 row was
+collected (runs 38038160341 / 38038181253 were still queued at the time).
+
+**CEO**
+
+* The point of the move to Gate is that the backtest refuses and prices
+  each trade the way practice does; the stored rows did that, but the
+  numbers rooms switch on and off by did not always.
+* Why: the cost files only covered whole finished days, so the newest ~8
+  hours of each morning's backtest — the hours the 1-day rooms decide by —
+  had none; a minute with no reading skipped even the checks that need no
+  order book; and the PC's own rebuilds (the trade list behind a row, the
+  "last N days" view, the 30-day figure that switches rows off) used no book.
+* What stops it now: costs are added by the hour with a 07:00 UTC run for
+  "today so far", the liquidation and funding checks run on every minute,
+  and every rebuild reads the same book the row was measured with.
+
+**DEV**
+
+* `costs_shard.held_days` held a day by its first reading, `costs_daily`
+  pressed finished days only; `auto_trader.backtest_strategy(book=)` and
+  `replay_shard.refuse` skipped `cost_verdict` when `reading_at` was None;
+  `market_sweep.trades_for`, `market_sweep.window_rows` and
+  `rolling30.rebuild` called `backtest_strategy` with no `book=` (and
+  rebuild charged the row's whole round trip as the fee); the learned
+  formulas' `_Prefetched` path set `book = None`.
+* Invariant broken: **every path that re-measures a row measures it the way
+  the row was measured** — same candles, same costs, same refusals.
+* Guards: `tests/test_backtest_pays_the_minute.py::test_a_minute_with_no_reading_still_refuses_what_needs_no_book`,
+  `tests/test_the_replay_shard.py::test_with_no_reading_the_replay_still_refuses_funding_that_eats_the_target`,
+  `tests/test_costs_shard_resumes.py::test_only_the_hours_the_month_does_not_hold_are_read`,
+  `tests/test_costs_daily.py::test_today_so_far_is_pressed_once_after_seven_and_never_marked_done`,
+  `tests/test_trade_log_is_read_only.py::test_a_row_measured_with_the_book_is_replayed_with_the_same_book`,
+  `tests/test_the_window_reads_the_minutes_book.py`,
+  `tests/test_the_demo_column_reads_the_last_30_days.py::test_a_gate_row_is_rebuilt_with_the_book_it_was_measured_with`,
+  `tests/test_gate_shard_inputs.py::test_each_row_names_the_last_minute_of_book_it_was_measured_against`.
+
+**SAW** — nothing yet. The review reproduced the skipped checks: SL 4%
+against liquidation at 4.5% — blocked with a reading (`gate_blocked 1`),
+traded for +$4.79 without one (`cost_unmeasured 1`).
+
+**TIMELINE**
+
+1. Oct 10, 2026 4:01am — the first costs press asks for finished days only
+   (Sep 10 - Oct 09).
+2. Oct 10, 2026 4:31am — the Gate v2 update goes to GitHub; its rows would
+   have read costs through Oct 09 and nothing of Oct 10.
+3. Without the fix: the 1-day rooms judge on a day with no recorded book,
+   the trade list under a row shows trades the row refused, and the 30-day
+   figure that switches rows off counts them.
+4. After the fix: the 07:00 UTC press adds today's finished hours, a row
+   carries `book_to`, and the trade list, the window and the 30-day figure
+   read the same book up to it.
+
+**ROOT CAUSE** — the book was wired into the two measuring paths on GitHub
+and nowhere else, and its schedule was a day's, while the rooms read by the
+hour.
+
+**WHY IT WAS NOT CAUGHT** — every cost test drove `backtest_strategy(book=)`
+directly or the shard; none followed a Gate row to the PC paths that rebuild
+it, and none asked what time of day the newest reading is.
+
+**COST** — none; no Gate v2 row had landed.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_backtest_pays_the_minute.py::test_a_minute_with_no_reading_still_refuses_what_needs_no_book`,
+`tests/test_trade_log_is_read_only.py::test_a_row_measured_with_the_book_is_replayed_with_the_same_book`,
+`tests/test_the_demo_column_reads_the_last_30_days.py::test_a_gate_row_is_rebuilt_with_the_book_it_was_measured_with`.
+
+---
+
 ## RCA-2026-10-10-G — three ways the Gate practice account could read the market wrong: a price ending in 429 filed as "too many requests", a liquidation takeover taken for a trade, and a still-forming minute kept as closed
 
 NEVER HAPPENED YET (checked) — no room log line on Oct 10, 2026 held a bare

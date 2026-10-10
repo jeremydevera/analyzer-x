@@ -211,3 +211,31 @@ def book_for(sym: str, start_s: int, end_s: int, *, repos=None,
         return empty()
     keep = (got["t"] >= lo) & (got["t"] <= int(end_s))
     return {k: np.asarray(got[k])[keep] for k in KEYS}
+
+
+def row_book_end(row: dict | None, fallback_s: int | None = None) -> int | None:
+    """The last second of book a stored row was measured against, or None
+    when the row was measured with NO book (MEXC, or before the costs store):
+    a rebuild of it then passes no book either, so it is the row's own walk.
+    A Gate row from before `book_to` existed falls back to its last bar."""
+    if not row or "gate_blocked" not in row:
+        return None
+    end = int(row.get("book_to") or 0)
+    return end or (int(fallback_s) if fallback_s else None)
+
+
+def engine_book(sym: str, start_s: int, end_s: int):
+    """What a PC rebuild hands `backtest_strategy(book=)` (RCA-2026-10-10-H):
+    None unless the app trades Gate; else every reading of [start_s, end_s],
+    read like any reader (an account that does not answer is left out, and
+    an unreadable store is an EMPTY book — every trade counted unmeasured,
+    never passed free)."""
+    from tradingagents import venue
+
+    if venue.current() != "gate":
+        return None
+    try:
+        return book_for(sym, int(start_s), int(end_s))
+    except Exception:                                          # noqa: BLE001
+        return empty()
+

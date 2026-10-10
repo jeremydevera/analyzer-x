@@ -25,6 +25,11 @@ from pathlib import Path
 STATE = Path(os.path.expanduser("~/.tradingagents")) / "costs_daily.json"
 WORKFLOW = "costs.yml"
 READY_HOUR_UTC = 3          # yesterday's 23:00 hour is published by ~01:00-02:00
+# TODAY SO FAR, once, before the morning backtest (~08:30 UTC): without it
+# the newest ~8 hours of every v2 row had no recorded book - the hours the
+# 1-day rooms switch on by (RCA-2026-10-10-H). Today is never marked done;
+# tomorrow's 03:00 press reads the rest of it.
+TODAY_HOUR_UTC = 7
 BACKFILL_DAYS = 30
 SHARDS = 20
 RETRY_S = 30 * 60
@@ -88,7 +93,11 @@ def _settle(st: dict, now: float) -> None:
         st["last_error"] = "not every share finished green: " + "; ".join(red)
         st["reds"] = int(st.get("reds") or 0) + 1
     else:
-        st["done_days"] = sorted(set(st.get("done_days") or []) | set(fl["days"]))
+        today = fl.get("today")
+        st["done_days"] = sorted(set(st.get("done_days") or [])
+                                 | {d for d in fl["days"] if d != today})
+        if today:
+            st["today_pressed"] = today
         st["last_error"] = ""
         st["last_done_at"] = now
         st["reds"] = 0
@@ -140,6 +149,11 @@ def tick(now: float | None = None) -> dict:
                            f"{fmt_when(float(st.get('tried_at') or 0) + wait)}"}
         return {"started": False, "why": "the last press failed; trying again soon"}
     days = wanted_days(now, st.get("done_days"))
+    today = _day(now)
+    today_due = (time.gmtime(int(now)).tm_hour >= TODAY_HOUR_UTC
+                 and st.get("today_pressed") != today)
+    if today_due:
+        days = days + [today]
     if not days:
         _write(st)
         return {"started": False, "why": "every day of the last month is done"}
@@ -151,7 +165,7 @@ def tick(now: float | None = None) -> dict:
         _write(st)
         return {"started": False, "why": st["last_error"]}
     st["flight"] = {"at": now, "days": days, "runs": got["runs"],
-                    "unrun": got["unrun"]}
+                    "unrun": got["unrun"], "today": today if today_due else None}
     if got["refused"]:
         st["last_error"] = "; ".join(got["refused"])
     _write(st)

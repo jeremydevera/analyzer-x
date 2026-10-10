@@ -1915,7 +1915,7 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                                   f"download candles first"}
     # ...and cut to the window the ROW was measured over: the pair's own
     # watermark (the last bar the sweep saw) and the row's own bar count.
-    want_bars, row_end = 0, 0
+    want_bars, row_end, the_row = 0, 0, None
     for r in pair_rows(coin, tf, root):
         # a row with a missing field must not turn a click into a 500
         try:
@@ -1929,6 +1929,7 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
         if same:
             want_bars = int(r.get("bars") or 0)
             row_end = int(r.get("last_ms") or 0)
+            the_row = r
             break
     # The ROW's own last bar when it has one, the pair's watermark otherwise.
     # Rows measured before `last_ms` existed fall back and can be a trade or
@@ -2034,17 +2035,36 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
         if skip is not None:
             opens_ms = df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
             dirs = [0 if d and skip(int(t)) else d for d, t in zip(dirs, opens_ms)]
+        # THE SAME BOOK THE ROW WAS MEASURED WITH (RCA-2026-10-10-H): a Gate
+        # row is refused and priced minute by minute up to its `book_to`; a
+        # click without it listed the trades the row refused. A WHOLE walk
+        # (Backtest a room) has no row to match and reads every minute held.
+        from tradingagents import cost_store as _cst
+
+        _d0 = int(df["Date"].iloc[0].timestamp())
+        if whole:
+            _bend = int(time.time()) if fine is not None else None
+        else:
+            _bend = _cst.row_book_end(the_row, (row_end or stored_end) // 1000)
+        _book = (_cst.engine_book(symbol, _d0, _bend) if _bend is not None
+                 else None)
         r = at.backtest_strategy(key, df, base_margin, fee=fee, sizing=sizing,
                                  slippage=slip,
                                  dirs=dirs, tp=float(tp) / 100,
                                  sl=float(sl) / 100, liq_move_pct=liq,
                                  funding=fund, keep_log=True, fine=fine,
-                                 reenter=reenter)
+                                 reenter=reenter, book=_book,
+                                 book_hold_s=bs * at.FUNDING_HOLD_BARS)
     finally:
         at.STRATEGY_SPECS.pop(key, None)
     return {"log": r["log"], "trades": r["trades"], "wins": r["wins"],
             "losses": r["losses"], "profit": round(r["profit"], 2),
             "max_dd": r["max_dd"],
+            # the cost check's own counts, when the walk read the book
+            **({"gate_blocked": int(r.get("gate_blocked", 0)),
+                "cost_unmeasured": int(r.get("cost_unmeasured", 0)),
+                "book_to": fmt_stamp(_bend) if _bend else None}
+               if _book is not None else {}),
             "winrate": round(100 * r["wins"] / max(r["trades"], 1), 2),
             # what was READ, so the panel can say it and a mismatch is visible
             "source": ("stored 1-minute candles, exits settled by the minute"
@@ -2199,6 +2219,7 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
     skipped = {"no_candles": 0, "outside_window": 0, "failed": 0,
                "ml_history_short": 0}
     straddled = 0
+    _books: dict = {}           # (symbol, end ms) -> its minutes' book
     for (coin, tf, sig, th), grp in groups.items():
         sym = f"{coin}_USDT"
         try:
@@ -2370,13 +2391,27 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                 # the ROW's own fee when it recorded one: a contract's fee
                 # changes, and today's is not what this row was measured under
                 row_fee = float(r.get("fee") or 0) or fee
+                # THE ORDER BOOK OF EACH MINUTE on a v2 row (Gate): the window
+                # refuses and prices its trades as the row was measured — up
+                # to the row's own last bar (the index carries no `book_to`),
+                # read once per coin and end (RCA-2026-10-10-H)
+                _book = None
+                if v2:
+                    from tradingagents import cost_store as _cst
+
+                    _bk = (sym, end)
+                    if _bk not in _books:
+                        _books[_bk] = _cst.engine_book(
+                            sym, int(frame["Date"].iloc[0].timestamp()), end // 1000)
+                    _book = _books[_bk]
                 res = at.backtest_strategy(
                     key, frame, float(r.get("base") or base_margin),
                     fee=row_fee, slippage=slip, sizing=r["sizing"],
                     dirs=win_dirs,
                     tp=float(r["tp"]) / 100.0, sl=float(r["sl"]) / 100.0,
                     liq_move_pct=liq, funding=fund, keep_log=True,
-                    fine=fine)
+                    fine=fine, book=_book,
+                    book_hold_s=bs * at.FUNDING_HOLD_BARS)
                 # A TRADE BELONGS TO THE WINDOW IF IT CLOSED IN IT, even if
                 # it opened before. Operator, Sep 11, 2026, with the case that
                 # names the rule: *"open: aug 1 closed aug 12 what will

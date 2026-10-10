@@ -93,3 +93,23 @@ def test_a_minute_with_no_reading_pays_the_flat_cost_and_is_counted():
 def test_a_coin_with_no_readings_at_all_counts_every_trade_unmeasured():
     r = run(book=book([]))
     assert r["trades"] == 1 and r["cost_unmeasured"] == 1 and r["gate_blocked"] == 0
+
+
+def test_a_minute_with_no_reading_still_refuses_what_needs_no_book():
+    """Final review, Oct 10, 2026 (RCA-2026-10-10-H): with no reading the
+    whole check was skipped, so a stop past 80% of liquidation, or funding
+    that eats the target, traded — the runner refuses both whatever the book
+    says. Reproduced: SL 4% against liquidation at 4.5% -> blocked with a
+    reading, +$4.79 without one. The book-free checks run on the coin's flat
+    cost; only the checks that need the book (the gap, an exhausted book)
+    wait for a reading."""
+    r = at.backtest_strategy(KEY, frame(), 5.0, fee=0.00075, slippage=0.0003,
+                             sizing="flat", dirs=list(DIRS), tp=0.05, sl=0.04,
+                             liq_move_pct=4.5, book=book([]))
+    assert r["trades"] == 0 and r["gate_blocked"] == 1 and r["cost_unmeasured"] == 0
+    v = at.minute_verdict(None, side=1, tp=0.005, sl=0.004, fee=0.00075,
+                          hold_s=3 * 3600, liq=None, fund_day=0.003, flat_slip=0.0003)
+    assert v["verdict"] == "block" and v["funding_eats"]
+    ok = at.minute_verdict(None, side=1, tp=0.01, sl=0.01, fee=0.00075,
+                           hold_s=3 * 3600, liq=0.045, fund_day=0.0, flat_slip=0.0003)
+    assert ok["verdict"] != "block" and ok["slippage"] == pytest.approx(0.0003)

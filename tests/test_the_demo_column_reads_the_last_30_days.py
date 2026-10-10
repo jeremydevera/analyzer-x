@@ -207,3 +207,54 @@ def test_the_ring_is_30_days_and_the_counts_and_money_are_since_deployed():
     badge = open("webapp/src/components/trade/WinBadge.tsx", encoding="utf-8").read()
     assert "const ring = rate ?? { wins, losses };" in badge
     assert "{wins}W</span>" in badge and "{losses}L</span>" in badge   # counts stay
+
+
+def test_a_gate_row_is_rebuilt_with_the_book_it_was_measured_with(home, monkeypatch):
+    """Final review, Oct 10, 2026 (RCA-2026-10-10-H): the DEMO 30-day figure
+    (the number the watcher switches rows off by) rebuilt a Gate v2 row with
+    no book, so it counted the trades the row had refused, and `match` went
+    false on any row with a refusal. It reads the same book up to the row's
+    `book_to`, charges the taker fee and the coin's usual slippage — never the
+    row's whole round trip as a fee, which the book's fills would charge
+    twice."""
+    import numpy as np
+    import pandas as pd
+
+    import tradingagents.auto_trader as at
+    from tradingagents import backtest_report as br, cost_store
+    from tradingagents.dataflows import gate_futures as gf
+
+    monkeypatch.setenv("TA_VENUE", "gate")
+    n, bar = 400, 900
+    t0 = int(NOW) - n * bar
+    df = pd.DataFrame({"Date": pd.to_datetime([t0 + bar * k for k in range(n)], unit="s"),
+                       "Open": [100.0] * n, "High": [100.5] * n, "Low": [99.5] * n,
+                       "Close": [100.0] * n, "Volume": [1.0] * n})
+    wm = (t0 + bar * (n - 1)) * 1000
+    row = {"trades": 0, "wins": 0, "profit": 0.0, "bars": 300, "fee": 0.00075,
+           "rt": 0.21, "gate_blocked": 4, "cost_unmeasured": 0, "book_to": NOW - 7200}
+    ident = {"key": "prank_15m_sl15tp15", "tf": "15m", "sym": "FASTSTOCK_USDT",
+             "tp": 1.5, "sl": 1.5, "res": "1m", "coin": "FASTSTOCK", "store": None}
+    monkeypatch.setattr(r30, "_identity", lambda settings, slot: ident)
+    monkeypatch.setattr(r30, "_stored", lambda i: (row, wm))
+    monkeypatch.setattr(gf, "klines", lambda *a, **k: df)
+    monkeypatch.setattr(gf, "funding_history", lambda *a, **k: [])
+    monkeypatch.setattr(gf, "liquidation_move_pct", lambda *a, **k: 4.5)
+    monkeypatch.setattr(br, "fine_bars", lambda *a, **k: (np.zeros(0, "int64"),
+                                                          np.zeros(0), np.zeros(0), 0))
+    monkeypatch.setattr(at, "_dirs_for_backtest", lambda *a, **k: [0] * n)
+    asked, seen = [], {}
+    monkeypatch.setattr(cost_store, "book_for",
+                        lambda sym, s, e, **k: asked.append((sym, e)) or cost_store.empty())
+    real = at.backtest_strategy
+
+    def spy(*a, **k):
+        seen.update(k)
+        return real(*a, **k)
+    monkeypatch.setattr(at, "backtest_strategy", spy)
+    rec = r30.rebuild(SLOT, {})
+    assert asked == [("FASTSTOCK_USDT", int(NOW - 7200))]
+    assert seen["book"] is not None
+    assert seen["fee"] == pytest.approx(0.00075)
+    assert seen["slippage"] == pytest.approx(0.21 / 100 / 2 - 0.00075)
+    assert rec["match"] is True

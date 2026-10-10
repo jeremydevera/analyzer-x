@@ -129,3 +129,35 @@ def test_repeated_red_runs_back_off_instead_of_pressing_every_half_hour(env):
         env["status"][r] = {"status": "completed", "conclusion": "success"}
     cd.tick(now=second + 3 * cd.RETRY_S)
     assert cd.read()["reds"] == 0, "a green run clears the count"
+
+
+def test_today_so_far_is_pressed_once_after_seven_and_never_marked_done(env):
+    """The v2 backtest goes out around 08:30 UTC; with only finished days
+    measured, its newest ~8 hours had no recorded book — the hours the 1-day
+    rooms switch on by (final review, RCA-2026-10-10-H). At 07:00 UTC the
+    press adds today so far; today is never marked done, so tomorrow's 03:00
+    press reads the rest of it."""
+    import time as _t
+
+    day = lambda t: _t.strftime("%Y-%m-%d", _t.gmtime(t))
+    cd.tick(now=NOW)                                       # 05:00 — the backfill
+    assert day(NOW) not in env["dispatch"][-1][1]["days"].split(",")
+    env["status"][1001] = env["status"][1002] = {"status": "completed",
+                                                 "conclusion": "success"}
+    cd.tick(now=NOW + 600)
+    seven = NOW + 2 * 3600 + 60                            # 07:01
+    got = cd.tick(now=seven)
+    assert got.get("started") is True
+    assert env["dispatch"][-1][1]["days"].split(",") == [day(NOW)]
+    env["status"][1003] = env["status"][1004] = {"status": "completed",
+                                                 "conclusion": "success"}
+    cd.tick(now=seven + 600)
+    st = cd.read()
+    assert day(NOW) not in st["done_days"] and st["today_pressed"] == day(NOW)
+    n = len(env["dispatch"])
+    cd.tick(now=seven + 3 * 3600)
+    assert len(env["dispatch"]) == n, "once a day"
+    nxt = NOW + 86400 - 2 * 3600                           # tomorrow 03:00
+    cd.tick(now=nxt)
+    assert day(NOW) in env["dispatch"][-1][1]["days"].split(","), \
+        "yesterday's rest is read the next morning"

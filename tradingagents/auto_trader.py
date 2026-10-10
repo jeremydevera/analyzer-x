@@ -3247,19 +3247,30 @@ def funding_day_at(f_ms, f_rate, f_cyc, ms: int, side: int) -> float:
     return max(0.0, per_day_long if side > 0 else -per_day_long)
 
 
-def minute_verdict(reading: dict, *, side: int, tp: float, sl: float, fee: float,
-                   hold_s: float, liq, fund_day: float) -> dict:
+def minute_verdict(reading: dict | None, *, side: int, tp: float, sl: float,
+                   fee: float, hold_s: float, liq, fund_day: float,
+                   flat_slip: float = 0.0) -> dict:
     """The runner's cost check asked of ONE recorded minute of the order book
     (tradingagents.book_history) — what `edge_check` would have said had the
     signal fired then. One function for the engine and the replay, so the
     backtest and the replay can never refuse by two rules. Funding the
-    backtest cannot read is our data gap, never the market's: `fund_known`."""
-    slip = float(reading["buy"] if side == 1 else reading["sell"])
-    out = cost_verdict(tp=tp, sl=sl, spread=float(reading["spread"]),
+    backtest cannot read is our data gap, never the market's: `fund_known`.
+
+    NO READING still asks every check that needs no book (RCA-2026-10-10-H):
+    a stop past liquidation and funding that eats the target are refused by
+    the runner whatever the book says, so they are refused here too, on the
+    coin's flat cost (`flat_slip`); only the gap and an exhausted book wait
+    for a reading. `measured` says which it was."""
+    if reading is None:
+        slip, spread, exhausted = float(flat_slip), 0.0, False
+    else:
+        slip = float(reading["buy"] if side == 1 else reading["sell"])
+        spread, exhausted = float(reading["spread"]), bool(reading["exhausted"])
+    out = cost_verdict(tp=tp, sl=sl, spread=spread,
                        slippage=slip, fee=fee, fund_cost=fund_day * hold_s / 86400.0,
                        fund_per_day=fund_day, fund_known=True, hold_s=hold_s,
-                       liq=liq, exhausted=bool(reading["exhausted"]))
-    return {**out, "slippage": slip}
+                       liq=liq, exhausted=exhausted)
+    return {**out, "slippage": slip, "measured": reading is not None}
 
 
 def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
@@ -4260,17 +4271,18 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             if _bk is not None:
                 _t_in = int(_bk_ms[i + 1] // 1000)
                 _r_in = _bh.reading_at(_bk, _t_in)
+                _cv = minute_verdict(_r_in, side=s, tp=tp, sl=sl, fee=_taker,
+                                     hold_s=_bk_hold, liq=liq,
+                                     fund_day=_fund_day_at(_t_in * 1000, s),
+                                     flat_slip=_flat_slip)
+                if _cv["verdict"] == "block":
+                    n_gate += 1
+                    i += 1
+                    continue
                 if _r_in is None:
                     n_unmeasured += 1
                 else:
-                    _cv = minute_verdict(_r_in, side=s, tp=tp, sl=sl, fee=_taker,
-                                         hold_s=_bk_hold, liq=liq,
-                                         fund_day=_fund_day_at(_t_in * 1000, s))
                     _slip_in = _cv["slippage"]
-                    if _cv["verdict"] == "block":
-                        n_gate += 1
-                        i += 1
-                        continue
             margin = (base_margin if sizing == "flat"
                       else ladder_margin(base_margin, step))
             entry = opens[i + 1]

@@ -841,7 +841,10 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
         # the learner's own candles and costs — the ones it graded on
         fee, liq, fund = learned["fee"], learned["liq"], learned["fund"]
         slip, df, fine = learned["slip"], learned["df"], learned["fine"]
-        book = None
+        # and the same order book of every minute as the market grid: a
+        # learned v2 row is refused and priced by the runner's rule too
+        # (final review, Oct 10, 2026)
+        book = cost_book(sym) if RES else None
         slips = [slip]
         rt = br.round_trip_cost(fee, {"slippage": slip})
     except Exception as exc:
@@ -869,6 +872,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
     kept = 0
     lines = []                  # written only when the pair completes
     pair_states: dict = {}      # combo key -> saved position (write_state)
+    book_to = (int(book["t"][-1]) if book is not None and len(book["t"]) else 0)
     # Once per frame, for fast_grid: funding as cumulative-rate arrays and
     # each bar's month as an index, so no trade ever formats a timestamp.
     f_ms, f_rate = [], []
@@ -1082,7 +1086,12 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                         # minute: how many signals it refused, and how many
                         # trades had no reading and paid the flat cost
                         **({"gate_blocked": int(r.get("gate_blocked", 0)),
-                            "cost_unmeasured": int(r.get("cost_unmeasured", 0))}
+                            "cost_unmeasured": int(r.get("cost_unmeasured", 0)),
+                            # the last minute the book held when this row was
+                            # measured: a rebuild on the PC reads the book up
+                            # to HERE, so it refuses exactly what this row
+                            # refused (RCA-2026-10-10-H)
+                            "book_to": book_to}
                            if book is not None else {}),
                         "days": days,
                         # the last bar this pair was measured through, so the

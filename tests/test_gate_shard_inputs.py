@@ -111,3 +111,12 @@ def test_the_v2_engine_call_pays_each_minutes_book():
     assert '"gate_blocked": int(r.get("gate_blocked", 0))' in SHARD
     assert '"cost_unmeasured": int(r.get("cost_unmeasured", 0))' in SHARD
     assert "book = cost_book(sym)" in SHARD
+
+
+def test_each_row_names_the_last_minute_of_book_it_was_measured_against():
+    """A rebuild on the PC reads the book up to the row's `book_to`, so it
+    refuses exactly what the row refused (RCA-2026-10-10-H); and a learned
+    formula's v2 row reads the same book as the market grid's."""
+    assert '"book_to": book_to}' in SHARD
+    assert 'book_to = (int(book["t"][-1]) if book is not None and len(book["t"]) else 0)' in SHARD
+    assert "book = cost_book(sym) if RES else None" in SHARD

@@ -250,3 +250,47 @@ def test_a_broken_costs_file_is_ignored_rather_than_crashing(tmp_path,
     (tmp_path / "costs").mkdir()
     (tmp_path / "costs" / "ABC_USDT.json").write_text("{not json")
     assert msw.load_costs("ABC_USDT") is None
+
+
+def test_a_row_measured_with_the_book_is_replayed_with_the_same_book(store, monkeypatch):
+    """Final review, Oct 10, 2026 (RCA-2026-10-10-H): a Gate v2 row is
+    refused and priced minute by minute, and the click rebuilt it with no book
+    at all — so the log held the trades the row had refused and its TOTAL
+    disagreed with the row's PROFIT. The click reads the same book, up to the
+    minute the row was measured against (`book_to`)."""
+    import numpy as np
+
+    from tradingagents import cost_store
+
+    df = _frame(n=700)
+    monkeypatch.setattr(msw, "cached_candles", lambda sym, tf: df)
+    monkeypatch.setenv("TA_VENUE", "gate")
+    asked = []
+    t_last = int(df["Date"].iloc[-1].timestamp())
+
+    def book_for(sym, start_s, end_s, **k):
+        asked.append((sym, end_s))
+        t = np.arange(int(df["Date"].iloc[0].timestamp()), t_last + 1, 60, dtype="int64")
+        n = len(t)
+        return {"t": t, "bid": np.full(n, 99.0), "ask": np.full(n, 101.0),
+                "spread": np.full(n, 0.03, "float32"), "buy": np.full(n, 0.015, "float32"),
+                "sell": np.full(n, 0.015, "float32"), "exhausted": np.zeros(n, "bool"),
+                "source": np.ones(n, "int8")}
+    monkeypatch.setattr(cost_store, "book_for", book_for)
+    row = {"coin": "TEST", "tf": "1h", "signal": "mom6", "th": 0.1, "sl": 1.0,
+           "tp": 2.0, "sizing": "flat", "trades": 0, "profit": 0.0, "bars": len(df),
+           "days": 29, "gate_blocked": 9, "cost_unmeasured": 0, "book_to": t_last - 600}
+    _seed(store, df, row=row)
+    got = msw.trades_for("TEST", "1h", signal="mom6", th=0.1, sl=1.0, tp=2.0,
+                         sizing="flat")
+    assert asked and asked[0] == ("TEST_USDT", t_last - 600)
+    assert got["trades"] == 0 and got["gate_blocked"] > 0, \
+        "a 3% gap on a 1% stop is refused, as the row refused it"
+    plain = dict(row)
+    for k in ("gate_blocked", "cost_unmeasured", "book_to"):
+        plain.pop(k)
+    _seed(store, df, row=plain)
+    asked.clear()
+    got = msw.trades_for("TEST", "1h", signal="mom6", th=0.1, sl=1.0, tp=2.0,
+                         sizing="flat")
+    assert asked == [] and got["trades"] > 0, "a row measured without a book, rebuilt without"

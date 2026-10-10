@@ -257,13 +257,12 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
                 if minute_book is not None:
                     def refuse(i, side, tp=tp, sl=sl):
                         r = bh.reading_at(minute_book, ts[i + 1] // 1000)
-                        if r is None:
-                            return False
                         v = at.minute_verdict(
                             r, side=side, tp=tp, sl=sl, fee=cost["fee"],
                             hold_s=hold_s, liq=liq_frac,
                             fund_day=at.funding_day_at(f_ms, f_rate, f_cyc,
-                                                       ts[i + 1], side))
+                                                       ts[i + 1], side),
+                            flat_slip=cost["slip"])
                         if v["verdict"] == "block":
                             stats["gate_blocked"] = stats.get("gate_blocked", 0) + 1
                             return True
@@ -303,8 +302,10 @@ def trade_fee(book, cost: dict, side: int, entry_ms: int, exit_ms: int,
               stats: dict) -> float:
     """The per-side cost one replayed trade pays: the fee, plus HALF of its
     entry minute's fill on its side and its exit minute's fill on the other
-    (`fg.trade_pnl` charges 2 x fee). No reading -> the coin's usual flat
-    slippage, counted as unmeasured. No book (MEXC) -> the flat fee of before."""
+    (`fg.trade_pnl` charges 2 x fee) — priced exactly as the engine prices it
+    (`backtest_strategy(book=)`): no entry reading -> the coin's flat
+    slippage, counted unmeasured; no exit reading -> the entry's cost again.
+    No book (MEXC) -> the flat fee of before."""
     flat = cost["fee"] + cost["slip"]
     if book is None:
         return flat
@@ -312,8 +313,9 @@ def trade_fee(book, cost: dict, side: int, entry_ms: int, exit_ms: int,
     r_out = bh.reading_at(book, exit_ms // 1000)
     if r_in is None:
         stats["cost_unmeasured"] = stats.get("cost_unmeasured", 0) + 1
-        return flat
-    s_in = float(r_in["buy"] if side == 1 else r_in["sell"])
+        s_in = float(cost["slip"])
+    else:
+        s_in = float(r_in["buy"] if side == 1 else r_in["sell"])
     s_out = (float(r_out["sell"] if side == 1 else r_out["buy"])
              if r_out is not None else s_in)
     return cost["fee"] + (s_in + s_out) / 2.0

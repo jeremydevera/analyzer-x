@@ -352,3 +352,18 @@ def test_a_minute_with_no_reading_pays_the_flat_cost_and_is_counted(rs, world):
     won = [t for t in c["trades"] if t[3] and t[2] > 0]
     expect = fg.trade_pnl(0.01, fg.WHY_TP, 0.0, margin=5.0, lev=20, fee=0.0003)
     assert won[0][2] == pytest.approx(round(expect, 4))
+
+
+def test_with_no_reading_the_replay_still_refuses_funding_that_eats_the_target(rs, world):
+    """The engine's rule, asked of a minute with no recorded book (RCA-2026-
+    10-10-H): longs paying 0.2% every 8 hours (0.6% a day) on a 1% target are
+    refused by the runner whatever the book says."""
+    from tradingagents import cost_store
+
+    start = int(world["df"]["Date"].iloc[0].timestamp() * 1000)
+    world["cost"]["fund"] = [{"settle_ms": start + k * 8 * 3_600_000, "rate": 0.002,
+                              "cycle_h": 8} for k in range(200)]
+    world["cost"]["book"] = cost_store.empty()
+    combos, stats = _run(rs, world)
+    assert stats.get("gate_blocked", 0) > 0
+    assert combos == []

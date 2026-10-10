@@ -187,7 +187,7 @@ def hour_url(symbol: str, hour_start: int) -> str:
 
 
 def day_readings(symbol: str, day_start: int, *, contract_size: float,
-                 notional_usd: float, fetch=None) -> dict:
+                 notional_usd: float, fetch=None, hours=None) -> dict:
     """Every minute of one UTC day for one contract, packed, with every hour
     that gave nothing NAMED by why (final review, RCA-2026-10-10-F):
 
@@ -197,7 +197,10 @@ def day_readings(symbol: str, day_start: int, *, contract_size: float,
       the fetch's own retries: the day is incomplete and must be read again.
     * `hours_bad` — a file that arrived but does not parse (cut gzip, a bad
       field): `(hour, why)`, named; the rest of the day is kept, because the
-      same broken file would fail the coin on every run for ever."""
+      same broken file would fail the coin on every run for ever.
+
+    `hours` (hour starts, seconds) limits the read to those hours — the costs
+    job asks only for the hours a month file does not hold yet."""
     if fetch is None:
         from tradingagents.dataflows import gate_futures as gf
 
@@ -205,8 +208,9 @@ def day_readings(symbol: str, day_start: int, *, contract_size: float,
     out = []
     hours_read = 0
     missing, failed, bad = [], [], []
-    for h in range(24):
-        hs = day_start + 3600 * h
+    want = ([day_start + 3600 * h for h in range(24)] if hours is None
+            else sorted(int(h) for h in hours))
+    for hs in want:
         try:
             status, raw = fetch(hour_url(symbol, hs))
         except Exception:                                      # noqa: BLE001

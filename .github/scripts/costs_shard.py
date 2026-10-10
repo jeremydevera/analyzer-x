@@ -79,12 +79,25 @@ def upload(path: Path, tag: str) -> bool:
     return False
 
 
-def held_days(packed: dict) -> set[int]:
-    """The UTC days (their midnight, in seconds) a month file has readings in."""
+def _now() -> float:
+    return time.time()
+
+
+def held_hours(packed: dict) -> set[int]:
+    """The hours (their first second) a month file has readings in. By the
+    HOUR, not the day (RCA-2026-10-10-H): the 07:00 UTC press saves today so
+    far, and a day "held" by its first reading would never get the rest."""
     t = packed.get("t") if packed else None
     if t is None or not len(t):
         return set()
-    return {int(x) - int(x) % 86400 for x in t}
+    return {int(x) - int(x) % 3600 for x in t}
+
+
+def held_days(packed: dict) -> set[int]:
+    """The UTC days whose 24 hours a month file all holds."""
+    hrs = held_hours(packed)
+    days = {h - h % 86400 for h in hrs}
+    return {d for d in days if all(d + 3600 * k in hrs for k in range(24))}
 
 
 def main() -> int:
@@ -143,13 +156,18 @@ def main() -> int:
             # day this month file already holds is skipped, so each press
             # picks up where the last one stopped (30 days x ~26 coins a
             # machine is past the 350-minute limit: BTC took 132 s a day)
-            held = held_days(merged)
-            ds = [d for d in ds if d not in held]
-            if not ds:
+            held = held_hours(merged)
+            now = _now()
+            ask = {d: [d + 3600 * h for h in range(24)
+                       if d + 3600 * h not in held and d + 3600 * (h + 1) <= now]
+                   for d in ds}
+            ask = {d: hs for d, hs in ask.items() if hs}
+            if not ask:
                 continue
             hours = 0
-            for d in ds:
-                part = bh.day_readings(sym, d, contract_size=size, notional_usd=NOTIONAL)
+            for d, want_hours in sorted(ask.items()):
+                part = bh.day_readings(sym, d, contract_size=size, notional_usd=NOTIONAL,
+                                       hours=want_hours)
                 day = time.strftime("%Y-%m-%d", time.gmtime(d))
                 failed = list(part.pop("hours_failed", []) or [])
                 bad = list(part.pop("hours_bad", []) or [])
@@ -158,12 +176,11 @@ def main() -> int:
                     log(f"{sym} {day} hour {time.gmtime(hs).tm_hour:02d}: the file "
                         f"does not read ({why}) — its minutes stay unmeasured")
                 if failed:
-                    # NOT SAVED: a day with a hole would be counted as held
-                    # and never read again
+                    # the hours that WERE read are kept (held by the hour); a
+                    # failed hour holds no reading, so the next press asks
+                    # for it again — and this run ends red until it does
                     redo.append(f"{sym} {day}: {len(failed)} hour(s) could not be "
                                 f"downloaded")
-                    part.pop("hours_read", None)
-                    continue
                 hours += int(part.pop("hours_read", 0))
                 merged = cs.merge(merged, part)
             if not hours:

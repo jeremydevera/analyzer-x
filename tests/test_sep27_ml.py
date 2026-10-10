@@ -1124,3 +1124,31 @@ def test_the_account_forecast_keeps_a_formula_errors_reason(tmp_path, monkeypatc
     r = pr.replay({"strategy_coins": {key: ["AAA_USDT"]}, "margin": 5},
                   store=_replay_store(tmp_path), readings={})
     assert r["rows_refused"][f"{key}|AAA_USDT"] == "formula raised: bad input"
+
+
+def test_an_update_that_could_not_measure_says_why_never_an_index_error(monkeypatch):
+    """Oct 10, 2026 (RCA-2026-10-10-L): UPDATE THIS BACKTEST on BTC 1h read
+    "0 row(s), 0 indexed · measured, but NOT indexed: FileNotFoundError" —
+    run_pair had answered `why: "1m frame has 3611 missing minute(s)"` with
+    no `skipped`, so the job went on to index a file nobody wrote and the
+    real reason never reached the screen."""
+    from tradingagents import db_jobs as dj, market_sweep as msw
+    from tradingagents import notifications as nt, pending_ledger as pl
+    from tradingagents import rows_index as ri
+
+    why = "BTC_USDT: 1m frame has 3611 missing minute(s) between Sep 30 and Oct 03"
+    wrote = []
+    monkeypatch.setattr(dj, "_write", lambda path, payload: wrote.append(payload))
+    monkeypatch.setattr(msw, "pair_watermark", lambda *a, **k: 0)
+    monkeypatch.setattr(msw, "run_pair", lambda *a, **k: {
+        "coin": "BTC", "tf": "1h", "rows": [], "added": 0, "source": "1m",
+        "why": why})
+    monkeypatch.setattr(ri, "index_pair", lambda *a, **k: pytest.fail(
+        "nothing was measured, so nothing may be re-filed"))
+    monkeypatch.setattr(nt, "record", lambda *a, **k: None)
+    monkeypatch.setattr(pl, "clear", lambda *a, **k: 0)
+    dj._run_pairbt({"coin": "BTC_USDT", "tf": "1h", "signal": "mom6", "days": 31},
+                   kind="pairbt_v2")
+    last = wrote[-1]
+    assert last["not_measured"] == why
+    assert last["note"] == f"BTC 1h · mom6: not measured: {why}"

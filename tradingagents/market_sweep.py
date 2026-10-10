@@ -1007,6 +1007,45 @@ def coverage() -> dict:
 
 
 # ------------------------------------------------------------------- run
+_V2_FINE_MEMO: dict = {}
+V2_FINE_TTL_S = 300
+V2_FINE_DAYS = 40
+
+
+def gate_v2_bars(symbol: str, tf: str):
+    """`(frame, fine, five_minute_bars)` for a Backtest v2 walk ON GATE, the
+    GitHub shard's own way (RCA-2026-10-10-L): the timeframe's OWN candles,
+    and every exit settled on the finest bars Gate sells
+    (`backtest_report.fine_bars`: the archive's minutes, 5-minute bars over
+    the current month's hole, REST's last week of minutes).
+
+    Gate publishes minutes only for FINISHED months and the last ~7 days, so
+    a store of minutes alone holds a hole from the 1st of the month to a week
+    ago (BTC on Oct 10, 2026: 3,611 minutes, Sep 30 11:59pm - Oct 03
+    12:11pm), and a frame rebuilt from it refuses (`bars_from_1m`). The fine
+    bars are kept five minutes per coin, so a page of rows reads them once."""
+    import tradingagents.auto_trader as at
+    from tradingagents import backtest_report as br
+    from tradingagents.dataflows import exchange as fx
+
+    iv, bs, cap = br.TFS[tf]
+    df = at._closed_bars(fx.klines(symbol, iv, cap), bs)
+    now = time.time()
+    hit = _V2_FINE_MEMO.get(symbol)
+    if hit and now - hit[0] < V2_FINE_TTL_S:
+        t, hi, lo, n5 = hit[1]
+    else:
+        t, hi, lo, n5 = br.fine_bars(symbol, int(now) - V2_FINE_DAYS * 86400, fx=fx)
+        _V2_FINE_MEMO[symbol] = (now, (t, hi, lo, n5))
+    return df, (t, hi, lo), n5
+
+
+def _gate_v2() -> bool:
+    from tradingagents import venue
+
+    return venue.current() == "gate"
+
+
 def run_pair(symbol: str, tf: str, *, slot: int | None = None,
              base_margin: float = 5.0,
              days: int = 365, signals: Sequence[str] | None = None,
@@ -1032,7 +1071,17 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     coin = symbol.replace("_USDT", "")
     iv, bs, cap = br.TFS[tf]
     fine = None
-    if FINE_TF:
+    if FINE_TF and _gate_v2():
+        # GATE: the frame's own candles and the finest exit bars Gate sells —
+        # the GitHub shard's way; minutes alone have a hole each month
+        # (RCA-2026-10-10-L)
+        try:
+            df, fine, _n5 = gate_v2_bars(symbol, tf)
+        except Exception as exc:                               # noqa: BLE001
+            return {"coin": coin, "tf": tf, "rows": [], "added": 0,
+                    "source": "gate", "why": f"{symbol} {tf}: {str(exc)[:80]}"}
+        added, source = 0, f"{tf} candles + finest exit bars ({_n5} five-minute)"
+    elif FINE_TF:
         # v2: the bars come from the minutes, and so does the exit.
         #
         # IT FETCHES THEM ITSELF (Sep 18, 2026). This read the cache and
@@ -1404,6 +1453,9 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                         "cost_unmeasured": int(r.get("cost_unmeasured", 0)),
                         "book_to": book_to}
                        if minute_book is not None else {}),
+                    # the exchange it was measured on, as a GitHub row says it
+                    # (a row with none is MEXC's — cloud_sweep.land_rows)
+                    **({"venue": "gate"} if _gate_v2() else {}),
                     "stop_reachable": True, "days": days_have,
                     "bars": len(df),
                     # WHERE THE WINDOW ENDED. The pair has one watermark and it
@@ -1915,7 +1967,20 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     # process's own store, byte for byte the old path.
     root = str(store.home) if store is not None else None
     fine = None
-    if store is not None and getattr(store, "fine_tf", ""):
+    _gate_said = ""
+    if store is not None and getattr(store, "fine_tf", "") and _gate_v2():
+        # GATE: the shard's own way (RCA-2026-10-10-L) — the frame's candles
+        # and the finest exit bars, never a frame rebuilt from a minute store
+        # that holds a hole every month
+        try:
+            df, fine, _n5 = gate_v2_bars(symbol, tf)
+        except Exception as exc:                               # noqa: BLE001
+            return {"log": [], "why": f"{coin} {tf}: Gate's candles could not "
+                                      f"be read ({str(exc)[:80]})"}
+        _gate_said = (f"Gate's {tf} candles, exits settled on the finest bars "
+                      f"Gate sells ({_n5:,} five-minute bars where it sells no "
+                      f"minutes)")
+    elif store is not None and getattr(store, "fine_tf", ""):
         m1 = cached_candles(symbol, store.fine_tf, candles_dir=store.candles)
         if m1 is None or not len(m1):
             return {"log": [], "why": f"no {store.fine_tf} candles stored for "
@@ -2089,7 +2154,8 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                if _book is not None else {}),
             "winrate": round(100 * r["wins"] / max(r["trades"], 1), 2),
             # what was READ, so the panel can say it and a mismatch is visible
-            "source": ("stored 1-minute candles, exits settled by the minute"
+            "source": (_gate_said if _gate_said
+                       else "stored 1-minute candles, exits settled by the minute"
                        if fine is not None else "stored candles"),
             "window_from": "row" if row_end else "pair watermark",
             # the row's own last bar and this PC's last candle: when the
@@ -2246,7 +2312,10 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
         sym = f"{coin}_USDT"
         try:
             fine = None
-            if v2:
+            if v2 and _gate_v2():
+                # GATE: the shard's own way (RCA-2026-10-10-L)
+                full, fine, _n5 = gate_v2_bars(sym, tf)
+            elif v2:
                 m1 = cached_candles(sym, store.fine_tf, candles_dir=store.candles)
                 if m1 is None or not len(m1):
                     skipped["no_candles"] += len(grp)

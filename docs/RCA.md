@@ -172,6 +172,69 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-L — every Backtest v2 screen that re-measures on this PC refused Gate rows: Gate sells no minutes for the start of the current month
+
+**CEO**
+
+* Pressing UPDATE THIS BACKTEST on BTC 1h (Oct 10, 2026 ~5:40am) measured
+  nothing and said only "NOT indexed: FileNotFoundError"; the trade list
+  under a row, the "last N days" view and Backtest a room would have failed
+  the same way for every Gate coin until November.
+* Why: Gate publishes minute candles only for finished months and for the
+  last week, so this PC's minute store has a hole from the 1st of the month
+  to a week ago, and these screens built their hourly bars from minutes and
+  refuse any hole.
+* What stops it now: on Gate these screens read each timeframe's own
+  candles and settle exits on the finest bars Gate sells — exactly what
+  GitHub's backtest does — and a button that cannot measure says why.
+
+**DEV**
+
+* `market_sweep.run_pair`, `trades_for` and `window_rows` (v2) called
+  `bars_from_1m(m1, tf)`, which raises on a missing minute; BTC's store held
+  3,611 missing minutes, Sep 30 11:59pm - Oct 03 12:11pm.
+  `db_jobs._run_pairbt` treated a `why` without `skipped` as measured and
+  indexed a rows file that was never written.
+* Invariant broken: **the PC measures a row the way GitHub measured it**
+  (RCA-2026-09-22-A moved the shard to the frame's own candles; the PC's
+  paths were never moved).
+* Guards: `tests/test_the_window_reads_the_minutes_book.py::test_on_gate_a_window_never_rebuilds_bars_from_the_minute_store`,
+  `tests/test_backtest_v2_downloads_its_own_candles.py::test_gate_v2_bars_reads_the_frames_own_candles_and_the_finest_bars_once`,
+  `tests/test_sep27_ml.py::test_an_update_that_could_not_measure_says_why_never_an_index_error`.
+
+**SAW** — `[pairbt_v2] BTC 1h · mom6: 0 row(s), 0 indexed · measured, but
+NOT indexed: FileNotFoundError: ... v2ows\BTC-1h.json`; the reason, from
+run_pair itself: `BTC_USDT: 1m frame has 3611 missing minute(s) between
+2026-09-30 23:59:00 and 2026-10-03 12:11:00`.
+
+**TIMELINE**
+
+1. Oct 10, 2026 3:56am — the switch moves MEXC's v2 store aside; Gate's
+   minute store starts empty.
+2. ~5:35am — Candles v2 downloads BTC on Gate: 40,388 minutes, Sep 09 5:26pm
+   to Oct 10 6:44am (the last minute equal to Gate's own: open 82769.1,
+   close 82764.2), with the Oct 01-03 hole Gate cannot fill.
+3. ~5:40am — UPDATE THIS BACKTEST on BTC 1h: 0 rows, an index error.
+4. After the fix — the same press measures 297 rows from Gate's 1h candles
+   with the finest exit bars, each carrying `venue: gate`, the 0.075% fee
+   and the cost check's counts.
+
+**ROOT CAUSE** — Gate's minute history has a hole every month that MEXC's
+never had, and the PC's v2 paths assumed whole minutes.
+
+**WHY IT WAS NOT CAUGHT** — every Gate test drove the GitHub shard or
+stubbed the minute store with whole minutes; nothing pressed a PC button
+against a store downloaded from Gate until the end-to-end check did.
+
+**COST** — none; caught on the first press after the switch.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_window_reads_the_minutes_book.py::test_on_gate_a_window_never_rebuilds_bars_from_the_minute_store`,
+`tests/test_sep27_ml.py::test_an_update_that_could_not_measure_says_why_never_an_index_error`.
+
+---
+
 ## RCA-2026-10-10-K — UPDATE THIS BACKTEST on Backtest v2 measured a Gate row on this PC without the order book of each minute
 
 NEVER HAPPENED YET — found while proving each part of the move to Gate end

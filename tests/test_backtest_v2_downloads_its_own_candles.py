@@ -225,8 +225,40 @@ def test_a_v2_pair_measured_on_this_pc_pays_each_minutes_book(v2, monkeypatch, t
         seen.append(k.get("book"))
         return real(*a, **k)
     monkeypatch.setattr(at, "backtest_strategy", spy)
+    # on Gate the frame and exit bars come the shard's way (RCA-2026-10-10-L)
+    import numpy as np
+
+    frame = msw.bars_from_1m(_minutes(5_000), "1h")
+    no_fine = (np.zeros(0, "int64"), np.zeros(0), np.zeros(0))
+    monkeypatch.setattr(msw, "gate_v2_bars", lambda sym, tf: (frame, no_fine, 0))
     got = msw.run_pair("TEST_USDT", "1h", signals=["mom6"])
     assert asked == ["TEST_USDT"], "the book is read once for the pair"
     assert seen and all(b is not None for b in seen)
     for r in got.get("rows") or []:
         assert {"gate_blocked", "cost_unmeasured", "book_to"} <= set(r)
+        assert r["venue"] == "gate"
+
+
+def test_gate_v2_bars_reads_the_frames_own_candles_and_the_finest_bars_once(monkeypatch):
+    """The shard's way on this PC (RCA-2026-10-10-L): `fx.klines` for the
+    frame, `fine_bars` for the exits — read once per coin for five minutes,
+    so a page of rows does not ask Gate for the same minutes ten times."""
+    import numpy as np
+
+    import tradingagents.auto_trader as at
+    from tradingagents import backtest_report as br
+    from tradingagents.dataflows import exchange as fx
+
+    frame = msw.bars_from_1m(_minutes(5_000), "1h")
+    monkeypatch.setattr(fx, "klines", lambda sym, iv, n: frame)
+    monkeypatch.setattr(at, "_closed_bars", lambda d, bs: d)
+    calls = []
+
+    def fine_bars(sym, start, end=None, *, fx=None):
+        calls.append(sym)
+        return np.zeros(0, "int64"), np.zeros(0), np.zeros(0), 722
+    monkeypatch.setattr(br, "fine_bars", fine_bars)
+    msw._V2_FINE_MEMO.clear()
+    df, fine, n5 = msw.gate_v2_bars("TEST_USDT", "1h")
+    msw.gate_v2_bars("TEST_USDT", "4h")
+    assert df is frame and n5 == 722 and calls == ["TEST_USDT"]

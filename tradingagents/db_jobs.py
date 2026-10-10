@@ -2685,8 +2685,15 @@ def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
     # "no new bars — it was already current" / already_current=True would
     # be a false label on a pair nobody looked at; the one true sentence is
     # why it was not measured. No index write either: nothing changed.
-    if isinstance(res, dict) and res.get("skipped") and not n_rows:
-        why = str(res.get("why") or "")
+    # ...and so did an early "could not measure" answer from run_pair (a
+    # hole in the minutes, the venue refusing, too few bars): it says WHY and
+    # writes no rows, and indexing a file nobody wrote buried that reason
+    # under a FileNotFoundError (RCA-2026-10-10-L). "no new bars" is the one
+    # `why` that means the pair is current, and it carries its rows.
+    _why = str(res.get("why") or "") if isinstance(res, dict) else ""
+    if isinstance(res, dict) and not n_rows and (
+            res.get("skipped") or (_why and _why != "no new bars")):
+        why = _why
         note = f"{what}: not measured: {why}"
         # a retry of RESOLVE PENDING would skip the same way, so the press is
         # resolved exactly as the measured path resolves it

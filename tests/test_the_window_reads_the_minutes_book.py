@@ -28,6 +28,10 @@ def test_a_v2_window_reads_the_book_up_to_the_rows_last_bar(tmp_path, monkeypatc
         (tmp_path / sub).mkdir()
     monkeypatch.setattr(msw, "cached_candles", lambda *a, **k: df)
     monkeypatch.setattr(msw, "bars_from_1m", lambda m1, tf: df)
+    # on Gate the frame and its exit bars come the shard's way
+    # (RCA-2026-10-10-L); stubbed so the test never calls Gate
+    no_fine = (np.zeros(0, "int64"), np.zeros(0), np.zeros(0))
+    monkeypatch.setattr(msw, "gate_v2_bars", lambda sym, tf: (df, no_fine, 0))
     msw.save_costs("TEST_USDT", fee=0.00075, liq=4.5, funding=[], root=str(tmp_path))
     monkeypatch.setenv("TA_VENUE", "gate")
     asked = []
@@ -51,3 +55,35 @@ def test_a_v2_window_reads_the_book_up_to_the_rows_last_bar(tmp_path, monkeypatc
     asked.clear()
     got = msw.window_rows([dict(row)], 10, store=store)
     assert asked == [] and got["rows"][0].get("w_trades", 0) > 0, "MEXC has no book"
+
+
+def test_on_gate_a_window_never_rebuilds_bars_from_the_minute_store(tmp_path, monkeypatch):
+    """RCA-2026-10-10-L: Gate sells minutes only for finished months and the
+    last week, so the minute store holds a hole every month (BTC on Oct 10,
+    2026: 3,611 minutes) and `bars_from_1m` refuses it — every Gate v2 row
+    would have failed its window. On Gate the frame comes from
+    `gate_v2_bars`, the shard's way."""
+    now_ms = int(time.time() * 1000) // BAR_MS * BAR_MS
+    df = _frame(n=700, start_ms=now_ms - 700 * BAR_MS)
+    store = SimpleNamespace(home=tmp_path, fine_tf="1m", candles=tmp_path / "c",
+                            name="v2")
+    for sub in ("state", "rows", "costs"):
+        (tmp_path / sub).mkdir()
+    msw.save_costs("TEST_USDT", fee=0.00075, liq=4.5, funding=[], root=str(tmp_path))
+    monkeypatch.setenv("TA_VENUE", "gate")
+
+    def refuse(*a, **k):
+        raise ValueError("1m frame has 3611 missing minute(s)")
+    monkeypatch.setattr(msw, "bars_from_1m", refuse)
+    monkeypatch.setattr(msw, "cached_candles", lambda *a, **k: df)
+    no_fine = (np.zeros(0, "int64"), np.zeros(0), np.zeros(0))
+    asked = []
+    monkeypatch.setattr(msw, "gate_v2_bars",
+                        lambda sym, tf: asked.append((sym, tf)) or (df, no_fine, 0))
+    monkeypatch.setattr(cost_store, "book_for", lambda *a, **k: cost_store.empty())
+    row = {"coin": "TEST", "tf": "1h", "signal": "mom6", "th": 0.1, "sl": 1.0,
+           "tp": 2.0, "sizing": "flat",
+           "last_ms": int(df["Date"].iloc[-1].timestamp() * 1000), "base": 5.0}
+    got = msw.window_rows([dict(row)], 10, store=store)
+    assert asked == [("TEST_USDT", "1h")]
+    assert got["rows"][0].get("restated"), got["skipped"]

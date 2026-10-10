@@ -172,6 +172,74 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-J — the test suite started real GitHub sweeps for its made-up coin "A", twice, from a thread that outlived its test
+
+**CEO**
+
+* Twice on Oct 10, 2026 — 3:31am and 4:39am, each right after a full test run
+  on this PC — a real "Market sweep (1h,4h) · full" started on the
+  jeremydvera account for a coin called "A", the name a test makes up.
+* Why: one test starts the old sweep organiser, whose "keep GitHub busy"
+  helper kept running after the test finished; once the test's fake
+  answers were taken away, it used the real ones and pressed GitHub.
+* What stops it now: the helper stops when its run stops, and nothing can
+  reach GitHub while tests run — not even in the seconds after the last one.
+
+**DEV**
+
+* `tests/test_sweep_orchestrator.py::test_progress_is_published_every_tick`
+  calls `sweep_orchestrator.run(["A_USDT"], ["1h", "4h"])`; `run()` started
+  `scan`/`work`/`cloud` daemon threads that looped on `STOP.exists()` only,
+  so `cloud` outlived `run()`, saw the real `online()` after monkeypatch undid
+  the stub, and called `cs.dispatch(coin_list=["A"], timeframes="1h,4h")`;
+  `cloud_sweep._gh` had no test guard, and `repo_slug()` prefers the
+  `colleague` remote, hence jeremydvera.
+* Invariant broken: **a thread ends with the call that started it**, and
+  **no test reaches a real outside service** — the guard must hold for the
+  whole process, not only while PYTEST_CURRENT_TEST is set.
+* Guards: `tests/test_sweep_orchestrator.py::test_no_thread_of_a_finished_run_can_reach_github`,
+  `::test_github_is_never_called_while_tests_run_even_between_them`.
+
+**SAW** — runs 38034731467 (created Oct 10, 2026 3:31am, ran 1.3 minutes,
+48,640 rows over "A 1h" and "A 4h", later downloaded by the collector and
+refused as MEXC's — RCA-2026-10-10-C) and 38038620940 (created 4:39am,
+queued behind the costs run; cancelled), neither recorded anywhere on this
+PC, both by the jeremydvera account this PC's gh is logged in as.
+
+**TIMELINE**
+
+1. Oct 10, 2026 ~3:15am — a full suite runs; `test_progress_is_published_every_tick`
+   leaves its three threads alive.
+2. 3:31am — after the stubs are undone, `cloud` dispatches run 38034731467
+   for coin A, 1h and 4h; it measures 48,640 rows in 1.3 minutes.
+3. 4:23am - 4:38am — the next full suite; 4:39:10am — run 38038620940 is
+   created the same way, seconds after the last test.
+4. ~5:15am — found while checking the GitHub queue; the run is cancelled, a
+   `gh` guard added, and a suite run shows two more tests reaching the real
+   `gh workflow list` (reads only): `test_a_failed_dispatch_keeps_the_request`
+   and `test_the_handoff_says_when_it_could_not_name_them` — both now name
+   their accounts.
+5. After the fix: the threads wait on an `ended` event set when `run()`
+   returns, and conftest sets `TA_NO_GITHUB=1` for the whole process.
+
+**ROOT CAUSE** — a background thread with no end tied to its run, plus a
+`gh` wrapper that trusted every caller.
+
+**WHY IT WAS NOT CAUGHT** — the leak happened after the test passed, in a
+thread, against a service no test watches; and the only "never from a test"
+guards (`error_issues._gh`, `forecast_v2_daily.dispatch`) were keyed on
+PYTEST_CURRENT_TEST, which is gone in the seconds after the last test.
+
+**COST** — no money: about 1.3 minutes of one GitHub machine and a
+download the store refused; the second run never started.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_sweep_orchestrator.py::test_no_thread_of_a_finished_run_can_reach_github`,
+`tests/test_sweep_orchestrator.py::test_github_is_never_called_while_tests_run_even_between_them`.
+
+---
+
 ## RCA-2026-10-10-I — real money on Gate had five holes that a saved key would have opened: no connection-test gate, a slice's stop closing every slice, a take-profit read as a stop, hedge-mode accounts, and a cutover blind to open real positions
 
 NEVER HAPPENED YET — no Gate key has ever been saved on this PC and no room

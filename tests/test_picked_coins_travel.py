@@ -207,6 +207,9 @@ def test_the_handoff_says_when_it_could_not_name_them(monkeypatch, tmp_path, cap
     monkeypatch.setattr(cs, "dispatch", lambda **k: {
         "id": 9, "coins_named": [], "coin_list_why": "900 coins is too many to name"})
     monkeypatch.setattr(cs, "remember", lambda run: None)
+    # the accounts are named here, never read from GitHub (RCA-2026-10-10-J)
+    monkeypatch.setattr(cs, "usable_fleets", lambda cwd=None: (["me/repo"], []))
+    monkeypatch.setattr(cs, "sync_fleet", lambda slug, source="": "")
     api._finish_handoff()
     said = capsys.readouterr().out
     assert "too many to name" in said, said

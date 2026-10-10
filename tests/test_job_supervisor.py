@@ -406,5 +406,9 @@ def test_a_failed_dispatch_keeps_the_request(monkeypatch):
     monkeypatch.setattr(cs, "available", lambda: (True, ""))
     monkeypatch.setattr(cs, "unmeasured", lambda coins, tfs: list(coins))
     monkeypatch.setattr(cs, "remember", lambda run: None)
+    # the accounts are named here, never read from GitHub: this test reached
+    # the real `gh workflow list` until gh refused every test (RCA-2026-10-10-J)
+    monkeypatch.setattr(cs, "usable_fleets", lambda cwd=None: (["me/r"], []))
+    monkeypatch.setattr(cs, "sync_fleet", lambda slug, source="": "")
     api._finish_handoff()
     assert sent and not dj.handoff_requested("backtest")

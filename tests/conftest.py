@@ -15,7 +15,13 @@ _sys.dont_write_bytecode = True
 import socket
 from pathlib import Path
 
+import os
 import pytest
+
+# NO TEST REACHES GITHUB, not even in the seconds after the last one, when
+# PYTEST_CURRENT_TEST is gone and a stray thread still runs (RCA-2026-10-10-J:
+# a sweep orchestrator thread dispatched two real runs for the test coin A).
+os.environ["TA_NO_GITHUB"] = "1"
 
 
 def pytest_configure(config):

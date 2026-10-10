@@ -35,7 +35,18 @@ class CloudError(RuntimeError):
     """gh is missing, not logged in, or the repo has no workflow."""
 
 
+_REAL_SUBPROCESS_RUN = subprocess.run
+
+
 def _gh(*args: str, timeout: int = 120) -> str:
+    # NEVER FROM A TEST (RCA-2026-10-10-J): `gh workflow run` is 20 real
+    # machines on the operator's account; a test that missed one stub sent a
+    # "Market sweep (1h,4h) · full" to jeremydvera after a suite run.
+    # (a test that swaps in its OWN subprocess.run talks to a fake gh, not to
+    # GitHub, and is let through)
+    if subprocess.run is _REAL_SUBPROCESS_RUN and (
+            os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("TA_NO_GITHUB")):
+        raise CloudError("gh is never called from a test: gh " + " ".join(args[:3]))
     # UTF-8, ALWAYS (RCA-2026-10-02-G): gh writes UTF-8, and `text=True` alone
     # decodes with the locale — cp1252 on this PC unless the process runs in
     # Python's UTF-8 mode, which only the app's own start sets. Outside it a

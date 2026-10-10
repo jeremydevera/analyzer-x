@@ -332,10 +332,18 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
     shared = {"done": set(), "where": "starting", "cloud": None,
               "budget": 0, "reset_in": 0.0, "indexed": 0, "shards": {}}
     lock = threading.Lock()
+    # THE THREADS END WITH THE RUN (RCA-2026-10-10-J): `cloud` outlived a
+    # finished run and, once a test's stubs were undone, dispatched a real
+    # sweep for the test's coin A. Each thread waits on this instead of
+    # sleeping, so it stops the moment run() returns.
+    ended = threading.Event()
+
+    def _going() -> bool:
+        return not STOP.exists() and not ended.is_set()
 
     def scan() -> None:
         """Which pairs are finished, and fold them into the database."""
-        while not STOP.exists():
+        while _going():
             done = measured(want)
             with lock:
                 shared["done"] = done
@@ -344,7 +352,7 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
                 n += store_pair(sym.replace("_USDT", ""), tf)
             with lock:
                 shared["indexed"] = n
-            time.sleep(30)
+            ended.wait(30)
 
     def cloud() -> None:
         """Keep GitHub busy. Its OWN thread, on its own clock.
@@ -354,21 +362,21 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
         twenty minutes with nothing dispatched behind it. Managing the cloud is
         seconds of work; it must not queue behind half an hour of measuring.
         """
-        while not STOP.exists():
+        while _going():
             with lock:
                 done = set(shared["done"])
             left = [p for p in want if p not in done]
             if not left or not prefer_cloud:
-                time.sleep(TICK)
+                ended.wait(TICK)
                 continue
             if not online():
-                time.sleep(TICK)
+                ended.wait(TICK)
                 continue
             budget, reset_in = gh_budget()
             with lock:
                 shared["budget"], shared["reset_in"] = budget, reset_in
             if plan(online_=True, budget=budget, prefer_cloud=True) != "cloud":
-                time.sleep(TICK)
+                ended.wait(TICK)
                 continue
 
             with lock:
@@ -382,7 +390,7 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
                         log(f"adopting GitHub run {found['id']}, shards live")
                 except Exception:
                     run_ = None
-            if run_ is None:
+            if run_ is None and _going():
                 try:
                     # BY NAME, not by count: `left` is the pairs this machine
                     # has not measured, and sending only how many made the
@@ -415,7 +423,7 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
                     f"GitHub run {rid} "
                     f"({sh.get('shards_done', 0)}/{sh.get('shards', 0)} shards, "
                     f"{sh.get('cloud_rows', 0):,} rows) + this Mac")
-            time.sleep(TICK)
+            ended.wait(TICK)
 
     def work() -> None:
         """Measure here — only while this PC is still in the rota.
@@ -426,15 +434,15 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
         thread quietly measured 24 pairs a round and published "this Mac" as
         the place the work was happening.
         """
-        while not STOP.exists():
+        while _going():
             if not local_measuring_on():
-                time.sleep(TICK)
+                ended.wait(TICK)
                 continue
             with lock:
                 done = set(shared["done"])
             left = [p for p in want if p not in done]
             if not left:
-                time.sleep(TICK)
+                ended.wait(TICK)
                 continue
             if not online():
                 shared["where"] = "this Mac (no internet — from stored candles)"
@@ -442,26 +450,28 @@ def run(coins, tfs, *, prefer_cloud: bool = True) -> None:
 
     for fn in (scan, work, cloud):
         threading.Thread(target=fn, name=fn.__name__, daemon=True).start()
+    try:
+        while not STOP.exists():
+            with lock:
+                done, where = set(shared["done"]), shared["where"]
+                budget, indexed = shared["budget"], shared["indexed"]
+            pct = 100.0 * len(done) / total if total else 0.0
+            _write(STATE, {"pct": round(pct, 2), "done": len(done), "total": total,
+                           "left": total - len(done), "where": where,
+                           "running": len(done) < total,
+                           "indexed_rows": indexed, "gh_requests_left": budget,
+                           "elapsed_min": round((time.time() - started) / 60, 1)})
+            log(f"{pct:5.1f}%  {len(done):,}/{total:,} pairs  ·  {where}")
+            if len(done) >= total:
+                log(f"FINISHED {len(done):,}/{total:,} pairs")
+                log(f"closing {shutdown_pool()} workers")
+                return
+            time.sleep(TICK)
 
-    while not STOP.exists():
-        with lock:
-            done, where = set(shared["done"]), shared["where"]
-            budget, indexed = shared["budget"], shared["indexed"]
-        pct = 100.0 * len(done) / total if total else 0.0
-        _write(STATE, {"pct": round(pct, 2), "done": len(done), "total": total,
-                       "left": total - len(done), "where": where,
-                       "running": len(done) < total,
-                       "indexed_rows": indexed, "gh_requests_left": budget,
-                       "elapsed_min": round((time.time() - started) / 60, 1)})
-        log(f"{pct:5.1f}%  {len(done):,}/{total:,} pairs  ·  {where}")
-        if len(done) >= total:
-            log(f"FINISHED {len(done):,}/{total:,} pairs")
-            log(f"closing {shutdown_pool()} workers")
-            return
-        time.sleep(TICK)
-
-    n = shutdown_pool()
-    log(f"stopped by request, closed {n} workers")
+        n = shutdown_pool()
+        log(f"stopped by request, closed {n} workers")
+    finally:
+        ended.set()
 
 
 def main() -> int:

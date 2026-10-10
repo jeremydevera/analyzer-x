@@ -343,3 +343,41 @@ def test_startup_says_something_before_the_slow_part():
         "the start line comes first, or a slow index reads as a hang")
     assert "opening the row index" in src
     assert "row index ready in" in src
+
+
+def test_no_thread_of_a_finished_run_can_reach_github(monkeypatch):
+    """RCA-2026-10-10-J: `run()` returned and its `cloud` thread kept going;
+    once the test's stubs were undone it dispatched a real "Market sweep
+    (1h,4h) · full" for this test's coin A — runs 38034731467 (Oct 10, 2026
+    3:31am, 48,640 rows) and 38038620940 (4:39am), each just after a suite
+    ended. The threads of a run end with the run."""
+    import threading
+
+    monkeypatch.setattr(so, "online", lambda: False)
+    monkeypatch.setattr(so, "local_round", lambda left, **k: 0)
+    monkeypatch.setattr(so, "store_pair", lambda c, tf: 0)
+    monkeypatch.setattr(so, "measured", lambda pairs: set(pairs))
+    monkeypatch.setattr(so, "TICK", 0.05)
+    so.run(["A_USDT"], ["1h", "4h"])
+    import time as _t
+
+    _t.sleep(0.3)
+    alive = [t.name for t in threading.enumerate()
+             if t.name in ("scan", "work", "cloud") and t.is_alive()]
+    assert alive == [], f"threads outlived their run: {alive}"
+
+
+def test_github_is_never_called_while_tests_run_even_between_them(monkeypatch):
+    """PYTEST_CURRENT_TEST is gone in the seconds after the last test, and a
+    stray thread dispatched in exactly that gap; the session-wide flag set by
+    conftest holds until the process exits."""
+    import os
+
+    from tradingagents import cloud_sweep as cs
+
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    assert os.environ.get("TA_NO_GITHUB") == "1"
+    import pytest as _p
+
+    with _p.raises(cs.CloudError, match="never"):
+        cs._gh("workflow", "run", "sweep.yml")

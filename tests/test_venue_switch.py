@@ -170,3 +170,18 @@ def test_the_room_strategies_rule_sets_come_across_without_their_trades(home, mo
     assert got["rule_sets_carried"] == 1
     (w,) = rst.kept()
     assert w["id"] == "55D32617" and len(w["trades"]) == 0
+
+
+def test_it_refuses_while_a_real_position_is_still_open(home):
+    """Final review, Oct 10, 2026 (RCA-2026-10-10-I): a real position whose
+    row was already switched off stays in the runner's state until it closes;
+    the cutover looked only at rows, and the runner would then have managed a
+    MEXC position through Gate's door — held for ever with no key, or booked
+    as a phantom exit with one, while the MEXC money was still at risk."""
+    st = at.load_state()
+    st["BTC_USDT#live#bb20_1h_sl1tp2"] = {"position": {"side": 1, "vol": 3, "entry": 100.0,
+                                          "tp": 101.0, "sl": 99.0}}
+    at.save_state(st)
+    with pytest.raises(vs.SwitchRefused, match="real position"):
+        vs.switch("gate", rooms=["main"], price_of=lambda s: 1.0)
+    assert venue.current() == "mexc"

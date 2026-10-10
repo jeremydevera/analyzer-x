@@ -51,6 +51,9 @@ def gate(monkeypatch):
     monkeypatch.setenv("GATE_API_KEY", KEY)
     monkeypatch.setenv("GATE_API_SECRET", SECRET)
     monkeypatch.setattr(gf, "contract_spec", lambda s: {"contractSize": 0.0001})
+    # this key passed the connection test (conftest sandboxes the file); the
+    # tests of the gate itself point PREFLIGHT_FILE somewhere empty
+    gf._remember_preflight(True)
 
     def install(routes):
         fake = FakePrivate(routes)
@@ -148,7 +151,7 @@ def test_the_stop_rests_on_gates_servers_for_the_whole_position(gate):
     assert sl[3]["trigger"] == {"strategy_type": 0, "price_type": 0, "price": "95.5",
                                 "rule": 2, "expiration": 0}
     assert sl[3]["initial"]["size"] == 0 and sl[3]["initial"]["close"] is True
-    assert tp[3]["trigger"]["rule"] == 1 and tp[3]["trigger"]["price"] == "104.0"
+    assert tp[3]["trigger"]["rule"] == 1 and tp[3]["trigger"]["price"] == "104"
     assert got["response"]["stop_id"] == 77
 
 
@@ -164,7 +167,7 @@ def test_a_short_stop_triggers_upward(gate):
 
 
 def test_a_stop_is_verified_by_reading_it_back(gate):
-    gate(lambda m, p, q, b: [{"id": 77, "status": "open", "order_type": "close-long-position",
+    gate(lambda m, p, q, b: POS_LONG if "/positions/" in p else [{"id": 77, "status": "open", "order_type": "close-long-position",
                               "initial": {"contract": "BTC_USDT"}, "trigger": {"price": "95.5", "rule": 2}},
                              {"id": 70, "status": "finished", "finish_as": "failed",
                               "reason": "position not exists", "order_type": "close-long-position",
@@ -232,3 +235,103 @@ def test_preflight_names_a_key_without_trading_permission(gate):
     r = gf.preflight("BTC_USDT")
     assert r["order_permission"] is False and r["ready"] is False
     assert r["missing_scopes"]
+
+
+# ------------------------------------------- final review, Oct 10, 2026
+# RCA-2026-10-10-I: the guards real money needs on Gate before any key is
+# saved. Each was found by reading the code; none has met the exchange.
+
+def test_a_real_opening_order_waits_for_the_key_to_pass_the_connection_test(gate, monkeypatch):
+    """D12 promised "shut until a key passes the preflight", and nothing on
+    the order path asked: a key whose stop probe failed could open positions
+    that no stop could protect."""
+    monkeypatch.setattr(gf, "PREFLIGHT_FILE", gf.PREFLIGHT_FILE.with_name("none.json"))
+    fake = gate(lambda m, p, q, b: {"id": 1, "status": "finished"})
+    with pytest.raises(xe.VenueError, match="connection test"):
+        gf.submit("BTC_USDT", gf.SIDE_OPEN_LONG, 5, leverage=20, dry_run=False)
+    assert not fake.calls, "nothing reached Gate"
+    gf.submit("BTC_USDT", gf.SIDE_CLOSE_LONG, 5, leverage=20, dry_run=False)
+    assert fake.calls, "a CLOSE is never held back — closing is the safe way"
+
+
+def test_a_passed_connection_test_is_kept_for_that_key_only(gate, monkeypatch):
+    def routes(m, p, q, b):
+        if p.endswith("/accounts"):
+            return {"total": "10", "unrealised_pnl": "0", "available": "10",
+                    "position_margin": "0", "currency": "USDT", "in_dual_mode": False}
+        if p.endswith("/positions"):
+            return []
+        if m == "DELETE":
+            return 404, b'{"label":"ORDER_NOT_FOUND","message":"Order not found"}'
+        return {"id": 5, "status": "finished"}
+    monkeypatch.setattr(gf, "PREFLIGHT_FILE", gf.PREFLIGHT_FILE.with_name("fresh.json"))
+    gate(routes)
+    assert gf.preflight("BTC_USDT")["ready"] is True
+    gf.submit("BTC_USDT", gf.SIDE_OPEN_LONG, 5, leverage=20, dry_run=False)
+    monkeypatch.setenv("GATE_API_KEY", "another-key")
+    with pytest.raises(xe.VenueError, match="connection test"):
+        gf.submit("BTC_USDT", gf.SIDE_OPEN_LONG, 5, leverage=20, dry_run=False)
+
+
+def test_a_hedge_mode_account_is_not_ready(gate):
+    """Every private call assumes ONE position per contract (`close: true`,
+    size 0, `/positions/{contract}`); an account in dual mode would answer in
+    another shape."""
+    def routes(m, p, q, b):
+        if p.endswith("/accounts"):
+            return {"total": "10", "unrealised_pnl": "0", "available": "10",
+                    "position_margin": "0", "currency": "USDT", "in_dual_mode": True}
+        if p.endswith("/positions"):
+            return []
+        if m == "DELETE":
+            return 404, b'{"label":"ORDER_NOT_FOUND","message":"Order not found"}'
+        return {}
+    gate(routes)
+    r = gf.preflight("BTC_USDT")
+    assert r["ready"] is False and any("single" in x.lower() for x in r["remedies"])
+
+
+def test_a_part_position_stop_is_refused_on_gate_never_widened_to_the_whole(gate):
+    """`close: true, size: 0` closes the WHOLE position: a slice's stop would
+    end every other slice at one strategy's barrier."""
+    gate(lambda m, p, q, b: POS_LONG if m == "GET" else {"id": 1})
+    with pytest.raises(xe.VenueError, match="part"):
+        gf.place_position_stop("BTC_USDT", 1, 4, stop_loss_price=95.0, vol_type=1,
+                               dry_run=False)
+    import tradingagents.auto_trader as at
+
+    assert at.partial_on({"partial_tp_live": True}, dry=False) is False
+    assert at.partial_on({"partial_tp_demo": True}, dry=True) is True
+
+
+def test_a_stop_must_be_the_stop_on_the_open_side_to_protect(gate):
+    """A take-profit trigger alone, or a stop left from a SHORT on the same
+    contract, read as protected."""
+    tp_only = [{"id": 1, "status": "open", "order_type": "close-long-position",
+                "initial": {"contract": "BTC_USDT"}, "trigger": {"price": "104", "rule": 1}}]
+    stale = [{"id": 2, "status": "open", "order_type": "close-short-position",
+              "initial": {"contract": "BTC_USDT"}, "trigger": {"price": "110", "rule": 1}}]
+    for recs in (tp_only, stale):
+        gate(lambda m, p, q, b, recs=recs: POS_LONG if "/positions/" in p else recs)
+        assert gf.verify_position_stop("BTC_USDT", 1791600000)["protected"] is False
+
+
+def test_a_new_stop_clears_the_contracts_old_triggers_first(gate):
+    def routes(m, p, q, b):
+        if m == "GET" and "/positions/" in p:
+            return POS_LONG
+        return [] if m == "DELETE" else {"id": 77}
+    fake = gate(routes)
+    gf.place_position_stop("BTC_USDT", 1791600000, 12, stop_loss_price=95.5, dry_run=False)
+    kinds = [(c[0], c[1]) for c in fake.calls if c[0] in ("DELETE", "POST")]
+    assert kinds[0] == ("DELETE", "/api/v4/futures/usdt/price_orders")
+    assert fake.calls[[c[0] for c in fake.calls].index("DELETE")][2] == {"contract": "BTC_USDT"}
+    assert kinds[1] == ("POST", "/api/v4/futures/usdt/price_orders")
+
+
+def test_a_tiny_price_is_sent_in_plain_digits():
+    """`str(0.0000123)` is "1.23e-05", which an order API may refuse — and a
+    refused stop on a PEPE-priced coin leaves the position unprotected."""
+    body = gf._trigger_close("PEPE_USDT", True, 0.0000123, 2, "sl")
+    assert body["trigger"]["price"] == "0.0000123"
+    assert gf._px(101.25) == "101.25" and gf._px(95.0) == "95"

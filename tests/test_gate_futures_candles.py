@@ -216,3 +216,25 @@ def test_a_coin_gate_does_not_list_is_an_error(fake, monkeypatch):
     monkeypatch.setattr(gf, "_fetch", lambda url: (400, b'{"label":"CONTRACT_NOT_FOUND"}'))
     with pytest.raises(gf.VenueError, match="CONTRACT_NOT_FOUND"):
         gf.klines("GPNSTOCK_USDT", "Min60", 300)
+
+
+def test_a_month_gate_published_late_is_asked_for_again(monkeypatch):
+    """Final review, Oct 10, 2026 (RCA-2026-10-10-I): a 404 after hour 6 of
+    the 1st wrote a permanent `.missing` note, so a month Gate published a
+    few hours late was never read on this PC, and the minutes for v2 exits
+    started after it. A note is trusted only once its month ended more than
+    a week ago."""
+    import calendar
+
+    from tradingagents.dataflows import gate_futures as gf
+
+    asked = []
+    monkeypatch.setattr(gf, "_fetch_archive", lambda u: asked.append(u) or (404, b""))
+    monkeypatch.setattr(gf, "_now", lambda: calendar.timegm((2026, 10, 3, 12, 0, 0)))
+    assert gf.archive_month("BTC_USDT", "1m", "202609") is None
+    assert gf.archive_month("BTC_USDT", "1m", "202609") is None
+    assert len(asked) == 2, "three days after September ended, ask again"
+    asked.clear()
+    assert gf.archive_month("BTC_USDT", "1m", "202608") is None
+    assert gf.archive_month("BTC_USDT", "1m", "202608") is None
+    assert len(asked) == 1, "August ended a month ago: the note is trusted"

@@ -172,6 +172,80 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-I — real money on Gate had five holes that a saved key would have opened: no connection-test gate, a slice's stop closing every slice, a take-profit read as a stop, hedge-mode accounts, and a cutover blind to open real positions
+
+NEVER HAPPENED YET — no Gate key has ever been saved on this PC and no room
+has a real-money row; every one was found by reading the code (final review,
+Oct 10, 2026).
+
+**CEO**
+
+* The plan promised real money on Gate stays shut until a key passes the
+  connection test; nothing on the order path checked, so a key that could
+  not place a stop could still open a position.
+* A stop on part of a position would have closed the whole position; a
+  take-profit, or a stop left from an older trade, counted as "protected";
+  a hedge-mode account would answer in a shape the app does not read; a
+  very small price was sent as "1.23e-05"; and the switch to Gate looked for
+  real-money rows but not for real positions still open.
+* What stops it now: no opening order until this key passed the test, real
+  money keeps one position per coin on Gate, "protected" means a stop on the
+  open side, old triggers are cleared first, hedge mode is not ready, prices
+  go in plain digits, and the switch refuses while a real position is open.
+  Gate's keys are also scrubbed from public error reports.
+
+**DEV**
+
+* `gate_futures.submit` never consulted `preflight`; `place_position_stop`
+  swallowed `vol_type` in `**_kw` and always sent `close: true, size: 0`;
+  `verify_position_stop` counted any open `close-*` trigger; `preflight`
+  never read `in_dual_mode`; prices went through `str()`; `archive_month`
+  kept a `.missing` note for good; `venue_switch.switch` checked
+  `_real_rows` only; `error_issues._secret_values` read `MEXC_API_*` and
+  one credentials file.
+* Invariant broken: **a guard the plan names must sit on the path it
+  guards** — a promise in a docstring is not a check.
+* Guards: `tests/test_gate_futures_private.py` (7 new, from
+  `test_a_real_opening_order_waits_for_the_key_to_pass_the_connection_test`
+  to `test_a_tiny_price_is_sent_in_plain_digits`),
+  `tests/test_venue_switch.py::test_it_refuses_while_a_real_position_is_still_open`,
+  `tests/test_errors_become_issues.py::test_gates_keys_are_removed_whichever_exchange_the_app_trades`,
+  `tests/test_gate_futures_candles.py::test_a_month_gate_published_late_is_asked_for_again`.
+
+**SAW** — nothing; the reviewer confirmed with a dry run that a 10-contract
+slice of a 30-contract long sent two `close-long-position` triggers that
+close all 30, and that `str(0.0000123)` is `1.23e-05`.
+
+**TIMELINE**
+
+1. Oct 10, 2026 (phase 6) — Gate's private half is built behind
+   `gate_credentials`, with D12's promise in its comments.
+2. Oct 10, 2026 ~5:00am — the final review reads the order path and finds
+   no call to `preflight` on it, nor any of the other four checks.
+3. Without the fix, the first saved key that answered for balance but not
+   for stops could have opened real positions with no resting stop.
+4. After the fix: `submit` refuses an opening order by name until
+   `preflight()` for that key wrote `ready: true` to `gate_preflight.json`.
+
+**ROOT CAUSE** — the real-money half was written to the runner's MEXC
+shapes and tested against a fake Gate that answered the happy shape; the
+safety promises lived in comments, not in the calls.
+
+**WHY IT WAS NOT CAUGHT** — every private test drove one function against
+a fake that returned what the function expected; none asked what the
+runner does when the key has not been tested, when a slice is placed, or
+when the open orders hold something other than this position's stop.
+
+**COST** — none: no key, no real row.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_gate_futures_private.py::test_a_real_opening_order_waits_for_the_key_to_pass_the_connection_test`,
+`tests/test_gate_futures_private.py::test_a_stop_must_be_the_stop_on_the_open_side_to_protect`,
+`tests/test_venue_switch.py::test_it_refuses_while_a_real_position_is_still_open`.
+
+---
+
 ## RCA-2026-10-10-H — the cost check reached the stored backtest but not the numbers the rooms read: newest hours, minutes with no reading, and every rebuild on the PC went without it
 
 NEVER HAPPENED YET — found by the final review before any Gate v2 row was

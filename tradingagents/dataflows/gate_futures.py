@@ -670,7 +670,10 @@ def assets() -> dict:
     return {"USDT": {"currency": "USDT", "equity": total + unreal,
                      "availableOpen": avail, "availableBalance": avail,
                      "positionMargin": float(a.get("position_margin") or 0.0),
-                     "unrealized": unreal}}
+                     "unrealized": unreal,
+                     # every private call here assumes ONE position per
+                     # contract; a hedge-mode account answers in another shape
+                     "inDualMode": bool(a.get("in_dual_mode"))}}
 
 
 def usdt_equity() -> float:
@@ -728,6 +731,56 @@ def position_history(symbol: str | None = None, page_size: int = 20) -> list:
     return out
 
 
+VOL_PARTIAL = 1        # the runner's part-position stop (MEXC's volType)
+VOL_POSITION = 2
+PREFLIGHT_FILE = _pathlib.Path.home() / ".tradingagents" / "gate_preflight.json"
+
+
+def _px(price) -> str:
+    """A price in plain digits: `str(0.0000123)` is "1.23e-05", and a stop an
+    API refuses for its format leaves a position unprotected
+    (RCA-2026-10-10-I)."""
+    from decimal import Decimal
+
+    d = Decimal(repr(float(price))).normalize()
+    return format(d, "f")
+
+
+def _key_print(key: str | None) -> str:
+    import hashlib
+
+    return hashlib.sha256((key or "").encode()).hexdigest()[:16]
+
+
+def _remember_preflight(ready: bool) -> None:
+    """The connection test's answer for THIS key (never the key itself)."""
+    key, _sec = credentials()
+    try:
+        PREFLIGHT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = PREFLIGHT_FILE.with_name(f"{PREFLIGHT_FILE.name}.tmp")
+        tmp.write_text(json.dumps({"key": _key_print(key), "ready": bool(ready),
+                                   "at": time.time()}), encoding="utf-8")
+        import os as _os
+
+        _os.replace(tmp, PREFLIGHT_FILE)
+    except OSError as exc:
+        logger.warning("could not keep the Gate connection test's answer: %s", exc)
+
+
+def preflight_passed() -> bool:
+    """Did THIS key pass the connection test? Spec D12: real money on Gate
+    is shut until it has — a key whose stop probe failed must never open a
+    position no stop can protect (RCA-2026-10-10-I)."""
+    key, _sec = credentials()
+    if not key:
+        return False
+    try:
+        got = json.loads(PREFLIGHT_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return bool(got.get("ready")) and got.get("key") == _key_print(key)
+
+
 def _text(tag: str) -> str:
     import uuid
 
@@ -742,11 +795,16 @@ def submit(symbol: str, side: int, vol: int, *, leverage: int,
     if vol <= 0:
         raise GateFuturesError(f"refusing to submit vol={vol}")
     opening = side in (SIDE_OPEN_LONG, SIDE_OPEN_SHORT)
+    if opening and not dry_run and not preflight_passed():
+        # a CLOSE is never held back: closing is always the safe way out
+        raise GateFuturesError(
+            "real orders on Gate wait for this key to pass the connection test "
+            "(TEST CONNECT on the keys panel) — no order was sent")
     signed = int(vol) if side in (SIDE_OPEN_LONG, SIDE_CLOSE_SHORT) else -int(vol)
     if order_type == TYPE_LIMIT:
         if not price:
             raise GateFuturesError("a limit order needs a price")
-        body = {"contract": symbol, "size": signed, "price": str(price), "tif": "gtc",
+        body = {"contract": symbol, "size": signed, "price": _px(price), "tif": "gtc",
                 "text": _text("o")}
     else:
         body = {"contract": symbol, "size": signed, "price": "0", "tif": "ioc",
@@ -783,7 +841,7 @@ def limit_close_long(symbol: str, vol: int, price: float, *, leverage: int,
 def _trigger_close(symbol: str, long: bool, price: float, rule: int, tag: str) -> dict:
     return {"initial": {"contract": symbol, "size": 0, "price": "0", "tif": "ioc",
                         "close": True, "text": _text(tag)},
-            "trigger": {"strategy_type": 0, "price_type": 0, "price": str(price),
+            "trigger": {"strategy_type": 0, "price_type": 0, "price": _px(price),
                         "rule": rule, "expiration": 0},
             "order_type": "close-long-position" if long else "close-short-position"}
 
@@ -799,6 +857,13 @@ def place_position_stop(symbol: str, position_id: int, vol: int, *,
         raise GateFuturesError(f"refusing to place a stop for vol={vol}")
     if stop_loss_price <= 0:
         raise GateFuturesError("stop_loss_price must be positive")
+    if int(_kw.get("vol_type") or VOL_POSITION) == VOL_PARTIAL:
+        # `close: true, size: 0` closes the WHOLE position: a slice's stop
+        # would end every other slice too. Refused, never widened
+        # (RCA-2026-10-10-I); the runner keeps part-position mode off on Gate.
+        raise GateFuturesError(
+            f"a part-position stop is not built for Gate — {symbol} slice of "
+            f"{vol} refused; real money on Gate trades one position per coin")
     held = open_positions(symbol)
     if not held:
         raise GateFuturesError(f"no open {symbol} position to rest a stop on")
@@ -809,6 +874,10 @@ def place_position_stop(symbol: str, position_id: int, vol: int, *,
     if dry_run:
         logger.info("DRY RUN Gate resting stop: %s", bodies)
         return {"dry_run": True, "request": bodies}
+    # A STALE TRIGGER from an earlier position on this contract would fire on
+    # this one (a long's old stop at 95 closes a new long the moment price
+    # touches it): the contract's open triggers go first (RCA-2026-10-10-I)
+    _signed("DELETE", "/futures/usdt/price_orders", params={"contract": symbol})
     logger.warning("LIVE Gate resting stop: %s", bodies)
     ids = [(_signed("POST", "/futures/usdt/price_orders", body=b) or {}).get("id")
            for b in bodies]
@@ -828,13 +897,27 @@ def stop_is_active(record: dict) -> bool:
 
 
 def verify_position_stop(symbol: str, position_id: int) -> dict:
-    """Read back what Gate actually holds for this contract's position."""
+    """Read back what Gate actually holds for this contract's position.
+
+    PROTECTED means a STOP for the side that is open: a trigger closing a
+    long at or below (rule 2), or a short at or above (rule 1). A take-profit
+    alone, or a trigger left from a position on the other side, is not
+    protection (RCA-2026-10-10-I)."""
+    held = open_positions(symbol)
     recs = [r for r in list_position_stops(symbol)
             if str((r.get("initial") or {}).get("contract") or symbol) == symbol
             and str(r.get("order_type") or "").startswith("close-")]
     active = [r for r in recs if stop_is_active(r)]
     failed = [r for r in recs if str(r.get("finish_as") or "") == "failed"]
-    return {"protected": bool(active), "active": active, "failed": failed,
+    stops = []
+    if held:
+        long = held[0]["positionType"] == 1
+        want_type = "close-long-position" if long else "close-short-position"
+        want_rule = 2 if long else 1
+        stops = [r for r in active if str(r.get("order_type")) == want_type
+                 and int((r.get("trigger") or {}).get("rule") or 0) == want_rule]
+    return {"protected": bool(stops), "active": active, "stops": stops,
+            "failed": failed, "position_open": bool(held),
             "error_codes": sorted({str(r.get("reason") or "failed") for r in failed})}
 
 
@@ -963,6 +1046,14 @@ def preflight(symbol: str) -> dict:
     except GateFuturesError as exc:
         report["order_permission"] = False
         report["notes"].append(f"order write probe failed: {exc}")
+    try:
+        report["dual_mode"] = bool(assets()["USDT"].get("inDualMode"))
+    except Exception:                                          # noqa: BLE001
+        report["dual_mode"] = None
+    if report["dual_mode"]:
+        report["remedies"].append(
+            "Switch Gate futures to single position mode (one-way) — this app "
+            "keeps one position per coin and does not trade hedge (dual) mode.")
     if report["order_permission"]:
         st = stop_probe()
         report["can_rest_stop"] = bool(st.get("permitted"))
@@ -972,7 +1063,11 @@ def preflight(symbol: str) -> dict:
     report["remedies"] = list(dict.fromkeys(report["remedies"]))
     report["ready"] = bool(report["read_assets"] and report["read_positions"]
                            and report["order_permission"] and report["can_rest_stop"]
-                           and report["clock_ok"] is not False)
+                           and report["clock_ok"] is not False
+                           and report.get("dual_mode") is False)
+    # the answer is KEPT for this key: `submit` opens nothing until it is
+    # ready (spec D12, RCA-2026-10-10-I)
+    _remember_preflight(report["ready"])
     return report
 
 
@@ -1139,6 +1234,20 @@ def _fetch_archive(url: str) -> tuple:
     return status, raw
 
 
+MISS_TRUSTED_AFTER_S = 7 * 86400
+
+
+def _settled(ym: str) -> bool:
+    """Has this month been over long enough that "not in the archive" is
+    final? A month Gate publishes a few hours or days late must be asked for
+    again (RCA-2026-10-10-I); a week after it ended, the note is trusted."""
+    import calendar
+
+    y, m = int(ym[:4]), int(ym[4:])
+    end = calendar.timegm((y + (m == 12), m % 12 + 1, 1, 0, 0, 0))
+    return int(_now()) - end > MISS_TRUSTED_AFTER_S
+
+
 def archive_month(symbol: str, kind: str, ym: str):
     """One completed month of `kind` candles from Gate's archive, kept on
     disk (a published month never changes). None when the file does not
@@ -1150,7 +1259,7 @@ def archive_month(symbol: str, kind: str, ym: str):
     miss = folder / f"{symbol}-{ym}.missing"
     if hit.exists():
         raw = hit.read_bytes()
-    elif miss.exists():
+    elif miss.exists() and _settled(ym):
         return None
     else:
         url = (f"{ARCHIVE}/futures_usdt/candlesticks_{kind}/{ym}/"

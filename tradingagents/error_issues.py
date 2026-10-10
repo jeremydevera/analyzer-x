@@ -286,16 +286,28 @@ _SECRET_SHAPES = (
 
 
 def _secret_values() -> list[str]:
-    vals = [os.getenv("MEXC_API_KEY", ""), os.getenv("MEXC_API_SECRET", "")]
+    vals = [os.getenv("MEXC_API_KEY", ""), os.getenv("MEXC_API_SECRET", ""),
+            os.getenv("GATE_API_KEY", ""), os.getenv("GATE_API_SECRET", "")]
     try:
         vals.append((HOME / "ingest_token").read_text(encoding="utf-8").strip())
     except OSError:
         pass
     # ON THIS PC the keys live in ~/.tradingagents/mexc_credentials.json and
-    # reach the site's environment only once a route loads them (C2)
+    # reach the site's environment only once a route loads them (C2) — and,
+    # since the move to Gate, gate_credentials.json beside it. BOTH files,
+    # whichever exchange the app trades: a key is a secret whether or not it
+    # is the one in use (RCA-2026-10-10-I).
     try:
+        import json as _json
+
         from tradingagents.dataflows import mexc_credentials as _cred
 
+        for f in (_cred.STORE_PATH, _cred.STORE_DIR / "gate_credentials.json"):
+            try:
+                got = _json.loads(f.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            vals += [str(got.get("api_key") or ""), str(got.get("api_secret") or "")]
         got = _cred._read()
         vals += [str(got.get("api_key") or ""), str(got.get("api_secret") or "")]
     except Exception:                                          # noqa: BLE001

@@ -811,3 +811,26 @@ def test_the_errors_tab_links_every_wording_to_the_fault_s_issue(filer):
     src = (Path(__file__).resolve().parents[1] / "tradingagents/api.py").read_text(encoding="utf-8")
     assert "_ei.issue_of_event(" in src
 
+
+
+def test_gates_keys_are_removed_whichever_exchange_the_app_trades(tmp_path, monkeypatch):
+    """Final review, Oct 10, 2026 (RCA-2026-10-10-I): the scrubber removed
+    MEXC_API_* by value and read the ONE credentials file of the exchange the
+    app trades; a Gate key in the shell (GATE_API_*), or the MEXC file after
+    the switch, reached a public issue only through the generic pattern —
+    which does not match a bare value."""
+    from tradingagents.dataflows import mexc_credentials as cred
+
+    monkeypatch.setattr(cred, "STORE_DIR", tmp_path)
+    monkeypatch.setattr(cred, "STORE_PATH", tmp_path / "mexc_credentials.json")
+    (tmp_path / "mexc_credentials.json").write_text(
+        '{"api_key": "mx0OLDMEXCKEY11", "api_secret": "OLDMEXCSECRET22"}')
+    (tmp_path / "gate_credentials.json").write_text(
+        '{"api_key": "gtSTOREDKEY333", "api_secret": "GTSTOREDSECRET44"}')
+    monkeypatch.setenv("GATE_API_KEY", "gtENVKEY5555555")
+    monkeypatch.setenv("GATE_API_SECRET", "GTENVSECRET66666")
+    for v in ("mexc", "gate"):
+        monkeypatch.setenv("TA_VENUE", v)
+        out = ei.scrub("x mx0OLDMEXCKEY11 OLDMEXCSECRET22 gtSTOREDKEY333 "
+                       "GTSTOREDSECRET44 gtENVKEY5555555 GTENVSECRET66666 y")
+        assert out.count("[removed]") == 6, (v, out)

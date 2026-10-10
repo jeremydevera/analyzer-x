@@ -121,6 +121,16 @@ def _real_rows(settings: dict) -> list[str]:
             if "real" in (books or [])]
 
 
+def _open_real(state: dict) -> list[str]:
+    """Real-money slots still holding a position. A row switched off keeps
+    its position in the state until it closes; after the switch the runner
+    would manage it through the OTHER exchange's door (RCA-2026-10-10-I)."""
+    from tradingagents import auto_trader as at
+
+    return [k for k, st in state.items()
+            if isinstance(st, dict) and not at.is_paper_slot(k) and st.get("position")]
+
+
 def _open_practice(state: dict) -> list[tuple[str, dict]]:
     from tradingagents import auto_trader as at
 
@@ -174,7 +184,14 @@ def switch(target: str, *, rooms=None, price_of=None, now: float | None = None,
                     f"room {room} holds real money on {len(real)} row(s) "
                     f"({', '.join(real[:5])}) — the cutover moves practice "
                     f"only; take the real money off first")
-            opened = _open_practice(at.load_state())
+            _st = at.load_state()
+            live_open = _open_real(_st)
+            if live_open:
+                raise SwitchRefused(
+                    f"room {room} still holds {len(live_open)} real position(s) on "
+                    f"{venue.NAMES[frm]} ({', '.join(live_open[:5])}) — close them "
+                    f"there first; nothing was changed")
+            opened = _open_practice(_st)
             prices = {}
             for key, pos in opened:
                 sym = at.coin_of_slot(key)

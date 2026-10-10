@@ -415,6 +415,7 @@ def _isolate_kline_disk_cache(tmp_path, monkeypatch):
                         tmp_path / "shared" / "public_pause_gate.json")
     monkeypatch.setattr(_gf, "CONTRACTS_FILE",
                         tmp_path / "shared" / "gate_contracts.json")
+    monkeypatch.setattr(_gf, "PREFLIGHT_FILE", tmp_path / "gate_preflight.json")
     monkeypatch.setattr(_venue, "VENUE_FILE", tmp_path / "venue.json")
     from tradingagents import cost_store as _cost_store
 

@@ -5027,6 +5027,11 @@ def partial_on(settings: dict, dry: bool) -> bool:
     """
     key = "partial_tp_demo" if dry else "partial_tp_live"
     val = (settings or {}).get(key)
+    if not dry and _venue.current() == "gate":
+        # Gate's resting stop closes the WHOLE position, so a real slice's
+        # stop would end every other slice: one real position per coin there
+        # (RCA-2026-10-10-I)
+        return False
     return bool(dry) if val is None else bool(val)
 
 

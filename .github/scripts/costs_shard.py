@@ -97,11 +97,22 @@ def main() -> int:
     todo = coins()
     log(f"{len(todo)} coin(s) on the board, {len(want)} day(s): "
         + ", ".join(time.strftime("%Y-%m-%d", time.gmtime(d)) for d in want))
-    done = lost = 0
+    done = skipped = 0
+    # what must keep the run RED so the next press tries again (final
+    # review, RCA-2026-10-10-F): a run that ends green has its days marked
+    # done for ever, so it may only end green when nothing was lost
+    redo: list[str] = []
     shards = max(1, int(os.environ.get("SHARDS") or 1))
     for k, sym in enumerate(todo):
         if board.enabled:
             got = board.claim(sym)
+            if got is None:
+                # the board's own rule: unreachable -> stop claiming, never
+                # guess (progress.ClaimBoard.claim); what is left goes to the
+                # next press
+                redo.append(f"the claim board stopped answering at {sym}: "
+                            f"{len(todo) - k} coin(s) left for the next press")
+                break
             if got is not True:
                 continue
         elif k % shards != SHARD:          # no board: a fixed, stable slice
@@ -110,10 +121,23 @@ def main() -> int:
             size = float(fx.contract_spec(sym).get("contractSize") or 0.0)
         except Exception as exc:                               # noqa: BLE001
             log(f"{sym}: no contract size ({exc}) — skipped, named")
-            lost += 1
+            skipped += 1
+            continue
+        if size <= 0:
+            log(f"{sym}: contract size {size} — no cost can be walked; skipped, named")
+            skipped += 1
             continue
         for ym, ds in sorted(months.items()):
-            merged = cs.load_month(sym, ym, repos=(REPO,), cache=False)
+            # EVERY ACCOUNT'S FILE, merged, and STRICT: the deal moves coins
+            # between accounts, so the month may sit on either; and a read
+            # that FAILED is never "no file" — the upload below replaces the
+            # month with whatever was read
+            try:
+                merged = cs.load_month(sym, ym, cache=False, strict=True)
+            except cs.CostReadError as exc:
+                redo.append(str(exc))
+                log(f"{exc} — skipped, never overwritten")
+                continue
             # RESUMED, never redone: a run that ran out of time leaves its
             # days for the next press, which asks for all of them again — a
             # day this month file already holds is skipped, so each press
@@ -126,6 +150,20 @@ def main() -> int:
             hours = 0
             for d in ds:
                 part = bh.day_readings(sym, d, contract_size=size, notional_usd=NOTIONAL)
+                day = time.strftime("%Y-%m-%d", time.gmtime(d))
+                failed = list(part.pop("hours_failed", []) or [])
+                bad = list(part.pop("hours_bad", []) or [])
+                part.pop("hours_missing", None)
+                for hs, why in bad:
+                    log(f"{sym} {day} hour {time.gmtime(hs).tm_hour:02d}: the file "
+                        f"does not read ({why}) — its minutes stay unmeasured")
+                if failed:
+                    # NOT SAVED: a day with a hole would be counted as held
+                    # and never read again
+                    redo.append(f"{sym} {day}: {len(failed)} hour(s) could not be "
+                                f"downloaded")
+                    part.pop("hours_read", None)
+                    continue
                 hours += int(part.pop("hours_read", 0))
                 merged = cs.merge(merged, part)
             if not hours:
@@ -136,11 +174,14 @@ def main() -> int:
             if upload(path, cs.tag(sym, ym)):
                 done += 1
             else:
-                lost += 1
+                redo.append(f"{sym} {ym}: the upload failed")
             path.unlink(missing_ok=True)
         log(f"{sym}: done")
-    log(f"finished: {done} coin-month file(s) written, {lost} lost (named above)")
-    return 0
+    log(f"finished: {done} coin-month file(s) written, {skipped} coin(s) skipped "
+        f"(named above), {len(redo)} to do again")
+    for line in redo:
+        log(f"TO DO AGAIN: {line}")
+    return 1 if redo else 0
 
 
 if __name__ == "__main__":

@@ -90,3 +90,31 @@ def test_readings_pack_to_arrays_and_back():
     assert back["ask"] == 100.5 and back["age_s"] == 5
     assert bh.reading_at(packed, T0 - 1) is None
     assert bh.reading_at(packed, T0 + 60 * 59 + 3600 + 1) is None, "older than an hour"
+
+
+def test_a_day_names_its_missing_failed_and_broken_hours_apart():
+    """Final review, Oct 10, 2026 (RCA-2026-10-10-F): every non-200 hour was
+    dropped the same way, so a 503 left a day with a hole that was then
+    counted as measured for ever, and a truncated file raised and failed the
+    coin on every run. Now: 404 = Gate never published it (final), anything
+    else that failed = `hours_failed` (the day must be read again), a file
+    that does not parse = `hours_bad` (named, the rest of the day kept)."""
+    good = hour(SNAP)
+
+    def fetch(u):
+        h = int(u.rsplit("-", 1)[1][8:10])
+        if h == 3:
+            return 404, b""
+        if h == 5:
+            return 503, b""
+        if h == 7:
+            raise OSError("connection reset")
+        if h == 9:
+            return 200, good[: len(good) // 2]          # cut mid-file
+        return 200, good
+    got = bh.day_readings("BTC_USDT", T0, contract_size=1.0, notional_usd=100,
+                          fetch=fetch)
+    assert got["hours_read"] == 20
+    assert got["hours_missing"] == [T0 + 3 * 3600]
+    assert got["hours_failed"] == [T0 + 5 * 3600, T0 + 7 * 3600]
+    assert [h for h, _why in got["hours_bad"]] == [T0 + 9 * 3600]

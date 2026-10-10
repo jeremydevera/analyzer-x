@@ -172,6 +172,82 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-F — the order-book costs could be marked done with half the market missing, hidden in the account nobody read, or wiped by one busy answer from GitHub
+
+NEVER HAPPENED YET — found by the final review while the first backfill
+(runs 38036463794 and 38036456161) was running; its days had not been marked
+done and no month had been overwritten.
+
+**CEO**
+
+* The job that works out each minute's trading cost on Gate could have said
+  "done" for a whole month while one GitHub account never ran, lost new days
+  in the account the backtest does not read, and replaced a coin's whole
+  month with one day after a single "server busy" answer.
+* Why: it treated "the runs that exist went green" as "the market was
+  measured", and "GitHub did not answer" as "there is no file".
+* What stops it now: every account's share must run green, both accounts'
+  files are read and joined, a failed read is never overwritten, and a run
+  that lost anything ends red and is finished by the next press — spaced out
+  if it keeps failing.
+
+**DEV**
+
+* `tradingagents/costs_daily.py` `_settle` judged only `flight["runs"]`, so a
+  pile `sync_fleet` refused (never dispatched) counted as green;
+  `tradingagents/cost_store.py` `load_month` returned the FIRST repo that
+  answered 200 and mapped every non-200 to None; `.github/scripts/costs_shard.py`
+  read only its own repo, uploaded with `--clobber` after a failed read, and
+  returned 0 whatever it lost; `book_history.day_readings` dropped 404s, 503s
+  and cut files alike, and a cut gzip raised out of the coin.
+* Invariant broken: **a job may only report done for work it can prove was
+  done** — green must mean measured, and "could not read" is never "nothing
+  there".
+* Guards: `tests/test_costs_daily.py::test_an_account_that_never_ran_leaves_its_days_undone_and_named`,
+  `::test_repeated_red_runs_back_off_instead_of_pressing_every_half_hour`;
+  `tests/test_cost_store.py::test_both_accounts_files_are_merged_never_the_first_one_alone`,
+  `::test_a_failed_read_is_never_taken_for_no_file`,
+  `::test_the_download_is_retried_on_a_cut_wire_and_a_5xx`,
+  `::test_an_old_month_is_read_once_and_a_recent_one_again_later`;
+  `tests/test_book_history.py::test_a_day_names_its_missing_failed_and_broken_hours_apart`;
+  `tests/test_costs_shard_resumes.py` (6 new);
+  `tests/test_gate_futures_public.py::test_the_archive_retries_a_busy_host_and_returns_a_404_at_once`.
+
+**SAW** — nothing on screen yet. The reviewer reproduced two of them:
+account "you/r" refused, the other green → `done_days: 30`, `last_error: ''`
+with C1, C3, C5 never measured; and account A holding Oct 01, B holding
+Oct 02 → `reading_at(Oct 02 12:00)` = None.
+
+**TIMELINE**
+
+1. Oct 10, 2026 4:01am — the first press deals 513 / 514 coins and starts
+   both backfill runs; by 4:28am 49 and 51 September coin-months are uploaded.
+2. Oct 10, 2026 ~5:00am — the final review reproduces the false "done" and the
+   hidden account, and shows that a 502 on the read followed by `--clobber`
+   replaces a month with the asked days only.
+3. Without the fix: an account refused by `sync_fleet` on any day marks 30
+   days done for ~514 coins for good; a coin dealt to the other account the
+   next day writes its new day where no reader looks; a busy GitHub answer
+   in steady state (yesterday only) erases the month before it.
+4. After the fix: the same three cases leave the days undone, read both
+   files, and skip the coin by name with the run red.
+
+**ROOT CAUSE** — the job's bookkeeping trusted the run's colour and the
+status code's absence of 200, and neither said what was actually measured.
+
+**WHY IT WAS NOT CAUGHT** — every test drove the happy shape: both accounts
+dispatched, every read a 200 or a 404, every hour file whole. None asked what
+a refusal BEFORE the dispatch, a 502 on the read, or a coin that changed
+accounts does to the days marked done.
+
+**COST** — none; caught before the first backfill finished.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_costs_daily.py::test_an_account_that_never_ran_leaves_its_days_undone_and_named`, `tests/test_cost_store.py::test_both_accounts_files_are_merged_never_the_first_one_alone`, `tests/test_cost_store.py::test_a_failed_read_is_never_taken_for_no_file`, `tests/test_costs_shard_resumes.py::test_a_month_that_could_not_be_read_is_never_overwritten` and the others named in the DEV block.
+
+---
+
 ## RCA-2026-10-10-E — the first Gate backtest update said it sent "0 contract(s)" while it sent 1,027, and named one of its two runs
 
 **CEO**

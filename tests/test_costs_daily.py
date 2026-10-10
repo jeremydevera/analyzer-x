@@ -87,3 +87,45 @@ def test_under_mexc_it_does_nothing(env, monkeypatch):
 def test_never_under_pytest(monkeypatch):
     monkeypatch.setenv("PYTEST_CURRENT_TEST", "x")
     assert cd.tick(now=NOW) == {"started": False, "why": "never under pytest"}
+
+
+def test_an_account_that_never_ran_leaves_its_days_undone_and_named(env, monkeypatch):
+    """Final review, Oct 10, 2026 (RCA-2026-10-10-F): `sync_fleet` refused
+    one account, its pile never ran, the other account's run went green — and
+    all 30 days were marked done with the refusal wiped, so ~514 coins would
+    never have been asked for again."""
+    from tradingagents import cloud_sweep as cs
+
+    monkeypatch.setattr(cs, "sync_fleet",
+                        lambda slug, source="": "you/r is 3 commits behind" if slug == "you/r" else "")
+    cd.tick(now=NOW)
+    assert len(env["dispatch"]) == 1
+    env["status"][1001] = {"status": "completed", "conclusion": "success"}
+    cd.tick(now=NOW + 600)
+    st = cd.read()
+    assert st.get("done_days", []) == [], "half the market was never measured"
+    assert "you/r" in st.get("last_error", "")
+
+
+def test_repeated_red_runs_back_off_instead_of_pressing_every_half_hour(env):
+    """One bad hour file failed the same coin on every run; a red run was
+    pressed again 30 minutes after it STARTED, for ever. Each red in a row
+    doubles the wait from the press (30 min, 1 h, 2 h ... 8 h), named; a run
+    that took six hours to go red is pressed again at once, as before."""
+    cd.tick(now=NOW)                                        # 1001, 1002
+    for r in (1001, 1002):
+        env["status"][r] = {"status": "completed", "conclusion": "failure"}
+    cd.tick(now=NOW + 600)                                  # red #1
+    assert cd.read()["reds"] == 1
+    second = NOW + cd.RETRY_S + 1
+    assert cd.tick(now=second).get("started") is True       # 1003, 1004
+    for r in (1003, 1004):
+        env["status"][r] = {"status": "completed", "conclusion": "failure"}
+    got = cd.tick(now=second + cd.RETRY_S + 60)             # red #2: waits 1 h
+    assert cd.read()["reds"] == 2
+    assert not got.get("started") and "red" in got["why"], got
+    assert cd.tick(now=second + 2 * cd.RETRY_S + 1).get("started") is True
+    for r in (1005, 1006):
+        env["status"][r] = {"status": "completed", "conclusion": "success"}
+    cd.tick(now=second + 3 * cd.RETRY_S)
+    assert cd.read()["reds"] == 0, "a green run clears the count"

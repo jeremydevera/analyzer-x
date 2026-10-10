@@ -1110,15 +1110,24 @@ def _unpublished(ym: str) -> bool:
 
 
 def _fetch_archive(url: str) -> tuple:
-    """The archive is a plain file host: one GET, retried on a cut wire."""
+    """The archive is a plain file host: one GET, retried on a cut wire, a
+    429 and a 5xx (final review, Oct 10, 2026: a busy host answered 503 and
+    the hour was dropped as if never published). Any other answer — a 404
+    above all — is returned as it is."""
+    status, raw = 0, b""
     for attempt in range(1, _PUBLIC_RETRIES + 1):
         try:
-            return _fetch(url)
+            status, raw = _fetch(url)
         except (OSError, urllib.error.URLError, http.client.HTTPException) as exc:
             if attempt >= _PUBLIC_RETRIES:
                 raise GateFuturesError(f"archive unreachable: {exc} ({url})") from exc
-            _retry_sleep(_PUBLIC_BACKOFF[min(attempt - 1, len(_PUBLIC_BACKOFF) - 1)])
-    raise GateFuturesError(f"archive unreachable ({url})")
+        else:
+            if status != 429 and status < 500:
+                return status, raw
+            if attempt >= _PUBLIC_RETRIES:
+                return status, raw
+        _retry_sleep(_PUBLIC_BACKOFF[min(attempt - 1, len(_PUBLIC_BACKOFF) - 1)])
+    return status, raw
 
 
 def archive_month(symbol: str, kind: str, ym: str):

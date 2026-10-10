@@ -188,23 +188,47 @@ def hour_url(symbol: str, hour_start: int) -> str:
 
 def day_readings(symbol: str, day_start: int, *, contract_size: float,
                  notional_usd: float, fetch=None) -> dict:
-    """Every minute of one UTC day for one contract, packed. An hour whose
-    file is missing (404) contributes nothing — its minutes stay unmeasured,
-    and the caller counts them."""
+    """Every minute of one UTC day for one contract, packed, with every hour
+    that gave nothing NAMED by why (final review, RCA-2026-10-10-F):
+
+    * `hours_missing` — 403/404: Gate never published it; final, its minutes
+      stay unmeasured and the caller counts them.
+    * `hours_failed` — any other status, or a wire that never answered after
+      the fetch's own retries: the day is incomplete and must be read again.
+    * `hours_bad` — a file that arrived but does not parse (cut gzip, a bad
+      field): `(hour, why)`, named; the rest of the day is kept, because the
+      same broken file would fail the coin on every run for ever."""
     if fetch is None:
         from tradingagents.dataflows import gate_futures as gf
 
         fetch = gf._fetch_archive
     out = []
     hours_read = 0
+    missing, failed, bad = [], [], []
     for h in range(24):
         hs = day_start + 3600 * h
-        status, raw = fetch(hour_url(symbol, hs))
+        try:
+            status, raw = fetch(hour_url(symbol, hs))
+        except Exception:                                      # noqa: BLE001
+            failed.append(hs)
+            continue
+        if status in (403, 404):
+            missing.append(hs)
+            continue
         if status != 200 or not raw:
+            failed.append(hs)
+            continue
+        try:
+            got = replay_hour(raw, hour_start=hs, contract_size=contract_size,
+                              notional_usd=notional_usd)
+        except Exception as exc:                               # noqa: BLE001
+            bad.append((hs, f"{type(exc).__name__}: {str(exc)[:120]}"))
             continue
         hours_read += 1
-        out.extend(replay_hour(raw, hour_start=hs, contract_size=contract_size,
-                               notional_usd=notional_usd))
+        out.extend(got)
     packed = pack(out)
     packed["hours_read"] = hours_read
+    packed["hours_missing"] = missing
+    packed["hours_failed"] = failed
+    packed["hours_bad"] = bad
     return packed

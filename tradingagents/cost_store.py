@@ -29,6 +29,10 @@ REPOS = tuple(r for r in os.environ.get(
     "COST_REPOS", "jeremydevera/analyzer-x,jeremydvera/analyzer-x").split(",") if r)
 CACHE = Path(os.path.expanduser("~/.tradingagents")) / "cost_cache"
 CURRENT_TTL_S = 6 * 3600
+# a month is FINAL only once it ended this long ago: Sep 30 is written on
+# Oct 01 and a red day is re-run inside the 30-day backfill (RCA-2026-10-10-F)
+FINAL_AFTER_S = 35 * 86400
+FETCH_TRIES = 4
 LEAD_S = 3600            # a reading this old still answers a minute (book_history.MAX_AGE_S)
 KEYS = ("t", "bid", "ask", "spread", "buy", "sell", "exhausted", "source")
 _now = time.time
@@ -93,7 +97,12 @@ def merge(a: dict | None, b: dict | None) -> dict:
     return {k: cat[k][idx] for k in KEYS}
 
 
-def _fetch(u: str) -> tuple[int, bytes]:
+class CostReadError(RuntimeError):
+    """A month that could not be READ — never the same as one that does not
+    exist: the costs job would overwrite a month with one day on it."""
+
+
+def _get(u: str) -> tuple[int, bytes]:
     req = urllib.request.Request(u, headers={"User-Agent": "tradingagents/0.3"})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
@@ -102,38 +111,76 @@ def _fetch(u: str) -> tuple[int, bytes]:
         return int(exc.code), b""
 
 
+def _sleep(s: float) -> None:
+    time.sleep(s)
+
+
+def _fetch(u: str) -> tuple[int, bytes]:
+    """One download, retried on a cut wire, a 429 and a 5xx; a 404 (no such
+    file) or any other answer is returned as it is. Status 0 = the wire never
+    answered after every try."""
+    status, raw = 0, b""
+    for k in range(FETCH_TRIES):
+        try:
+            status, raw = _get(u)
+        except (OSError, urllib.error.URLError) as exc:        # noqa: PERF203
+            status, raw = 0, str(exc).encode()[:200]
+        if status == 200 or (status and status != 429 and status < 500):
+            return status, raw
+        if k + 1 < FETCH_TRIES:
+            _sleep(2 + 4 * k)
+    return status, (b"" if status else raw)
+
+
 def _month_key(t: float) -> str:
     g = time.gmtime(int(t))
     return f"{g.tm_year:04d}{g.tm_mon:02d}"
 
 
+def _month_end(ym: str) -> int:
+    import calendar
+
+    y, m = int(ym[:4]), int(ym[4:])
+    return calendar.timegm((y + (m == 12), m % 12 + 1, 1, 0, 0, 0))
+
+
 def load_month(sym: str, ym: str, *, repos=None, fetch=None,
-               cache: bool = True) -> dict | None:
-    """One coin's readings for one month, from whichever account has them."""
+               cache: bool = True, strict: bool = False) -> dict | None:
+    """One coin's readings for one month, MERGED from every account that has
+    a file — the deal moves coins between accounts, so one coin-month can sit
+    on both (RCA-2026-10-10-F). None only when every account answered "no
+    such file". A read that FAILED (status 0, 429, 5xx after the retries)
+    raises CostReadError when `strict` (the costs job, which uploads what it
+    read); a reader keeps what answered and caches nothing incomplete."""
     repos = tuple(repos or REPOS)
     fetch = fetch or _fetch
     path = CACHE / asset(sym, ym)
-    current = ym >= _month_key(_now())
+    final = _now() - _month_end(ym) > FINAL_AFTER_S
     if cache and path.exists():
         age = _now() - path.stat().st_mtime
-        if not current or age < CURRENT_TTL_S:
+        if final or age < CURRENT_TTL_S:
             try:
                 return from_bytes(path.read_bytes())
             except Exception:                                  # noqa: BLE001
                 pass            # a broken cache file is read again below
+    got, failed = None, []
     for repo in repos:
         status, raw = fetch(url(repo, sym, ym))
         if status == 200 and raw:
-            got = from_bytes(raw)
-            if cache:
-                CACHE.mkdir(parents=True, exist_ok=True)
-                tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
-                tmp.write_bytes(raw)
-                # stamped with THIS module's clock, the one the age is read by
-                os.utime(tmp, (_now(), _now()))
-                os.replace(tmp, path)
-            return got
-    return None
+            got = merge(got, from_bytes(raw))
+        elif status not in (403, 404):
+            failed.append(f"{repo}: {status or 'no answer'}")
+    if failed and strict:
+        raise CostReadError(f"{sym} {ym} could not be read from "
+                            + "; ".join(failed))
+    if got is not None and cache and not failed:
+        CACHE.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+        tmp.write_bytes(to_bytes(got))
+        # stamped with THIS module's clock, the one the age is read by
+        os.utime(tmp, (_now(), _now()))
+        os.replace(tmp, path)
+    return got
 
 
 def book_for(sym: str, start_s: int, end_s: int, *, repos=None,

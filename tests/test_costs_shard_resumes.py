@@ -77,3 +77,80 @@ def test_a_coin_whose_month_holds_every_day_is_neither_replayed_nor_uploaded(
     replayed, uploaded = _wire(shard, monkeypatch, [D1, D2, D3])
     assert shard.main() == 0
     assert replayed == [] and uploaded == []
+
+
+def test_a_month_that_could_not_be_read_is_never_overwritten(shard, monkeypatch):
+    """Final review (RCA-2026-10-10-F): a 502 read as "no file", the shard
+    replayed only the asked days and `--clobber` replaced the month — every
+    earlier day of it gone. Now the coin is skipped by name and the run ends
+    red, so the next press tries again."""
+    replayed, uploaded = _wire(shard, monkeypatch, [])
+
+    def broken(*a, **k):
+        raise shard.cs.CostReadError("BTC_USDT 202609 could not be read from o/r: 502")
+    monkeypatch.setattr(shard.cs, "load_month", broken)
+    assert shard.main() == 1
+    assert uploaded == [] and replayed == []
+
+
+def test_a_day_with_a_failed_hour_is_left_to_be_read_again(shard, monkeypatch):
+    from tradingagents import book_history as bh
+
+    replayed, uploaded = _wire(shard, monkeypatch, [D1])
+
+    def day_readings(sym, d, **k):
+        replayed.append(d)
+        return {**bh.pack([_reading(d + 60)]), "hours_read": 23,
+                "hours_failed": [d + 3600] if d == D2 else [], "hours_missing": [],
+                "hours_bad": []}
+    monkeypatch.setattr(shard.bh, "day_readings", day_readings)
+    assert shard.main() == 1, "a day not wholly read keeps the run red"
+    assert sorted(int(t) for t in uploaded[0]["t"]) == [D1 + 60, D3 + 60], \
+        "the incomplete day is not saved, so it is not counted as held"
+
+
+def test_a_broken_hour_file_is_named_and_the_day_kept(shard, monkeypatch, capsys):
+    from tradingagents import book_history as bh
+
+    replayed, uploaded = _wire(shard, monkeypatch, [D1, D2])
+
+    def day_readings(sym, d, **k):
+        return {**bh.pack([_reading(d + 60)]), "hours_read": 23, "hours_failed": [],
+                "hours_missing": [], "hours_bad": [(d + 9 * 3600, "EOFError: cut")]}
+    monkeypatch.setattr(shard.bh, "day_readings", day_readings)
+    assert shard.main() == 0, "the same broken file would fail every run for ever"
+    assert sorted(int(t) for t in uploaded[0]["t"]) == [D1 + 60, D2 + 60, D3 + 60]
+    assert "EOFError" in capsys.readouterr().out
+
+
+def test_an_upload_that_failed_ends_the_run_red(shard, monkeypatch):
+    _wire(shard, monkeypatch, [])
+    monkeypatch.setattr(shard, "upload", lambda path, tag: False)
+    assert shard.main() == 1
+
+
+def test_a_claim_with_no_answer_ends_the_run_red(shard, monkeypatch):
+    """A coin whose claim got no answer is measured by nobody on this run."""
+    replayed, uploaded = _wire(shard, monkeypatch, [])
+
+    class Board:
+        enabled = True
+
+        def claim(self, sym):
+            return None
+    monkeypatch.setattr(shard, "ClaimBoard", Board)
+    assert shard.main() == 1 and replayed == []
+
+
+def test_the_month_is_read_from_every_account(shard, monkeypatch):
+    seen = {}
+    _wire(shard, monkeypatch, [D1, D2, D3])
+    held = shard.cs.load_month
+
+    def spy(*a, **k):
+        seen.update(k)
+        return held(*a, **k)
+    monkeypatch.setattr(shard.cs, "load_month", spy)
+    shard.main()
+    assert "repos" not in seen or seen["repos"] is None, "both accounts, never its own"
+    assert seen.get("strict") is True and seen.get("cache") is False

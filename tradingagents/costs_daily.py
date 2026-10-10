@@ -28,6 +28,7 @@ READY_HOUR_UTC = 3          # yesterday's 23:00 hour is published by ~01:00-02:0
 BACKFILL_DAYS = 30
 SHARDS = 20
 RETRY_S = 30 * 60
+MAX_WAIT_S = 8 * 3600       # the longest a run of red presses ever waits
 STALE_S = 8 * 3600
 
 
@@ -79,13 +80,29 @@ def _settle(st: dict, now: float) -> None:
         return
     red = [f"{r['repo']} (run {r['run']}): {g.get('conclusion')}"
            for r, g in states if g.get("conclusion") != "success"]
+    # EVERY PILE OF THE DEAL MUST HAVE RUN (RCA-2026-10-10-F): an account
+    # `sync_fleet` refused has no run in the flight at all, and "every share
+    # green" over the runs that exist marked 30 days done for half the market
+    red += list(fl.get("unrun") or [])
     if red:
         st["last_error"] = "not every share finished green: " + "; ".join(red)
+        st["reds"] = int(st.get("reds") or 0) + 1
     else:
         st["done_days"] = sorted(set(st.get("done_days") or []) | set(fl["days"]))
         st["last_error"] = ""
         st["last_done_at"] = now
+        st["reds"] = 0
     st.pop("flight", None)
+
+
+def wait_s(reds: int) -> float:
+    """How long after a press the next one may go: 30 minutes, doubled for
+    every red run in a row before it, never past MAX_WAIT_S. Measured from the
+    PRESS, so a run that took six hours to go red is pressed again at once and
+    only a run that fails fast, again and again, is spaced out."""
+    if reds <= 1:
+        return RETRY_S
+    return min(RETRY_S * 2 ** (reds - 1), MAX_WAIT_S)
 
 
 def _under_pytest() -> bool:
@@ -110,8 +127,17 @@ def tick(now: float | None = None) -> dict:
         return {"started": False,
                 "why": f"waiting until after {READY_HOUR_UTC}:00 UTC for yesterday's "
                        f"last order-book hour"}
-    if now - float(st.get("tried_at") or 0) < RETRY_S:
+    wait = wait_s(int(st.get("reds") or 0))
+    if now - float(st.get("tried_at") or 0) < wait:
         _write(st)
+        reds = int(st.get("reds") or 0)
+        if reds:
+            from tradingagents.positions_view import fmt_when
+
+            return {"started": False,
+                    "why": f"the last {reds} costs run(s) in a row ended red "
+                           f"({st.get('last_error', '')[:160]}); trying again "
+                           f"{fmt_when(float(st.get('tried_at') or 0) + wait)}"}
         return {"started": False, "why": "the last press failed; trying again soon"}
     days = wanted_days(now, st.get("done_days"))
     if not days:
@@ -124,7 +150,8 @@ def tick(now: float | None = None) -> dict:
         st["last_error"] = f"could not start the costs job: {type(exc).__name__}: {exc}"
         _write(st)
         return {"started": False, "why": st["last_error"]}
-    st["flight"] = {"at": now, "days": days, "runs": got["runs"]}
+    st["flight"] = {"at": now, "days": days, "runs": got["runs"],
+                    "unrun": got["unrun"]}
     if got["refused"]:
         st["last_error"] = "; ".join(got["refused"])
     _write(st)
@@ -141,11 +168,15 @@ def _dispatch(days: list[str], now: float) -> dict:
                            + ("; ".join(refused) or "no remote"))
     coins = gf.trading_symbols()
     piles = cs.split_coins(coins, len(fleets))
-    runs = []
+    runs, unrun = [], []
     for slug, pile in zip(fleets, piles):
         drift = cs.sync_fleet(slug)
         if drift:
+            # a pile was DEALT to this account and never ran: its coins are
+            # unmeasured, so the days stay undone (an account usable_fleets
+            # left out was dealt nothing — the others hold its coins)
             refused.append(drift)
+            unrun.append(f"{slug}: {len(pile)} coins never ran ({drift})")
             continue
         inputs = {"shards": str(SHARDS), "days": ",".join(days),
                   "coin_list": ",".join(pile),
@@ -154,4 +185,4 @@ def _dispatch(days: list[str], now: float) -> dict:
         runs.append({"repo": slug, "run": int(rid), "coins": len(pile)})
     if not runs:
         raise RuntimeError("; ".join(refused) or "no account took the run")
-    return {"runs": runs, "refused": refused}
+    return {"runs": runs, "refused": refused, "unrun": unrun}

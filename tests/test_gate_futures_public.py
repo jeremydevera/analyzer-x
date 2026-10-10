@@ -254,3 +254,22 @@ def test_funding_history_stops_once_it_reaches_the_window(gate):
     h = gf.funding_history("BTC_USDT", since_ms=since)
     assert len(asked) == 2, "stopped at the page that reached the window"
     assert h[0]["settle_ms"] <= since
+
+
+def test_the_archive_retries_a_busy_host_and_returns_a_404_at_once(monkeypatch):
+    """Final review, Oct 10, 2026 (RCA-2026-10-10-F): a 503 from the archive
+    was returned as it was, and the costs job dropped that hour as if Gate
+    had never published it."""
+    from tradingagents.dataflows import gate_futures as gf
+
+    seen = []
+
+    def fetch(u):
+        seen.append(u)
+        return (503, b"") if len(seen) < 3 else (200, b"gz")
+    monkeypatch.setattr(gf, "_fetch", fetch)
+    monkeypatch.setattr(gf, "_retry_sleep", lambda s: None)
+    assert gf._fetch_archive("u") == (200, b"gz") and len(seen) == 3
+    seen.clear()
+    monkeypatch.setattr(gf, "_fetch", lambda u: seen.append(u) or (404, b""))
+    assert gf._fetch_archive("u") == (404, b"") and len(seen) == 1

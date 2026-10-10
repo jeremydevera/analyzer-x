@@ -64,24 +64,79 @@ def test_a_month_is_found_on_whichever_account_measured_it(home):
     assert len(asked) == 2
 
 
+def test_both_accounts_files_are_merged_never_the_first_one_alone(home):
+    """The deal moves coins between accounts (a listing earlier in the
+    alphabet shifts every coin after it), so one coin-month can sit on both:
+    account a0 holds Oct 01, a1 holds Oct 02. Reading only the first that
+    answered left Oct 02 unmeasured (final review, RCA-2026-10-10-F)."""
+    def fetch(url):
+        if "/a0/" in url:
+            return 200, cs.to_bytes(packed([OCT, OCT + 60]))
+        return 200, cs.to_bytes(packed([OCT + 86400, OCT + 86400 + 60]))
+    got = cs.load_month("BTC_USDT", "202610", repos=("a0/r", "a1/r"), fetch=fetch)
+    assert list(got["t"]) == [OCT, OCT + 60, OCT + 86400, OCT + 86400 + 60]
+
+
+def test_a_failed_read_is_never_taken_for_no_file(home):
+    """A 502 is not a 404: strict (the costs job, about to OVERWRITE the
+    month) raises, so a month is never replaced by one day; a reader keeps
+    the account that answered and caches nothing incomplete."""
+    def fetch(url):
+        if "/a0/" in url:
+            return 502, b""
+        return 200, cs.to_bytes(packed([OCT]))
+    with pytest.raises(cs.CostReadError) as err:
+        cs.load_month("BTC_USDT", "202610", repos=("a0/r", "a1/r"), fetch=fetch,
+                      strict=True)
+    assert "502" in str(err.value) and "a0/r" in str(err.value)
+    got = cs.load_month("BTC_USDT", "202610", repos=("a0/r", "a1/r"), fetch=fetch)
+    assert list(got["t"]) == [OCT]
+    assert not (cs.CACHE / cs.asset("BTC_USDT", "202610")).exists()
+
+
+def test_the_download_is_retried_on_a_cut_wire_and_a_5xx(monkeypatch):
+    calls = []
+
+    def get(u):
+        calls.append(u)
+        if len(calls) == 1:
+            raise OSError("connection reset")
+        if len(calls) == 2:
+            return 503, b""
+        return 200, b"ok"
+    monkeypatch.setattr(cs, "_get", get)
+    monkeypatch.setattr(cs, "_sleep", lambda s: None)
+    assert cs._fetch("u") == (200, b"ok") and len(calls) == 3
+    calls.clear()
+    monkeypatch.setattr(cs, "_get", lambda u: calls.append(u) or (404, b""))
+    assert cs._fetch("u") == (404, b"") and len(calls) == 1, "a 404 is an answer"
+
+
 def test_no_account_has_it_is_none_never_an_error(home):
     assert cs.load_month("BTC_USDT", "202610", repos=("a0/r",),
                          fetch=lambda u: (404, b"")) is None
 
 
-def test_a_past_month_is_read_once_and_the_current_one_again_later(home, monkeypatch):
+def test_an_old_month_is_read_once_and_a_recent_one_again_later(home, monkeypatch):
+    """A month is FINAL only once it ended more than FINAL_AFTER_S ago: Sep 30
+    is written on Oct 01 and a red day is re-run later inside the 30-day
+    backfill, so September read on Oct 10 still changes (final review,
+    RCA-2026-10-10-F). August, ended 39 days before, never does."""
     n = []
+    AUG = calendar.timegm((2026, 8, 1, 0, 0, 0))
 
     def fetch(url):
         n.append(url)
-        return 200, cs.to_bytes(packed([SEP]))
+        return 200, cs.to_bytes(packed([AUG if "202608" in url else SEP]))
+    cs.load_month("BTC_USDT", "202608", repos=("a/r",), fetch=fetch)
+    cs.load_month("BTC_USDT", "202608", repos=("a/r",), fetch=fetch)
+    assert len(n) == 1, "a month long finished never changes"
     cs.load_month("BTC_USDT", "202609", repos=("a/r",), fetch=fetch)
-    cs.load_month("BTC_USDT", "202609", repos=("a/r",), fetch=fetch)
-    assert len(n) == 1, "a completed month never changes"
     cs.load_month("BTC_USDT", "202610", repos=("a/r",), fetch=fetch)
     monkeypatch.setattr(cs, "_now", lambda: OCT + 9 * 86400 + cs.CURRENT_TTL_S + 1)
+    cs.load_month("BTC_USDT", "202609", repos=("a/r",), fetch=fetch)
     cs.load_month("BTC_USDT", "202610", repos=("a/r",), fetch=fetch)
-    assert len(n) == 3, "the current month grows every day"
+    assert len(n) == 5, "September and October still grow on Oct 10"
 
 
 def test_a_window_spanning_two_months_reads_both_and_keeps_only_the_window(home):

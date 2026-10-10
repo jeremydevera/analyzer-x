@@ -1,0 +1,35 @@
+name: gate probe
+run-name: "Gate probe · ${{ github.ref_name }}"
+# Can GitHub's machines reach Gate? (Oct 10, 2026: the app moves from MEXC to
+# Gate, and every backtest runs on these machines.) Reads public data only:
+# the contract list, one page of candles, one order book, the minute archive
+# and the order-book archive. No key is used or needed.
+on:
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Gate REST
+        run: |
+          set -x
+          curl -sS -o /dev/null -w "contracts %{http_code} %{size_download}B %{time_total}s\n" https://api.gateio.ws/api/v4/futures/usdt/contracts
+          curl -sS -o /dev/null -w "candles %{http_code} %{size_download}B %{time_total}s\n" "https://api.gateio.ws/api/v4/futures/usdt/candlesticks?contract=BTC_USDT&interval=1m&limit=2000"
+          curl -sS -o /dev/null -w "book %{http_code} %{size_download}B %{time_total}s\n" "https://api.gateio.ws/api/v4/futures/usdt/order_book?contract=BTC_USDT&limit=50"
+          curl -sS -D - -o /dev/null "https://api.gateio.ws/api/v4/futures/usdt/tickers?contract=BTC_USDT" | head -20
+      - name: Gate archive
+        run: |
+          curl -sS -o /dev/null -w "minutes %{http_code} %{size_download}B %{time_total}s\n" https://download.gatedata.org/futures_usdt/candlesticks_1m/202609/BTC_USDT-202609.csv.gz
+          curl -sS -o /dev/null -w "orderbook %{http_code} %{size_download}B %{time_total}s\n" https://download.gatedata.org/futures_usdt/orderbooks/202610/BTC_USDT-2026100900.csv.gz
+      - name: Gate websocket
+        run: |
+          python3 - <<'EOF'
+          import json, ssl, socket, base64, os
+          # a bare websocket handshake: proves the socket host answers from here
+          host = "fx-ws.gateio.ws"
+          s = ssl.create_default_context().wrap_socket(socket.create_connection((host, 443), timeout=15), server_hostname=host)
+          key = base64.b64encode(os.urandom(16)).decode()
+          s.send(f"GET /v4/ws/usdt HTTP/1.1\r\nHost: {host}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n".encode())
+          print(s.recv(400).decode(errors="replace").splitlines()[0])
+          EOF

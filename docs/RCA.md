@@ -172,6 +172,60 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-O — half of Gate's first backtest would have stayed out of the search until the next day: its pairs landed while the index was being rebuilt
+
+**CEO**
+
+* The two GitHub accounts' first Gate backtests reached this PC minutes
+  apart (Oct 10, 2026 9:15am and 9:28am); the first started a rebuild of the
+  search index, and the second's 876 coin-timeframe pairs were told to wait.
+* Why: a rebuild files the pairs that existed when it began, and nothing on
+  this PC files Backtest v2 pairs afterwards — so the rooms, which pick
+  strategies from that search, would have seen only half the market.
+* What stops it now: when a rebuild finishes it looks again and files what
+  arrived during it.
+
+**DEV**
+
+* `tradingagents/rows_index.py` `main(["--rebuild"])` returned after
+  `rebuild()`; `file_after_collect` answered "1,829 pair(s) wait for the
+  table — a rebuild of it is already running (715 of 953)" and v2 has no
+  indexer loop (`start_keeping_up` is the switched-off v1 indexer's).
+* Invariant broken: **a backlog must always have a worker** (CLAUDE.md, "THE
+  UI IS THE SOURCE OF TRUTH": something must notice).
+* Guard: `tests/test_the_indexer_is_never_allowed_to_stay_dead.py::test_pairs_that_arrived_during_a_rebuild_are_filed_when_it_ends`.
+
+**SAW** — `[collect] run 38038181253: 5,702,584 row(s) over 876 pair(s) from
+20 shard file(s)` then `[collect] 1,829 pair(s) wait for the table — a
+rebuild of it is already running (715 of 953)`.
+
+**TIMELINE**
+
+1. Oct 10, 2026 ~9:15am — collect of run 38038160341: 6,048,443 rows over
+   952 pairs; `file_after_collect` starts a fresh rebuild of 953 pairs
+   (pid 10676, about 70 minutes).
+2. ~9:28am — collect of run 38038181253: 5,702,584 rows over 876 pairs;
+   they wait.
+3. Without the fix: the rebuild swaps in at ~10:25am holding 953 pairs, and
+   876 stay unfiled until the next collect after Oct 11, 2026 4:31am.
+4. After the fix: a finished rebuild calls `file_after_collect` once;
+   today's 876 are filed by hand when pid 10676 ends (it runs the old code).
+
+**ROOT CAUSE** — the hand-off from collect to index assumed one collect at
+a time, and two accounts now finish within minutes of each other.
+
+**WHY IT WAS NOT CAUGHT** — the filing tests ran one collect and checked
+its pairs were filed; none landed a second collect while the first one's
+rebuild was still running.
+
+**COST** — none; caught before the rebuild finished.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_indexer_is_never_allowed_to_stay_dead.py::test_pairs_that_arrived_during_a_rebuild_are_filed_when_it_ends`.
+
+---
+
 ## RCA-2026-10-10-N — the costs job spent the account's GitHub request budget on claims and uploads, and the Room strategies research beside it failed
 
 **CEO**

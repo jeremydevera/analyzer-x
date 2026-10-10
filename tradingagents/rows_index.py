@@ -5806,7 +5806,20 @@ def main(argv: list | None = None) -> int:
         got = rebuild(resume="--fresh" not in args,
                       full_check="--full-check" in args)
         print(f"[rows-index] rebuild: {got}", flush=True)
-        return 0 if got.get("rebuilt") else 1
+        if not got.get("rebuilt"):
+            return 1
+        # PAIRS THAT LANDED WHILE IT RAN (RCA-2026-10-10-O): a rebuild files
+        # the pair files that existed when it started; a second collect's
+        # pairs were told "wait for the table" and nothing else would file
+        # them (v2 has no indexer). Once, after a SUCCESS — never a loop.
+        try:
+            print(f"[rows-index] after the rebuild: {file_after_collect()}",
+                  flush=True)
+        except Exception as exc:                               # noqa: BLE001
+            print(f"[rows-index] after the rebuild, the pairs that arrived "
+                  f"during it could not be filed: {type(exc).__name__}: {exc}",
+                  flush=True)
+        return 0
     if args and args[0] == "--build":
         if len(args) < 2:
             print("usage: -m tradingagents.rows_index --build <index>",

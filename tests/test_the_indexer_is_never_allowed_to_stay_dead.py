@@ -271,3 +271,24 @@ def test_the_paused_case_is_not_confused_with_the_dead_case():
         "webapp/src/components/backtest/StrategiesPanel.tsx"
     ).read_text(encoding="utf-8")
     assert "paused while ${idx.paused_by} has the disk" in panel
+
+
+def test_pairs_that_arrived_during_a_rebuild_are_filed_when_it_ends(monkeypatch, capsys):
+    """Oct 10, 2026 9:28am (RCA-2026-10-10-O): the first Gate collect started
+    a rebuild of 953 pairs; the second account's 876 pairs landed while it
+    ran and were told "wait for the table" — and nothing would have filed
+    them until the next day's collect, half the market missing from the
+    rooms' search. A finished rebuild looks again, once."""
+    from tradingagents import rows_index as ri
+
+    asked = []
+    monkeypatch.setattr(ri, "rebuild", lambda **k: {"rebuilt": True, "pairs": 953})
+    monkeypatch.setattr(ri, "file_after_collect",
+                        lambda: asked.append(1) or "filed 876 pair(s) into the table")
+    assert ri.main(["--rebuild"]) == 0
+    assert asked == [1]
+    assert "876" in capsys.readouterr().out
+    asked.clear()
+    monkeypatch.setattr(ri, "rebuild", lambda **k: {"rebuilt": False, "why": "locked"})
+    assert ri.main(["--rebuild"]) == 1
+    assert asked == [], "a rebuild that failed never starts another by itself"

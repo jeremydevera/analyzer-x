@@ -237,6 +237,18 @@ def _keep_the_row_index_current() -> None:
                         _th.Thread(target=_rsd.tick, name="room-strategies-retest", daemon=True).start()
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[room strategies re-test] could not start its thread: {exc!r}", flush=True)
+                # THE COST OF EVERY MINUTE (Oct 10, 2026, the move to Gate):
+                # once a UTC day, Gate's past order books replayed into one
+                # cost reading per minute on both accounts' machines
+                # (costs.yml), which every Backtest v2 trade then pays; its
+                # own thread, so a slow GitHub never holds this loop
+                try:
+                    from tradingagents import costs_daily as _cd
+
+                    if not any(t.name == "costs-daily" for t in _th.enumerate()):
+                        _th.Thread(target=_cd.tick, name="costs-daily", daemon=True).start()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[costs per minute] could not start its thread: {exc!r}", flush=True)
                 # NO AUTOMATIC CANDLE TOP-UP. candle_autopilot.tick() ran here
                 # from 2026-09-06 to 2026-09-09 and started an UPDATE by itself
                 # whenever the store was 3h stale. The operator saw

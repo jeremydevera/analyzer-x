@@ -193,6 +193,8 @@ def title_of(workflow: str, inputs: dict) -> str:
     "the newest run" could be the other session's replay)."""
     if workflow == REPLAY_WF:
         return f"Watcher replay · from {inputs['start']} · {inputs['write_rule']}"
+    if workflow == "costs.yml":          # its run-name (the daily per-minute costs, Oct 10, 2026)
+        return f"Costs per minute · {inputs.get('days') or 'yesterday'} · {inputs.get('label') or ''}"
     if workflow == "research.yml":       # its run-name (the daily room-strategy re-test, Oct 07, 2026)
         return (f"Watcher rules research · {inputs['scenarios']} · {inputs['output']} · "
                 f"replay {inputs['source_run']}")

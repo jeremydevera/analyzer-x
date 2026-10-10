@@ -71,7 +71,7 @@ def upload(path: Path, tag: str) -> bool:
         if r.returncode == 0:
             return True
         if "release not found" in (r.stderr + r.stdout).lower() or "not found" in r.stderr.lower():
-            gh("release", "create", tag, "-R", REPO, "--title", tag, "--notes",
+            gh("release", "create", tag, "-R", REPO, "--title", tag, "--latest=false", "--notes",
                "Per-minute trading costs replayed from Gate's order-book archive "
                "(tradingagents/book_history.py). One file per coin per month.")
         time.sleep(2 + 3 * attempt)

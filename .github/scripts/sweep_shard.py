@@ -330,6 +330,28 @@ def funding_since_ms() -> int:
 
 
 FINE5: dict = {}          # "COIN" -> how many 5-minute bars stood in for minutes
+COST_BOOKS: dict = {}     # "COIN" -> its per-minute costs over the window
+
+
+def cost_book(sym):
+    """The order book of every minute of the window (phase 4, Oct 10, 2026):
+    Gate's archive replayed by the daily costs job (cost_store). Read once
+    per coin for its five frames. Under MEXC there is no archive — None, the
+    engine of before. A coin nobody has measured yet is an EMPTY book, so
+    every trade in it is counted `cost_unmeasured` rather than passed free."""
+    if _venue.current() != "gate":
+        return None
+    if sym not in COST_BOOKS:
+        from tradingagents import cost_store
+
+        now_s = int(time.time())
+        try:
+            COST_BOOKS[sym] = cost_store.book_for(sym, now_s - (DAYS + 2) * 86400, now_s)
+        except Exception as exc:                               # noqa: BLE001
+            log(f"{sym}: the per-minute costs could not be read ({exc}) — every "
+                f"trade pays the flat cost and is counted unmeasured")
+            COST_BOOKS[sym] = cost_store.empty()
+    return COST_BOOKS[sym]
 
 
 def fine_bars(sym):
@@ -779,6 +801,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
         # backtest_report.round_trip_cost for why spread/2 must not be added.
         rt = br.round_trip_cost(fee, {"slippage": slip})
         fine = None
+        book = None
         # THE FRAME'S OWN CANDLES, ALWAYS. v2 adds the minutes; it does not
         # replace the bars with them.
         #
@@ -811,10 +834,14 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
             # exit the way a minute does; both prices inside one is still
             # booked SL and counted in `unclear`.
             fine = fine_bars(sym)
+            # and the order book of every minute, for the cost each trade
+            # pays and the refusals the runner would make (spec D11)
+            book = cost_book(sym)
     except _Prefetched:
         # the learner's own candles and costs — the ones it graded on
         fee, liq, fund = learned["fee"], learned["liq"], learned["fund"]
         slip, df, fine = learned["slip"], learned["df"], learned["fine"]
+        book = None
         slips = [slip]
         rt = br.round_trip_cost(fee, {"slippage": slip})
     except Exception as exc:
@@ -984,6 +1011,9 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                                 dirs=dirs, tp=tp, sl=sl, liq_move_pct=liq,
                                 funding=fund, keep_log=False, start_at=warm,
                                 fine=fine,
+                                # each trade pays its own minute's book and is
+                                # refused where the runner would refuse it
+                                book=book, book_hold_s=bs * at.FUNDING_HOLD_BARS,
                                 # the row's last 15 days too (br.RECENT_DAYS)
                                 recent_from_ms=(int(ts[-1]) - br.RECENT_DAYS * 86_400_000
                                                 if len(ts) else None),
@@ -1048,6 +1078,12 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                         # a fleet v2 row can never collide with a v1 row.
                         **({"unclear": int(r.get("unclear", 0)), "res": RES}
                            if RES else {}),
+                        # the runner's cost check, asked at every entry's own
+                        # minute: how many signals it refused, and how many
+                        # trades had no reading and paid the flat cost
+                        **({"gate_blocked": int(r.get("gate_blocked", 0)),
+                            "cost_unmeasured": int(r.get("cost_unmeasured", 0))}
+                           if book is not None else {}),
                         "days": days,
                         # the last bar this pair was measured through, so the
                         # merge can record freshness instead of guessing

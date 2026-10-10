@@ -101,3 +101,13 @@ def test_the_same_coin_is_read_once_per_half_hour(gate):
     assert len(gate) == n, "a narrower ask is answered from the read already made"
     gf.funding_history("BTC_USDT", since_ms=int((time.time() - 400 * 86400) * 1000))
     assert len(gate) > n, "a wider ask reads further back"
+
+
+def test_the_v2_engine_call_pays_each_minutes_book():
+    """Phase 4: every v2 trade pays its own minute's order book and is refused
+    where the runner would refuse it; the row says how many were refused and
+    how many had no reading."""
+    assert "book=book, book_hold_s=bs * at.FUNDING_HOLD_BARS," in SHARD
+    assert '"gate_blocked": int(r.get("gate_blocked", 0))' in SHARD
+    assert '"cost_unmeasured": int(r.get("cost_unmeasured", 0))' in SHARD
+    assert "book = cost_book(sym)" in SHARD

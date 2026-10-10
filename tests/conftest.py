@@ -419,6 +419,12 @@ def _isolate_kline_disk_cache(tmp_path, monkeypatch):
     from tradingagents import cost_store as _cost_store
 
     monkeypatch.setattr(_cost_store, "CACHE", tmp_path / "cost_cache")
+    from tradingagents import venue_switch as _vs
+
+    monkeypatch.setattr(_vs, "HOME", tmp_path / "switch_home")
+    from tradingagents import costs_daily as _cdl
+
+    monkeypatch.setattr(_cdl, "STATE", tmp_path / "costs_daily.json")
     _gf.clear_spec_cache()
     _gf._PRICES.update(at=0.0, px={})
     _gf._KLINE_CACHE.clear()

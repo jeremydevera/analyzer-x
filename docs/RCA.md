@@ -172,6 +172,61 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-E — the first Gate backtest update said it sent "0 contract(s)" while it sent 1,027, and named one of its two runs
+
+**CEO**
+
+* At Oct 10, 2026 4:31am the daily backtest update sent Gate's whole market
+  (1,027 coins, 514 and 513) to both GitHub accounts, and the bell and the
+  Backtest v2 screen said "over 0 contract(s) · run 38038160341".
+* Why: the sentence counted the coins already in the store, which was empty
+  on the first day after the switch, instead of the coins it had just sent —
+  and it named only the first account's run.
+* What stops it now: the words count what was sent and name every run.
+
+**DEV**
+
+* `tradingagents/db_jobs.py` `_run_btupdate_v2` built `_coins_for_cloud`
+  (the exchange's 1,027 when the store is empty) but passed the store's
+  `coins` (0) to `_write_run_plan` and `_finish_btupdate_cloud_only`, whose
+  note named `dispatched["id"]` only.
+* Invariant broken: **label-must-match-data** — the figure beside the label
+  must come from the thing the label describes (what was sent, not what was
+  stored).
+* Guard: `tests/test_forty_machines_across_two_accounts.py::test_the_v2_press_counts_the_coins_it_sent_and_names_every_run`.
+
+**SAW** — `all of it went to GitHub: 15m, 30m, 1h, 4h over 0 contract(s) ·
+run 38038160341`, two lines under `1,027 coins dealt 514 / 513` in the
+job's own log.
+
+**TIMELINE**
+
+1. Oct 10, 2026 3:56am — the switch to Gate moves MEXC's v2 store aside; the
+   Gate v2 store names no coin.
+2. Oct 10, 2026 4:31am — the daily update names Gate's market (commit
+   936342619c50), deals 1,027 coins to runs 38038160341 (jeremydvera, 514)
+   and 38038181253 (jeremydevera, 513), and writes "over 0 contract(s) · run
+   38038160341" to its progress, its plan file (`coins: 0`) and the bell.
+3. After the fix the same press reads "over 1,027 contract(s) · runs
+   38038160341, 38038181253".
+
+**ROOT CAUSE** — the empty-store branch added a second coin list for the
+dispatch and left the words reading the first.
+
+**WHY IT WAS NOT CAUGHT** — the test written with that branch
+(`test_a_v2_store_with_nothing_yet_names_the_exchanges_whole_market`)
+stubbed out `_write_run_plan` and `_finish_btupdate_cloud_only`, so it
+checked what was dispatched and never read the sentence printed about it.
+
+**COST** — none: both runs started and measure the whole market; one wrong
+sentence on the screen and in one bell.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_forty_machines_across_two_accounts.py::test_the_v2_press_counts_the_coins_it_sent_and_names_every_run`.
+
+---
+
 ## RCA-2026-10-10-D — the month of order-book costs would have run out of time every day and started again from the first day each time
 
 NEVER HAPPENED YET — found while the first backfill (runs 38036463794 and

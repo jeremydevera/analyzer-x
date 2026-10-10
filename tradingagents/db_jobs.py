@@ -2314,6 +2314,11 @@ def _run_btupdate_v2(spec: dict) -> None:
                           "runs": _fleet_runs, "why": dispatched.get("why")}
             cs.remember(dispatched)      # so the collect knows it is a v2 run
             print(f"[btupdate_v2] {dispatched.get('why')}", flush=True)
+            # THE WORDS COUNT WHAT WAS SENT: the store's list was empty on the
+            # first Gate UPDATE (Oct 10, 2026 4:31am) and the note read "over
+            # 0 contract(s)" beside 1,027 coins dealt 514 / 513
+            # (RCA-2026-10-10-E)
+            coins = list(_coins_for_cloud)
         except Exception as exc:                               # noqa: BLE001
             plan = {"local": [], "cloud": [],
                     "why": f"the dispatch failed: {type(exc).__name__}: "
@@ -2338,6 +2343,18 @@ def _write_run_plan(plan: dict, dispatched: dict, coins, tfs,
             "coins": len(coins), "timeframes": list(tfs)})
 
 
+def _runs_named(dispatched: dict) -> str:
+    """" · run N" for one run, " · runs N, M" for every account's — a run on
+    the second account is as real as the first (RCA-2026-10-10-E)."""
+    ids = [r.get("id") for r in (dispatched.get("runs") or []) if r.get("id")]
+    if not ids and dispatched.get("id"):
+        ids = [dispatched["id"]]
+    if not ids:
+        return ""
+    return (f" · run {ids[0]}" if len(ids) == 1
+            else " · runs " + ", ".join(str(i) for i in ids))
+
+
 def _finish_btupdate_cloud_only(plan, dispatched, coins,
                                 kind: str = "btupdate") -> None:
     """Nothing left for this machine — close the local job honestly.
@@ -2355,8 +2372,7 @@ def _finish_btupdate_cloud_only(plan, dispatched, coins,
          ". This PC no longer runs sweeps; fix GitHub and press UPDATE again.")
         if nothing else
         (f"all of it went to GitHub: {', '.join(plan['cloud'])} over "
-         f"{len(coins):,} contract(s)"
-         + (f" · run {dispatched['id']}" if dispatched.get("id") else "")))
+         f"{len(coins):,} contract(s)" + _runs_named(dispatched)))
     _write(f["progress"], {"running": False, "done": 0, "total": 0, "rows": 0,
                            "new_bars": 0, "stopped": False,
                            # a dispatch that never happened is an ERROR, not a

@@ -351,3 +351,35 @@ def test_a_v2_store_with_nothing_yet_names_the_exchanges_whole_market(monkeypatc
     monkeypatch.setattr(cs, "dispatch_across", across)
     dj._run_btupdate_v2({})
     assert got["coin_list"] == ["AAA", "BBB"]
+
+
+def test_the_v2_press_counts_the_coins_it_sent_and_names_every_run(monkeypatch):
+    """Oct 10, 2026 4:31am, the first UPDATE on Gate: 1,027 coins dealt
+    514 / 513 to two runs, and the note read "all of it went to GitHub: 15m,
+    30m, 1h, 4h over 0 contract(s) · run 38038160341" — the count was the
+    empty store's, and the run on the other account was not named. The
+    words count what was SENT and name every run (RCA-2026-10-10-E)."""
+    from tradingagents import cloud_sweep as cs, db_jobs as dj, notifications as nt
+    from tradingagents.dataflows import mexc_futures as mf
+
+    written, rang = {}, []
+    monkeypatch.setattr(dj, "stored_symbols", lambda store="v1": [])
+    monkeypatch.setattr(mf, "trading_symbols",
+                        lambda: ["AAA_USDT", "BBB_USDT", "CCC_USDT"])
+    monkeypatch.setattr(cs, "available", lambda: (True, ""))
+    monkeypatch.setattr(cs, "remember", lambda d: None)
+    monkeypatch.setattr(dj, "_write", lambda path, d: written.__setitem__(str(path), d))
+    monkeypatch.setattr(nt, "record", lambda *a, **k: rang.append(k.get("detail")))
+    monkeypatch.setattr(cs, "dispatch_across", lambda **kw: {
+        "runs": [{"id": 38038160341, "url": "u1", "repo": "jeremydvera/analyzer-x",
+                  "coins": 2},
+                 {"id": 38038181253, "url": "u2", "repo": "jeremydevera/analyzer-x",
+                  "coins": 1}],
+        "why": "2 account(s) x 20 machines = 40; 3 coins dealt 2 / 1"})
+    dj._run_btupdate_v2({})
+    note = next(d["note"] for p, d in written.items() if "note" in d)
+    plan = next(d for p, d in written.items() if p.endswith("db_btupdate_v2.plan.json"))
+    assert "over 3 contract(s)" in note, note
+    assert "38038160341" in note and "38038181253" in note, note
+    assert plan["coins"] == 3
+    assert rang and "over 3 contract(s)" in rang[0]

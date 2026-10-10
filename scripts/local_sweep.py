@@ -230,16 +230,13 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     os.environ["TRADINGAGENTS_SWEEP_HOME"] = os.path.expanduser(args.home)
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     tfs = [t.strip() for t in args.tfs.split(",") if t.strip()]
     db = connect(Path(os.path.expanduser(args.db)))
     prog = Path(os.path.expanduser(args.progress))
 
-    raw = fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data") or []
-    coins = sorted(x["symbol"] for x in raw
-                   if str(x.get("symbol", "")).endswith("_USDT")
-                   and int(x.get("state", 1)) == 0)
+    coins = fx.trading_symbols()
     done = {r[0] for r in db.execute("SELECT coin FROM done")}
     todo = [c for c in coins if c.replace("_USDT", "") not in done]
     want = [x.strip() for x in args.symbols.split(",") if x.strip()]

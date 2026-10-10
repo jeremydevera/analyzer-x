@@ -471,6 +471,7 @@ def test_an_old_cost_files_fee_is_floored_like_the_fee_helper():
     0.0004; the venue takes 0.0008 (RCA-2026-09-23-F). The window re-measure
     and the trade log read those files back, so they apply the same floor."""
     ms = (ROOT / "tradingagents" / "market_sweep.py").read_text(encoding="utf-8")
-    assert ms.count('fee = max(float(costs["fee"] or 0), at.FEE_FALLBACK)') == 2
+    # the floor is the exchange's own since the move to Gate (Oct 10, 2026)
+    assert ms.count('fee = max(float(costs["fee"] or 0), at.fee_floor())') == 2
     assert 'fee, liq, fund = costs["fee"]' not in ms
     assert 'fee = costs["fee"]' not in ms

@@ -33,7 +33,7 @@ from tradingagents import (
     fast_grid as fg,  # noqa: E402
     resume_state as rs,  # noqa: E402
 )
-from tradingagents.dataflows import mexc_futures as fx  # noqa: E402
+from tradingagents.dataflows import exchange as fx  # noqa: E402
 from tradingagents.market_sweep import CONTEXT_BARS, combo_key  # noqa: E402
 from tradingagents.positions_view import fmt_when  # noqa: E402
 
@@ -56,6 +56,13 @@ MIN_DAYS = int(os.environ.get("MIN_DAYS", "0"))
 # It is a RESOLUTION, not a timeframe: `1m` never enters the grid, never
 # reaches `pairs_for`, and a shard never measures "the 1m timeframe".
 RES = (os.environ.get("RES") or "").strip().lower()
+# THE EXCHANGE THIS SHARD MEASURED ON (Oct 10, 2026, the move to Gate). The
+# workflow sets TA_VENUE; every row and every pair_done marker carries it, and
+# `cloud_sweep.land_rows` refuses a row measured on another exchange. MEXC
+# rows carry nothing, as every row before the move did.
+from tradingagents import venue as _venue  # noqa: E402
+
+VENUE_FIELD = {} if _venue.current() == "mexc" else {"venue": _venue.current()}
 if RES and RES not in br.TFS:
     raise SystemExit(f"RES={RES!r} is not a known download frame")
 # The history window, in days -- the same knob the Backtest screen sends the
@@ -203,10 +210,7 @@ def eligible():
     coin at a time. The MIN_DAYS age screen moved to `old_enough`, checked per
     CLAIMED coin — screening the whole list per shard would be ~1,000 Day1
     fetches times twenty machines for coins most shards will never touch."""
-    raw = fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data") or []
-    syms = sorted(x["symbol"] for x in raw
-                  if str(x.get("symbol", "")).endswith("_USDT")
-                  and int(x.get("state", 1)) == 0)
+    syms = fx.trading_symbols()
     if COIN_LIST:
         # THE COINS THE OPERATOR PICKED. The board is exactly these, so a
         # one-coin ask measures that one coin and nothing else.
@@ -512,7 +516,7 @@ def _row(coin, tf, sig, thp, sl, tp, sz, r, *, days, bars, last_ms, fee, rt,
             "days": days, "last_ms": int(last_ms), "bars": bars,
             "monthly": {k: round(v, 2) for k, v in m.items()},
             "cost_of_tp": round(rt / tp * 100, 1), "rt": round(rt * 100, 4),
-            "gate": "warn" if rt / tp >= .2 else "ok",
+            "gate": "warn" if rt / tp >= .2 else "ok", **VENUE_FIELD,
             # the fee this pair was charged, as the PC's rows carry it
             "fee": round(fee, 8)}
 
@@ -665,6 +669,7 @@ def continue_pair(sym, tf, prior: dict, out, *, i=0, n=0, rows_so_far=0):
                              # whose `res` disagrees with the store it writes
                              # into, and a marker goes through that same door.
                              **({"res": RES} if RES else {}),
+                             **VENUE_FIELD,
                              "gap_from_ms": last_ms}) + "\n")
     out.write("".join(lines))
     out.flush()
@@ -1040,7 +1045,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                         "last_ms": int(ts[-1]) if len(ts) else 0,
                         "bars": nbars, "monthly": {k: round(v, 2) for k, v in m.items()},
                         "cost_of_tp": round(rt / tp * 100, 1), "rt": round(rt * 100, 4),
-                        "gate": "warn" if rt / tp >= .2 else "ok",
+                        "gate": "warn" if rt / tp >= .2 else "ok", **VENUE_FIELD,
                         # v2: trades/wins/profit of the last 15 days
                         **br.recent_fields(r)}) + "\n")
                     kept += 1
@@ -1063,6 +1068,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                              "last_ms": int(ts[-1]) if len(ts) else 0,
                              # same store rule as the rows beside it
                              **({"res": RES} if RES else {}),
+                             **VENUE_FIELD,
                              "rows": kept, "bars": nbars}) + "\n")
     out.write("".join(lines))
     out.flush()

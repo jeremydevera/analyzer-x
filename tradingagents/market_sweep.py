@@ -426,7 +426,7 @@ def refresh_candles(symbol: str, tf: str, *, days: int = 365):
 
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     _paths()
     iv, bs, cap = br.TFS[tf]
@@ -1027,7 +1027,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
     re-measured 21.9 million rows to obtain 15 rules' worth of new ones."""
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     coin = symbol.replace("_USDT", "")
     iv, bs, cap = br.TFS[tf]
@@ -1618,7 +1618,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     import datetime as _dt
 
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     _paths()
     # Claim the PID here, not in run_market: screening runs first and can take
@@ -1637,10 +1637,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, ValueError, KeyError):
         keep = []
     if not keep:
-        raw = fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data") or []
-        syms = sorted(x["symbol"] for x in raw
-                      if str(x.get("symbol", "")).endswith("_USDT")
-                      and int(x.get("state", 1)) == 0)
+        syms = fx.trading_symbols()
         for i, s in enumerate(syms, 1):
             try:
                 d = fx.klines(s, "Day1", 500)
@@ -1694,7 +1691,7 @@ def compute_combos(symbol: str, tf: str, combos: list, *,
     """
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     coin = symbol.replace("_USDT", "")
     iv, bs, cap = br.TFS[tf]
@@ -1878,7 +1875,7 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     """
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     symbol = f"{coin}_USDT"
     iv, bs, cap = br.TFS[tf]
@@ -2009,7 +2006,7 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
         # under-states (RCA-2026-09-23-F): CTC's and XPIN's files say 0.0004
         # while the venue takes 0.0008 a side. The same floor `taker_fee`
         # applies, applied here to the copy.
-        fee = max(float(costs["fee"] or 0), at.FEE_FALLBACK)
+        fee = max(float(costs["fee"] or 0), at.fee_floor())
         liq, fund = costs.get("liq"), costs.get("funding") or []
         # the cost the SWEEP charged this row, so the click's log and the
         # stored row agree; a cost file written before Sep 23, 2026 has none
@@ -2153,7 +2150,7 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
     """
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
     from tradingagents.positions_view import fmt_when
 
     n = max(0, int(days or 0))
@@ -2250,7 +2247,7 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                 slip = at.PAPER_SLIPPAGE
             else:
                 # the cached spec fee, floored like `taker_fee` (RCA-2026-09-23-F)
-                fee = max(float(costs["fee"] or 0), at.FEE_FALLBACK)
+                fee = max(float(costs["fee"] or 0), at.fee_floor())
                 liq = costs.get("liq")
                 fund = costs.get("funding") or []
                 slip = float(costs.get("slippage") or 0.0) or at.PAPER_SLIPPAGE

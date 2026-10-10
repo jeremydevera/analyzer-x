@@ -110,7 +110,7 @@ def normal_moves(coins: set) -> dict:
     """Each coin's normal 15-minute move: the median (high - low) / close of
     its last 30 days of 15-minute bars, in percent. A coin whose candles
     cannot be read is left out, so the option keeps it."""
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     out = {}
     for coin in sorted(coins):

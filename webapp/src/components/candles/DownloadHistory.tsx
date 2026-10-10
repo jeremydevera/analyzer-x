@@ -21,6 +21,7 @@ import {
   api as coreApi, DownloadHistory as Payload, DownloadHistoryRow,
   notifyApi as coreNotifyApi, storeApi, StoreName,
 } from "@/lib/api";
+import { useVenueName } from "@/lib/venue";
 
 // the shapes come from the calls themselves, so a route change is a type error
 // here rather than a silently-undefined field on the screen
@@ -96,6 +97,7 @@ function Job({ tone, what, fix, children }: {
 }
 
 function Pending({ refreshKey, store = "v1" }: { refreshKey: number; store?: StoreName }) {
+  const venueName = useVenueName();
   // the store this tab reads: Candles v2's 1m pairs, or the v1 five. The
   // module's client with the candle reads pointed at it — the calls keep
   // their `api.` spelling, so the guards that read this file still hold.
@@ -217,7 +219,7 @@ function Pending({ refreshKey, store = "v1" }: { refreshKey: number; store?: Sto
           </Job>
         )}
         {gone.length > 0 && (
-          <Job tone="mute" fix="nothing can fetch a contract MEXC has dropped"
+          <Job tone="mute" fix={`nothing can fetch a contract ${venueName} has dropped`}
             what={`${gone.length} pair${gone.length === 1 ? "" : "s"} on delisted contracts`}>
             <Chips items={groupBy(gone)} tone="mute" />
           </Job>

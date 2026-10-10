@@ -9,6 +9,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { fmtWhen, Watcher, WatcherDecision } from "@/lib/api";
+import { useVenueName } from "@/lib/venue";
 import { useRoom, useRoomApis } from "@/lib/room";
 import { useLiveRefresh } from "@/lib/live";
 import { pageWindow } from "@/lib/pager";
@@ -91,6 +92,7 @@ export function rules(c: Watcher["cfg"], days: number, live = false): string[] {
 }
 
 export default function WatcherPanel() {
+  const venueName = useVenueName();
   // this panel's own room, even while its tab is not the one on screen
   const { api } = useRoomApis();
   const room = useRoom();
@@ -143,7 +145,7 @@ export default function WatcherPanel() {
                   const v = e.target.checked;
                   if (v && !window.confirm(
                     ["Let this room's watcher trade REAL money?", "",
-                     "Rows it switches on will open real trades on your MEXC account.",
+                     `Rows it switches on will open real trades on your ${venueName} account.`,
                      "Only one room can hold a coin with real money at a time."]
                       .join(String.fromCharCode(10)))) return;
                   api.watcherSet({ live: v }).then(setW).catch((er) => setErr(String(er)));

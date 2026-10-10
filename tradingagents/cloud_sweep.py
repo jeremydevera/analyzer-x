@@ -1238,6 +1238,20 @@ def land_rows(coin: str, tf: str, rows: list, *, marks=(), append: bool = False)
             f"{wrong[0]!r} and this store takes res={msw.FINE_TF!r} — "
             f"collect a v2 run with the `collect_v2` job (it runs with "
             f"stores.V2.env_for()), and a v1 run with `collect`")
+    # AND THE EXCHANGE (Oct 10, 2026, the move to Gate). A row with no
+    # `venue` is MEXC's: every shard before the move measured there and said
+    # nothing. A MEXC run still being collected after the cutover is refused
+    # here, never filed into Gate's store under Gate's ids.
+    from tradingagents import venue as _venue
+
+    here = _venue.current()
+    other = sorted({str(r.get("venue") or "mexc") for r in rows + marks
+                    if str(r.get("venue") or "mexc") != here})
+    if other:
+        raise WrongStore(
+            f"{coin} {tf}: these rows were measured on {other[0]!r} and this "
+            f"store is {_venue.NAMES[here]}'s ({here!r}) — a run measured on "
+            f"one exchange never lands in the other's store")
     last_ms = max([int(r.get("last_ms") or 0) for r in rows + marks] or [0])
     # A pair already written by THIS pass is appended to, not re-judged: the
     # rows of one pair can be split across a shard file.

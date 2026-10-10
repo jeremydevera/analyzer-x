@@ -223,7 +223,7 @@ def book_readings(rows: list[dict], *, dry: bool = True,
             notional = float(e["margin"]) * float(e.get("leverage") or at.LEVERAGE)
             cost = move - float(r.get("pnl_est") or 0.0) / notional
             if int(r["ts"]) < DEMO_FEE_TWICE_UNTIL_S:
-                cost -= 2 * at.FEE_FALLBACK
+                cost -= 2 * at.fee_floor()
             when = int(e.get("opened_at") or e.get("ts") or r["ts"]) * 1000
             if cost > 0:
                 by_sym[sym].append((when, cost))
@@ -289,7 +289,7 @@ def demo_actual(rows: list[dict], *, dry: bool = True, since_ms=None,
         p = float(r.get("pnl_est") or 0)
         if (margin and r.get("why") in ("TP", "SL")
                 and int(r.get("ts") or 0) < DEMO_FEE_TWICE_UNTIL_S):
-            p += 2 * at.FEE_FALLBACK * margin * lev
+            p += 2 * at.fee_floor() * margin * lev
         fee_once += p
         if base and margin:
             at_base += p * base / margin
@@ -331,7 +331,7 @@ class _Coin:
         self.min_hi = [float(x) for x in self.m1["High"]]
         self.min_lo = [float(x) for x in self.m1["Low"]]
         costs = msw.load_costs(symbol, root=str(store.home)) or {}
-        self.fee = float(costs.get("fee") or at.FEE_FALLBACK)
+        self.fee = float(costs.get("fee") or at.fee_floor())
         self.slip = float(costs.get("slippage") or 0.0) or at.PAPER_SLIPPAGE
         self.liq = costs.get("liq")
         self.funding = costs.get("funding") or []

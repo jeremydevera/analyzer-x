@@ -50,7 +50,7 @@ from tradingagents import backtest_report as br
 from tradingagents import formula_learner as fl
 from tradingagents import ml_learner as ml
 from tradingagents import signals_ml as sml
-from tradingagents.dataflows import mexc_futures as fx
+from tradingagents.dataflows import exchange as fx
 
 TFS = [t.strip() for t in (os.environ.get("TFS") or "15m,30m,1h,4h,1d").split(",")
        if t.strip() in br.BARRIERS]

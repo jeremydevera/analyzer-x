@@ -8,6 +8,7 @@
  * of being pasted.
  */
 import type { FeedStatus } from "@/lib/api";
+import { useVenueName } from "@/lib/venue";
 
 /** The last price MEXC PUSHED to the runner for this contract.
  *
@@ -17,6 +18,7 @@ import type { FeedStatus } from "@/lib/api";
  *  ten seconds old stops being green.
  */
 export function Live({ sym, feed }: { sym: string; feed: FeedStatus | null }) {
+  const venueName = useVenueName();
   const row = feed?.prices?.find((p) => p.symbol === sym);
   if (!feed?.connected || !row || row.price == null) {
     return <span className="text-gray-400" title={
@@ -26,7 +28,7 @@ export function Live({ sym, feed }: { sym: string; feed: FeedStatus | null }) {
   }
   const fresh = row.age < 10;
   return (
-    <span title={`pushed by MEXC ${row.age.toFixed(1)}s ago · ${row.ticks ?? 0} ticks held`}>
+    <span title={`pushed by ${venueName} ${row.age.toFixed(1)}s ago · ${row.ticks ?? 0} ticks held`}>
       <span className={fresh ? "font-medium text-gray-800 dark:text-white/90"
                              : "text-gray-400"}>{row.price}</span>
       <span className={`ml-1 text-[10px] ${fresh ? "text-success-600" : "text-warning-500"}`}>

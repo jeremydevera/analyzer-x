@@ -2578,6 +2578,20 @@ TAKER_FEE = 0.0002          # BTC's rate — a FLOOR, never assume it globally
 # contract_spec says takerFeeRate 0 while MEXC actually charged 0.0008/side on
 # a real fill. When the spec is missing or zero, assume the worst observed.
 FEE_FALLBACK = 0.0008
+# THE FLOOR IS AN EXCHANGE'S OWN EVIDENCE (Oct 10, 2026, the move to Gate).
+# 0.0008 was measured on MEXC fills (see taker_fee). Gate publishes 0.075%
+# taker on every one of its 1,027 contracts and no Gate fill exists yet to
+# contradict it, so under Gate a spec of 0 is charged Gate's published rate.
+FEE_FLOORS = {"mexc": FEE_FALLBACK, "gate": 0.00075}
+
+
+def fee_floor(venue_name: str | None = None) -> float:
+    """The lowest fee per side this app believes, for the exchange it trades."""
+    if venue_name is None:
+        from tradingagents import venue as _venue  # noqa: PLC0415
+
+        venue_name = _venue.current()
+    return FEE_FLOORS.get(venue_name, FEE_FALLBACK)
 # Charged on PAPER fills only. A real order's price already contains its
 # slippage; a simulated one is filled at the exact barrier, so without this
 # the demo reports better results than the backtest that justified it.
@@ -2590,7 +2604,7 @@ def live_fee_estimate(symbol: str, *, fx=None) -> float:
     try:
         return 2 * taker_fee(symbol, fx=fx)
     except Exception:
-        return 2 * FEE_FALLBACK
+        return 2 * fee_floor()
 
 
 def paper_round_trip(pos: dict, symbol: str, *, fx=None) -> float:
@@ -2689,12 +2703,12 @@ def taker_fee(symbol: str, *, fx=None) -> float:
     is 0.08%. A spec that reads HIGHER than the fallback is still believed.
     """
     if fx is None:
-        from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+        from tradingagents.dataflows import exchange as fx  # noqa: PLC0415
     try:
         rate = float(fx.contract_spec(symbol).get("takerFeeRate") or 0)
     except Exception:
         rate = 0.0
-    return max(rate, FEE_FALLBACK)
+    return max(rate, fee_floor())
 # A strategy is only worth running if its take-profit dwarfs the round-trip
 # cost of touching the market. 2026-08-12: fade15_1m ran on BDX with TP 0.36%
 # against a 1.56% spread — arithmetically impossible, and it cost real money.
@@ -2734,7 +2748,7 @@ def tradable_price(symbol: str, side: int, *, fx=None) -> float:
     at all means no entry (the caller refuses on the exception).
     """
     if fx is None:
-        from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+        from tradingagents.dataflows import exchange as fx  # noqa: PLC0415
     key = (symbol, 1 if side > 0 else -1)
     hit = _CYCLE_PRICES.get(key)
     if hit is not None and time.time() - hit[0] < _CYCLE_PRICE_MAX_AGE_S:
@@ -2796,7 +2810,7 @@ def funding_read(symbol: str, *, fx=None) -> dict:
     turn into a burst of venue calls (`code 510` is one rate limit away).
     """
     if fx is None:
-        from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+        from tradingagents.dataflows import exchange as fx  # noqa: PLC0415
     now = time.time()
     hit = _FUNDING_CACHE.get(symbol)
     if hit and now - hit[0] < FUNDING_TTL_S:
@@ -2845,7 +2859,7 @@ def liquidation_distance(symbol: str, *, fx=None,
     assume the position is safe.
     """
     if fx is None:
-        from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+        from tradingagents.dataflows import exchange as fx  # noqa: PLC0415
     try:
         mmr = float((fx.contract_spec(symbol) or {}).get(
             "maintenanceMarginRate") or 0.0)
@@ -3013,7 +3027,7 @@ def account_capital(*, fx=None) -> dict:
     must not look like an empty one, and must not look like a full one either.
     """
     if fx is None:
-        from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+        from tradingagents.dataflows import exchange as fx  # noqa: PLC0415
     now = time.time()
     hit = _CAPITAL_CACHE.get("usdt")
     if hit and now - hit[0] < CAPITAL_TTL_S:
@@ -3206,7 +3220,7 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
     verdict: "ok" | "warn" | "block" | "unknown"
     """
     if fx is None:
-        from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+        from tradingagents.dataflows import exchange as fx  # noqa: PLC0415
     spec = STRATEGY_SPECS.get(key)
     if spec is None:
         return {"verdict": "unknown", "reason": f"unknown strategy {key}"}
@@ -4594,7 +4608,7 @@ def panic_stop(*, fx=None, close_positions: bool = True) -> dict:
     money already on the table is the part that hurts.
     """
     if fx is None:
-        from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+        from tradingagents.dataflows import exchange as fx  # noqa: PLC0415
     report = {"halted": False, "runner_stopped": False,
               "closed": [], "failed": []}
     _pp(KILL_PATH).parent.mkdir(parents=True, exist_ok=True)
@@ -4714,7 +4728,7 @@ def close_one(symbol: str, *, fx=None) -> dict:
     real money open with nothing tracking or retrying it.
     """
     if fx is None:
-        from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+        from tradingagents.dataflows import exchange as fx  # noqa: PLC0415
     rep = {"symbol": symbol, "closed": False, "realised": None, "error": None}
     try:
         live = [p for p in fx.open_positions() if p.get("symbol") == symbol]
@@ -7040,7 +7054,7 @@ def run_cycle(*, fx=None) -> None:
     # every cycle until nothing could trade.
     _CYCLE_COMMITTED["usdt"] = 0.0
     if fx is None:
-        from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+        from tradingagents.dataflows import exchange as fx  # noqa: PLC0415
     settings = load_settings()
     if not active_modes(settings):
         return
@@ -7387,7 +7401,7 @@ def _feed_follow(state: dict) -> None:
         # fills it. Read-only; no order is ever sent over the socket.
         if False in active_modes(settings):
             with contextlib.suppress(Exception):
-                from tradingagents.dataflows import mexc_futures as _fx
+                from tradingagents.dataflows import exchange as _fx
 
                 k, s = _fx.credentials()
                 if k and s:

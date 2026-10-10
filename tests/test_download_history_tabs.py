@@ -121,7 +121,7 @@ def test_each_pending_thing_names_the_button_that_fixes_it():
     assert 'fix="press UPDATE CANDLES"' in SRC
     assert 'fix="press RETRY FAILED"' in SRC
     assert "a retry gets the same empty answer" in SRC
-    assert "nothing can fetch a contract MEXC has dropped" in SRC
+    assert "nothing can fetch a contract ${venueName} has dropped" in SRC
 
 
 def test_a_delisted_pair_is_not_drawn_as_a_retryable_error():

@@ -13,7 +13,7 @@ wearing a spinner.
 """
 
 D = "webapp/src/components/trade/"
-NAMES = ["summary", "positions", "strategies", "MEXC keys",
+NAMES = ["summary", "positions", "strategies", "exchange keys",
          "trade history", "profit", "runner feed"]
 
 
@@ -49,7 +49,7 @@ def test_the_screen_is_blurred_until_fully_loaded():
 
 def test_every_panel_reports_when_its_data_lands():
     for f, n in [("SummaryRibbon", "summary"), ("PositionsPanel", "positions"),
-                 ("StrategiesGrid", "strategies"), ("CredentialsPanel", "MEXC keys"),
+                 ("StrategiesGrid", "strategies"), ("CredentialsPanel", "exchange keys"),
                  ("TradeHistory", "trade history"), ("PnlPanel", "profit"),
                  ("FeedPanel", "runner feed")]:
         assert f'markReady("{n}")' in _p(f), f

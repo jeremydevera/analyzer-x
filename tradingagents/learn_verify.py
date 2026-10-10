@@ -58,14 +58,14 @@ def _old_candles(symbol: str, tf: str, old0, learn0):
     import pandas as pd
 
     from tradingagents import backtest_report as br
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     iv, bs, _ = br.TFS[tf]
     end = int(learn0.timestamp()) - 1
     stop = int(old0.timestamp()) - (WARM + 5) * bs
     parts = []
     while end > stop:
-        part = fx._klines_page(symbol, iv, fx._KLINE_PAGE, end)
+        part = fx.klines_page(symbol, iv, 2000, end)
         if part is None or part.empty:
             break
         parts.append(part)
@@ -84,7 +84,7 @@ def _coin_job(coin: str, specs: list, run_end_ms: int) -> list:
 
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br, market_sweep as msw, signals_learned as sl
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     day = 86_400_000
     learn0 = pd.Timestamp(run_end_ms - WINDOW_DAYS * day, unit="ms")

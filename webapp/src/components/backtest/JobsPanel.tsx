@@ -9,6 +9,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, API_BASE, BacktestPlan, CloudShard, CloudStatus, DailyUpdate, DelistedReport, fmtBytes, fmtWhen, fmtWhenMs, GridPlan, JobStatus, MonthJob, storeApi, StoreName } from "@/lib/api";
+import { useVenueName } from "@/lib/venue";
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
 import StoreBadge from "@/components/StoreBadge";
@@ -69,6 +70,7 @@ function activeShards<T extends { stage?: string }>(shards: T[]): T[] {
 }
 
 export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
+  const venueName = useVenueName();
   const S = useMemo(() => storeApi(store), [store]);
   const [coins, setCoins] = useState<string[]>([]);
   const [tfs, setTfs] = useState<string[]>(["15m", "30m", "1h", "4h"]);
@@ -404,8 +406,8 @@ export default function JobsPanel({ store = "v1" }: { store?: StoreName }) {
             {store === "v1" && dead && (
               <span title={!dead.delisted.known ? dead.delisted.why
                 : dead.writer ? `a ${dead.writer} job is writing the store — wait for it to finish`
-                : !dead.delisted.coins.length ? "every stored coin is still listed on MEXC"
-                : `remove the candles AND the backtest results of every coin MEXC no longer lists: ${dead.delisted.candle_pairs} candle files and ${dead.delisted.result_pairs} backtest pairs, ${fmtBytes(dead.delisted.bytes)}`}>
+                : !dead.delisted.coins.length ? `every stored coin is still listed on ${venueName}`
+                : `remove the candles AND the backtest results of every coin ${venueName} no longer lists: ${dead.delisted.candle_pairs} candle files and ${dead.delisted.result_pairs} backtest pairs, ${fmtBytes(dead.delisted.bytes)}`}>
                 <Button size="sm" variant="outline" onClick={() => setArmDead(true)}
                   disabled={!dead.delisted.known || !dead.delisted.coins.length
                             || !!dead.writer || deadRunning || armDead}>

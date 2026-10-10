@@ -54,7 +54,7 @@ from tradingagents import backtest_report as br
 from tradingagents import fast_grid as fg
 from tradingagents import watcher_policy as wp
 from tradingagents import watcher_replay as wr
-from tradingagents.dataflows import mexc_futures as fx
+from tradingagents.dataflows import exchange as fx
 
 TFS = [t.strip() for t in (os.environ.get("TFS") or "15m,30m,1h,4h,1d").split(",")
        if t.strip() in br.BARRIERS]

@@ -47,7 +47,7 @@ from tradingagents import (
     formula_learner as fl,  # noqa: E402
     signals_learned as sl_,  # noqa: E402
 )
-from tradingagents.dataflows import mexc_futures as fx  # noqa: E402
+from tradingagents.dataflows import exchange as fx  # noqa: E402
 
 TFS = [t.strip() for t in (os.environ.get("TFS") or "15m,30m,1h,4h,1d").split(",")
        if t.strip() in br.BARRIERS]

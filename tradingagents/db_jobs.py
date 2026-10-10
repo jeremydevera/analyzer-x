@@ -898,7 +898,7 @@ def live_symbols(max_age_s: float = 300.0):
     None is NOT an empty set: "I could not look" must never be read as "every
     pair is delisted", which would skip the whole store.
     """
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     c = _LIVE_CACHE
     now = time.time()

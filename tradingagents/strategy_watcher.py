@@ -474,7 +474,7 @@ class _PassFx:
     GAP_S = 0.2
 
     def __init__(self):
-        from tradingagents.dataflows import mexc_futures as fx
+        from tradingagents.dataflows import exchange as fx
 
         self._fx, self._book, self._cost = fx, {}, {}
 

@@ -349,7 +349,7 @@ def download(symbols: list[str], intervals: list[str],
     # which is to say, not to one cut connection (2026-08-25, CHILLGUY 15m)
     from tradingagents import db_jobs
     if fx is None:
-        from tradingagents.dataflows import mexc_futures as fx  # noqa: PLC0415
+        from tradingagents.dataflows import exchange as fx  # noqa: PLC0415
     ensure_schema()
     done, out = 0, {"pairs": [], "bars_stored": 0, "errors": [], "retries": 0}
     queue = deque((sym, iv) for sym in symbols for iv in intervals)

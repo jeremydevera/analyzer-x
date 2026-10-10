@@ -52,17 +52,29 @@ def _fetch_okx() -> list[str]:
 
 
 def _fetch_mexc() -> list[str]:
-    from tradingagents import forecast_v2_daily as f2d
+    """The coin list of the exchange this app trades, through the door (the
+    name is from Oct 09, 2026, when that exchange was MEXC)."""
+    from tradingagents import venue
+    from tradingagents.dataflows import exchange as fx
 
-    out = sorted(s.replace("_USDT", "") for s in f2d.market())
+    out = sorted(s.replace("_USDT", "") for s in fx.trading_symbols())
     if not out:
-        raise ValueError("MEXC listed no live USDT contract")
+        raise ValueError(f"{venue.name()} listed no live USDT contract")
     return out
 
 
+def _fetch_here(here: str) -> list[str]:
+    """The coin list of the exchange this app trades (Oct 10, 2026)."""
+    return _fetch_mexc()
+
+
 def lists(now: float | None = None) -> dict:
-    """{"okx": [...], "mexc": [...], "at": when read} — at most a day old
-    when both exchanges answer; the last good lists when one does not."""
+    """{"okx": [...], <this exchange>: [...], "at": when read} — at most a
+    day old when both exchanges answer; the last good lists when one does
+    not. The key is the exchange this app trades ("mexc" or "gate")."""
+    from tradingagents import venue
+
+    here = venue.current()
     now = time.time() if now is None else now
     with _LOCK:
         got = _MEM.get("lists")
@@ -71,11 +83,13 @@ def lists(now: float | None = None) -> dict:
                 got = json.loads(_path().read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 got = None
+        if got is not None and here not in got:
+            got = None          # another exchange's list is no answer here
         if got and now - float(got.get("at") or 0) < TTL_S:
             _MEM["lists"] = got
             return got
         try:
-            fresh = {"okx": _fetch_okx(), "mexc": _fetch_mexc(), "at": now}
+            fresh = {"okx": _fetch_okx(), here: _fetch_here(here), "at": now}
         except Exception as exc:                               # noqa: BLE001
             if got:
                 # the last good lists, and they SAY how old they are
@@ -105,8 +119,14 @@ def on_okx(coin: str, okx) -> bool:
     return bool(base) and base in okx and base not in SAME_LETTERS_CRYPTO
 
 
-def mexc_only(now: float | None = None) -> list[str]:
-    """Every coin MEXC trades now that OKX does not list, sorted."""
+def venue_only(now: float | None = None) -> list[str]:
+    """Every coin this exchange trades now that OKX does not list, sorted."""
+    from tradingagents import venue
+
     got = lists(now)
     okx = set(got["okx"])
-    return [c for c in got["mexc"] if not on_okx(c, okx)]
+    return [c for c in got[venue.current()] if not on_okx(c, okx)]
+
+
+# the name the Oct 09, 2026 filter was built under, while the app was on MEXC
+mexc_only = venue_only

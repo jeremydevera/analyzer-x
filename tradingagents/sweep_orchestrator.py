@@ -83,11 +83,13 @@ def _write(path: Path, payload: dict) -> None:
 
 
 def online() -> bool:
-    """Is the venue reachable? The sweep needs MEXC, not github.com."""
+    """Is the venue reachable? The sweep needs the exchange, not github.com."""
     try:
         import socket
 
-        socket.create_connection(("contract.mexc.com", 443), timeout=6).close()
+        from tradingagents.dataflows import exchange as fx
+
+        socket.create_connection((fx.HOST, 443), timeout=6).close()
         return True
     except OSError:
         return False

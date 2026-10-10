@@ -42,20 +42,35 @@ def _check(v: str, where: str) -> str:
     return v
 
 
+# The file's answer, kept until the file changes: `backtest_report.row_code`
+# asks once per row and a report hashes 250,000 of them.
+_SEEN: dict = {}
+
+
 def current() -> str:
     """"gate" or "mexc"."""
     env = os.environ.get("TA_VENUE", "").strip()
     if env:
         return _check(env, "TA_VENUE")
     try:
+        st = os.stat(VENUE_FILE)
+    except FileNotFoundError:
+        return DEFAULT
+    key = (str(VENUE_FILE), st.st_mtime_ns, st.st_size)
+    hit = _SEEN.get("file")
+    if hit and hit[0] == key:
+        return hit[1]
+    try:
         raw = VENUE_FILE.read_text(encoding="utf-8")
     except FileNotFoundError:
         return DEFAULT
     try:
-        return _check(json.loads(raw).get("venue"), str(VENUE_FILE))
+        v = _check(json.loads(raw).get("venue"), str(VENUE_FILE))
     except (ValueError, AttributeError, TypeError) as exc:
         raise ValueError(f"{VENUE_FILE} cannot be read ({exc}) — refusing "
                          f"to guess which exchange this app trades") from exc
+    _SEEN["file"] = (key, v)
+    return v
 
 
 def name() -> str:
@@ -89,12 +104,27 @@ def kind(symbol: str) -> str:
                 else "crypto")
     from tradingagents.dataflows import gate_futures as gf  # noqa: PLC0415
 
-    return gf.contract_types().get(sym, "unlisted")
+    if not sym.endswith("_USDT"):
+        sym += "_USDT"
+    try:
+        kinds = gf.contract_types()
+    except Exception:                                          # noqa: BLE001
+        return "unknown"        # never fetched and Gate unreachable
+    return kinds.get(sym, "unlisted")
 
 
 def is_stock_like(symbol: str) -> bool:
     """A tokenized stock or US ETF: trades in its home market's hours."""
     return kind(symbol) == "stocks"
+
+
+def coins_of_kind(kind_name: str) -> list[str]:
+    """Bare coin names (the row store's `coin`, no `_USDT`) of one kind, from
+    the venue's own list — the crypto/stocks filter's list under Gate."""
+    from tradingagents.dataflows import gate_futures as gf  # noqa: PLC0415
+
+    return sorted(s.removesuffix("_USDT") for s, k in gf.contract_types().items()
+                  if k == kind_name)
 
 
 def stock_symbols() -> list[str]:

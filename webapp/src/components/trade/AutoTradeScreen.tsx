@@ -121,7 +121,7 @@ export default function AutoTradeScreen() {
   // sharp for ~1s before the blur landed (measured 396ms, Sep 09, 2026)
   const [started, setStarted] = useState(false);
   useEffect(() => {
-    begin(["summary", "positions", "strategies", "MEXC keys",
+    begin(["summary", "positions", "strategies", "exchange keys",
            "trade history", "profit", "runner feed"]);
     setStarted(true);
   }, []);

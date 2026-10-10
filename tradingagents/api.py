@@ -583,6 +583,15 @@ def health() -> dict:
     return {"ok": True, "storage": pqs.sizes(rows=False)}
 
 
+@app.get("/api/venue")
+def venue_info() -> dict:
+    """The exchange this app trades (tradingagents/venue.py, Oct 10, 2026).
+    Every screen reads the exchange's NAME from here, never spells it."""
+    from tradingagents import venue
+
+    return {"venue": venue.current(), "name": venue.name()}
+
+
 # -------------------------------------------------------------- strategies
 @app.get("/api/strategies")
 def strategies(coin: str | None = None, tf: str | None = None,
@@ -2861,7 +2870,7 @@ def _own_exchange_positions(live: list, state: dict | None = None) -> list:
 def trade_summary() -> dict:
     """The status ribbon: process, modes, wallet, today, all-time, open."""
     import tradingagents.auto_trader as at
-    from tradingagents.dataflows import mexc_credentials as cred, mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx, mexc_credentials as cred
 
     cred.load_into_env()
     pid = at.runner_pid()
@@ -2932,7 +2941,7 @@ def trade_positions() -> dict:
     """
     import tradingagents.auto_trader as at
     from tradingagents import positions_view as pv
-    from tradingagents.dataflows import mexc_credentials as cred, mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx, mexc_credentials as cred
 
     cred.load_into_env()
 
@@ -3627,7 +3636,7 @@ def credentials_test(body: dict) -> dict:
     'The request was sent' is not 'it is in place' (rule 14), so the probe
     checks resting a stop, not just reading a balance.
     """
-    from tradingagents.dataflows import mexc_credentials as cred, mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx, mexc_credentials as cred
 
     cred.load_into_env()
     symbol = str(body.get("symbol") or "BTC_USDT").strip()
@@ -4231,7 +4240,7 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1,
 @app.get("/api/contracts")
 def contracts() -> dict:
     """Every tradeable MEXC USDT perpetual, for the coin pickers."""
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     try:
         rows = fx.list_contracts()
@@ -4817,7 +4826,7 @@ def _store_completeness(store=None) -> dict:
     import time as _t
 
     from tradingagents import parquet_store as pqs
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     now = _t.time()
     # WHICH STORE: v1 counts the five frames against ~/.tradingagents/parquet;

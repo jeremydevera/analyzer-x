@@ -3239,7 +3239,19 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
     # runs `sql % "*"`, and a literal '%STOCK' inside that string is a
     # broken format spec (found by this filter's own first test run). LIKE
     # cannot drive an index, so no `+` hint is needed either way.
-    if asset in ("stocks", "mexc_stocks"):
+    #
+    # UNDER GATE THE NAME SAYS NOTHING (Oct 10, 2026): Gate names a stock by
+    # its ticker (AAPL), so the venue's own list decides — the names ride in
+    # args, and the `+` keeps a ~400-name list from driving the plan, exactly
+    # as the MEXC-only list below.
+    from tradingagents import venue as _venue
+
+    if asset in ("stocks", "mexc_stocks", "crypto", "mexc_crypto") \
+            and _venue.current() != "mexc":
+        names = _venue.coins_of_kind("stocks" if "stocks" in asset else "crypto")
+        sql.append(f"+coin IN ({','.join('?' * len(names))})" if names else "0")
+        args.extend(names)
+    elif asset in ("stocks", "mexc_stocks"):
         sql.append("coin LIKE ?")
         args.append("%STOCK")
     elif asset in ("crypto", "mexc_crypto"):
@@ -3258,7 +3270,7 @@ def _where(coin=None, tf=None, signal=None, profitable=False,
     if asset in ("mexc", "mexc_crypto", "mexc_stocks"):
         from tradingagents import venues
 
-        names = venues.mexc_only()
+        names = venues.venue_only()
         sql.append(f"+coin IN ({','.join('?' * len(names))})" if names else "0")
         args.extend(names)
 

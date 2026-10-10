@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { markReady } from "@/lib/loading";
 import PanelStatus from "./PanelStatus";
 import { CredStatus, Preflight } from "@/lib/api";
+import { useVenueName } from "@/lib/venue";
 import { useRoomApis } from "@/lib/room";
 import Badge from "@/components/ui/badge/Badge";
 import Button from "@/components/ui/button/Button";
@@ -24,10 +25,11 @@ const CHECKS: [keyof Preflight, string][] = [
   ["read_assets", "Read account balance"],
   ["read_positions", "Read open positions"],
   ["order_permission", "Permission to place orders"],
-  ["can_rest_stop", "Rest a stop on MEXC's servers"],
+  ["can_rest_stop", "Rest a stop on the exchange's servers"],
 ];
 
 export default function CredentialsPanel() {
+  const venueName = useVenueName();
   // this panel's own room, even while its tab is not the one on screen
   const { tradeApi } = useRoomApis();
   const [st, setSt] = useState<CredStatus | null>(null);
@@ -37,7 +39,7 @@ export default function CredentialsPanel() {
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
 
-  const load = () => tradeApi.creds().then((d) => { setSt(d); setErr(""); markReady("MEXC keys"); }).catch((e) => setErr(String(e)));
+  const load = () => tradeApi.creds().then((d) => { setSt(d); setErr(""); markReady("exchange keys"); }).catch((e) => setErr(String(e)));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
   // SELF-HEALING: retry every 5s while errored — an API restart's few dark
@@ -71,7 +73,7 @@ export default function CredentialsPanel() {
     <div className="min-w-0 rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="flex flex-wrap items-center gap-3">
         <div>
-          <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">MEXC keys</h3>
+          <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">{venueName} keys</h3>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
             {st
               ? st.has_credentials
@@ -82,7 +84,7 @@ export default function CredentialsPanel() {
         </div>
         <div className="ml-auto flex gap-2">
           <Button size="sm" variant="outline" disabled={busy === "test"} onClick={test}>
-            {busy === "test" ? "talking to MEXC…" : "TEST CONNECT"}
+            {busy === "test" ? `talking to ${venueName}…` : "TEST CONNECT"}
           </Button>
           {st?.stored_on_disk && (
             <Button size="sm" variant="outline" disabled={busy === "forget"} onClick={forget}>FORGET SAVED KEYS</Button>

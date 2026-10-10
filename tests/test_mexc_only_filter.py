@@ -112,10 +112,15 @@ def test_the_list_never_drives_the_plan_and_other_kinds_are_refused(lists):
 
 # ------------------------------------------------------------- the screen
 def test_the_kind_box_offers_it_and_the_chip_and_sentence_name_it():
+    """The exchange is NAMED from /api/venue, never spelled: the app moved
+    to Gate on Oct 10, 2026, and "MEXC only" over Gate's coins would be a
+    label that does not match its data."""
     src = open(PANEL, encoding="utf-8").read()
     for value in ("mexc", "mexc_crypto", "mexc_stocks"):
-        assert f'<option value="{value}">MEXC only (not on OKX):' in src, value
-    assert 'mexc: "MEXC only (not on OKX)"' in src and "out.push({ k: \"asset\", text: ASSET_LABEL[f.asset] });" in src
-    assert "ASSET_WORDS[f.asset]" in src
+        assert f'<option value="{value}">{{venueName}} only (not on OKX):' in src, value
+    assert "mexc: `${v} only (not on OKX)`" in src
+    assert 'out.push({ k: "asset", text: assetLabel(f.asset, venueName)! });' in src
+    assert "assetWords(f.asset, venueName)" in src
+    assert "const venueName = useVenueName();" in src
     api = open(API_TS, encoding="utf-8").read()
     assert api.count('asset?: "crypto" | "stocks" | "mexc" | "mexc_crypto" | "mexc_stocks";') == 2

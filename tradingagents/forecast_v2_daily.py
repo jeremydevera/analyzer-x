@@ -123,11 +123,9 @@ def market() -> list:
     can be dealt them — each account's claim board lives in its own
     repository, so two runs left to work the coins out would both measure
     every coin and call it forty machines (cloud_sweep.dispatch_across)."""
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
-    raw = fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data") or []
-    return sorted(x["symbol"] for x in raw
-                  if str(x.get("symbol", "")).endswith("_USDT") and int(x.get("state", 1)) == 0)
+    return fx.trading_symbols()
 
 
 def owner(repo: str) -> str:

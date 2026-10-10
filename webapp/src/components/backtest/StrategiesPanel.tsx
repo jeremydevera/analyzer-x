@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StoreBadge from "@/components/StoreBadge";
 import CopyableId from "@/components/trade/CopyableId";
 import { api as coreApi, ApiError, fmtMoney, fmtWhenMs, JobStatus, STRATEGY_SORTS, StrategyRow, storeApi, StoreName, TradesResult, type IndexStatus, type StrategySort, type StrategyQuery, fmtLeft, fmtWhen } from "@/lib/api";
+import { useVenueName } from "@/lib/venue";
 import { pageWindow } from "@/lib/pager";
 import { rowUpdateSentence } from "@/lib/rowUpdate";
 import Badge from "@/components/ui/badge/Badge";
@@ -85,18 +86,21 @@ function Field({ label, hint, children }: {
 /** The group dropdown's two options, in the operator's own words — used by
  *  both the <select> and the chip that names it, so they cannot drift. */
 // THE KIND BOX, named the same on its chip and in the filter sentence. The
-// MEXC ones (operator, Oct 09, 2026: "just add filter 'Show mexc coin only'")
-// keep only coins MEXC trades that OKX does not list (tradingagents/venues.py).
-const ASSET_LABEL: Record<string, string> = {
+// "only here" ones (operator, Oct 09, 2026: "just add filter 'Show mexc coin
+// only'") keep only coins this exchange trades that OKX does not list
+// (tradingagents/venues.py) — the exchange NAMED by /api/venue, never spelled
+// (the app moved to Gate on Oct 10, 2026). The values keep their old names
+// (`mexc*`): they are what the URL and the server already speak.
+const assetLabel = (a: string, v: string): string | undefined => ({
   crypto: "Crypto coins only", stocks: "Tokenized stocks only",
-  mexc: "MEXC only (not on OKX)", mexc_crypto: "MEXC-only crypto coins (not on OKX)",
-  mexc_stocks: "MEXC-only tokenized stocks (not on OKX)",
-};
-const ASSET_WORDS: Record<string, string> = {
+  mexc: `${v} only (not on OKX)`, mexc_crypto: `${v}-only crypto coins (not on OKX)`,
+  mexc_stocks: `${v}-only tokenized stocks (not on OKX)`,
+} as Record<string, string>)[a];
+const assetWords = (a: string, v: string): string | undefined => ({
   crypto: "crypto coins only", stocks: "tokenized stocks only",
-  mexc: "MEXC-only coins and stocks (not on OKX)", mexc_crypto: "MEXC-only crypto coins (not on OKX)",
-  mexc_stocks: "MEXC-only tokenized stocks (not on OKX)",
-};
+  mexc: `${v}-only coins and stocks (not on OKX)`, mexc_crypto: `${v}-only crypto coins (not on OKX)`,
+  mexc_stocks: `${v}-only tokenized stocks (not on OKX)`,
+} as Record<string, string>)[a];
 const GROUP_LABEL: Record<string, string> = {
   preset: "Preset Confluence", classic: "Classic",
   // the learned formulas, one set per coin and timeframe (operator,
@@ -152,6 +156,7 @@ const HEAD_SORT: Record<string, StrategySort | undefined> =
 const PAIR_JOB = (store: string) => (store === "v2" ? "pairbt_v2" : "pairbt");
 
 export default function StrategiesPanel({ store = "v1" }: { store?: StoreName }) {
+  const venueName = useVenueName();
   const S = useMemo(() => storeApi(store), [store]);
   // THE CLIENT THIS PANEL CALLS: the module's, with the three store-scoped
   // reads (rows, CSV, facets) pointed at this store. Every call below keeps
@@ -795,8 +800,8 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                  text: `Backtested within ${f.measuredDays} day`
                        + `${f.measuredDays > 1 ? "s" : ""}` });
     }
-    if (f.asset && ASSET_LABEL[f.asset]) {
-      out.push({ k: "asset", text: ASSET_LABEL[f.asset] });
+    if (f.asset && assetLabel(f.asset, venueName)) {
+      out.push({ k: "asset", text: assetLabel(f.asset, venueName)! });
     }
     if (f.coin) out.push({ k: "coin", text: f.coin });
     if (f.tf) out.push({ k: "tf", text: `${f.tf} timeframe` });
@@ -869,7 +874,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
     // "crypto coins only" request waited under a line that never said crypto
     // — which the operator read as "the filter is not working" (2026-09-06).
     // Every box this panel sends is named here, on or off.
-    f.asset && ASSET_WORDS[f.asset] ? ASSET_WORDS[f.asset] : "coins and stocks",
+    f.asset && assetWords(f.asset, venueName) ? assetWords(f.asset, venueName)! : "coins and stocks",
     f.coin || "all coins",
     f.tf || "all timeframes",
     f.signal || "all signals",
@@ -1397,9 +1402,9 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                       mexc coin only' meaning show coins that exist in mexc
                       that are not existing in okx") — the server holds the
                       two exchanges' lists (tradingagents/venues.py) */}
-                  <option value="mexc">MEXC only (not on OKX): coins and stocks</option>
-                  <option value="mexc_crypto">MEXC only (not on OKX): crypto coins</option>
-                  <option value="mexc_stocks">MEXC only (not on OKX): tokenized stocks</option>
+                  <option value="mexc">{venueName} only (not on OKX): coins and stocks</option>
+                  <option value="mexc_crypto">{venueName} only (not on OKX): crypto coins</option>
+                  <option value="mexc_stocks">{venueName} only (not on OKX): tokenized stocks</option>
                 </select>
               </Field>
               <Field label="coin">

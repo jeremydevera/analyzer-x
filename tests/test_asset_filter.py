@@ -149,12 +149,13 @@ def test_the_panel_has_the_dropdown_and_its_chip():
     # the chip the AND-line prints, one text per direction
     # one label map for every kind, MEXC-only included (Oct 09, 2026)
     assert 'crypto: "Crypto coins only", stocks: "Tokenized stocks only"' in p
-    assert 'out.push({ k: "asset", text: ASSET_LABEL[f.asset] });' in p
+    # the exchange is NAMED, never spelled (Oct 10, 2026, the move to Gate)
+    assert 'out.push({ k: "asset", text: assetLabel(f.asset, venueName)! });' in p
     # the AND-line (the spinner's "asking …" and the filter sentence) names
     # the kind, on or off: a slow crypto-only request once waited under a
     # line that never said crypto, and the operator read that as "the crypto
     # coins only filter is not working" (2026-09-06)
-    assert 'f.asset && ASSET_WORDS[f.asset] ? ASSET_WORDS[f.asset] : "coins and stocks",' in p
+    assert 'f.asset && assetWords(f.asset, venueName) ? assetWords(f.asset, venueName)! : "coins and stocks",' in p
     assert 'crypto: "crypto coins only", stocks: "tokenized stocks only",' in p
     # cleared with the rest, sent with the rest, kept for the CSV
     assert p.count('asset: ""') >= 3, "NO_FILTERS + applied + servedFilters"

@@ -380,7 +380,7 @@ def slices_for(plan: str | None, sl: float, tp: float) -> list | None:
 
 def row_code(coin: str, tf: str, signal: str, th: float, sl: float,
              tp: float, sizing: str, plan: str | None = None,
-             res: str | None = None) -> str:
+             res: str | None = None, venue: str | None = None) -> str:
     """A stable ID for one combination, identical on every page and every run.
 
     Sequential numbering was per-page: the same live APEX row was #05146 in one
@@ -411,6 +411,17 @@ def row_code(coin: str, tf: str, signal: str, th: float, sl: float,
     # fixed point in tests/test_v2_store_is_its_own_folder.py).
     if res:
         seed += "|res=" + str(res)
+    # THE EXCHANGE IS PART OF THE COMBINATION (Oct 10, 2026, the move to
+    # Gate). A Gate row of BTC 1h ote measured Gate's candles and costs and
+    # must never share an id with the MEXC row — the operator deploys by id.
+    # Appended only when it is not MEXC, so every id minted before the move
+    # still hashes to itself (#LG9NSU4B stays a fixed point).
+    if venue is None:
+        from tradingagents import venue as _venue
+
+        venue = _venue.current()
+    if venue and venue != "mexc":
+        seed += "|venue=" + str(venue)
     n = int.from_bytes(hashlib.blake2s(seed.encode(), digest_size=5).digest(),
                        "big")
     # 8 characters, spending the digest's full 40 bits. Six characters kept
@@ -494,7 +505,7 @@ def run_grid(coins: Sequence[str], tfs: Sequence[str], *,
     import pandas as pd
 
     from tradingagents import auto_trader as at
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     signals = list(signals or SIGNALS)
     # A signal with no threshold is stored at th=0. A deployed entry naming a
@@ -1753,7 +1764,7 @@ def grid_from_store(coins: Sequence[str], tfs: Sequence[str], *,
                       .astype("int64"))
             fund = []
             try:
-                from tradingagents.dataflows import mexc_futures as fx
+                from tradingagents.dataflows import exchange as fx
 
                 fund = [[int(f["settle_ms"]), round(f["rate"], 8)]
                         for f in fx.funding_history(f"{show}_USDT")

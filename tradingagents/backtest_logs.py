@@ -71,16 +71,13 @@ def fleet_symbols(max_age_s: float = 300.0):
     here called 50 pairs unreachable when only 24 were (Sep 06, 2026). None
     is never an empty set: "could not look" must not uncount everything.
     """
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     now = time.time()
     if _FLEET["symbols"] is not None and now - _FLEET["at"] < max_age_s:
         return _FLEET["symbols"]
     try:
-        raw = fx._get_public(f"{fx.BASE}/api/v1/contract/detail").get("data") or []
-        got = {str(x["symbol"]) for x in raw
-               if str(x.get("symbol", "")).endswith("_USDT")
-               and int(x.get("state", 1)) == 0}
+        got = set(fx.trading_symbols())
     except Exception:                                          # noqa: BLE001
         return None
     if not got:

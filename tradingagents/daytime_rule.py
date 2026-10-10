@@ -46,8 +46,14 @@ def enabled(settings: dict | None) -> float | None:
 
 
 def is_stock(name: str) -> bool:
-    """A tokenized US stock: MEXC names every one with a STOCK suffix."""
-    return str(name or "").upper().removesuffix("_USDT").endswith("STOCK")
+    """A tokenized stock. MEXC named every one with a STOCK suffix; Gate
+    names them by ticker and says what each contract is in its own list
+    (tradingagents.venue.kind, Oct 10, 2026)."""
+    from tradingagents import venue  # noqa: PLC0415
+
+    if venue.current() == "mexc":
+        return str(name or "").upper().removesuffix("_USDT").endswith("STOCK")
+    return venue.is_stock_like(str(name or "").upper())
 
 
 # US-LISTED ETF TOKENS keep the same hours (final review, Oct 07, 2026:
@@ -79,7 +85,7 @@ def _plates(base: str):
     if _time.time() - _PLATES_FAILED.get(base, -1e18) < PLATES_RETRY_S:
         return None
     try:
-        from tradingagents.dataflows import mexc_futures as fx
+        from tradingagents.dataflows import exchange as fx
 
         got = tuple(str(x).lower() for x in
                     (fx.contract_spec(f"{base}_USDT").get("conceptPlate") or []))

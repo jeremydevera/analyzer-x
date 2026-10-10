@@ -9,6 +9,7 @@ candles and positions sat on different clocks once passed with a bug in it
 """
 import datetime as dt
 import importlib.util
+import inspect
 import json
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -1176,7 +1177,10 @@ def test_the_market_is_named_the_way_the_replay_names_it_and_origin_comes_first(
         {"symbol": "C_USDT", "state": 1}, {"symbol": "D_USDC", "state": 0}]})
     assert fd.market() == ["A_USDT", "B_USDT"]
     src = (ROOT / ".github/scripts/sweep_shard.py").read_text(encoding="utf-8")
-    assert 'endswith("_USDT")' in src and 'int(x.get("state", 1)) == 0' in src, "sweep_shard.eligible's rule"
+    # the same function names both markets since the door (Oct 10, 2026)
+    assert "fx.trading_symbols()" in src, "sweep_shard.eligible's rule"
+    rule = inspect.getsource(fx.trading_symbols)
+    assert 'endswith("_USDT")' in rule and 'int(x.get("state", 1)) == 0' in rule
     monkeypatch.setattr(cs, "usable_fleets", lambda cwd=None: ([FORK, ME], ["x/z: no workflow"]))
     monkeypatch.setattr(cs, "origin_fleet", lambda: ME)
     assert fd.fleets_now() == ([ME, FORK], ["x/z: no workflow"]), "account 0 is the operator's own"

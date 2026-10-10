@@ -206,7 +206,8 @@ def test_the_retry_button_names_a_delisted_pair_and_still_clears_it(monkeypatch)
 def test_the_screen_names_the_delisted_and_the_gaps():
     p = open("webapp/src/components/candles/DownloadScreen.tsx",
              encoding="utf-8").read()
-    assert "DELISTED on MEXC, skipped by every" in p
+    # the exchange is named, never spelled (Oct 10, 2026, the move to Gate)
+    assert "DELISTED on {venueName}, skipped by every" in p
     assert "lost.delisted_count" in p
     assert "nothing can fetch a contract the venue dropped" in p
 
@@ -320,7 +321,7 @@ def test_the_gaps_count_excludes_what_no_run_can_fetch(monkeypatch):
 def test_the_screen_names_the_uncatchable_pairs():
     p = open("webapp/src/components/candles/DownloadScreen.tsx",
              encoding="utf-8").read()
-    assert "more stored but DELISTED on MEXC" in p
+    assert "more stored but DELISTED on {venueName}" in p
     assert "they are not counted above" in p
 
 

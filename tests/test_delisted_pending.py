@@ -63,12 +63,19 @@ def test_the_fleet_rule_is_state_zero_not_api_allowed():
     pairs on Sep 06, 2026."""
     import inspect
 
+    # ONE rule since the door (Oct 10, 2026): fleet_symbols and the shard
+    # both ask the adapter's trading_symbols, which is where the state test
+    # lives — so they cannot drift apart again.
+    from tradingagents.dataflows import mexc_futures as mf
+
     s = inspect.getsource(bl.fleet_symbols)
-    assert 'int(x.get("state", 1)) == 0' in s
-    assert "apiAllowed" not in s.split('"""')[2], \
+    assert "fx.trading_symbols()" in s
+    rule = inspect.getsource(mf.trading_symbols)
+    assert 'int(x.get("state", 1)) == 0' in rule
+    assert "apiAllowed" not in rule.split('"""')[2], \
         "the CODE must not filter on apiAllowed (the docstring may name it)"
     shard = open(".github/scripts/sweep_shard.py", encoding="utf-8").read()
-    assert 'int(x.get("state", 1)) == 0' in shard, \
+    assert "fx.trading_symbols()" in shard, \
         "the shard changed its rule — fleet_symbols must change with it"
 
 

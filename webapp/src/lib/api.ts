@@ -2057,6 +2057,11 @@ export interface FeedStatus {
   why?: string;
 }
 
+/** The exchange this app trades (tradingagents/venue.py, Oct 10, 2026);
+ *  read through lib/venue.tsx's useVenueName(). */
+export type VenueInfo = { venue: "gate" | "mexc"; name: string };
+export const venueInfo = () => get<VenueInfo>("/api/venue");
+
 export const tradeApi = {
   equity: (dry = false) =>
     get<{ points: { ts: number; equity: number; coin: string }[]; last: number; trades: number }>(

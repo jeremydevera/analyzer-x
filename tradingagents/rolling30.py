@@ -133,7 +133,7 @@ def rebuild(slot: str, settings: dict) -> dict:
 
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br
-    from tradingagents.dataflows import mexc_futures as fx
+    from tradingagents.dataflows import exchange as fx
 
     ident = _identity(settings, slot)
     if ident is None:

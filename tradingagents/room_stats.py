@@ -400,7 +400,12 @@ def market_hours(ts: float) -> bool:
 
 
 def is_stock(symbol: str) -> bool:
-    return str(symbol).upper().replace("_USDT", "").endswith("STOCK")
+    """MEXC's STOCK suffix, or Gate's own list (tradingagents.venue.kind)."""
+    from tradingagents import venue  # noqa: PLC0415
+
+    if venue.current() == "mexc":
+        return str(symbol).upper().replace("_USDT", "").endswith("STOCK")
+    return venue.is_stock_like(str(symbol).upper())
 
 
 def home_market(symbol: str) -> str | None:

@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api as coreApi, JobStatus, storeApi, StoreName } from "@/lib/api";
+import { useVenueName } from "@/lib/venue";
 import StoreBadge from "@/components/StoreBadge";
 import Button from "@/components/ui/button/Button";
 import Badge from "@/components/ui/badge/Badge";
@@ -25,6 +26,7 @@ const TFS = ["15m", "30m", "1h", "4h", "1d"];
  *  1-minute store — one frame, the v2 job kinds, the v2 routes — with a badge
  *  that says so. The default is the screen the operator has always had. */
 export default function DownloadScreen({ store = "v1" }: { store?: StoreName }) {
+  const venueName = useVenueName();
   const S = useMemo(() => storeApi(store), [store]);
   // THE CLIENT THIS SCREEN CALLS: the module's, with every candle read and
   // the download job pointed at this store. The calls keep their `api.`
@@ -82,7 +84,7 @@ export default function DownloadScreen({ store = "v1" }: { store?: StoreName }) 
     const missing = pending?.missing ?? 0;
     if (!confirm(`Update ${gaps?.pairs ?? 0} stored pair(s)?\n\nOnly the bars printed since each pair's last stored bar are fetched — nothing is downloaded again.`
       + (missing
-        ? `\n\nPLUS ${missing.toLocaleString()} pair(s) MEXC lists that this store does not have yet — those are fetched in full${
+        ? `\n\nPLUS ${missing.toLocaleString()} pair(s) ${venueName} lists that this store does not have yet — those are fetched in full${
             store === "v2" ? " (30 days of 1-minute candles each)" : ""}.`
         : ""))) return;
     try { await api.jobStart("download", { mode: "update" }); poll(); }
@@ -155,8 +157,8 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
         </h3>
         <p className="mb-4 text-theme-xs text-gray-500 dark:text-gray-400">
           {store === "v2"
-            ? <>Fills the v2 store — the 1-minute candles Backtest v2 reads. MEXC sells 30 days of them at a time
-                (about 44,000 per coin); every UPDATE adds the minutes since, so the history keeps growing.
+            ? <>Fills the v2 store — the 1-minute candles Backtest v2 reads, as far back as {venueName} serves
+                them; every UPDATE adds the minutes since, so the history keeps growing.
                 Runs detached: leaving this screen or closing the browser does not stop it.</>
             : <>Fills this PC&apos;s store — the candles every backtest reads. Runs detached: leaving this
                 screen or closing the browser does not stop it. After the first fill, only new bars are fetched.</>}
@@ -174,7 +176,7 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
               // picker whose picks do nothing
               <p className="pt-1.5 text-theme-xs text-gray-600 dark:text-gray-300">
                 <span className="rounded-full bg-brand-500 px-3 py-1 font-medium text-white">1m</span>
-                <span className="ml-2">1-minute candles only — the finest MEXC sells</span>
+                <span className="ml-2">1-minute candles only — the finest {venueName} sells</span>
               </p>
             ) : (
               <div className="flex flex-wrap gap-2 pt-1.5">
@@ -244,7 +246,7 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
             reliable". Named here, skipped by every run. */}
         {!!lost?.delisted_count && (
           <p className="mt-3 text-theme-xs text-warning-600 dark:text-warning-400">
-            {lost.delisted_count} pair(s) DELISTED on MEXC, skipped by every
+            {lost.delisted_count} pair(s) DELISTED on {venueName}, skipped by every
             download and never retried:{" "}
             {(lost.delisted ?? []).map((p) =>
               `${p.symbol.replace("_USDT", "")} ${p.timeframe}`).join(" · ")}
@@ -292,7 +294,7 @@ ${(pending?.unfixable ?? 0).toLocaleString()} pair(s) cannot be fixed by any run
                 "N behind" can actually reach zero (review, 2026-08-27) */}
             {gaps.delisted_count
               ? <span className="text-warning-600 dark:text-warning-400">
-                  {" · "}{gaps.delisted_count} more stored but DELISTED on MEXC
+                  {" · "}{gaps.delisted_count} more stored but DELISTED on {venueName}
                   {gaps.delisted?.[0] && <> ({gaps.delisted[0].symbol.replace("_USDT", "")} {gaps.delisted[0].timeframe}
                     {gaps.delisted.length > 1 ? ` and ${gaps.delisted.length - 1} more` : ""})</>}
                   {" "}— nothing can fetch them; they are not counted above

@@ -22,10 +22,12 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, BacktestLogs } from "@/lib/api";
+import { useVenueName } from "@/lib/venue";
 
 const TF_ORDER = ["15m", "30m", "1h", "4h", "1d"];
 
 export default function LogsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
+  const venueName = useVenueName();
   const [d, setD] = useState<BacktestLogs | null>(null);
   const [err, setErr] = useState("");
   const [openPending, setOpenPending] = useState(false);
@@ -176,7 +178,7 @@ export default function LogsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
             {!!p.delisted && (
               <>
                 {" · "}
-                <span title="MEXC no longer lists these contracts, so no run anywhere can measure them. Their candles stay stored; they are simply not counted as pending.">
+                <span title={`${venueName} no longer lists these contracts, so no run anywhere can measure them. Their candles stay stored; they are simply not counted as pending.`}>
                   {p.delisted} pair(s) on delisted contracts left out
                   ({(p.delisted_coins ?? []).join(", ")})
                 </span>

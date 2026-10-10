@@ -198,7 +198,15 @@ own `maintenance_rate`.
   size over REST (1m = 6.9 days), so `backtest_report.fine_bars` joins the
   monthly 1m archive (`download.gatedata.org`), REST 5m for the gap, and REST
   1m for the last week. A 5-minute bar settles an exit the way a minute does;
-  both prices in one is SL and counted in `unclear`.
+  both prices in one is SL and counted in `unclear`. **So the minute STORE
+  has a hole every month** (BTC on Oct 10, 2026: 3,611 minutes, Oct 01 -
+  Oct 03): on Gate every PC path that measures or replays a v2 row —
+  `run_pair` (UPDATE THIS BACKTEST), `trades_for` (the trade list),
+  `window_rows` (last N days) — reads `market_sweep.gate_v2_bars` (the
+  frame's own candles + `fine_bars`), never `bars_from_1m`, and measures the
+  shard's window (30 days + 300 lead-in, no `resume`, t15 / t1..t4 at the
+  END of the row). Checked Oct 10, 2026: 7 of 7 BTC 1h rows equal their
+  trade list (RCA-2026-10-10-L).
 * **EVERY TRADE PAYS THE ORDER BOOK OF ITS OWN MINUTE.** `costs.yml` (daily,
   both accounts, `costs_daily` ticks it after 3:00 UTC, backfilling 30 days)
   replays Gate's hourly order-book files (`book_history`: `make` ADDS, `take`

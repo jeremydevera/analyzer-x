@@ -1,0 +1,77 @@
+name: Costs per minute
+run-name: "Costs per minute · ${{ inputs.days || 'yesterday' }} · ${{ inputs.label }}"
+# Gate's past order books, replayed into one trading-cost reading per minute
+# per coin (tradingagents/book_history.py), written as release assets that
+# every Backtest v2 shard reads its trades' costs from (tradingagents/
+# cost_store.py). Phase 4 of the move to Gate, Oct 10, 2026: the backtest
+# pays each trade the book of its own minute and refuses what the runner's
+# cost check would refuse there.
+#
+# Public data only — Gate's archive needs no key. This run's own token writes
+# release assets on THIS account and nothing else. The PC deals the coins
+# between both accounts (tradingagents/costs_daily.py, the 40-machine rule).
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "How many machines"
+        default: "20"
+      days:
+        description: "Comma-separated UTC days YYYY-MM-DD; empty = yesterday"
+        default: ""
+      coin_list:
+        description: "Comma-separated symbols this account was dealt; empty = every Gate contract"
+        default: ""
+      label:
+        description: "A name for the run's title (which share, which day)"
+        default: ""
+
+permissions:
+  contents: write        # the claim board, and this account's release assets
+
+env:
+  TA_VENUE: gate
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.mk.outputs.shards }}
+    steps:
+      - id: mk
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          n = int(os.environ["N"])
+          print("shards=" + json.dumps(list(range(n))))
+          PY
+        env:
+          N: ${{ github.event.inputs.shards }}
+
+  costs:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy requests
+      - name: Costs shard ${{ matrix.shard }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ github.event.inputs.shards }}
+          DAYS_LIST: ${{ github.event.inputs.days }}
+          COIN_LIST: ${{ github.event.inputs.coin_list }}
+        run: python .github/scripts/costs_shard.py

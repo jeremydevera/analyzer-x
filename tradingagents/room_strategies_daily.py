@@ -408,6 +408,12 @@ def _step(st: dict, now: float) -> None:
     if _red(st, phase, stat, now):
         return
     if phase == "replay":
+        # WAITING OUT A RUN THAT MEASURED NOTHING: nothing is downloaded again
+        # until its 30 minutes are up — the cause was GitHub's request budget
+        seen = [float(t) for r, t in (st.get("red_seen") or {}).items()
+                if str(r) in {str(v) for v in runs.values()}]
+        if seen and now - min(seen) < RETRY_S:
+            return
         _say(st, f"replay {_named(st, runs)} finished — reading where it ended")
         dirs = {repo: _download(int(run), repo, "replay-report-*", _dir(st, repo, "reports"))
                 for repo, run in runs.items()}
@@ -415,7 +421,12 @@ def _step(st: dict, now: float) -> None:
         shares = {repo: sorted(rst.replay_shard_sizes(str(run), repo)) for repo, run in runs.items()}
         empty = [repo for repo, sh in shares.items() if not sh]
         if empty:
-            _give_up(st, f"replay {_named(st, {r: runs[r] for r in empty})} measured no coin")
+            # A FAILED RUN, NOT THE END OF THE DAY (RCA-2026-10-10-R): green
+            # with 0 coins is what a spent GitHub request budget looks like
+            # (the claim board goes quiet); it waits and is started again once
+            _red(st, "replay", {repo: {"conclusion": "success but measured no coin",
+                                       "failed": ["every machine measured 0 coins"]}
+                                for repo in empty}, now)
             return
         smallest = min(len(x) for x in shares.values())
         chunks = max(1, -(-SHARDS // smallest))

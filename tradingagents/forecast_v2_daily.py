@@ -319,6 +319,16 @@ def common_end(report_dir) -> int:
     return int(read_reports(report_dir)["end_ms"])
 
 
+def _measured_any(report_dir) -> bool:
+    """Does this replay's report name any measured pair?"""
+    from tradingagents import replay_collect as rc
+
+    try:
+        return bool(rc.merge_reports([str(report_dir)]).get("spans"))
+    except Exception:                                          # noqa: BLE001
+        return False
+
+
 def read_reports(report_dir) -> dict:
     """The replay's common end and WHAT IT COVERED — its write rule, signal
     groups, coins and strategies (bug hunt, round 16): the same rule set
@@ -765,7 +775,27 @@ def _step(st: dict, now: float) -> None:
         st.setdefault("missing", {})[phase] = {"of": sum(s["machines"] for s in used.values()),
                                                "failed": failed[:40]}
     if phase == "replay":
-        got = read_reports(list(_downloads(st, "replay", "replay-report-*").values()))
+        reps = _downloads(st, "replay", "replay-report-*")
+        # A REPLAY THAT MEASURED NO COIN IS A FAILED RUN (RCA-2026-10-10-R):
+        # green on every machine with 0 coins — the claim board went quiet
+        # when GitHub's request budget ran out — and re-reading it every 30
+        # minutes raised "no measured pair" for the rest of the day. That
+        # account's replay is started again once, then dropped and named.
+        again = False
+        for repo, d in reps.items():
+            if not _measured_any(d):
+                again = _redo(st, "replay", repo, {
+                    "conclusion": "success but measured no coin", "machines": 0,
+                    "failed": ["every machine measured 0 coins — the claim board did not "
+                               "answer"]}, now) or again
+        if again:
+            st["why"] = st.get("why", "").replace("ended success but measured no coin on every machine",
+                                                  "measured no coin")
+            return
+        if not st.get(key):
+            _give_up(st, phase, st.pop("last_why", "every account's replay measured no coin"))
+            return
+        got = read_reports([d for repo, d in reps.items() if repo in st[key]])
         st["end_ms"], st["universe"] = got["end_ms"], got["universe"]
         _dispatch_stage(st, "base", now)
         if not st["base_runs"]:

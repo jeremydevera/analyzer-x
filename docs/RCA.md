@@ -172,6 +172,63 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-10-R — Forecast v2's first Gate run was stuck re-reading two replays that measured nothing
+
+**CEO**
+
+* Forecast v2's daily run on Gate stalled at Oct 10, 2026 10:03am with "the
+  replay's reports name no measured pair", and would have repeated that
+  every 30 minutes for the rest of the day.
+* Why: both accounts' replays ended "green" having measured no coin —
+  GitHub's request budget was spent and every machine's claim board went
+  quiet — and the daily run only ever re-read those same two empty runs.
+* What stops it now: a replay that measured no coin counts as failed, so it
+  is started again once (that account alone), the same rule as a red run;
+  Room strategies' re-test gets the same rule, waiting 30 minutes first.
+
+**DEV**
+
+* `tradingagents/forecast_v2_daily.py` replay phase called `read_reports`
+  over every account's reports; `rc.common_end({})` is 0 → RuntimeError →
+  `failed_at` → the same runs re-read after RETRY_S, for ever. With ONE
+  empty account it went on to forecast on an empty replay for half the
+  market. `room_strategies_daily` gave the day up on "measured no coin".
+* Invariant broken: **a run that measured nothing is a failed run, whatever
+  colour GitHub gives it**.
+* Guards: `tests/test_forecast_v2.py::test_a_replay_that_measured_no_coin_is_started_again_not_reread_for_ever`,
+  `tests/test_room_strategies_retest_daily.py::test_a_replay_that_measured_no_coin_waits_and_is_started_again`.
+
+**SAW** — Forecast v2 state: `the replay step failed at Oct 10, 2026
+10:03am — tried again after 30 minutes: RuntimeError: the replay's reports
+name no measured pair`; every machine of runs 38055837139 / 38055847160:
+`done: 0 coin(s), 0 tested ... in 1 min`.
+
+**TIMELINE**
+
+1. Oct 10, 2026 9:28am — Forecast v2 dispatches its replays on both
+   accounts, during the request-budget storm (RCA-2026-10-10-N).
+2. ~9:30am — every machine's claim board answers nothing three times; each
+   stops with 0 coins; both runs end green.
+3. 10:03am — the replay step raises "no measured pair"; it would raise the
+   same at 10:33am, 11:03am, ... until the day went stale.
+4. After the fix — an empty account's replay is started again once, then
+   that account is dropped and named.
+
+**ROOT CAUSE** — "green" was read as "measured", and a step that cannot
+proceed re-read its inputs instead of renewing them.
+
+**WHY IT WAS NOT CAUGHT** — the chain tests built replays that measured
+coins or runs that ended red; none built a green run with no coins.
+
+**COST** — none in money; Forecast v2's Gate prediction is a few hours late.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_forecast_v2.py::test_a_replay_that_measured_no_coin_is_started_again_not_reread_for_ever`,
+`tests/test_room_strategies_retest_daily.py::test_a_replay_that_measured_no_coin_waits_and_is_started_again`.
+
+---
+
 ## RCA-2026-10-10-Q — today's Room strategies re-test was given up: a run that failed on GitHub's request limit was started again the same minute and failed again
 
 **CEO**

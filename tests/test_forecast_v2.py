@@ -1226,3 +1226,37 @@ def test_the_first_ask_after_a_restart_says_it_is_being_worked_out(monkeypatch):
             ask()
         assert got.value.status_code == 503
         assert "still being worked out" in got.value.detail
+
+
+def test_a_replay_that_measured_no_coin_is_started_again_not_reread_for_ever(tmp_path, monkeypatch):
+    """Oct 10, 2026 (RCA-2026-10-10-R): both replay runs (38055837139,
+    38055847160) ended GREEN with 0 coins measured — GitHub's request budget
+    was spent and every machine's claim board went quiet — and the replay
+    step raised "the replay's reports name no measured pair" every 30
+    minutes over the same two runs, for the rest of the day. A replay that
+    measured no coin is a failed run: started again once, that account alone."""
+    fd = _two(monkeypatch)
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: DONE)
+
+    def download(run, repo, pattern):
+        d = tmp_path / "dl" / str(run)
+        rep = d / "replay-report-0"
+        rep.mkdir(parents=True, exist_ok=True)
+        spans = {} if repo == FORK and run == 12 else {
+            f"{'A' if repo == ME else 'B'}_USDT 15m": [1, _ms(2026, 10, 1, 15)]}
+        (rep / "replay-report-0.json").write_text(json.dumps({
+            "kept": 1, "tested": 1, "start": "2026-07-01", "write": {"wr": 70},
+            "groups": ["classic"], "spans": spans}), encoding="utf-8")
+        return d
+
+    monkeypatch.setattr(fd, "download", download)
+    sent = []
+    monkeypatch.setattr(fd, "dispatch", lambda wf, inputs, repo, since=None: sent.append((wf, repo))
+                        or 30 + len(sent))
+    st = {"phase": "replay", "on": True, "fleets": [ME, FORK], "replay_runs": {ME: 11, FORK: 12},
+          "start": "2026-07-01", "started_day": "2026-10-01", "coins": {ME: 3, FORK: 2},
+          "piles": {ME: ["A_USDT"], FORK: ["B_USDT"]}}
+    fd._step(st, NOW)
+    assert sent == [(fd.REPLAY_WF, FORK)], "the empty account's replay alone, started again"
+    assert st["phase"] == "replay" and st["replay_runs"] == {ME: 11, FORK: 31}
+    assert "measured no coin" in st["why"]

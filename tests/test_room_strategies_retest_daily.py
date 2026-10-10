@@ -456,3 +456,29 @@ def test_an_exchange_switch_carries_the_rule_sets_and_never_their_trades(tmp_pat
     assert w["found_at"] == 1790000000, "the day it was found stays"
     assert w["p4"]["last15"]["corrected"] is None and w["carried_from"] == "mexc"
     assert rst.carry_rule_sets(src, from_venue="mexc") == 0, "never twice"
+
+
+def test_a_replay_that_measured_no_coin_waits_and_is_started_again(gh, monkeypatch):
+    """Oct 10, 2026 (RCA-2026-10-10-R): a replay can end GREEN with 0 coins
+    when GitHub's request budget is spent and the claim board goes quiet.
+    The re-test gave the day up at once ("measured no coin"); it is a failed
+    run like any other — waits 30 minutes, then that account alone again."""
+    from tradingagents import forecast_v2_daily as f2d
+
+    st = {"phase": "idle"}
+    rsd._step(st, AT_2AM)
+    pulls = []
+    monkeypatch.setattr(rsd, "_download", lambda run, repo, pattern, dest: pulls.append(run) or dest)
+    monkeypatch.setattr(f2d, "read_reports", lambda dirs: {"end_ms": NEW_END, "universe": {"coins": 10}})
+    monkeypatch.setattr(rst, "replay_shard_sizes",
+                        lambda run, repo: {0: 9} if repo.startswith("me") else {})
+    first = dict(st["replay_runs"])
+    gh.sent.clear()
+    rsd._step(st, AT_2AM + 600)
+    assert st["phase"] == "replay" and not gh.sent, "it waits, never gives the day up"
+    n = len(pulls)
+    rsd._step(st, AT_2AM + 600 + rsd.POLL_S + 1)
+    assert len(pulls) == n, "nothing downloaded again while it waits"
+    rsd._step(st, AT_2AM + 600 + rsd.RETRY_S + rsd.POLL_S)
+    assert [s[2] for s in gh.sent] == ["pal/analyzer-x"] and gh.sent[0][0] == rsd.REPLAY_WF
+    assert st["replay_runs"]["pal/analyzer-x"] != first["pal/analyzer-x"]

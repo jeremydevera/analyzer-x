@@ -203,9 +203,13 @@ def test_the_login_uses_the_projects_one_signer():
     """A second copy of the signing scheme is a copy that drifts."""
     import inspect
 
-    src = inspect.getsource(lp.PriceFeed._sync_subs)
+    # the login message moved into the exchange's protocol (Oct 10, 2026);
+    # the feed itself sends whatever the protocol builds and signs nothing
+    src = inspect.getsource(lp.MexcProtocol.login)
     assert "from tradingagents.dataflows.mexc_futures import sign" in src
     assert "hmac" not in src, "sign() is the only place that knows the scheme"
+    feed_src = inspect.getsource(lp.PriceFeed)
+    assert "hmac" not in feed_src and "sign(" not in feed_src
 
 
 def test_a_refused_login_leaves_the_public_feed_working():

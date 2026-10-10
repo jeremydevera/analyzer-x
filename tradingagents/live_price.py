@@ -62,7 +62,9 @@ from pathlib import Path
 logger = logging.getLogger("tradingagents.live_price")
 
 URL = "wss://contract.mexc.com/edge"
-# MEXC drops a connection that has not spoken for 60s; ping well inside that.
+GATE_URL = "wss://fx-ws.gateio.ws/v4/ws/usdt"
+# Both venues drop a connection that has not spoken for a while (MEXC 60s);
+# ping well inside that.
 PING_EVERY_S = 15.0
 # How much tick history to keep per symbol. The demo cycle looks every
 # DRY_EXIT_POLL_SECONDS (60), so 15 minutes is generous cover for a slow
@@ -101,11 +103,177 @@ MINUTE_GAP_S = 30.0
 MINUTE_COINS_MAX = 120
 
 
+# ------------------------------------------------------------- protocols
+# WHAT CHANGES BETWEEN EXCHANGES IS ONLY THIS (Oct 10, 2026: the app moved to
+# Gate). The address, the subscribe/ping messages and how a message reads.
+# Every rule of the feed - a recorder, total, never a print from before the
+# order, a bar closes when the next one appears - stays in PriceFeed, once.
+#
+# `parse` turns one message into events:
+#   ("tick", symbol, price, ts_ms)            a print or a ticker snapshot
+#   ("deal", symbol, price, ts_ms)            a print that also widens a minute
+#   ("kline", symbol, interval, t, high, low) interval in the RUNNER's names
+#                                             (Min1, Min15, Min60, Hour4, Day1)
+#   ("login", ok, detail)
+#   ("personal", channel, data)
+class MexcProtocol:
+    """MEXC's `wss://contract.mexc.com/edge` - the messages the feed has
+    always sent, unchanged."""
+
+    url = URL
+    name = "MEXC"
+
+    def ping(self) -> str:
+        return json.dumps({"method": "ping"})
+
+    def subscribe_symbols(self, syms) -> list:
+        return [json.dumps({"method": m, "param": {"symbol": s}})
+                for s in syms for m in ("sub.ticker", "sub.deal")]
+
+    def unsubscribe_symbols(self, syms) -> list:
+        return [json.dumps({"method": m, "param": {"symbol": s}})
+                for s in syms for m in ("unsub.ticker", "unsub.deal")]
+
+    def subscribe_kline(self, sym: str, iv: str) -> list:
+        return [json.dumps({"method": "sub.kline",
+                            "param": {"symbol": sym, "interval": iv}})]
+
+    def unsubscribe_kline(self, sym: str, iv: str) -> list:
+        return [json.dumps({"method": "unsub.kline",
+                            "param": {"symbol": sym, "interval": iv}})]
+
+    def login(self, creds) -> list:
+        # Signed exactly like a REST call (key + timestamp + empty parameter
+        # string) with the project's one signer, so there is no second copy
+        # of the scheme to drift from it.
+        from tradingagents.dataflows.mexc_futures import sign
+
+        ts = str(int(time.time() * 1000))
+        return [json.dumps({"method": "login", "param": {
+            "apiKey": creds[0], "reqTime": ts,
+            "signature": sign(creds[0], creds[1], ts)}})]
+
+    def parse(self, m: dict) -> list:
+        ch = m.get("channel")
+        sym = m.get("symbol")
+        data = m.get("data")
+        out = []
+        if ch == "push.deal" and sym:
+            rows = data if isinstance(data, list) else [data]
+            for r in rows:
+                if isinstance(r, dict):
+                    out.append(("deal", sym, _num(r.get("p")), r.get("t")))
+        elif ch == "push.ticker" and sym and isinstance(data, dict):
+            out.append(("tick", sym, _num(data.get("lastPrice")), m.get("ts")))
+        elif ch == "push.kline" and sym and isinstance(data, dict):
+            iv = str(data.get("interval") or "")
+            t = data.get("t")
+            if iv and t is not None:
+                out.append(("kline", sym, iv, t, _num(data.get("h")),
+                            _num(data.get("l"))))
+        elif ch == "rs.login":
+            out.append(("login", data == "success", data))
+        elif isinstance(ch, str) and ch.startswith("push.personal."):
+            out.append(("personal", ch, data))
+        return out
+
+
+# Gate names bar sizes its own way; the runner (and the feed's keys) keep
+# MEXC's names, the door's vocabulary.
+_GATE_IV = {"Min1": "1m", "Min5": "5m", "Min15": "15m", "Min30": "30m",
+            "Min60": "1h", "Hour4": "4h", "Hour8": "8h", "Day1": "1d"}
+_GATE_IV_BACK = {v: k for k, v in _GATE_IV.items()}
+
+
+class GateProtocol:
+    """Gate's `wss://fx-ws.gateio.ws/v4/ws/usdt`, measured Oct 10, 2026:
+    `futures.trades` pushes every print with `create_time_ms`;
+    `futures.tickers` pushes `last` (stamped by the message's `time_ms`);
+    `futures.candlesticks` pushes the forming bar, keyed `n: "15m_BTC_USDT"`,
+    `t` its open. Ping is `futures.ping` -> `futures.pong`. The private
+    channels need a key (phase 6), so `login` sends nothing yet."""
+
+    url = GATE_URL
+    name = "Gate"
+
+    @staticmethod
+    def _msg(channel: str, event: str, payload=None) -> str:
+        body = {"time": int(time.time()), "channel": channel, "event": event}
+        if payload is not None:
+            body["payload"] = payload
+        return json.dumps(body)
+
+    def ping(self) -> str:
+        return self._msg("futures.ping", "")
+
+    def subscribe_symbols(self, syms) -> list:
+        syms = list(syms)
+        if not syms:
+            return []
+        return [self._msg(ch, "subscribe", syms)
+                for ch in ("futures.tickers", "futures.trades")]
+
+    def unsubscribe_symbols(self, syms) -> list:
+        syms = list(syms)
+        if not syms:
+            return []
+        return [self._msg(ch, "unsubscribe", syms)
+                for ch in ("futures.tickers", "futures.trades")]
+
+    def subscribe_kline(self, sym: str, iv: str) -> list:
+        return [self._msg("futures.candlesticks", "subscribe",
+                          [_GATE_IV.get(iv, iv), sym])]
+
+    def unsubscribe_kline(self, sym: str, iv: str) -> list:
+        return [self._msg("futures.candlesticks", "unsubscribe",
+                          [_GATE_IV.get(iv, iv), sym])]
+
+    def login(self, creds) -> list:
+        return []
+
+    def parse(self, m: dict) -> list:
+        ch = m.get("channel")
+        if m.get("event") != "update":
+            return []
+        res = m.get("result")
+        rows = res if isinstance(res, list) else [res]
+        out = []
+        for r in rows:
+            if not isinstance(r, dict):
+                continue
+            if ch == "futures.trades":
+                ts = r.get("create_time_ms")
+                if not ts and r.get("create_time"):
+                    ts = _num(r.get("create_time")) * 1000
+                out.append(("deal", r.get("contract"), _num(r.get("price")), ts))
+            elif ch == "futures.tickers":
+                out.append(("tick", r.get("contract"), _num(r.get("last")),
+                            m.get("time_ms")))
+            elif ch == "futures.candlesticks":
+                n = str(r.get("n") or "")
+                iv, _, sym = n.partition("_")
+                if sym and iv in _GATE_IV_BACK and r.get("t") is not None:
+                    out.append(("kline", sym, _GATE_IV_BACK[iv], r.get("t"),
+                                _num(r.get("h")), _num(r.get("l"))))
+        return out
+
+
+def protocol_for_venue():
+    """The protocol of the exchange this app trades (tradingagents.venue)."""
+    from tradingagents import venue  # noqa: PLC0415
+
+    return GateProtocol() if venue.current() == "gate" else MexcProtocol()
+
+
 class PriceFeed:
     """Records ticks per symbol. Thread-safe, total, and fails to silence."""
 
-    def __init__(self, url: str = URL):
-        self.url = url
+    def __init__(self, url: str | None = None, protocol=None):
+        # The protocol is resolved on FIRST USE when not given, never at
+        # import: the module-level FEED is built when auto_trader is imported,
+        # before a test pins its venue or a runner has read venue.json.
+        self._proto = protocol
+        self._url = url
         self._lock = threading.Lock()
         self._ticks: dict[str, collections.deque] = {}
         self._want: set[str] = set()
@@ -146,6 +314,16 @@ class PriceFeed:
         self._want_minutes: set[str] = set()
         self._minutes: dict[str, dict[int, list]] = {}
         self._minute_stats = {"served": 0, "fell_back": 0}
+
+    @property
+    def proto(self):
+        if self._proto is None:
+            self._proto = protocol_for_venue()
+        return self._proto
+
+    @property
+    def url(self) -> str:
+        return self._url or self.proto.url
 
     # ------------------------------------------------------------- control
     def start(self) -> bool:
@@ -506,39 +684,28 @@ class PriceFeed:
             kwant = strategy_bars | {(s, "Min1") for s in self._want_minutes}
             khave = set(self._subbed_klines)
             creds, logged = self._creds, self._logged_in
-        for sym in sorted(want - have):
-            for method in ("sub.ticker", "sub.deal"):
-                await ws.send(json.dumps({"method": method,
-                                          "param": {"symbol": sym}}))
-        for sym in sorted(have - want):
-            for method in ("unsub.ticker", "unsub.deal"):
-                with _quiet():
-                    await ws.send(json.dumps({"method": method,
-                                              "param": {"symbol": sym}}))
+        proto = self.proto
+        for msg in proto.subscribe_symbols(sorted(want - have)):
+            await ws.send(msg)
+        for msg in proto.unsubscribe_symbols(sorted(have - want)):
+            with _quiet():
+                await ws.send(msg)
         # the strategies' own bars FIRST: they wake entries. The practice
         # exit's minutes are a saving and go last, so if the venue ever caps
         # what one socket may hold, it is a saving that is refused.
         for sym, iv in sorted(kwant - khave,
                               key=lambda k: (k not in strategy_bars, k)):
-            await ws.send(json.dumps({"method": "sub.kline",
-                                      "param": {"symbol": sym,
-                                                "interval": iv}}))
+            for msg in proto.subscribe_kline(sym, iv):
+                await ws.send(msg)
         for sym, iv in sorted(khave - kwant):
-            with _quiet():
-                await ws.send(json.dumps({"method": "unsub.kline",
-                                          "param": {"symbol": sym,
-                                                    "interval": iv}}))
+            for msg in proto.unsubscribe_kline(sym, iv):
+                with _quiet():
+                    await ws.send(msg)
         if creds and not logged:
-            # The private stream carries LIVE fills. Signed exactly like a
-            # REST call (key + timestamp + empty parameter string) with the
-            # project's one signer, so there is no second copy of the scheme
-            # to drift from it. A login failure leaves the PUBLIC feed whole.
-            from tradingagents.dataflows.mexc_futures import sign
-
-            ts = str(int(time.time() * 1000))
-            await ws.send(json.dumps({"method": "login", "param": {
-                "apiKey": creds[0], "reqTime": ts,
-                "signature": sign(creds[0], creds[1], ts)}}))
+            # The private stream carries LIVE fills. A login failure leaves
+            # the PUBLIC feed whole.
+            for msg in proto.login(creds):
+                await ws.send(msg)
         with self._lock:
             self._subscribed = want
             self._subbed_klines = kwant
@@ -556,7 +723,7 @@ class PriceFeed:
                 await self._sync_subs(ws)
             now = time.time()
             if now - last_ping > PING_EVERY_S:
-                await ws.send(json.dumps({"method": "ping"}))
+                await ws.send(self.proto.ping())
                 last_ping = now
             try:
                 raw = await asyncio.wait_for(ws.recv(), timeout=1.0)
@@ -572,38 +739,38 @@ class PriceFeed:
                 logger.debug("bad feed message: %s", exc)
 
     def _on_message(self, m: dict) -> None:
-        ch = m.get("channel")
-        sym = m.get("symbol")
-        data = m.get("data")
-        if ch == "push.deal" and sym:
-            rows = data if isinstance(data, list) else [data]
-            for r in rows:
-                if isinstance(r, dict):
-                    self._record(sym, _num(r.get("p")), r.get("t"))
-                    self._widen_minute(sym, _num(r.get("p")), r.get("t"))
-        elif ch == "push.ticker" and sym and isinstance(data, dict):
-            self._record(sym, _num(data.get("lastPrice")), m.get("ts"))
-        elif ch == "push.kline" and sym and isinstance(data, dict):
-            self._on_kline(sym, data)
-        elif ch == "rs.login":
-            ok = data == "success"
-            self._logged_in = bool(ok)
-            if ok:
-                logger.info("live feed logged in - MEXC will push this "
-                            "account's fills as they happen")
-            else:
-                self._last_error = f"login refused: {data}"
-                logger.warning("live feed login refused (%s) - live fills "
-                               "still arrive on the next cycle", data)
-        elif isinstance(ch, str) and ch.startswith("push.personal."):
-            with self._lock:
-                self._personal.append({"channel": ch, "data": data,
-                                       "at": time.time()})
-                if len(self._personal) > 500:
-                    del self._personal[:-500]
-            # a real position changing at the venue is always worth a cycle
-            if ch in ("push.personal.position", "push.personal.order"):
-                self.wake.set()
+        for ev in self.proto.parse(m):
+            kind = ev[0]
+            if kind == "deal" and ev[1]:
+                self._record(ev[1], ev[2], ev[3])
+                self._widen_minute(ev[1], ev[2], ev[3])
+            elif kind == "tick" and ev[1]:
+                self._record(ev[1], ev[2], ev[3])
+            elif kind == "kline" and ev[1]:
+                self._on_kline(ev[1], {"interval": ev[2], "t": ev[3],
+                                       "h": ev[4], "l": ev[5]})
+            elif kind == "login":
+                ok, data = ev[1], ev[2]
+                self._logged_in = bool(ok)
+                if ok:
+                    logger.info("live feed logged in - %s will push this "
+                                "account's fills as they happen",
+                                self.proto.name)
+                else:
+                    self._last_error = f"login refused: {data}"
+                    logger.warning("live feed login refused (%s) - live "
+                                   "fills still arrive on the next cycle",
+                                   data)
+            elif kind == "personal":
+                ch, data = ev[1], ev[2]
+                with self._lock:
+                    self._personal.append({"channel": ch, "data": data,
+                                           "at": time.time()})
+                    if len(self._personal) > 500:
+                        del self._personal[:-500]
+                # a real position changing at the venue is always worth a cycle
+                if ch in ("push.personal.position", "push.personal.order"):
+                    self.wake.set()
 
     def _on_kline(self, symbol: str, d: dict) -> None:
         """A bar is CLOSED when its successor appears.

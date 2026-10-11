@@ -2682,11 +2682,16 @@ MAX_CHASE_FRACTION_OF_STOP = 0.10
 MAX_SIGNAL_AGE_FRACTION = 0.5      # of one bar
 
 # The backtest's "price already ran away" check reads the recorded book only
-# when the reading is at most this old (Oct 11, 2026). The cost check takes a
+# when the BOOK is at most this old (Oct 11, 2026). The cost check takes a
 # reading up to an hour old; a PRICE an hour old says nothing about where the
-# market was ~3 s after the close, when the runner looks. Gate's replayed
-# readings are one a minute, so a fresh one is there for every judged entry.
-CHASE_READING_MAX_AGE_S = 120
+# market was ~3 s after the close, when the runner looks. So only the close
+# minute's OWN book judges: the minute before sits inside the signal candle,
+# and a snapshot-only hour's minutes all carry its hour-start book
+# (`book_history.book_age_s`; 15,000 of 44,548 BTC readings since Sep 01,
+# 2026). Judged by the stamp's age at 120 s, the check refused 385 of 1,500
+# BTC 15m closes (long and short) in those 250 hours, and every one of the
+# 385 opened its next minute inside the limit (RCA-2026-10-11-E).
+CHASE_READING_MAX_AGE_S = 59
 
 
 def chase_ok(side: int, signal_close: float, live_px: float,
@@ -3299,15 +3304,18 @@ def entry_refusal(reading: dict | None, *, side: int, signal_close: float,
     ONE function for the engine (`backtest_strategy(book=)`) and the GitHub
     replay (replay_shard), so the two can never skip by two rules (Oct 11,
     2026: "i said it should behave like practice, meaning backtest should
-    know wether to skip a trade or not"). The price is judged only on a
-    reading at most CHASE_READING_MAX_AGE_S old: an older one says nothing
-    about where the market was when the runner looked."""
+    know wether to skip a trade or not"). The price is judged only on a BOOK
+    at most CHASE_READING_MAX_AGE_S old - the close minute's own, never a
+    snapshot-only hour's later minutes (`book_history.book_age_s`): an older
+    book says nothing about where the market was when the runner looked."""
+    from tradingagents.book_history import book_age_s
+
     cv = minute_verdict(reading, side=side, tp=tp, sl=sl, fee=fee, hold_s=hold_s,
                         liq=liq, fund_day=fund_day, flat_slip=flat_slip)
     if cv["verdict"] == "block":
         return "gate_blocked", cv
     if (reading is not None
-            and int(reading.get("age_s") or 0) <= CHASE_READING_MAX_AGE_S
+            and book_age_s(reading) <= CHASE_READING_MAX_AGE_S
             and not chase_ok(side, float(signal_close),
                              float(reading["ask"] if side == 1 else reading["bid"]),
                              sl)[0]):

@@ -219,20 +219,29 @@ own `maintenance_rate`.
   second rule — count a refusal as `gate_blocked` and take no trade, and
   charge entry and exit at their own minutes' fills. A minute with no
   reading in the hour before it pays the coin's flat cost and is counted
-  `cost_unmeasured`, never hidden.
+  `cost_unmeasured`, never hidden. A costs run that runs out of time is
+  RESUMED by the next press: days a coin's month already holds are skipped
+  (RCA-2026-10-10-D).
 * **AND IT SKIPS WHAT PRACTICE SKIPS (Oct 11, 2026: *"i said it should
   behave like practice, meaning backtest should know wether to skip a trade
   or not"*).** One function, `auto_trader.entry_refusal`, for the engine and
   replay_shard: the cost check, then "the price already ran away"
-  (`chase_ok` on the minute's best price, ask for a long, bid for a short,
-  only on a reading at most `CHASE_READING_MAX_AGE_S` old), counted
-  `chase_skip` on every row. Backtest a room never lets a model refuse a
-  candle the room really entered (`trades_for(took=)` → `keep`) and applies
-  practice's one-direction coin rule on every day (`same_side=True`).
-  "Signal too old" exists only when a room's program is down or restarting:
-  Backtest a room takes it from the room's own downtime (RCA-2026-10-11-C). A costs run that runs out of time is
-  RESUMED by the next press: days a coin's month already holds are skipped
-  (RCA-2026-10-10-D).
+  (`chase_ok` on the minute's best price, ask for a long, bid for a short),
+  counted `chase_skip` on every row. **The price is judged only on the close
+  minute's OWN book** (`book_history.book_age_s`): an hour for which Gate
+  published only a snapshot stamps that one hour-start book on all sixty
+  minutes, and reading those as fresh refused 385 of 1,500 BTC 15m closes
+  (long and short) in its 250 such hours since Sep 01, 2026, every one of
+  which opened its next minute inside the limit (RCA-2026-10-11-E). Backtest a
+  room never lets a model refuse a candle the room really entered
+  (`trades_for(took=)` → `keep`) and applies practice's one-direction coin
+  rule on every day (`same_side=True`). "Signal too old" exists only when a
+  room's program is down or restarting: Backtest a room takes it from the
+  room's own downtime (RCA-2026-10-11-C).
+* **A v2 press with nothing picked measures the exchange's WHOLE market**
+  (`db_jobs.v2_board`), never this PC's 1-minute folder: the runners fetch
+  their own minutes, and on Oct 11, 2026 4:32am that folder held BTC and
+  SKY, so the daily update measured 2 coins of 1,027 (RCA-2026-10-11-D).
 * **Gate's fee is 0.075% taker on every contract** (`fee_floor()`), against
   MEXC's 0.02% floor. Funding cycles are 8 h, 4 h or 1 h per contract.
 * **Real money on Gate is built and shut.** Orders, the resting stop (Gate

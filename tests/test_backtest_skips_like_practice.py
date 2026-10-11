@@ -173,15 +173,69 @@ def test_the_room_replay_keeps_practice_s_same_direction_rule_before_the_room():
 def test_an_old_reading_never_judges_the_price():
     """The cost check takes the newest reading up to an hour old; the price
     is another matter - an ask from 30 minutes before the close says nothing
-    about where the market was when the runner looked, ~3 s after it. The
-    "ran away" check reads only a reading at most CHASE_READING_MAX_AGE_S old,
-    else it does not judge (the runner, with no live price, would have looked
-    again; the backtest cannot)."""
+    about where the market was when the runner looked, ~3 s after it. Only
+    the book of the close's OWN minute judges the price, else it does not
+    judge (the runner, with no live price, would have looked again; the
+    backtest cannot). The minute before the close is inside the signal
+    candle, so it is not judged either (review of a1ab2206)."""
     old = book(100.14, 100.15, at_t=T0 + 6 * H - 30 * 60)
     r = run(book=old)
     assert r["trades"] == 1 and r["chase_skip"] == 0
-    fresh = book(100.14, 100.15, at_t=T0 + 6 * H - at.CHASE_READING_MAX_AGE_S)
-    assert run(book=fresh)["chase_skip"] == 1
+    minute_before = book(100.14, 100.15, at_t=T0 + 6 * H - 60)
+    r = run(book=minute_before)
+    assert r["trades"] == 1 and r["chase_skip"] == 0
+    assert run(book=book(100.14, 100.15))["chase_skip"] == 1
+
+
+RAN = {"age_s": 0, "bid": 100.14, "ask": 100.15, "spread": 0.0001,
+       "buy": 0.0001, "sell": 0.0001, "exhausted": False}
+LONG = dict(side=1, signal_close=100.0, tp=0.01, sl=0.01, fee=0.00075,
+            hold_s=3600, liq=None, fund_day=0.0)
+
+
+def test_a_snapshot_only_hour_never_judges_the_price():
+    """Gate publishes only a snapshot for some hours, and `replay_hour`
+    stamps that ONE hour-start book on all sixty minutes, each read back
+    with age 0 (source 2). This PC's BTC readings, Sep 10, 2026: the ask is
+    77142.4 at 10:00, 10:15, 10:30 and 10:45am - the 10:00 book every time
+    - and 15,000 of 44,548 BTC readings since Sep 01 are such hours. A 15m
+    long closing 0.124% under that stale ask was refused while the next
+    minute opened at the close (review of a1ab2206, RCA-2026-10-11-E)."""
+    hour = 1789048800                            # Sep 10, 2026 10:00am EDT
+    # a snapshot-only hour read at :15 - its book is 15 minutes old
+    assert at.entry_refusal({**RAN, "t": hour + 900, "source": 2}, **LONG)[0] == ""
+    # the same hour read at :00 IS the snapshot's own minute
+    assert at.entry_refusal({**RAN, "t": hour, "source": 2}, **LONG)[0] == "chase_skip"
+    # a full replay's :15 is that minute's own book
+    assert at.entry_refusal({**RAN, "t": hour + 900, "source": 1}, **LONG)[0] == "chase_skip"
+
+
+def test_the_engine_reads_a_snapshot_hour_as_old():
+    """The same rule through `backtest_strategy`: 15m bars, the entry at
+    :15 past an hour that only has a snapshot."""
+    n, q = 30, 900
+    o = [100.0] * n
+    hi, lo = [100.2] * n, [99.8] * n
+    hi[8] = 101.5
+    df = pd.DataFrame({"Date": pd.to_datetime([T0 + q * k for k in range(n)], unit="s"),
+                       "Open": o, "High": hi, "Low": lo, "Close": o,
+                       "Volume": [1.0] * n})
+    dirs = [0] * n
+    dirs[4] = 1                    # signal on bar 4 -> entry at bar 5 = T0 + 1h15m
+    entry = T0 + 5 * q
+    assert entry % 3600 == 900
+
+    def snap(source):
+        b = book(100.14, 100.15, at_t=entry)
+        return {**b, "source": np.asarray([source], dtype="int8")}
+
+    def go(b):
+        return at.backtest_strategy(KEY, df, 5.0, fee=0.00075, slippage=0.0003,
+                                    sizing="flat", dirs=dirs, tp=0.01, sl=0.01,
+                                    keep_log=True, book=b)
+    r = go(snap(2))
+    assert r["trades"] == 1 and r["chase_skip"] == 0, r
+    assert go(snap(1))["chase_skip"] == 1
 
 
 def test_a_row_measured_on_this_pc_carries_the_count_too():

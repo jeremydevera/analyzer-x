@@ -153,6 +153,20 @@ def pack(readings) -> dict:
 MAX_AGE_S = 3600
 
 
+def book_age_s(reading: dict) -> int:
+    """How old the BOOK a reading carries is, in seconds, when it was asked
+    for. `age_s` is the age of the minute's STAMP; a snapshot-only hour
+    (source 2) stamps its one hour-start book on all sixty minutes
+    (`replay_hour`), so that book is `t - hour_start` older than its stamp.
+    This PC's BTC, Sep 10, 2026: the ask read 77142.4 at 10:00, 10:15, 10:30
+    and 10:45am, each with age 0 - the 10:00 book every time
+    (RCA-2026-10-11-E)."""
+    age = int(reading.get("age_s") or 0)
+    if int(reading.get("source") or 0) == SOURCES["snapshot"]:
+        age += int(reading["t"]) % 3600
+    return age
+
+
 def reading_at(packed: dict, ts: float, max_age_s: int = MAX_AGE_S):
     """The newest reading at or before `ts`, at most `max_age_s` old, as a
     dict with its age — or None."""

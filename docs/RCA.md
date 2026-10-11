@@ -172,6 +172,183 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-11-E — the backtest's "price already ran away" check read an hour-old order book as the price at the close, and skipped 385 of 1,500 BTC 15m entries in those hours
+
+NEVER HAPPENED YET in a stored row: found by the review of a1ab2206 before
+any GitHub run measured with it.
+
+**CEO**
+
+* For some hours Gate keeps only one picture of the order book, taken at
+  the top of the hour. This morning's new "price ran away" check read that
+  picture as the price at 10:15, 10:30 and 10:45 too.
+* Why: each of those minutes was marked as fresh. A coin that had moved
+  since the top of the hour looked as if its price had run away, so the
+  backtest skipped trades practice would have taken. On BTC 15m it skipped
+  385 of 1,500 such entries, and in every one the real price was inside the
+  limit.
+* What stops it now: only the order book of the closing minute itself can
+  judge the price. When that is not known, the trade is taken, as before.
+
+**DEV**
+
+* `tradingagents/auto_trader.py` `entry_refusal` (a1ab2206) judged the price
+  when `reading["age_s"] <= CHASE_READING_MAX_AGE_S` (120).
+  `book_history.replay_hour` stamps a snapshot-only hour's one book on all
+  60 minutes (source 2), and `reading_at` reads each one back with age 0.
+* Invariant broken: **a reading's age is the age of its BOOK, not of its
+  stamp**. `book_history.book_age_s` adds `t - hour_start` for source 2, and
+  only the close minute's own book judges (`CHASE_READING_MAX_AGE_S = 59`).
+* Guards:
+  `tests/test_backtest_skips_like_practice.py::test_a_snapshot_only_hour_never_judges_the_price`,
+  `::test_the_engine_reads_a_snapshot_hour_as_old` and
+  `::test_an_old_reading_never_judges_the_price`, all red on a1ab2206.
+
+**SAW** — the reviewer of a1ab2206, Oct 11, 2026, on a BTC 15m long:
+* signal close Sep 10, 2026 10:15am at 77047.1;
+* "ask at the close" 77142.4, which is really the 10:00am snapshot;
+* drift +0.124%, refused at a 1% stop;
+* the next minute opened at 77047.1.
+
+**TIMELINE**
+
+1. **Oct 11, 2026 6:54am.** a1ab2206 adds the check to the engine, the
+   GitHub replay, a row's trade list and Backtest a room.
+2. **Oct 11, 2026 7:07am.** The back end and all 13 rooms restart on
+   0b8ab291, a peer's commit on top. The check is live on this PC: in a
+   row's trade list, in the rebuild behind the DEMO 30-day figure, and in
+   Backtest a room.
+3. **This PC's BTC readings, Sep 01 to Oct 11, 2026.**
+   * 15,000 of 44,548 come from 250 snapshot-only hours.
+   * On Sep 10 the ask reads 77142.4 at 10:00, 10:15, 10:30 and 10:45am,
+     with age 0 every time.
+4. **Measured over those 250 hours:** the 15m closes at :15, :30 and :45,
+   long and short, are 1,500. The check refused 385 of them, and in all 385
+   the entry bar's first price was inside the limit.
+5. **After the fix**, none of those 1,500 is judged. The hour's own :00
+   minute still is.
+6. **No GitHub run measured with it.** The last sweep (runs 38125155535 and
+   38125162569) ran at 4:32am and the last replay at 4:53am, both before
+   a1ab2206. One switch-off pass ran on it, #4FC03172 at 7:09am; that room
+   runs no practice strategy, and it switched nothing.
+
+**ROOT CAUSE** — `entry_refusal` used `age_s`, the age of the minute's
+stamp, as the age of the book. For a snapshot-only hour the two differ by up
+to 59 minutes.
+
+**WHY IT WAS NOT CAUGHT**
+* The check was validated on room #55D32617's entries since the move to Gate
+  (Oct 10 to 11, 2026). Those days hold 0% snapshot-only hours, while the
+  days before them hold most of them.
+* Every test built its book with `source` 1, a full replay, the only kind the
+  fixtures' helper made. Nothing fed the engine a source-2 reading, so the
+  field where the stamp and the book differ was never exercised.
+* A fresh reviewer found it by asking where a reading's minute comes from,
+  which no test asked.
+
+**COST** — none in money (practice). No stored row and no switch was
+affected. Between 7:07am and this fix, a row's trade list, Backtest a room
+and the DEMO 30-day rebuild on this PC could skip 15m and 30m entries
+wrongly, on screen only.
+
+**FIX** — this commit: `book_history.book_age_s`, and `entry_refusal`
+judges the price only on a book at most `CHASE_READING_MAX_AGE_S = 59` s
+old.
+
+**GUARD** —
+`tests/test_backtest_skips_like_practice.py::test_a_snapshot_only_hour_never_judges_the_price`,
+`::test_the_engine_reads_a_snapshot_hour_as_old` and
+`::test_an_old_reading_never_judges_the_price`.
+
+---
+
+## RCA-2026-10-11-D — the daily backtest update measured 2 coins of 1,027, because it took its coin list from this PC's 1-minute folder
+
+**CEO**
+
+* This morning's automatic backtest update (Oct 11, 2026 4:32am) measured
+  only 2 coins, BTC and SKY, out of the 1,027 that Gate trades. The other
+  1,025 kept yesterday's results. The BACKTEST button on Backtest v2, with
+  no coin picked, would have done the same.
+* Why: both took their coin list from the folder of 1-minute prices on this
+  PC. Since the move to Gate nothing fills that folder, and it held only
+  those 2 coins.
+* What stops it now: with no coin picked, both send every coin Gate trades.
+  If that list cannot be read, they measure nothing and say why, instead of
+  sending a shorter list.
+
+**DEV**
+
+* `tradingagents/db_jobs.py` `_run_btupdate_v2` built the board from
+  `stored_symbols(store="v2")`, the PC's v2 candle folder, and fell back to
+  `exchange.trading_symbols()` only when that folder was EMPTY.
+  `tradingagents/api.py` `cloud_dispatch` with res `1m` had no fallback at
+  all.
+* Invariant broken: **the board is what is measured, never a cache that
+  happens to sit on this PC**. The v2 runners have downloaded their own
+  minutes since Sep 21, 2026, and the Gate cutover emptied the folder.
+  `db_jobs.v2_board()` is now the one board for both.
+* Guards: `tests/test_v2_board_is_the_whole_market.py` (7 tests, 4 red
+  before the fix) and
+  `tests/test_forty_machines_across_two_accounts.py::test_the_v2_press_names_the_exchanges_market`.
+
+**SAW** — `db_btupdate_v2.log`: "no coins named — continuing every v2 pair:
+2 contract(s)", then "2 account(s) x 20 machines = 40; 2 coins dealt 1 / 1".
+Backtest v2 said "all of it went to GitHub: 15m, 30m, 1h, 4h over 2
+contract(s) · runs 38125155535, 38125162569". This session found it while
+checking a1ab2206's reach; the operator had not seen it yet.
+
+**TIMELINE**
+
+1. **Oct 10, 2026 3:56am.** The move to Gate moves MEXC's v2 minutes aside,
+   and the v2 1-minute folder is empty.
+2. **Oct 10, 2026 4:31am.** The daily update finds the folder empty, names
+   Gate's market, and deals 1,027 coins 514 / 513 (commit 936342619c50).
+3. **Oct 10, 2026 6:50am.** BTC_USDT-1m.json (2.2 MB) is last written into
+   the folder, from a Candles v2 test download that proved the Gate
+   download.
+4. **Oct 11, 2026 12:01am.** SKY_USDT-1m.json (1.1 MB) lands there from
+   another path on this PC.
+5. **Oct 11, 2026 4:32am.** The daily update reads 2 coins, so the
+   empty-folder fallback does not fire. Runs 38125155535 (jeremydvera) and
+   38125162569 (jeremydevera) measure BTC and SKY on 15m, 30m, 1h and 4h.
+6. **Left alone.** The Oct 12, 2026 4:32am update would have done the same.
+   By noon that day the other 1,025 coins' rows would have been about 52
+   hours old, past the watcher's 36-hour limit, and no room could have
+   switched anything on.
+7. **After the fix,** the same press names 1,027 coins, read live at Oct 11,
+   2026 7:50am, BTC and SKY among them.
+
+**ROOT CAUSE** — the Oct 10 fallback treated "no coins on this PC" as the
+only way the folder could be the wrong board. Two files made it look valid.
+
+**WHY IT WAS NOT CAUGHT**
+* The Oct 10 test
+  (`test_a_v2_store_with_nothing_yet_names_the_exchanges_whole_market`)
+  tried the folder EMPTY, the state of that one morning. No test tried a
+  folder holding a few coins, which is the state any download leaves behind.
+* `test_the_v2_press_names_the_v2_store` pinned the folder as the board for
+  a reason that stopped being true on Sep 21, 2026: *"a v2 run measured
+  against v1's coin list would ask for coins whose 1-minute candles this PC
+  does not have"*. The runners download their own minutes now. A test that
+  pins a limitation must pin its reason, and this reason had expired.
+* The run's sentence, "over 2 contract(s)", was true. A small count reads as
+  an alarm only to someone who knows it should say 1,027.
+
+**COST** — none in money (practice). 40 GitHub machines measured 2 coins.
+Today's noon switch-on reads Oct 10's rows, which are still inside the
+36-hour limit.
+
+**FIX** — this commit: `db_jobs.v2_board()` (the exchange's market; it
+raises when unread or empty), used by `_run_btupdate_v2` and by
+`api.cloud_dispatch` for res `1m`. The job's log line counts the coins it
+sends.
+
+**GUARD** — `tests/test_v2_board_is_the_whole_market.py` (7) and
+`tests/test_forty_machines_across_two_accounts.py::test_the_v2_press_names_the_exchanges_market`.
+
+---
+
 ## RCA-2026-10-11-C — the backtest asked one of practice's four questions before a trade, so it took trades practice skips (4.94% of them reached practice in the MEXC days)
 
 **CEO**
@@ -264,9 +441,10 @@ the fix) and the two replay-shard tests named above.
   from the room's own downtime and recorded skips.
 * Forecast v2's fast walk (`raw_fast`) caps trades per coin without the
   one-direction rule, because its rows carry no side.
-* Until the next daily update re-measures them (Oct 11, 2026 5:04pm), stored
-  v2 rows are the old count, while a click on a row (`trades_for`) already
-  skips.
+* Until the rows are measured again, stored v2 rows are the old count, while
+  a click on a row (`trades_for`) already skips. (This said the next daily
+  update was Oct 11, 2026 5:04pm. It is Oct 12, 2026 4:32am, and this
+  morning's measured 2 coins: RCA-2026-10-11-D.)
 
 ---
 

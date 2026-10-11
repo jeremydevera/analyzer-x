@@ -3959,15 +3959,26 @@ def cloud_dispatch(body: dict) -> dict:
     # runs ~20 machines, and this press used one. `dispatch_across` deals the
     # coins between the accounts this checkout has remotes for; with one
     # remote it is the single run it always was. An EMPTY pick means the whole
-    # market, which cannot be split unless it is named, so the store's own
-    # coin list is sent (the same list the machines would have worked out).
+    # market, which cannot be split unless it is named: v1 sends its store's
+    # own coin list (the same list the machines would have worked out), v2
+    # the exchange's whole market (`v2_board`) - never this PC's 1-minute
+    # folder, which held 2 coins after the move to Gate (RCA-2026-10-11-D).
     _picked = [str(c) for c in (body.get("coin_list") or [])]
     if not _picked:
         from tradingagents import db_jobs as _dj
 
         _res = str(body.get("res") or "")
-        _picked = [s.replace("_USDT", "") for s in
-                   _dj.stored_symbols(store="v2" if _res == "1m" else "v1")]
+        if _res == "1m":
+            try:
+                _picked = _dj.v2_board()
+            except Exception as exc:                           # noqa: BLE001
+                # named, never a narrower board in its place
+                raise HTTPException(
+                    502, f"could not read the exchange's market to measure: "
+                         f"{type(exc).__name__}: {str(exc)[:120]}") from exc
+        else:
+            _picked = [s.replace("_USDT", "") for s in
+                       _dj.stored_symbols(store="v1")]
     got = cs.dispatch_across(shards=int(body.get("shards") or 20),
                       coins=int(body.get("coins") or 0),
                       coin_list=_picked,

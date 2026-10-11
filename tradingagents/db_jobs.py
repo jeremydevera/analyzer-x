@@ -2075,6 +2075,27 @@ def stored_symbols(store: str = "v1") -> list:
     return sorted(out)
 
 
+def v2_board() -> list:
+    """The coins a Backtest v2 press with nothing picked measures: the
+    exchange's WHOLE market, as bare names - named, so `dispatch_across` can
+    deal it to both accounts (an empty list goes to one, 20 machines of 40).
+
+    Never `stored_symbols(store="v2")`: that is this PC's 1-minute folder,
+    and nothing fills it any more - the GitHub machines download their own
+    minutes, and the move to Gate (Oct 10, 2026) moved MEXC's aside. On
+    Oct 11, 2026 4:32am it held BTC (a test download) and SKY, and the daily
+    update measured those 2 coins where the day before had measured 1,027
+    (RCA-2026-10-11-D). A market that cannot be read, or names nothing,
+    RAISES: the caller names the failure, and a narrower board is never sent
+    in its place."""
+    from tradingagents.dataflows import exchange as _fx
+
+    board = [s.replace("_USDT", "") for s in _fx.trading_symbols()]
+    if not board:
+        raise RuntimeError("the exchange named no contract to measure")
+    return board
+
+
 def _run_btupdate(spec: dict) -> None:
     """CONTINUE stored backtests over new bars only — never from scratch.
 
@@ -2256,10 +2277,7 @@ def _run_btupdate_v2(spec: dict) -> None:
     if not coins:
         _write(FILES["btupdate_v2"]["progress"],
                {"running": True, "started": int(time.time()), "done": 0,
-                "total": 0, "now": "reading the 1-minute candle store"})
-        coins = stored_symbols()
-        print(f"[btupdate_v2] no coins named — continuing every v2 pair: "
-              f"{len(coins):,} contract(s)", flush=True)
+                "total": 0, "now": "reading the exchange's market"})
     tfs = [t for t in (spec.get("tfs") or list(cap.ALL_TFS))
            if t in ("15m", "30m", "1h", "4h", "1d")]
     # TO THE FLEET, exactly as v1's UPDATE goes. Operator, Sep 21, 2026:
@@ -2286,22 +2304,18 @@ def _run_btupdate_v2(spec: dict) -> None:
             # position over the new minutes only. `state_runs` names the runs
             # holding those positions; a pair with none is measured in full,
             # once, and says so.
-            # EVERY ACCOUNT, same as v1's UPDATE ("i want 40"). The v2
-            # store's own coin list is what makes the split possible when the
-            # operator picked nothing.
+            # EVERY ACCOUNT, same as v1's UPDATE ("i want 40"): a NAMED board
+            # is what makes the split possible. Nothing picked = the
+            # exchange's WHOLE market (`v2_board`), never this PC's 1-minute
+            # folder - two files in it narrowed the Oct 11, 2026 4:32am
+            # update to BTC and SKY (RCA-2026-10-11-D). A market that cannot
+            # be read raises here and is named below: nothing narrower is
+            # ever sent in its place.
             _picked = [str(c) for c in (spec.get("coins") or [])]
-            _coins_for_cloud = _picked or [s.replace("_USDT", "") for s in
-                                           stored_symbols(store="v2")]
-            if not _coins_for_cloud:
-                # A STORE THAT HOLDS NOTHING YET (the first UPDATE after the
-                # move to Gate, Oct 10, 2026: the cutover moved MEXC's
-                # minutes aside) measures the exchange's whole market, NAMED:
-                # an empty list goes to ONE account (dispatch_across will not
-                # split a board it cannot name) — 20 machines of 40.
-                from tradingagents.dataflows import exchange as _fx
-
-                _coins_for_cloud = [s.replace("_USDT", "")
-                                    for s in _fx.trading_symbols()]
+            _coins_for_cloud = _picked or v2_board()
+            if not _picked:
+                print(f"[btupdate_v2] no coins named — the exchange's whole "
+                      f"market: {len(_coins_for_cloud):,} contract(s)", flush=True)
             dispatched = cs.dispatch_across(
                 shards=cap.CLOUD_RUNNERS, coins=0,
                 coin_list=_coins_for_cloud,

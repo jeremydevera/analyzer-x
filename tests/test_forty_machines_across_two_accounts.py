@@ -259,7 +259,9 @@ def test_every_cloud_press_goes_through_the_splitter():
                      (api_mod.backtest_pending_resolve, "resolve the pending")):
         src = inspect.getsource(fn)
         assert "dispatch_across(" in src, what
-        assert "stored_symbols(" in src, f"{what} must NAME the board"
+        # a v2 press names the exchange's market (`v2_board`, RCA-2026-10-11-D)
+        assert "stored_symbols(" in src or "v2_board(" in src, \
+            f"{what} must NAME the board"
     # the hand-off names the coins the PC never reached, so it splits them
     assert "dispatch_across(" in inspect.getsource(api_mod._finish_handoff)
     # and nothing in the API starts a sweep on ONE account any more
@@ -267,16 +269,22 @@ def test_every_cloud_press_goes_through_the_splitter():
     assert "cs.dispatch(" not in src, "a sweep dispatched to one account"
 
 
-def test_the_v2_press_names_the_v2_store():
-    """A v2 run measured against v1's coin list would ask for coins whose
-    1-minute candles this PC does not have."""
+def test_the_v2_press_names_the_exchanges_market():
+    """This was "the v2 press names the v2 store", for a reason that stopped
+    being true: the GitHub machines download their own minutes (Sep 21,
+    2026) and the move to Gate moved this PC's aside, so on Oct 11, 2026
+    4:32am that folder held BTC and SKY and the daily update measured 2
+    coins (RCA-2026-10-11-D). Nothing picked on v2 = the exchange's whole
+    market; the behaviour is driven in tests/test_v2_board_is_the_whole_market.py."""
     import inspect
 
     from tradingagents import api as api_mod, db_jobs as dj
 
-    assert 'stored_symbols(store="v2")' in inspect.getsource(dj._run_btupdate_v2)
-    src = inspect.getsource(api_mod.cloud_dispatch)
-    assert 'store="v2" if _res == "1m" else "v1"' in src
+    for src in (inspect.getsource(dj._run_btupdate_v2),
+                inspect.getsource(api_mod.cloud_dispatch)):
+        assert "v2_board()" in src
+        assert 'stored_symbols(store="v2")' not in src
+        assert 'store="v2" if _res' not in src
 
 
 def test_the_coin_list_can_be_read_for_either_store(monkeypatch):

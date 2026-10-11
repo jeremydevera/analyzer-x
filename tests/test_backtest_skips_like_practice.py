@@ -21,7 +21,6 @@ minute is the entry bar's open, and the book is read there.
 """
 import numpy as np
 import pandas as pd
-import pytest
 
 from tradingagents import auto_trader as at
 
@@ -125,6 +124,7 @@ def test_the_trade_list_rebuild_lets_the_room_s_own_candles_through():
     exactly the candles the room entered (signal-candle opens: seconds in,
     milliseconds asked), and Backtest a room's rebuild passes them."""
     import re
+
     from tradingagents import market_sweep as msw
     keep = msw._keep_of({1791504000})
     assert keep(1791504000 * 1000) and not keep(1791507600 * 1000)
@@ -148,8 +148,7 @@ def test_the_room_replay_keeps_practice_s_same_direction_rule_before_the_room():
     """Practice never opens a trade against the side already open on its coin
     ("netting would cancel them"). Backtest a room applied that only while
     following the room; the days before it opened opposite trades together."""
-    from tradingagents import watcher_policy as wp
-    from tradingagents import watcher_replay as wr
+    from tradingagents import watcher_policy as wp, watcher_replay as wr
     t0 = 1791504000 * 1000
     hr = 3_600_000
     # a won trade at t0 makes each row pass its line at the next midnight;
@@ -189,8 +188,8 @@ def test_an_old_reading_never_judges_the_price():
 
 RAN = {"age_s": 0, "bid": 100.14, "ask": 100.15, "spread": 0.0001,
        "buy": 0.0001, "sell": 0.0001, "exhausted": False}
-LONG = dict(side=1, signal_close=100.0, tp=0.01, sl=0.01, fee=0.00075,
-            hold_s=3600, liq=None, fund_day=0.0)
+LONG = {"side": 1, "signal_close": 100.0, "tp": 0.01, "sl": 0.01, "fee": 0.00075,
+        "hold_s": 3600, "liq": None, "fund_day": 0.0}
 
 
 def test_a_snapshot_only_hour_never_judges_the_price():

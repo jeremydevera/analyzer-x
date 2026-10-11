@@ -312,12 +312,19 @@ checking a1ab2206's reach; the operator had not seen it yet.
 5. **Oct 11, 2026 4:32am.** The daily update reads 2 coins, so the
    empty-folder fallback does not fire. Runs 38125155535 (jeremydvera) and
    38125162569 (jeremydevera) measure BTC and SKY on 15m, 30m, 1h and 4h.
-6. **Left alone.** The Oct 12, 2026 4:32am update would have done the same.
-   By noon that day the other 1,025 coins' rows would have been about 52
-   hours old, past the watcher's 36-hour limit, and no room could have
-   switched anything on.
+6. **Left alone.** Every room is raw, so its daily switch-on runs at
+   midnight, not noon (`strategy_watcher._on_due`). At Oct 12, 2026 12:00am
+   the other 1,025 coins' results would have been about 43 hours old, past
+   the watcher's 36-hour limit, so no room could have switched anything on
+   that day. The 4:32am update after it lands too late for that pass, and
+   without this fix it would have measured the same 2 coins again.
 7. **After the fix,** the same press names 1,027 coins, read live at Oct 11,
    2026 7:50am, BTC and SKY among them.
+8. **Oct 11, 2026 11:20am.** Pressed again by hand, so Oct 12's midnight pass
+   has fresh results. The log reads "the exchange's whole market: 1,027
+   contract(s)" and "1,027 coins dealt 514 / 513" (runs 38150834266 and
+   38150844243). (This entry first said the switch-on runs at noon. That is
+   the rule only for a room that is not raw.)
 
 **ROOT CAUSE** — the Oct 10 fallback treated "no coins on this PC" as the
 only way the folder could be the wrong board. Two files made it look valid.
@@ -336,8 +343,9 @@ only way the folder could be the wrong board. Two files made it look valid.
   an alarm only to someone who knows it should say 1,027.
 
 **COST** — none in money (practice). 40 GitHub machines measured 2 coins.
-Today's noon switch-on reads Oct 10's rows, which are still inside the
-36-hour limit.
+Today's midnight switch-on (Oct 11, 2026 12:00am) ran before the 2-coin
+update, on Oct 10's results. Without the 11:20am re-press, every room would
+have lost Oct 12's switch-on.
 
 **FIX** — this commit: `db_jobs.v2_board()` (the exchange's market; it
 raises when unread or empty), used by `_run_btupdate_v2` and by

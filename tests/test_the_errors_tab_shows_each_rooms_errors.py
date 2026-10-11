@@ -112,6 +112,28 @@ def test_a_room_with_nothing_switched_on_is_idle_not_quiet(rooms):
                                    "to Sep 30, 2026 9:20pm)")
 
 
+def idle(t):
+    return (f"{t} INFO idle: nothing is switched on in this room — the runner is up "
+            f"and waiting (pid 32000)")
+
+
+def test_a_room_switched_off_and_still_beating_is_idle_not_quiet(rooms):
+    """The move to Gate (Oct 10, 2026 3:56am) switched every room's rows off.
+    #55D32617's runner then wrote its idle line every 5 minutes until the
+    watcher switched rows on and it scanned again at 9:59am — 364 minutes
+    with no price check, and nothing to check. That is the idle stretch the
+    first rule already calls idle, said out loud; a stretch with NO line at
+    all (the Oct 06, 2026 power cut, 4:15am to 5:09am) is still quiet."""
+    logs, _ = rooms
+    beats = [idle(f"Oct 10, 2026 {h}:{m:02d}am") for h in range(4, 10) for m in range(0, 60, 5)]
+    _write(logs["4FC03172"], scan("Oct 10, 2026 3:55am"), *beats, scan("Oct 10, 2026 9:59am"))
+    _write(logs["main"], scan("Oct 06, 2026 4:15am"), scan("Oct 06, 2026 5:09am"))
+    r = re_.report(hours=0, now=re_._when("Oct 10, 2026 10:00am"))
+    quiet = [(g["room"], g["message"]) for g in r["rows"] if g["kind"] == "quiet"]
+    assert quiet == [("main", "no price check for 54 minutes (from Oct 06, 2026 4:15am "
+                              "to Oct 06, 2026 5:09am)")]
+
+
 def test_a_runner_started_again_is_an_error_and_the_first_start_is_not(rooms):
     logs, ledgers = rooms
     _write(ledgers["4FC03172"], json.dumps({"ts": NOW - 7200, "action": "runner_start"}),

@@ -172,6 +172,70 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-11-A — the Errors tab called two idle rooms "quiet for six hours" after the move to Gate
+
+**CEO**
+
+* The Errors tab, and a GitHub issue, said rooms #55D32617 and #CC94D9FB
+  went 364 and 365 minutes with no price check on Oct 10, 2026, from about
+  3:55am to 9:59am.
+* Why: the move to Gate switched every room's strategies off at 3:56am, so
+  there was nothing to check; the rooms were up and said "idle" every 5
+  minutes, but the error list only listened for price checks.
+* What stops it now: an "idle" line counts as a sign of life, so only a
+  room that wrote nothing at all (a power cut, a crash) is listed as quiet.
+
+**DEV**
+
+* `tradingagents/room_errors.py` `_Tail.update` appended to `self.lines`
+  (the timeline `_quiet` measures gaps over) only for lines starting
+  `scan `; `auto_trader._idle_beat` writes `idle: nothing is switched on in
+  this room — the runner is up and waiting` once per idle cycle (300 s).
+* Invariant broken: **idle is not an outage** — the comment above that very
+  line said so, but it was only true for an idle stretch before the FIRST
+  scan; an idle stretch between two scans was an error.
+* Guard: `tests/test_the_errors_tab_shows_each_rooms_errors.py::test_a_room_switched_off_and_still_beating_is_idle_not_quiet`.
+
+**SAW** — issue fingerprint 93cf9c031005, "no price check for 365 minutes
+(from Oct 10, 2026 3:54am to Oct 10, 2026 9:59am)", rooms #55D32617 and
+#CC94D9FB.
+
+**TIMELINE**
+
+1. Oct 10, 2026 3:51am-3:55am — the last scans before the switch
+   (#55D32617's last exit: RLS_USDT SL, -1.03 at 3:51am).
+2. 3:56am — `venue_switch gate` switches every room's MEXC rows off.
+3. 4:01am, 4:05am, 5:09am — planned restarts; from 4:01am every room writes
+   "idle: nothing is switched on" every 5 minutes (#55D32617: 91 such lines
+   in its log, #CC94D9FB: 235, Main: 246).
+4. 9:59am — the watcher switches Gate rows on; #55D32617 scans 5 coins in
+   the 9am hour and 225 in the 10am hour.
+5. 10:00am — the Errors tab lists "no price check for 364 / 365 minutes";
+   the filer opens the issue.
+6. After the fix, replayed over the real logs (14 days): the two six-hour
+   rows are gone; left are the Oct 06, 2026 power cut (54 minutes, Main and
+   #6B08FF64) and 11 minutes across the 3:59am restart in three short-window
+   rooms — both real stretches with no line at all.
+
+**ROOT CAUSE** — the quiet check predated `_idle_beat` (RCA-2026-10-01-C)
+and was never taught that line; nothing switched every row off at once
+until the move to Gate.
+
+**WHY IT WAS NOT CAUGHT** — the only idle test put the silence BEFORE the
+first scan, where the rule already skipped it; no test had a room that
+scanned, went idle, and scanned again, and none fed it the idle line the
+runner really writes.
+
+**COST** — none in money; one false issue and two false rows on the Errors
+tab.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_errors_tab_shows_each_rooms_errors.py::test_a_room_switched_off_and_still_beating_is_idle_not_quiet`
+(red on the old file: it listed 364 minutes for the idle room).
+
+---
+
 ## RCA-2026-10-10-S — two machines of today's trading-cost run crashed on Gate's coins named in Chinese
 
 **CEO**

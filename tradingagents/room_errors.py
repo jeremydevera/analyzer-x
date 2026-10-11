@@ -145,8 +145,13 @@ class _Tail:
             self.last = ts
             # QUIET is measured between SCANS only: a room with nothing
             # switched on logs nothing, and that is idle, not an outage
-            # (#CC94D9FB "went quiet" for 64 minutes before its first rows)
-            if m.group(3).startswith("scan "):
+            # (#CC94D9FB "went quiet" for 64 minutes before its first rows).
+            # The runner SAYS it is idle once a cycle (`_idle_beat`), and that
+            # line counts as a check too: after the move to Gate switched
+            # every row off at Oct 10, 2026 3:56am, #55D32617 and #CC94D9FB
+            # beat every 5 minutes and were still filed as 364 and 365
+            # minutes "quiet" (RCA-2026-10-11-A)
+            if m.group(3).startswith(("scan ", "idle: nothing is switched on")):
                 self.lines.append(ts)
             what, kind = classify(m.group(2), m.group(3))
             if what == "error":

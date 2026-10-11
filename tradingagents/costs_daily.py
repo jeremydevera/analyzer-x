@@ -30,7 +30,9 @@ READY_HOUR_UTC = 3          # yesterday's 23:00 hour is published by ~01:00-02:0
 # 1-day rooms switch on by (RCA-2026-10-10-H). Today is never marked done;
 # tomorrow's 03:00 press reads the rest of it.
 TODAY_HOUR_UTC = 7
-BACKFILL_DAYS = 30
+# the operator, Oct 11, 2026: "what i want is past 2 months of backtest" —
+# two months of per-minute costs, so a 60-day backtest pays every minute
+BACKFILL_DAYS = 61
 SHARDS = 20
 RETRY_S = 30 * 60
 MAX_WAIT_S = 8 * 3600       # the longest a run of red presses ever waits

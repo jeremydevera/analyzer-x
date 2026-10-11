@@ -2638,6 +2638,13 @@ def paper_round_trip(pos: dict, symbol: str, *, fx=None) -> float:
     rt = float(pos.get("rt_cost") or 0)
     if rt > 0:
         slip = float(pos.get("book_slippage") or 0)
+        if "exit_slippage" in pos:
+            # THE EXIT PAYS THE OTHER SIDE (RCA-2026-10-11-B): a long closes
+            # by selling the bids, a short by buying the asks — the
+            # backtest's exit leg (`_c_out`). `rt_cost` carries the ENTRY
+            # side twice (cost_verdict's `2 * (slippage + fee)`), one of
+            # which the fill price already holds.
+            return max(rt - 2 * slip + float(pos.get("exit_slippage") or 0.0), 0.0)
         return max(rt - slip, 0.0)
     return live_fee_estimate(symbol, fx=fx) + 2 * PAPER_SLIPPAGE
 # How far SHY of a resting barrier a real fill may land and still be named
@@ -3334,6 +3341,20 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
     spec = STRATEGY_SPECS.get(key)
     if spec is None:
         return {"verdict": "unknown", "reason": f"unknown strategy {key}"}
+    if not side:
+        # BEFORE A SIGNAL (the screening pass, side 0) the direction is not
+        # known yet. Each side is judged on ITS OWN half of the book and ITS
+        # OWN funding — the backtest's minute_verdict — and the strategy is
+        # refused only when both are: pairing the cheaper side's book with
+        # the paying side's funding refused shorts that RECEIVE funding
+        # (RCA-2026-10-11-B, the review of the first fix).
+        both = [edge_check(key, symbol, margin, fx=fx, side=s_) for s_ in (1, -1)]
+        rank = {"ok": 0, "warn": 1, "block": 2}
+        best = min(both, key=lambda v: (rank.get(v.get("verdict"), 3),
+                                        float(v.get("cost_ratio") or 9e9)))
+        return {**best, "side_tested": 0,
+                "sides": {"long": both[0].get("verdict"),
+                          "short": both[1].get("verdict")}}
     # THE SIZE THIS TRADE WILL ACTUALLY BE. This measured
     # `margin * LADDER[-1] * LEVERAGE` — the deepest martingale rung — which
     # was right while the runner laddered and has been wrong since Sep 11,
@@ -3368,16 +3389,17 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
     # short the bids — the backtest has always read the trade's own side, and
     # this read the asks for every trade, so eight practice shorts on Gate
     # were judged on the wrong side (TOSHI: 0.1323% to buy, 0.0934% to sell).
-    # Before a signal (the screening pass, side 0) the direction is not
-    # known yet: the strategy is refused only when BOTH sides would refuse,
-    # and the entry then asks again with its side. A book that cannot fill
-    # EITHER side refuses, as the backtest refuses that minute.
+    # (side 0 never reaches here: it asks both sides above.) The EXIT pays
+    # the other side — a long sells the bids, a short buys the asks — which
+    # is what practice books on the way out (`exit_slippage`). A book that
+    # cannot fill EITHER side refuses, as the backtest refuses that minute.
     _buy = float(m.get("slippage_buy", m["slippage"]))
     _sell = float(m.get("slippage_sell", m["slippage"]))
-    slip = _buy if side > 0 else _sell if side < 0 else min(_buy, _sell)
+    slip, exit_slip = (_buy, _sell) if side > 0 else (_sell, _buy)
     exhausted_any = bool(m.get("book_exhausted_any", m["book_exhausted"]))
+    _fee = taker_fee(symbol, fx=fx)
     cv = cost_verdict(tp=tp, sl=sl, spread=m["spread"], slippage=slip,
-                      fee=taker_fee(symbol, fx=fx), fund_cost=fund["cost"],
+                      fee=_fee, fund_cost=fund["cost"],
                       fund_per_day=fund["per_day"], fund_known=fund["known"],
                       hold_s=hold_s, liq=liq, exhausted=exhausted_any)
     round_trip, ratio, verdict = cv["round_trip"], cv["ratio"], cv["verdict"]
@@ -3386,11 +3408,21 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
     # a reading is filed when it was TAKEN: a shared one re-filed later in the
     # cycle would stamp an old book with a new time
     if fresh:
-        _record_book_reading(symbol, round_trip, m)
+        # BOTH SIDES on one line, each with its own funding: the account
+        # forecast replays longs and shorts from this file
+        # (portfolio_replay._side_cost), and a line filed by whichever side
+        # read the book first priced a long at a short's cost
+        _other = funding_cost(symbol, -side, hold_s, fx=fx)
+        _rt_other = 2 * (exit_slip + _fee) + float(_other.get("cost") or 0.0)
+        _rt_long, _rt_short = ((round_trip, _rt_other) if side > 0
+                               else (_rt_other, round_trip))
+        _record_book_reading(symbol, _rt_long, m, round_trip_short=_rt_short,
+                             slippage_buy=_buy, slippage_sell=_sell)
     return {"verdict": verdict, "strategy": key, "symbol": symbol,
             # the side this verdict USED — practice books its cost from it
             # (`book_slippage`, `rt_cost`), so it must be the trade's side
             "tp": tp, "spread": m["spread"], "slippage": slip,
+            "exit_slippage": exit_slip,
             "round_trip_cost": round_trip, "cost_ratio": ratio,
             "notional_tested": deepest, "book_exhausted": exhausted_any,
             "side_tested": int(side),
@@ -3478,18 +3510,31 @@ BOOK_READINGS_PATH = STATE_DIR / "book_readings.jsonl"
 _LAST_READING: dict = {}
 
 
-def _record_book_reading(symbol: str, round_trip: float, m: dict) -> None:
+def _record_book_reading(symbol: str, round_trip: float, m: dict, *,
+                         round_trip_short: float | None = None,
+                         slippage_buy: float | None = None,
+                         slippage_sell: float | None = None) -> None:
     """Append one book reading; never raises, never twice in one second for
-    one coin (every armed row on the coin asks in the same cycle)."""
+    one coin (every armed row on the coin asks in the same cycle).
+
+    `round_trip` is a LONG's (the buy side and a long's funding) and
+    `round_trip_short` a short's, so a reader prices each signal on its own
+    side (RCA-2026-10-11-B)."""
     try:
         now = int(time.time())
         if _LAST_READING.get(symbol) == now:
             return
         _LAST_READING[symbol] = now
-        line = json.dumps({"ts": now, "symbol": symbol,
-                           "round_trip": round(float(round_trip), 6),
-                           "spread": round(float(m.get("spread") or 0), 6),
-                           "slippage": round(float(m.get("slippage") or 0), 6)})
+        rec = {"ts": now, "symbol": symbol,
+               "round_trip": round(float(round_trip), 6),
+               "spread": round(float(m.get("spread") or 0), 6),
+               "slippage": round(float((m.get("slippage") if slippage_buy is None
+                                        else slippage_buy) or 0), 6)}
+        if round_trip_short is not None:
+            rec["round_trip_short"] = round(float(round_trip_short), 6)
+        if slippage_sell is not None:
+            rec["slippage_sell"] = round(float(slippage_sell), 6)
+        line = json.dumps(rec)
         with open(BOOK_READINGS_PATH, "a", encoding="utf-8") as fh:
             fh.write(line + "\n")
     except Exception:                                          # noqa: BLE001
@@ -6859,6 +6904,9 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                           # own price on 92 matched practice fills, Sep 23,
                           # 2026 (RCA-2026-09-23-G)
                           "book_slippage": float(gate.get("slippage") or 0.0),
+                          # and the side the EXIT will pay (a long sells the
+                          # bids, a short buys the asks), RCA-2026-10-11-B
+                          "exit_slippage": float(gate.get("exit_slippage") or 0.0),
                           "strategy": key, "entry_ts": last_ts,
                           "position_id": position_id, "dry": bool(dry),
                           # entry_ts is the CANDLE's time; opened_at is when

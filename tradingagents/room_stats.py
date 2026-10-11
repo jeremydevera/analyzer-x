@@ -262,7 +262,9 @@ def open_trades(path: Path) -> list[dict]:
                      "side": _num(pos.get("side")), "entry": _num(pos.get("entry")),
                      "sl": _num(pos.get("sl")), "margin": _num(pos.get("margin")),
                      "rt_cost": _num(pos.get("rt_cost")),
-                     "book_slippage": _num(pos.get("book_slippage"))})
+                     "book_slippage": _num(pos.get("book_slippage")),
+                     **({"exit_slippage": _num(pos.get("exit_slippage"))}
+                        if "exit_slippage" in pos else {})})
     with _LOCK:
         _STATES[key] = {"stamp": stamp, "rows": rows}
     return rows
@@ -544,7 +546,9 @@ def room(room_id: str, now: float | None = None) -> dict:
             continue
         priced += 1
         mv = (o["sl"] / o["entry"] - 1.0) * (1 if o["side"] > 0 else -1)
-        charge = max(o["rt_cost"] - o["book_slippage"], 0.0) if o["rt_cost"] else (
+        # the runner's own exit charge (the other side of the book when the
+        # position carries it, RCA-2026-10-11-B)
+        charge = at.paper_round_trip(o, "") if o["rt_cost"] else (
             (cost["per_trade"] or 0.0) / (o["margin"] * at.LEVERAGE))
         worst_case += (mv - charge) * o["margin"] * at.LEVERAGE
     res = (research().get("rooms") or {}).get(room_id)

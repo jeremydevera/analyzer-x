@@ -299,7 +299,10 @@ the fix) and the two replay-shard tests named above.
 * Guards: `tests/test_cost_verdict_is_the_runners.py::test_a_short_is_judged_on_the_side_it_sells_into`,
   `::test_before_the_signal_a_strategy_is_refused_only_if_both_sides_refuse`,
   `::test_a_book_that_cannot_fill_either_side_refuses_like_the_backtest`,
-  `::test_the_book_walk_reports_both_sides_from_one_read`.
+  `::test_the_book_walk_reports_both_sides_from_one_read`,
+  `::test_practice_charges_the_exit_on_the_other_side_of_the_book`,
+  `::test_before_the_signal_each_side_pays_its_own_funding`,
+  `::test_a_book_reading_files_both_sides_and_the_forecast_reads_the_signals_own`.
 
 **SAW** — the operator asked "you know this is a bug so why did you not
 fixed it?" after it was listed as a known difference; the final review of
@@ -320,8 +323,23 @@ the move to Gate (Oct 10, 2026) had filed it as minor and it was deferred.
    0.1323% to buy against 0.0934% to sell, CLANKER 0.1634% / 0.1261%,
    SIGN 0.0804% / 0.0675%, PUMP 0.0316% / 0.0257%, RECALL 0.1051% /
    0.1154%.
-5. After the fix: each entry reads its own side, the screening refuses only
-   when both sides would, and practice books the cost of the side it took.
+5. Oct 11, 2026 6:44am — the first fix (c6cc74e) goes live; checked on
+   Gate's books, TOSHI bb20_15m at $5: long 0.0903% (refused), short
+   0.0573% (let through).
+6. Oct 11, 2026 ~7:05am — two reviewers of that fix find three more
+   places: (a) a short's EXIT was now charged on the sell side it opened on
+   — a short closes by BUYING the asks, the backtest's exit leg (`_c_out`),
+   so TOSHI shorts booked 0.0934% where the backtest pays 0.1323%; and a
+   long's exit had always been charged the buy side; (b) before a signal the
+   check paired the cheaper side's book with the PAYING side's funding, so
+   a short that receives funding could still be refused; (c) the saved book
+   readings the account forecast replays mixed sides.
+7. After the second fix (this commit): the exit pays the other side
+   (`exit_slippage`), the screening judges a long and a short each on its
+   own book and funding and refuses only if both refuse, and every reading
+   files a long's and a short's round trip — the forecast prices each
+   signal on its own side. The reviewers' fake-book run also found the new
+   recorder dropping a reading with no cost data; fixed here.
 
 **ROOT CAUSE** — the side of the trade never reached the book read; the
 backtest's per-minute rule was built with sides from the start and the

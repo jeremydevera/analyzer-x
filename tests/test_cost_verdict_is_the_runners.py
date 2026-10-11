@@ -144,3 +144,64 @@ def test_the_book_walk_reports_both_sides_from_one_read():
     thin = {"asks": [[100.10, 100.0]], "bids": [[99.90, 0.5]]}
     got = xc.book_cost_from(thin, contract_size=1.0, notional_usd=500.0, symbol="X")
     assert got["exhausted_sell"] and not got["exhausted_buy"] and got["book_exhausted_any"]
+
+
+# ------------------------- RCA-2026-10-11-B, the review of the first fix
+def test_practice_charges_the_exit_on_the_other_side_of_the_book(monkeypatch):
+    """A short closes by BUYING the asks and a long by SELLING the bids — the
+    backtest's exit leg (`_c_out`). The first fix put a short's exit on the
+    sell side it opened on (TOSHI: 0.0934% where the backtest pays 0.1323%),
+    and longs had always paid the buy side on the way out."""
+    _spec(monkeypatch)
+    fx = _SidedFx()                                   # buy 0.6%, sell 0.15%
+    fee = at.taker_fee("TOSHI_USDT", fx=fx)           # floored by the venue's rule
+    for side, exit_side in ((-1, 0.006), (1, 0.0015)):
+        g = at.edge_check("t_1h", "TOSHI_USDT", 5.0, fx=fx, side=side)
+        pos = {"side": side, "rt_cost": g["round_trip_cost"],
+               "book_slippage": g["slippage"], "exit_slippage": g["exit_slippage"]}
+        assert at.paper_round_trip(pos, "TOSHI_USDT", fx=fx) == pytest.approx(
+            2 * fee + exit_side), side
+    old = {"rt_cost": 0.01, "book_slippage": 0.003}   # a position from before
+    assert at.paper_round_trip(old, "TOSHI_USDT", fx=fx) == pytest.approx(0.007)
+
+
+def test_before_the_signal_each_side_pays_its_own_funding(monkeypatch):
+    """The screening paired the cheaper side's book with the PAYING side's
+    funding: longs paying 0.35% a day on a 0.6% target (funding eats over
+    half of it) refused the strategy for shorts too, which RECEIVE it — and
+    the backtest takes that short. (`per_day` is what a LONG pays.)"""
+    monkeypatch.setitem(at.STRATEGY_SPECS, "t_1h", {"tp": 0.006, "sl": 0.003,
+                                                     "bar_seconds": 3600})
+    at._CYCLE_READS = None
+    fx = _SidedFx(buy=0.0002, sell=0.0002)
+    fx.funding_now = lambda s: {"rate": 0.0035 / 3, "cycle_h": 8, "per_day": 0.0035,
+                                "next_settle_ms": 0}
+    assert at.edge_check("t_1h", "FUNDPAY_USDT", 5.0, fx=fx, side=1)["verdict"] == "block"
+    assert at.edge_check("t_1h", "FUNDPAY_USDT", 5.0, fx=fx, side=-1)["verdict"] != "block"
+    screen = at.edge_check("t_1h", "FUNDPAY_USDT", 5.0, fx=fx, side=0)
+    assert screen["verdict"] != "block" and screen["sides"] == {"long": "block",
+                                                                "short": screen["verdict"]}
+
+
+def test_a_book_reading_files_both_sides_and_the_forecast_reads_the_signals_own(
+        monkeypatch, tmp_path):
+    """The saved readings the account forecast replays mixed sides once the
+    first fix landed — a short's cheaper round trip could price a long."""
+    import json as _json
+
+    _spec(monkeypatch)
+    monkeypatch.setattr(at, "BOOK_READINGS_PATH", tmp_path / "book_readings.jsonl")
+    at._LAST_READING.clear()
+    at.edge_check("t_1h", "TOSHI_USDT", 5.0, fx=_SidedFx(), side=-1)
+    line = _json.loads((tmp_path / "book_readings.jsonl").read_text().splitlines()[-1])
+    fee = at.taker_fee("TOSHI_USDT", fx=_SidedFx())
+    assert line["round_trip"] == pytest.approx(2 * (0.006 + fee))
+    assert line["round_trip_short"] == pytest.approx(2 * (0.0015 + fee))
+    assert line["slippage"] == pytest.approx(0.006) and line["slippage_sell"] == pytest.approx(0.0015)
+    from tradingagents import portfolio_replay as pr
+
+    got = pr._reading_at(pr._readings_of([(1000, line)]), 1000)
+    assert pr._side_cost(got, 1) == pytest.approx(line["round_trip"])
+    assert pr._side_cost(got, -1) == pytest.approx(line["round_trip_short"])
+    assert pr._side_cost(pr._reading_at(pr._readings_of([(1000, {"round_trip": 0.01})]), 1000), -1) \
+        == pytest.approx(0.01), "a reading from before the split prices both sides as it did"

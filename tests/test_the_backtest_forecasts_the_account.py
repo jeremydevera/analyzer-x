@@ -252,9 +252,11 @@ def test_book_readings_come_from_the_recorder_the_refusals_and_the_fills(tmp_pat
     rd = pr.book_readings(rows, dry=True, readings_path=rec)
     ts, cs = rd[SYM]
     assert ts == [1_790_000_000_000, 1_790_000_100_000, 1_790_000_201_000]
-    assert cs[0] == pytest.approx(0.0031)
-    assert cs[1] == pytest.approx(0.0249)
-    assert cs[2] == pytest.approx(0.012 - 1.00 / 100.0 - 2 * at.FEE_FALLBACK)
+    # (a long's round trip, a short's): a line from before the split prices
+    # both sides with its one number (RCA-2026-10-11-B)
+    assert cs[0] == pytest.approx((0.0031, 0.0031))
+    assert cs[1] == pytest.approx((0.0249, 0.0249))
+    assert cs[2][0] == pytest.approx(0.012 - 1.00 / 100.0 - 2 * at.FEE_FALLBACK)
     assert 0.09 not in cs, "the live book's readings are the live book's"
 
 
@@ -267,7 +269,7 @@ def test_an_old_demo_exit_has_the_doubled_fee_taken_back_out():
          "entry": 100.0, "exit": 101.2, "pnl_est": 1.00},
     ]
     rd = pr.book_readings(rows, dry=True, readings_path=Path("nowhere"))
-    assert rd[SYM][1][0] == pytest.approx(0.012 - 0.01 - 2 * at.FEE_FALLBACK)
+    assert rd[SYM][1][0][0] == pytest.approx(0.012 - 0.01 - 2 * at.FEE_FALLBACK)
     act = pr.demo_actual(rows, dry=True, base=10.0)
     assert act["trades"] == 1 and act["pnl"] == 1.0
     assert act["pnl_fee_once"] == pytest.approx(1.0 + 2 * at.FEE_FALLBACK * 100, abs=0.01)
@@ -287,7 +289,7 @@ def test_the_gate_records_every_fresh_book_read_once_a_second(tmp_path, monkeypa
         (SYM, 0.0031), ("BBB_USDT", 0.01)]
     # and edge_check calls it right after it computes the round trip
     src = inspect.getsource(at.edge_check)
-    assert "_record_book_reading(symbol, round_trip, m)" in src
+    assert "_record_book_reading(symbol, _rt_long, m, round_trip_short=_rt_short" in src
     # never raises: a path that cannot be written is not a trading error
     monkeypatch.setattr(at, "BOOK_READINGS_PATH", tmp_path / "no" / "such" / "dir.jsonl")
     at._record_book_reading("CCC_USDT", 0.01, {})

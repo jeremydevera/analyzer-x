@@ -193,8 +193,7 @@ def book_readings(rows: list[dict], *, dry: bool = True,
             for ln in fh:
                 try:
                     r = json.loads(ln)
-                    by_sym[r["symbol"]].append((int(r["ts"]) * 1000,
-                                                float(r["round_trip"])))
+                    by_sym[r["symbol"]].append((int(r["ts"]) * 1000, _cost_of(r)))
                 except (ValueError, KeyError, TypeError):
                     continue
     for r in rows:
@@ -205,7 +204,8 @@ def book_readings(rows: list[dict], *, dry: bool = True,
         if act == "gate_blocked":
             m = _GATE_RE.search(str(r.get("why") or ""))
             if m and sym and r.get("ts"):
-                by_sym[sym].append((int(r["ts"]) * 1000, float(m.group(1)) / 100))
+                _c = float(m.group(1)) / 100
+                by_sym[sym].append((int(r["ts"]) * 1000, (_c, _c)))
         elif act == "enter" and r.get("trade_id"):
             enters[r["trade_id"]] = r
         elif act == "exit" and r.get("why") in ("TP", "SL"):
@@ -226,12 +226,34 @@ def book_readings(rows: list[dict], *, dry: bool = True,
                 cost -= 2 * at.fee_floor()
             when = int(e.get("opened_at") or e.get("ts") or r["ts"]) * 1000
             if cost > 0:
-                by_sym[sym].append((when, cost))
+                by_sym[sym].append((when, (cost, cost)))
     out = {}
     for sym, pts in by_sym.items():
         pts.sort()
         out[sym] = ([t for t, _ in pts], [c for _, c in pts])
     return out
+
+
+def _cost_of(line: dict) -> tuple[float, float]:
+    """(a long's round trip, a short's) from one `book_readings.jsonl` line;
+    a line from before Oct 11, 2026 has one number for both
+    (RCA-2026-10-11-B)."""
+    rt = float(line["round_trip"])
+    return rt, float(line.get("round_trip_short", rt))
+
+
+def _readings_of(lines) -> tuple[list, list]:
+    """`(sorted ts_ms, costs)` from `[(ts_ms, line), ...]` — the shape
+    `book_readings` hands `_reading_at`."""
+    pts = sorted((int(t), _cost_of(ln)) for t, ln in lines)
+    return [t for t, _ in pts], [c for _, c in pts]
+
+
+def _side_cost(reading, side: int) -> float:
+    """The round trip a signal of `side` pays from one reading."""
+    if isinstance(reading, (tuple, list)):
+        return float(reading[0] if side > 0 else reading[1])
+    return float(reading)
 
 
 def _reading_at(readings, t_ms: int):
@@ -544,7 +566,8 @@ def replay(settings: dict | None = None, *, store=None, dry: bool = True,
             meta["why"]["book unknown"] += 1
             refusal_log.append((t_ms, key, sym, "book_unknown"))
             continue
-        rt, src = rd, "record"
+        # the signal's OWN side of the reading (RCA-2026-10-11-B)
+        rt, src = _side_cost(rd, d), "record"
         if rt / float(spec["tp"]) >= at.COST_RATIO_BLOCK:
             refused["cost_gate"] += 1
             meta["cost_refused"] += 1

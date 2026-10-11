@@ -1272,7 +1272,10 @@ def room_lists(follow: dict, pr: dict, meta: dict, store, progress=None) -> tupl
                 got = ms.trades_for(c["coin"], c["tf"], signal=c["signal"], th=c["th"],
                                     sl=c["sl"], tp=c["tp"], sizing="flat",
                                     base_margin=BASE_MARGIN, store=store, skip=skip,
-                                    whole=True, reenter=True)
+                                    whole=True, reenter=True,
+                                    # what the room ENTERED is the truth: no
+                                    # cost or chase model may refuse it
+                                    took=took)
             except Exception:                                      # noqa: BLE001
                 failed.append(rid)
                 continue

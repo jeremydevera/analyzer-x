@@ -1087,6 +1087,9 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                         # trades had no reading and paid the flat cost
                         **({"gate_blocked": int(r.get("gate_blocked", 0)),
                             "cost_unmeasured": int(r.get("cost_unmeasured", 0)),
+                            # and the "price already ran away" refusals, read
+                            # off the same minute's best price (Oct 11, 2026)
+                            "chase_skip": int(r.get("chase_skip", 0)),
                             # the last minute the book held when this row was
                             # measured: a rebuild on the PC reads the book up
                             # to HERE, so it refuses exactly what this row

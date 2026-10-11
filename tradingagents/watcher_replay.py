@@ -280,9 +280,13 @@ def simulate(combos: list[dict], *, start_ms: int, end_ms: int,
             s["trades"] = _stack(keep, s["trades"]) if hasattr(s["trades"], "shape") else keep
     if int(cfg.get("coin_slices") or 0) > 0:
         took = (follow or {}).get("took") or set()
+        # PRACTICE'S SAME-DIRECTION RULE ON EVERY DAY (Oct 11, 2026), not only
+        # while following the room: the days before a room existed opened a
+        # short under an open long. A row with no side (the research's) is
+        # untouched by it (`_side_of` is None).
         cap_per_coin(slots, int(cfg["coin_slices"]),
                      prefer=(lambda s, t: (s["id"], int(t[0])) in took) if took else None,
-                     same_side=follow is not None)
+                     same_side=True)
     for s in slots:
         _totals(s)
     out = {"days": _days(slots, events, checks, end_ms), "slots": slots,

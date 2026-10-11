@@ -367,3 +367,34 @@ def test_with_no_reading_the_replay_still_refuses_funding_that_eats_the_target(r
     combos, stats = _run(rs, world)
     assert stats.get("gate_blocked", 0) > 0
     assert combos == []
+
+
+def test_a_price_that_already_ran_away_is_never_traded_in_the_replay(rs, world):
+    """Oct 11, 2026 ("backtest should know wether to skip a trade or not"):
+    after the cost check, the replay asks the runner's "price already ran
+    away" check of the same minute (at.entry_refusal, the engine's one rule).
+    Each entry minute's ask sits 0.5% over its signal's close - past the
+    0.10%-of-a-1%-stop the runner allows - so every entry is refused and
+    counted `chase_skip`, never `gate_blocked`."""
+    from tradingagents import book_history as bh
+
+    df = world["df"]
+    readings = [{"t": int(df["Date"].iloc[k].timestamp()),
+                 "bid": float(df["Close"].iloc[k - 1]) * 1.004,
+                 "ask": float(df["Close"].iloc[k - 1]) * 1.005,
+                 "spread": 0.0001, "buy": 0.0001, "sell": 0.0001,
+                 "exhausted": False, "source": "full"} for k in range(1, len(df))]
+    world["cost"]["book"] = bh.pack(readings)
+    combos, stats = _run(rs, world)
+    assert stats.get("chase_skip", 0) > 0 and not stats.get("gate_blocked")
+    assert combos == [], "every entry refused: nothing reaches the write rule"
+
+
+def test_the_replay_and_the_engine_skip_by_one_rule():
+    src = (SCRIPTS / "replay_shard.py").read_text(encoding="utf-8")
+    assert "at.entry_refusal(" in src and "at.minute_verdict(" not in src
+    for k in ("chase_skip",):
+        assert f'"{k}": 0' in src
+    col = (ROOT / "tradingagents" / "replay_collect.py").read_text(encoding="utf-8")
+    assert '"chase_skip"' in col
+

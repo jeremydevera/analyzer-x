@@ -1485,6 +1485,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                     # it read — the same fields as a GitHub v2 row
                     **({"gate_blocked": int(r.get("gate_blocked", 0)),
                         "cost_unmeasured": int(r.get("cost_unmeasured", 0)),
+                        "chase_skip": int(r.get("chase_skip", 0)),
                         "book_to": book_to}
                        if minute_book is not None else {}),
                     # the exchange it was measured on, as a GitHub row says it
@@ -1961,9 +1962,20 @@ def ml_history_short(signal: str, tf: str, before: int) -> str | None:
             f"from GitHub's longer candles")
 
 
+def _keep_of(took):
+    """The engine's `keep` for the candles a ROOM entered: `took` holds their
+    signal-candle opens in SECONDS, the engine asks in milliseconds. None when
+    there are none - the engine of before."""
+    if not took:
+        return None
+    held = frozenset(int(x) for x in took)
+    return lambda ms: int(ms) // 1000 in held
+
+
 def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                tp: float, sizing: str, base_margin: float = 5.0,
                days: int = 365, store=None, skip=None, whole: bool = False,
+               took=None,
                reenter: bool = False) -> dict:
     """Every trade one stored strategy made, rebuilt from the local candles.
 
@@ -2178,7 +2190,10 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                                  sl=float(sl) / 100, liq_move_pct=liq,
                                  funding=fund, keep_log=True, fine=fine,
                                  reenter=reenter, book=_book,
-                                 book_hold_s=bs * at.FUNDING_HOLD_BARS)
+                                 book_hold_s=bs * at.FUNDING_HOLD_BARS,
+                                 # the candles the ROOM entered (signal opens,
+                                 # seconds): no cost or chase model refuses them
+                                 keep=_keep_of(took))
     finally:
         at.STRATEGY_SPECS.pop(key, None)
     return {"log": r["log"], "trades": r["trades"], "wins": r["wins"],
@@ -2187,6 +2202,7 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
             # the cost check's own counts, when the walk read the book
             **({"gate_blocked": int(r.get("gate_blocked", 0)),
                 "cost_unmeasured": int(r.get("cost_unmeasured", 0)),
+                "chase_skip": int(r.get("chase_skip", 0)),
                 "book_to": fmt_stamp(_bend) if _bend else None}
                if _book is not None else {}),
             "winrate": round(100 * r["wins"] / max(r["trades"], 1), 2),

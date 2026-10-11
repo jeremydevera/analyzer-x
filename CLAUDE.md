@@ -219,7 +219,18 @@ own `maintenance_rate`.
   second rule — count a refusal as `gate_blocked` and take no trade, and
   charge entry and exit at their own minutes' fills. A minute with no
   reading in the hour before it pays the coin's flat cost and is counted
-  `cost_unmeasured`, never hidden. A costs run that runs out of time is
+  `cost_unmeasured`, never hidden.
+* **AND IT SKIPS WHAT PRACTICE SKIPS (Oct 11, 2026: *"i said it should
+  behave like practice, meaning backtest should know wether to skip a trade
+  or not"*).** One function, `auto_trader.entry_refusal`, for the engine and
+  replay_shard: the cost check, then "the price already ran away"
+  (`chase_ok` on the minute's best price, ask for a long, bid for a short,
+  only on a reading at most `CHASE_READING_MAX_AGE_S` old), counted
+  `chase_skip` on every row. Backtest a room never lets a model refuse a
+  candle the room really entered (`trades_for(took=)` → `keep`) and applies
+  practice's one-direction coin rule on every day (`same_side=True`).
+  "Signal too old" exists only when a room's program is down or restarting:
+  Backtest a room takes it from the room's own downtime (RCA-2026-10-11-C). A costs run that runs out of time is
   RESUMED by the next press: days a coin's month already holds are skipped
   (RCA-2026-10-10-D).
 * **Gate's fee is 0.075% taker on every contract** (`fee_floor()`), against

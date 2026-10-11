@@ -2674,6 +2674,13 @@ MAX_CHASE_FRACTION_OF_STOP = 0.10
 # because PRICE had barely moved; staleness is a separate dimension.
 MAX_SIGNAL_AGE_FRACTION = 0.5      # of one bar
 
+# The backtest's "price already ran away" check reads the recorded book only
+# when the reading is at most this old (Oct 11, 2026). The cost check takes a
+# reading up to an hour old; a PRICE an hour old says nothing about where the
+# market was ~3 s after the close, when the runner looks. Gate's replayed
+# readings are one a minute, so a fresh one is there for every judged entry.
+CHASE_READING_MAX_AGE_S = 120
+
 
 def chase_ok(side: int, signal_close: float, live_px: float,
              sl_pct: float) -> tuple[bool, float, float]:
@@ -3271,6 +3278,34 @@ def minute_verdict(reading: dict | None, *, side: int, tp: float, sl: float,
                        fund_per_day=fund_day, fund_known=True, hold_s=hold_s,
                        liq=liq, exhausted=exhausted)
     return {**out, "slippage": slip, "measured": reading is not None}
+
+
+def entry_refusal(reading: dict | None, *, side: int, signal_close: float,
+                  tp: float, sl: float, fee: float, hold_s: float, liq,
+                  fund_day: float, flat_slip: float = 0.0) -> tuple[str, dict]:
+    """What the runner answers at ONE recorded entry minute, in its own
+    order: the cost check (`minute_verdict`, "gate_blocked"), then "the
+    price already ran away" (`chase_ok` on the minute's best price - the ask
+    for a long, the bid for a short - "chase_skip"); "" = it would enter.
+    Returns (that answer, the cost verdict: its `slippage` is the fill).
+
+    ONE function for the engine (`backtest_strategy(book=)`) and the GitHub
+    replay (replay_shard), so the two can never skip by two rules (Oct 11,
+    2026: "i said it should behave like practice, meaning backtest should
+    know wether to skip a trade or not"). The price is judged only on a
+    reading at most CHASE_READING_MAX_AGE_S old: an older one says nothing
+    about where the market was when the runner looked."""
+    cv = minute_verdict(reading, side=side, tp=tp, sl=sl, fee=fee, hold_s=hold_s,
+                        liq=liq, fund_day=fund_day, flat_slip=flat_slip)
+    if cv["verdict"] == "block":
+        return "gate_blocked", cv
+    if (reading is not None
+            and int(reading.get("age_s") or 0) <= CHASE_READING_MAX_AGE_S
+            and not chase_ok(side, float(signal_close),
+                             float(reading["ask"] if side == 1 else reading["bid"]),
+                             sl)[0]):
+        return "chase_skip", cv
+    return "", cv
 
 
 def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
@@ -3885,7 +3920,8 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                       recent_windows: dict | None = None,
                       reenter: bool = False,
                       book: dict | None = None,
-                      book_hold_s: float | None = None) -> dict:
+                      book_hold_s: float | None = None,
+                      keep=None) -> dict:
     """Run one strategy's exact live rules over a candle history.
 
     ``reenter=True`` (Oct 05, 2026, Backtest a room only) also reads the
@@ -4006,7 +4042,18 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     # an EMPTY book still counts: every entry is then unmeasured, by name
     _bk = book
     _bk_on = book is not None
-    n_gate = n_unmeasured = 0
+    n_gate = n_unmeasured = n_chase = 0
+    # AND THE "PRICE ALREADY RAN AWAY" CHECK (Oct 11, 2026: "i said it should
+    # behave like practice, meaning backtest should know wether to skip a
+    # trade or not"): the runner refuses a signal whose tradable price - the
+    # ask for a long, the bid for a short - has moved past the signal close by
+    # more than MAX_CHASE_FRACTION_OF_STOP of the stop (`chase_ok`, chase_skip).
+    # The same minute's reading the cost check reads holds that best price, so
+    # the backtest asks the same question of it and counts each refusal
+    # (`chase_skip`). Checked on #55D32617's Gate days: all 11 entries with a
+    # reading pass it, 5 of its 7 chase_skips with a reading are refused.
+    # `keep(signal_open_ms)` True = the ROOM really took this candle (Backtest
+    # a room follows the room where it ran): no model refuses it.
     if _bk is not None:
         from tradingagents import book_history as _bh
 
@@ -4289,12 +4336,17 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             if _bk is not None:
                 _t_in = int(_bk_ms[i + 1] // 1000)
                 _r_in = _bh.reading_at(_bk, _t_in)
-                _cv = minute_verdict(_r_in, side=s, tp=tp, sl=sl, fee=_taker,
-                                     hold_s=_bk_hold, liq=liq,
-                                     fund_day=_fund_day_at(_t_in * 1000, s),
-                                     flat_slip=_flat_slip)
-                if _cv["verdict"] == "block":
-                    n_gate += 1
+                _kept = keep is not None and bool(keep(int(_bk_ms[i])))
+                _why, _cv = entry_refusal(_r_in, side=s, signal_close=float(close[i]),
+                                          tp=tp, sl=sl, fee=_taker, hold_s=_bk_hold,
+                                          liq=liq,
+                                          fund_day=_fund_day_at(_t_in * 1000, s),
+                                          flat_slip=_flat_slip)
+                if _why and not _kept:
+                    if _why == "gate_blocked":
+                        n_gate += 1
+                    else:
+                        n_chase += 1
                     i += 1
                     continue
                 if _r_in is None:
@@ -4580,7 +4632,8 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             **({"recents": {d: {"trades": n_, "wins": int(w_), "profit": round(p_, 2)}
                             for d, _ms, n_, w_, p_ in _recs}}
                if recent_windows is not None else {}),
-            **({"gate_blocked": n_gate, "cost_unmeasured": n_unmeasured}
+            **({"gate_blocked": n_gate, "cost_unmeasured": n_unmeasured,
+                "chase_skip": n_chase}
                if _bk_on else {})}
 
 

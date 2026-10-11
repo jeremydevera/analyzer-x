@@ -172,6 +172,104 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-11-C — the backtest asked one of practice's four questions before a trade, so it took trades practice skips (4.94% of them reached practice in the MEXC days)
+
+**CEO**
+
+* You asked for the backtest to behave like practice, from Oct 05, 2026
+  ("practice has 191 trades and your replay has 435"). In the MEXC days your
+  rooms opened only 4.94% of the backtest's trades over the same hours.
+* Why: before a trade, practice asks four questions — is it too expensive,
+  has the price already run away from the signal, is the coin already full
+  (4 trades, one direction), is the signal too old. The backtest asked only
+  the first, from Oct 10, 2026, the move to Gate.
+* What stops it now: the backtest asks practice's own "price ran away"
+  question on each entry minute's recorded best price. "Backtest a room" applies
+  the one-direction coin rule on every day, and never lets a model drop a
+  trade the room really made; "too old" comes from the room's own restarts.
+
+**DEV**
+
+* `tradingagents/auto_trader.py` `backtest_strategy(book=)`, the entry step:
+  * it asked `minute_verdict` (cost) only, while `chase_ok` lived only in the
+    runner's `process_symbol`;
+  * `.github/scripts/replay_shard.py` carried its own copy of the cost call;
+  * `watcher_replay.simulate` passed `same_side` only while following a room;
+  * `market_sweep.trades_for` let the engine's models refuse a candle the room
+    had entered.
+* Invariant broken: **the backtest asks every question the runner asks at an
+  entry, through ONE function**. That function is now `at.entry_refusal`
+  (cost, then chase on the same minute, at most `CHASE_READING_MAX_AGE_S`
+  old), used by the engine and the replay.
+* Guards: `tests/test_backtest_skips_like_practice.py` (12 tests) and
+  `tests/test_the_replay_shard.py::test_a_price_that_already_ran_away_is_never_traded_in_the_replay`,
+  `::test_the_replay_and_the_engine_skip_by_one_rule`.
+
+**SAW** — the operator, Oct 11, 2026 6:40am: *"i said it should behave like
+practice, meaning backtest should know wether to skip a trade or not, that is
+why I changed fro MEXC to gate because gate has cost in its api, i want to
+hear why did you not made it this way first"*.
+
+**TIMELINE**
+
+1. **Oct 05, 2026 1:39pm.** "practice has 191 trades and your replay has
+   435". Backtest a room was built to read the room's own recorded refusals,
+   for the hours the room ran only.
+2. **Oct 10, 2026 3:59am.** The app moved to Gate. Every minute's order
+   book is recorded, and the backtest asks the runner's cost check of each
+   entry minute.
+3. **Oct 10, 2026 3:59am to Oct 11, 2026 6:00am**, room #55D32617:
+   * 15 entries;
+   * 10 `chase_skip`;
+   * 6 `stale_skip`, all six at 9:59am, the minute after a restart, on candles
+     14 and 29 minutes old.
+
+   All rooms together: 4,447 candles refused by the cost check.
+4. **Checked on the recorded minutes before building.** All 11 entries that
+   have a reading pass the new check. 5 of the 7 `chase_skip`s with a reading
+   are refused by it, at the same drift (TOSHI kama10_30m Oct 10, 2026
+   8:30pm: +0.174% recorded, +0.174% from the book). The 2 misses are RECALL
+   hull20_15m at 11:00am and 1:30pm: the market moved in the seconds after
+   the minute's reading.
+
+**ROOT CAUSE** — the backtest modelled one of the runner's four entry
+questions, and the replay modelled two more only on the days a room existed.
+
+**WHY IT WAS NOT CAUGHT**
+* Every backtest-against-practice test compared the COSTS of a trade (spread,
+  fee, funding), which is the gap that was named first. None counted how
+  many SIGNALS each side turned into trades.
+* Backtest a room passed its own tests on room days, because there it reads
+  the room's recorded refusals. The days before a room, and the row backtest
+  itself, had no such check, and no test looked at them.
+
+**COST** — no money (practice). The backtest read better than practice:
+in the MEXC days 3,344 backtest trades against about 165 in practice (the
+other session's count), +$2,078.88 against about +$42.86.
+
+**FIX** — this commit:
+* `at.entry_refusal`, used by `backtest_strategy(book=, keep=)` and
+  replay_shard; `chase_skip` counted on every GitHub v2 row, every row
+  measured on this PC and the replay's totals;
+* `trades_for(took=)` keeps the room's own entries
+  (`market_sweep._keep_of`);
+* `simulate` applies `same_side=True` on every day.
+
+**GUARD** — `tests/test_backtest_skips_like_practice.py` (12, each red before
+the fix) and the two replay-shard tests named above.
+
+**STILL OPEN**
+* "Signal too old" cannot be known for one strategy's backtest: it happens
+  only when a room's program is down or restarting. Backtest a room takes it
+  from the room's own downtime and recorded skips.
+* Forecast v2's fast walk (`raw_fast`) caps trades per coin without the
+  one-direction rule, because its rows carry no side.
+* Until the next daily update re-measures them (Oct 11, 2026 5:04pm), stored
+  v2 rows are the old count, while a click on a row (`trades_for`) already
+  skips.
+
+---
+
 ## RCA-2026-10-11-B — practice judged every short on the buy side of the book, while the backtest judged it on the side it sells into
 
 **CEO**

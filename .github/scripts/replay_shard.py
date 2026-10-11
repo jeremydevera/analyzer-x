@@ -256,15 +256,18 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
                 refuse = None
                 if minute_book is not None:
                     def refuse(i, side, tp=tp, sl=sl):
+                        # the runner's own answer at this entry minute: the
+                        # cost check, then "the price already ran away" -
+                        # the engine's one rule (at.entry_refusal, Oct 11, 2026)
                         r = bh.reading_at(minute_book, ts[i + 1] // 1000)
-                        v = at.minute_verdict(
-                            r, side=side, tp=tp, sl=sl, fee=cost["fee"],
-                            hold_s=hold_s, liq=liq_frac,
+                        why, _v = at.entry_refusal(
+                            r, side=side, signal_close=float(cl[i]), tp=tp, sl=sl,
+                            fee=cost["fee"], hold_s=hold_s, liq=liq_frac,
                             fund_day=at.funding_day_at(f_ms, f_rate, f_cyc,
                                                        ts[i + 1], side),
                             flat_slip=cost["slip"])
-                        if v["verdict"] == "block":
-                            stats["gate_blocked"] = stats.get("gate_blocked", 0) + 1
+                        if why:
+                            stats[why] = stats.get(why, 0) + 1
                             return True
                         return False
                 walked = fg.walk(dirs_idx, dirs, op, hi, lo, cl, tp=tp, sl=sl,
@@ -389,7 +392,7 @@ def main() -> int:
              "groups": list(GROUPS), "write": WRITE,
              "cfg": CFG, "coins_board": len(coins), "coins_done": 0,
              "pairs": 0, "tested": 0, "kept": 0, "short": [], "failed": {},
-             "spans": {}, "gate_blocked": 0, "cost_unmeasured": 0}
+             "spans": {}, "gate_blocked": 0, "chase_skip": 0, "cost_unmeasured": 0}
     ss.log(f"watcher replay from {START}: {len(coins)} coin(s), {TFS}")
     ss.report.board = len(coins)
     failed: dict = {}
@@ -403,7 +406,8 @@ def main() -> int:
                     break
                 sym = queue.pop(0)
             before = {k: stats.get(k, 0) for k in ("pairs", "tested", "kept",
-                                                   "gate_blocked", "cost_unmeasured")}
+                                                   "gate_blocked", "chase_skip",
+                                                   "cost_unmeasured")}
             before_short, before_spans = list(stats["short"]), dict(stats["spans"])
             try:
                 cost = coin_costs(sym, usual)
@@ -432,7 +436,8 @@ def main() -> int:
     _save(stats)
     ss.log(f"done: {stats['coins_done']} coin(s), {stats['tested']:,} tested, "
            f"{stats['kept']:,} could pass, {stats['gate_blocked']:,} entries the "
-           f"cost check refused, {stats['cost_unmeasured']:,} trades with no "
+           f"cost check refused, {stats['chase_skip']:,} whose price had run away, "
+           f"{stats['cost_unmeasured']:,} trades with no "
            f"recorded book, in {(time.time() - t0) / 60:.0f} min")
     return 0
 

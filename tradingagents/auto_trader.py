@@ -3329,10 +3329,22 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
     # nobody counted (rule 12); and a stop the venue would liquidate THROUGH
     # is not a stop.
     liq = liquidation_distance(symbol, fx=fx)
-    cv = cost_verdict(tp=tp, sl=sl, spread=m["spread"], slippage=m["slippage"],
+    # THE SIDE THE TRADE TAKES (RCA-2026-10-11-B): a long pays the asks, a
+    # short the bids — the backtest has always read the trade's own side, and
+    # this read the asks for every trade, so eight practice shorts on Gate
+    # were judged on the wrong side (TOSHI: 0.1323% to buy, 0.0934% to sell).
+    # Before a signal (the screening pass, side 0) the direction is not
+    # known yet: the strategy is refused only when BOTH sides would refuse,
+    # and the entry then asks again with its side. A book that cannot fill
+    # EITHER side refuses, as the backtest refuses that minute.
+    _buy = float(m.get("slippage_buy", m["slippage"]))
+    _sell = float(m.get("slippage_sell", m["slippage"]))
+    slip = _buy if side > 0 else _sell if side < 0 else min(_buy, _sell)
+    exhausted_any = bool(m.get("book_exhausted_any", m["book_exhausted"]))
+    cv = cost_verdict(tp=tp, sl=sl, spread=m["spread"], slippage=slip,
                       fee=taker_fee(symbol, fx=fx), fund_cost=fund["cost"],
                       fund_per_day=fund["per_day"], fund_known=fund["known"],
-                      hold_s=hold_s, liq=liq, exhausted=m["book_exhausted"])
+                      hold_s=hold_s, liq=liq, exhausted=exhausted_any)
     round_trip, ratio, verdict = cv["round_trip"], cv["ratio"], cv["verdict"]
     stop_dead, funding_eats = cv["stop_dead"], cv["funding_eats"]
     funding_blind, stop_past_liq = cv["funding_blind"], cv["stop_past_liq"]
@@ -3341,9 +3353,11 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
     if fresh:
         _record_book_reading(symbol, round_trip, m)
     return {"verdict": verdict, "strategy": key, "symbol": symbol,
-            "tp": tp, "spread": m["spread"], "slippage": m["slippage"],
+            # the side this verdict USED — practice books its cost from it
+            # (`book_slippage`, `rt_cost`), so it must be the trade's side
+            "tp": tp, "spread": m["spread"], "slippage": slip,
             "round_trip_cost": round_trip, "cost_ratio": ratio,
-            "notional_tested": deepest, "book_exhausted": m["book_exhausted"],
+            "notional_tested": deepest, "book_exhausted": exhausted_any,
             "side_tested": int(side),
             "liquidation_distance": liq,
             "funding_known": fund["known"], "funding_cost": fund["cost"],
@@ -3370,7 +3384,11 @@ def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
                    f"already passed when it is placed"
                    if stop_dead else "")
                 + (f" · the book cannot even fill {deepest:.0f} USDT of "
-                   f"notional" if m["book_exhausted"] else ""))}
+                   f"notional on "
+                   + ("both sides" if m.get("exhausted_buy") and m.get("exhausted_sell")
+                      else "the sell side" if m.get("exhausted_sell")
+                      else "the buy side")
+                   if exhausted_any else ""))}
 
 
 # the FRESH verdicts of this cycle, one per (key, symbol), shared by both

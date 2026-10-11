@@ -70,3 +70,77 @@ def test_edge_check_answers_through_it(monkeypatch):
     r = at.edge_check("t_1h", "X_USDT", 5.0, fx=Fx(), side=1)
     assert seen, "edge_check decides through cost_verdict"
     assert r["verdict"] == real(**seen[-1])["verdict"]
+
+
+# ---------------------------------------------- RCA-2026-10-11-B: the side
+class _SidedFx:
+    """A book whose two sides cost differently, like TOSHI on Oct 11, 2026:
+    buying walks 0.1323%, selling 0.0934% at $100."""
+
+    def __init__(self, buy=0.006, sell=0.0015, exhausted_buy=False, exhausted_sell=False):
+        self.b, self.s, self.eb, self.es = buy, sell, exhausted_buy, exhausted_sell
+
+    def book_cost(self, s, n, **k):
+        return {"symbol": s, "mid": 100.0, "spread": 0.0008, "slippage": self.b,
+                "book_exhausted": self.eb, "notional_tested": n,
+                "slippage_buy": self.b, "slippage_sell": self.s,
+                "exhausted_buy": self.eb, "exhausted_sell": self.es,
+                "book_exhausted_any": self.eb or self.es}
+
+    def contract_spec(self, s):
+        return {"takerFeeRate": 0.00075, "maintenanceMarginRate": 0.005}
+
+    def funding_now(self, s):
+        return {"rate": 0.0, "cycle_h": 8, "per_day": 0.0, "next_settle_ms": 0}
+
+    def liquidation_move_pct(self, s, lev):
+        return 4.5
+
+
+def _spec(monkeypatch):
+    monkeypatch.setitem(at.STRATEGY_SPECS, "t_1h", {"tp": 0.02, "sl": 0.01,
+                                                     "bar_seconds": 3600})
+    at._CYCLE_READS = None
+
+
+def test_a_short_is_judged_on_the_side_it_sells_into(monkeypatch):
+    """Oct 11, 2026 (RCA-2026-10-11-B): the runner read only the BUY side, so
+    eight practice shorts on Gate were judged on the asks while the backtest
+    judged them on the bids. 0.6% to buy, 0.15% to sell, 2% target: the
+    long's round trip is 2*(0.6+0.075) = 1.35%, 68% of it — refused; the
+    short's is 2*(0.15+0.075) = 0.45%, 23% — let through, as the backtest."""
+    _spec(monkeypatch)
+    fx = _SidedFx()
+    assert at.edge_check("t_1h", "TOSHI_USDT", 5.0, fx=fx, side=1)["verdict"] == "block"
+    short = at.edge_check("t_1h", "TOSHI_USDT", 5.0, fx=fx, side=-1)
+    assert short["verdict"] != "block" and short["slippage"] == pytest.approx(0.0015)
+
+
+def test_before_the_signal_a_strategy_is_refused_only_if_both_sides_refuse(monkeypatch):
+    """The screening pass runs before the candle says long or short; reading
+    the buy side alone turned TOSHI away for shorts too (10:25am, Oct 10,
+    2026: "round-trip cost 0.419% vs take-profit 0.80% = 52%")."""
+    _spec(monkeypatch)
+    assert at.edge_check("t_1h", "TOSHI_USDT", 5.0, fx=_SidedFx(), side=0)["verdict"] != "block"
+    both = _SidedFx(buy=0.006, sell=0.006)
+    assert at.edge_check("t_1h", "TOSHI_USDT", 5.0, fx=both, side=0)["verdict"] == "block"
+
+
+def test_a_book_that_cannot_fill_either_side_refuses_like_the_backtest(monkeypatch):
+    """The backtest refuses a minute when EITHER side cannot fill the size —
+    a trade has to get out as well as in (book_history: `exhausted`)."""
+    _spec(monkeypatch)
+    thin_exit = _SidedFx(buy=0.0005, sell=0.0005, exhausted_sell=True)
+    assert at.edge_check("t_1h", "X_USDT", 5.0, fx=thin_exit, side=1)["verdict"] == "block"
+
+
+def test_the_book_walk_reports_both_sides_from_one_read():
+    from tradingagents.dataflows import exchange_common as xc
+
+    book = {"asks": [[100.10, 1.0], [101.0, 100.0]], "bids": [[99.90, 100.0]]}
+    got = xc.book_cost_from(book, contract_size=1.0, notional_usd=500.0, symbol="X")
+    assert got["slippage_buy"] > got["slippage_sell"] > 0
+    assert got["slippage"] == got["slippage_buy"], "the requested side stays `slippage`"
+    thin = {"asks": [[100.10, 100.0]], "bids": [[99.90, 0.5]]}
+    got = xc.book_cost_from(thin, contract_size=1.0, notional_usd=500.0, symbol="X")
+    assert got["exhausted_sell"] and not got["exhausted_buy"] and got["book_exhausted_any"]

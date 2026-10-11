@@ -29,33 +29,49 @@ def book_cost_from(book: dict, *, contract_size: float, notional_usd: float,
     size = float(contract_size or 0.0)
     if size <= 0 or mid <= 0:
         raise VenueError(f"cannot measure {symbol}: size={size} mid={mid}")
-    levels = asks if side == "buy" else bids
     want = notional_usd / (size * mid)
-    need, cost, got = want, 0.0, 0.0
-    for px, vol in levels:
-        take = min(need, vol)
-        cost += take * px
-        got += take
-        need -= take
-        if need <= 0:
-            break
-    if got <= 0:
-        raise VenueError(f"empty book for {symbol}")
-    avg = cost / got
-    slippage = avg / mid - 1.0 if side == "buy" else mid / avg - 1.0
-    exhausted = need > 0
-    if exhausted:
-        # The whole visible book cannot fill this order; the true cost is
-        # worse than anything measurable here.
-        far = levels[-1][0]
-        slippage = max(slippage, far / mid - 1.0 if side == "buy"
-                       else mid / far - 1.0)
+
+    def walk(which: str) -> tuple[float, bool]:
+        levels = asks if which == "buy" else bids
+        need, cost, got = want, 0.0, 0.0
+        for px, vol in levels:
+            take = min(need, vol)
+            cost += take * px
+            got += take
+            need -= take
+            if need <= 0:
+                break
+        if got <= 0:
+            raise VenueError(f"empty book for {symbol}")
+        avg = cost / got
+        slip = avg / mid - 1.0 if which == "buy" else mid / avg - 1.0
+        exhausted = need > 0
+        if exhausted:
+            # The whole visible book cannot fill this order; the true cost
+            # is worse than anything measurable here.
+            far = levels[-1][0]
+            slip = max(slip, far / mid - 1.0 if which == "buy" else mid / far - 1.0)
+        return slip, exhausted
+
+    # BOTH SIDES, from the one read (RCA-2026-10-11-B): a long buys the asks
+    # and a short sells the bids, and a trade must get OUT as well as in —
+    # the backtest refuses a minute whose book cannot fill EITHER side
+    # (book_history `exhausted`). `slippage` / `book_exhausted` stay the
+    # requested side, as every caller has always read them.
+    buy, ex_buy = walk("buy")
+    sell, ex_sell = walk("sell")
+    slippage, exhausted = (buy, ex_buy) if side == "buy" else (sell, ex_sell)
     return {
         "symbol": symbol,
         "mid": mid,
         "spread": (asks[0][0] - bids[0][0]) / mid,
         "slippage": slippage,
         "book_exhausted": exhausted,
+        "slippage_buy": buy,
+        "slippage_sell": sell,
+        "exhausted_buy": ex_buy,
+        "exhausted_sell": ex_sell,
+        "book_exhausted_any": bool(ex_buy or ex_sell),
         "notional_tested": notional_usd,
     }
 

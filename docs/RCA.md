@@ -172,6 +172,80 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-11-B — practice judged every short on the buy side of the book, while the backtest judged it on the side it sells into
+
+**CEO**
+
+* Since the move to Gate, eight of the fifteen practice trades #55D32617
+  opened were shorts, and each one's cost was checked as if it were a
+  buy; the check that runs before every candle turned TOSHI away for both
+  directions on the buy side's price.
+* Why: the live cost check always read the "buy" half of the order book,
+  and the backtest reads the half the trade actually uses — so on a coin
+  whose two halves cost different amounts the two could disagree about the
+  same trade.
+* What stops it now: practice reads the side each trade takes, refuses
+  before a signal only when both sides would refuse, and refuses a book
+  that cannot fill either side — the backtest's rule, word for word.
+
+**DEV**
+
+* `tradingagents/auto_trader.py` `edge_check` → `_book_for` →
+  `fx.book_cost(symbol, notional)` (side defaults to "buy" in
+  `exchange_common.book_cost_from`); `side` reached `funding_cost` only.
+  `minute_verdict` (backtest, replay) reads `reading["buy"]` for a long,
+  `reading["sell"]` for a short, and `exhausted` over both sides.
+* Invariant broken: **the runner and the backtest decide a trade by the
+  same rule on the same inputs** (CLAUDE.md, "Every cost the BACKTEST
+  charges, the GATE charges").
+* Guards: `tests/test_cost_verdict_is_the_runners.py::test_a_short_is_judged_on_the_side_it_sells_into`,
+  `::test_before_the_signal_a_strategy_is_refused_only_if_both_sides_refuse`,
+  `::test_a_book_that_cannot_fill_either_side_refuses_like_the_backtest`,
+  `::test_the_book_walk_reports_both_sides_from_one_read`.
+
+**SAW** — the operator asked "you know this is a bug so why did you not
+fixed it?" after it was listed as a known difference; the final review of
+the move to Gate (Oct 10, 2026) had filed it as minor and it was deferred.
+
+**TIMELINE**
+
+1. Oct 10, 2026 ~5:00am — the final review notes that `edge_check` reads
+   the asks for every entry; it is ruled minor and deferred.
+2. Oct 10, 2026 10:00am - Oct 11, 2026 3:45am — #55D32617 opens 15 practice
+   trades on Gate; 8 are shorts (PUMP 10:00am and 11:00am, RECALL 2:30pm,
+   CLANKER 6:30pm x2, RECALL 6:45pm, SIGN 7:30pm, TOSHI 11:30pm, RECALL
+   3:45am), each checked on the buy side.
+3. Oct 10, 2026 10:25am — the screening check refuses TOSHI 30m kama10:
+   "round-trip cost 0.419% vs take-profit 0.80% = 52% of the target", on
+   the buy side, for longs and shorts alike; 11 TOSHI refusals by Oct 11.
+4. Oct 11, 2026 ~6:40am — measured on Gate's live books at $100: TOSHI
+   0.1323% to buy against 0.0934% to sell, CLANKER 0.1634% / 0.1261%,
+   SIGN 0.0804% / 0.0675%, PUMP 0.0316% / 0.0257%, RECALL 0.1051% /
+   0.1154%.
+5. After the fix: each entry reads its own side, the screening refuses only
+   when both sides would, and practice books the cost of the side it took.
+
+**ROOT CAUSE** — the side of the trade never reached the book read; the
+backtest's per-minute rule was built with sides from the start and the
+runner's was not changed to match.
+
+**WHY IT WAS NOT CAUGHT** — every cost-check test drove a long, or a fake
+book whose two halves cost the same; a fix was then deferred as "minor"
+by grading the code instead of what it does to practice, where it changes
+which trades happen.
+
+**COST** — practice money only: shorts on coins whose sell side is cheaper
+were judged dearer than they were (TOSHI by ~0.08% per round trip) and the
+screening refused TOSHI for shorts on the buy side's price; the booked
+cost of each short used the buy side too.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_cost_verdict_is_the_runners.py::test_a_short_is_judged_on_the_side_it_sells_into`,
+`tests/test_cost_verdict_is_the_runners.py::test_before_the_signal_a_strategy_is_refused_only_if_both_sides_refuse`.
+
+---
+
 ## RCA-2026-10-11-A — the Errors tab called two idle rooms "quiet for six hours" after the move to Gate
 
 **CEO**

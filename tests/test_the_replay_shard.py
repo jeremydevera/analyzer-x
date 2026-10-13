@@ -303,13 +303,18 @@ def test_a_write_rule_can_keep_every_target_shape(rs):
 
 def _hourly_book(world, *, spread, buy, sell):
     """One order-book reading at every bar's open (age 0 at each entry and
-    exit) — the shape `cost_store.book_for` hands the replay on Gate."""
+    exit) — the shape `cost_store.book_for` hands the replay on Gate. Its best
+    prices are that bar's own open: since Oct 13, 2026 an entry is BOUGHT at
+    its minute's best price (at.book_fill_price), so the book and the candles
+    must share one price line, as they do on Gate (a fixed 100.0 against
+    candles that climb 0.4% an hour would price every entry at 100.0)."""
     from tradingagents import book_history as bh
 
-    return bh.pack([{"t": int(d.timestamp()), "bid": 100.0, "ask": 100.0,
+    df = world["df"]
+    return bh.pack([{"t": int(d.timestamp()), "bid": float(o), "ask": float(o),
                      "spread": spread, "buy": buy, "sell": sell,
                      "exhausted": False, "source": "full"}
-                    for d in world["df"]["Date"]])
+                    for d, o in zip(df["Date"], df["Open"], strict=True)])
 
 
 def test_a_minute_the_runner_would_refuse_is_never_traded_in_the_replay(rs, world):
@@ -325,13 +330,15 @@ def test_a_minute_the_runner_would_refuse_is_never_traded_in_the_replay(rs, worl
 
 
 def test_each_replayed_trade_pays_its_own_minutes(rs, world):
-    """The entry minute's fill on its side and the exit minute's on the other,
-    halved because `trade_pnl` charges the fee twice: 0.0002 + (0.0004 +
-    0.0002) / 2 = 0.0005 a side for a long — never the coin's flat 0.0003."""
+    """The exit minute's fill on the other side, halved because `trade_pnl`
+    charges the fee twice; the entry pays its fill INSIDE its price, bought at
+    the entry minute's best price as practice buys (Oct 13, 2026,
+    RCA-2026-10-13-A): 0.0002 + (0 + 0.0006) / 2 = 0.0005 a side for a long —
+    never the coin's flat 0.0003, and never the entry's 0.0004 on top."""
     from tradingagents import fast_grid as fg
 
     world["cost"]["book"] = _hourly_book(world, spread=0.0001, buy=0.0004,
-                                         sell=0.0002)
+                                         sell=0.0006)
     combos, stats = _run(rs, world)
     assert not stats.get("gate_blocked")
     c = next(c for c in combos if c["tp"] == 1.0)

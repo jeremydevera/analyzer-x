@@ -253,8 +253,15 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
                 stats["tested"] += 1
                 if not dirs_idx:
                     continue
-                refuse = None
+                refuse = price = None
                 if minute_book is not None:
+                    def price(i, side):
+                        # the price practice pays: the entry minute's best
+                        # price on the trade's side, the engine's one rule
+                        # (at.book_fill_price, Oct 13, 2026); None = the open
+                        return at.book_fill_price(
+                            bh.reading_at(minute_book, ts[i + 1] // 1000), side)
+
                     def refuse(i, side, tp=tp, sl=sl):
                         # the runner's own answer at this entry minute: the
                         # cost check, then "the price already ran away" -
@@ -272,7 +279,7 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
                         return False
                 walked = fg.walk(dirs_idx, dirs, op, hi, lo, cl, tp=tp, sl=sl,
                                  liq=liq_frac, f_ms=f_ms, f_cum=f_cum, bar_ms=ts,
-                                 refuse=refuse)
+                                 refuse=refuse, entry_px=price)
                 if len(walked) < WRITE["trades"]:
                     continue
                 trades = [[ts[e], ts[x] + bs * 1000,
@@ -308,19 +315,31 @@ def trade_fee(book, cost: dict, side: int, entry_ms: int, exit_ms: int,
     (`fg.trade_pnl` charges 2 x fee) — priced exactly as the engine prices it
     (`backtest_strategy(book=)`): no entry reading -> the coin's flat
     slippage, counted unmeasured; no exit reading -> the entry's cost again.
-    No book (MEXC) -> the flat fee of before."""
+    No book (MEXC) -> the flat fee of before.
+
+    An entry BOUGHT AT THE BEST PRICE of its own minute (at.book_fill_price,
+    Oct 13, 2026) pays no entry walk - that price holds the half-spread, as
+    practice charges it - and an exit with no reading pays the entry
+    minute's other side, the engine's `_out_at_entry`."""
     flat = cost["fee"] + cost["slip"]
     if book is None:
         return flat
     r_in = bh.reading_at(book, entry_ms // 1000)
     r_out = bh.reading_at(book, exit_ms // 1000)
+    priced = at.book_fill_price(r_in, side) is not None
     if r_in is None:
         stats["cost_unmeasured"] = stats.get("cost_unmeasured", 0) + 1
         s_in = float(cost["slip"])
+    elif priced:
+        s_in = 0.0
     else:
         s_in = float(r_in["buy"] if side == 1 else r_in["sell"])
-    s_out = (float(r_out["sell"] if side == 1 else r_out["buy"])
-             if r_out is not None else s_in)
+    if r_out is not None:
+        s_out = float(r_out["sell"] if side == 1 else r_out["buy"])
+    elif priced:
+        s_out = float(r_in["sell"] if side == 1 else r_in["buy"])
+    else:
+        s_out = s_in
     return cost["fee"] + (s_in + s_out) / 2.0
 
 

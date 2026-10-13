@@ -3,8 +3,9 @@ what the runner would refuse (phase 4, spec D11, Oct 10, 2026).
 
 `backtest_strategy(book=...)` takes Gate's recorded readings (book_history):
 at an entry it reads the book at the entry bar's open, asks the runner's own
-`cost_verdict`, and either refuses (counted in `gate_blocked`) or enters,
-paying that minute's fill on its side; the exit pays the exit minute's fill.
+`cost_verdict`, and either refuses (counted in `gate_blocked`) or enters at
+that minute's best price on its side, practice's price, which holds its fill
+(Oct 13, 2026); the exit pays the exit minute's fill.
 A minute with no reading pays the flat cost of before and is counted in
 `cost_unmeasured`. With `book=None` nothing changes, byte for byte.
 """
@@ -62,10 +63,13 @@ def test_a_cheap_minute_lets_the_trade_in_and_charges_its_own_fills():
                (T0 + 8 * H, 0.0004, 0.0002, 0.0005, False)])    # the exit bar
     r = run(book=bk)
     assert r["trades"] == 1 and r["gate_blocked"] == 0 and r["cost_unmeasured"] == 0
-    # +1% move, minus two fees, the entry's buy fill and the exit's SELL fill
-    want = (0.01 - 2 * 0.00075 - 0.0001 - 0.0005) * 5.0 * at.LEVERAGE
+    # bought at the entry minute's ASK, the price practice pays (Oct 13, 2026,
+    # RCA-2026-10-13-A), which holds the entry's half-spread: +1% move, minus
+    # two fees and the exit's SELL fill - no entry fill on top
+    assert r["log"][0]["entry"] == 100.01
+    want = (0.01 - 2 * 0.00075 - 0.0005) * 5.0 * at.LEVERAGE
     assert r["profit"] == pytest.approx(want, abs=0.01)
-    assert r["log"][0]["cost in %"] == pytest.approx(0.01, abs=1e-6)
+    assert r["log"][0]["cost in %"] == 0.0
     assert r["log"][0]["cost out %"] == pytest.approx(0.05, abs=1e-6)
 
 

@@ -3323,6 +3323,26 @@ def entry_refusal(reading: dict | None, *, side: int, signal_close: float,
     return "", cv
 
 
+def book_fill_price(reading: dict | None, side: int) -> float | None:
+    """The price PRACTICE pays for this entry, from the recorded book of the
+    entry minute (Oct 13, 2026: "Yes fix it"): the best ask to buy, the best
+    bid to sell - `tradable_price`'s number, read seconds after the close.
+    Only the close minute's OWN book counts (`book_history.book_age_s` within
+    CHASE_READING_MAX_AGE_S); otherwise None, and the caller keeps the
+    candle's open. ONE rule for the engine and the GitHub replay.
+
+    CLANKER 15m, Oct 11, 2026: the recorded asks, 13.18 at 1:30am and 13.19
+    at 7:15pm, were practice's fills exactly; the backtest bought at the opens,
+    13.21 and 13.20, and missed both targets practice reached
+    (RCA-2026-10-13-A)."""
+    from tradingagents.book_history import book_age_s
+
+    if reading is None or book_age_s(reading) > CHASE_READING_MAX_AGE_S:
+        return None
+    px = float(reading["ask"] if side == 1 else reading["bid"])
+    return px if px > 0 else None
+
+
 def edge_check(key: str, symbol: str, margin: float = 10.0, *, fx=None,
                side: int = 0) -> dict:
     """Can this strategy's edge survive this contract's real trading cost?
@@ -4372,6 +4392,7 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                 break
         if _open is not None:
             _slip_in = None
+            _px_in = _out_at_entry = None
             # carried across the boundary: same side, entry, rung and barriers
             s = int(_open["side"])
             margin = float(_open["margin"])
@@ -4386,6 +4407,7 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                 i += 1
                 continue
             _slip_in = None
+            _px_in = _out_at_entry = None
             if _bk is not None:
                 _t_in = int(_bk_ms[i + 1] // 1000)
                 _r_in = _bh.reading_at(_bk, _t_in)
@@ -4406,9 +4428,20 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                     n_unmeasured += 1
                 else:
                     _slip_in = _cv["slippage"]
+                    # THE PRICE PRACTICE PAYS (Oct 13, 2026, RCA-2026-10-13-A):
+                    # the entry minute's best price on the trade's side, not
+                    # the candle's open. That price holds the entry's
+                    # half-spread, so no entry walk is charged on top
+                    # (paper_round_trip: `rt - 2*slip + exit_slip`), and an
+                    # exit with no reading of its own pays this minute's
+                    # OTHER side - the `exit_slippage` practice carries.
+                    _px_in = book_fill_price(_r_in, s)
+                    if _px_in is not None:
+                        _slip_in = 0.0
+                        _out_at_entry = float(_r_in["sell"] if s == 1 else _r_in["buy"])
             margin = (base_margin if sizing == "flat"
                       else ladder_margin(base_margin, step))
-            entry = opens[i + 1]
+            entry = opens[i + 1] if _px_in is None else _px_in
             notional = margin * lev
             tp_px = entry * (1 + s * tp)
             sl_px = entry * (1 - s * sl)
@@ -4560,7 +4593,9 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                          else int(_bk_ms[j]))
                 _r_out = _bh.reading_at(_bk, _x_ms // 1000)
                 _c_out = (float(_r_out["sell"] if s == 1 else _r_out["buy"])
-                          if _r_out is not None else _c_in)
+                          if _r_out is not None
+                          else _out_at_entry if _out_at_entry is not None
+                          else _c_in)
                 pnl = (out - 2 * _taker - _c_in - _c_out) * notional
             else:
                 pnl = (out - 2 * fee) * notional
@@ -4650,7 +4685,11 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                     "funding $": round(fund, 4),
                     "pnl $": round(pnl, 2), "running total $": round(equity, 2),
                     **({"cost in %": round(_c_in * 100, 6),
-                        "cost out %": round(_c_out * 100, 6)}
+                        "cost out %": round(_c_out * 100, 6),
+                        # where the entry price came from, so a 0 entry
+                        # cost reads as paid inside the price
+                        "entry from": ("best price" if _px_in is not None
+                                       else "candle open")}
                        if _c_in is not None else {}),
                     **({"slices": _sl_det} if _sl_det else {})})
         step = 0 if pnl > 0 else step + 1

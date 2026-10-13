@@ -172,6 +172,114 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-13-A — the backtest bought at the next candle's opening price while practice buys at the live best price, so a cent moved both barriers and two shared trades ended the other way
+
+**CEO**
+
+* You asked why the backtest still did not match practice. In room
+  #55D32617, 2 of the 31 trades both made ended the other way: practice won
+  CLANKER twice (+$0.93 and +$0.90), and the backtest lost both (−$1.40 and
+  −$1.35).
+* Why: practice buys at the best price on offer a few seconds after the
+  candle closes. The backtest bought at the next candle's opening price, a
+  cent away, and the win and stop prices are set from the buy price. That
+  one cent decided whether the market reached the win price.
+* What stops it now: the backtest buys at the best price Gate recorded for
+  that minute, which is the price practice paid, and charges its cost the
+  way practice charges it. Now all 31 shared trades end the same way.
+
+**DEV**
+
+* `tradingagents/auto_trader.py` `backtest_strategy(book=)` set
+  `entry = opens[i + 1]` and charged the entry minute's whole walk
+  (`_slip_in`) on top. `tradingagents/fast_grid.py` `walk` (replay_shard) did
+  the same, while practice fills at `tradable_price` (ask / bid) and
+  `paper_round_trip` charges `rt - 2*slip + exit_slip`, so no entry walk.
+* Invariant broken: **the backtest prices a trade the way practice prices
+  it**. One rule now, `at.book_fill_price` (the entry minute's own book, at
+  most `CHASE_READING_MAX_AGE_S` old): the engine, `fast_grid.walk(entry_px=)`
+  and `replay_shard.trade_fee` all read it.
+* Guards: `tests/test_backtest_buys_at_practices_price.py` (10 tests, red on
+  2969964b), and the updated
+  `tests/test_backtest_pays_the_minute.py::test_a_cheap_minute_lets_the_trade_in_and_charges_its_own_fills`
+  and
+  `tests/test_the_replay_shard.py::test_each_replayed_trade_pays_its_own_minutes`.
+
+**SAW** — the operator, Oct 13, 2026 2:24am: *"Theres still difference and
+not matched why?"*, then *"Yes fix it"*.
+
+**TIMELINE**
+
+1. **Since the start**, the backtest has bought at the next candle's open.
+   Practice has bought at the ask (sold at the bid) since Sep 05, 2026, with
+   no entry walk on top since Sep 23, 2026.
+2. **Oct 10, 2026.** Gate's recorded book carries each minute's best ask and
+   bid (`book_history`). Only the "price ran away" check read them, from
+   Oct 11, 2026.
+3. **Oct 11, 2026 1:30am**, CLANKER 15m choch long:
+   * practice filled at 13.18, and Gate's recorded ask for that minute was
+     13.18;
+   * the backtest bought at the open, 13.21;
+   * the 6:59am low reached the backtest's stop (13.0779) but not practice's
+     (13.048);
+   * practice won +$0.93 at 12:03pm, and the backtest lost −$1.40.
+4. **Oct 11, 2026 7:15pm**, the same strategy:
+   * practice filled at 13.19, the recorded ask, against the backtest's 13.20;
+   * the 10:39pm high was 13.35, which reached practice's win price (13.348)
+     and not the backtest's (13.358);
+   * practice won +$0.90, and the backtest lost −$1.35 at Oct 12, 2026 5:30am.
+5. **Room #55D32617, Oct 10, 2026 3:59am to Oct 13, 2026, before the fix:**
+   * 31 trades both sides closed, 29 with the same result, worth −$8.91 in the
+     backtest against −$3.67 in practice;
+   * the backtest as a whole closed 41 trades for −$13.15, practice 37 for
+     −$2.26.
+6. **After the fix** (Oct 13, 2026 2:35am):
+   * 31 of 31 with the same result, −$2.07 against −$3.69;
+   * the backtest closed 40 trades, 19 won and 21 lost, for −$7.03, and
+     practice 37, 20 won and 17 lost, for −$2.26;
+   * the CLANKER 8:30am trade that existed only in the backtest is gone;
+   * one new difference is a knock-on: the backtest was holding CLANKER from
+     Oct 09, 2026 11:45pm, before the move to Gate, and that trade now lasts
+     until 12:40pm.
+
+**ROOT CAUSE** — every entry was priced at `opens[i + 1]`, and the barriers
+are fractions of the entry price, so the price practice paid and the price
+the backtest assumed set different win and stop prices.
+
+**WHY IT WAS NOT CAUGHT**
+* Every backtest-against-practice check compared COSTS (fees, slippage,
+  funding) or which trades were TAKEN (refusals). None compared the price
+  one shared trade was bought at. The entry cost was modelled, but as a
+  charge on top of the open: the same money, yet different barriers.
+* The recorded best prices had been in the book since Oct 10, 2026, and
+  only the "price ran away" check read them.
+
+**COST** — none in money (practice). On the shared trades in this room the
+backtest read −$8.91 against practice's −$3.67, and two practice wins were
+losses in the backtest.
+
+**FIX** — this commit:
+* `at.book_fill_price`;
+* the engine's entry price, `_slip_in = 0` when the entry is priced by the
+  book, and an exit with no reading falls back to the entry minute's other
+  side (`_out_at_entry`);
+* `fast_grid.walk(entry_px=)`;
+* replay_shard's walk and `trade_fee`;
+* a trade log's `entry from` field.
+
+**GUARD** — `tests/test_backtest_buys_at_practices_price.py` (10).
+
+**STILL OPEN**
+* The order book itself. Gate's saved copy reads far cheaper than the live
+  book practice reads for some coins (QNTX, Oct 12, 2026 1:29am: 0.012% to
+  buy $100 in the copy, 1.880% live), and 7 of the 9 trades only the backtest
+  made are QNTX's. A same-minute comparison is running.
+* Practice charges the exit side measured AT ENTRY and estimates funding at
+  entry. The backtest reads the exit minute's book and the real settlements.
+  Small, and left as measured.
+
+---
+
 ## RCA-2026-10-11-E — the backtest's "price already ran away" check read an hour-old order book as the price at the close, and skipped 385 of 1,500 BTC 15m entries in those hours
 
 NEVER HAPPENED YET in a stored row: found by the review of a1ab2206 before

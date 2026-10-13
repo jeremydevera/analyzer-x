@@ -35,7 +35,8 @@ WHY_TP, WHY_SL, WHY_LIQ, WHY_END = 0, 1, 2, 3
 def walk(dirs_idx: Sequence[int], dirs, opens, high, low, close, *,
          tp: float, sl: float, liq: float | None,
          start: int = 0, end: int | None = None,
-         f_ms=None, f_cum=None, bar_ms=None, refuse=None) -> list[tuple]:
+         f_ms=None, f_cum=None, bar_ms=None, refuse=None,
+         entry_px=None) -> list[tuple]:
     """The engine's bar walk, once, sizing-free.
 
     Returns one tuple per trade:
@@ -50,6 +51,11 @@ def walk(dirs_idx: Sequence[int], dirs, opens, high, low, close, *,
     a refused signal is no trade and the walk moves on to the next signal at
     once, exactly as live, where nothing was ever opened. None = the walk of
     before, unchanged.
+
+    ``entry_px(sig_bar, side) -> float | None`` is the price the trade is
+    BOUGHT at when the entry minute's book says it (Oct 13, 2026: the price
+    practice pays, `auto_trader.book_fill_price`); None from it, or no
+    callback, keeps the next bar's open - the walk of before.
     """
     n = len(close) if end is None else int(end)
     out: list[tuple] = []
@@ -72,6 +78,10 @@ def walk(dirs_idx: Sequence[int], dirs, opens, high, low, close, *,
             i += 1
             continue
         entry = opens[i + 1]
+        if entry_px is not None:
+            _px = entry_px(i, s)
+            if _px is not None:
+                entry = _px
         tp_px = entry * (1 + s * tp)
         sl_px = entry * (1 - s * sl)
         liq_px = None if liq is None else entry * (1 - s * liq)

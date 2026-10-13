@@ -242,6 +242,17 @@ own `maintenance_rate`.
   (`db_jobs.v2_board`), never this PC's 1-minute folder: the runners fetch
   their own minutes, and on Oct 11, 2026 4:32am that folder held BTC and
   SKY, so the daily update measured 2 coins of 1,027 (RCA-2026-10-11-D).
+* **AND IT BUYS AT PRACTICE'S PRICE (Oct 13, 2026: *"Yes fix it"*).** With
+  the entry minute's own book, a long fills at its recorded best ASK and a
+  short at its BID (`auto_trader.book_fill_price`, the one rule for
+  `backtest_strategy`, `fast_grid.walk(entry_px=)` and replay_shard), never
+  the next candle's open; that price holds the entry's half-spread, so no
+  entry walk is charged on top (`paper_round_trip`), and an exit with no
+  reading pays the entry minute's other side. No fresh book: the open and
+  the cost of before. The barriers are fractions of the entry, so one cent
+  decided trades: CLANKER 15m, Oct 11, 2026 7:15pm, practice 13.19 (the
+  recorded ask) against the backtest's 13.20, and a 13.35 high reached one
+  target and not the other (RCA-2026-10-13-A).
 * **Gate's fee is 0.075% taker on every contract** (`fee_floor()`), against
   MEXC's 0.02% floor. Funding cycles are 8 h, 4 h or 1 h per contract.
 * **Real money on Gate is built and shut.** Orders, the resting stop (Gate

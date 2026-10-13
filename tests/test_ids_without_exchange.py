@@ -40,13 +40,40 @@ def test_a_gate_era_id_is_proved_before_it_is_rewritten():
 
 def test_a_threshold_signal_is_found_without_its_threshold():
     """The decisions log keeps no threshold, so a mom6 row is tried across
-    the grid's thresholds — and only the one that hashes to it is taken."""
+    the grid's thresholds — and only the one that hashes to it is taken.
+
+    IN THE PERCENT A ROW CARRIES (0.3, never THRESHOLDS' 0.003): this test
+    used the fraction until Oct 13, 2026, mirroring the bug it should have
+    caught, so no fade15 / mom6 id in a watcher log was ever rewritten
+    (#R9KGW3J4, ANKR 30m fade15, Gate-hashed at th 0.2, among them)."""
     from tradingagents import backtest_report as br
 
-    th = sorted(br.THRESHOLDS["15m"])[-1]
+    th = round(sorted(br.THRESHOLDS["15m"])[-1] * 100, 3)
+    assert th == 0.3
     old = iwe.gate_code("PEPE", "15m", "mom6", th, 0.5, 1.0, "flat", res="1m")
     assert iwe.plain_for(old, "PEPE", "15m", "mom6", 0.5, 1.0) == \
         br.row_code("PEPE", "15m", "mom6", th, 0.5, 1.0, "flat", res="1m")
+
+
+def test_a_first_pass_mark_runs_the_threshold_pass(tmp_path):
+    """The first pass (Oct 13, 2026 10:57am) wrote its mark having missed every
+    threshold id; a mark from that pass lets the second one run, once."""
+    from tradingagents import backtest_report as br
+
+    room = tmp_path / "profiles" / "4FC03172"
+    room.mkdir(parents=True)
+    old = iwe.gate_code("ANKR", "30m", "fade15", 0.2, 1.0, 1.2, "flat", res="1m")
+    (room / "strategy_watcher.jsonl").write_text(json.dumps(
+        {"at": AFTER, "action": "on", "id": old, "coin": "ANKR", "tf": "30m",
+         "signal": "fade15", "tp": 1.2, "sl": 1.0, "why": f"#{old} ANKR"}) + "\n",
+        encoding="utf-8")
+    (tmp_path / iwe.MARK_NAME).write_text(json.dumps({"mapped": 44375}), encoding="utf-8")
+    got = iwe.migrate(home=tmp_path, since=SINCE)
+    assert not got.get("skipped") and not got["failed"]
+    plain = br.row_code("ANKR", "30m", "fade15", 0.2, 1.0, 1.2, "flat", res="1m")
+    line = json.loads((room / "strategy_watcher.jsonl").read_text(encoding="utf-8"))
+    assert line["id"] == plain and line["why"] == f"#{plain} ANKR"
+    assert iwe.migrate(home=tmp_path, since=SINCE)["skipped"]
 
 
 def _home(tmp_path):

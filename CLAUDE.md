@@ -185,7 +185,12 @@ own `maintenance_rate`.
   (`tests/test_gate_ids_and_landing.py`). The ids SAVED in those three days
   (watcher records, switched-on rows, streaks, the re-test) are rewritten
   once at the API's first startup step (`ids_without_exchange`, proved per
-  record, `tests/test_ids_without_exchange.py`). The STORES keep the
+  record, `tests/test_ids_without_exchange.py`; pass 2 tries thresholds in
+  PERCENT, `br.threshold_grid()`, RCA-2026-10-13-D). An id search the list
+  cannot answer is EXPLAINED from the rooms' own records
+  (`missing_row.explain` → `row_id_why`: "#2WCGB7VB is FASTSTOCK 15m prank
+  ... Gate does not sell FASTSTOCK"), every reason checked on the pair file,
+  never the command line (RCA-2026-10-13-C). The STORES keep the
   exchanges apart: `cloud_sweep.land_rows` refuses a row measured on another
   venue (a row with no venue is MEXC's), and the collector skips any run
   created before `venue.since()` without downloading it (RCA-2026-10-10-C).

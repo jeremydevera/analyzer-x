@@ -1622,7 +1622,10 @@ export const api = {
       total_capped?: boolean;
       /** which store answered ("v2" for Backtest v2) and, on an empty v2
        *  store, the sentence that says what to do first */
-      store?: string; why?: string }>(
+      store?: string; why?: string;
+      /** an id search that found nothing, explained from the rooms' own
+       *  records — null when no record names the id (RCA-2026-10-13-C) */
+      row_id_why?: string | null }>(
       `/api/strategies?${p.toString()}`,
     );
   },

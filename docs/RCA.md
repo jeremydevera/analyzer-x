@@ -172,6 +172,142 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-13-D — the id rewrite missed threshold strategies, so #55D32617's watcher kept a Gate-era id for ANKR 30m fade15 (#R9KGW3J4)
+
+**CEO**
+
+* Room #55D32617's Watcher panel still showed #R9KGW3J4 for the ANKR 30m
+  fade15 strategy it switched on and off last night — an id the Backtest tab
+  can never find.
+* Why: this morning's rewrite of the ids saved Oct 10 - 13 tried each
+  strategy's threshold as a fraction (0.002) while ids are made from the
+  percent (0.2), so it could not recognise any fade15 / mom6 / mom15 id.
+* What stops it now: the thresholds are tried in percent, the rewrite runs a
+  second pass at the next start, and the test that used the fraction (and so
+  agreed with the bug) now uses the percent a real row carries.
+
+**DEV**
+
+* `tradingagents/ids_without_exchange.py` `_ths` returned
+  `{float(x) for x in br.THRESHOLDS...}` (fractions); `backtest_report.row_code`
+  hashes `th` as written in a row (percent, `round(th * 100, 3)` in
+  `api.row_id_for`), so `plain_for` never proved a threshold id without `th`.
+* Invariant broken: **a reader that rebuilds an id builds it from the same
+  units the id was made from**; `br.threshold_grid()` is now the one list,
+  used by the rewrite and by `missing_row`.
+* Guard: `tests/test_ids_without_exchange.py::test_a_threshold_signal_is_found_without_its_threshold`,
+  `::test_a_first_pass_mark_runs_the_threshold_pass`.
+
+**SAW** — nothing on screen yet; found by the review workflow of RCA-C, which
+ran the new Backtest answer over the 13,141 ids in the rooms' records.
+
+**TIMELINE**
+
+1. Oct 12, 2026 12:00am — #55D32617 switches on ANKR 30m fade15, TP 1.5% /
+   SL 1.2%, logged as #R9KGW3J4 (the id with the exchange hashed in).
+2. Oct 12, 2026 1:04am — the hourly check switches it off at 69.84%; the
+   7-day mark is keyed #R9KGW3J4.
+3. Oct 13, 2026 10:57am — pass 1 rewrites 44,375 Gate-era ids but proves no
+   threshold id without its threshold: #R9KGW3J4 stays, in 1 mark and 4
+   decision lines.
+4. After the fix — pass 2, measured on a copy of the real files: 1 id
+   proved (#R9KGW3J4 → #U9DUR9HV), 1 mark and 4 lines rewritten, 3.2 s.
+
+**ROOT CAUSE** — `_ths` took `br.THRESHOLDS`, which holds fractions, while
+every row and every id carries the threshold in percent.
+
+**WHY IT WAS NOT CAUGHT** — its test built the Gate-era id from the same
+fraction it then searched with, so test and code agreed on the wrong unit.
+No fixture used a real watcher line, which never carries a threshold.
+
+**COST** — none: #55D32617 is raw, so its 7-day wait is off and the stale mark
+changed nothing it switched; only the panel showed an unfindable id.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_ids_without_exchange.py::test_a_first_pass_mark_runs_the_threshold_pass`.
+
+---
+
+## RCA-2026-10-13-C — the Backtest tab answered "no row, run this command" for an id the app had printed beside 21 practice trades (#2WCGB7VB)
+
+**CEO**
+
+* You searched #2WCGB7VB — the id beside your FASTSTOCK practice trades — and
+  the Backtest tab said "no row in the store" and told you to run a command.
+* Why: FASTSTOCK was a MEXC stock and Gate does not sell it, so there can be
+  no Gate backtest of it — and the tab never looked at where the id came
+  from, so it could not say so.
+* What stops it now: when a search finds nothing, the tab looks the id up in
+  your rooms' own records and says what it is and why it is missing: "#2WCGB7VB
+  is FASTSTOCK 15m prank, TP 1.5% / SL 1.2%: 9 of your rooms switched it on
+  while the app traded on MEXC (last on Oct 06, 2026 12:34am), and Gate does
+  not sell FASTSTOCK, so Gate has no backtest of it."
+
+**DEV**
+
+* `webapp/src/components/backtest/StrategiesPanel.tsx` miss block printed a
+  fixed sentence plus `python -m tradingagents.rows_index resolve`;
+  `tradingagents/api.py` `strategies()` answered an id search with rows only,
+  nothing about an id it did not hold.
+* Invariant broken: **an empty page may never speak for the store** (CLAUDE.md,
+  kit item G) — the empty answer named neither what the id is nor why it is
+  absent, while the app's own records knew both.
+* Guard: `tests/test_a_missing_id_is_explained_from_your_records.py::test_the_operators_id_names_its_coin_and_why_there_is_no_backtest`.
+
+**SAW** — Oct 13, 2026 12:45pm: *"still not worked / 2WCGB7VB is existing in
+practice, but when i search 2WCGB7VB in backtest tab its not existing"*, with a
+screenshot of "no row #2WCGB7VB in the store ... python -m
+tradingagents.rows_index resolve 2WCGB7VB says which it is".
+
+**TIMELINE**
+
+1. Sep 30, 2026 9:35am - Oct 06, 2026 12:34am — 9 rooms switch on FASTSTOCK
+   15m prank, TP 1.5% / SL 1.2%, on MEXC.
+2. Oct 07, 2026 9:16pm - Oct 10, 2026 3:59am — 21 practice trades close in 6
+   rooms (Main 5, #55D32617 6, #B2404C0B 3, #CC94D9FB 3, #4FC03172 2,
+   #6B08FF64 2).
+3. Oct 10, 2026 3:56am — the app moves to Gate; Gate's 1,038 contracts
+   include no FASTSTOCK and no FAST.
+4. Oct 13, 2026 7:14am — the operator searches #68BZF2L9 (the same strategy
+   with the exchange hashed into its id): "no row".
+5. Oct 13, 2026 10:57am — ids lose the exchange (d6ebabfc); the trade history
+   prints #2WCGB7VB.
+6. Oct 13, 2026 12:45pm — the operator searches #2WCGB7VB: "no row ... python
+   -m ...".
+7. After the fix — the same search prints the sentence above, read from the
+   rooms' own records in about 3 s (under 1 s once read). An id search also
+   stops applying the 30-day window's floors, as its chip ("every other
+   filter ignored") always said.
+
+**ROOT CAUSE** — the miss message was built in the browser from the id alone;
+nothing looked at where the app itself had printed the id, so the one fact
+that mattered — the exchange does not sell the coin — never reached the
+screen.
+
+**WHY IT WAS NOT CAUGHT** — the tests over this message were written for
+#PNK3G9KZ, an id NO grid can mint, and they pin its words for a foreign id.
+No test imagined an id the app had printed itself one tab over, and the move
+to Gate made hundreds of them at once: of the 300 coins the rooms ever
+switched on, 126 are not sold on Gate and 60 more are sold under a short stock
+name (MEXC's ABNBSTOCK is Gate's ABNB). The first draft of this fix passed its
+own tests and still printed six false sentences on real rows — a review that
+ran it over all 13,141 recorded ids found them: a twin offered as "there"
+that is not (1,257 of 1,700), QNTSTOCK sent to the crypto coin QNT, "not
+measured yet" for 57 pairs measured that morning, "never switched it on" for
+160 rows a room had run, a v1 id sent to an empty tab, and a row the 30-day
+window hid (#46V63K5Z) called "waiting". Each now has a test built from the
+real case.
+
+**COST** — none in money; a search that could never succeed, asked about three
+times (Oct 13, 2026 7:14am, 9:16am and 12:45pm).
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_a_missing_id_is_explained_from_your_records.py::test_the_operators_id_names_its_coin_and_why_there_is_no_backtest`.
+
+---
+
 ## RCA-2026-10-13-B — the practice history named MEXC trades with a Gate id that exists nowhere (#68BZF2L9)
 
 **CEO**

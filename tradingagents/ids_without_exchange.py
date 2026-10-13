@@ -42,6 +42,12 @@ from pathlib import Path
 from tradingagents import backtest_report as br
 
 MARK_NAME = "ids_without_exchange.json"
+# PASS 2 (Oct 13, 2026): pass 1 tried thresholds as fractions, so every
+# fade15 / mom6 / mom15 id a watcher log holds without its threshold — and
+# every cooling mark keyed on one — kept its Gate id. A mark from an earlier
+# pass runs this one; the rewrite is idempotent (a plain id hashes to no
+# Gate id), so running again only finishes what was missed.
+PASS = 2
 # an id as `row_code` spells it: 8 of its 32 letters, standing alone
 _ID = re.compile(r"(?<![A-Z0-9])([2-9A-HJ-NP-Z]{8})(?![A-Z0-9])")
 
@@ -56,8 +62,10 @@ def _ths(signal: str, th) -> list:
         return [float(th)]
     if signal not in br.THRESH_SIGNALS:
         return [0.0]
-    # the decisions log keeps no threshold: try the grid's
-    return sorted({0.0} | {float(x) for v in br.THRESHOLDS.values() for x in v})
+    # the decisions log keeps no threshold: try the grid's, IN THE PERCENT ids
+    # are hashed with (pass 2, Oct 13, 2026: pass 1 tried the fractions and
+    # proved no fade15 / mom6 / mom15 id at all)
+    return br.threshold_grid()
 
 
 def plain_for(rid: str, coin, tf, signal, sl, tp, th=None) -> str | None:
@@ -271,8 +279,14 @@ def migrate(home: Path | None = None, since: float | None = None) -> dict:
         home = profiles.HOME
     home = Path(home)
     mark = home / MARK_NAME
-    if mark.exists():
-        return {"skipped": f"done before ({mark})"}
+    try:
+        done = int(json.loads(mark.read_text(encoding="utf-8")).get("pass") or 1)
+    except FileNotFoundError:
+        done = 0
+    except (OSError, ValueError, AttributeError, TypeError):
+        done = 1
+    if done >= PASS:
+        return {"skipped": f"done before ({mark}, pass {done})"}
     if since is None:
         from tradingagents import venue
 
@@ -298,7 +312,7 @@ def migrate(home: Path | None = None, since: float | None = None) -> dict:
     if not out["failed"]:
         from tradingagents.positions_view import fmt_when
 
-        mark.write_text(json.dumps({**out, "done_at": time.time(),
+        mark.write_text(json.dumps({**out, "pass": PASS, "done_at": time.time(),
                                     "done": fmt_when(time.time())}, indent=1),
                         encoding="utf-8")
     return out

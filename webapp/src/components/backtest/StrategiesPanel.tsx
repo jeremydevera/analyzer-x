@@ -169,6 +169,9 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
   // the route's own reason for an empty v2 store ("download 1m candles on
   // Candles v2 first") — printed above the table when there is nothing on it
   const [storeWhy, setStoreWhy] = useState("");
+  // WHY AN ID IS NOT ON THE LIST, from the app's own records (RCA-2026-10-13-C):
+  // "#2WCGB7VB is FASTSTOCK 15m prank ... Gate does not sell FASTSTOCK"
+  const [rowIdWhy, setRowIdWhy] = useState("");
   const [facets, setFacets] = useState<{ coins: string[]; tfs: string[]; signals: string[]; tps?: number[]; sls?: number[]; sizings?: string[] }>({ coins: [], tfs: [], signals: [], tps: [], sls: [], sizings: [] });
   // A STORE THAT KEEPS ONE SIZING says so, and offers no choice: Backtest v2
   // keeps flat only since Sep 24, 2026 ("remove the martinangale in backtest
@@ -548,6 +551,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
           }
         }
         setStoreWhy(d.why ?? "");
+        setRowIdWhy(d.row_id_why ?? "");
         setIdx(d.index ?? null); setErr(""); setWaiting("");
         // what the rows are really in, straight from the payload
         setServedSort((d.sort as StrategySort) ?? sort);
@@ -1704,7 +1708,17 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
       )}
       {/* rule G: a filter that cannot leave anything says why, rather than
           showing an empty table the reader has to explain to themselves */}
-      {!err && !waiting && !shown.length && !!servedFilters.rowId && !missed && (
+      {/* THE APP KNOWS THIS ID (Oct 13, 2026): the operator searched
+          #2WCGB7VB, printed beside 21 of their practice trades, and this
+          panel answered with a command to run. The route now says what the
+          id is and why this list cannot hold it, from the rooms' own
+          records — "Gate does not sell FASTSTOCK" — in plain words. */}
+      {!err && !waiting && !shown.length && !!servedFilters.rowId && !missed && rowIdWhy && (
+        <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
+          {rowIdWhy}
+        </p>
+      )}
+      {!err && !waiting && !shown.length && !!servedFilters.rowId && !missed && !rowIdWhy && (
         <p className="px-5 pt-2 text-theme-sm text-warning-600 dark:text-warning-400">
           {/* THIS MESSAGE USED TO GUESS. It asserted "it changes if the row
               was re-measured with different barriers" — a cause nobody had

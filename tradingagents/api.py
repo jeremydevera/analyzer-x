@@ -138,6 +138,20 @@ def _ids_lose_the_exchange() -> None:
             print(f"[ids] rewritten without the exchange: {got}", flush=True)
     except Exception as exc:                                   # noqa: BLE001
         print(f"[ids] COULD NOT REWRITE: {exc!r}", flush=True)
+    # AND THE BACKTEST TAB'S "why is this id missing" reads the rooms' logs
+    # into memory now, on its own thread (RCA-2026-10-13-C): cold, the first
+    # answer measured 29 s on a busy PC, and the page gives up at 30 s
+    try:
+        import os as _os
+        import threading as _threading
+
+        from tradingagents import missing_row as _mr
+
+        if not _os.environ.get("PYTEST_CURRENT_TEST"):
+            _threading.Thread(target=_mr.warm, name="missing-row-warm",
+                              daemon=True).start()
+    except Exception as exc:                                   # noqa: BLE001
+        print(f"[ids] could not warm the missing-id answer: {exc!r}", flush=True)
 
 
 @app.on_event("startup")
@@ -684,14 +698,19 @@ def strategies(coin: str | None = None, tf: str | None = None,
         raise HTTPException(400, str(exc)) from exc
     # the window's trades/W/L/win % where they can be EXACT (see restate_window)
     got["window_hidden"] = 0
+    # AN ID SEARCH IGNORES THE FLOORS, as its chip says ("Row #X only — every
+    # other filter ignored"): the SQL already does (`WHERE id = ?`), and the
+    # window floors below hid #46V63K5Z (KII 15m ibs, on the list) behind the
+    # default 30-day "made money" floor (review, Oct 13, 2026)
+    _fl = ({"min_winrate": 0, "min_trades": 0, "profitable": False} if row_id else
+           {"min_winrate": min_winrate, "min_trades": min_trades,
+            "profitable": profitable})
     if months and got.get("window") and len(got.get("rows") or []) <= RESTATE_MAX:
         for r in got["rows"]:
             r.update(restate_window(r, got["window"]))
         # THE FLOORS AGAIN, ON THE WINDOW. The SQL floors ran on whole-history
         # figures; the page prints the window's. See rows_index.window_floors.
-        got["rows"], got["window_hidden"] = ri.window_floors(
-            got["rows"], min_winrate=min_winrate, min_trades=min_trades,
-            profitable=profitable)
+        got["rows"], got["window_hidden"] = ri.window_floors(got["rows"], **_fl)
     got["restate_max"] = RESTATE_MAX
     # HOW MANY ROWS A WINDOWED DOWNLOAD CAN ACTUALLY HOLD, so the button can
     # say it instead of promising `total`. With `days` on, the export
@@ -749,9 +768,23 @@ def strategies(coin: str | None = None, tf: str | None = None,
         # was >= 90 over its whole history (what SQL checked) and under 90 in
         # the last 30 days (what the column printed). The cut is COUNTED, and
         # the page says it: a row hidden silently is rule 20 broken.
-        got["rows"], got["window_hidden"] = ri.window_floors(
-            rows, min_winrate=min_winrate, min_trades=min_trades,
-            profitable=profitable)
+        got["rows"], got["window_hidden"] = ri.window_floors(rows, **_fl)
+    # AN ID THE LIST DOES NOT HOLD IS EXPLAINED FROM THE APP'S OWN RECORDS
+    # (RCA-2026-10-13-C): #2WCGB7VB sat beside 21 practice trades while this
+    # list answered with a command to run — it is FASTSTOCK, which the
+    # exchange does not sell. Only when the INDEX holds no such row (never a
+    # row the window hid), and never the 144 s enumerator.
+    if row_id and not got.get("rows") and not int(got.get("total") or 0):
+        try:
+            from tradingagents import missing_row
+
+            _st = _store_now()
+            _why = missing_row.explain(row_id, store_home=_st.home,
+                                       store_res=_st.fine_tf or None)
+            got["row_id_why"] = (_why or {}).get("words")
+        except Exception as exc:                               # noqa: BLE001
+            print(f"[strategies] could not explain #{row_id}: {exc!r}", flush=True)
+            got["row_id_why"] = None
     # NOT ri.status() — 267.55 s measured on this store, on a POLLED route
     # (see INDEX_STATUS_TTL)
     got["index"] = index_status()          # so the UI can say "still indexing"

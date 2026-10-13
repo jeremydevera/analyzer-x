@@ -338,6 +338,16 @@ THRESHOLDS: dict[str, list[float]] = {
     "1d": [.008, .010, .015],
 }
 
+def threshold_grid() -> list[float]:
+    """Every threshold the grid measures, in the PERCENT a row and its id
+    carry (0.2, never THRESHOLDS' 0.002) — plus 0, the threshold of every
+    other signal. A reader that has a row's signal but not its threshold
+    tries these (Oct 13, 2026: the id rewrite tried the fractions, so no
+    fade15 / mom6 / mom15 id from a watcher log was ever proved)."""
+    return sorted({0.0} | {round(float(x) * 100, 3)
+                           for v in THRESHOLDS.values() for x in v})
+
+
 MIN_TRADES = 30          # the skill's floor: below this a row is noise
 GATE_BLOCK = 0.50        # round-trip cost >= 50% of target -> cannot win
 

@@ -528,7 +528,8 @@ _TF_OF = {"Min1": "1m", "Min5": "5m", "Min15": "15m", "Min30": "30m",
           "Min60": "1h", "Hour4": "4h", "Hour8": "8h", "Day1": "1d"}
 
 
-def row_id_for(key: str, coin: str | None, settings: dict) -> str:
+def row_id_for(key: str, coin: str | None, settings: dict, *,
+               venue: str | None = None) -> str:
     """The stable row id for one strategy ON ONE COIN.
 
     Hashed by the same backtest_report.row_code every report uses, so the id
@@ -567,7 +568,9 @@ def row_id_for(key: str, coin: str | None, settings: dict) -> str:
             # from, which is the "same row, a different number on every page"
             # problem the stable id exists to end.
             at.sizing_for(settings, key),
-            res=res)
+            # the exchange the trade was made ON (history rows before the
+            # switch are MEXC's); None is today's exchange
+            res=res, venue=venue)
     except Exception:                                          # noqa: BLE001
         return ""
 
@@ -4173,11 +4176,17 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1,
     _settings = at.load_settings()
     _sid: dict = {}
 
-    def _strategy_id(key: str, symbol: str) -> str:
-        k = (key, symbol)
+    def _strategy_id(key: str, symbol: str, ts: float | None = None) -> str:
+        # NAMED BY THE EXCHANGE IT WAS MADE ON (RCA-2026-10-13-B): a trade
+        # from before the switch to Gate is MEXC's row, never a Gate id for
+        # a coin Gate does not list (#68BZF2L9, FASTSTOCK prank 15m)
+        from tradingagents import venue as _v
+
+        venue_at = _v.at(ts if ts is not None else _time.time())
+        k = (key, symbol, venue_at)
         if k not in _sid:
             try:
-                _sid[k] = row_id_for(key, symbol, _settings)
+                _sid[k] = row_id_for(key, symbol, _settings, venue=venue_at)
             except Exception:                                  # noqa: BLE001
                 _sid[k] = ""
         return _sid[k]
@@ -4211,7 +4220,10 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1,
               # exchange position): a real-looking id that matches no
               # combination is worse than no id
               "strategy_id": _strategy_id(str(e.get("strategy") or ""),
-                                          str(e.get("symbol") or "")),
+                                          str(e.get("symbol") or ""),
+                                          # when it OPENED: the exchange it
+                                          # was made on names it
+                                          float(e.get("opened_at") or e.get("ts") or 0)),
               "why": e.get("why") or "—",
               "profit": p, "running": run,
             # WHICH BOOK. Both stamp the same trade id, so a row that

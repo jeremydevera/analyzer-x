@@ -172,6 +172,59 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-13-B — the practice history named MEXC trades with a Gate id that exists nowhere (#68BZF2L9)
+
+**CEO**
+
+* The operator searched #68BZF2L9 from their practice trade history and
+  Backtest v2 found nothing, after waiting minutes for the search.
+* Why: those trades — FASTSTOCK, the "prank" 15-minute strategy, in five
+  rooms between Oct 07 and Oct 09, 2026 — were made on MEXC, but the history
+  worked out each strategy's id as if it were a Gate row, for a coin Gate
+  does not even list.
+* What stops it now: each trade in the history is named by the exchange it
+  was made on; a MEXC trade shows its MEXC id.
+
+**DEV**
+
+* `tradingagents/api.py` history route `_strategy_id` → `row_id_for(key,
+  symbol, _settings)` → `backtest_report.row_code(..., venue=None)`, which
+  falls back to `venue.current()` ("gate") and appends `|venue=gate`.
+* Invariant broken: **a label is derived from the data it describes** — the
+  trade's exchange, not the app's exchange today.
+* Guard: `tests/test_gate_ids_and_landing.py::test_a_trade_from_before_the_switch_keeps_its_mexc_strategy_id`.
+
+**SAW** — Backtest v2: "no row #68BZF2L9 in the store", the id copied from
+the demo trade history; first the "rows_id index is being built NOW" wait.
+
+**TIMELINE**
+
+1. Oct 07 - Oct 09, 2026 — prank_15m_sl12tp15 on FASTSTOCK_USDT trades in
+   practice in Main, #55D32617, #B2404C0B, #6B08FF64 and #CC94D9FB (MEXC).
+2. Oct 10, 2026 3:56am — the app moves to Gate; MEXC's rows are archived.
+3. From then — the history hashes those trades with `venue=gate`:
+   #68BZF2L9, an id no store holds (Gate lists no FASTSTOCK).
+4. Oct 13, 2026 ~7:15am — the operator searches it; the v2 id index was
+   being rebuilt after the night's collect, then the search answers "no
+   row" in 0.1 s.
+5. After the fix — `venue.at(opened_at)` names the trade's exchange and the
+   history prints its MEXC id.
+
+**ROOT CAUSE** — ids carry the exchange since the move (D6), and the one
+screen that shows trades from BEFORE the move asked for today's exchange.
+
+**WHY IT WAS NOT CAUGHT** — the id tests covered rows measured on each
+exchange and positions open now; none rendered a trade from before the
+switch.
+
+**COST** — none in money; a search that found nothing.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_gate_ids_and_landing.py::test_a_trade_from_before_the_switch_keeps_its_mexc_strategy_id`.
+
+---
+
 ## RCA-2026-10-13-A — the backtest bought at the next candle's opening price while practice buys at the live best price, so a cent moved both barriers and two shared trades ended the other way
 
 **CEO**

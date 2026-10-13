@@ -84,6 +84,19 @@ def since() -> float:
         return 0.0
 
 
+def at(ts: float) -> str:
+    """The exchange the app traded at moment `ts` (epoch seconds): before
+    `since()` the OTHER one — two exist — and from it on, the current one.
+    A trade is named by the exchange it was made on (RCA-2026-10-13-B: the
+    history hashed Oct 07 MEXC trades with Gate and printed #68BZF2L9, an id
+    neither exchange's store holds)."""
+    cur = current()
+    s = since()
+    if s and float(ts or 0) < s:
+        return next((v for v in NAMES if v != cur), cur)
+    return cur
+
+
 def name() -> str:
     """The exchange as a screen prints it: "Gate" / "MEXC"."""
     return NAMES[current()]

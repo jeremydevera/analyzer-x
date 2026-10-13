@@ -59,3 +59,38 @@ def test_the_shard_stamps_the_exchange_on_rows_and_markers():
     src = open(".github/scripts/sweep_shard.py", encoding="utf-8").read()
     assert src.count("**VENUE_FIELD") >= 3, \
         "every row and every pair_done marker carries the exchange"
+
+
+def test_a_trade_from_before_the_switch_keeps_its_mexc_strategy_id(tmp_path, monkeypatch):
+    """Oct 13, 2026 (RCA-2026-10-13-B): the practice history printed #68BZF2L9
+    beside FASTSTOCK prank_15m_sl12tp15 trades made on MEXC (Oct 07-09, 2026,
+    five rooms) — the id hashed with TODAY's exchange, a Gate id for a coin
+    Gate does not list, so the operator's search found nothing anywhere. A
+    trade is named by the exchange it was made on."""
+    import json as _json
+
+    from tradingagents import api, venue
+    import tradingagents.auto_trader as at
+    from tradingagents import backtest_report as br
+
+    monkeypatch.setattr(venue, "VENUE_FILE", tmp_path / "venue.json")
+    monkeypatch.delenv("TA_VENUE", raising=False)
+    since = 1_791_619_184
+    (tmp_path / "venue.json").write_text(_json.dumps({"venue": "gate", "since": since}))
+    assert venue.at(since - 86400) == "mexc" and venue.at(since + 60) == "gate"
+    key = next(k for k, s in at.STRATEGY_SPECS.items() if s.get("interval"))
+    old = api.row_id_for(key, "FASTSTOCK_USDT", {}, venue=venue.at(since - 86400))
+    new = api.row_id_for(key, "FASTSTOCK_USDT", {})
+    assert old != new
+    spec = at.STRATEGY_SPECS[key]
+    from tradingagents.local_history import _sig_of
+    want = br.row_code("FASTSTOCK", api._TF_OF.get(spec["interval"], ""), _sig_of(key),
+                       round(float(spec.get("threshold") or 0) * 100, 3),
+                       round(float(spec.get("sl") or 0) * 100, 3),
+                       round(float(spec.get("tp") or 0) * 100, 3),
+                       at.sizing_for({}, key), venue="mexc")
+    assert old == want
+    import inspect
+    src = inspect.getsource(api)
+    assert "row_id_for(key, symbol, _settings, venue=venue_at)" in src, \
+        "the history names each trade by the exchange it was made on"

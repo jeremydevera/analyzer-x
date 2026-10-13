@@ -172,6 +172,63 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-13-E — after every rebuild of the Backtest list, searching by id stopped working until four other indexes were built first
+
+**CEO**
+
+* After the Backtest list is rebuilt, searching an id (like the ones beside
+  your practice trades) answered "the build has just started — try again
+  shortly" for 24 minutes on Oct 13, 2026 — the wait you asked about that
+  morning ("why is this taking too long").
+* Why: after a rebuild the app rebuilds five search helpers one at a time,
+  and the one behind the id search was always built last, though it is the
+  quickest of the five (103 seconds).
+* What stops it now: the id search's helper is built first, so the search
+  is back about two minutes after a rebuild.
+
+**DEV**
+
+* `tradingagents/rows_index.py` `missing_indexes` / `_remember_indexes` /
+  `continue_index_queue` all walked `INDEX_DDL` order, where `rows_id` comes
+  after `rows_wr2`, `rows_wr3`, `rows_wr4` and `rows_pr2`; `query(row_id=)`
+  raises `SortNotReady` without `rows_id` above `UNINDEXED_LIMIT`.
+* Invariant broken: **the feature the operator uses most comes back first** —
+  a queue's order is a product decision, not a dict's insertion order.
+* Guard: `tests/test_the_id_search_comes_back_first.py::test_a_rebuild_starts_the_id_index_before_any_other`,
+  `::test_the_queue_builds_the_id_index_next`.
+
+**SAW** — Oct 13, 2026 7:14am: *"why is this taking too long / and i used
+68BZF2L9 to search"*, the Backtest tab waiting on "rows_id index is being
+built". Seen again at 3:05pm by the practice-vs-backtest review: every id
+lookup answered "needs the rows_id index".
+
+**TIMELINE**
+
+1. Oct 13, 2026 7:14am — a rebuild of the v2 list swaps in; the operator's
+   id search waits on the rows_id build.
+2. Oct 13, 2026 2:57pm — the next rebuild swaps in (22,747,944 rows, 4,126
+   pairs) and builds rows_wr2 (441 s), rows_wr3 (112 s), rows_wr4 (161 s),
+   rows_pr2 (532 s), then rows_id (103 s).
+3. Oct 13, 2026 3:21pm — rows_id is ready; the id search was down 24 minutes.
+4. After the fix — rows_id is built first: the id search returns about two
+   minutes after a swap; the win-rate indexes finish two minutes later.
+
+**ROOT CAUSE** — the build queue followed `INDEX_DDL`'s insertion order, in
+which the id index was added last, and nothing ever ranked the five.
+
+**WHY IT WAS NOT CAUGHT** — RCA-2026-10-09-A's tests prove every retired index
+is put BACK; none asked in which ORDER, because the incident that bought them
+was a missing index, not a late one.
+
+**COST** — none in money; 24 minutes (and the morning's wait) of an id search
+that could not answer.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_id_search_comes_back_first.py::test_a_rebuild_starts_the_id_index_before_any_other`.
+
+---
+
 ## RCA-2026-10-13-D — the id rewrite missed threshold strategies, so #55D32617's watcher kept a Gate-era id for ANKR 30m fade15 (#R9KGW3J4)
 
 **CEO**

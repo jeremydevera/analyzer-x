@@ -2321,6 +2321,22 @@ def _after_fill_indexes() -> list:
 # sixteen were never asked for, and each is minutes to an hour of this disk.
 INDEX_QUEUE_TRIES = 3
 
+# THE ID SEARCH COMES BACK FIRST (RCA-2026-10-13-E). Builds run one at a time
+# in INDEX_DDL order, which put rows_id LAST: on Oct 13, 2026 the swap at
+# 2:57pm built rows_wr2 (441 s), rows_wr3 (112 s), rows_wr4 (161 s) and
+# rows_pr2 (532 s) before rows_id (103 s), so every id search answered "needs
+# the rows_id index" until 3:21pm — 24 minutes, for the one index the
+# operator searches by and the cheapest of the five. First, it is back in
+# about two minutes; the rooms' midnight switch-on (rows_wr2/rows_wr4) waits
+# those two minutes more.
+BUILD_FIRST = ("rows_id",)
+
+
+def build_order(names) -> list:
+    """`names` with BUILD_FIRST in front, the rest in the order given."""
+    names = list(names)
+    return [n for n in BUILD_FIRST if n in names] + [n for n in names if n not in BUILD_FIRST]
+
 
 def _index_queue_path(live=None) -> Path:
     return Path(live or _db()).parent / ".index-queue.json"
@@ -2349,7 +2365,7 @@ def _remember_indexes(had) -> None:
     that the new file at `_db()` lacks. The site's tick builds them in turn
     (`continue_index_queue`). Never raises."""
     try:
-        missing = [n for n in had if has_index(n) is not True]
+        missing = build_order(n for n in had if has_index(n) is not True)
         if missing:
             _write_index_queue(_index_queue_path(),
                                {"names": missing, "tries": {},
@@ -2369,7 +2385,7 @@ def continue_index_queue() -> str:
     path = _index_queue_path()
     try:
         got = json.loads(path.read_text(encoding="utf-8"))
-        names = [n for n in got.get("names") or [] if n in INDEX_DDL]
+        names = build_order(n for n in got.get("names") or [] if n in INDEX_DDL)
         tries = dict(got.get("tries") or {})
     except (OSError, ValueError, AttributeError, TypeError):
         return ""
@@ -3869,7 +3885,7 @@ def missing_indexes() -> list:
     Preset Confluence group with an empty table and no explanation.
     """
     forget_indexes()
-    return [n for n in INDEX_DDL if has_index(n) is False]
+    return build_order(n for n in INDEX_DDL if has_index(n) is False)
 
 
 def build_missing_indexes() -> list:

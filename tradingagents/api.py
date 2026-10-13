@@ -125,6 +125,22 @@ def _finish_handoff() -> None:
 
 
 @app.on_event("startup")
+def _ids_lose_the_exchange() -> None:
+    """ONCE, FIRST: the ids saved Oct 10 - 13, 2026 with the exchange hashed
+    in become the plain ids every screen now prints — before the watcher's
+    thread reads a room's cooling marks or switched-on ids
+    (`ids_without_exchange`; operator, Oct 13, 2026)."""
+    try:
+        from tradingagents import ids_without_exchange as _iwe
+
+        got = _iwe.migrate()
+        if not got.get("skipped"):
+            print(f"[ids] rewritten without the exchange: {got}", flush=True)
+    except Exception as exc:                                   # noqa: BLE001
+        print(f"[ids] COULD NOT REWRITE: {exc!r}", flush=True)
+
+
+@app.on_event("startup")
 def _keep_the_row_index_current() -> None:
     """The strategy index must advance whether or not anyone is watching. When
     it only synced from inside the request handler, closing the Backtest tab
@@ -528,8 +544,7 @@ _TF_OF = {"Min1": "1m", "Min5": "5m", "Min15": "15m", "Min30": "30m",
           "Min60": "1h", "Hour4": "4h", "Hour8": "8h", "Day1": "1d"}
 
 
-def row_id_for(key: str, coin: str | None, settings: dict, *,
-               venue: str | None = None) -> str:
+def row_id_for(key: str, coin: str | None, settings: dict) -> str:
     """The stable row id for one strategy ON ONE COIN.
 
     Hashed by the same backtest_report.row_code every report uses, so the id
@@ -568,9 +583,9 @@ def row_id_for(key: str, coin: str | None, settings: dict, *,
             # from, which is the "same row, a different number on every page"
             # problem the stable id exists to end.
             at.sizing_for(settings, key),
-            # the exchange the trade was made ON (history rows before the
-            # switch are MEXC's); None is today's exchange
-            res=res, venue=venue)
+            # no exchange: one strategy has one id on MEXC and Gate alike
+            # (operator, Oct 13, 2026)
+            res=res)
     except Exception:                                          # noqa: BLE001
         return ""
 
@@ -4176,17 +4191,14 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1,
     _settings = at.load_settings()
     _sid: dict = {}
 
-    def _strategy_id(key: str, symbol: str, ts: float | None = None) -> str:
-        # NAMED BY THE EXCHANGE IT WAS MADE ON (RCA-2026-10-13-B): a trade
-        # from before the switch to Gate is MEXC's row, never a Gate id for
-        # a coin Gate does not list (#68BZF2L9, FASTSTOCK prank 15m)
-        from tradingagents import venue as _v
-
-        venue_at = _v.at(ts if ts is not None else _time.time())
-        k = (key, symbol, venue_at)
+    def _strategy_id(key: str, symbol: str) -> str:
+        # ONE id on both exchanges (Oct 13, 2026): a trade made on MEXC
+        # before the switch names the same strategy a Gate trade does
+        # (RCA-2026-10-13-B: #68BZF2L9 was a Gate-only id, FASTSTOCK prank 15m)
+        k = (key, symbol)
         if k not in _sid:
             try:
-                _sid[k] = row_id_for(key, symbol, _settings, venue=venue_at)
+                _sid[k] = row_id_for(key, symbol, _settings)
             except Exception:                                  # noqa: BLE001
                 _sid[k] = ""
         return _sid[k]
@@ -4220,10 +4232,7 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1,
               # exchange position): a real-looking id that matches no
               # combination is worse than no id
               "strategy_id": _strategy_id(str(e.get("strategy") or ""),
-                                          str(e.get("symbol") or ""),
-                                          # when it OPENED: the exchange it
-                                          # was made on names it
-                                          float(e.get("opened_at") or e.get("ts") or 0)),
+                                          str(e.get("symbol") or "")),
               "why": e.get("why") or "—",
               "profit": p, "running": run,
             # WHICH BOOK. Both stamp the same trade id, so a row that

@@ -408,7 +408,7 @@ def fine_bars(sym: str, start_s: int, end_s: int | None = None, *, fx=None):
 
 def row_code(coin: str, tf: str, signal: str, th: float, sl: float,
              tp: float, sizing: str, plan: str | None = None,
-             res: str | None = None, venue: str | None = None) -> str:
+             res: str | None = None) -> str:
     """A stable ID for one combination, identical on every page and every run.
 
     Sequential numbering was per-page: the same live APEX row was #05146 in one
@@ -416,8 +416,13 @@ def row_code(coin: str, tf: str, signal: str, th: float, sl: float,
     meant nothing across two tabs. This is derived from the combination itself,
     so the row carries its own name wherever it is drawn.
     """
-    import hashlib
+    return _code(_seed(coin, tf, signal, th, sl, tp, sizing, plan=plan, res=res))
 
+
+def _seed(coin: str, tf: str, signal: str, th: float, sl: float,
+          tp: float, sizing: str, plan: str | None = None,
+          res: str | None = None) -> str:
+    """The text `row_code` hashes: one combination, spelled one way."""
     # A signal with no threshold has been stored as 0.0 by one sweep and 0.3 by
     # another. Left alone that gave the SAME live strategy two different codes
     # on two pages -- which is the whole problem this function exists to end.
@@ -439,17 +444,20 @@ def row_code(coin: str, tf: str, signal: str, th: float, sl: float,
     # fixed point in tests/test_v2_store_is_its_own_folder.py).
     if res:
         seed += "|res=" + str(res)
-    # THE EXCHANGE IS PART OF THE COMBINATION (Oct 10, 2026, the move to
-    # Gate). A Gate row of BTC 1h ote measured Gate's candles and costs and
-    # must never share an id with the MEXC row — the operator deploys by id.
-    # Appended only when it is not MEXC, so every id minted before the move
-    # still hashes to itself (#LG9NSU4B stays a fixed point).
-    if venue is None:
-        from tradingagents import venue as _venue
+    # THE EXCHANGE IS NOT PART OF THE ID (operator, Oct 13, 2026). The move
+    # to Gate hashed it in, and every strategy they knew got a new id: *"i
+    # dont understand why did you changed the ids just because i switched to
+    # gate"*, then *"yes"* to taking it out, and *"i dont need the mexc
+    # results anymore"*. A strategy is the same id on both exchanges
+    # (BTC 1h trend50 SL 0.3 / TP 0.4 on v2 is #4EVLXP67); the STORES are what
+    # keep the exchanges apart (`cloud_sweep.land_rows`).
+    return seed
 
-        venue = _venue.current()
-    if venue and venue != "mexc":
-        seed += "|venue=" + str(venue)
+
+def _code(seed: str) -> str:
+    """8 characters of the seed's 40-bit blake2s digest."""
+    import hashlib
+
     n = int.from_bytes(hashlib.blake2s(seed.encode(), digest_size=5).digest(),
                        "big")
     # 8 characters, spending the digest's full 40 bits. Six characters kept

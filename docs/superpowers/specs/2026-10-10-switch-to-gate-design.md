@@ -77,6 +77,13 @@ asks `kind()` instead. Under MEXC `kind()` keeps the suffix rule.
 the venue for anything that is not MEXC (the way `res="1m"` keeps v2 ids apart
 from v1). Every existing MEXC id is unchanged (`#LG9NSU4B` stays a fixed point).
 
+> **REVERSED Oct 13, 2026 by the operator.** *"i dont understand why did you
+> changed the ids just because i switched to gate"*, then *"yes"* to taking
+> the exchange out of the id, and *"just to be clear i dont need the mexc
+> results anymore"*. A strategy now has one id on both exchanges; the stores
+> (D7, `land_rows`) are what keep MEXC and Gate apart. The ids saved Oct 10 -
+> 13 are rewritten once by `tradingagents/ids_without_exchange.py`.
+
 **D7 — The cutover MOVES the MEXC data aside; it deletes nothing.** One script
 (`tradingagents/venue_switch.py`) stops the jobs, then renames every
 exchange-specific folder and file into `~/.tradingagents/archive-mexc-<date>/`

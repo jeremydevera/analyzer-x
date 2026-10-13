@@ -42,8 +42,8 @@ def _check(v: str, where: str) -> str:
     return v
 
 
-# The file's answer, kept until the file changes: `backtest_report.row_code`
-# asks once per row and a report hashes 250,000 of them.
+# The file's answer, kept until the file changes: the door (`dataflows.exchange`)
+# asks on every venue call.
 _SEEN: dict = {}
 
 
@@ -82,19 +82,6 @@ def since() -> float:
                      .get("since") or 0.0)
     except (OSError, ValueError, AttributeError, TypeError):
         return 0.0
-
-
-def at(ts: float) -> str:
-    """The exchange the app traded at moment `ts` (epoch seconds): before
-    `since()` the OTHER one — two exist — and from it on, the current one.
-    A trade is named by the exchange it was made on (RCA-2026-10-13-B: the
-    history hashed Oct 07 MEXC trades with Gate and printed #68BZF2L9, an id
-    neither exchange's store holds)."""
-    cur = current()
-    s = since()
-    if s and float(ts or 0) < s:
-        return next((v for v in NAMES if v != cur), cur)
-    return cur
 
 
 def name() -> str:

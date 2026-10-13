@@ -182,8 +182,10 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
   rooms between Oct 07 and Oct 09, 2026 — were made on MEXC, but the history
   worked out each strategy's id as if it were a Gate row, for a coin Gate
   does not even list.
-* What stops it now: each trade in the history is named by the exchange it
-  was made on; a MEXC trade shows its MEXC id.
+* What stops it now: an id no longer depends on the exchange at all (the
+  operator's choice, later the same day), so a strategy shows one id
+  whichever exchange the trade was made on — FASTSTOCK prank 15m is
+  #2WCGB7VB on both.
 
 **DEV**
 
@@ -192,7 +194,7 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
   falls back to `venue.current()` ("gate") and appends `|venue=gate`.
 * Invariant broken: **a label is derived from the data it describes** — the
   trade's exchange, not the app's exchange today.
-* Guard: `tests/test_gate_ids_and_landing.py::test_a_trade_from_before_the_switch_keeps_its_mexc_strategy_id`.
+* Guard: `tests/test_gate_ids_and_landing.py::test_a_trade_has_one_strategy_id_on_both_exchanges`.
 
 **SAW** — Backtest v2: "no row #68BZF2L9 in the store", the id copied from
 the demo trade history; first the "rows_id index is being built NOW" wait.
@@ -207,8 +209,13 @@ the demo trade history; first the "rows_id index is being built NOW" wait.
 4. Oct 13, 2026 ~7:15am — the operator searches it; the v2 id index was
    being rebuilt after the night's collect, then the search answers "no
    row" in 0.1 s.
-5. After the fix — `venue.at(opened_at)` names the trade's exchange and the
-   history prints its MEXC id.
+5. After the fix (5d60a33) — `venue.at(opened_at)` named the trade's
+   exchange and the history printed its MEXC id.
+6. Oct 13, 2026, the same day — the operator: *"i dont understand why did
+   you changed the ids just because i switched to gate"*, then *"yes"* to
+   taking the exchange out. `row_code` lost its `venue` argument and
+   `venue.at` went with it: the history prints #2WCGB7VB for every
+   FASTSTOCK prank 15m trade, MEXC or Gate.
 
 **ROOT CAUSE** — ids carry the exchange since the move (D6), and the one
 screen that shows trades from BEFORE the move asked for today's exchange.
@@ -221,7 +228,7 @@ switch.
 
 **FIX** — this commit.
 
-**GUARD** — `tests/test_gate_ids_and_landing.py::test_a_trade_from_before_the_switch_keeps_its_mexc_strategy_id`.
+**GUARD** — `tests/test_gate_ids_and_landing.py::test_a_trade_has_one_strategy_id_on_both_exchanges`.
 
 ---
 

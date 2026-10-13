@@ -175,11 +175,20 @@ own `maintenance_rate`.
   indices, 12 metals, 4 forex, 3 commodities of 1,027): Gate names stocks
   `AAPL_USDT`, so a `STOCK` suffix test finds none of them. The daytime rule,
   the asset filter and room stats all ask `kind()`.
-* **Ids carry the venue.** `row_code(..., venue=)` hashes `|venue=gate`, so a
-  Gate row can never equal its MEXC twin, and every MEXC id is unchanged.
-  `cloud_sweep.land_rows` refuses a row measured on another venue (a row with
-  no venue is MEXC's), and the collector skips any run created before
-  `venue.since()` without downloading it (RCA-2026-10-10-C).
+* **Ids carry NO exchange (operator, Oct 13, 2026).** From Oct 10 to Oct 13
+  `row_code` hashed `|venue=gate` in and every strategy got a new id: *"i
+  dont understand why did you changed the ids just because i switched to
+  gate"*, then *"yes"* to taking it out, and *"just to be clear i dont need
+  the mexc results anymore"*. A strategy has ONE id on both exchanges (BTC 1h
+  trend50 SL 0.3 / TP 0.4 on v2 is #4EVLXP67 on Gate as on MEXC); `row_code`
+  has no `venue` argument, so nothing can hash it back in
+  (`tests/test_gate_ids_and_landing.py`). The ids SAVED in those three days
+  (watcher records, switched-on rows, streaks, the re-test) are rewritten
+  once at the API's first startup step (`ids_without_exchange`, proved per
+  record, `tests/test_ids_without_exchange.py`). The STORES keep the
+  exchanges apart: `cloud_sweep.land_rows` refuses a row measured on another
+  venue (a row with no venue is MEXC's), and the collector skips any run
+  created before `venue.since()` without downloading it (RCA-2026-10-10-C).
 * **The cutover moved MEXC aside; nothing was deleted.**
   `python -m tradingagents.venue_switch gate` ran `Oct 10, 2026 3:56am`: 79
   folders and files renamed into

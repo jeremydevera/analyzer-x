@@ -15,6 +15,8 @@ So: ensure() creates only the indexes nothing drops (KEEP_INDEXES); the
 filter/sort indexes are built by the end of a fill, or on demand by the query
 that needs one (build_sort_index).
 """
+import pytest
+
 from tradingagents import rows_index as ri
 
 
@@ -47,6 +49,7 @@ def test_a_fresh_database_gets_its_tables_and_the_kept_indexes(tmp_path, monkeyp
         assert ri.has_index(name) is True, name
 
 
+@pytest.mark.real_background     # it polls for the real build's index (RCA-2026-10-14-H)
 def test_a_sort_index_is_built_on_demand_when_it_is_missing(tmp_path, monkeypatch):
     """A kept index can still be absent — an older database, or a BIG_FILL
     that was interrupted before its rebuild. The query that needs it says

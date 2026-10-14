@@ -1920,6 +1920,13 @@ docs/RCA.md RCA-2026-09-18-B..J), and the rule each one bought:**
 * **A test writes only under its own tmp_path.** The operator's real
   pending list held 11 rows and all 11 were test fixtures
   (`pending_ledger.STATE_DIR` was outside the sandbox).
+* **A test starts no background program either** (RCA-2026-10-14-H).
+  `tests/conftest.py` answers every new-process-group, detached, new-console
+  or new-session launch with a recorded stand-in, caught by its flags; a test
+  that really needs the program is marked `@pytest.mark.real_background`.
+  Every suite since Aug 27, 2026 left 13-31 `rows_index --build` programs
+  waiting on their own test's lock; four suites at once on Oct 14, 2026 left
+  144 and the PC at 1.1 GB free of 16 GB.
 * **Two columns on one row read one clock.** `held` stayed bar-based beside
   a minute-exact `exit time`.
 * **A memory with an add path needs a clear path.** `strategy_res` kept a

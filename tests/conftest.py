@@ -13,6 +13,7 @@ import sys as _sys
 _sys.dont_write_bytecode = True
 
 import socket
+import subprocess
 from pathlib import Path
 
 import os
@@ -27,6 +28,13 @@ os.environ["TA_NO_GITHUB"] = "1"
 def pytest_configure(config):
     for marker in ("unit", "integration", "smoke"):
         config.addinivalue_line("markers", f"{marker}: {marker}-level tests")
+    config.addinivalue_line(
+        "markers", "real_background: this test starts a real background "
+                   "program on purpose, and ends it itself")
+    # for the WHOLE session, never undone at a test's teardown: a thread a
+    # test left running that launches after its test ended is stood in too
+    # (RCA-2026-10-10-J's shape, RCA-2026-10-14-H)
+    subprocess.Popen = _GuardedPopen
 
 
 @pytest.fixture(autouse=True)
@@ -109,6 +117,123 @@ def _no_network(request):
     finally:
         socket.socket.connect = _REAL_CONNECT
         socket.socketpair = _REAL_SOCKETPAIR
+
+
+# ---------------------------------------------------------------------------
+# No test leaves a program running behind it (RCA-2026-10-14-H).
+#
+# Since Aug 27, 2026 every fill of a row list asks for its missing indexes in
+# a background `rows_index --build` program, and the fixtures that fill
+# throwaway lists did that for real: 13 to 31 programs a suite, each waiting
+# up to an hour for a lock its own test still held. On Oct 14, 2026 four
+# suites at once left 144 of them alive at 7:27am, each with a console
+# Windows Terminal hosted, and the PC fell to 1.1 GB free of 16 GB.
+#
+# A BACKGROUND launch (a new process group, a detached process, a console of
+# its own, a new session: a program meant to outlive whoever started it) is
+# answered by a StandIn and recorded, so the code under test still runs its
+# own path and nothing starts. Caught by its FLAGS, never its command line, so
+# a launch point added tomorrow is covered without being named. A test that
+# needs the real program says so: `@pytest.mark.real_background`.
+# ---------------------------------------------------------------------------
+_REAL_POPEN = subprocess.Popen
+# DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NEW_CONSOLE
+_BACKGROUND_FLAGS = 0x00000008 | 0x00000200 | 0x00000010
+_GUARD: dict = {"real": False, "calls": []}
+
+
+def is_background(kwargs: dict) -> bool:
+    """A launch meant to outlive the process that made it."""
+    return bool((int(kwargs.get("creationflags") or 0) & _BACKGROUND_FLAGS)
+                or kwargs.get("start_new_session")
+                or kwargs.get("process_group") is not None)
+
+
+class _NoOutput:
+    """A stand-in's stdout/stderr: reading it is the test's mistake, named."""
+
+    def __init__(self, args):
+        self._args = args
+
+    def _fail(self, *a, **k):
+        raise AssertionError(
+            f"a test read the output of a background program, and tests never "
+            f"start those ({self._args!r}); mark the test "
+            f"@pytest.mark.real_background if it really needs that program")
+
+    read = readline = readlines = __iter__ = _fail
+
+    def close(self):
+        pass
+
+
+class StandIn:
+    """What a test gets instead of a background program: it answers like a
+    process that is still starting, and no process exists."""
+
+    stand_in = True
+    PID = 999_999          # not a multiple of 4, so never a real Windows pid
+
+    def __init__(self, args, kwargs):
+        self.args, self.kwargs = args, kwargs
+        self.pid = self.PID
+        self.returncode = None
+        self.stdin = None
+        piped = subprocess.PIPE
+        self.stdout = _NoOutput(args) if kwargs.get("stdout") == piped else None
+        self.stderr = _NoOutput(args) if kwargs.get("stderr") == piped else None
+
+    def poll(self):
+        return self.returncode
+
+    def wait(self, timeout=None):
+        if self.returncode is None:
+            self.returncode = 0
+        return self.returncode
+
+    def communicate(self, input=None, timeout=None):
+        self.wait()
+        return (None, None)
+
+    def kill(self):
+        if self.returncode is None:
+            self.returncode = -9
+
+    terminate = kill
+
+    def send_signal(self, sig):
+        self.kill()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class _GuardedPopen(_REAL_POPEN):
+    """`subprocess.Popen` for the whole session. A CLASS, so a test may still
+    subclass it (tests/test_a_hung_git_cannot_blind_the_cloud_panel.py)."""
+
+    def __new__(cls, *args, **kwargs):
+        if is_background(kwargs) and not _GUARD["real"]:
+            cmd = args[0] if args else kwargs.get("args")
+            _GUARD["calls"].append({"args": cmd, "kwargs": dict(kwargs)})
+            return StandIn(cmd, kwargs)
+        return super().__new__(cls)
+
+
+@pytest.fixture(autouse=True)
+def background_calls(request):
+    """Every background launch this test made, each answered by a StandIn.
+    A test marked `real_background` gets the real program instead."""
+    calls: list = []
+    _GUARD.update(calls=calls,
+                  real=bool(request.node.get_closest_marker("real_background")))
+    try:
+        yield calls
+    finally:
+        _GUARD["real"] = False
 
 
 # --------------------------------------------------------------------------

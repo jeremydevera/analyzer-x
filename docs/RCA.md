@@ -362,6 +362,76 @@ NEW name.
 
 ---
 
+## RCA-2026-10-14-H — every test run left 13 to 31 programs running, and four runs at once brought the PC to 1.1 GB free
+
+**CEO**
+
+* Your PC crawled on Oct 14, 2026 around 7:30am: four test runs from an old
+  review check of mine ran at once, and their helper programs filled the
+  memory (1.1 GB free of 16 GB).
+* Why: the tests started real background programs (index builds), which waited
+  on the test that started them and piled up while a run lasted. Every test
+  run since Aug 27, 2026 did this, 13 to 31 at a time.
+* What stops it now: tests never start a background program; a stand-in
+  answers instead, unless a test asks for the real one.
+
+**DEV**
+
+* `tests/test_row_id_lookup.py:56` `store` → `rows_index.sync` (1374) →
+  `_after_fill_indexes` (2310) → `build_missing_indexes` (3906) →
+  `_build_index` (4035) `subprocess.Popen(... "--build", name)`; the child
+  waits on `busy_timeout=3600000` (3932) for the lock its test holds.
+* Invariant broken: **a test leaves nothing running behind it**: the suite
+  isolated sockets (`_no_network`) and paths (`_never_touch_the_live_book`)
+  but never processes.
+* Guard: `tests/test_tests_leave_no_program_running.py` (10 tests).
+
+**SAW** — the PC crawling; the Error Watcher session counted 618 console
+processes created that day, 604 of them between 7am and 8am.
+
+**TIMELINE**
+
+1. Aug 27, 2026 — commit 574dedf9: every fill asks for its missing indexes in
+   a background program; fixtures fill throwaway lists, so every test run
+   starts real builds from then on.
+2. Oct 13, 2026 about 11:50pm — a review checker of mine starts and keeps
+   running after its review is done.
+3. Oct 14, 2026 7:07:55am — it starts four full suites at once.
+4. 7:27:32am-7:30:03am — 144 build programs alive (72 builds, two programs
+   each through the venv launcher), each with a Windows Terminal console; the
+   PC at 1.1 GB free of 16 GB, Windows Terminal itself at 4,307 MB at 8:22am.
+5. About 7:31am — the checker stopped and all 144 ended by exact process id;
+   the real Backtest list untouched (last written 4:58am).
+6. 7:38am, measuring — 12 index test files alone left 26 programs (13 builds);
+   a spy over the same files recorded 794 launch attempts.
+7. After the fix (9:54am) — the same 12 files: 129 passed in 17 s (92 s with
+   real builds), no build program seen by a watcher sampling every 0.4 s, none
+   alive at the end.
+   The full suite (9:55am-10:11am): 5,495 passed, its 29 old failures
+   unchanged, no build program seen in 15 minutes 46 seconds; one test
+   that starts the real runner on purpose
+   (`test_runner_survives_a_busy_state_file.py::test_a_later_stderr_write_lands_after_the_lines_it_used_to_overwrite`)
+   now says so with `real_background`.
+
+**ROOT CAUSE** — production's "build the missing indexes in the background
+after a fill" ran inside tests, and nothing in the test setup kept a test from
+starting a real program.
+
+**WHY IT WAS NOT CAUGHT** — the suite's isolation was written against the two
+leaks it had met: the network (36 live calls) and the operator's files (86 fake
+XAUT rows). A started program leaves no failing assertion behind: the test
+that starts it passes, and the program outlives it. A guard is only as wide as
+its pattern, and this one had never been widened to processes.
+
+**COST** — none in money; the PC near out of memory for about 25 minutes, and
+Windows Terminal holding 4,307 MB until it was closed.
+
+**FIX** — this commit (the windows themselves: RCA-2026-10-14-G).
+
+**GUARD** — `tests/test_tests_leave_no_program_running.py`.
+
+---
+
 ## RCA-2026-10-14-G — every background program opened a window Windows Terminal kept: 695 leftover windows held about 13 GB of 16, and the site and rooms sat in tabs one closed window would kill
 
 **CEO**

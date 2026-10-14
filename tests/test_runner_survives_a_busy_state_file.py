@@ -356,6 +356,7 @@ def test_the_runner_points_its_output_at_the_end_of_its_log_before_it_runs():
 @pytest.mark.skipif(os.name != "nt", reason=(
     "POSIX hands the child O_APPEND along with the descriptor, so this only "
     "ever happened on Windows; there the test passes with or without the fix"))
+@pytest.mark.real_background     # it starts the real runner and waits for it (RCA-2026-10-14-H)
 def test_a_later_stderr_write_lands_after_the_lines_it_used_to_overwrite(tmp_path, monkeypatch):
     """The real `start_runner` spawns the real module as `__main__`, while
     another runner holds the run lock — the case that erased #6B08FF64's

@@ -467,3 +467,65 @@ Expected: PASS; tsc clean.
 - [ ] **Step 2:** Run every test file that touches rooms, history, Forecast or CLAUDE.md (`grep -l` over `tests/*.py` for `profiles|history|forecast|CLAUDE.md`), compare failures with the same run on the commit before Task 1.
 - [ ] **Step 3:** Commit and push both remotes; warn the operator, then `python start.py start` (the page changed), and check in WebKit: Main shows only "Past trades — all room strategies" with room ids, #09439DC2 shows the tiles, buttons and calendar, the Errors and Forecast pages print #09439DC2.
 - [ ] **Step 4:** One code review of the whole change (superpowers:requesting-code-review), fix what it finds, push.
+
+---
+
+## Execution record (Oct 14, 2026)
+
+Run inline (superpowers:executing-plans), on `main` in the shared checkout.
+Commits: c81d07b..10a9dba (tasks 1-4), 876d2da (RCA-2026-10-14-I),
+5e12bfd (final review fixes, RCA-2026-10-14-K), d906759 and eeec5c2 (what the
+live check of those fixes found, RCA-2026-10-14-L).
+
+**Rulings made on the operator's behalf, in order, each with its cost if wrong:**
+
+1. Setup: work on `main` in the shared checkout, no worktree — the standing
+   rule is `commit_own` + push both remotes on main, and a worktree would
+   drift from what the site runs. Cost if wrong: none; commits are isolated
+   by `commit_own`.
+2. Pre-flight: Task 3's test wanted both `<AllRoomsBody` and the literal
+   `<TradeHistory allRooms active={room === ALL_ROOMS} />` in the screen —
+   `AllRoomsBody` takes children and the list is written inside it. Cost if
+   wrong: one wrapper.
+3. Task 3: the plan's `.filter(` check matched a comment that warns against
+   `.filter()`; the test reads code only. Cost if wrong: a `.filter(` inside
+   a comment-like string would slip by.
+4. Task 3: two room-list tests read `display_id` as a room id; anchored on a
+   word boundary (`\bid:`). Cost if wrong: none.
+5. Task 3: a book-switch test pinned the old 5-second interval and the old
+   `pickBook`; updated to the new expressions, same intent. Cost if wrong:
+   none.
+6. Task 3: `test_every_room_stays_loaded_in_its_own_scope` held two BACKSPACE
+   characters where `\b` was meant (since c9862eee3fa7, Oct 01, 2026), so it
+   could never fire; it now checks the imported names between the braces.
+   Cost if wrong: none; proven to catch `{ api }` and `{ tradeApi }`.
+7. Final review #2 (the RCA-J fix was not live yet): not a code finding; the
+   page was rebuilt and re-probed. Cost if wrong: none.
+8. Final review #4 re-graded Minor to Important: an unreadable room was
+   counted as examined — a false label; fixed. Cost if wrong: none.
+9. Final review #6 re-graded Minor to Important: the venue switch still
+   printed "room main"; fixed, and the Python name guard widened to every
+   non-docstring string. Cost if wrong: none.
+10. Final review #5: the per-month summary is not drawn on the Main tab — the
+    panel has had no month table since a948a345a7b1 (Auto Trade fits the
+    width); the spec's line came from the payload, not a screen ask. Cost if
+    wrong: one table to add.
+11. The review's "declined to judge" lines accepted as listed (the notify
+    skill bundled into aa06b322; same-second order within a room; one search
+    id shared by both lists; the side lookup's speed; `load_settings` writing
+    a missing settings file; the rooms count against their names; an old
+    page against a new API; one refresh on leaving Main; the single-line
+    import guard). Cost if wrong: small; none changes what the operator gets.
+12. Final review #8 re-graded Minor to Important after the live check showed
+    "loading profit…" over the Main tab, a panel it does not have — a false
+    label at any duration; fixed (RCA-2026-10-14-L). Cost if wrong: none.
+
+**Deferred minor:** final review #7 — `test_the_room_that_was_main_is_named_by_its_rules`
+hashes the watcher's DEFAULT rules inside the test sandbox; it should pin
+`fr.cfg_of(30, 90.0, 20, ">", 2.0)` literally, so a change to the defaults
+cannot move the id the test expects.
+
+**Found by the live check, not the review:** the Main tab's strategy cell
+overflowed at 1,024 and 1,280 px; the first fix (a table-wide wrap rule)
+measured ineffective and was replaced by `break-all` on the cell
+(RCA-2026-10-14-L).

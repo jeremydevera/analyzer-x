@@ -4145,44 +4145,17 @@ def _fmt_held(secs) -> str:
     return f"{max(1, round(s / 60))}m"
 
 
-@app.get("/api/trade/history")
-def trade_history(dry: bool = False, per_page: int = 5, page: int = 1,
-                  q: str = "") -> dict:
-    """Every CLOSED trade on one book, newest first, with its running total —
-    plus a per-month summary the page cannot give.
+def _history_rows(books: tuple) -> tuple[list[dict], int]:
+    """The CURRENT room's closed trades on `books`, oldest first within each
+    book, each built the one way both history lists print a trade — with no
+    running total yet (`_history_page` adds it). Returns (rows, how many
+    closed trades the room's record holds on both books).
 
-    Paginated because a wall of 200 rows hides a trade as effectively as a net
-    figure does. The running total is computed oldest-first over the WHOLE
-    book, so page 3's 'running $' is the real running total, not the page's.
-
-    `q` SEARCHES BOTH BOOKS AT ONCE and ignores `dry`. Operator,
-    `Sep 17, 2026`: *"in trade history, put a id search there, when i search
-    LG9NSU4B for example it should show trade id LG9NSU4B for both live and
-    demo trade"*. Both books stamp a trade with the SAME id, so a search that
-    honoured the live/demo tab would show one of the two and look like the
-    other did not happen — which is exactly the confusion that cost five
-    answers about `MTX4FSGN` the day before.
-
-    It matches the TRADE id or the STRATEGY id, with or without the leading
-    `#`, either case. And it matches HERE, over every exit row on the ledger —
-    never in the browser over a page the server already cut, which is the
-    filter-where-the-data-is rule in CLAUDE.md, bought by a KITE loss that sat
-    640 rows past the window a panel had fetched.
-
-    While searching, `months` and `totals` describe the MATCHED rows, because
-    a whole-book summary printed beside two matches is a false label. `total`
-    is the number of matches and `examined` is how many closed trades were
-    looked at, so an empty answer names what it checked instead of speaking
-    for the store.
-    """
-    import datetime as dt
-
+    One builder for `/api/trade/history` and `/api/trade/history/rooms`
+    (Oct 14, 2026), so the two lists can never disagree on a trade."""
     import tradingagents.auto_trader as at
     from tradingagents import positions_view as pv
 
-    _q = (q or "").strip().lstrip("#").upper()
-    # a search spans BOTH books; without one the tab still rules
-    _books = (False, True) if _q else (dry,)
     # EVERY trade on the record, newest first as `ledger_tail` gave them (the
     # sorts below are stable, so same-second trades keep their order). The
     # last 100,000 LINES used to be read here: #4FC03172 writes ~55,000 a day,
@@ -4190,7 +4163,6 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1,
     # when this changed (RCA-2026-10-07-L).
     _all = list(reversed(at.ledger_trades(0)))
     _exits = [e for e in _all if e.get("action") == "exit"]
-    _examined = len(_exits)
 
     # Exit rows written before 2026-08-21 carry no side, so the LONG/SHORT
     # column printed "-" for every closed trade. Pair each exit with the most
@@ -4236,62 +4208,68 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1,
                 _sid[k] = ""
         return _sid[k]
 
-    rows, months = [], {}
+    rows = []
     # PER BOOK, because the running total belongs to its own book: a live
     # exit must never advance the practice book's running total.
-    for _dry in _books:
-      run = 0.0
-      ex = sorted((e for e in _exits if bool(e.get("dry_run")) is _dry),
-                  key=lambda x: float(x.get("ts") or 0))
-      for e in ex:
-          p = round(float(e.get("pnl_est") or 0), 2)
-          run = round(run + p, 2)
-          # The trade's own id and opening time, stored on the ledger row since
-          # 2026-08-22 (auto_trader.trade_code + backfill_ledger_ids). "—" only
-          # for the handful of old exits whose entry predates the ledger: an
-          # invented timestamp would be worse than an honest dash.
-          _op = e.get("opened_at")
-          _hs = e.get("held_s")
-          rows.append({
-              "ts": float(e.get("ts") or 0),
-              "id": e.get("trade_id") or "—",
-              "opened": pv.fmt_when(float(_op)) if _op else "—",
-              "held": _fmt_held(_hs),
-              "when": pv.fmt_when(float(e.get("ts") or 0)),
-              "coin": str(e.get("symbol", "?")).replace("_USDT", ""),
-              "side": _side_for(e),
-              "strategy": e.get("strategy") or "—",
-              # blank when the key is not one the runner knows (an adopted
-              # exchange position): a real-looking id that matches no
-              # combination is worse than no id
-              "strategy_id": _strategy_id(str(e.get("strategy") or ""),
-                                          str(e.get("symbol") or "")),
-              "why": e.get("why") or "—",
-              "profit": p, "running": run,
-            # WHICH BOOK. Both stamp the same trade id, so a row that
-            # does not say which one it is turns two trades into one —
-            # #MTX4FSGN read as a single trade for a whole evening.
-            "book": "demo" if _dry else "live"})
-          key = dt.datetime.fromtimestamp(float(e.get("ts") or 0)).strftime("%Y-%m")
-          m = months.setdefault(key, {"key": key, "trades": 0, "wins": 0,
-                                      "losses": 0, "profit": 0.0})
-          m["trades"] += 1
-          m["wins" if p > 0 else "losses"] += 1
-          m["profit"] = round(m["profit"] + p, 2)
-    if _q:
-        rows = [r for r in rows
-                if _q in str(r.get("id") or "").upper()
-                or _q in str(r.get("strategy_id") or "").upper()]
-        # the summary describes what is SHOWN, never the whole book
-        months = {}
-        for r in rows:
-            k = dt.datetime.fromtimestamp(r["ts"]).strftime("%Y-%m")
-            m = months.setdefault(k, {"key": k, "trades": 0, "wins": 0,
-                                      "losses": 0, "profit": 0.0})
-            m["trades"] += 1
-            m["wins" if r["profit"] > 0 else "losses"] += 1
-            m["profit"] = round(m["profit"] + r["profit"], 2)
-    rows.sort(key=lambda r: r["ts"])
+    for _dry in books:
+        ex = sorted((e for e in _exits if bool(e.get("dry_run")) is _dry),
+                    key=lambda x: float(x.get("ts") or 0))
+        for e in ex:
+            # The trade's own id and opening time, stored on the ledger row since
+            # 2026-08-22 (auto_trader.trade_code + backfill_ledger_ids). "—" only
+            # for the handful of old exits whose entry predates the ledger: an
+            # invented timestamp would be worse than an honest dash.
+            _op = e.get("opened_at")
+            _hs = e.get("held_s")
+            rows.append({
+                "ts": float(e.get("ts") or 0),
+                "id": e.get("trade_id") or "—",
+                "opened": pv.fmt_when(float(_op)) if _op else "—",
+                "held": _fmt_held(_hs),
+                "when": pv.fmt_when(float(e.get("ts") or 0)),
+                "coin": str(e.get("symbol", "?")).replace("_USDT", ""),
+                "side": _side_for(e),
+                "strategy": e.get("strategy") or "—",
+                # blank when the key is not one the runner knows (an adopted
+                # exchange position): a real-looking id that matches no
+                # combination is worse than no id
+                "strategy_id": _strategy_id(str(e.get("strategy") or ""),
+                                            str(e.get("symbol") or "")),
+                "why": e.get("why") or "—",
+                "profit": round(float(e.get("pnl_est") or 0), 2),
+                # WHICH BOOK. Both stamp the same trade id, so a row that
+                # does not say which one it is turns two trades into one —
+                # #MTX4FSGN read as a single trade for a whole evening.
+                "book": "demo" if _dry else "live"})
+    return rows, len(_exits)
+
+
+def _history_page(rows: list, *, books: tuple, q: str, per_page: int, page: int,
+                  examined: int, match: tuple = ("id", "strategy_id")) -> dict:
+    """One page of closed trades and the months behind it — the one shape both
+    history lists answer. `rows` are oldest first; `q` is already upper-cased
+    with no "#". The running total is per BOOK over every row, BEFORE the
+    search, so a match and page 3 both show the real running figure.
+
+    While searching, `months` and `totals` describe the MATCHED rows, because
+    a whole-book summary printed beside two matches is a false label."""
+    import datetime as dt
+
+    run = {"live": 0.0, "demo": 0.0}
+    for r in rows:
+        run[r["book"]] = round(run[r["book"]] + r["profit"], 2)
+        r["running"] = run[r["book"]]
+    if q:
+        rows = [r for r in rows if any(q in str(r.get(k) or "").upper() for k in match)]
+    months: dict = {}
+    for r in rows:
+        k = dt.datetime.fromtimestamp(r["ts"]).strftime("%Y-%m")
+        m = months.setdefault(k, {"key": k, "trades": 0, "wins": 0,
+                                  "losses": 0, "profit": 0.0})
+        m["trades"] += 1
+        m["wins" if r["profit"] > 0 else "losses"] += 1
+        m["profit"] = round(m["profit"] + r["profit"], 2)
+    rows = sorted(rows, key=lambda r: r["ts"])
     rows.reverse()                                   # newest first
     per = max(1, min(per_page, 100))
     pages = max(1, -(-len(rows) // per))
@@ -4305,14 +4283,94 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1,
         "total": len(rows), "page": page, "pages": pages, "per_page": per,
         # what was SEARCHED, so an empty answer names what it looked at
         # rather than speaking for the store (CLAUDE.md, Sep 12 2026)
-        "q": _q, "examined": _examined,
-        "books": ["live", "demo"] if _q else (["demo"] if dry else ["live"]),
+        "q": q, "examined": examined,
+        "books": ["live", "demo"] if q else (["demo"] if books == (True,) else ["live"]),
         "months": mrows,
         "totals": {"trades": sum(m["trades"] for m in mrows),
                    "wins": sum(m["wins"] for m in mrows),
                    "losses": sum(m["losses"] for m in mrows),
                    "profit": round(sum(m["profit"] for m in mrows), 2)},
     }
+
+
+@app.get("/api/trade/history")
+def trade_history(dry: bool = False, per_page: int = 5, page: int = 1,
+                  q: str = "") -> dict:
+    """Every CLOSED trade on one book, newest first, with its running total —
+    plus a per-month summary the page cannot give.
+
+    Paginated because a wall of 200 rows hides a trade as effectively as a net
+    figure does. The running total is computed oldest-first over the WHOLE
+    book, so page 3's 'running $' is the real running total, not the page's.
+
+    `q` SEARCHES BOTH BOOKS AT ONCE and ignores `dry`. Operator,
+    `Sep 17, 2026`: *"in trade history, put a id search there, when i search
+    LG9NSU4B for example it should show trade id LG9NSU4B for both live and
+    demo trade"*. Both books stamp a trade with the SAME id, so a search that
+    honoured the live/demo tab would show one of the two and look like the
+    other did not happen — which is exactly the confusion that cost five
+    answers about `MTX4FSGN` the day before.
+
+    It matches the TRADE id or the STRATEGY id, with or without the leading
+    `#`, either case. And it matches HERE, over every exit row on the ledger —
+    never in the browser over a page the server already cut, which is the
+    filter-where-the-data-is rule in CLAUDE.md, bought by a KITE loss that sat
+    640 rows past the window a panel had fetched.
+
+    `total` is the number of matches and `examined` is how many closed trades
+    were looked at, so an empty answer names what it checked instead of
+    speaking for the store. The rows and the page are built by
+    `_history_rows` and `_history_page`, shared with the all-rooms list.
+    """
+    _q = (q or "").strip().lstrip("#").upper()
+    # a search spans BOTH books; without one the tab still rules
+    books = (False, True) if _q else (dry,)
+    rows, examined = _history_rows(books)
+    return _history_page(rows, books=books, q=_q, per_page=per_page, page=page,
+                         examined=examined)
+
+
+@app.get("/api/trade/history/rooms")
+def trade_history_rooms(dry: bool = False, per_page: int = 5, page: int = 1,
+                        q: str = "") -> dict:
+    """EVERY room strategy's closed trades in one list (operator, Oct 14,
+    2026: "the main tab is for seeing all room strategy past trades").
+
+    Each room's rows are built by `_history_rows` under that room
+    (`profiles.using`), stamped with the room, merged oldest first — by close
+    time, then the rooms' tab order, then each room's own order — and then
+    searched (trade, strategy or ROOM id), totalled and paged HERE, never in
+    the browser (CLAUDE.md, filter where the data is). One running total per
+    book across all the rooms. A room that raises is named in `unreadable`
+    and the others still show; a room with no record yet simply has none.
+    """
+    from tradingagents import profiles as _pf
+
+    _q = (q or "").strip().lstrip("#").upper()
+    books = (False, True) if _q else (dry,)
+    rooms = _pf.shown()
+    rows: list = []
+    examined, unreadable = 0, []
+    for order, rid in enumerate(rooms):
+        try:
+            with _pf.using(rid):
+                got, n = _history_rows(books)
+        except Exception as exc:                                   # noqa: BLE001
+            unreadable.append({"room": rid, "name": _pf.name_of(rid),
+                               "why": f"{type(exc).__name__}: {str(exc)[:160]}"})
+            continue
+        examined += n
+        for r in got:
+            r.update(room=rid, room_name=_pf.name_of(rid), _order=order)
+        rows += got
+    rows.sort(key=lambda r: (r["ts"], r["_order"]))     # stable: each room's own order kept
+    for r in rows:
+        del r["_order"]
+    out = _history_page(rows, books=books, q=_q, per_page=per_page, page=page,
+                        examined=examined, match=("id", "strategy_id", "room"))
+    out["rooms"] = [{"room": r, "name": _pf.name_of(r)} for r in rooms]
+    out["unreadable"] = unreadable
+    return out
 
 
 @app.get("/api/contracts")

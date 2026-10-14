@@ -4366,8 +4366,10 @@ def trade_history_rooms(dry: bool = False, per_page: int = 5, page: int = 1,
     rows.sort(key=lambda r: (r["ts"], r["_order"]))     # stable: each room's own order kept
     for r in rows:
         del r["_order"]
+    # the room's PRINTED name too: "#09439DC2" is the room whose id is "main"
+    # (it found nothing on the real site at 9:26am, Oct 14, 2026)
     out = _history_page(rows, books=books, q=_q, per_page=per_page, page=page,
-                        examined=examined, match=("id", "strategy_id", "room"))
+                        examined=examined, match=("id", "strategy_id", "room", "room_name"))
     out["rooms"] = [{"room": r, "name": _pf.name_of(r)} for r in rooms]
     out["unreadable"] = unreadable
     return out

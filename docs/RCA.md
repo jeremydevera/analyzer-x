@@ -172,6 +172,62 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-14-I — the new Main tab could not find the #09439DC2 room's trades: a search for "#09439DC2" answered 0 of 3,793
+
+**CEO**
+
+* On the new Main tab (every room's past trades), typing the room id
+  #09439DC2 found nothing — 0 of 3,793 closed trades — while every other
+  room's id found its trades.
+* Why: #09439DC2 is the room that used to be called Main, and behind the
+  scenes it still answers to "main"; the search compared what was typed with
+  that hidden name instead of the name on the screen.
+* What stops it now: the search also reads the name the screen prints, and a
+  test types #09439DC2 itself. Found by checking the real page before
+  reporting the work done, eleven minutes after it went live.
+
+**DEV**
+
+* `tradingagents/api.py` `trade_history_rooms` → `_history_page(...,
+  match=("id", "strategy_id", "room"))`: `room` is the profile id, `main` for
+  the one room whose printed name (`profiles.name_of`, `room_name`) is
+  `#09439DC2`, so `q="09439DC2"` matched no field.
+* Invariant broken: **a search finds what the screen prints** — the room
+  column shows `room_name`, so the search reads `room_name`.
+* Guard: `tests/test_main_tab_shows_every_rooms_trades.py::test_a_room_id_trade_id_or_strategy_id_finds_its_trades`
+  (`q=#09439dc2` → the `main` room's trades), red before the fix.
+
+**SAW** — found by this session's own check in Safari's engine, Oct 14, 2026
+9:26am, before the operator used it: "0 trades matching 09439DC2 on BOTH
+books, of 3793 closed".
+
+**TIMELINE**
+
+1. Oct 14, 2026 9:24am-9:25am — `start.py start` puts c1be75cb3875 and
+   aa06b3224aca live: the Main tab shows every room's past trades, 3,793 on
+   the demo book across 10 rooms.
+2. 9:26am — the page check types `#09439DC2` in the search box: 0 matches;
+   `#55D32617` (id and name the same) works.
+3. Same minutes — the test types `#09439dc2` and fails (`set()` against the
+   main room's two trades); `room_name` joins the match fields; 10 of 10 pass.
+
+**ROOT CAUSE** — `match=("id", "strategy_id", "room")`: the internal id, not
+the printed name, for the one room where they differ.
+
+**WHY IT WAS NOT CAUGHT** — the route's search test typed `#55D32617`, a room
+whose id IS its printed name, so it could not tell the two fields apart. The
+rename made exactly one room where they differ, and no test searched for that
+one. When a change gives something a second name, test the search with the
+NEW name.
+
+**COST** — none; no one had searched the tab yet.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_main_tab_shows_every_rooms_trades.py::test_a_room_id_trade_id_or_strategy_id_finds_its_trades`.
+
+---
+
 ## RCA-2026-10-14-G — every background program opened a window Windows Terminal kept: 695 leftover windows held about 13 GB of 16, and the site and rooms sat in tabs one closed window would kill
 
 **CEO**

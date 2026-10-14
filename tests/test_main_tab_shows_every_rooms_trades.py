@@ -77,6 +77,12 @@ def test_a_room_id_trade_id_or_strategy_id_finds_its_trades(two_rooms):
         "one trade id in two rooms is two trades"
     none = two_rooms.get("/api/trade/history/rooms?q=ZZZZ9999").json()
     assert none["total"] == 0 and none["examined"] == 4
+    # THE PRINTED NAME FINDS ITS ROOM (found on the real site, Oct 14, 2026
+    # 9:26am): "#09439DC2" answered 0 of 3,793 because the search read the id
+    # "main", the one room whose id and printed name differ
+    renamed = two_rooms.get("/api/trade/history/rooms?q=%2309439dc2&per_page=50").json()
+    assert {r["id"] for r in renamed["rows"]} == {"AAAA1111", "SAME0000"}
+    assert {r["room"] for r in renamed["rows"]} == {"main"}
 
 
 def test_pages_are_cut_on_the_server(two_rooms):

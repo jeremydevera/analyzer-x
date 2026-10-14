@@ -172,6 +172,60 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-14-J — on the new Main tab the opened and closed times ran into each other: "Oct 14, 2026 8:45amOct 14, 2026 9:19am35m"
+
+**CEO**
+
+* On the new Main tab, each trade's opened time, closed time and how long it
+  was held were printed on top of one another, so neither date could be read.
+* Why: the new Room column made the table one column wider, and those three
+  cells were told never to wrap, so the text spilled into its neighbours.
+* What stops it now: a date may wrap onto a second line inside its own cell,
+  and a test holds that. Found by checking the real page before reporting the
+  work done.
+
+**DEV**
+
+* `webapp/src/components/trade/TradeHistory.tsx`: the opened, closed (`when`)
+  and held cells carried `whitespace-nowrap` inside a `Table fixed`
+  (table-fixed); ten columns fitted at 1,500 px, the eleventh (Room, from
+  c1be75cb3875) did not, and nowrap text in a fixed layout overflows instead
+  of growing the column.
+* Invariant broken: **in a fixed-width table, text may wrap but never cover
+  its neighbour** — the Table component is built to wrap; nowrap defeats it
+  (the phone note in this file says the same of the 390 px view).
+* Guard: `tests/test_main_tab_shows_every_rooms_trades.py::test_a_date_wraps_in_its_own_cell_instead_of_running_into_the_next`,
+  red before the fix.
+
+**SAW** — the real-site check's screenshot in Safari's engine, Oct 14, 2026
+9:27am: "Oct 14, 2026 8:45amOct 14, 2026 9:19am35m" across three columns.
+
+**TIMELINE**
+
+1. Oct 14, 2026 9:24am-9:25am — the Main tab goes live with eleven columns
+   (Room first) at 3,793 trades.
+2. 9:27am — the screenshot shows the opened, closed and held times overlapping
+   on every row; the single-room Trade history (ten columns) still fits.
+3. Same minutes — the three cells lose `whitespace-nowrap`; the new test and
+   36 others pass; tsc clean.
+
+**ROOT CAUSE** — `whitespace-nowrap` on three date cells of a fixed-layout
+table that gained a column.
+
+**WHY IT WAS NOT CAUGHT** — every test of this panel reads its source for
+strings, and a layout overlap has no string; only a picture shows it. The
+tab's own test list had "the real site in Safari's engine" as the last step,
+which is exactly where it was found — a static test cannot see width.
+
+**COST** — none in money; the dates were unreadable on the Main tab for a few
+minutes.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_main_tab_shows_every_rooms_trades.py::test_a_date_wraps_in_its_own_cell_instead_of_running_into_the_next`.
+
+---
+
 ## RCA-2026-10-14-I — the new Main tab could not find the #09439DC2 room's trades: a search for "#09439DC2" answered 0 of 3,793
 
 **CEO**

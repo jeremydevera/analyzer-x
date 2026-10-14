@@ -287,9 +287,9 @@ export default function TradeHistory({ allRooms = false, active = true }: {
                       className="font-mono hover:underline">{r.id}</button>
                   ) : "—"}
                 </TableCell>
-                <TableCell className="whitespace-nowrap px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.opened ?? "—"}</TableCell>
-                <TableCell className="whitespace-nowrap px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.when}</TableCell>
-                <TableCell className="whitespace-nowrap px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.held ?? "—"}</TableCell>
+                <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.opened ?? "—"}</TableCell>
+                <TableCell className="px-3 py-2 text-theme-xs text-gray-500 dark:text-gray-400">{r.when}</TableCell>
+                <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">{r.held ?? "—"}</TableCell>
                 <TableCell className="px-2 py-1.5 text-theme-xs font-medium text-gray-800 dark:text-white/90">{r.coin}</TableCell>
                 <TableCell className={`px-2 py-1.5 text-theme-xs ${r.side === "LONG" ? "text-success-600" : "text-error-500"}`}>{r.side}</TableCell>
                 {/* the strategy AND its own id (operator, Sep 10, 2026: "in

@@ -152,3 +152,14 @@ def test_the_all_rooms_list_asks_the_server_and_waits_behind_its_tab():
     code = re.sub(r"/\*.*?\*/|//[^\n]*", "", th, flags=re.S)        # code, not the comments
     assert ".filter(" not in code, "the server searches and pages"
     assert 'historyRooms: (dry: boolean, page = 1, per_page = 5, q = "") =>' in _web("lib/api.ts")
+
+
+def test_a_date_wraps_in_its_own_cell_instead_of_running_into_the_next():
+    """Found on the real site, Oct 14, 2026 9:27am: with the Room column the
+    table has eleven columns, and "Oct 14, 2026 8:45am" ran into the closed
+    time and the held time beside it (the cells were whitespace-nowrap in a
+    fixed table). A date may wrap to two lines; it may never cover a neighbour."""
+    th = _web("components/trade/TradeHistory.tsx")
+    for cell in ('{r.opened ?? "—"}</TableCell>', "{r.when}</TableCell>", '{r.held ?? "—"}</TableCell>'):
+        line = next(ln for ln in th.splitlines() if cell in ln)
+        assert "whitespace-nowrap" not in line, cell

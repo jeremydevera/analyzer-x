@@ -1106,6 +1106,17 @@ a failure. NEVER call `say` directly — always the script below, which reads
 bash .claude/skills/say-done/speak.sh "<what was finished>" &
 ```
 
+ALWAYS ON — `notify-on-confirmation`. **Every time a reply asks the operator to
+confirm, choose or approve anything** — an AskUserQuestion, "yes to this
+design?", "review the spec", "say go" — send a `PushNotification` in the same
+turn: one line under 200 characters naming what they need to answer (*"Waiting
+for you: approve the Main-tab spec"*). Operator, Oct 14, 2026, after a design
+question sat unanswered: *"why did you not notify me, i want you to notify me if
+you are asking for my confirmation"*. `say-done` speaks only when a task is
+FINISHED, so a question waiting on them made no sound at all. The notification
+goes out WITH the question, never instead of it, and never for routine progress
+or finished work.
+
 ALWAYS ON — `label-must-match-data`. Run it before reporting ANY change that puts a
 figure on screen: a tile, table, artifact, caption or badge. This is not optional and does
 not wait to be invoked. three-gates has a blind spot: "is it accurate" keeps passing

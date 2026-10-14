@@ -6075,6 +6075,20 @@ def _settle_on_minutes(symbol: str, pos: dict, bar_open: int,
     return got
 
 
+# A CLOSE AT THE TARGET OR THE STOP RINGS NO BELL (operator, Oct 14, 2026:
+# "i dont need notification if there is tp /sl trades remove those and
+# future notification"). They were 10,301 of the bell's 22,583 events, one
+# per practice trade, burying everything else. A close for any other reason
+# (MANUAL/EXCHANGE: the exchange or a hand closed it; CLOSED) is rare and
+# still rings. The trade record's `exit` row is untouched.
+QUIET_CLOSES = ("TP", "SL")
+
+
+def close_rings_the_bell(why) -> bool:
+    """Does a close for this reason go to the notifications bell?"""
+    return str(why or "") not in QUIET_CLOSES
+
+
 def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                   dry: bool, tripped: frozenset, only: str | None,
                   slot_key: str, entries: bool = True) -> None:
@@ -6469,24 +6483,25 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                            "pnl_source": pnl_source,
                            "step_next": st["step"],
                            "dry_run": pos_dry})
-            try:
-                from tradingagents import notifications as _nt
+            if close_rings_the_bell(why):
+                try:
+                    from tradingagents import notifications as _nt
 
-                _nt.record(
-                    "trade_close",
-                    f"{'PAPER' if pos_dry else 'LIVE'} "
-                    f"{symbol.replace('_USDT', '')} closed {why} "
-                    f"{round(pnl, 2):+.2f} USDT",
-                    detail=(f"{pos.get('strategy')} · "
-                            f"{'LONG' if pos.get('side', 0) > 0 else 'SHORT'} "
-                            f"{pos.get('entry')} -> {exit_px}"),
-                    # a loss is not an ERROR, so ok tracks the money not the run
-                    ok=bool(pnl >= 0),
-                    meta={"symbol": symbol, "strategy": pos.get("strategy"),
-                          "dry": bool(pos_dry), "why": why,
-                          "pnl": round(pnl, 2), "exit": exit_px})
-            except Exception:
-                pass
+                    _nt.record(
+                        "trade_close",
+                        f"{'PAPER' if pos_dry else 'LIVE'} "
+                        f"{symbol.replace('_USDT', '')} closed {why} "
+                        f"{round(pnl, 2):+.2f} USDT",
+                        detail=(f"{pos.get('strategy')} · "
+                                f"{'LONG' if pos.get('side', 0) > 0 else 'SHORT'} "
+                                f"{pos.get('entry')} -> {exit_px}"),
+                        # a loss is not an ERROR, so ok tracks the money
+                        ok=bool(pnl >= 0),
+                        meta={"symbol": symbol, "strategy": pos.get("strategy"),
+                              "dry": bool(pos_dry), "why": why,
+                              "pnl": round(pnl, 2), "exit": exit_px})
+                except Exception:
+                    pass
 
     # ---- entries: each strategy acts once per closed candle of its own TF
     if not entries:

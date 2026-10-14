@@ -92,10 +92,14 @@ def test_the_trading_loop_emits_open_and_close():
     assert '"trade_open"' in src and '"trade_close"' in src
     # every call site is inside a try/except so it cannot raise into the loop
     for frag in ('_nt.record(\n                "trade_open"',
-                 '_nt.record(\n                    "trade_close"'):
+                 '_nt.record(\n                        "trade_close"'):
         i = src.find(frag)
         assert i > 0, frag
         assert "try:" in src[max(0, i - 400):i]
+    # and a close rings only for a reason other than its target or stop
+    # (Oct 14, 2026: tests/test_tp_sl_closes_ring_no_bell.py)
+    i = src.find('_nt.record(\n                        "trade_close"')
+    assert "if close_rings_the_bell(why):" in src[max(0, i - 400):i]
 
 
 def test_the_jobs_emit_download_and_backtest():

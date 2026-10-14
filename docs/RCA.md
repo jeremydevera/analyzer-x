@@ -172,6 +172,306 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-14-E — the full CSV export copied rows by column POSITION, so a column added while it ran would have failed it or shifted its values (NEVER HAPPENED YET)
+
+**CEO**
+
+* Never happened: a full CSV download that was running when the Backtest
+  list gained a column would have stopped with an error, or written every
+  value one column over.
+* Why: it copied each row by the order of its columns as they were when the
+  download started, and the list gains columns while the app runs (the new
+  "rule" column, Oct 13, 2026).
+* What stops it now: rows are copied by column name.
+
+**DEV**
+
+* `tradingagents/full_export.py` `_retest_pair` returned `tuple(r)` of
+  `SELECT *`; the parent `executemany`'d them into a table built from phase
+  1's `PRAGMA table_info` — `rows_index._late_columns` ALTERs a new column
+  onto the live file's END, while a fresh `_SCHEMA` puts it before
+  `monthly, pair`.
+* Invariant broken: **a copy between two tables names its columns**.
+* Guard: `tests/test_the_full_csv_holds_every_row.py::test_a_column_added_while_it_runs_never_shifts_a_value`.
+
+**SAW** — nothing on screen; found by the second review of the re-entry
+rule, reproduced: "Incorrect number of bindings supplied. The current
+statement uses 51, and there are 52 supplied".
+
+**TIMELINE**
+
+NEVER HAPPENED YET.
+
+1. Oct 13, 2026 — the re-entry change adds `reenter` to the row list.
+2. The first filing on the new code ALTERs it onto the live v2 file; an
+   export running at that moment would have died after up to an hour of
+   re-checking, or — across a swap to a rebuilt file — written `monthly`
+   into `pair`.
+3. After the fix — the worker returns its column names; the parent copies by
+   name, leaving a column added mid-run out of that file's copy.
+
+**ROOT CAUSE** — positional `INSERT ... VALUES (?...)` across two tables whose
+column lists can differ.
+
+**WHY IT WAS NOT CAUGHT** — the export's tests build their store once; none
+changes the schema while a run is going.
+
+**COST** — none.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_full_csv_holds_every_row.py::test_a_column_added_while_it_runs_never_shifts_a_value`.
+
+---
+
+## RCA-2026-10-14-D — Backtest a room could have labelled old trade lists with the new program's version (NEVER HAPPENED YET)
+
+**CEO**
+
+* Never happened: Backtest a room keeps each strategy's trade list on disk,
+  labelled with the version of the program that made it, and a program
+  started before a change could have labelled its old lists with the new
+  version.
+* Why: the label was read from the files on disk the first time it was
+  needed, not from the code the program had loaded.
+* What stops it now: the label is the engine files as they stood when the
+  program started, before any engine code loaded — never newer than the
+  code that runs.
+
+**DEV**
+
+* `tradingagents/room_replay.py` `_code_sig` hashed the engine files' size
+  and time on its FIRST call and kept it; `stamp_of` keys every cached trade
+  list by it. room_replay is imported lazily, so even taking it at import
+  (the first try, refuted by the second review) was hours after the engine
+  loaded; it now reads `tradingagents.ENGINE_FILES_AT_START`, taken when the
+  package starts.
+* Invariant broken: **a cache key describes the code that computed the
+  value**, not the files on disk at some later moment.
+* Guard: `tests/test_the_backtest_reenters_like_practice.py::test_the_room_replays_cache_is_signed_by_the_code_it_loaded`.
+
+**SAW** — nothing on screen; found by the review of the re-entry rule.
+
+**TIMELINE**
+
+NEVER HAPPENED YET.
+
+1. Oct 13, 2026 2:12pm — the back end starts on the old code.
+2. Oct 13, 2026 11:03pm — the engine files change for the re-entry rule; had
+   the daytime rule's midnight pass asked for the label first then, it would
+   have filed lists built by the old code under the new code's label, a
+   cache hit for Backtest a room after the restart.
+3. After the fix — the label is the engine files at the package's start.
+
+**ROOT CAUSE** — a lazily computed version label, in a process that runs for
+days while its files change underneath it.
+
+**WHY IT WAS NOT CAUGHT** — the cache tests run in fresh processes, where
+"first asked", "imported" and "loaded" are the same moment; the guard now
+edits a file after the start and asserts the label does not move.
+
+**COST** — none.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_backtest_reenters_like_practice.py::test_the_room_replays_cache_is_signed_by_the_code_it_loaded`.
+
+---
+
+## RCA-2026-10-14-C — a local Backtest v2 sweep would have saved rows measured by the old v1 engine into the v2 list (NEVER HAPPENED YET)
+
+**CEO**
+
+* Never happened: a local "Backtest v2" sweep — no button starts it, but the
+  back end allowed it — would have filled in switched-on strategies with the
+  old engine and saved them into the Backtest v2 list.
+* Why: when Backtest v2 moved to GitHub (Sep 21, 2026) only the v1 local
+  sweep was switched off.
+* What stops it now: the local v2 sweep is refused the same way, naming
+  GitHub.
+
+**DEV**
+
+* `tradingagents/db_jobs.py` `LOCAL_SWEEP_KINDS` held `("backtest",)`;
+  `_run_backtest(kind="backtest_v2")` → `backtest_report.grid_from_store` →
+  `market_sweep.compute_combos` → `backtest_strategy` with no `fine`, `book`
+  or `reenter`, saved by `save_pair_rows` into the v2 rows folder without
+  `res`.
+* Invariant broken: **Backtest v2 measures on GitHub**, with one engine call
+  per store.
+* Guard: `tests/test_the_backtest_reenters_like_practice.py::test_backtest_v2_is_never_measured_by_a_local_market_sweep`.
+
+**SAW** — nothing on screen; found by the review of the re-entry rule. No
+`db_backtest_v2` file exists on this PC.
+
+**TIMELINE**
+
+NEVER HAPPENED YET.
+
+1. Sep 21, 2026 — v2 measuring moves to GitHub; the refused set stays
+   `("backtest",)`.
+2. Oct 13, 2026 — the review finds `POST /api/jobs/backtest_v2/start` is not
+   refused.
+3. After the fix — refused with `LocalSweepsOff`.
+
+**ROOT CAUSE** — the switch-off named the v1 kind only; the v2 twin is the
+same job launched in another store.
+
+**WHY IT WAS NOT CAUGHT** — `test_measuring_moved_to_github` pins `backtest`
+in the refused set and three kinds outside it; nothing asked about the v2
+twin.
+
+**COST** — none.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_backtest_reenters_like_practice.py::test_backtest_v2_is_never_measured_by_a_local_market_sweep`.
+
+---
+
+## RCA-2026-10-14-B — Forecast's reality check read 30-day figures of switched-off strategies that were never updated
+
+**CEO**
+
+* Forecast's predictions are corrected by a "reality check" that compares
+  practice with the backtest over the hours a strategy was switched on; every
+  figure it used on this PC (19) belonged to a strategy no room runs any
+  more, and none was ever updated.
+* Why: the updater only visited strategies switched on right now, and a
+  switched-off strategy had lost the setting that says which backtest it
+  came from.
+* What stops it now: a switched-off strategy's figure is rebuilt from the
+  backtest it came from when that backtest is re-measured, until it covers
+  the last time the strategy ran — then it is left alone.
+
+**DEV**
+
+* `tradingagents/rolling30.py` `refresh` walked `strategy_coins` only;
+  `_identity` reads `strategy_res`, cleared at switch-off, so the store fell
+  back to v1 ("no stored backtest row for it"); `forecast_v2.reality` →
+  `_rolling` reads every record with no freshness check.
+* Invariant broken: **a figure a decision reads is kept current while it is
+  read** (THE UI IS THE SOURCE OF TRUTH).
+* Guard: `tests/test_the_backtest_reenters_like_practice.py::test_a_switched_off_rows_figure_is_rebuilt_when_its_row_is`.
+
+**SAW** — nothing on screen; found by the review of the re-entry rule.
+
+**TIMELINE**
+
+1. Oct 10, 2026 10:04am - Oct 13, 2026 12:27pm — 19 figures written while
+   their strategies ran in #55D32617 and #6B08FF64.
+2. Oct 13, 2026 — every room's switched-on list is empty; none of the 19 can
+   be visited, or rebuilt.
+3. The reality check reads exactly those: 11 rows, took 0.7273, gap
+   -0.6516.
+4. Measured by the review in a sandbox on the same day's inputs: took 0.8000
+   and gap -0.3828 (old rule), 0.7742 and -0.4174 (new rule) — a prediction
+   of +50 over 200 trades is corrected to +131.15 with the stale figures
+   against about +103 with fresh ones.
+5. After the fix — each of the 19 is rebuilt when its row is re-measured
+   (the next daily update), from the store its record names (or Backtest v2
+   for one written on Gate after the move).
+6. Second review, Oct 14, 2026 — rebuilt 30 days on, a figure walks a later
+   window, so an old stretch would keep practice's trades and lose every
+   backtest trade (PUMP 30m, #55D32617, Oct 10, 2026 9:56am-11:58am: took
+   1.0 against None). The record keeps the first candle it walked
+   (`start_ms`) and the reality check compares only the hours both sides
+   walked; a figure is also rebuilt when its result file changes on the same
+   candle (a one-strategy UPDATE).
+7. Second review, Oct 14, 2026 — the first fix wrote `start_ms` and
+   `forecast_v2._rolling` dropped it on the way to the reality check; its
+   test had replaced `_rolling`, so it could not see that. The test now
+   writes real record files and reads them through the real `_rolling`.
+8. Second review, Oct 14, 2026 — the switched-off pass had no end: nothing
+   deletes a figure (the MEXC era left 6,579 in 11 days, 308.5 s to read
+   cold), each Gate rebuild takes ~14 s inside the back end (18 of today's
+   19 were due), and every daily rebuild slid a figure's 30 days further off
+   the stretch it is read for. A switched-off figure is now SETTLED — never
+   rebuilt, its row never read — once it walks up to the last time its
+   strategy was seen switched on (`deployed_at`, stamped by the switched-on
+   pass) under its store's rule of today; at most `ORPHANS_PER_PASS` (20)
+   rebuilds a pass; a figure nobody wrote for `ORPHAN_DAYS` (7) is not
+   opened; a failed or raising rebuild waits for its row to move.
+
+**ROOT CAUSE** — the updater was written for the Demo column of strategies
+on screen; the reality check later began reading the same records for
+strategies long switched off.
+
+**WHY IT WAS NOT CAUGHT** — rolling30's tests drive `refresh` with deployed
+slots, and the reality check's tests build their own records; nothing joined
+who writes a record with who reads it.
+
+**COST** — none in money; corrected Forecast v2 and Room strategies
+predictions read off stale figures (about 27% high in the review's example).
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_backtest_reenters_like_practice.py::test_a_switched_off_rows_figure_is_rebuilt_when_its_row_is`,
+`tests/test_the_backtest_reenters_like_practice.py::test_the_reality_check_compares_only_the_hours_both_sides_walked`,
+`tests/test_the_backtest_reenters_like_practice.py::test_the_switched_off_pass_is_bounded`,
+`tests/test_the_backtest_reenters_like_practice.py::test_a_deployed_rebuild_stamps_when_it_was_seen_switched_on`.
+
+---
+
+## RCA-2026-10-14-A — a one-strategy UPDATE left its coin reading "never measured"
+
+**CEO**
+
+* After "update this backtest" on one strategy (Oct 10, 2026 7:10am, BTC 1h
+  mom6), the app read that coin's backtest as never measured, so the 30-day
+  figure the watcher switches by could not be rebuilt for it.
+* Why: the save file kept its "measured up to" time in the wrong place, and
+  the quick reader, which looks only at the end of the file, then gave up and
+  answered 0 instead of reading the file.
+* What stops it now: the time is always written last, and when it is not at
+  the end the whole file is read.
+
+**DEV**
+
+* `tradingagents/market_sweep.py` `run_pair`: `states["__last_ms__"] = ...`
+  keeps the key's FIRST position (`{"__cloud__", "__last_ms__"}` from
+  GitHub), then `states["__signals__"]` lands after it; `pair_watermark`'s
+  anchored tail regex misses, and its branch for "the key is in the tail"
+  returned 0.
+* Invariant broken: **a fast path that cannot answer falls back** — its own
+  docstring: "degrades to slow rather than to wrong".
+* Guard: `tests/test_a_one_row_update_keeps_its_watermark.py::test_the_watermark_is_written_last`,
+  `::test_a_file_written_the_old_way_is_still_read`.
+
+**SAW** — nothing reported; the job record of Oct 10, 2026 7:10am reads
+`after_ms: 0`, `measured_through: ""`. Found by the review of the re-entry
+rule, where a one-strategy update is how a row reaches the new rule before
+the daily run.
+
+**TIMELINE**
+
+1. Oct 10, 2026 7:10am — UPDATE THIS BACKTEST on BTC 1h mom6 (v2) measures
+   280 rows; the job records `after_ms: 0`.
+2. Until the next daily collect rewrote BTC-1h's state in GitHub's shape —
+   the pair read as never measured: its 30-day figure "no stored backtest row
+   for it", the watcher's freshness check none.
+3. Oct 13, 2026 — the review reproduces it on a state of that shape.
+4. Oct 14, 2026 — 0 of 4,126 v2 state files are in that shape now (each
+   daily collect rewrites them); after the fix the key is written last and a
+   misplaced one is read by a full parse.
+
+**ROOT CAUSE** — a dict keeps a key where it was first inserted, so "write
+`__last_ms__` last" held only for states built from empty, and the reader
+treated "found, but not at the end" as "absent".
+
+**WHY IT WAS NOT CAUGHT** — every watermark test writes the state in GitHub's
+shape or from an empty dict; none re-saved a state that already held the
+key, and the "in the tail, not at the end" branch had no test.
+
+**COST** — none in money; one pair's 30-day figure and freshness check
+unavailable until its next collect.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_a_one_row_update_keeps_its_watermark.py::test_the_watermark_is_written_last`.
+
+---
+
 ## RCA-2026-10-13-F — every test run wrote a made-up "disk went away" failure into the screen's real log: 70 of its 74 failures never happened
 
 **CEO**

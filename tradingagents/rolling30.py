@@ -96,6 +96,29 @@ def _stored(ident: dict) -> tuple[dict | None, int]:
 _PAIR_MEMO: dict = {}
 
 
+def _file_stamp(ident: dict) -> tuple | None:
+    """(mtime_ns, size) of the pair's result file — a stat, never a parse;
+    None when its store is not named (the watermark alone decides then)."""
+    home_ = getattr(ident.get("store"), "home", None)
+    if home_ is None:
+        return None
+    p = Path(home_) / "rows" / f"{ident['coin']}-{ident['tf']}.json"
+    try:
+        st = p.stat()
+    except OSError:
+        return None
+    return (st.st_mtime_ns, st.st_size)
+
+
+def _current(have: dict | None, ident: dict, wm: int) -> bool:
+    """Is a saved figure still the one its row would give? The same
+    watermark AND the same result file."""
+    if not have or have.get("wm") != wm:
+        return False
+    stamp = _file_stamp(ident)
+    return stamp is None or list(have.get("file") or ()) == list(stamp)
+
+
 def _watermark(ident: dict) -> int:
     """The pair's watermark alone — a 256-byte tail read
     (market_sweep.pair_watermark), never a parse of the ~6 MB pair file."""
@@ -127,8 +150,10 @@ def log_to_trades(log: list[dict]) -> list[list]:
     return out
 
 
-def rebuild(slot: str, settings: dict) -> dict:
-    """Rebuild one slot's backtest trades and save them. Returns the record."""
+def rebuild(slot: str, settings: dict, *, deployed_at: float | None = None) -> dict:
+    """Rebuild one slot's backtest trades and save them. Returns the record.
+    `deployed_at`: the last time the slot was seen switched on — None means
+    it is switched on now; the switched-off pass passes the record's own."""
     import numpy as np
 
     import tradingagents.auto_trader as at
@@ -184,17 +209,37 @@ def rebuild(slot: str, settings: dict) -> dict:
                      book_hold_s=bs * at.FUNDING_HOLD_BARS)
     else:
         _cost = dict(fee=side, slippage=0.0)
+    # THE ROW'S OWN RULE (Oct 13, 2026): its `reenter` stamp — a row measured
+    # since reads the candle a trade closed in, as the runner does; an
+    # unstamped one was measured before, and its figure must add up to it
+    _re = bool(row.get("reenter"))
     r = at.backtest_strategy(key, df, 5.0, sizing="flat",
                              dirs=dirs, tp=ident["tp"] / 100, sl=ident["sl"] / 100,
                              liq_move_pct=liq, funding=fund, keep_log=True,
-                             start_at=warm, fine=fine, **_cost)
+                             start_at=warm, fine=fine, reenter=_re, **_cost)
     rebuilt = {"trades": int(r["trades"]), "wins": int(r["wins"]),
                "profit": round(float(r["profit"]), 2)}
     stored = {"trades": int(row["trades"]), "wins": int(row["wins"]),
               "profit": round(float(row["profit"]), 2)}
     rec = {"slot": slot, "wm": wm, "bar_s": bs, "end_ms": wm + bs * 1000,
            "trades": log_to_trades(r["log"]), "stored": stored, "rebuilt": rebuilt,
-           "match": same_result(stored, rebuilt), "at": time.time()}
+           "match": same_result(stored, rebuilt), "at": time.time(),
+           # the rule it was walked under — its row's, which changes only
+           # when the row is re-measured, and that moves the watermark
+           "reenter": _re,
+           # and its own store, so it can be rebuilt after its slot is
+           # switched off and the room's `strategy_res` entry is gone
+           "res": ident.get("res") or "",
+           # the first ENTRY the walk could make: the reality check compares
+           # only the hours both sides walked (forecast_v2.reality)
+           "start_ms": int(ts[min(warm + 1, len(ts) - 1)]) if ts else None,
+           # and the result file it was built from: a one-strategy UPDATE on
+           # the candle the daily run measured through re-stamps the row
+           # without moving the watermark (second review, Oct 14, 2026)
+           "file": list(_file_stamp(ident) or ()),
+           # the last time it was seen switched on: a switched-off figure
+           # whose walk reaches it is settled (_settled)
+           "deployed_at": time.time() if deployed_at is None else float(deployed_at)}
     home().mkdir(parents=True, exist_ok=True)
     tmp = _cache_path(slot).with_suffix(".tmp")
     tmp.write_text(json.dumps(rec), encoding="utf-8")
@@ -263,7 +308,7 @@ def refresh(settings: dict | None = None, *, pause: float = 0.3) -> dict:
                 # 1,120 samples): /api/health 59-77 s, a room's tiles 57.7 s.
                 wm = _watermark(ident)
                 have = _load(slot)
-                if have and have.get("wm") == wm:
+                if _current(have, ident, wm):
                     continue
                 got = rebuild(slot, settings)
                 if got.get("error"):
@@ -273,9 +318,142 @@ def refresh(settings: dict | None = None, *, pause: float = 0.3) -> dict:
                 time.sleep(pause)
             except Exception as exc:                       # noqa: BLE001
                 errors[slot] = f"{type(exc).__name__}: {str(exc)[:160]}"
+        done += _refresh_orphans(seen, errors, pause)
     finally:
         _STATUS.update(running=False, last=time.time(), errors=errors)
     return {"rebuilt": done, "errors": errors}
+
+
+# THE FIGURES OF SWITCHED-OFF ROWS TOO (review, Oct 13, 2026). The Forecast
+# reality check (forecast_v2.reality: took / gap, which corrects every
+# Forecast v2 and Room strategies prediction) is read off the records of PAST
+# switch-on stretches. All 19 on this PC belonged to slots no room runs any
+# more; refresh walked deployed slots only and their `strategy_res` entries
+# were gone, so none was ever rebuilt — their numbers, and from Oct 13, 2026
+# their rule, stayed as they were for good. Each is rebuilt from its own store
+# when its row is re-measured (the watermark moves), until it is SETTLED.
+#
+# AND THE PASS IS BOUNDED (second review, Oct 14, 2026): nothing deletes a
+# figure — the MEXC era left 6,579 in 11 days, 308.5 s to read cold — and a
+# Gate rebuild takes ~14 s in this process. Rebuilding every one whenever its
+# row moved would grow without end, hold up the figures of the strategies
+# switched on now, and slide each window away from the stretch it is read
+# for. So a figure is settled once it reaches back to the last time its
+# strategy was seen switched on under its store's rule of today, a pass
+# rebuilds at most ORPHANS_PER_PASS, and a figure nobody wrote for
+# ORPHAN_DAYS is not opened. A rebuild that fails, or raises, is not asked
+# again until the row moves.
+ORPHANS_PER_PASS = 20
+ORPHAN_DAYS = 7
+_ORPHANS_FAILED: dict = {}
+_HEADS: dict = {}       # file name -> (mtime_ns, size, the record's small fields)
+
+
+def _orphan_res(rec: dict) -> str | None:
+    """The store a record belongs to: its own `res`, else — a record from
+    before it was written — Backtest v2 when it was made on Gate after the
+    move (Gate has no v1 rows), else unknown."""
+    from tradingagents import venue
+
+    if rec.get("res") is not None:
+        return str(rec.get("res") or "")
+    since = venue.since() or 0.0
+    if venue.current() == "gate" and since and float(rec.get("at") or 0) >= since:
+        return "1m"
+    return None
+
+
+def _head(entry) -> dict | None:
+    """A record's small fields — parsed once per version of its file, and
+    never its trades (the figures of strategies switched on are read through
+    `_load`)."""
+    st = entry.stat()
+    hit = _HEADS.get(entry.name)
+    if hit and hit[0] == st.st_mtime_ns and hit[1] == st.st_size:
+        return hit[2]
+    try:
+        rec = json.loads(Path(entry.path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(rec, dict):
+        return None
+    head = {k: rec.get(k) for k in ("slot", "wm", "file", "end_ms", "reenter")}
+    head["res"] = _orphan_res(rec)
+    # a record from before the field: its last rebuild was a switched-on one
+    head["deployed_at"] = rec.get("deployed_at") or rec.get("at")
+    _HEADS[entry.name] = (st.st_mtime_ns, st.st_size, head)
+    return head
+
+
+def _settled(head: dict) -> bool:
+    """Nothing a rebuild could add: the figure walks up to the last time its
+    strategy was seen switched on, under its store's rule of today. A later
+    rebuild would only slide its 30 days off the stretch."""
+    from tradingagents import backtest_report as br
+
+    on = float(head.get("deployed_at") or 0)
+    return (on > 0 and float(head.get("end_ms") or 0) >= on * 1000
+            and bool(head.get("reenter")) == br.reenter_for(head.get("res")))
+
+
+def _refresh_orphans(seen: set, errors: dict, pause: float) -> int:
+    from tradingagents import auto_trader as at
+
+    # a switched-off slot's key may be a runtime recipe no room loads now
+    with contextlib.suppress(Exception):
+        at.merge_runtime_specs()
+    cutoff = time.time() - ORPHAN_DAYS * 86_400
+    due, live = [], set()
+    try:
+        with os.scandir(home()) as it:
+            entries = sorted((e for e in it if e.name.endswith(".json")), key=lambda e: e.name)
+    except OSError:
+        return 0
+    for e in entries:
+        try:
+            if e.stat().st_mtime < cutoff:
+                continue
+            head = _head(e)
+        except OSError:
+            continue
+        live.add(e.name)
+        slot = str((head or {}).get("slot") or "")
+        if not slot or "|" not in slot or slot in seen:
+            continue
+        seen.add(slot)
+        if head["res"] is not None and not _settled(head):
+            due.append((slot, head))
+    for k in [k for k in _HEADS if k not in live]:
+        _HEADS.pop(k, None)
+    for k in [k for k in _ORPHANS_FAILED if k not in {s for s, _h in due}]:
+        _ORPHANS_FAILED.pop(k, None)
+    done = tried = 0
+    for slot, head in due:
+        if tried >= ORPHANS_PER_PASS:
+            break
+        own = {"strategy_res": {slot: head["res"]}}
+        wm = 0
+        try:
+            ident = _identity(own, slot)
+            if ident is None:
+                continue
+            wm = _watermark(ident)
+            if not wm or _current(head, ident, wm) or _ORPHANS_FAILED.get(slot) == wm:
+                continue
+            tried += 1
+            got = rebuild(slot, own, deployed_at=head["deployed_at"])
+            if got.get("error"):
+                _ORPHANS_FAILED[slot] = wm
+                errors[slot] = got["error"]
+            else:
+                _ORPHANS_FAILED.pop(slot, None)
+                done += 1
+            time.sleep(pause)
+        except Exception as exc:                               # noqa: BLE001
+            if wm:
+                _ORPHANS_FAILED[slot] = wm
+            errors[slot] = f"{type(exc).__name__}: {str(exc)[:160]}"
+    return done
 
 
 def status() -> dict:

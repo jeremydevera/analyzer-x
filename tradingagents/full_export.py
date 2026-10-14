@@ -129,7 +129,11 @@ def _retest_pair(job: tuple) -> tuple:
                           [*args, pair]).fetchall()
     finally:
         con.close()
-    raw = [tuple(r) for r in got]
+    # WITH THEIR COLUMN NAMES: the writer's copy was built from the store's
+    # columns when the export started, and a column the store gains while it
+    # runs (`reenter`, Oct 13, 2026) must neither fail the copy nor move a
+    # value one column over — the parent copies by NAME
+    raw = {"cols": list(got[0].keys()) if got else [], "rows": [tuple(r) for r in got]}
     rows = []
     for r in got:
         d = {k: r[k] for k in r.keys() if k != "pair"}          # noqa: SIM118
@@ -307,8 +311,14 @@ def run(spec: dict, db, store_name: str, publish, stop=None,
                     wcon.executemany(
                         f"INSERT OR REPLACE INTO win VALUES "
                         f"({', '.join('?' * (len(W_COLS) + 1))})", got)
-                if raw:
-                    wcon.executemany(put_rows, raw)
+                if raw and raw.get("rows"):
+                    # BY NAME (Oct 14, 2026): a column added to the store
+                    # since phase 1 started is left out of this file's copy
+                    pos = {c: k for k, c in enumerate(raw["cols"])}
+                    take = [pos.get(n) for n, _t in cols]
+                    wcon.executemany(put_rows, [
+                        tuple(row[k] if k is not None else None for k in take)
+                        for row in raw["rows"]])
                 done_rows += n
                 done_pairs += 1
                 if done_pairs % 20 == 0 or done_pairs == len(pairs):

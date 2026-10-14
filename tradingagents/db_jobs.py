@@ -693,7 +693,10 @@ class LocalSweepsOff(RuntimeError):
 #   download  — candles, and the store lives on this machine. Stays.
 #   stratbt   — ONE combination for the deploy check (rule 21). Seconds, and
 #               a round trip to GitHub for it would make rule 21 unusable.
-LOCAL_SWEEP_KINDS = ("backtest",)
+# ...and Backtest v2's, which measures on GitHub since Sep 21, 2026: its local
+# job filled the deployed rows in (rule 21) with the v1 engine — the old
+# re-entry rule, bar exits, no `res` — into the v2 store (review, Oct 13, 2026)
+LOCAL_SWEEP_KINDS = ("backtest", "backtest_v2")
 
 
 class JobBusy(RuntimeError):

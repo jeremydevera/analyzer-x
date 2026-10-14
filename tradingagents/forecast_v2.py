@@ -722,6 +722,9 @@ def _rolling(slot: str) -> dict | None:
     try:
         rec = rs.loads(p.read_text(encoding="utf-8"))
         rec = {"end_ms": int(rec["end_ms"]), "_stamp": stamp,
+               # the first entry its walk could make (Oct 14, 2026): reality()
+               # compares only the hours both sides walked
+               "start_ms": int(rec["start_ms"]) if rec.get("start_ms") else None,
                "trades": [[float(a), float(b), float(c)] for a, b, c in rec.get("trades") or []]}
     except (OSError, ValueError, KeyError, TypeError):
         return None
@@ -756,8 +759,8 @@ def reality(rooms: list[dict]) -> dict:
                 by_slot.setdefault(f"{e['key']}|{e['symbol']}", []).append(e)
         t = {"bt_trades": 0, "bt_wins": 0, "bt_profit": 0.0,
              "pr_trades": 0, "pr_wins": 0, "pr_profit": 0.0, "rows": 0,
-             "no_backtest": 0, "after_backtest": 0, "first": None, "last": None,
-             "bt_uncapped": 0}
+             "no_backtest": 0, "after_backtest": 0, "before_backtest": 0,
+             "first": None, "last": None, "bt_uncapped": 0}
         capped: list = []                  # one slot per row, for cap_per_coin
         for slot, spans in r["intervals"].items():
             rec = _rolling(slot)
@@ -765,9 +768,18 @@ def reality(rooms: list[dict]) -> dict:
                 t["no_backtest"] += 1
                 continue
             end_s = rec["end_ms"] / 1000
-            usable = [(a, min(b, end_s)) for a, b in spans if a < end_s]
+            # ONLY THE HOURS THE RECORD WALKED, on both sides (Oct 14, 2026,
+            # second review): a figure rebuilt weeks after its slot was
+            # switched off walks a later 30 days, and an old stretch kept its
+            # practice trades while losing every backtest trade
+            start_s = float(rec.get("start_ms") or 0) / 1000
+            usable = [(max(a, start_s), min(b, end_s)) for a, b in spans
+                      if a < end_s and b > start_s]
             if not usable:
-                t["after_backtest"] += 1
+                if any(b <= start_s for _a, b in spans):
+                    t["before_backtest"] += 1
+                else:
+                    t["after_backtest"] += 1
                 continue
             t["rows"] += 1
             mine = []

@@ -3997,12 +3997,12 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                       keep=None) -> dict:
     """Run one strategy's exact live rules over a candle history.
 
-    ``reenter=True`` (Oct 05, 2026, Backtest a room only) also reads the
+    ``reenter=True`` (Oct 05, 2026, Backtest a room; since Oct 13, 2026
+    every Backtest v2 path, `backtest_report.reenter_for`) also reads the
     signal of the candle a trade CLOSED in, as the live runner does: on
     #6B08FF64, #KND8HHQM KKRSTOCK 15m stopped out at Oct 01, 2026 1:43pm and
     the room opened again at 1:45pm on that same candle's signal, while this
-    walk resumes a candle later. False is the measured store's rule, byte for
-    byte.
+    walk resumes a candle later. False is v1's rule, byte for byte.
 
     Same engine as the 13-month studies: signal at bar close, enter next bar
     open, worst-case fills (SL before TP inside one bar), DEEP ladder, 20x,

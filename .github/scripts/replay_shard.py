@@ -277,9 +277,13 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
                             stats[why] = stats.get(why, 0) + 1
                             return True
                         return False
+                # Backtest v2's rule — these are v2 rows (`res="1m"` ids): the
+                # candle a trade closed in is read, as the runner does (Oct 13,
+                # 2026), so a replayed room trades what its rows measured
                 walked = fg.walk(dirs_idx, dirs, op, hi, lo, cl, tp=tp, sl=sl,
                                  liq=liq_frac, f_ms=f_ms, f_cum=f_cum, bar_ms=ts,
-                                 refuse=refuse, entry_px=price)
+                                 refuse=refuse, entry_px=price,
+                                 reenter=br.reenter_for("1m"))
                 if len(walked) < WRITE["trades"]:
                     continue
                 trades = [[ts[e], ts[x] + bs * 1000,

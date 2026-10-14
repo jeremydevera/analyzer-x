@@ -267,6 +267,37 @@ own `maintenance_rate`.
   decided trades: CLANKER 15m, Oct 11, 2026 7:15pm, practice 13.19 (the
   recorded ask) against the backtest's 13.20, and a 13.35 high reached one
   target and not the other (RCA-2026-10-13-A).
+* **AND IT RE-ENTERS LIKE PRACTICE (Oct 13, 2026: *"then do A"*).** A trade
+  that closed INSIDE a candle frees that candle's signal: the runner reads it
+  at the close and buys, and Backtest v2 now does too
+  (`backtest_report.reenter_for("1m")`, beside `sizings_for`). JASMY 30m
+  cf_soup1 #5Z98N2D4: stopped at 7:38am inside the 7:30am candle, practice
+  bought at 8:00am (HJHEBTSX), the old row skipped it. Of 44 practice trades
+  on Gate, 33 were in their rows' trade lists before and 38 after, all 38
+  ending the same way. The MEASURING paths ask it — the GitHub shard, UPDATE
+  THIS BACKTEST (`msw.reenter_of()`), the replay (`fast_grid.walk(reenter=)`)
+  — and STAMP every row they write (`"reenter": true`, an index column; none
+  = the old rule). The READERS follow the ROW's stamp, never the store's —
+  the trade list (`whole` replays and rows-less strategies take today's
+  rule), the last-N-days window, the DEMO 30-day figure — so the 22,747,944
+  rows measured that morning add up to their own trade lists until GitHub
+  re-measures them (review, Oct 13, 2026). Backtest a room's lists follow it
+  too (`RESULT_TAG` r4), and the 30-day figures of SWITCHED-OFF strategies,
+  which Forecast's reality check reads, are rebuilt when their rows move
+  until SETTLED — walking up to the last time the strategy was seen
+  switched on (`deployed_at`) under today's rule — at most
+  `ORPHANS_PER_PASS` a pass, none unwritten for `ORPHAN_DAYS`: nothing
+  deletes a figure (MEXC left 6,579 in 11 days) and each rebuild is ~14 s
+  in the back end (RCA-2026-10-14-B). Held by `tests/test_the_backtest_reenters_like_practice.py`. v1 keeps its rule byte
+  for byte (no v1 rows on Gate; its saved positions are built on it), and so
+  do the formula learners, whose "pure noise keeps nothing" floor was tuned on
+  the old counts — changing that is the operator's call. A continued (MEXC)
+  update re-reads the last measured candle when nothing is carried
+  (`msw.resume_start`). The one runner behaviour it cannot copy: an exit
+  booked seconds into a new candle, before the round reads the candle that
+  just closed, lets the runner buy THAT candle (TJXSTOCK 15m #85C73SLV, Oct
+  09, 2026) — round timing, not price: 38 times vs 29 in the MEXC era, 0 of
+  28 on Gate.
 * **Gate's fee is 0.075% taker on every contract** (`fee_floor()`), against
   MEXC's 0.02% floor. Funding cycles are 8 h, 4 h or 1 h per contract.
 * **Real money on Gate is built and shut.** Orders, the resting stop (Gate

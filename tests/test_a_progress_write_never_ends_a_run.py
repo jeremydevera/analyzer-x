@@ -127,7 +127,10 @@ def test_a_resume_waits_for_the_disk_without_spending_a_retry(monkeypatch):
     from tradingagents import notifications as nt
     monkeypatch.setattr(nt, "record", lambda *a, **k: bells.append(a))
 
-    got = dj.resume_if_died("backtest_v2")
+    # btupdate_v2: a v2 disk job still resumed here. This used backtest_v2,
+    # which is no longer resumed at all since Oct 13, 2026 — Backtest v2
+    # measures on GitHub (LOCAL_SWEEP_KINDS, RCA-2026-10-14-C)
+    got = dj.resume_if_died("btupdate_v2")
     assert got["resumed"] is False
     assert got["why"].startswith("waiting: download_v2 is running"), got
     assert spent == [], "a refusal is not an attempt"
@@ -148,7 +151,7 @@ def test_a_resume_with_the_disk_free_still_counts_and_starts(monkeypatch):
     from tradingagents import notifications as nt
     monkeypatch.setattr(nt, "record", lambda *a, **k: None)
 
-    got = dj.resume_if_died("backtest_v2")
+    got = dj.resume_if_died("btupdate_v2")       # (see the test above)
     assert got == {"resumed": True, "pid": 999, "attempt": 4}
-    assert spent == [("backtest_v2", 4)]
-    assert started[0][0] == "backtest_v2" and started[0][1]["fresh"] is False
+    assert spent == [("btupdate_v2", 4)]
+    assert started[0][0] == "btupdate_v2" and started[0][1]["fresh"] is False

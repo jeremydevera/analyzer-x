@@ -1015,6 +1015,9 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                                 dirs=dirs, tp=tp, sl=sl, liq_move_pct=liq,
                                 funding=fund, keep_log=False, start_at=warm,
                                 fine=fine,
+                                # v2 reads the candle a trade closed in, as the
+                                # runner does (Oct 13, 2026, "then do A")
+                                reenter=br.reenter_for(RES),
                                 # each trade pays its own minute's book and is
                                 # refused where the runner would refuse it
                                 book=book, book_hold_s=bs * at.FUNDING_HOLD_BARS,
@@ -1082,6 +1085,10 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                         # a fleet v2 row can never collide with a v1 row.
                         **({"unclear": int(r.get("unclear", 0)), "res": RES}
                            if RES else {}),
+                        # the RULE its walk followed: it read the candle a
+                        # trade closed in (Oct 13, 2026) — a reader replays
+                        # every row the way it was measured
+                        **({"reenter": True} if br.reenter_for(RES) else {}),
                         # the runner's cost check, asked at every entry's own
                         # minute: how many signals it refused, and how many
                         # trades had no reading and paid the flat cost

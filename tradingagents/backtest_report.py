@@ -269,6 +269,33 @@ def sizings_for(res: str | None) -> tuple[str, ...]:
     return SIZINGS_BY_RES.get(str(res or "").strip().lower(), SIZINGS)
 
 
+# A TRADE THAT CLOSED INSIDE A CANDLE FREES THAT CANDLE'S SIGNAL — Backtest
+# v2's rule since Oct 13, 2026, the operator's "then do A". The runner
+# (practice and real money) reads a candle's signal when it closes and no trade
+# is held; the stored rows resumed one candle later. JASMY 30m cf_soup1
+# #5Z98N2D4: a LONG stopped at 7:38am inside the 7:30am candle, practice
+# bought that candle's signal at 8:00am (HJHEBTSX), the row skipped it. Of the
+# 44 practice trades on Gate, 33 were in their rows' trade lists under the old
+# rule, 38 under this one, all 38 ending the same way. v1 keeps its rule byte
+# for byte: it holds nothing on Gate, and its saved positions
+# (resume_state.continue_combo's `exit_at_last`) and parity tests are built
+# on it. Every v2 path asks THIS function (tests/
+# test_the_backtest_reenters_like_practice.py).
+# THE ONE CASE IT CANNOT COPY: when the runner books an exit some seconds into
+# a new candle, before its round reads the candle that just closed, it buys
+# THAT candle's signal (the one before the exit candle) — TJXSTOCK 15m,
+# Oct 09, 2026 10:00am, #85C73SLV. It depends on how long the round takes, not
+# on any price: MEXC-era exits in a candle's first minute went to the
+# previous candle 38 times and the exit candle 29; on Gate 0 of 28.
+REENTER_BY_RES: dict[str, bool] = {"1m": True}
+
+
+def reenter_for(res: str | None) -> bool:
+    """Does a store's walk read the signal of the candle a trade closed in?
+    Its `res` ("1m" = Backtest v2, "" = v1) decides, as for `sizings_for`."""
+    return REENTER_BY_RES.get(str(res or "").strip().lower(), False)
+
+
 def target_over_stop(row: dict) -> bool:
     """Is the row's take-profit BIGGER than its stop-loss (both percent)?
     Strictly: TP 5% / SL 5% is not (operator, Oct 06, 2026: "you will only

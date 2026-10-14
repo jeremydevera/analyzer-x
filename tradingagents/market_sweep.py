@@ -542,9 +542,15 @@ def load_states(coin: str, tf: str, root=None) -> dict:
 
 def save_states(coin: str, tf: str, states: dict) -> None:
     _paths()
+    # `__last_ms__` LAST, whatever order the dict holds it in: a key keeps the
+    # place it was FIRST inserted, and on a GitHub-measured pair that is near
+    # the start — `pair_watermark` reads only the file's tail (RCA-2026-10-14-A)
+    out = {k: v for k, v in states.items() if k != "__last_ms__"}
+    if "__last_ms__" in states:
+        out["__last_ms__"] = states["__last_ms__"]
     with _pair_lock(coin, tf):
         tmp = _state_file(coin, tf).with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(states, separators=(",", ":")))
+        tmp.write_text(json.dumps(out, separators=(",", ":")))
         tmp.replace(_state_file(coin, tf))
 
 
@@ -569,12 +575,13 @@ def pair_watermark(coin: str, tf: str, root=None) -> int:
     m = re.search(r'"__last_ms__":\s*(\d+)\s*}\s*$', tail)
     if m:
         return int(m.group(1))
-    if '"__last_ms__"' not in tail:      # not near the end: parse properly
-        try:
-            return int(json.loads(f.read_text()).get("__last_ms__") or 0)
-        except (OSError, ValueError):
-            return 0
-    return 0
+    # NOT AT THE END: parse properly. This answered 0 whenever the key sat in
+    # the tail but not last — a one-row UPDATE's file — so the pair read as
+    # never measured (RCA-2026-10-14-A)
+    try:
+        return int(json.loads(f.read_text()).get("__last_ms__") or 0)
+    except (OSError, ValueError):
+        return 0
 
 
 def completed_pairs(pairs) -> set:
@@ -878,6 +885,28 @@ def load_costs(symbol: str, root=None) -> dict | None:
     if not isinstance(got, dict) or "fee" not in got:
         return None
     return got
+
+
+def reenter_of(store=None) -> bool:
+    """Backtest v2's rule or v1's for a walk on `store` — this process's own
+    store when None (`FINE_TF`): does it read the signal of the candle a trade
+    closed in, as the runner does? One answer, `backtest_report.reenter_for`
+    (Oct 13, 2026)."""
+    import tradingagents.backtest_report as br
+
+    return br.reenter_for(getattr(store, "fine_tf", "") if store is not None else FINE_TF)
+
+
+def resume_start(off: int, prev, *, reenter: bool) -> int:
+    """Where an UPDATE's signal search starts on the frame: `off`, the first
+    new candle — or, under Backtest v2's rule (`reenter`), the LAST MEASURED
+    candle whenever no trade is carried open across it: a trade that closed
+    inside it freed its signal, and a signal on it never had a next candle to
+    enter on. Review, Oct 13, 2026 (NEVER HAPPENED YET: only a MEXC v2 pair
+    is continued; on Gate it is measured in full)."""
+    if reenter and prev and off > 0 and not prev.get("open"):
+        return off - 1
+    return off
 
 
 def pair_rows(coin: str, tf: str, root=None) -> list:
@@ -1388,11 +1417,17 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                         # open at the window's end is COUNTED, as the shard
                         # and the trade list count it (RCA-2026-10-10-L)
                         resume=(None if _on_gate_v2 else (prev or {})),
-                        start_at=off,
+                        # under v2's rule a continuation re-reads the last
+                        # measured candle when nothing is carried across it
+                        start_at=(off if _on_gate_v2 else
+                                  resume_start(off, prev, reenter=reenter_of())),
                         # v2: the minutes; None on v1 (`_settle_fine` indexes
                         # them by time, so a sliced `frame` is fine)
                         fine=fine, book=minute_book,
                         book_hold_s=bs * at.FUNDING_HOLD_BARS,
+                        # v2 reads the candle a trade closed in, as the
+                        # runner and the GitHub shard do (Oct 13, 2026)
+                        reenter=reenter_of(),
                         # the row's last 15 days and last 1-4 days, as the
                         # shard measures them — the rooms switch on by these
                         **({"recent_from_ms": int(ms[-1]) - br.RECENT_DAYS * 86_400_000,
@@ -1481,6 +1516,8 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                     # file is byte-identical to before.
                     **({"unclear": int(r.get("unclear", 0)), "res": FINE_TF}
                        if FINE_TF else {}),
+                    # the rule its walk followed, as the shard stamps it
+                    **({"reenter": True} if reenter_of() else {}),
                     # the cost check's own counts and the last minute of book
                     # it read — the same fields as a GitHub v2 row
                     **({"gate_blocked": int(r.get("gate_blocked", 0)),
@@ -1976,8 +2013,15 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                tp: float, sizing: str, base_margin: float = 5.0,
                days: int = 365, store=None, skip=None, whole: bool = False,
                took=None,
-               reenter: bool = False) -> dict:
+               reenter: bool | None = None) -> dict:
     """Every trade one stored strategy made, rebuilt from the local candles.
+
+    `reenter` None is the RULE THE ROW WAS MEASURED WITH (its `reenter`
+    stamp; none = the old rule, every row measured before Oct 13, 2026), so a
+    row's trade list adds up to the row until GitHub re-measures it; a
+    `whole` replay up to today — and a strategy with no stored row — takes the
+    store's rule (`reenter_of`: v2 reads the candle a trade closed in, as the
+    runner does). Backtest a room passes True itself.
 
     The store keeps ONE row per strategy (trades, wins, profit…); the trades
     themselves are derivable because the replay is deterministic. This is the
@@ -2189,7 +2233,10 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                                  dirs=dirs, tp=float(tp) / 100,
                                  sl=float(sl) / 100, liq_move_pct=liq,
                                  funding=fund, keep_log=True, fine=fine,
-                                 reenter=reenter, book=_book,
+                                 reenter=(bool(reenter) if reenter is not None
+                                          else bool(the_row.get("reenter"))
+                                          if the_row is not None and not whole
+                                          else reenter_of(store)), book=_book,
                                  book_hold_s=bs * at.FUNDING_HOLD_BARS,
                                  # the candles the ROOM entered (signal opens,
                                  # seconds): no cost or chase model refuses them
@@ -2555,7 +2602,10 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                     tp=float(r["tp"]) / 100.0, sl=float(r["sl"]) / 100.0,
                     liq_move_pct=liq, funding=fund, keep_log=True,
                     fine=fine, book=_book,
-                    book_hold_s=bs * at.FUNDING_HOLD_BARS)
+                    book_hold_s=bs * at.FUNDING_HOLD_BARS,
+                    # the rule the ROW was measured with (Oct 13, 2026):
+                    # unstamped = the old rule, so its window is its own
+                    reenter=bool(r.get("reenter")))
                 # A TRADE BELONGS TO THE WINDOW IF IT CLOSED IN IT, even if
                 # it opened before. Operator, Sep 11, 2026, with the case that
                 # names the rule: *"open: aug 1 closed aug 12 what will

@@ -14,3 +14,19 @@ try:
 except ImportError:
     pass
 
+# THE ENGINE AS IT STOOD WHEN THIS PROCESS STARTED (Oct 14, 2026). Taken
+# before any engine module loads, so it is never NEWER than the code this
+# process runs: room_replay labels its cached trade lists with it — labelled
+# from the files when first asked, hours later, a back end started on old
+# code could file old-rule lists under the new code's name.
+ENGINE_FILES_AT_START: dict = {}
+try:
+    from pathlib import Path as _Path
+
+    for _f in sorted(_Path(__file__).resolve().parent.glob("*.py")):
+        if _f.name in ("auto_trader.py", "market_sweep.py", "backtest_report.py",
+                       "strategy_keys.py") or _f.name.startswith("signals"):
+            _st = _f.stat()
+            ENGINE_FILES_AT_START[_f.name] = (_st.st_size, _st.st_mtime_ns)
+except OSError:
+    pass

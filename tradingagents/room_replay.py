@@ -80,8 +80,10 @@ GROUPS = ("preset", "sep25", "sep27ml")       # every other signal is "classic"
 FLOOR_BELOW = 10.0
 # Bumped when a saved replay would answer differently for the same range:
 # 2 = the room's own switch-ons are always candidates (Oct 03, 2026);
-# 3 = from the room's first switch-on, its own switches decide (Oct 05, 2026).
-RESULT_TAG = "r3"
+# 3 = from the room's first switch-on, its own switches decide (Oct 05, 2026);
+# 4 = every candidate list reads the candle a trade closed in, as the room's
+#     own lists always did (Oct 13, 2026, backtest_report.reenter_for).
+RESULT_TAG = "r4"
 
 
 # --------------------------------------------------------------- the paths
@@ -576,13 +578,13 @@ def _code_sig() -> str:
     """What a trade list is COMPUTED BY: the engine's own files. A cached
     list never outlives a change to them."""
     if not _CODE_SIG:
-        root = Path(__file__).resolve().parent
-        parts = [str(VERSION)]
-        for f in sorted(root.glob("*.py")):
-            if f.name in ("auto_trader.py", "market_sweep.py", "backtest_report.py",
-                          "strategy_keys.py") or f.name.startswith("signals"):
-                st = f.stat()
-                parts.append(f"{f.name}:{st.st_size}:{st.st_mtime_ns}")
+        # the engine files AS THEY STOOD WHEN THIS PROCESS STARTED, never as
+        # they stand now (RCA-2026-10-14-D): a process started on the old code
+        # must not label its lists with the new code's files
+        import tradingagents as _ta
+
+        parts = [str(VERSION)] + [f"{n}:{size}:{mtime}" for n, (size, mtime)
+                                  in sorted(_ta.ENGINE_FILES_AT_START.items())]
         _CODE_SIG.append(hashlib.blake2s("|".join(parts).encode(), digest_size=8).hexdigest())
     return _CODE_SIG[0]
 

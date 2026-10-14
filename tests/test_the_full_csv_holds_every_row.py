@@ -309,10 +309,12 @@ def test_the_kept_rows_are_the_stored_rows_column_for_column(store):
     pair = sqlite3.connect(db).execute("SELECT pair FROM pairs LIMIT 1").fetchone()[0]
     _p, n, _w, raw = fx._retest_pair((str(db), pair, where, args, 30, "v1"))
     con = sqlite3.connect(db)
-    want = con.execute(f"SELECT * FROM rows INDEXED BY rows_pair{where}",
-                       [*args, pair]).fetchall()
-    assert n == len(raw) == len(want) > 0
-    assert raw == want
+    cur = con.execute(f"SELECT * FROM rows INDEXED BY rows_pair{where}", [*args, pair])
+    want = cur.fetchall()
+    assert n == len(raw["rows"]) == len(want) > 0
+    assert raw["rows"] == want
+    # and named, so the writer copies by column, never by position
+    assert raw["cols"] == [d[0] for d in cur.description]
 
 
 def test_a_recheck_from_the_old_layout_is_never_reused(store, monkeypatch):
@@ -355,3 +357,36 @@ def test_the_sort_spills_beside_the_file_never_on_the_system_drive(tmp_path):
     assert Path(where) == tmp_path
     with ri._source(None) as none:
         assert none is None
+
+
+def test_a_column_added_while_it_runs_never_shifts_a_value(store, monkeypatch):
+    """Review, Oct 14, 2026: the re-check copied each row by POSITION into a
+    table built from the store's columns as they were when it started. The
+    first filing after a new column arrives (`reenter`, Oct 13, 2026) ALTERs
+    it onto the live file's end — a row with one value more failed the whole
+    export ("Incorrect number of bindings"), and a file rebuilt with the
+    column before `monthly, pair` would have moved every value one place
+    over. Rows are copied by column NAME."""
+    import sqlite3
+
+    from tradingagents import api, full_export as fx
+
+    db, _ = store
+    real = fx._retest_pair
+    added: list = []
+
+    def retest(job):
+        if not added:
+            con = sqlite3.connect(db)
+            con.execute("ALTER TABLE rows ADD COLUMN reenter_late INTEGER")
+            con.commit()
+            con.close()
+            added.append(1)
+        return real(job)
+
+    monkeypatch.setattr(fx, "_retest_pair", retest)
+    facts, _ = _run(db, {"min_winrate": 85, "days": 30})
+    assert added
+    full = Path(facts["file"]).read_text(encoding="utf-8")
+    quick = "".join(api.strategies_csv_lines(min_winrate=85, days=30, _dl={}))
+    assert full == quick

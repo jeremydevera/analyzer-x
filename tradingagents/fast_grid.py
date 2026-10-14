@@ -36,7 +36,7 @@ def walk(dirs_idx: Sequence[int], dirs, opens, high, low, close, *,
          tp: float, sl: float, liq: float | None,
          start: int = 0, end: int | None = None,
          f_ms=None, f_cum=None, bar_ms=None, refuse=None,
-         entry_px=None) -> list[tuple]:
+         entry_px=None, reenter: bool = False) -> list[tuple]:
     """The engine's bar walk, once, sizing-free.
 
     Returns one tuple per trade:
@@ -56,6 +56,11 @@ def walk(dirs_idx: Sequence[int], dirs, opens, high, low, close, *,
     BOUGHT at when the entry minute's book says it (Oct 13, 2026: the price
     practice pays, `auto_trader.book_fill_price`); None from it, or no
     callback, keeps the next bar's open - the walk of before.
+
+    ``reenter=True`` (Oct 13, 2026, Backtest v2's rule,
+    `backtest_report.reenter_for`) also reads the signal of the candle a trade
+    CLOSED in, as the runner does — the engine's own ``reenter``. False is the
+    walk of before (v1's rule, and every parity test built on it).
     """
     n = len(close) if end is None else int(end)
     out: list[tuple] = []
@@ -111,7 +116,9 @@ def walk(dirs_idx: Sequence[int], dirs, opens, high, low, close, *,
             b = bisect.bisect_right(f_ms, int(bar_ms[j]))
             fund_frac = -s * (f_cum[b] - f_cum[a])
         out.append((i, i + 1, j, s, res_out, why, fund_frac))
-        i = j + 1
+        # the engine's own step: on the exit bar itself when re-entering
+        # (j > i always, so the walk still moves forward)
+        i = j if reenter else j + 1
     return out
 
 

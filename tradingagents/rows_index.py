@@ -77,13 +77,18 @@ COLS = ("id", "coin", "tf", "signal", "th", "sl", "tp", "rr", "sizing", "lev",
         "t15", "w15", "p15",
         # ...and of its LAST 1, 2, 3 AND 4 DAYS (Oct 07, 2026,
         # backtest_report.SHORT_DAYS), for the rooms that switch on by them
-        "t1", "w1", "p1", "t2", "w2", "p2", "t3", "w3", "p3", "t4", "w4", "p4")
+        "t1", "w1", "p1", "t2", "w2", "p2", "t3", "w3", "p3", "t4", "w4", "p4",
+        # the RULE the row's walk followed (Oct 13, 2026): 1 = it read the
+        # candle a trade closed in, as the runner does
+        # (backtest_report.reenter_for); NULL on every row measured before —
+        # the old rule — so a row is always replayed the way it was measured
+        "reenter")
 _NUMERIC = {"th", "sl", "tp", "rr", "base", "notional", "winrate", "profit",
             "funding", "h1", "h2", "worst", "dd", "cost_of_tp", "rt", "p15",
             "p1", "p2", "p3", "p4"}
 _INTEGER = {"lev", "trades", "wins", "losses", "green", "months", "liqs",
             "days", "bars", "stop_reachable", "unclear", "t15", "w15",
-            "t1", "w1", "t2", "w2", "t3", "w3", "t4", "w4"}
+            "t1", "w1", "t2", "w2", "t3", "w3", "t4", "w4", "reenter"}
 
 _SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS rows (
@@ -703,7 +708,8 @@ def _kept(r: dict) -> bool:
 LATE_COLUMNS = (("unclear", "INTEGER"), ("res", "TEXT"),
                 ("t15", "INTEGER"), ("w15", "INTEGER"), ("p15", "REAL")) + tuple(
     # the short windows (Oct 07, 2026)
-    (f"{k}{d}", "REAL" if k == "p" else "INTEGER") for d in (1, 2, 3, 4) for k in "twp")
+    (f"{k}{d}", "REAL" if k == "p" else "INTEGER") for d in (1, 2, 3, 4) for k in "twp") + (
+    ("reenter", "INTEGER"),)   # the rule a row was walked under (Oct 13, 2026)
 
 
 def _late_columns(con: sqlite3.Connection) -> None:

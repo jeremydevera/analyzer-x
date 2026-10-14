@@ -36,10 +36,17 @@ else:
 
 # Popen kwargs that make a job outlive the process that spawned it and ignore
 # its Ctrl-C. `start_new_session` is a no-op on Windows; there the equivalent
-# is a new process group with no console. Spread as `**portable.DETACHED`.
+# is a new process group with a console of its OWN that has no window
+# (CREATE_NO_WINDOW). Never DETACHED_PROCESS: the venv's python.exe is a
+# launcher that starts the real interpreter as its child, and a launcher with
+# no console made that child open a VISIBLE one - hosted as a Windows Terminal
+# tab and kept after a stopped program ended. On Oct 14, 2026 the operator's
+# PC held 695 such windows (about 13 GB of 16) and the site and all 13 rooms
+# lived in tabs one closed window would have killed (RCA-2026-10-14-G).
+# Spread as `**portable.DETACHED`.
 DETACHED: dict = (
     {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP    # type: ignore[attr-defined]
-     | subprocess.DETACHED_PROCESS}                          # type: ignore[attr-defined]
+     | subprocess.CREATE_NO_WINDOW}                          # type: ignore[attr-defined]
     if WINDOWS else {"start_new_session": True})
 
 

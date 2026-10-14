@@ -727,6 +727,19 @@ search matched it;
 unpack is removed, a live one is kept, and a folder that is not ours is never
 touched. Full account: `docs/RCA.md` RCA-2026-09-10-B.
 
+## A background program has NO window (MANDATORY — Oct 14, 2026)
+
+The operator: *"my pc is very slow, and i have lots of open cmd why?"*. 695
+leftover command windows held about 13 GB of 16, and the site and all 13
+rooms sat in Windows Terminal tabs one closed window would have killed.
+Every long-lived program is started `CREATE_NO_WINDOW |
+CREATE_NEW_PROCESS_GROUP` (`portable.DETACHED`, `start.py spawn`): a console
+of its own, so the starter's closing never reaches it (the Sep 12, 2026
+death), and no window. **Never `DETACHED_PROCESS`**: the venv's python.exe
+is a launcher, and a detached launcher's interpreter opens a VISIBLE
+console that Windows Terminal keeps after a stopped program ends.
+`tests/test_detached_spawns.py` holds it; RCA-2026-10-14-G.
+
 ## A job that cannot start must SAY SO (MANDATORY — 2026-09-10)
 
 The operator, `Sep 10, 2026 1:05am`, told the measuring was finished while

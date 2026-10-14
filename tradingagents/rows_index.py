@@ -4006,9 +4006,11 @@ def _build_index(name) -> bool:
                     "stdin": subprocess.DEVNULL,
                     "cwd": str(Path(__file__).resolve().parent.parent)}
     if os.name == "nt":
-        # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP: taskkill /T on the API
-        # (start.py does exactly that) must not reach the build.
-        kwargs["creationflags"] = 0x00000008 | 0x00000200
+        # CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP: a console of its own
+        # with no window - never DETACHED_PROCESS, whose venv-launched
+        # interpreter opened a visible tab Windows Terminal kept: 96 of these
+        # builds left windows on Oct 14, 2026 (RCA-2026-10-14-G).
+        kwargs["creationflags"] = 0x08000000 | 0x00000200
     else:
         kwargs["start_new_session"] = True
     # A LOG IS WORTH LESS THAN THE BUILD. Opening it can fail — the directory

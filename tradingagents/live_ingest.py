@@ -590,8 +590,9 @@ def ensure(*, wait_s: float = 90.0, res: str = "") -> dict:
     HOME.mkdir(parents=True, exist_ok=True)
     kwargs: dict = {}
     if os.name == "nt":
+        # its own console with no window (RCA-2026-10-14-G), never detached
         kwargs["creationflags"] = (subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
-                                   | subprocess.DETACHED_PROCESS)       # type: ignore[attr-defined]
+                                   | subprocess.CREATE_NO_WINDOW)       # type: ignore[attr-defined]
     fh = SERVE_LOG.open("a", encoding="utf-8")
     # THE CHILD'S STORE. A v2 door is the same server in v2's environment —
     # the pattern `collect_v2` and `backtest_v2` already use — so

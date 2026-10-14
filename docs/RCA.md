@@ -172,6 +172,89 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-14-G — every background program opened a window Windows Terminal kept: 695 leftover windows held about 13 GB of 16, and the site and rooms sat in tabs one closed window would kill
+
+**CEO**
+
+* On Oct 14, 2026 your PC crawled. About 695 leftover command windows held
+  about 13 GB of your 16 GB of memory, leaving 1.1 GB free.
+* Why: the app started its background programs (the site, the 13 rooms,
+  index builds, jobs) in a way that gives each one a visible window, and
+  Windows Terminal keeps a window open when its program is stopped or
+  fails. A burst of test programs that morning left hundreds behind.
+* What stops it now: background programs start with their own hidden
+  window, so nothing appears on screen and nothing is left behind. The site
+  and rooms no longer sit in a window that could be closed by accident.
+
+**DEV**
+
+* `tradingagents/portable.py:40` `DETACHED` (`CREATE_NEW_PROCESS_GROUP |
+  DETACHED_PROCESS`) is spread by `auto_trader.start_runner`, `db_jobs`,
+  `rows_index`, `room_replay`, `daily_grid` and `error_fixer`. `start.py:217`,
+  `live_ingest.py:593`, `rows_index.py:4011` and `storage_months.py:598` set
+  the same flags. The venv's python.exe launcher, detached and so with no
+  console, starts the interpreter as its child, and that child allocates a
+  NEW visible console, which Windows Terminal takes as a tab.
+* Invariant broken: **a background program has no window**. It now gets a
+  console of its own (`CREATE_NO_WINDOW`), which keeps the Sep 12, 2026
+  protection (never the starter's console) without a window anyone can see
+  or close.
+* Guard: `tests/test_detached_spawns.py::test_every_detached_spawn_sets_BOTH_windows_flags`.
+  It now requires `CREATE_NO_WINDOW`, forbids `DETACHED_PROCESS`, and reads
+  the annotated `DETACHED: dict = ...` it had never checked. It was red on 5
+  sites.
+
+**SAW** — the operator, Oct 14, 2026: *"my pc is very slow, and i have lots
+of open cmd why?"*
+
+**TIMELINE**
+
+1. **Sep 13, 2026.** After the site died with its starter's window on
+   Sep 12, every long-lived program is started with `DETACHED_PROCESS`.
+2. **On Windows 11** every new visible console goes to Windows Terminal, the
+   default terminal. The site and the 13 rooms restarted at Oct 14, 2026
+   1:24am, and again at 7:51am, each as a tab.
+3. **Oct 14, 2026 7:07am.** Another session's 4 parallel test suites start
+   real programs, among them 144 index builders (`rows_index --build
+   rows_id`), each with its own tab. A program that is stopped or fails keeps
+   its tab.
+4. **7:22am.** 618 window hosts (OpenConsole) and 628 shims (conhost) had
+   started that day, 604 of them in the 7am hour, holding about 14 GB. Free
+   memory 1.1 GB of 16 GB, and 7.6 GB free on C:.
+5. **8:22am.** The suites are stopped and the hosts are gone, but Windows
+   Terminal still holds 9.6 GB of its own (the tabs' text). Free memory
+   2.3 GB.
+6. **After the fix**, measured on this PC: a program started the new way,
+   from a parent that then exits, keeps running. It gets a hidden console
+   host, no Windows Terminal tab, and window handle 0.
+
+**ROOT CAUSE** — `DETACHED_PROCESS` on the venv launcher. Its child
+interpreter allocated a visible console of its own.
+
+**WHY IT WAS NOT CAUGHT**
+* `test_detached_spawns` asserted the flag that stopped the Sep 12 death and
+  nothing about what the child SHOWS. A window is not a failure any test
+  asserts on.
+* Its walker read `X = ...` assignments only, and `portable.DETACHED` is
+  written `DETACHED: dict = ...`. The one setting every room program, job and
+  indexer starts with was never checked at all.
+* Windows pile up only when programs are stopped or fail. Normal runs closed
+  theirs.
+
+**COST** — no money. The PC was hard to use for hours on Oct 14, 2026, and
+the site and rooms were one closed window from stopping.
+
+**FIX** — this commit: `CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP` at all
+five sites.
+
+**GUARD** — `tests/test_detached_spawns.py` (6 tests, 5 red before).
+
+**STILL OPEN** — the running site, rooms and screen keep their windows until
+they are restarted on this code. Windows Terminal frees its leftover tabs'
+9.6 GB only when it is closed, after that restart.
+
+---
+
 ## RCA-2026-10-14-F — the Runner feed ran out of memory showing 200 lines, because it read the whole 163 MB log to find them
 
 **CEO**

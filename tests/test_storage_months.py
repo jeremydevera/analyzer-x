@@ -349,7 +349,8 @@ def test_the_worker_is_a_detached_process_and_a_dead_one_says_so(store, monkeypa
     assert kw["env"]["TRADINGAGENTS_SWEEP_HOME"] == str(msw.HOME)
     assert kw["env"]["TRADINGAGENTS_CANDLES"] == str(msw.CANDLES)
     if os.name == "nt":
-        assert kw["creationflags"] == 0x00000008 | 0x00000200
+        # its own console with no window, never detached (RCA-2026-10-14-G)
+        assert kw["creationflags"] == 0x08000000 | 0x00000200
     else:
         assert kw["start_new_session"] is True
     # the child records its own pid; until then the record is "starting"

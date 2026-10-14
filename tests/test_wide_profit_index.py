@@ -302,7 +302,8 @@ def test_a_build_outlives_the_process_that_asked_for_it(monkeypatch, tmp_path):
     assert ri._build_index("rows_pr2") is True
     assert seen["cmd"][1:] == ["-m", "tradingagents.rows_index",
                                "--build", "rows_pr2"], seen["cmd"]
-    detached = (seen["kw"].get("creationflags", 0) & 0x00000008) or \
+    # its own hidden console (CREATE_NO_WINDOW), RCA-2026-10-14-G
+    detached = (seen["kw"].get("creationflags", 0) & 0x08000000) or \
         seen["kw"].get("start_new_session")
     assert detached, seen["kw"]
     ri._BUILDING.discard("rows_pr2")

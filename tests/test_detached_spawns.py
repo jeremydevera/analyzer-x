@@ -25,6 +25,7 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 
 DETACHED_PROCESS = 0x00000008
 CREATE_NEW_PROCESS_GROUP = 0x00000200
+CREATE_NO_WINDOW = 0x08000000
 
 FILES = sorted(
     [REPO / "start.py"]
@@ -89,9 +90,14 @@ def _creationflag_assignments():
                             and isinstance(t.slice, ast.Constant)
                             and t.slice.value == "creationflags"):
                         out.append((path, node.lineno, _flag_value(node.value)))
-            # the shared DETACHED spread in portable.py
-            if isinstance(node, ast.Assign):
-                for t in node.targets:
+            # the shared DETACHED spread in portable.py. It is written with a
+            # type (`DETACHED: dict = ...`, an AnnAssign), which this walk
+            # never read: the one setting every room program, job, indexer
+            # and fixer starts with went unchecked (found Oct 14, 2026)
+            if isinstance(node, (ast.Assign, ast.AnnAssign)):
+                targets = (node.targets if isinstance(node, ast.Assign)
+                           else [node.target])
+                for t in targets:
                     if isinstance(t, ast.Name) and t.id == "DETACHED":
                         for n2 in ast.walk(node.value):
                             if (isinstance(n2, ast.Dict)
@@ -133,7 +139,22 @@ def test_every_detached_spawn_sets_BOTH_windows_flags(path, line, value):
     assert value & CREATE_NEW_PROCESS_GROUP, (
         f"{path.name}:{line} is missing CREATE_NEW_PROCESS_GROUP — a Ctrl-C "
         f"in the parent would reach this child")
-    assert value & DETACHED_PROCESS, (
-        f"{path.name}:{line} is missing DETACHED_PROCESS — this child is NOT "
-        f"detached and will die with whoever started it, exactly like the API "
-        f"did on Sep 12, 2026 at 11:44am")
+    # ITS OWN CONSOLE, AND A HIDDEN ONE (Oct 14, 2026). CREATE_NO_WINDOW gives
+    # the child a new console of its own - so the starter's console closing
+    # can never reach it (the Sep 12, 2026 death) - with no window. Never
+    # DETACHED_PROCESS: the venv's python.exe is a launcher that starts the
+    # real interpreter as ITS child, and a detached launcher has no console
+    # to hand down, so the interpreter opened a new VISIBLE one. Windows
+    # Terminal, the default terminal, hosted each as a tab and kept the tab
+    # after a stopped program ended: on Oct 14, 2026 the operator's PC held
+    # 695 of them (about 13 GB of 16), the site and all 13 rooms lived in
+    # tabs that one closed window would have killed, and the machine
+    # crawled (RCA-2026-10-14-G).
+    assert value & CREATE_NO_WINDOW, (
+        f"{path.name}:{line} is missing CREATE_NO_WINDOW — this child either "
+        f"shares its starter's console (the Sep 12, 2026 death) or opens a "
+        f"visible window of its own (the Oct 14, 2026 pile-up)")
+    assert not value & DETACHED_PROCESS, (
+        f"{path.name}:{line} sets DETACHED_PROCESS — the interpreter the venv "
+        f"launcher starts then opens a VISIBLE console, kept by Windows "
+        f"Terminal after the program ends (RCA-2026-10-14-G)")

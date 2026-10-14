@@ -581,8 +581,8 @@ def _writer_running(kind: str) -> str:
 
 def _spawn(kind: str, through: str) -> int:
     """Start the detached worker. Returns its pid. Same flags as the index
-    builds: DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP on Windows, so
-    start.py's taskkill /T on the API cannot reach it."""
+    builds: CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP on Windows, a console
+    of its own with no window (never DETACHED_PROCESS: RCA-2026-10-14-G)."""
     from tradingagents import rows_index as ri
 
     cmd = [sys.executable, "-m", "tradingagents.storage_months", "--run",
@@ -595,7 +595,7 @@ def _spawn(kind: str, through: str) -> int:
                     "stdin": subprocess.DEVNULL,
                     "cwd": str(Path(__file__).resolve().parent.parent)}
     if os.name == "nt":
-        kwargs["creationflags"] = 0x00000008 | 0x00000200
+        kwargs["creationflags"] = 0x08000000 | 0x00000200
     else:
         kwargs["start_new_session"] = True
     try:

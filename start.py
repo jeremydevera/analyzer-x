@@ -211,11 +211,14 @@ def fresh(path: Path) -> Path:
 
 def spawn(cmd: list[str], log: Path, cwd: Path, env: dict[str, str] | None = None) -> int:
     """Start a detached process whose output goes to `log`; survives this script
-    and the terminal that ran it (nohup on unix, DETACHED_PROCESS on Windows)."""
+    and the terminal that ran it (nohup on unix; on Windows a new process group
+    with its own console that has NO window - never DETACHED_PROCESS, whose
+    venv-launched interpreter opened a visible Windows Terminal tab that
+    closing the window would kill, RCA-2026-10-14-G)."""
     kwargs: dict = {}
     if WINDOWS:
         kwargs["creationflags"] = (subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
-                                   | subprocess.DETACHED_PROCESS)       # type: ignore[attr-defined]
+                                   | subprocess.CREATE_NO_WINDOW)       # type: ignore[attr-defined]
     else:
         kwargs["start_new_session"] = True
     with open(keep_previous(log), "w", encoding="utf-8") as fh:

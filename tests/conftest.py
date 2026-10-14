@@ -367,6 +367,16 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
         monkeypatch.setattr(_pl, "STATE_DIR", sandbox, raising=False)
     except Exception:
         pass
+    try:
+        # THE SCREEN'S LOG TOO: 70 of the 74 "FAILED" lines in the
+        # operator's real ~/.tradingagents/screen.log on Oct 13, 2026 were
+        # the fake "disk went away" a CSV-export test raises on purpose,
+        # written there by every run of the suite (RCA-2026-10-13-F)
+        from tradingagents import screen_log as _sl
+
+        monkeypatch.setattr(_sl, "LOG_PATH", sandbox / "screen.log")
+    except Exception:
+        pass
 
 
 @pytest.fixture

@@ -172,6 +172,75 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-13-F — every test run wrote a made-up "disk went away" failure into the screen's real log: 70 of its 74 failures never happened
+
+**CEO**
+
+* Your site's log of screen loads lists 70 failed CSV downloads that never
+  happened, 4 of them on Oct 13, 2026.
+* Why: one test pretends the disk failed, to prove a failed download says
+  so. Every time the tests ran, it wrote that pretend failure into your real
+  log.
+* What stops it now: tests write that log into a throwaway folder, and a
+  check fails if one ever points at your real one again.
+
+**DEV**
+
+* `tradingagents/screen_log.py:39` `LOG_PATH = ~/.tradingagents/screen.log`.
+  `tests/conftest.py` `_never_touch_the_live_book` redirected `STATE_DIR`
+  and `pending_ledger` but never `screen_log`.
+  `tests/test_csv_export_streams_across_threads.py:118` raises
+  `RuntimeError("disk went away")` through the real writer.
+* Invariant broken: **a test writes only under its own tmp_path**
+  (RCA-2026-09-18-C). `screen_log.LOG_PATH` had been named in
+  `NOT_YET_SANDBOXED` since Sep 24, 2026, a known hole that never closed.
+* Guard: `tests/test_tests_cannot_write_the_real_home.py::test_no_module_path_points_at_the_real_home`,
+  which now lists `screen_log` in `GUARDED` and was red before.
+
+**SAW** — found while answering *"are you sure there was no error at all
+that can hurt my backtest or practice"* (Oct 13, 2026). The screen's log
+held `csv FAILED | asked: sizing=flat AND sort=profit | got: rows=7 ·
+why=RuntimeError: disk went away` at 2:52am, 10:48am, 1:47pm and 3:24pm.
+
+**TIMELINE**
+
+1. **Sep 24, 2026.** The whole-package guard names `screen_log.LOG_PATH` as
+   not yet sandboxed.
+2. **Every full test run after that** appends one fake `csv FAILED` line to
+   `~/.tradingagents/screen.log`. By Oct 13, 2026 that is 70 of the log's 74
+   `FAILED` lines.
+3. **Oct 13, 2026.** 4 more: 2:52am (this session's full run), then 10:48am,
+   1:47pm and 3:24pm (other sessions' runs).
+4. **After the fix,** running the export tests left the real log at 70 such
+   lines (before: 70), and the guard fails if the path ever comes back.
+
+**ROOT CAUSE** — the conftest sandbox listed the paths it knew, and the
+screen's log was not among them.
+
+**WHY IT WAS NOT CAUGHT**
+* The guard did catch it, by name, on Sep 24, 2026, then parked it in a
+  "not yet" list.
+* That whole-package guard has itself been failing since then, on 9 other
+  unsandboxed paths, so a red result there stopped being read.
+
+**COST** — none in money; no trade, row or setting was touched. 70 fake
+failure lines in the log the screen checks are read from.
+
+**FIX** — this commit: the sandbox redirects `screen_log.LOG_PATH`, it
+joins `GUARDED`, and leaves `NOT_YET_SANDBOXED`. The 70 old lines are left
+as written; the log trims itself.
+
+**GUARD** — `tests/test_tests_cannot_write_the_real_home.py::test_no_module_path_points_at_the_real_home`.
+
+**STILL OPEN** — 9 module paths still point into the real home while tests
+run, and the whole-package guard names them: `daily_update.STATE`,
+`error_issues.FIXER_DIR` / `HOME` / `STATE`, `profiles.HOME`,
+`replay_collect.OUT_DIR`, `replay_page.OUT_DIR`, `research_page.OUT_DIR` and
+`room_forecasts.FILE`. The real rooms' folders were checked on Oct 13, 2026
+and hold only the real rooms.
+
+---
+
 ## RCA-2026-10-13-E — after every rebuild of the Backtest list, searching by id stopped working until four other indexes were built first
 
 **CEO**

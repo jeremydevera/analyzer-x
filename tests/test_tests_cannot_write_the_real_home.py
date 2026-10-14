@@ -47,6 +47,11 @@ GUARDED = [
     # (RCA-2026-09-24-I): every save_settings in a test wrote a fixture
     # "deployed" row into the operator's real history
     ("tradingagents.local_history", ("DEPLOY_LOG", "SETTINGS_SNAPSHOTS")),
+    # the SCREEN'S LOG: 70 of the 74 "FAILED" lines in the operator's real
+    # screen.log on Oct 13, 2026 were `csv FAILED ... RuntimeError: disk went
+    # away`, the fake failure test_csv_export_streams_across_threads raises,
+    # written by every run of the suite (RCA-2026-10-13-F)
+    ("tradingagents.screen_log", ("LOG_PATH",)),
 ]
 
 # EVERY OTHER module-level path that still points inside the real home while
@@ -75,7 +80,6 @@ NOT_YET_SANDBOXED = {
     "tradingagents.live_ingest.CF_LOG",
     "tradingagents.live_ingest.SERVE_LOG",
     "tradingagents.live_price.STATUS_PATH",
-    "tradingagents.screen_log.LOG_PATH",
     "tradingagents.stores._HOME",
     "tradingagents.supervisor.LOG",
     "tradingagents.sweep_orchestrator.HOME",

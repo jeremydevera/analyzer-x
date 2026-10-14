@@ -1878,9 +1878,9 @@ def compute_combos(symbol: str, tf: str, combos: list, *,
         sl, tp = float(c["sl"]) / 100, float(c["tp"]) / 100
         sz = c["sizing"]
         key = f"{sig}_cc_{tf}"
-        at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs,
-                                  "tp": .02, "sl": .01,
-                                  "threshold": (thp / 100) or .003}
+        give_back = at.hold_spec(key, {"interval": iv, "bar_seconds": bs,
+                                       "tp": .02, "sl": .01,
+                                       "threshold": (thp / 100) or .003})
         try:
             dk = "rsi14_1h" if sig == "rsi14" else key
             dirs = at._dirs_for_backtest(dk, hi, lo, cl, opens=op,
@@ -1901,9 +1901,9 @@ def compute_combos(symbol: str, tf: str, combos: list, *,
                                      tp=tp, sl=sl, liq_move_pct=liq,
                                      funding=fund, keep_log=False)
         except Exception:
-            at.STRATEGY_SPECS.pop(key, None)
+            give_back()
             continue
-        at.STRATEGY_SPECS.pop(key, None)
+        give_back()              # one replay per name (RCA-2026-10-14-N)
         if not r["trades"]:
             continue
         out.append({
@@ -2203,8 +2203,12 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     vol = [float(x) for x in full["Volume"]] if "Volume" in full.columns else None
     ts = list(full["Date"].to_numpy().astype("datetime64[ms]").astype("int64"))
     key = f"{signal}_tf_{tf}"
-    at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs, "tp": .02,
-                              "sl": .01, "threshold": (float(th) / 100) or .003}
+    # the name is HELD for this replay alone: two clicks on one strategy ran
+    # together on Oct 14, 2026 and the first gave it back mid-replay of the
+    # second (RCA-2026-10-14-N)
+    give_back = at.hold_spec(key, {"interval": iv, "bar_seconds": bs,
+                                   "tp": .02, "sl": .01,
+                                   "threshold": (float(th) / 100) or .003})
     try:
         dk = "rsi14_1h" if signal == "rsi14" else key
         dirs = at._dirs_for_backtest(dk, hi, lo, cl, opens=op, volume=vol,
@@ -2242,7 +2246,7 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                                  # seconds): no cost or chase model refuses them
                                  keep=_keep_of(took))
     finally:
-        at.STRATEGY_SPECS.pop(key, None)
+        give_back()
     return {"log": r["log"], "trades": r["trades"], "wins": r["wins"],
             "losses": r["losses"], "profit": round(r["profit"], 2),
             "max_dd": r["max_dd"],
@@ -2410,6 +2414,7 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
     _books: dict = {}           # (symbol, end ms) -> its minutes' book
     for (coin, tf, sig, th), grp in groups.items():
         sym = f"{coin}_USDT"
+        give_back = None
         try:
             fine = None
             if v2 and _gate_v2():
@@ -2444,9 +2449,11 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
             ts = [int(v) for v in ms]
             iv, bs, _cap = br.TFS[tf]
             key = f"{sig}_win_{tf}"
-            at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bs,
-                                      "tp": .02, "sl": .01,
-                                      "threshold": (th / 100.0) if th else .003}
+            # held for this window alone, given back in `finally` even when
+            # the replay raises (RCA-2026-10-14-N)
+            give_back = at.hold_spec(key, {"interval": iv, "bar_seconds": bs,
+                                           "tp": .02, "sl": .01,
+                                           "threshold": (th / 100.0) if th else .003})
             costs = load_costs(sym, root)
             if costs is None:
                 fee = at.taker_fee(sym, fx=fx)
@@ -2675,11 +2682,13 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                 straddled += straddle
                 if breathe:
                     time.sleep(breathe)       # let the rest of the app answer
-            at.STRATEGY_SPECS.pop(key, None)
         except Exception as exc:                               # noqa: BLE001
             skipped["failed"] += len(grp)
             print(f"[window] {coin} {tf} {sig}: {type(exc).__name__}: "
                   f"{str(exc)[:70]}", flush=True)
+        finally:
+            if give_back is not None:
+                give_back()
     return {"rows": rows,
             "first": fmt_when(first_ms / 1000) if first_ms else "",
             "last": fmt_when(last_ms / 1000) if last_ms else "",

@@ -1689,6 +1689,54 @@ def merge_runtime_specs() -> int:
         return added
 
 
+# A BORROWED RECIPE NAME, ONE REPLAY AT A TIME (RCA-2026-10-14-N). A replay
+# registers its signal under a name shared by every replay of that signal and
+# bar size (`cf_soup1_tf_30m`) and gives it back when done. Two site requests
+# for #5Z98N2D4's trades on Oct 14, 2026 1:44pm ran together: the first gave
+# the name back while the second was still replaying, which crashed it with
+# KeyError — and a second request with another threshold would have read the
+# first one's, with no error at all. Each name is held by one thread at a
+# time; reentrant, so a replay inside a replay of the same name cannot hang.
+_SPEC_LOCKS: dict = {}
+_SPEC_LOCKS_GUARD = _threading.Lock()
+_NOTHING = object()
+
+
+def hold_spec(key: str, spec: dict):
+    """Register `spec` under `key` for this thread alone; returns the give-back
+    (safe to call more than once), which restores whatever `key` held before —
+    a real recipe is put back, never deleted."""
+    with _SPEC_LOCKS_GUARD:
+        lk = _SPEC_LOCKS.setdefault(key, _threading.RLock())
+    lk.acquire()
+    before = STRATEGY_SPECS.get(key, _NOTHING)
+    STRATEGY_SPECS[key] = spec
+    given = []
+
+    def give_back() -> None:
+        if given:
+            return
+        given.append(True)
+        try:
+            if before is _NOTHING:
+                STRATEGY_SPECS.pop(key, None)
+            else:
+                STRATEGY_SPECS[key] = before
+        finally:
+            lk.release()
+
+    return give_back
+
+
+@contextlib.contextmanager
+def temp_spec(key: str, spec: dict):
+    give_back = hold_spec(key, spec)
+    try:
+        yield key
+    finally:
+        give_back()
+
+
 # ------------------------------------------------------------------ signals
 # Each takes plain OHLC lists of CLOSED bars and answers the direction the
 # LAST bar signals: +1 long, −1 short, 0 nothing. These are line-for-line the

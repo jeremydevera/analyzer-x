@@ -172,6 +172,89 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-14-N — two trade lists of one strategy asked for at once: the second crashed, because the first took away the name both were using
+
+**CEO**
+
+* On Oct 14, 2026 at 1:44pm the site was asked for the trades of #5Z98N2D4
+  (JASMY 30m cf_soup1) twice in the same second, during the practice-vs-
+  backtest check; the first list came back and the second failed with an
+  error instead of a list.
+* Why: every replay of one signal on one bar size borrows the same name for
+  its rules while it runs, and the first replay to finish gave the name back
+  while the second was still in the middle of using it.
+* What stops it now: a replay holds the name until it is done and the next
+  one waits its turn (a second or two), so both lists come back, each with
+  its own numbers; a test runs the two at once in the exact order of Oct 14.
+
+**DEV**
+
+* `tradingagents/api.py:4752` `strategy_trades_v2` → `market_sweep.trades_for`
+  set `at.STRATEGY_SPECS["cf_soup1_tf_30m"]` and popped it in `finally`;
+  two request threads shared the key, thread A's `pop` ran while thread B was
+  between `_dirs_for_backtest` and `auto_trader.backtest_strategy`, whose
+  `STRATEGY_SPECS[key]` raised `KeyError`. With different thresholds B would
+  have read A's (`_dirs_for_backtest` takes `.get(key, {}).get("threshold",
+  default)`) and answered with the wrong trades, silently. `window_rows`
+  (`_win_`) and `compute_combos` (`_cc_`) borrowed names the same way, and
+  `window_rows` left its name behind whenever its replay raised.
+* Invariant broken: **a name in a process-wide table that a replay borrows is
+  held by that replay alone until it gives it back, and is given back as it
+  was found.** `auto_trader.hold_spec` / `temp_spec`: one reentrant lock per
+  name, the previous value restored (a real recipe under the same name is put
+  back, never deleted), give-back in `finally`.
+* Guard: `tests/test_two_trade_lists_at_once.py` (3) — the race forced in
+  Oct 14's order, red on the old code with `KeyError('mom6_tf_1h')`.
+
+**SAW** — the site's error list, "The site itself failed": `KeyError:
+'cf_soup1_tf_30m'` from the trade list of Backtest v2, once, Oct 14, 2026
+1:44pm.
+
+**TIMELINE**
+
+1. Oct 14, 2026 1:36pm — the operator starts the new practice_backtest_audit
+   run (*"yes run it for practice trades yesterday only"*), which opens
+   stored rows' trade lists by id.
+2. 1:44pm — the Backtest tab looks up #5Z98N2D4 and two requests for its
+   trades arrive together: the site log shows the first answered (200) and,
+   on the next line, the second failed (500). The only such failure in the
+   log since the 1:26pm restart, against 9 trade lists that answered.
+3. Measured on the old code by the new test (mom6 1h, thresholds 0.1 and
+   2.0, alone 81 and 58 trades): run together in that order, the held replay
+   crashed with `KeyError('mom6_tf_1h')`.
+4. After the fix: the same two run together answer 81 and 58 trades with
+   the same profits as alone, and no borrowed name is left in the table.
+
+**ROOT CAUSE** — `market_sweep.trades_for` borrowed a name shared by every
+replay of one signal and bar size in a table shared by every thread of the
+site, and gave it back with a plain delete that did not know another thread
+was using it.
+
+**WHY IT WAS NOT CAUGHT** — every trade-list test calls `trades_for` once, on
+one thread, and checks what the list SAYS; none asked two at once, which is
+what the site does whenever a page (or an automation) opens two lists of one
+strategy together. The borrowed name looked private because it was set and
+removed in the same ten lines, and nothing in those lines says the table is
+shared with the request threads, the watcher thread and the indexer's
+window pass.
+
+**COST** — none in money: one trade list failed to load on the screen.
+The silent half — a second list with another threshold reading the first
+one's — is NEVER HAPPENED YET as far as the log can show, since a wrong
+list raises nothing.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_two_trade_lists_at_once.py`:
+`test_a_second_list_of_the_same_strategy_does_not_crash_the_first`,
+`test_a_borrowed_name_gives_back_a_recipe_it_found`,
+`test_a_borrowed_name_is_given_back_when_the_replay_raises`. Still borrowing
+the old way, and left alone because each runs in a job process of its own
+with one thread: `run_pair` (`_bt_`), the report (`_rpt_`, `_gfs_`), the
+learners (`_lxing_`, `_grade_`, `__old`).
+
+---
+
 ## RCA-2026-10-14-M — every trade of a strategy the watcher had switched off printed its v1 twin's id, which Backtest cannot find: room #55D32617's GPS 15m tsi trades said #ZQJMM3GF, not #5RKPYVQ7
 
 **CEO**

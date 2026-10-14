@@ -29,8 +29,8 @@ def pytest_configure(config):
     for marker in ("unit", "integration", "smoke"):
         config.addinivalue_line("markers", f"{marker}: {marker}-level tests")
     config.addinivalue_line(
-        "markers", "real_background: this test starts a real background "
-                   "program on purpose, and ends it itself")
+        "markers", "real_background: this test needs a real background "
+                   "program (the guard below stands in for every other one)")
     # for the WHOLE session, never undone at a test's teardown: a thread a
     # test left running that launches after its test ended is stood in too
     # (RCA-2026-10-10-J's shape, RCA-2026-10-14-H)
@@ -149,19 +149,26 @@ def is_background(kwargs: dict) -> bool:
                 or kwargs.get("process_group") is not None)
 
 
+def _talked_to(args):
+    """A test talked to a background program tests never start. pytest.fail,
+    never AssertionError: a launch site's own `except Exception` must not
+    swallow it (final review, Oct 14, 2026)."""
+    pytest.fail(f"a test talked to a background program, and tests never start "
+                f"those ({args!r}); mark the test @pytest.mark.real_background "
+                f"if it really needs that program", pytrace=False)
+
+
 class _NoOutput:
-    """A stand-in's stdout/stderr: reading it is the test's mistake, named."""
+    """A stand-in's piped stdout/stderr/stdin: using it is the test's
+    mistake, named."""
 
     def __init__(self, args):
         self._args = args
 
     def _fail(self, *a, **k):
-        raise AssertionError(
-            f"a test read the output of a background program, and tests never "
-            f"start those ({self._args!r}); mark the test "
-            f"@pytest.mark.real_background if it really needs that program")
+        _talked_to(self._args)
 
-    read = readline = readlines = __iter__ = _fail
+    read = readline = readlines = __iter__ = write = writelines = flush = _fail
 
     def close(self):
         pass
@@ -178,8 +185,8 @@ class StandIn:
         self.args, self.kwargs = args, kwargs
         self.pid = self.PID
         self.returncode = None
-        self.stdin = None
         piped = subprocess.PIPE
+        self.stdin = _NoOutput(args) if kwargs.get("stdin") == piped else None
         self.stdout = _NoOutput(args) if kwargs.get("stdout") == piped else None
         self.stderr = _NoOutput(args) if kwargs.get("stderr") == piped else None
 
@@ -192,6 +199,10 @@ class StandIn:
         return self.returncode
 
     def communicate(self, input=None, timeout=None):
+        # the usual way to read a child's output, and run()/check_output()'s
+        # path: piped output or any input is the test talking to it
+        if input is not None or self.stdout is not None or self.stderr is not None:
+            _talked_to(self.args)
         self.wait()
         return (None, None)
 

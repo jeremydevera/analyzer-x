@@ -22,6 +22,11 @@ import pytest
 
 from tradingagents import market_sweep as msw, portable, rows_index as ri
 
+# what `subprocess.Popen` was when this file was IMPORTED: after
+# pytest_configure, before any fixture ran — so only a session-wide install
+# can make it the guard (final review, Oct 14, 2026)
+_POPEN_WHEN_COLLECTED = subprocess.Popen
+
 
 def _row(sig):
     return {"coin": "AAA", "tf": "1h", "signal": sig, "th": 0.1, "sl": 0.3,
@@ -57,21 +62,45 @@ def test_filling_a_row_list_starts_no_real_build(tmp_path, monkeypatch, backgrou
     {"creationflags": 0x00000008},       # DETACHED_PROCESS (before RCA-2026-10-14-G)
     {"creationflags": 0x00000010},       # a console window of its own
     {"start_new_session": True},         # elsewhere than Windows
+    {"process_group": 0},                # elsewhere, Python 3.11+
     portable.DETACHED,                   # what every launch point spreads
-], ids=["new-group", "detached", "new-console", "new-session", "portable.DETACHED"])
+], ids=["new-group", "detached", "new-console", "new-session", "process-group",
+        "portable.DETACHED"])
 def test_a_background_launch_is_caught_by_its_flags(kw, background_calls):
-    """A launch point added tomorrow is covered without being named."""
-    proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], **kw)
-    assert getattr(proc, "stand_in", False), "no program may start"
-    assert proc.poll() is None and proc.wait() == 0
-    assert background_calls[-1]["kwargs"] == kw
+    """A launch point added tomorrow is covered without being named. The
+    program is `pass` and a real one is ended at once: if the guard ever
+    broke, this test must not leave programs (or windows) behind itself."""
+    proc = subprocess.Popen([sys.executable, "-c", "pass"], **kw)
+    try:
+        assert getattr(proc, "stand_in", False), "no program may start"
+        assert proc.poll() is None and proc.wait() == 0
+        assert background_calls[-1]["kwargs"] == kw
+    finally:
+        if not getattr(proc, "stand_in", False) and proc.poll() is None:
+            proc.kill()
 
 
 def test_reading_a_stand_ins_output_names_the_marker(background_calls):
+    """pytest.fail, not AssertionError: a launch site's own `except
+    Exception` must not swallow the test's mistake."""
     proc = subprocess.Popen([sys.executable, "-c", "print(1)"],
                             stdout=subprocess.PIPE, **portable.DETACHED)
-    with pytest.raises(AssertionError, match="real_background"):
+    with pytest.raises(pytest.fail.Exception, match="real_background"):
         proc.stdout.readline()
+
+
+def test_capturing_a_stand_ins_output_names_the_marker(background_calls):
+    """`communicate()` is how most code reads a child's output, and run() and
+    check_output() take that path: it fails naming the marker, never with an
+    empty result or a NoneType error further on (final review, Oct 14,
+    2026). Writing to its input does too."""
+    with pytest.raises(pytest.fail.Exception, match="real_background"):
+        subprocess.run([sys.executable, "-c", "print(1)"], capture_output=True,
+                       **portable.DETACHED)
+    proc = subprocess.Popen([sys.executable, "-c", "pass"],
+                            stdin=subprocess.PIPE, **portable.DETACHED)
+    with pytest.raises(pytest.fail.Exception, match="real_background"):
+        proc.stdin.write(b"x")
 
 
 def test_a_foreground_program_still_runs(background_calls):
@@ -99,5 +128,7 @@ def test_a_test_that_asks_gets_the_real_program(background_calls):
 def test_the_guard_is_on_for_the_whole_session():
     """Installed once for the session, never at a test's set-up: a fixture's
     patch is undone at teardown, and a thread a test left running would then
-    launch for real after it (RCA-2026-10-10-J's shape)."""
-    assert subprocess.Popen.__name__ == "_GuardedPopen"
+    launch for real after it (RCA-2026-10-10-J's shape). Read from what
+    the name was at IMPORT: a fixture-installed guard would pass a check made
+    inside the test."""
+    assert _POPEN_WHEN_COLLECTED.__name__ == "_GuardedPopen"

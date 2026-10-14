@@ -75,13 +75,12 @@ def test_the_rows_are_the_same_either_way(store):
         con.execute("DROP INDEX IF EXISTS rows_coin")
     ri.forget_indexes()
     plain = [r["id"] for r in ri.query(coin="KAVA", sort="profit")["rows"]]
-    ri.build_filter_index("coin")
-    import time
-
-    for _ in range(50):
-        if ri.has_index("rows_coin"):
-            break
-        time.sleep(0.1)
+    # built HERE, in this process (final review, Oct 14, 2026): a background
+    # build is a stand-in under the test guard (RCA-2026-10-14-H), and the
+    # comparison below is only worth something with the index really there
+    assert ri.build_index_now(ri.FILTER_INDEX_FOR["coin"])
+    ri.forget_indexes()
+    assert ri.has_index("rows_coin"), "the forced query must really use the index"
     forced = [r["id"] for r in ri.query(coin="KAVA", sort="profit")["rows"]]
     assert plain == forced and len(plain) == 20
 

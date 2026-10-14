@@ -172,6 +172,86 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-14-K — the new Main tab's list was sent as whichever room was on screen, its Room and id columns ran together below ~1,200 px, and it counted an unreadable room as examined
+
+**CEO**
+
+* Three faults in the new Main tab, found by the code review before anyone
+  relied on them: on a narrower window (a tablet, a half-screen browser) the
+  room and the trade id printed over each other ("#09439DC24FR65TF"); if a
+  room's record ever could not be read, the list still said all 10 rooms were
+  checked; and behind the scenes its requests were tagged with whatever room
+  tab was showing, which made the screen load more slowly when the app is busy.
+  A venue-switch message also still called the renamed room "room main".
+* Why: the list is the first thing on this screen that belongs to NO room, and
+  the screen's request layer only knew rooms; the new Room column was told
+  never to wrap, like the dates in RCA-2026-10-14-J; and the "rooms" count was
+  the rooms listed, not the rooms read.
+* What stops it now: the list's requests carry no room and wait by their own
+  tab; every cell may wrap; the count is the rooms actually read, with each
+  unreadable room and its reason named; tests hold each one.
+
+**DEV**
+
+* `webapp/src/components/trade/TradeHistory.tsx` (allRooms) called the unbound
+  `tradeApi.historyRooms` outside every `RoomScope`, so `fetchLaned` took
+  `_roomNow()` = `_profile` = the tab on screen and set `X-TA-Profile`
+  (proven live: `55D32617` at t=16.2/31.2/46.2 s); and `behind = room !==
+  _profile`, so on the Main tab (`_profile = "main"`) the hidden #09439DC2
+  panels counted as front. `tradingagents/api.py` `trade_history_rooms` put
+  every shown room in `rooms`, unreadable ones included.
+* Invariants broken: **a call that is no room's carries no room** — it runs as
+  `ALL_ROOMS` (no header) and priority reads `_onScreen`, set apart from the
+  default header room (`setOnScreen`); **in a fixed table text wraps, never
+  covers a neighbour** (Room and id cells: `break-all`, no nowrap); **a count
+  printed as "examined" counts what was examined** (`label-must-match-data`).
+* Guards: `tests/test_main_tab_shows_every_rooms_trades.py::test_the_all_rooms_list_carries_no_room_and_waits_by_its_own_tab`,
+  `::test_a_date_wraps_in_its_own_cell_instead_of_running_into_the_next`
+  (widened to the Room and id cells), `::test_a_room_that_raises_is_named_and_the_others_still_show`
+  (rooms examined), `::test_no_string_the_server_prints_says_main_for_a_room`
+  (every non-docstring string literal, and the venue switch) — all red first.
+
+**SAW** — the final code review of c81d07b4c92a..10a9dbac3af3, Oct 14, 2026
+9:46am: a live browser probe with every non-GET request aborted, screenshots
+at 1,024, 1,280 and 390 px, and the source.
+
+**TIMELINE**
+
+1. Oct 14, 2026 9:25am — the Main tab goes live (c1be75cb3875).
+2. 9:46am — the review measures: at 1,024 px the table's columns are 62 px
+   (57 px while searching) while "#09439DC2" is 75 px and a trade id 66-67 px;
+   the list's calls carry `X-TA-Profile: 55D32617` while that tab is on screen;
+   `rooms` lists all 10 rooms with one marked unreadable in a test probe.
+3. Same morning — fixed with failing tests first; 102 related tests pass,
+   tsc clean; the page is rebuilt and the probe re-run at 1,024/1,280/1,500/390 px.
+
+**ROOT CAUSE** — the request layer had one variable (`_profile`) for two
+questions — which room a call outside a scope belongs to, and which room is
+on screen — and the first screen that is no room needed different answers;
+plus `whitespace-nowrap` on the Room and id cells, and `rooms` built from the
+list of rooms instead of the rooms read.
+
+**WHY IT WAS NOT CAUGHT** — the plan named "no room header" as Review Focus 5
+and its test checked only the 15-second interval, the half that was easy to
+read in source; a header is only visible on the wire, so the guard now pins
+the code that decides it. The date-wrap guard of RCA-2026-10-14-J named three
+cells and the overlap moved to the next two — a guard is only as wide as its
+pattern, so it now covers the Room and id cells too. The unreadable test
+asserted the red line and the rows, never the count beside them.
+
+**COST** — none in money; slower loading under a busy API, and unreadable
+columns on narrow windows, for the minutes between 9:25am and the rebuild.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_main_tab_shows_every_rooms_trades.py`:
+`test_the_all_rooms_list_carries_no_room_and_waits_by_its_own_tab`,
+`test_a_date_wraps_in_its_own_cell_instead_of_running_into_the_next`,
+`test_a_room_that_raises_is_named_and_the_others_still_show` and
+`test_no_string_the_server_prints_says_main_for_a_room`.
+
+---
+
 ## RCA-2026-10-14-J — on the new Main tab the opened and closed times ran into each other: "Oct 14, 2026 8:45amOct 14, 2026 9:19am35m"
 
 **CEO**

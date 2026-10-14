@@ -102,6 +102,9 @@ def test_a_room_that_raises_is_named_and_the_others_still_show(two_rooms, monkey
     got = two_rooms.get("/api/trade/history/rooms?dry=true&per_page=50").json()
     assert [u["name"] for u in got["unreadable"]] == ["#55D32617"]
     assert {r["room"] for r in got["rows"]} == {"main"}
+    # "rooms" are the rooms EXAMINED — the label prints its count beside the
+    # red line naming the one that was not (final review, Oct 14, 2026)
+    assert [r["room"] for r in got["rooms"]] == ["main", "4FC03172"]
 
 
 def test_the_one_room_history_is_unchanged(two_rooms):
@@ -118,7 +121,7 @@ def _web(rel: str) -> str:
 
 def test_the_main_tab_draws_only_the_all_rooms_list():
     s = _web("components/trade/AutoTradeScreen.tsx")
-    assert 'const ALL_ROOMS = "all";' in s
+    assert "ALL_ROOMS" in s and 'export const ALL_ROOMS = "all";' in _web("lib/api.ts")
     assert "<TradeHistory allRooms active={room === ALL_ROOMS} />" in s
     body = s[s.index("<AllRoomsBody"):]
     body = body[:body.index("</AllRoomsBody>")]
@@ -129,7 +132,7 @@ def test_the_main_tab_draws_only_the_all_rooms_list():
     # nothing saved, or something unknown, opens the all-rooms Main tab
     first = s[s.index("function firstRoom"):s.index("/** ONE ROOM'S PANELS")]
     assert "let id = ALL_ROOMS;" in first
-    assert 'if (id !== ALL_ROOMS) setProfile(id); else setProfile("main");' in s
+    assert s.count('if (id !== ALL_ROOMS) setProfile(id); else { setProfile("main"); setOnScreen(ALL_ROOMS); }') == 2
     assert '"past trades"' in s[s.index("begin(["):s.index("setStarted(true)")]
 
 
@@ -163,3 +166,47 @@ def test_a_date_wraps_in_its_own_cell_instead_of_running_into_the_next():
     for cell in ('{r.opened ?? "—"}</TableCell>', "{r.when}</TableCell>", '{r.held ?? "—"}</TableCell>'):
         line = next(ln for ln in th.splitlines() if cell in ln)
         assert "whitespace-nowrap" not in line, cell
+    # ...and the Room and id cells (final review, Oct 14, 2026: at 1,024 px
+    # "#09439DC2" ran into the trade id beside it — 75 px of text in a 57 px
+    # column; a guard is only as wide as its pattern)
+    body = th[th.index("<TableBody"):th.index("</TableBody>")]
+    room_cell = body[body.index("{allRooms && ("):body.index("{r.room_name")]
+    assert "whitespace-nowrap" not in room_cell and "break-all" in room_cell
+    at_id = body.index("title=\"copy this trade's id\"")
+    id_cell = body[body.rindex("<TableCell", 0, at_id):at_id]
+    assert "whitespace-nowrap" not in id_cell and "break-all" in id_cell
+
+
+def test_the_all_rooms_list_carries_no_room_and_waits_by_its_own_tab():
+    """Final review, Oct 14, 2026, proven in a live browser: while
+    #55D32617's tab was on screen the all-rooms calls carried
+    `X-TA-Profile: 55D32617`, and on the Main tab #09439DC2's hidden panels
+    counted as on screen and took the front request lanes. The list is no
+    room: no header, and it is "on screen" only when the Main tab is."""
+    ts = _web("lib/api.ts")
+    assert 'if (room !== "main" && room !== ALL_ROOMS && _roomed(input)) {' in ts
+    assert "const behind = _roomed(input) && room !== _onScreen;" in ts
+    assert "export function setOnScreen(id: string): void { _onScreen = id; }" in ts
+    assert "export function setProfile(id: string): void { _profile = id; _onScreen = id; }" in ts
+    th = _web("components/trade/TradeHistory.tsx")
+    assert "withProfile(ALL_ROOMS, () => tradeApi.historyRooms(dry, page, 5, q.trim()))" in th
+
+
+def test_no_string_the_server_prints_says_main_for_a_room():
+    """Wider than the seven spellings above (final review, Oct 14, 2026): no
+    string the Python code can print says "Main" (docstrings and comments may
+    tell the history), and the venue switch names a room as the screen does."""
+    import ast
+    hits = []
+    for p in (ROOT / "tradingagents").glob("*.py"):
+        tree = ast.parse(p.read_text(encoding="utf-8"))
+        docs = {id(n.body[0].value) for n in ast.walk(tree)
+                if isinstance(n, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                and n.body and isinstance(n.body[0], ast.Expr)
+                and isinstance(getattr(n.body[0], "value", None), ast.Constant)}
+        hits += [f"{p.name}:{n.lineno}" for n in ast.walk(tree)
+                 if isinstance(n, ast.Constant) and isinstance(n.value, str)
+                 and id(n) not in docs and re.search(r"\bMain\b", n.value)]
+    assert not hits, hits
+    vs = (ROOT / "tradingagents/venue_switch.py").read_text(encoding="utf-8")
+    assert "room {pid}" not in vs and "room {room}" not in vs

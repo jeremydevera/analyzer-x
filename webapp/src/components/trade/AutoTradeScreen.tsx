@@ -13,7 +13,7 @@ import PnlPanel from "./PnlPanel";
 import FeedPanel from "./FeedPanel";
 import CredentialsPanel from "./CredentialsPanel";
 import TradeHistory from "./TradeHistory";
-import { api, fmtWhen, PROFILES, RoomInfo, setProfile } from "@/lib/api";
+import { ALL_ROOMS, api, fmtWhen, PROFILES, RoomInfo, setOnScreen, setProfile } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
 import CopyableId from "./CopyableId";
 import { rules } from "./WatcherPanel";
@@ -25,7 +25,7 @@ const ROOM_KEY = "ta-auto-trade-room";
 // it / the main tab is for seeing all room strategy past trades"): it shows
 // every room strategy's closed trades and nothing else. The room that was
 // Main is the #09439DC2 tab right after it (its id is still "main").
-const ALL_ROOMS = "all";
+// ALL_ROOMS lives in lib/api.ts, which sends its calls with no room header.
 
 /** The room the screen opens on: the one last picked on this browser, else
  *  Main. Applied to every request BEFORE any panel mounts and fetches. */
@@ -37,8 +37,8 @@ function firstRoom(): string {
     if (got && (got === ALL_ROOMS || PROFILES.some((p) => p.id === got))) id = got;
   } catch { /* storage blocked: the all-rooms Main tab */ }
   // the all-rooms list is no room: every call outside a room goes as Main's
-  // always did, with no room header
-  if (id !== ALL_ROOMS) setProfile(id); else setProfile("main");
+  // always did, with no room header — and the room "main" is BEHIND its tab
+  if (id !== ALL_ROOMS) setProfile(id); else { setProfile("main"); setOnScreen(ALL_ROOMS); }
   return id;
 }
 
@@ -95,7 +95,7 @@ export default function AutoTradeScreen() {
   const [room, setRoom] = useState<string | null>(null);
   useEffect(() => { setRoom(firstRoom()); }, []);
   const pick = (id: string) => {
-    if (id !== ALL_ROOMS) setProfile(id); else setProfile("main");
+    if (id !== ALL_ROOMS) setProfile(id); else { setProfile("main"); setOnScreen(ALL_ROOMS); }
     try { window.localStorage.setItem(ROOM_KEY, id); } catch { /* blocked */ }
     setRoom(id);
   };

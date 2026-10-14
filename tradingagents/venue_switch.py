@@ -79,7 +79,7 @@ def _blockers() -> list[str]:
         with profiles.using(pid):
             rp = at.runner_pid()
             if rp:
-                out.append(f"room {pid}'s runner (pid {rp})")
+                out.append(f"room {profiles.name_of(pid)}'s runner (pid {rp})")
     # EACH PROCESS'S OWN RULE FOR "RUNNING", never a bare pid: the first
     # real run of this refused on `db_backtest_v2.pid` = 21144, written
     # Sep 17, 2026 and since reused by Microsoft Teams (pids are recycled,
@@ -181,14 +181,14 @@ def switch(target: str, *, rooms=None, price_of=None, now: float | None = None,
             real = _real_rows(s)
             if real:
                 raise SwitchRefused(
-                    f"room {room} holds real money on {len(real)} row(s) "
+                    f"room {profiles.name_of(room)} holds real money on {len(real)} row(s) "
                     f"({', '.join(real[:5])}) — the cutover moves practice "
                     f"only; take the real money off first")
             _st = at.load_state()
             live_open = _open_real(_st)
             if live_open:
                 raise SwitchRefused(
-                    f"room {room} still holds {len(live_open)} real position(s) on "
+                    f"room {profiles.name_of(room)} still holds {len(live_open)} real position(s) on "
                     f"{venue.NAMES[frm]} ({', '.join(live_open[:5])}) — close them "
                     f"there first; nothing was changed")
             opened = _open_practice(_st)
@@ -204,7 +204,7 @@ def switch(target: str, *, rooms=None, price_of=None, now: float | None = None,
                 except Exception as exc:                        # noqa: BLE001
                     raise SwitchRefused(
                         f"cannot read {venue.NAMES[frm]}'s last price for "
-                        f"{sym} (room {room}): {exc} — nothing was changed") from exc
+                        f"{sym} (room {profiles.name_of(room)}): {exc} — nothing was changed") from exc
                 prices[sym] = px
             coins = sorted({c for cs in (s.get("strategy_coins") or {}).values()
                             for c in (cs or [])})

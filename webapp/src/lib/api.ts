@@ -159,8 +159,18 @@ export const PROFILES: readonly { id: string; name: string; display_id?: string 
 export function roomName(id: string): string {
   return PROFILES.find((p) => p.id === id)?.name ?? `#${id}`;
 }
+// THE MAIN TAB IS NO ROOM (Oct 14, 2026): every room strategy's past trades.
+// Its calls run as ALL_ROOMS — never a room header, and on screen only while
+// the Main tab is (`_onScreen`), so the room behind it waits like any other.
+export const ALL_ROOMS = "all";
 let _profile = "main";
-export function setProfile(id: string): void { _profile = id; }
+// WHAT IS ON SCREEN, apart from the room a call outside any room is sent as:
+// on the Main tab calls go as "main" (no header) while "all" is on screen, so
+// the hidden #09439DC2 panels are BEHIND and the list in front is not
+// (final review, Oct 14, 2026: they took the front lanes from the list)
+let _onScreen = "main";
+export function setProfile(id: string): void { _profile = id; _onScreen = id; }
+export function setOnScreen(id: string): void { _onScreen = id; }
 export function currentProfile(): string { return _profile; }
 
 // EVERY ROOM LOADED AT ONCE (operator, Oct 01, 2026: "when i click auto trade
@@ -199,13 +209,13 @@ function _roomed(input: string): boolean {
 }
 
 async function fetchLaned(input: string, init?: RequestInit, room: string = _roomNow()): Promise<Response> {
-  if (room !== "main" && _roomed(input)) {
+  if (room !== "main" && room !== ALL_ROOMS && _roomed(input)) {
     const headers = new Headers(init?.headers);
     headers.set("X-TA-Profile", room);
     init = { ...(init ?? {}), headers };
   }
   // a roomed call for a room that is not on screen waits behind the rest
-  const behind = _roomed(input) && room !== _profile;
+  const behind = _roomed(input) && room !== _onScreen;
   const path = input.replace(/^https?:\/\/[^/]+/, "");
   const method = (init?.method ?? "GET").toUpperCase();
   const chrome = ALWAYS_ON.test(path);

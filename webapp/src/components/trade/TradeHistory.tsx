@@ -17,7 +17,7 @@ import { markReady } from "@/lib/loading";
 import { useLiveRefresh } from "@/lib/live";
 import CopyableId from "./CopyableId";
 import PanelStatus from "./PanelStatus";
-import { fmtMoney, HistoryPayload } from "@/lib/api";
+import { ALL_ROOMS, fmtMoney, HistoryPayload, withProfile } from "@/lib/api";
 import { useRoomApis } from "@/lib/room";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -85,7 +85,11 @@ export default function TradeHistory({ allRooms = false, active = true }: {
   useEffect(() => { wantNow.current = want; }, [want]);
   useLiveRefresh(() => {
     const asked = `${dry}|${page}|${q.trim()}`;
-    (allRooms ? tradeApi.historyRooms(dry, page, 5, q.trim()) : tradeApi.history(dry, page, 5, q.trim()))
+    // the all-rooms call is no room's: no header, and in front only while
+    // the Main tab is on screen (final review, Oct 14, 2026: it carried
+    // X-TA-Profile of whatever room tab was showing)
+    (allRooms ? withProfile(ALL_ROOMS, () => tradeApi.historyRooms(dry, page, 5, q.trim()))
+              : tradeApi.history(dry, page, 5, q.trim()))
       .then((r) => {
         if (asked !== wantNow.current) return;      // a late answer for what is no longer shown
         if (allRooms && !picked.current && !dry && !q.trim() && r.total === 0) {
@@ -129,7 +133,7 @@ export default function TradeHistory({ allRooms = false, active = true }: {
               still show (all-rooms list) */}
           {allRooms && d?.unreadable?.length ? (
             <p className="text-theme-xs text-error-500">
-              {d.unreadable.map((u) => u.name).join(", ")} could not be read — {d.unreadable[0].why}
+              could not be read: {d.unreadable.map((u) => `${u.name} (${u.why})`).join("; ")}
             </p>
           ) : null}
         </div>
@@ -273,11 +277,11 @@ export default function TradeHistory({ allRooms = false, active = true }: {
                   </TableCell>
                 )}
                 {allRooms && (
-                  <TableCell className="whitespace-nowrap px-2 py-1.5 font-mono text-theme-xs font-semibold text-gray-800 dark:text-white/90">
+                  <TableCell className="break-all px-2 py-1.5 font-mono text-theme-xs font-semibold text-gray-800 dark:text-white/90">
                     {r.room_name ?? "—"}
                   </TableCell>
                 )}
-                <TableCell className="whitespace-nowrap px-2 py-1.5 font-mono text-theme-xs text-gray-800 dark:text-white/90">
+                <TableCell className="break-all px-2 py-1.5 font-mono text-theme-xs text-gray-800 dark:text-white/90">
                   {/* the SAME id the open position carries, so a trade can be
                       followed from open to closed by one string (operator,
                       Sep 10, 2026) */}

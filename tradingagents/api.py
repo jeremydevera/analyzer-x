@@ -4370,7 +4370,11 @@ def trade_history_rooms(dry: bool = False, per_page: int = 5, page: int = 1,
     # (it found nothing on the real site at 9:26am, Oct 14, 2026)
     out = _history_page(rows, books=books, q=_q, per_page=per_page, page=page,
                         examined=examined, match=("id", "strategy_id", "room", "room_name"))
-    out["rooms"] = [{"room": r, "name": _pf.name_of(r)} for r in rooms]
+    # the rooms EXAMINED — a room that raised is named in `unreadable`, never
+    # counted here (final review, Oct 14, 2026: "of 10 rooms examined" beside
+    # a red line naming the one that was not)
+    bad = {u["room"] for u in unreadable}
+    out["rooms"] = [{"room": r, "name": _pf.name_of(r)} for r in rooms if r not in bad]
     out["unreadable"] = unreadable
     return out
 

@@ -218,7 +218,8 @@ def test_every_trade_call_names_its_room_and_nothing_else_does():
     (captured at entry, withProfile) — never whatever tab is on screen."""
     api_ts = _src("webapp/src/lib/api.ts")
     assert 'headers.set("X-TA-Profile", room);' in api_ts
-    assert "if (room !== \"main\" && _roomed(input))" in api_ts
+    # ...and never for the all-rooms Main tab (Oct 14, 2026), which is no room
+    assert "if (room !== \"main\" && room !== ALL_ROOMS && _roomed(input))" in api_ts
     assert r"/^\/api\/(trade\/|ledger)/.test(path)" in api_ts
     assert "room: string = _roomNow()" in api_ts
     get = api_ts[api_ts.index("async function get<T>"):api_ts.index("async function post<T>")]
@@ -253,7 +254,7 @@ def test_every_room_stays_loaded_in_its_own_scope():
     assert "withProfile(id, () => fn.current())" in live
     assert "Math.max(ms, BEHIND_MS)" in live
     api_ts = _src("webapp/src/lib/api.ts")
-    assert "const behind = _roomed(input) && room !== _profile;" in api_ts, "the room on screen goes first"
+    assert "const behind = _roomed(input) && room !== _onScreen;" in api_ts, "the room on screen goes first"
     # ...but never alone: measured in the browser, its own refreshes held all
     # four lanes and no other room's call went out in 60 s
     assert "const BEHIND_LANES = 2;" in api_ts

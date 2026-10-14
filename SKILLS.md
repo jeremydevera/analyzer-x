@@ -12,6 +12,7 @@ here** — this file exists because the operator won't remember them all
 | `short-and-plain` | **The only rule for how to answer.** A fact or a number is **ONE SENTENCE** in non-technical words — no `ledger`, no `TP`, no file names. An **explanation** (how it works, why it happened, two things that ended differently) is the **boxed arrow diagram**, opening with one line starting `BECAUSE`. Absorbed `workflow-map` on 2026-09-17: *"i want it all in short and plain instead"*. |
 | `bug-scenario` | A bug is always shown as a step-by-step story with real times and dollars, never just code talk. |
 | `say-done` | Speaks one sentence out loud when a task finishes. Edit its voice in `.claude/skills/say-done/config.json`. |
+| `notify-on-confirmation` | Sends you a phone/desktop notification whenever Claude is waiting for you to confirm, choose or approve something (Oct 14, 2026). |
 | `three-gates` | Before any answer or "done": is it measured, is it real, was it tested. |
 | `label-must-match-data` | Every label on screen must match the number under it. Runs before reporting any UI change. |
 | `verify-ui-change` | Any change to how the app looks gets checked with a real browser screenshot before saying done. |

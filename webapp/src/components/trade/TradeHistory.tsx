@@ -241,7 +241,7 @@ export default function TradeHistory({ allRooms = false, active = true }: {
         {d && !d.rows.length && (
           <p className="py-3 text-theme-sm text-gray-500 dark:text-gray-400">
             {searching
-              ? `No ${allRooms ? "trade, strategy or room" : "trade or strategy"} id matching ${d.q ?? q} in the `
+              ? `${allRooms ? "No trade, strategy or room id matching" : "No trade or strategy id matching"} ${d.q ?? q} in the `
                 + `${d.examined ?? 0} closed trades${allRooms ? ` of ${nRooms} rooms` : ""} on either book — `
                 + "ids are 8 characters, and the # is optional."
               : allRooms
@@ -313,7 +313,7 @@ export default function TradeHistory({ allRooms = false, active = true }: {
                     Sep 12, 2026, where a panel spoke for 893,508 rows after
                     examining 25. */}
                 {searching
-                  ? `No ${allRooms ? "trade, strategy or room" : "trade or strategy"} id matching ${d.q ?? q} in the `
+                  ? `${allRooms ? "No trade, strategy or room id matching" : "No trade or strategy id matching"} ${d.q ?? q} in the `
                     + `${d.examined ?? 0} closed trades${allRooms ? ` of ${nRooms} rooms` : ""} on either book — `
                     + "ids are 8 characters, and the # is optional."
                   : allRooms

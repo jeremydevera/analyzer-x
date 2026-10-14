@@ -1485,7 +1485,20 @@ live trade, own demo trade, own calendar pnl, in short it has its own room/
 profile"*, *"Real money too"*, *"i want both, if i enable live trade, then it
 should be included"*. Plan: `docs/superpowers/plans/2026-09-29-trading-profiles.md`.
 
-* **Main is `~/.tradingagents` exactly as before; a profile is
+* **THE MAIN TAB IS EVERY ROOM'S PAST TRADES; THE ROOM THAT WAS MAIN IS
+  #09439DC2 (Oct 14, 2026).** The operator: *"the main tab is a room strategy
+  so what i want is to assign and id for it and create a new tab for it / the
+  main tab is for seeing all room strategy past trades"*. The Auto Trade tab
+  labelled **Main** is not a room: it shows only "Past trades — all room
+  strategies" (`/api/trade/history/rooms`, `TradeHistory allRooms`), every
+  tabbed room's closed trades with a Room column, searched and paged on the
+  server. The room whose id is `main` is PRINTED **#09439DC2** everywhere
+  (`profiles.name_of` / `roomName`) — the id of its rules (90% wins, 20+ trades
+  in 30 days, TP wider than SL, stop 2% or tighter), named as the 1-4 day rooms
+  were — and has its own tab with every panel. ONLY THE NAME: its id is still
+  `main`, its folder still `~/.tradingagents`. Spec:
+  `docs/superpowers/specs/2026-10-14-main-tab-all-rooms-past-trades-design.md`.
+* **The room `main` is `~/.tradingagents` exactly as before; a profile is
   `~/.tradingagents/profiles/<ID>/`.** Every runner file goes through
   `auto_trader._pp(PATH)` (settings, state, trade record, pid, lock, log,
   WANT, KILL), the watcher through `_state_path()`/`_log_path()`, the deploy
@@ -1498,7 +1511,8 @@ should be included"*. Plan: `docs/superpowers/plans/2026-09-29-trading-profiles.
 * **One real position per coin across ALL rooms** — MEXC nets a contract into
   one position. `other_profile_holding` claims the coin under a machine-wide
   lock before a real entry; the orphan sweep never adopts another room's
-  coin; PANIC closes only the room's own (Main also true orphans); a room's
+  coin; PANIC closes only the room's own (the room `main`, #09439DC2, also
+  true orphans); a room's
   screens list only its own real positions (`api._own_exchange_positions`);
   the wallet check adds other rooms' margin of the last `COMMIT_WINDOW_S`
   (`others_committed`).
@@ -1518,16 +1532,17 @@ time"*).**
 |---|---|
 | "deploy the table" / "deploy these" (research rule sets) | ONE ROOM PER RULE SET, named by its id (`#55D32617`), its watcher seeded with that row's exact rules, Smart Watcher ON, raw (no limits) |
 | which money? | PRACTICE only. Real money only when THEY tick that room's "Watcher trades real money" box. Never ask. |
-| "undeploy my current" | every row in every room except Main switched off (`retire_room()`), watcher off |
+| "undeploy my current" | every row in every room except #09439DC2 (the room `main`) switched off (`retire_room()`), watcher off |
 | "off" (a room) | **NO TAB AT ALL** (*"if i say off you should completely remoev the tab"*). `retired: True` in `profiles.BUILTIN`, left out of `PROFILES` in `webapp/src/lib/api.ts` and of `/api/trade/profiles` (`profiles.shown()`). It stays in `BUILTIN` only so its runner finishes the practice trades still open; its folder is kept. |
-| Main | untouched unless they name it |
+| #09439DC2 (id `main`, called "Main" until Oct 14, 2026) | untouched unless they name it |
+| "Main" (the tab) | every room strategy's past trades, nothing else — not a room |
 
 The rooms as configured Oct 01, 2026 (all TP wider than SL, stop 2% or
 tighter, raw, practice, $5 x 20x):
 
 | room | judged on | switch on / off at | min trades |
 |---|---|---|---|
-| Main | 30 days | 90% | 20 |
+| #09439DC2 (id `main`) | 30 days | 90% | 20 |
 | #55D32617 | 15 days | 70% | 50 |
 | #4FC03172 | 30 days | 70% | 50 |
 | #B2404C0B | 15 days | 75% | 50 |

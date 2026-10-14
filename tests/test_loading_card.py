@@ -52,7 +52,9 @@ def test_every_panel_reports_when_its_data_lands():
                  ("StrategiesGrid", "strategies"), ("CredentialsPanel", "exchange keys"),
                  ("TradeHistory", "trade history"), ("PnlPanel", "profit"),
                  ("FeedPanel", "runner feed")]:
-        assert f'markReady("{n}")' in _p(f), f
+        # TradeHistory names itself by its mode since Oct 14, 2026: "trade
+        # history" in a room, "past trades" on the all-rooms Main tab
+        assert f'markReady("{n}")' in _p(f) or f'"{n}")' in _p(f) and "markReady(allRooms ?" in _p(f), f
 
 
 def test_a_stuck_name_turns_red_instead_of_spinning_forever():

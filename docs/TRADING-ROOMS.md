@@ -4,6 +4,16 @@
 knowledge. Part 2 is for whoever changes the code. Every example uses real
 numbers from this machine unless it says "made-up numbers".*
 
+> **Changed Oct 14, 2026** — the owner: *"the main tab is a room strategy so
+> what i want is to assign and id for it and create a new tab for it / the main
+> tab is for seeing all room strategy past trades"*. The room this page calls
+> **Main** is now **#09439DC2** (the id of its rules: 90% wins, 20+ trades in
+> 30 days, TP wider than SL, stop 2% or tighter) and has its own tab with
+> everything it had. The tab called **Main** is now only "Past trades — all
+> room strategies": every room's closed trades with a Room column. Behind the
+> scenes the room's id is still `main` and its files are where they were.
+> Where the text below says "Main" for the room, read #09439DC2.
+
 ---
 
 # PART 1 — CEO EXPLANATION
@@ -34,7 +44,7 @@ no wider than 2%.
 
 | tab | judges a strategy on | switches it ON at | switches it OFF under | needs at least | right now |
 |---|---|---|---|---|---|
-| **Main** | last 30 days | 90% wins | 90% | 20 trades | 67 rows on |
+| **#09439DC2** (was Main) | last 30 days | 90% wins | 90% | 20 trades | 67 rows on |
 | **#55D32617** | last 15 days | 70% wins | 70% | 50 trades | waiting for the 15-day counts |
 | **#4FC03172** | last 30 days | 70% wins | 70% | 50 trades | 2,878 rows on |
 | **#B2404C0B** | last 15 days | 75% wins | 75% | 50 trades | waiting for the 15-day counts |
@@ -159,7 +169,8 @@ TP is not wider than SL)"*.
 
 ## What you see on each tab
 
-* **The tab row** — Main and the five rooms. The small **i** beside a name
+* **The tab row** — Main (every room's past trades, since Oct 14, 2026), then
+  #09439DC2 and the other rooms. The small **i** beside a room's name
   opens that room's rules, read from its watcher, so it shows what the room
   really does.
 * **Tiles** — that room's money only (open trades, today, all time).

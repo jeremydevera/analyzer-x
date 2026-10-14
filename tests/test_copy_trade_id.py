@@ -105,7 +105,10 @@ def test_the_history_names_the_strategy_id_too():
 
     from tradingagents import api
 
-    src = inspect.getsource(api.trade_history)
+    # the row builder both history lists share since Oct 14, 2026 (the
+    # all-rooms Main tab): `_history_rows`, which trade_history calls
+    src = inspect.getsource(api._history_rows)
+    assert "_history_rows(books)" in inspect.getsource(api.trade_history)
     assert '"strategy_id": _strategy_id(' in src
     assert "row_id_for(key, symbol, _settings)" in src, \
         "the SAME id function the other two tables use"

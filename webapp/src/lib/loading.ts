@@ -43,3 +43,19 @@ export function subscribe(fn: () => void): () => void {
 /** grey "still loading" turns red after this — a wait is honest for a while,
  *  then it is a failure wearing a spinner */
 export const LATE_MS = 30_000;
+
+/** THE COVER NAMES ONLY WHAT THE TAB SHOWS (Oct 14, 2026). Every room stays
+ *  mounted behind its tab, so every name is watched from the first frame —
+ *  but the Main tab shows one list and a room tab shows the room's panels.
+ *  Measured in Safari's engine the morning the Main tab went live: its own
+ *  list loaded at 1.2 s and the cover stayed to 2.7 s saying "loading
+ *  profit…", a panel the Main tab does not have, and a room tab waited on
+ *  "loading past trades…", the hidden Main list. With the API slow that is
+ *  30 s, then a red "still not loading" for something not on screen. */
+export const MAIN_TAB_PANELS: string[] = ["past trades"];
+export const ROOM_PANELS: string[] = ["summary", "positions", "strategies", "exchange keys",
+                                      "trade history", "profit", "runner feed"];
+export function onTab<T extends { name: string }>(list: T[], mainTab: boolean): T[] {
+  const mine = mainTab ? MAIN_TAB_PANELS : ROOM_PANELS;
+  return list.filter((w) => mine.includes(w.name));
+}

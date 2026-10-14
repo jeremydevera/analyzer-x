@@ -133,7 +133,10 @@ def test_the_main_tab_draws_only_the_all_rooms_list():
     first = s[s.index("function firstRoom"):s.index("/** ONE ROOM'S PANELS")]
     assert "let id = ALL_ROOMS;" in first
     assert s.count('if (id !== ALL_ROOMS) setProfile(id); else { setProfile("main"); setOnScreen(ALL_ROOMS); }') == 2
-    assert '"past trades"' in s[s.index("begin(["):s.index("setStarted(true)")]
+    # the Main tab's list is watched from the first frame (its name lives in
+    # lib/loading.ts since Oct 14, 2026, with each tab's own list)
+    assert "...MAIN_TAB_PANELS" in s[s.index("begin(["):s.index("setStarted(true)")]
+    assert 'export const MAIN_TAB_PANELS: string[] = ["past trades"];' in _web("lib/loading.ts")
 
 
 def test_one_name_for_the_room_that_was_main_on_every_screen():
@@ -175,6 +178,18 @@ def test_a_date_wraps_in_its_own_cell_instead_of_running_into_the_next():
     at_id = body.index("title=\"copy this trade's id\"")
     id_cell = body[body.rindex("<TableCell", 0, at_id):at_id]
     assert "whitespace-nowrap" not in id_cell and "break-all" in id_cell
+    # ...and EVERY cell (checking those fixes on the live site, Oct 14, 2026
+    # 10:20am: at 1,024 px the strategy cell held "#FQJDT7UX" over
+    # "elder_15m_sl08tp1", 96 px of unbroken text in a 62 px column, and ran
+    # into the reason beside it — the third cell this table learned about one
+    # at a time). No cell refuses to wrap, and the TABLE lets a word that
+    # cannot fit break where it must; the rule is inherited, so a long coin,
+    # reason or key in any cell is held without a line of its own here.
+    for ln in body.splitlines():
+        if "<TableCell" in ln:
+            assert "whitespace-nowrap" not in ln, ln.strip()
+    table = th[th.index("<Table fixed"):th.index("<TableHeader")]
+    assert "[overflow-wrap:anywhere]" in table, table
 
 
 def test_the_all_rooms_list_carries_no_room_and_waits_by_its_own_tab():
@@ -190,6 +205,53 @@ def test_the_all_rooms_list_carries_no_room_and_waits_by_its_own_tab():
     assert "export function setProfile(id: string): void { _profile = id; _onScreen = id; }" in ts
     th = _web("components/trade/TradeHistory.tsx")
     assert "withProfile(ALL_ROOMS, () => tradeApi.historyRooms(dry, page, 5, q.trim()))" in th
+
+
+def test_the_cover_names_only_what_the_tab_shows(tmp_path):
+    """Checking the review fixes on the live site (Oct 14, 2026 10:20am,
+    Safari's engine): the Main tab's own list loaded at 1.2 s and the cover
+    stayed to 2.7 s saying "loading profit…" — a panel the Main tab does not
+    have — and a room tab waited on "loading past trades…", the hidden Main
+    list. With the API slow, as after a restart, that is 30 s and then a red
+    "still not loading" for something not on screen. Runs the page's own
+    code: each tab's cover names that tab's panels and nothing else."""
+    import json
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node is not installed")
+    (tmp_path / "loading.mts").write_text(_web("lib/loading.ts"), encoding="utf-8")
+    eight = ["summary", "positions", "strategies", "exchange keys",
+             "trade history", "profit", "runner feed", "past trades"]
+    waiting = [{"name": n, "waitedMs": 1000} for n in eight]
+    (tmp_path / "run.mjs").write_text(
+        'import { onTab, MAIN_TAB_PANELS, ROOM_PANELS } from "./loading.mts";\n'
+        f"const w = {json.dumps(waiting)};\n"
+        "console.log(JSON.stringify({ main: onTab(w, true).map((x) => x.name),\n"
+        "  room: onTab(w, false).map((x) => x.name),\n"
+        "  all: [...ROOM_PANELS, ...MAIN_TAB_PANELS] }));\n", encoding="utf-8")
+    out = subprocess.run([node, str(tmp_path / "run.mjs")], capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr
+    got = json.loads(out.stdout)
+    assert got["main"] == ["past trades"]
+    assert got["room"] == [n for n in eight if n != "past trades"]
+    # every name a trade panel reports is on exactly one tab's list
+    marked = set()
+    for f in (ROOT / "webapp/src/components/trade").glob("*.tsx"):
+        for call in re.findall(r"markReady\(([^)]*)\)", f.read_text(encoding="utf-8")):
+            marked |= set(re.findall(r'"([^"]+)"', call))
+    assert sorted(got["all"]) == sorted(marked) and len(got["all"]) == len(set(got["all"]))
+    # ...and the screen draws the cover, the blur and the busy flag from the
+    # TAB's list, while still watching every name from the first frame
+    s = _web("components/trade/AutoTradeScreen.tsx")
+    assert "begin([...ROOM_PANELS, ...MAIN_TAB_PANELS]);" in s
+    assert "const shown = onTab(waitlist, room === ALL_ROOMS);" in s
+    assert "<LoadingOverlay waitlist={shown} />" in s
+    blur = s[s.index("const blurred = !started"):].split(";")[0]
+    assert "shown" in blur and "waitlist" not in blur, blur
+    assert "waitlist.length" not in s
 
 
 def test_no_string_the_server_prints_says_main_for_a_room():

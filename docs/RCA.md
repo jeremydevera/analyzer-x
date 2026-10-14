@@ -172,6 +172,92 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-14-L — the Main tab's loading cover waited for panels the tab does not have ("loading profit…" over the all-rooms list), and its strategy cell ran into the next column at 1,024 and 1,280 px
+
+**CEO**
+
+* On the new Main tab the loading cover stayed over the list after the list
+  had loaded, saying "loading profit…" — a panel the Main tab does not have —
+  and every room tab waited the same way on "loading past trades…", the
+  hidden Main list. On narrower windows the strategy name ran into the
+  column beside it.
+* Why: the cover had one list of names for the whole screen, written when
+  every tab was a room with the same panels; and the table let its cells wrap
+  one at a time, as each one broke.
+* What stops it now: each tab's cover waits only for that tab's panels, and
+  every cell of the table can wrap a word that does not fit; tests run the
+  page's own code for the first and hold every cell for the second.
+
+**DEV**
+
+* `webapp/src/components/trade/AutoTradeScreen.tsx:149-158,225,239` (before
+  the fix): `begin()` took eight names and `blurred`, `<LoadingOverlay
+  waitlist={waitlist} />` and `busy` read the whole `waitlist` on every tab.
+  `webapp/src/components/trade/TradeHistory.tsx:259` `<Table fixed>` had no
+  wrap rule, so the strategy cell's `CopyableId` (a flex row, `#FQJDT7UX`)
+  and its key (`elder_15m_sl08tp1`, one word) could not wrap in 62 px.
+* Invariants broken: **a cover names only what is on screen**
+  (label-must-match-data — the lists are now `lib/loading.ts`
+  `MAIN_TAB_PANELS`/`ROOM_PANELS` and `onTab`); **in a fixed table text
+  wraps, never covers a neighbour**, held by one rule every cell inherits
+  (`[overflow-wrap:anywhere]` on the table), not cell by cell.
+* Guards: `tests/test_main_tab_shows_every_rooms_trades.py::test_the_cover_names_only_what_the_tab_shows`
+  (runs `onTab` under node; every `markReady` name is on exactly one tab's
+  list) and `::test_a_date_wraps_in_its_own_cell_instead_of_running_into_the_next`
+  (widened to every cell and the table's rule) — both red first.
+
+**SAW** — my own check of RCA-2026-10-14-K's fixes on the live site, in
+Safari's engine, Oct 14, 2026 10:11am: the 1,280 px screenshot of the Main
+tab blurred under "loading profit…", and the cell measure at 1,024 and
+1,280 px.
+
+**TIMELINE**
+
+1. Oct 14, 2026 9:25am — the Main tab goes live (c1be75cb3875) with the
+   cover's eight names watched screen-wide; the final review lists that as a
+   minor ("quick today, up to LATE_MS under a slow API").
+2. 10:07am — 5e12bfde6920 goes live: on the Main tab every room's panels now
+   load at the hidden-room pace, the "profit" the cover waits for among them.
+3. 10:11am — the check: the Main tab is still covered by "loading profit…"
+   seconds after its list loaded; the strategy cell overflows by 34 px at
+   1,024 px and 11 px at 1,280 px. The one-room table at the same widths:
+   none — the overflow is the Main tab's eleventh column.
+4. 10:14am — measured on a fresh browser: Main's list loaded at 1.2 s and the
+   cover lifted at 2.7 s, waiting only for "profit"; #55D32617's panels
+   loaded by 1.1 s and its cover lifted at 2.6 s, waiting only for "past
+   trades".
+5. Same morning — fixed with failing tests first; 75 related tests pass, tsc
+   clean; the page is rebuilt and both measures re-run.
+
+**ROOT CAUSE** — the cover's list of names belonged to the SCREEN, not the
+tab, from when every tab was a room with the same panels; the first tab with
+different panels inherited a list that was not its own. And the table's wrap
+rule was granted cell by cell, so each new column found the next cell that
+could not wrap.
+
+**WHY IT WAS NOT CAUGHT** — the final review saw the screen-wide list and
+graded it Minor because the cover lifted quickly that day: it graded the
+DURATION, while the fault is the WORD — "loading profit…" over a tab with no
+profit is false whether it shows for one second or thirty. The wrap guard of
+RCA-2026-10-14-K named the cells that had broken (dates, Room, id), a guard
+as wide as its last incident rather than its rule, and K's own summary said
+"every cell may wrap" from the source before its re-measure ran — the
+re-measure is what found this.
+
+**COST** — none in money; from 9:25am to this rebuild the Main tab was covered
+about 1.5 s longer than its list needed on a warm server (up to 30 s, then a
+red "still not loading" for a panel it does not have, on a slow one), a room
+tab waited the same way on the hidden list, and strategy names overlapped the
+next column at 1,024-1,280 px.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_main_tab_shows_every_rooms_trades.py`:
+`test_the_cover_names_only_what_the_tab_shows` and
+`test_a_date_wraps_in_its_own_cell_instead_of_running_into_the_next`.
+
+---
+
 ## RCA-2026-10-14-K — the new Main tab's list was sent as whichever room was on screen, its Room and id columns ran together below ~1,200 px, and it counted an unreadable room as examined
 
 **CEO**

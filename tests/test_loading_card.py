@@ -23,9 +23,15 @@ def _p(name: str) -> str:
 
 def test_the_screen_watches_all_seven_by_name():
     s = _p("AutoTradeScreen")
-    assert "<LoadingOverlay waitlist={waitlist} />" in s
+    # the names live in lib/loading.ts since Oct 14, 2026, one list per tab
+    # (the Main tab's cover named panels it does not show); the screen watches
+    # every one from the first frame and covers each tab with its own
+    assert "begin([...ROOM_PANELS, ...MAIN_TAB_PANELS]);" in s
+    assert "<LoadingOverlay waitlist={shown} />" in s
+    lists = open("webapp/src/lib/loading.ts", encoding="utf-8").read()
+    rooms = lists[lists.index("export const ROOM_PANELS"):lists.index("export function onTab")]
     for n in NAMES:
-        assert f'"{n}"' in s, n
+        assert f'"{n}"' in rooms, n
 
 
 def test_the_screen_is_blurred_until_fully_loaded():

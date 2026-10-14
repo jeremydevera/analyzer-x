@@ -256,7 +256,12 @@ export default function TradeHistory({ allRooms = false, active = true }: {
       </div>
 
       <div className="hidden w-full md:block">
-        <Table fixed>
+        {/* A WORD THAT CANNOT FIT BREAKS, in every cell (Oct 14, 2026): the
+            Main tab's eleventh column left the strategy cell 62 px at 1,024
+            px for "elder_15m_sl08tp1", 96 px of one word, and it ran into the
+            reason beside it. Inherited, so a long coin or reason is held too;
+            words with spaces still break at the spaces first. */}
+        <Table fixed className="[overflow-wrap:anywhere]">
           <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
             <TableRow>
               {heads.map((h) => (
@@ -268,7 +273,7 @@ export default function TradeHistory({ allRooms = false, active = true }: {
             {(d?.rows ?? []).map((r, i) => (
               <TableRow key={`${r.ts}-${i}`}>
                 {searching && (
-                  <TableCell className="whitespace-nowrap px-2 py-1.5 text-theme-xs">
+                  <TableCell className="px-2 py-1.5 text-theme-xs">
                     <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${r.book === "demo"
                       ? "bg-gray-100 text-gray-600 dark:bg-white/[0.08] dark:text-gray-300"
                       : "bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-400"}`}>

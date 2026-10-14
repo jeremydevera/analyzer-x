@@ -3,7 +3,7 @@
  * than the ribbon and it carries the close control), and a close bumps `tick`
  * so the ribbon's totals re-read instead of showing a position that is gone. */
 import { memo, useCallback, useEffect, useState } from "react";
-import { LATE_MS, begin } from "@/lib/loading";
+import { LATE_MS, MAIN_TAB_PANELS, ROOM_PANELS, begin, onTab } from "@/lib/loading";
 import LoadingOverlay, { useWaitlist } from "./LoadingCard";
 import SummaryRibbon from "./SummaryRibbon";
 import PositionsPanel from "./PositionsPanel";
@@ -146,16 +146,18 @@ export default function AutoTradeScreen() {
   // sharp for ~1s before the blur landed (measured 396ms, Sep 09, 2026)
   const [started, setStarted] = useState(false);
   useEffect(() => {
-    begin(["summary", "positions", "strategies", "exchange keys",
-           "trade history", "profit", "runner feed", "past trades"]);
+    begin([...ROOM_PANELS, ...MAIN_TAB_PANELS]);
     setStarted(true);
   }, []);
   // BLURRED until fully loaded (the operator's design) — but a name stuck
   // past LATE_MS drops the blur: the loaded panels are usable and the stuck
   // one is red, on the overlay and in its own panel. Frosted glass must
   // never become a lock.
+  // ...and only what THIS tab shows: the Main tab waits for its one list,
+  // a room tab for the room's panels (lib/loading.ts onTab, Oct 14, 2026)
+  const shown = onTab(waitlist, room === ALL_ROOMS);
   const blurred = !started
-    || (waitlist.length > 0 && waitlist.every((w) => w.waitedMs <= LATE_MS));
+    || (shown.length > 0 && shown.every((w) => w.waitedMs <= LATE_MS));
   return (
     <div className="relative">
       <div role="tablist" aria-label="Trading rooms"
@@ -222,7 +224,7 @@ export default function AutoTradeScreen() {
           );
         })}
       </div>
-      <LoadingOverlay waitlist={waitlist} />
+      <LoadingOverlay waitlist={shown} />
       {/* EVERY ROOM STAYS LOADED (operator, Oct 01, 2026: "when i switch tabs
           you forget it ... when i click auto trade tab, load all the info for
           all, then i want all the numbers updating in realtime"). Each room
@@ -236,7 +238,7 @@ export default function AutoTradeScreen() {
       )}
       {room && PROFILES.map((p) => (
         <RoomBody key={p.id} id={p.id} active={p.id === room}
-                  busy={p.id === room && waitlist.length > 0}
+                  busy={p.id === room && shown.length > 0}
                   blurred={p.id === room && blurred} tick={tick} bump={bump} />
       ))}
     </div>

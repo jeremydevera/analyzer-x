@@ -4,6 +4,13 @@
  * Five rows a page, numbered — a wall of 200 rows hides a trade as
  * effectively as a net figure does. The running total is computed over the
  * whole book, so page 3's "running $" is the real one, not the page's.
+ *
+ * `allRooms` (operator, Oct 14, 2026: "the main tab is for seeing all room
+ * strategy past trades"): the same panel over EVERY room strategy, a Room
+ * column first, asked of /api/trade/history/rooms — the server merges,
+ * searches (trade, strategy or room id) and pages. It is the Main tab's
+ * only panel, outside any room, so it refreshes every 15 s while another
+ * tab is on screen (`active`), as a room behind its tab does.
  */
 import { useEffect, useRef, useState } from "react";
 import { markReady } from "@/lib/loading";
@@ -31,8 +38,11 @@ function pageNumbers(page: number, pages: number): number[] {
   return Array.from({ length: b - a + 1 }, (_, i) => a + i);
 }
 
-export default function TradeHistory() {
-  // this panel's own room, even while its tab is not the one on screen
+export default function TradeHistory({ allRooms = false, active = true }: {
+  allRooms?: boolean; active?: boolean;
+} = {}) {
+  // this panel's own room, even while its tab is not the one on screen; the
+  // all-rooms list sits outside every room, so its calls carry none
   const { tradeApi } = useRoomApis();
   const [dry, setDry] = useState(false);
   const [page, setPage] = useState(1);
@@ -57,6 +67,11 @@ export default function TradeHistory() {
   // where the data is).
   const [q, setQ] = useState("");
   const searching = q.trim().length > 0;
+  // OPEN ON THE BOOK THAT HAS TRADES (the all-rooms list, Oct 14, 2026), as
+  // PnlPanel does: no room trades real money, so LIVE would open on an empty
+  // list. Until the operator picks a book, an empty LIVE answer moves it to
+  // DEMO; once they pick, it stays picked.
+  const picked = useRef(false);
 
   // EVERY 5 SECONDS, and the instant the tab is looked at again. It used to
   // load ONCE and re-fetch only after a failure, so a trade that closed while
@@ -70,37 +85,53 @@ export default function TradeHistory() {
   useEffect(() => { wantNow.current = want; }, [want]);
   useLiveRefresh(() => {
     const asked = `${dry}|${page}|${q.trim()}`;
-    tradeApi.history(dry, page, 5, q.trim())
+    (allRooms ? tradeApi.historyRooms(dry, page, 5, q.trim()) : tradeApi.history(dry, page, 5, q.trim()))
       .then((r) => {
         if (asked !== wantNow.current) return;      // a late answer for what is no longer shown
-        setGot({ key: asked, data: r }); setErr(""); markReady("trade history");
+        if (allRooms && !picked.current && !dry && !q.trim() && r.total === 0) {
+          setDry(true); setPage(1); return;         // nothing on LIVE: open on DEMO
+        }
+        setGot({ key: asked, data: r }); setErr(""); markReady(allRooms ? "past trades" : "trade history");
       })
       .catch((e) => setErr(String(e)));
-  }, 5_000, [dry, page, q]);
+  }, allRooms && !active ? 15_000 : 5_000, [dry, page, q, active]);
   // only the answer for what is on screen; while it is on its way, "reading"
   const d = got && got.key === want ? got.data : null;
   const reading = got !== null && got.key !== want;
 
   // a new book or a new search starts on page 1 — set in the same click, so
   // the panel never asks for the old page of the new book first
-  const pickBook = (v: boolean) => { setDry(v); setPage(1); };
+  const pickBook = (v: boolean) => { picked.current = true; setDry(v); setPage(1); };
   const search = (v: string) => { setQ(v); setPage(1); };
 
   const t = d?.totals;
+  // the Room column leads the all-rooms list (and "book" leads a search)
+  const heads = allRooms ? [...(searching ? ["book"] : []), "room", ...HEADS]
+    : (searching ? HEADS_SEARCH : HEADS);
+  const nRooms = d?.rooms?.length ?? 0;
   return (
     <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="flex flex-wrap items-center gap-3 px-5 pt-4">
         <div>
-          <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Trade history</h3>
+          <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">
+            {allRooms ? "Past trades — all room strategies" : "Trade history"}
+          </h3>
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">
             {searching
               ? (d
                   ? `${d.total} trade${d.total === 1 ? "" : "s"} matching `
                     + `${d.q ?? q} on BOTH books, of ${d.examined ?? 0} closed`
                   : "searching both books")
-              : `every closed trade${d ? ` · ${d.total} on this book` : reading ? ` · reading the ${dry ? "demo" : "live"} book…` : ""}`}
+              : `every closed trade${allRooms && d ? ` of ${nRooms} room strateg${nRooms === 1 ? "y" : "ies"}` : ""}${d ? ` · ${d.total} on this book` : reading ? ` · reading the ${dry ? "demo" : "live"} book…` : ""}`}
             {t && t.trades ? ` · ${t.wins}W / ${t.losses}L · ${fmtMoney(t.profit)} total` : ""}
           </p>
+          {/* a room whose record could not be read is NAMED, and the others
+              still show (all-rooms list) */}
+          {allRooms && d?.unreadable?.length ? (
+            <p className="text-theme-xs text-error-500">
+              {d.unreadable.map((u) => u.name).join(", ")} could not be read — {d.unreadable[0].why}
+            </p>
+          ) : null}
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {/* Type a trade id or a strategy id — with or without the #, either
@@ -109,7 +140,7 @@ export default function TradeHistory() {
           <div className="relative">
             <input value={q} onChange={(e) => search(e.target.value)}
               id="trade-history-search"
-              placeholder="find by id, e.g. LG9NSU4B"
+              placeholder={allRooms ? "find by trade, strategy or room id" : "find by id, e.g. LG9NSU4B"}
               className="h-8 w-56 rounded-lg border border-gray-200 bg-transparent px-2 pr-7 font-mono text-theme-xs text-gray-700 placeholder:font-sans placeholder:text-gray-400 dark:border-gray-700 dark:text-gray-300" />
             {searching && (
               <button type="button" onClick={() => search("")} title="clear the search"
@@ -155,6 +186,11 @@ export default function TradeHistory() {
             className="rounded-xl border border-gray-200 p-3 dark:border-white/[0.07]">
             <div className="flex items-start justify-between gap-2">
               <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                {allRooms && (
+                  <span className="font-mono text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
+                    {r.room_name ?? "—"}
+                  </span>
+                )}
                 {searching && (
                   <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${r.book === "demo"
                     ? "bg-gray-100 text-gray-600 dark:bg-white/[0.08] dark:text-gray-300"
@@ -205,10 +241,12 @@ export default function TradeHistory() {
         {d && !d.rows.length && (
           <p className="py-3 text-theme-sm text-gray-500 dark:text-gray-400">
             {searching
-              ? `No trade or strategy id matching ${d.q ?? q} in the `
-                + `${d.examined ?? 0} closed trades on either book — `
+              ? `No ${allRooms ? "trade, strategy or room" : "trade or strategy"} id matching ${d.q ?? q} in the `
+                + `${d.examined ?? 0} closed trades${allRooms ? ` of ${nRooms} rooms` : ""} on either book — `
                 + "ids are 8 characters, and the # is optional."
-              : `No closed trades on the ${dry ? "demo" : "live"} book yet.`}
+              : allRooms
+                ? `No closed trades on the ${dry ? "demo" : "live"} book in the ${nRooms} rooms examined.`
+                : `No closed trades on the ${dry ? "demo" : "live"} book yet.`}
           </p>
         )}
       </div>
@@ -217,7 +255,7 @@ export default function TradeHistory() {
         <Table fixed>
           <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
             <TableRow>
-              {(searching ? HEADS_SEARCH : HEADS).map((h) => (
+              {heads.map((h) => (
                 <TableCell key={h} isHeader className="px-2 py-1.5 text-theme-xs font-medium text-gray-500 text-start dark:text-gray-400">{h}</TableCell>
               ))}
             </TableRow>
@@ -232,6 +270,11 @@ export default function TradeHistory() {
                       : "bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-400"}`}>
                       {r.book === "demo" ? "demo" : "live"}
                     </span>
+                  </TableCell>
+                )}
+                {allRooms && (
+                  <TableCell className="whitespace-nowrap px-2 py-1.5 font-mono text-theme-xs font-semibold text-gray-800 dark:text-white/90">
+                    {r.room_name ?? "—"}
                   </TableCell>
                 )}
                 <TableCell className="whitespace-nowrap px-2 py-1.5 font-mono text-theme-xs text-gray-800 dark:text-white/90">
@@ -270,10 +313,12 @@ export default function TradeHistory() {
                     Sep 12, 2026, where a panel spoke for 893,508 rows after
                     examining 25. */}
                 {searching
-                  ? `No trade or strategy id matching ${d.q ?? q} in the `
-                    + `${d.examined ?? 0} closed trades on either book — `
+                  ? `No ${allRooms ? "trade, strategy or room" : "trade or strategy"} id matching ${d.q ?? q} in the `
+                    + `${d.examined ?? 0} closed trades${allRooms ? ` of ${nRooms} rooms` : ""} on either book — `
                     + "ids are 8 characters, and the # is optional."
-                  : `No closed trades on the ${dry ? "demo" : "live"} book yet.`}
+                  : allRooms
+                    ? `No closed trades on the ${dry ? "demo" : "live"} book in the ${nRooms} rooms examined.`
+                    : `No closed trades on the ${dry ? "demo" : "live"} book yet.`}
               </TableCell></TableRow>
             )}
           </TableBody>

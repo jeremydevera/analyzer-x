@@ -13,13 +13,12 @@
  * since — paged and checked by the server, never filtered here.
  */
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { api, dateBoxAt, dateBoxValue, fmtMoney, fmtWhen, fmtWhenMs, Forecast, Forecasts, ForecastsLive, RoomGroup, RoomNow, RoomReplay, RoomStrategies, RoomStrategyTrades, RRDay, RREvent, RRSide, RRTrade } from "@/lib/api";
+import { api, dateBoxAt, dateBoxValue, fmtMoney, fmtWhen, fmtWhenMs, Forecast, Forecasts, ForecastsLive, RoomGroup, RoomNow, RoomReplay, RoomStrategies, RoomStrategyTrades, RRDay, RREvent, RRSide, RRTrade, roomName } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
 import PageButtons from "@/components/common/PageButtons";
 import DayPicker from "@/components/form/DayPicker";
 import { Modal } from "@/components/ui/modal";
 
-const roomName = (id: string) => (id === "main" ? "Main" : `#${id}`);
 const pct = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(1)}%`);
 const tone = (v: number | null | undefined) =>
   v == null ? "text-gray-500 dark:text-gray-400" : v >= 0 ? "text-success-600" : "text-error-500";

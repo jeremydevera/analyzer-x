@@ -13,7 +13,7 @@
  * on purpose. An empty list names what it EXAMINED.
  */
 import { useCallback, useState } from "react";
-import { api, ErrorIssue, fmtWhen, RoomErrors } from "@/lib/api";
+import { api, ErrorIssue, fmtWhen, RoomErrors, roomName } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
 
 const WINDOWS: [number, string][] = [[1, "last hour"], [6, "last 6 hours"],
@@ -73,7 +73,7 @@ export default function DeployedTabsErrors() {
                   className={`rounded-xl border p-3 text-start ${room === r.room
                     ? "border-brand-500" : "border-gray-200 dark:border-gray-700"}`}>
                   <p className="flex items-center justify-between text-theme-sm font-semibold text-gray-800 dark:text-white/90">
-                    {r.room === "main" ? "Main" : `#${r.room}`}
+                    {roomName(r.room)}
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${r.running
                       ? "bg-success-50 text-success-600 dark:bg-success-500/15" : "bg-error-50 text-error-600 dark:bg-error-500/15"}`}>
                       {r.running ? "running" : "NOT RUNNING"}
@@ -101,7 +101,7 @@ export default function DeployedTabsErrors() {
           <div className="mt-4 flex flex-wrap items-center gap-2 text-theme-xs text-gray-500 dark:text-gray-400">
             <select aria-label="Room" className={sel} value={room} onChange={(e) => pick(() => setRoom(e.target.value))}>
               <option value="">every tab</option>
-              {d.rooms.map((r) => <option key={r.room} value={r.room}>{r.room === "main" ? "Main" : `#${r.room}`}</option>)}
+              {d.rooms.map((r) => <option key={r.room} value={r.room}>{roomName(r.room)}</option>)}
             </select>
             <select aria-label="Kind" className={sel} value={kind} onChange={(e) => pick(() => setKind(e.target.value))}>
               <option value="">every kind</option>
@@ -117,7 +117,7 @@ export default function DeployedTabsErrors() {
             )}
             <span className="ml-auto">
               {d.events.toLocaleString()} error{d.events === 1 ? "" : "s"} in {d.groups.toLocaleString()} group{d.groups === 1 ? "" : "s"}
-              {" · "}{room ? (room === "main" ? "Main" : `#${room}`) : "every tab"}
+              {" · "}{room ? roomName(room) : "every tab"}
               {kind ? ` · ${d.kinds.find((k) => k.kind === kind)?.label ?? kind}` : ""} · {windowName}
             </span>
           </div>
@@ -144,7 +144,7 @@ export default function DeployedTabsErrors() {
                 <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                   {d.rows.map((g) => (
                     <tr key={`${g.room}|${g.kind}|${g.first}|${g.message}`}>
-                      <td className="px-2 py-1.5 whitespace-nowrap text-gray-700 dark:text-gray-300">{g.room === "main" ? "Main" : `#${g.room}`}</td>
+                      <td className="px-2 py-1.5 whitespace-nowrap text-gray-700 dark:text-gray-300">{roomName(g.room)}</td>
                       <td className="px-2 py-1.5 whitespace-nowrap font-medium text-error-500">{g.label}</td>
                       <td className="px-2 py-1.5 text-end text-gray-700 dark:text-gray-300">{g.count.toLocaleString()}</td>
                       <td className="px-2 py-1.5 whitespace-nowrap text-gray-500">{fmtWhen(g.first)}</td>

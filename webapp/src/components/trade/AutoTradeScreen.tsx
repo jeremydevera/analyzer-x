@@ -20,16 +20,25 @@ import { rules } from "./WatcherPanel";
 import { RoomScope } from "@/lib/room";
 
 const ROOM_KEY = "ta-auto-trade-room";
+// THE MAIN TAB IS NOT A ROOM (operator, Oct 14, 2026: "the main tab is a room
+// strategy so what i want is to assign and id for it and create a new tab for
+// it / the main tab is for seeing all room strategy past trades"): it shows
+// every room strategy's closed trades and nothing else. The room that was
+// Main is the #09439DC2 tab right after it (its id is still "main").
+const ALL_ROOMS = "all";
 
 /** The room the screen opens on: the one last picked on this browser, else
  *  Main. Applied to every request BEFORE any panel mounts and fetches. */
 function firstRoom(): string {
-  let id = "main";
+  let id = ALL_ROOMS;
   try {
     const got = typeof window !== "undefined" ? window.localStorage.getItem(ROOM_KEY) : null;
-    if (got && PROFILES.some((p) => p.id === got)) id = got;
-  } catch { /* storage blocked: Main */ }
-  setProfile(id);
+    // a saved "main" is the SAME room as before, now named #09439DC2
+    if (got && (got === ALL_ROOMS || PROFILES.some((p) => p.id === got))) id = got;
+  } catch { /* storage blocked: the all-rooms Main tab */ }
+  // the all-rooms list is no room: every call outside a room goes as Main's
+  // always did, with no room header
+  if (id !== ALL_ROOMS) setProfile(id); else setProfile("main");
   return id;
 }
 
@@ -58,6 +67,22 @@ const RoomBody = memo(function RoomBody({ id, active, busy, blurred, tick, bump 
   );
 });
 
+/** THE MAIN TAB'S BODY: the all-rooms past trades and nothing else (Oct 14,
+ *  2026: "the main tab is for seeing all room strategy past trades"). Kept
+ *  mounted and only hidden, like every room, so a click shows it at once. */
+function AllRoomsBody({ hidden, blurred, children }: {
+  hidden: boolean; blurred: boolean; children: React.ReactNode;
+}) {
+  return (
+    <div data-room="all" hidden={hidden}
+         className={`min-w-0 flex-col gap-5 ${hidden ? "" : "flex"} ${blurred
+           ? "pointer-events-none select-none blur-sm"
+           : ""}`}>
+      {children}
+    </div>
+  );
+}
+
 export default function AutoTradeScreen() {
   // FOLDER TABS, ONE ROOM EACH (operator, Sep 29, 2026: "when i switch to
   // B52662ED i should see its own tiles, own live trade, own demo trade, own
@@ -70,7 +95,7 @@ export default function AutoTradeScreen() {
   const [room, setRoom] = useState<string | null>(null);
   useEffect(() => { setRoom(firstRoom()); }, []);
   const pick = (id: string) => {
-    setProfile(id);
+    if (id !== ALL_ROOMS) setProfile(id); else setProfile("main");
     try { window.localStorage.setItem(ROOM_KEY, id); } catch { /* blocked */ }
     setRoom(id);
   };
@@ -122,7 +147,7 @@ export default function AutoTradeScreen() {
   const [started, setStarted] = useState(false);
   useEffect(() => {
     begin(["summary", "positions", "strategies", "exchange keys",
-           "trade history", "profit", "runner feed"]);
+           "trade history", "profit", "runner feed", "past trades"]);
     setStarted(true);
   }, []);
   // BLURRED until fully loaded (the operator's design) — but a name stuck
@@ -135,6 +160,18 @@ export default function AutoTradeScreen() {
     <div className="relative">
       <div role="tablist" aria-label="Trading rooms"
            className="mb-4 flex flex-wrap gap-1 border-b border-gray-200 dark:border-gray-700">
+        {/* MAIN: every room strategy's past trades — not a room, so no "i" */}
+        <div className={`relative -mb-px flex items-center rounded-t-lg border ${room === ALL_ROOMS
+          ? "border-gray-200 border-b-white bg-white dark:border-gray-700 dark:border-b-gray-900 dark:bg-gray-900"
+          : "border-transparent"}`}>
+          <button role="tab" type="button" aria-selected={room === ALL_ROOMS}
+            onClick={() => pick(ALL_ROOMS)}
+            className={`px-4 py-2 text-theme-sm font-medium ${room === ALL_ROOMS
+              ? "text-brand-600 dark:text-brand-400"
+              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"}`}>
+            Main
+          </button>
+        </div>
         {PROFILES.map((p) => {
           const r = rooms?.find((x) => x.id === p.id);
           return (
@@ -158,7 +195,7 @@ export default function AutoTradeScreen() {
                 className="absolute left-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white p-4 text-theme-xs shadow-lg dark:border-gray-700 dark:bg-gray-900">
                 <p className="flex items-center gap-1 text-theme-sm font-semibold text-gray-800 dark:text-white/90">
                   {/* the room's id with a copy button (Oct 02, 2026) */}
-                  {p.id === "main" ? p.name : <CopyableId id={p.id} prefix="#" />}
+                  <CopyableId id={p.display_id ?? p.id} prefix="#" />
                   <span>— its rules</span>
                 </p>
                 {infoErr && <p className="mt-2 text-error-500">{infoErr}</p>}
@@ -192,6 +229,11 @@ export default function AutoTradeScreen() {
           is mounted once, inside its own RoomScope, and only HIDDEN when
           another tab is picked — so a click shows numbers already there, and
           a room behind its tab keeps refreshing (lib/room.tsx BEHIND_MS). */}
+      {room && (
+        <AllRoomsBody hidden={room !== ALL_ROOMS} blurred={room === ALL_ROOMS && blurred}>
+          <TradeHistory allRooms active={room === ALL_ROOMS} />
+        </AllRoomsBody>
+      )}
       {room && PROFILES.map((p) => (
         <RoomBody key={p.id} id={p.id} active={p.id === room}
                   busy={p.id === room && waitlist.length > 0}

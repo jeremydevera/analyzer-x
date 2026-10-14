@@ -30,7 +30,8 @@ def _src(rel: str) -> str:
 
 def test_a_late_answer_for_the_other_book_is_dropped():
     s = _src("webapp/src/components/trade/TradeHistory.tsx")
-    load = s[s.index("useLiveRefresh(() => {"):s.index("}, 5_000, [dry, page, q]);")]
+    # the interval is 15 s for the all-rooms list behind its tab (Oct 14, 2026)
+    load = s[s.index("useLiveRefresh(() => {"):s.index("}, allRooms && !active ? 15_000 : 5_000, [dry, page, q, active]);")]
     assert "const asked = `${dry}|${page}|${q.trim()}`;" in load
     assert "if (asked !== wantNow.current) return;" in load, "a late answer is dropped"
     assert "setD(" not in s, "no answer reaches the screen without its key"
@@ -44,7 +45,9 @@ def test_a_new_book_starts_on_page_one_in_the_same_click():
     asked for the old page of the new book."""
     s = _src("webapp/src/components/trade/TradeHistory.tsx")
     assert "useEffect(() => { setPage(1); }" not in s
-    assert "const pickBook = (v: boolean) => { setDry(v); setPage(1); };" in s
+    # `picked` (Oct 14, 2026): once the operator picks a book, the all-rooms
+    # list stops moving to the book that has trades
+    assert "const pickBook = (v: boolean) => { picked.current = true; setDry(v); setPage(1); };" in s
     assert "onClick={() => pickBook(v)}" in s and "onClick={() => setDry(v)}" not in s
 
 

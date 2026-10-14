@@ -132,8 +132,13 @@ function freeLane(behind = false, chrome = false): void {
 // the three before them were switched off. OFF MEANS NO TAB (Oct 01, 2026:
 // "if i say off you should completely remoev the tab"): a retired room is not
 // listed here at all. Held equal to profiles.shown() by a test.
-export const PROFILES: readonly { id: string; name: string }[] = [
-  { id: "main", name: "Main" },
+export const PROFILES: readonly { id: string; name: string; display_id?: string }[] = [
+  // THE ROOM THAT WAS MAIN (operator, Oct 14, 2026: "the main tab is a room
+  // strategy so what i want is to assign and id for it and create a new tab
+  // for it"): its id stays "main" (its folder and its runner), its NAME is
+  // #09439DC2 — the id of its rules, as profiles.MAIN_DISPLAY_ID says. The
+  // word "Main" names the all-rooms past trades tab (AutoTradeScreen).
+  { id: "main", name: "#09439DC2", display_id: "09439DC2" },
   { id: "55D32617", name: "#55D32617" },
   { id: "4FC03172", name: "#4FC03172" },
   { id: "B2404C0B", name: "#B2404C0B" },
@@ -147,6 +152,13 @@ export const PROFILES: readonly { id: string; name: string }[] = [
   { id: "1D4274C1", name: "#1D4274C1" },
   { id: "8F0C7926", name: "#8F0C7926" },
 ];
+
+/** How a room is PRINTED — the one place in the browser, as
+ *  profiles.name_of is on the server: "#09439DC2" for the room whose id is
+ *  "main", "#<id>" for every other room, listed or not. */
+export function roomName(id: string): string {
+  return PROFILES.find((p) => p.id === id)?.name ?? `#${id}`;
+}
 let _profile = "main";
 export function setProfile(id: string): void { _profile = id; }
 export function currentProfile(): string { return _profile; }
@@ -2013,6 +2025,9 @@ export interface HistoryRow {
    *  that does not say which book it is on turns two trades into one — which
    *  is how #MTX4FSGN read as a single trade for a whole evening. */
   book?: string;
+  /** the all-rooms list only (Oct 14, 2026): which room strategy took it —
+   *  its id and its printed name ("#09439DC2" for the room whose id is main) */
+  room?: string; room_name?: string;
 }
 
 export interface MonthRow {
@@ -2031,6 +2046,9 @@ export interface HistoryPayload {
   examined?: number;
   /** which books this answer covers: both while searching */
   books?: string[];
+  /** the all-rooms list only: the rooms it covered, and any it could not read */
+  rooms?: { room: string; name: string }[];
+  unreadable?: { room: string; name: string; why: string }[];
 }
 
 /** What the RUNNER's own websocket is seeing. Read from the status the feed
@@ -2075,6 +2093,12 @@ export const tradeApi = {
    *  happened. Sent to the server, never filtered in the browser. */
   history: (dry: boolean, page = 1, per_page = 5, q = "") =>
     get<HistoryPayload>(`/api/trade/history?dry=${dry}&page=${page}`
+      + `&per_page=${per_page}&q=${encodeURIComponent(q)}`),
+  // EVERY room strategy's closed trades (Oct 14, 2026: "the main tab is for
+  // seeing all room strategy past trades"), searched and paged by the server
+  // (tradingagents/api.py trade_history_rooms)
+  historyRooms: (dry: boolean, page = 1, per_page = 5, q = "") =>
+    get<HistoryPayload>(`/api/trade/history/rooms?dry=${dry}&page=${page}`
       + `&per_page=${per_page}&q=${encodeURIComponent(q)}`),
   positions: () => get<PositionsPayload>("/api/trade/positions"),
   /** the runner's live websocket: connection state and the last price

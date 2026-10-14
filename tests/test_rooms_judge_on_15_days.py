@@ -213,7 +213,7 @@ def test_a_retired_room_switches_nothing_on():
 def test_the_screen_lists_the_same_rooms():
     ts = (ROOT / "webapp/src/lib/api.ts").read_text(encoding="utf-8")
     block = ts.split("export const PROFILES", 1)[1].split("];", 1)[0]
-    ids = re.findall(r'id: "([^"]+)"', block)
+    ids = re.findall(r'\bid: "([^"]+)"', block)   # not the room that was Main's display_id
     # OFF MEANS NO TAB (Oct 01, 2026): a retired room is not on the screen
     assert ids == profiles.shown()
     assert not {"DC57174E", "CC8DC54C", "B52662ED"} & set(ids)

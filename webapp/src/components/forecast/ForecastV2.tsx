@@ -17,12 +17,11 @@
 import { Fragment, type ReactNode, useCallback, useState } from "react";
 import {
   api, fmtMoney, fmtWhen, fmtWhenMs, F2Rule, F2RulePage, F2RuleQuery, F2Streak, F2StreakPage,
-  F2Summary,
+  F2Summary, roomName,
 } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
 import PageButtons from "@/components/common/PageButtons";
 
-const roomName = (id: string) => (id === "main" ? "Main" : `#${id}`);
 const pct = (v: number | null | undefined) => (v == null ? "—" : `${v.toFixed(1)}%`);
 const tone = (v: number | null | undefined) =>
   v == null ? "text-gray-500 dark:text-gray-400" : v >= 0 ? "text-success-600" : "text-error-500";

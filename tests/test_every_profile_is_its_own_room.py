@@ -209,7 +209,8 @@ def test_the_screen_offers_exactly_the_servers_rooms():
     api_ts = _src("webapp/src/lib/api.ts")
     block = api_ts[api_ts.index("export const PROFILES"):]
     block = block[:block.index("];")]
-    assert re.findall(r'id: "([^"]+)"', block) == profiles.shown()
+    # \b: `display_id: "09439DC2"` (the room that was Main, Oct 14, 2026) is not an id
+    assert re.findall(r'\bid: "([^"]+)"', block) == profiles.shown()
 
 
 def test_every_trade_call_names_its_room_and_nothing_else_does():
@@ -242,7 +243,12 @@ def test_every_room_stays_loaded_in_its_own_scope():
         src = _src(f"webapp/src/components/trade/{f}.tsx")
         assert "= useRoomApis();" in src, f
         imp = [ln for ln in src.splitlines() if ln.startswith("import") and '"@/lib/api"' in ln]
-        assert not any(re.search(r"(api|tradeApi)", ln) for ln in imp),             f"{f} imports the unbound api — its calls would go to the room on screen"
+        # the NAMES between the braces, never the "@/lib/api" path. Until Oct 14,
+        # 2026 this pattern held two backspace characters where "\b" was meant,
+        # so it could never match and the guard never fired; written as "\b"
+        # over the whole line, it matched the path and always fired.
+        assert not any(re.search(r"\{[^}]*\b(api|tradeApi)\b[^}]*\}", ln) for ln in imp), \
+            f"{f} imports the unbound api — its calls would go to the room on screen"
     live = _src("webapp/src/lib/live.ts")
     assert "withProfile(id, () => fn.current())" in live
     assert "Math.max(ms, BEHIND_MS)" in live
@@ -323,7 +329,8 @@ def test_the_i_popup_is_read_ahead_copies_the_id_and_says_when_deployed(tmp_path
     open_info = screen[screen.index("const openInfo = (id: string) => {"):]
     open_info = open_info[:open_info.index("};")]
     assert "api.profiles()" not in open_info, "the click must not wait for a request"
-    assert '<CopyableId id={p.id} prefix="#" />' in screen
+    # every room's own id, the room that was Main's #09439DC2 included (Oct 14, 2026)
+    assert '<CopyableId id={p.display_id ?? p.id} prefix="#" />' in screen
     assert "deployed {fmtWhen(r.deployed_at)}" in screen
     led = tmp_path / "ledger.jsonl"
     led.write_text('{"ts": 1790810794, "action": "runner_start"}\n{"ts": 1790900000, "action": "runner_start"}\n',

@@ -103,3 +103,46 @@ def test_the_one_room_history_is_unchanged(two_rooms):
     assert [r["id"] for r in one["rows"]] == ["SAME0000", "AAAA1111"]
     assert [r["running"] for r in one["rows"]] == [0.5, 1.0]
     assert "room" not in one["rows"][0]
+
+
+# ------------------------------------------------------------- the page
+def _web(rel: str) -> str:
+    return (ROOT / "webapp/src" / rel).read_text(encoding="utf-8")
+
+
+def test_the_main_tab_draws_only_the_all_rooms_list():
+    s = _web("components/trade/AutoTradeScreen.tsx")
+    assert 'const ALL_ROOMS = "all";' in s
+    assert "<TradeHistory allRooms active={room === ALL_ROOMS} />" in s
+    body = s[s.index("<AllRoomsBody"):]
+    body = body[:body.index("</AllRoomsBody>")]
+    for panel in ("SummaryRibbon", "PositionsPanel", "StrategiesGrid", "WatcherPanel",
+                  "CredentialsPanel", "PnlPanel", "FeedPanel"):
+        assert panel not in body, panel
+    # a browser that saved the old "main" opens the SAME room (#09439DC2);
+    # nothing saved, or something unknown, opens the all-rooms Main tab
+    first = s[s.index("function firstRoom"):s.index("/** ONE ROOM'S PANELS")]
+    assert "let id = ALL_ROOMS;" in first
+    assert 'if (id !== ALL_ROOMS) setProfile(id); else setProfile("main");' in s
+    assert '"past trades"' in s[s.index("begin(["):s.index("setStarted(true)")]
+
+
+def test_one_name_for_the_room_that_was_main_on_every_screen():
+    ts = _web("lib/api.ts")
+    assert '{ id: "main", name: "#09439DC2", display_id: "09439DC2" },' in ts
+    assert "export function roomName(id: string): string" in ts
+    for rel in ("components/errors/DeployedTabsErrors.tsx", "components/forecast/ForecastV2.tsx",
+                "components/forecast/RoomForecasts.tsx", "components/trade/AutoTradeScreen.tsx"):
+        src = _web(rel)
+        assert '=== "main" ? "Main"' not in src and '"main" ? p.name' not in src, rel
+        assert "const roomName = " not in src, rel
+
+
+def test_the_all_rooms_list_asks_the_server_and_waits_behind_its_tab():
+    th = _web("components/trade/TradeHistory.tsx")
+    assert "tradeApi.historyRooms(dry, page, 5, q.trim())" in th
+    assert "allRooms && !active ? 15_000 : 5_000" in th
+    assert 'markReady(allRooms ? "past trades" : "trade history")' in th
+    code = re.sub(r"/\*.*?\*/|//[^\n]*", "", th, flags=re.S)        # code, not the comments
+    assert ".filter(" not in code, "the server searches and pages"
+    assert 'historyRooms: (dry: boolean, page = 1, per_page = 5, q = "") =>' in _web("lib/api.ts")

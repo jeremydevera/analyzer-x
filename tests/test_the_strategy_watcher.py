@@ -452,7 +452,11 @@ def test_your_own_practice_row_under_the_line_is_switched_off(world):
     assert "YOUR practice rows" in offs[0]["why"] and "89.66%" in offs[0]["why"]
     s = world["settings"]
     assert s["strategy_coins"][key] == [], "empty list, never a missing key"
-    assert HAND not in s["strategy_books"] and HAND not in s["strategy_res"]
+    assert HAND not in s["strategy_books"]
+    # ...and its Backtest note STAYS: the trades it made keep printing their
+    # Backtest id after the switch-off (operator, Oct 14, 2026: "the id in
+    # practice should be same as backtest id period"; RCA-2026-10-14-M)
+    assert s["strategy_res"][HAND] == "1m"
     assert rid in sw._read()["cooling"], "it waits 7 days like any switch-off"
 
 

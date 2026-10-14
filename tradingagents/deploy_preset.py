@@ -158,7 +158,13 @@ def merged(preset: dict, settings: dict) -> dict:
             if out.get(field):
                 out[field] = {k: v for k, v in out[field].items()
                               if k in got["arm"]}
-        out["strategy_res"] = _res_map(got)
+        # ...but NOT the notes of what it switches off: they name those
+        # slots' past trades by their Backtest id (RCA-2026-10-14-M), the same
+        # rule a watcher switch-off keeps. Only the armed slots change.
+        armed = _armed_slots(got)
+        out["strategy_res"] = {**{k: v for k, v in (out.get("strategy_res") or {}).items()
+                                  if k not in armed},
+                               **_res_map(got)}
         return _tail(preset, out)
     out["strategies"] = sorted(set(out.get("strategies") or [])
                                | set(got["arm"]))

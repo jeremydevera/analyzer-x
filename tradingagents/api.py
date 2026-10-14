@@ -138,6 +138,18 @@ def _ids_lose_the_exchange() -> None:
             print(f"[ids] rewritten without the exchange: {got}", flush=True)
     except Exception as exc:                                   # noqa: BLE001
         print(f"[ids] COULD NOT REWRITE: {exc!r}", flush=True)
+    # AND THE BACKTEST NOTES A SWITCH-OFF ERASED come back from each room's
+    # own watcher log, before the watcher's thread starts, so a switched-off
+    # strategy's trades print its Backtest id (#5RKPYVQ7), never its v1 twin
+    # (#ZQJMM3GF) — operator, Oct 14, 2026, RCA-2026-10-14-M
+    try:
+        from tradingagents import strategy_watcher as _sw
+
+        got = _sw.restore_backtest_notes()
+        if got:
+            print(f"[ids] Backtest notes restored: {got}", flush=True)
+    except Exception as exc:                                   # noqa: BLE001
+        print(f"[ids] COULD NOT RESTORE THE BACKTEST NOTES: {exc!r}", flush=True)
     # AND THE BACKTEST TAB'S "why is this id missing" reads the rooms' logs
     # into memory now, on its own thread (RCA-2026-10-13-C): cold, the first
     # answer measured 29 s on a busy PC, and the page gives up at 30 s

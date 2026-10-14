@@ -172,6 +172,98 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-14-M — every trade of a strategy the watcher had switched off printed its v1 twin's id, which Backtest cannot find: room #55D32617's GPS 15m tsi trades said #ZQJMM3GF, not #5RKPYVQ7
+
+**CEO**
+
+* You searched #ZQJMM3GF — the id your trade lists printed on two GPS
+  practice trades of room #55D32617 (Oct 13, 2026 6:45am and 8:15am) — and
+  Backtest could only tell you it was an old-style twin of #5RKPYVQ7. The
+  same was true of 1,092 switched-off strategies in 9 rooms.
+* Why: when the watcher switched a strategy off, it also threw away the
+  room's note that the strategy came from Backtest v2, and every list names a
+  trade from that note — so the past trades of every switched-off strategy
+  fell back to the old id.
+* What stops it now: switching off keeps the note; the notes already thrown
+  away were put back from each watcher's own record of what it switched on
+  (4,483 trades checked, 0 wrong); a test drives your exact case through both
+  trade lists.
+
+**DEV**
+
+* `tradingagents/strategy_watcher.py:588` `_disarm` popped
+  `strategy_res[slot]` with the books, and `tradingagents/api.py:583`
+  `row_id_for` reads that note when a list is drawn (`_history_rows` →
+  `_strategy_id`, the positions table, the Main tab): a switched-off v2 slot
+  hashed with `res=None`, its v1 twin. `deploy_preset.merged`'s `replace`
+  mode did the same to every slot it switched off.
+* Invariant broken: **a trade keeps the id of the row it was made under — a
+  switch-off takes a strategy off the books, never renames its past.**
+  `strategy_res` is the only record of which Backtest a slot came from; the
+  next switch-on replaces it, nothing erases it.
+* Guards: `tests/test_practice_ids_are_backtest_ids.py` (the case through
+  `/api/trade/history` and `/api/trade/history/rooms`; the restore from the
+  watcher's log, once; a preview or an unrecorded row untouched; the replace
+  deploy) and
+  `tests/test_the_strategy_watcher.py::test_your_own_practice_row_under_the_line_is_switched_off`,
+  which now asserts the note stays — all red first.
+
+**SAW** — Oct 14, 2026: *"when i searched ZQJMM3GF in backtest it says
+#ZQJMM3GF is GPS 15m tsi, TP 1% / SL 0.8%: #55D32617 switched it on while the
+app traded on Gate (last change Oct 13, 2026 9:09am); that is its Backtest v1
+id, and this list holds the same strategy as #5RKPYVQ7. why is this still not
+fixed? we've been fixing this for 1 week already"*, then *"/goal the id in
+practice should be same as backtest id period"*.
+
+**TIMELINE**
+
+1. Oct 13, 2026 12:00am — #55D32617's watcher switches GPS 15m tsi (TP 1% /
+   SL 0.8%) on as #5RKPYVQ7, "70.97% over 62 trades in the last 15 days";
+   the room notes it as a Backtest v2 row.
+2. 6:45am and 8:15am — two practice trades: +0.79 (TP at 7:46am) and -1.09
+   (SL at 8:19am).
+3. 9:09am — the watcher switches it off ("its last-15-days win rate fell to
+   69.4…") and `_disarm` erases the note. From then on both trade lists print
+   #ZQJMM3GF on those trades (the room's own, and the Main tab from Oct 14,
+   2026 9:25am).
+4. Oct 14, 2026 — searched in Backtest, #ZQJMM3GF can only be explained.
+   Measured before the fix: 1,092 traded strategies in 9 rooms had lost their
+   note (#55D32617 187, #4FC03172 155, #B52662ED 309, …), and none of the
+   traded strategies lacked a record — every one was in its watcher's log as
+   switched on.
+5. 1:26pm — the back end restarts on the fix; its first startup step logs
+   "Backtest notes restored" for exactly those 1,092. Measured after: both
+   GPS trades print #5RKPYVQ7, a Main-tab search for #ZQJMM3GF finds none,
+   Backtest finds #5RKPYVQ7 (GPS 15m tsi, TP 1.0 / SL 0.8), and 0 of 4,483
+   closed practice trades in 9 rooms print anything but their Backtest id.
+
+**ROOT CAUSE** — the room's only record of which Backtest a strategy came
+from was kept with the switched-on settings and deleted with them.
+
+**WHY IT WAS NOT CAUGHT** — a test asserted the deletion:
+`test_your_own_practice_row_under_the_line_is_switched_off` required the
+note to be gone after a switch-off, written when "switched off" meant "every
+trace gone" and no screen named a trade from it yet. The week's id fixes
+(RCA-2026-10-13-B, C, D) each drove a strategy that was switched ON, or
+taught the Backtest search to EXPLAIN a twin (C) — none switched a strategy
+off and then read its trades, which is the order every room's day runs in.
+An explanation of a wrong id is not a fix of it.
+
+**COST** — none in money; the wrong id on the past trades of 1,092
+switched-off strategies, and a week of searches for ids Backtest could not
+find.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_practice_ids_are_backtest_ids.py`:
+`test_a_strategy_switched_off_keeps_its_backtest_id_on_its_trades`,
+`test_a_note_erased_before_the_fix_is_restored_from_the_watchers_record`,
+`test_a_row_the_watcher_only_previewed_or_never_touched_keeps_its_id`,
+`test_a_replace_deploy_keeps_the_notes_of_what_it_switches_off`; and
+`tests/test_the_strategy_watcher.py::test_your_own_practice_row_under_the_line_is_switched_off`.
+
+---
+
 ## RCA-2026-10-14-L — the Main tab's loading cover waited for panels the tab does not have ("loading profit…" over the all-rooms list), and its strategy cell ran into the next column at 1,024 and 1,280 px
 
 **CEO**

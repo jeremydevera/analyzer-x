@@ -585,11 +585,85 @@ def _disarm(s: dict, slot: str) -> dict:
     # rule disarm_coins keeps.
     coins[key] = [c for c in (coins.get(key) or []) if c != symbol]
     s["strategy_coins"] = coins
-    for field in ("strategy_books", "strategy_res", "watcher_slots"):
+    # `strategy_res` STAYS (operator, Oct 14, 2026: "the id in practice should
+    # be same as backtest id period"). It is the note that this row came from
+    # Backtest v2, and every screen names the slot's trades from it
+    # (api.row_id_for) — long after the switch-off. Popping it made room
+    # #55D32617's two GPS 15m tsi trades of Oct 13, 2026 print #ZQJMM3GF, the
+    # v1 twin Backtest cannot find, instead of #5RKPYVQ7 (RCA-2026-10-14-M).
+    # The next switch-on of the slot writes its own note either way.
+    for field in ("strategy_books", "watcher_slots"):
         d = dict(s.get(field) or {})
         d.pop(slot, None)
         s[field] = d
     return s
+
+
+def _switched_on_ids() -> set[str]:
+    """Every id this room's watcher really switched on (action "on", mode
+    "act"), read from its own log. PREVIEW only reports a row, so it proves
+    nothing about where a trade came from."""
+    out: set[str] = set()
+    try:
+        with _log_path().open(encoding="utf-8") as fh:
+            for ln in fh:
+                if '"on"' not in ln:
+                    continue
+                try:
+                    d = json.loads(ln)
+                except ValueError:
+                    continue
+                if d.get("action") == "on" and d.get("mode") == "act" and d.get("id"):
+                    out.add(str(d["id"]).lstrip("#"))
+    except OSError:
+        pass
+    return out
+
+
+def restore_backtest_notes() -> dict:
+    """GIVE BACK THE NOTES A SWITCH-OFF ERASED (RCA-2026-10-14-M).
+
+    Until Oct 14, 2026 `_disarm` popped a slot's `strategy_res`, so every
+    trade of a row the watcher had switched off was named by its v1 twin. The
+    watcher only ever switches on Backtest v2 rows, and its log keeps the id
+    of each one, so a slot of the room's trade record whose v2 id is in that
+    log gets its "1m" note back. Never overwrites a note that is there, never
+    guesses for a slot the watcher did not switch on, writes nothing twice.
+    Returns {room: notes restored}."""
+    from tradingagents import api, profiles
+    from tradingagents import auto_trader as at
+
+    done: dict = {}
+    for pid in profiles.ids():
+        try:
+            with profiles.using(pid):
+                on = _switched_on_ids()
+                if not on:
+                    continue
+                notes = at.load_settings().get("strategy_res") or {}
+                lost: set[str] = set()
+                for r in at.ledger_trades(0):
+                    key, sym = str(r.get("strategy") or ""), str(r.get("symbol") or "")
+                    slot = at.book_slot(key, sym)
+                    if not key or not sym or slot in notes or slot in lost:
+                        continue
+                    if api.row_id_for(key, sym, {"strategy_res": {slot: "1m"}}) in on:
+                        lost.add(slot)
+                if not lost:
+                    continue
+
+                def _put(s: dict, lost: set = lost) -> dict:
+                    res = dict(s.get("strategy_res") or {})
+                    for slot in lost:
+                        res.setdefault(slot, "1m")
+                    s["strategy_res"] = res
+                    return s
+
+                if _write_settings(_put):
+                    done[pid] = len(lost)
+        except Exception as exc:                                   # noqa: BLE001
+            print(f"[ids] could not restore {pid}'s Backtest notes: {exc!r}", flush=True)
+    return done
 
 
 # ------------------------------------------------------------------ passes

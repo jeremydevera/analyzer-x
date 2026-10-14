@@ -193,18 +193,22 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 * `webapp/src/components/trade/AutoTradeScreen.tsx:149-158,225,239` (before
   the fix): `begin()` took eight names and `blurred`, `<LoadingOverlay
   waitlist={waitlist} />` and `busy` read the whole `waitlist` on every tab.
-  `webapp/src/components/trade/TradeHistory.tsx:259` `<Table fixed>` had no
-  wrap rule, so the strategy cell's `CopyableId` (a flex row, `#FQJDT7UX`)
-  and its key (`elder_15m_sl08tp1`, one word) could not wrap in 62 px.
+  `webapp/src/components/trade/TradeHistory.tsx:304` the strategy cell had
+  no `break-all`, so its `CopyableId` button (`#FQJDT7UX`, 64 px — a button
+  is one box as wide as its longest word, and the `break-words` every
+  `TableCell` carries does not shrink it) sat in a 46 px cell; the key under
+  it (`elder_15m_sl08tp1`) already wrapped.
 * Invariants broken: **a cover names only what is on screen**
   (label-must-match-data — the lists are now `lib/loading.ts`
   `MAIN_TAB_PANELS`/`ROOM_PANELS` and `onTab`); **in a fixed table text
-  wraps, never covers a neighbour**, held by one rule every cell inherits
-  (`[overflow-wrap:anywhere]` on the table), not cell by cell.
+  wraps, never covers a neighbour** — and a cell that draws a BUTTON wraps
+  only with `break-all`, so the guard holds every such cell by what it
+  draws, not the cells the last incident named.
 * Guards: `tests/test_main_tab_shows_every_rooms_trades.py::test_the_cover_names_only_what_the_tab_shows`
   (runs `onTab` under node; every `markReady` name is on exactly one tab's
   list) and `::test_a_date_wraps_in_its_own_cell_instead_of_running_into_the_next`
-  (widened to every cell and the table's rule) — both red first.
+  (widened: no cell is `whitespace-nowrap`, and every cell that draws a
+  `<button` or a `CopyableId` carries `break-all`) — both red first.
 
 **SAW** — my own check of RCA-2026-10-14-K's fixes on the live site, in
 Safari's engine, Oct 14, 2026 10:11am: the 1,280 px screenshot of the Main
@@ -226,8 +230,19 @@ tab blurred under "loading profit…", and the cell measure at 1,024 and
    cover lifted at 2.7 s, waiting only for "profit"; #55D32617's panels
    loaded by 1.1 s and its cover lifted at 2.6 s, waiting only for "past
    trades".
-5. Same morning — fixed with failing tests first; 75 related tests pass, tsc
-   clean; the page is rebuilt and both measures re-run.
+5. 10:20am — the first fix, failing tests first (d90675974b9d): the cover
+   reads each tab's own list, and the table gets `[overflow-wrap:anywhere]`.
+6. 10:22am — rebuilt and re-measured: the cover was right, but the strategy
+   cell still overflowed by the same 34 px and 11 px. The table's rule never
+   reached a cell — every `TableCell` sets its own `break-words`, and a value
+   set on the cell beats one it would inherit (Safari's engine: the cell
+   computed `overflow-wrap: break-word`, the id button 64 px in a 46 px row).
+   The rule came out and the strategy cell got `break-all`, like the Room and
+   id cells; the test now holds every cell that draws a button.
+7. 10:28am — rebuilt and re-measured on a fresh browser: Main's cover reads
+   only "loading past trades…" and lifts at 1.1 s, with the list; the
+   #55D32617 tab's cover never names the Main list; no column overflows at
+   1,024 or 1,280 px on either table.
 
 **ROOT CAUSE** — the cover's list of names belonged to the SCREEN, not the
 tab, from when every tab was a room with the same panels; the first tab with
@@ -242,7 +257,11 @@ profit is false whether it shows for one second or thirty. The wrap guard of
 RCA-2026-10-14-K named the cells that had broken (dates, Room, id), a guard
 as wide as its last incident rather than its rule, and K's own summary said
 "every cell may wrap" from the source before its re-measure ran — the
-re-measure is what found this.
+re-measure is what found this. And this entry's own first fix was a test
+of a class's PRESENCE: `[overflow-wrap:anywhere]` was on the table and in the
+built styles, and did nothing on screen. A layout rule is proved by measuring
+the page, which found it within the hour; the guard now asserts the rule that
+measured right (`break-all` on each cell that draws a button).
 
 **COST** — none in money; from 9:25am to this rebuild the Main tab was covered
 about 1.5 s longer than its list needed on a warm server (up to 30 s, then a
@@ -250,7 +269,8 @@ red "still not loading" for a panel it does not have, on a slow one), a room
 tab waited the same way on the hidden list, and strategy names overlapped the
 next column at 1,024-1,280 px.
 
-**FIX** — this commit.
+**FIX** — d90675974b9d (the cover, and a table rule that never reached a
+cell) and this commit (`break-all` on the strategy cell).
 
 **GUARD** — `tests/test_main_tab_shows_every_rooms_trades.py`:
 `test_the_cover_names_only_what_the_tab_shows` and
@@ -448,7 +468,7 @@ NEW name.
 
 ---
 
-## RCA-2026-10-14-H — every test run left 13 to 31 programs running, and four runs at once brought the PC to 1.1 GB free
+## RCA-2026-10-14-H — every test run left 13 to 31 index builds running (two programs each), and four runs at once brought the PC to 1.1 GB free
 
 **CEO**
 
@@ -457,7 +477,8 @@ NEW name.
   memory (1.1 GB free of 16 GB).
 * Why: the tests started real background programs (index builds), which waited
   on the test that started them and piled up while a run lasted. Every test
-  run since Aug 27, 2026 did this, 13 to 31 at a time.
+  run since Aug 27, 2026 did this: 13 to 31 builds at a time, two programs
+  each.
 * What stops it now: tests never start a background program; a stand-in
   answers instead, unless a test asks for the real one.
 
@@ -470,7 +491,7 @@ NEW name.
 * Invariant broken: **a test leaves nothing running behind it**: the suite
   isolated sockets (`_no_network`) and paths (`_never_touch_the_live_book`)
   but never processes.
-* Guard: `tests/test_tests_leave_no_program_running.py` (10 tests).
+* Guard: `tests/test_tests_leave_no_program_running.py` (12 tests).
 
 **SAW** — the PC crawling; the Error Watcher session counted 618 console
 processes created that day, 604 of them between 7am and 8am.
@@ -491,10 +512,12 @@ processes created that day, 604 of them between 7am and 8am.
 6. 7:38am, measuring — 12 index test files alone left 26 programs (13 builds);
    a spy over the same files recorded 794 launch attempts.
 7. After the fix (9:54am) — the same 12 files: 129 passed in 17 s (92 s with
-   real builds), no build program seen by a watcher sampling every 0.4 s, none
-   alive at the end.
+   real builds), one real build on purpose (the marked index test, too quick
+   for a watcher sampling every 0.4 s to catch), none alive at the end.
    The full suite (9:55am-10:11am): 5,495 passed, its 29 old failures
-   unchanged, no build program seen in 15 minutes 46 seconds; one test
+   unchanged, no build program left at the end and none seen by the watcher
+   in 15 minutes 46 seconds (the marked tests' own are too quick for it);
+   one test
    that starts the real runner on purpose
    (`test_runner_survives_a_busy_state_file.py::test_a_later_stderr_write_lands_after_the_lines_it_used_to_overwrite`)
    now says so with `real_background`.
@@ -512,9 +535,14 @@ its pattern, and this one had never been widened to processes.
 **COST** — none in money; the PC near out of memory for about 25 minutes, and
 Windows Terminal holding 4,307 MB until it was closed.
 
-**FIX** — this commit (the windows themselves: RCA-2026-10-14-G).
+**FIX** — b1431e3, and its final-review follow-up the same day: talking to
+a stand-in (`communicate()`, `run(capture_output=True)`, its input) fails
+naming the marker through `pytest.fail`, which a launch site's `except
+Exception` cannot swallow; the whole-session check reads the name at import;
+the coin-index test builds its index in-process instead of comparing a query
+with itself. The windows themselves: RCA-2026-10-14-G.
 
-**GUARD** — `tests/test_tests_leave_no_program_running.py`.
+**GUARD** — `tests/test_tests_leave_no_program_running.py` (12 tests).
 
 ---
 

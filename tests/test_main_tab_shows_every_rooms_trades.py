@@ -179,17 +179,21 @@ def test_a_date_wraps_in_its_own_cell_instead_of_running_into_the_next():
     id_cell = body[body.rindex("<TableCell", 0, at_id):at_id]
     assert "whitespace-nowrap" not in id_cell and "break-all" in id_cell
     # ...and EVERY cell (checking those fixes on the live site, Oct 14, 2026
-    # 10:20am: at 1,024 px the strategy cell held "#FQJDT7UX" over
-    # "elder_15m_sl08tp1", 96 px of unbroken text in a 62 px column, and ran
-    # into the reason beside it — the third cell this table learned about one
-    # at a time). No cell refuses to wrap, and the TABLE lets a word that
-    # cannot fit break where it must; the rule is inherited, so a long coin,
-    # reason or key in any cell is held without a line of its own here.
+    # 10:11am: at 1,024 px the strategy cell's id button "#FQJDT7UX" was
+    # 64 px in a 46 px cell and ran into the reason beside it — the third
+    # cell this table learned about one at a time). No cell refuses to wrap.
+    # Plain text already breaks (every TableCell carries break-words), but a
+    # BUTTON is one box as wide as its longest word unless the cell lets a
+    # word break anywhere — measured: a table-wide overflow-wrap rule never
+    # reached it, because each cell's own break-words wins. So every cell
+    # that draws a button or a CopyableId carries break-all.
     for ln in body.splitlines():
         if "<TableCell" in ln:
             assert "whitespace-nowrap" not in ln, ln.strip()
-    table = th[th.index("<Table fixed"):th.index("<TableHeader")]
-    assert "[overflow-wrap:anywhere]" in table, table
+    for chunk in body.split("<TableCell")[1:]:
+        cell = chunk[:chunk.index("</TableCell>")]
+        if "<button" in cell or "<CopyableId" in cell:
+            assert "break-all" in cell.splitlines()[0], cell.splitlines()[0]
 
 
 def test_the_all_rooms_list_carries_no_room_and_waits_by_its_own_tab():

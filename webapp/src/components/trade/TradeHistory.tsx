@@ -256,12 +256,7 @@ export default function TradeHistory({ allRooms = false, active = true }: {
       </div>
 
       <div className="hidden w-full md:block">
-        {/* A WORD THAT CANNOT FIT BREAKS, in every cell (Oct 14, 2026): the
-            Main tab's eleventh column left the strategy cell 62 px at 1,024
-            px for "elder_15m_sl08tp1", 96 px of one word, and it ran into the
-            reason beside it. Inherited, so a long coin or reason is held too;
-            words with spaces still break at the spaces first. */}
-        <Table fixed className="[overflow-wrap:anywhere]">
+        <Table fixed>
           <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
             <TableRow>
               {heads.map((h) => (
@@ -305,8 +300,12 @@ export default function TradeHistory({ allRooms = false, active = true }: {
                     trade history expose the strategy id as well") — the same
                     #code the strategies grid and the positions table print,
                     through the same copy control, so a closed trade can be
-                    traced to the row that took it */}
-                <TableCell className="px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
+                    traced to the row that took it. break-all, like the Room
+                    and id cells: its id is a BUTTON, one box as wide as
+                    "#FQJDT7UX" (64 px) unless a word may break anywhere — on
+                    the Main tab's eleventh column at 1,024 px the cell is
+                    46 px inside and the id ran into the reason (Oct 14, 2026) */}
+                <TableCell className="break-all px-2 py-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
                   {r.strategy_id ? <CopyableId id={r.strategy_id} /> : null}
                   <span className="block leading-tight">{r.strategy}</span>
                 </TableCell>

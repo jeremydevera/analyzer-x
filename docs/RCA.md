@@ -172,6 +172,62 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-14-F — the Runner feed ran out of memory showing 200 lines, because it read the whole 163 MB log to find them
+
+**CEO**
+
+* What you saw: at Oct 14, 2026 7:23am the site itself failed once on the
+  Runner feed — that poll showed no lines; the next poll worked.
+* Why: to show the last 200 lines the app read the WHOLE runner log every few
+  seconds, and Main's log had grown to 163 MB.
+* What stops it now: the feed reads only the end of the log — 0.013 s and
+  about 3 MB instead of 0.81 s and hundreds of MB.
+
+**DEV**
+
+* `tradingagents/api.py:3572` `trade_log` → `tradingagents/auto_trader.py`
+  `log_tail` → `_pp(LOG_PATH).read_bytes().decode(...).splitlines()[-n:]`
+  over the whole file; it raised `MemoryError` inside `read_bytes`.
+* Invariant broken: **a tail reads the tail** — the work of showing N lines
+  may not grow with the file's size.
+* Guard: `tests/test_runner_feed_survives_bad_bytes.py::test_log_tail_never_reads_the_whole_log`,
+  `::test_log_tail_memory_does_not_grow_with_the_log`,
+  `::test_log_tail_matches_a_whole_read_on_every_shape`.
+
+**SAW** — the error filer opened fault `ec4a77838ff1`, "The site itself
+failed: MemoryError (in auto_trader.py:log_tail)", count 1.
+
+**TIMELINE**
+
+1. Before — `~/.tradingagents/auto_trade.log` (Main) has grown to
+   163,457,499 bytes; the screen asks `GET /api/trade/log?n=200` every few
+   seconds (684 such asks in the current `.run/api.log`).
+2. Each ask reads all 163 MB into memory, decodes it to text and splits it
+   into every line of the file — measured 0.81 s — to keep 200 of them.
+3. Oct 14, 2026 7:23am — one ask cannot get the memory: `MemoryError`, HTTP
+   500, that poll of the feed is empty. The very next ask answered 200.
+4. After the fix — the same 2,000 lines from the same file in 0.013 s with a
+   3.4 MB peak, identical to the whole-file read.
+
+**ROOT CAUSE** — `log_tail` read the entire file for a fixed-size tail; its
+cost grew with the log, which nothing trims.
+
+**WHY IT WAS NOT CAUGHT** — the feed's only test (Sep 05, 2026) was about a
+bad BYTE and used a three-line file; no test ever gave it a big log or
+measured what a read costs, so a read that scales with the file looked the
+same as one that does not.
+
+**COST** — none in money; one empty Runner feed poll.
+
+**FIX** — this commit: read back from the end in doubling chunks until N
+whole lines are held (at most 8 MB), the first, cut line dropped.
+
+**GUARD** — `tests/test_runner_feed_survives_bad_bytes.py`: the three
+`test_log_tail_*` tests above; the memory test fails on a 5.6 MB log if
+the read ever goes back to the whole file.
+
+---
+
 ## RCA-2026-10-14-E — the full CSV export copied rows by column POSITION, so a column added while it ran would have failed it or shifted its values (NEVER HAPPENED YET)
 
 **CEO**

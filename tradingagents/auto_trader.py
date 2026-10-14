@@ -2349,12 +2349,37 @@ def log_tail(n: int = 200) -> list[str]:
     and the Runner feed answered 500 and showed NOTHING while the runner was
     healthy: the operator read an empty feed as a dead runner. A feed must
     survive any byte; the odd bad character shows as � instead.
+
+    And it reads only the END of the file. On Oct 14, 2026 7:23am Main's
+    log was 163 MB and the whole of it was read, decoded and split on every
+    poll of the screen to show 200 lines: the feed answered 500 with
+    MemoryError (RCA-2026-10-14-F). It reads back from the end, a chunk at a
+    time and doubling, until it holds ``n`` whole lines, never more than
+    ``_TAIL_MAX_BYTES``.
     """
     try:
-        return (_pp(LOG_PATH).read_bytes().decode("utf-8", errors="replace")
-                .strip().splitlines()[-n:])
+        with open(_pp(LOG_PATH), "rb") as fh:
+            pos = fh.seek(0, os.SEEK_END)
+            buf = b""
+            while True:
+                step = min(pos, max(_TAIL_CHUNK, len(buf)))
+                pos -= step
+                fh.seek(pos)
+                buf = fh.read(step) + buf
+                if pos == 0:
+                    return (buf.decode("utf-8", errors="replace")
+                            .strip().splitlines()[-n:])
+                head = buf.find(b"\n")          # the first line is cut
+                lines = (buf[head + 1:] if head >= 0 else buf).decode(
+                    "utf-8", errors="replace").rstrip().splitlines()
+                if (head >= 0 and len(lines) >= n) or len(buf) >= _TAIL_MAX_BYTES:
+                    return lines[-n:]
     except OSError:
         return []
+
+
+_TAIL_CHUNK = 64 * 1024
+_TAIL_MAX_BYTES = 8 * 1024 * 1024
 
 
 def pnl_today(now: float | None = None, dry: bool | None = None) -> dict:

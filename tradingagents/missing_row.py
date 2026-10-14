@@ -89,7 +89,7 @@ def _rooms(home: Path) -> list[tuple[str, str, Path]]:
     """(room id, name as the screens print it, folder) — Main first."""
     from tradingagents import profiles
 
-    out = [(profiles.MAIN, "Main", Path(home))]
+    out = [(profiles.MAIN, profiles.name_of(profiles.MAIN), Path(home))]
     prof = Path(home) / "profiles"
     if prof.is_dir():
         out += [(p.name, f"#{p.name}", p) for p in sorted(prof.iterdir()) if p.is_dir()]
@@ -362,7 +362,8 @@ def explain(code, *, home: Path | None = None, store_home: Path | None = None,
     old = next((n for v, n in venue.NAMES.items() if v != venue.current()), now)
     ran = [h for h in hits if h["ran"]]
     named = ran or hits
-    rooms = sorted({h["room"] for h in named}, key=lambda r: (r != "Main", r))
+    rooms = sorted({h["room"] for h in named},
+                   key=lambda r: (r != profiles.name_of(profiles.MAIN), r))
     last = max(h["at"] for h in named)
     ons = [t for h in ran for t in h["ons"]]
     # THE EXCHANGE IT RAN ON is decided by its switch-ons: a row switched on

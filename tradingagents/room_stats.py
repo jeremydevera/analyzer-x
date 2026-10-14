@@ -553,7 +553,7 @@ def room(room_id: str, now: float | None = None) -> dict:
         worst_case += (mv - charge) * o["margin"] * at.LEVERAGE
     res = (research().get("rooms") or {}).get(room_id)
     out = {
-        "id": room_id, "name": "Main" if room_id == profiles.MAIN else f"#{room_id}",
+        "id": room_id, "name": profiles.name_of(room_id),
         "retired": profiles.retired(room_id),
         "rules": rules_text(rules_of(room_id)),
         "practice": {

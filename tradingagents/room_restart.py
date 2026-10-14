@@ -87,7 +87,9 @@ def main() -> int:
         done, errors = restart_rooms()
     except Exception as exc:                                   # noqa: BLE001
         done, errors = [], [f"{type(exc).__name__}: {exc}"]
-    names = ", ".join("Main" if r == "main" else f"#{r}" for r in done)
+    from tradingagents import profiles
+
+    names = ", ".join(profiles.name_of(r) for r in done)
     print(f"restarted {len(done)} room(s): {names}", flush=True)
     for e in errors:
         print(f"FAILED {e}", flush=True)

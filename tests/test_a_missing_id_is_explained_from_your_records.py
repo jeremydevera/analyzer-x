@@ -99,7 +99,7 @@ def test_a_room_that_switched_it_off_did_run_it(home):
     _watch(home, {"at": ON, "action": "off", "id": code, "coin": "GPNSTOCK", "tf": "30m",
                   "signal": "prank", "tp": 2.5, "sl": 2.0})
     got = _explain(home, code, listed=())
-    assert "Main switched it on" in got["words"]
+    assert "#09439DC2 switched it on" in got["words"]
     assert "never switched it on" not in got["words"]
 
 
@@ -249,7 +249,7 @@ def test_a_v1_id_names_the_same_strategy_on_this_list(home):
     assert got["reason"] == "other_store" and got["twin"] == twin
     assert f"this list holds the same strategy as #{twin}" in got["words"]
     # the deploy log spells a switch-on "deployed" (17,042 of them on Oct 13)
-    assert "Main switched it on while the app traded on Gate" in got["words"]
+    assert "#09439DC2 switched it on while the app traded on Gate" in got["words"]
 
 
 def test_a_v1_id_whose_v2_twin_is_absent_says_why(home):

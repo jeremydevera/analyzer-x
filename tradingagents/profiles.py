@@ -31,11 +31,20 @@ NO_LIMIT = {"max_new_per_day": 0, "max_slots": 0, "max_per_coin": 0,
             # ...and RAW: the criteria and nothing else ("i want raw output")
             "raw": True}
 
+# THE ROOM THAT WAS MAIN IS #09439DC2 (operator, Oct 14, 2026: "the main tab
+# is a room strategy so what i want is to assign and id for it and create a new
+# tab for it"). 09439DC2 is forecast_rules.rule_id of its rules — 90% wins, 20+
+# trades in 30 days, TP wider than SL, stop 2% or tighter — the way the 1-4 day
+# rooms were named. ONLY THE NAME: its id stays "main" and its folder stays
+# ~/.tradingagents, so no file moves and nothing about trading changes. The
+# word "Main" now names the Auto Trade tab of every room's past trades.
+MAIN_DISPLAY_ID = "09439DC2"
+
 # The four rooms (operator, Sep 29, 2026). `rules` seeds a profile's watcher
 # the first time it runs: the three rule sets from the 100-scenario research
 # (https://claude.ai/artifact/A5FE8PZcbLsHHafhCUuBsZ), Main keeps its own.
 BUILTIN = [
-    {"id": MAIN, "name": "Main", "rules": None},
+    {"id": MAIN, "name": f"#{MAIN_DISPLAY_ID}", "display_id": MAIN_DISPLAY_ID, "rules": None},
     {"id": "DC57174E", "name": "#DC57174E",
      "rules": {"on_winrate": 80.0, "off_winrate": 80.0, "min_trades": 50,
                "tp_rule": ">", "max_sl": 2.0, **NO_LIMIT}},
@@ -107,6 +116,13 @@ def ids() -> list[str]:
 
 def get(pid: str) -> dict | None:
     return next((p for p in BUILTIN if p["id"] == pid), None)
+
+
+def name_of(pid: str) -> str:
+    """How a room is PRINTED — the one place (Oct 14, 2026): `#09439DC2` for
+    the room whose id is `main`, `#<id>` for every other room, known or not."""
+    p = get(pid)
+    return p["name"] if p else f"#{pid}"
 
 
 def valid(pid: str | None) -> bool:

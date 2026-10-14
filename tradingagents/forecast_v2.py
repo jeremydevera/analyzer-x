@@ -583,7 +583,7 @@ def room_data(pid: str, now_s: float) -> dict:
     costs = rs.costs(exits, led["enters"])
     cost_pct = {r["trade_id"]: 100.0 * r["cost"] / r["size"] for r in costs["rows"] if r["size"]}
     settings = _settings(pid)
-    return {"id": pid, "name": "Main" if pid == profiles.MAIN else f"#{pid}",
+    return {"id": pid, "name": profiles.name_of(pid),
             "retired": profiles.retired(pid), "exits": exits, "enters": led["enters"],
             "cost_pct": cost_pct,
             "avg_cost_pct": (sum(cost_pct.values()) / len(cost_pct)) if cost_pct else 0.0,

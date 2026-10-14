@@ -460,7 +460,9 @@ def _when(ts) -> str:
 
 
 def _rooms(rooms) -> str:
-    return ", ".join("Main" if r == "main" else f"#{r}" for r in rooms) or "none"
+    from tradingagents import profiles
+
+    return ", ".join(profiles.name_of(r) for r in rooms) or "none"
 
 
 def _rec_of(ev: dict) -> dict:

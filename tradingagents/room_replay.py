@@ -1552,7 +1552,7 @@ def _assemble(room, cfg, start_ms, end_ms, now, cands, cinfo, lists, linfo, meta
     notes = _notes(room, cfg, cinfo, listed, no_list, cov, full_from, pr, cap, start_ms,
                    end_ms, rec_tot, day_keys, known_ms)
     notes.insert(0, _hindsight(days, cov))
-    return {"room": room, "name": "Main" if room == profiles.MAIN else f"#{room}",
+    return {"room": room, "name": profiles.name_of(room),
             "computed_at": now, "start_ms": start_ms, "end_ms": end_ms,
             "cfg": {k: cfg.get(k) for k in ("on_winrate", "off_winrate", "min_trades",
                                             "tp_rule", "max_sl", "min_tp", "window_days",

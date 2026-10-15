@@ -640,3 +640,34 @@ def test_a_round_is_dealt_across_every_account(monkeypatch):
     # leave 4 of its 20 machines idle — raised to 5 slices, the same on both
     assert {g["chunks"] for g in got} == {5} and all(g["jobs"] >= 20 for g in got)
     assert all("chunks=5" in c for c in runs)
+
+
+def test_the_pop_up_calendar_adds_every_trade_by_the_day_it_closed():
+    """Operator, Oct 15, 2026: "when i click and id in room strategy, add a
+    calendar and show the pnl for each date i prefer it beside the table".
+    The table shows ten trades a page; the calendar adds up EVERY trade in the
+    dates, by the local day it closed (Auto Trade's own day rule), and is the
+    same on every page — never a sum of the rows on screen."""
+    a, _ = _keep_two()
+    lo, hi = ms(2026, 9, 20, 0) / 1000, ms(2026, 9, 30, 23) / 1000
+    got = rst.trades(a, lo, hi)
+    day = lambda d: dt.date(2026, 9, d).isoformat()                 # noqa: E731
+    assert got["days"] == {
+        day(21): {"pnl": 1.0, "wins": 1, "losses": 0, "trades": 1, "coins": []},
+        day(22): {"pnl": -0.5, "wins": 0, "losses": 1, "trades": 1, "coins": []},
+        day(25): {"pnl": 1.0, "wins": 1, "losses": 0, "trades": 1, "coins": []}}
+    assert rst.trades(a, lo, hi, page=2, per=2)["days"] == got["days"], "every trade, whatever the page"
+    assert round(sum(v["pnl"] for v in got["days"].values()), 2) == got["profit"]
+    assert rst.trades(a, ms(2026, 10, 4, 0) / 1000, ms(2026, 10, 7, 0) / 1000)["days"] == {}
+
+
+def test_the_pop_up_draws_the_calendar_beside_its_table():
+    src = _src_all()
+    trades = src.split("\nfunction StrategyTrades(")[1].split("\nfunction CopyId(")[0]
+    assert "<DayCalendar days={d.days}" in trades, "the server's totals, not the page's rows"
+    assert "d.rows.reduce" not in trades and "rows.forEach" not in trades
+    # beside the table where it fits, under it on a narrow screen
+    assert 'className="mt-2 flex flex-wrap items-start gap-4"' in trades
+    assert 'import { DayCalendar } from "@/components/trade/PnlPanel";' in src
+    # it opens on the month of the dates' newest trade, not on today's
+    assert "start={" in trades

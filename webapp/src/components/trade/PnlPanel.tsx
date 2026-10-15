@@ -90,12 +90,17 @@ const dayKey = (y: number, m: number, d: number) => `${y}-${pad2(m + 1)}-${pad2(
  * month's total summed from the same boxes, so the caption cannot disagree
  * with the grid. A day with no closed trade stays blank rather than +0.00:
  * "nothing closed" and "closed at break-even" are different days. */
-export function DayCalendar({ days, book, dry, onBook, loading = false }: {
+export function DayCalendar({ days, book, dry, onBook, loading = false, start }: {
   days: Record<string, DayStat>; book: string; dry?: boolean; onBook?: (dry: boolean) => void;
   loading?: boolean;
+  /** a "YYYY-MM-DD" day whose month it opens on (default: this month) — a
+   *  Room strategy's dates may end in a month before today's (Oct 15, 2026) */
+  start?: string;
 }) {
   const now = new Date();
-  const [month, setMonth] = useState({ y: now.getFullYear(), m: now.getMonth() });
+  const [month, setMonth] = useState(() => start
+    ? { y: Number(start.slice(0, 4)), m: Number(start.slice(5, 7)) - 1 }
+    : { y: now.getFullYear(), m: now.getMonth() });
   const [picked, setPicked] = useState<string | null>(null);
 
   const keys = Object.keys(days).sort();

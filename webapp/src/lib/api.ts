@@ -1241,6 +1241,9 @@ export type RoomStrategies = {
  *  when each trade opened, closed and what it made. */
 export type RoomStrategyTrades = {
   id: string; words: string; from: number; to: number;
+  /** EVERY trade in the dates by the local day it closed — the pop-up's
+   *  calendar (Oct 15, 2026), the same on every page of the table */
+  days: Record<string, DayStat>;
   trades: number; wins: number; losses: number; profit: number;
   /** the dates' own win rate, % (null with no trade) */
   winrate: number | null;

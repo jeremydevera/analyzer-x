@@ -16,6 +16,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { api, dateBoxAt, dateBoxValue, fmtMoney, fmtWhen, fmtWhenMs, Forecast, Forecasts, ForecastsLive, RoomGroup, RoomNow, RoomReplay, RoomStrategies, RoomStrategyTrades, RRDay, RREvent, RRSide, RRTrade, roomName } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/live";
 import PageButtons from "@/components/common/PageButtons";
+import { DayCalendar } from "@/components/trade/PnlPanel";
 import DayPicker from "@/components/form/DayPicker";
 import { Modal } from "@/components/ui/modal";
 
@@ -1343,7 +1344,12 @@ function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string
             ? ` Its ${d.saved.toLocaleString()} saved trades closed ${fmtWhenMs(d.first)} to ${fmtWhenMs(d.last)}.` : " It has no saved trades."}
         </p>
       ) : (
-        <div className="mt-2 overflow-x-auto">
+        // THE CALENDAR BESIDE THE TABLE (operator, Oct 15, 2026: "add a
+        // calendar and show the pnl for each date i prefer it beside the
+        // table") — under it where the window is too narrow. Its days are the
+        // server's totals of EVERY trade in the dates, never this page's ten.
+        <div className="mt-2 flex flex-wrap items-start gap-4">
+        <div className="min-w-0 max-w-full overflow-x-auto">
           <table className="w-auto text-theme-xs">
             <thead><tr className="border-b border-gray-200 text-gray-500 dark:border-gray-700 dark:text-gray-400">
               {["#", "Coin", "Strategy", "TP / SL", "Opened", "Closed", "Held", "Profit", "Running total"].map((h) => <th key={h} className={th}>{h}</th>)}
@@ -1364,6 +1370,11 @@ function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="w-full shrink-0 sm:w-[22rem]">
+          <DayCalendar days={d.days} book={`#${d.id}`}
+            start={Object.keys(d.days).sort().pop()} />
+        </div>
         </div>
       )}
       {d.unnamed > 0 && (

@@ -761,7 +761,26 @@ def trades(rid: str, from_s: float, to_s: float, *, page: int = 1, per: int = 10
             for i, (o, c, v, r, k) in enumerate(zip(sel[a:b, 0], sel[a:b, 1], p[a:b], run[a:b],
                                                     s_sel[a:b]))]
     wins = int((p > 0).sum())
+    # THE POP-UP'S CALENDAR (operator, Oct 15, 2026: "when i click and id in
+    # room strategy, add a calendar and show the pnl for each date"): EVERY
+    # trade in the dates, by the LOCAL day it closed — Auto Trade's own rule
+    # (auto_trader.daily_pnl) — so it is the same on every page of the table
+    import datetime as _dt
+    days: dict = {}
+    for c, v, k in zip(sel[:, 1] if n else (), p, s_sel):
+        d = days.setdefault(_dt.date.fromtimestamp(float(c) / 1000).isoformat(),
+                            {"pnl": 0.0, "wins": 0, "losses": 0, "trades": 0, "coins": set()})
+        d["pnl"] += float(v)
+        d["trades"] += 1
+        d["wins" if v > 0 else "losses"] += 1
+        coin = named(int(k))["coin"]
+        if coin:
+            d["coins"].add(str(coin).replace("_USDT", ""))
+    for d in days.values():
+        d["pnl"] = round(d["pnl"], 2)
+        d["coins"] = sorted(d["coins"])
     return {"id": want, "words": w["words"], "from": from_s, "to": to_s,
+            "days": days,
             "trades": n, "wins": wins, "losses": n - wins,
             # the dates' own win rate, by the table's own formula (_measured),
             # so the pop-up, its CSV and the row print one number

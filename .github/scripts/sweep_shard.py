@@ -944,7 +944,10 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
             for (sl, tp) in br.pairs_for(tf):
                 if liq is not None and sl * 100 >= liq:
                     continue
-                if rt / tp >= GATE_BLOCK:
+                # the coin-wide cost skips only without a book of each
+                # minute; with one, the runner's rule judges every entry
+                # (RCA-2026-10-15-A)
+                if br.skips_by_coin_cost(rt, tp, book):
                     continue
                 # a LEARNED formula: TP strictly above SL, and a stop inside
                 # 80% of the liquidation distance (the operator's own rule

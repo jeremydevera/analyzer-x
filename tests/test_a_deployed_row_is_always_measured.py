@@ -66,7 +66,9 @@ def test_the_gate_still_skips_an_undeployed_combination(deployed):
     """The gate is RIGHT — a target its cost eats cannot win (rule 11). The
     exemption is only for what the operator is running."""
     src = inspect.getsource(msw.run_pair)
-    i = src.index("rt / tp >= GATE_BLOCK")
+    # the one rule since RCA-2026-10-15-A (a coin-wide skip only without
+    # a book of each minute), still exempting what the operator runs
+    i = src.index("br.skips_by_coin_cost(rt, tp, minute_book)")
     branch = src[i:i + 400]
     assert "not in deployed" in branch, \
         "the skip must be conditional on NOT being deployed"
@@ -83,7 +85,7 @@ def test_the_deployed_combination_is_never_skipped(deployed):
         if not isinstance(node, ast.If):
             continue
         test = ast.unparse(node.test)
-        if "GATE_BLOCK" in test:
+        if "skips_by_coin_cost" in test:
             found.append(test)
     assert found, "the gate's own branch is gone"
     assert any("not in deployed" in t for t in found), found

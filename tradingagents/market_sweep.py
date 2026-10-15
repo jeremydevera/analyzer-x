@@ -1398,8 +1398,9 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                 # no row at all because this gate read a stock token's spread
                 # while the US market was shut. The gate stays for everything
                 # else; a row it skips is now COUNTED (rule 20) instead of
-                # vanishing.
-                if (rt is not None and rt / tp >= GATE_BLOCK
+                # vanishing. And only without a book of each minute: with
+                # one, the runner's rule judges every entry (RCA-2026-10-15-A).
+                if (br.skips_by_coin_cost(rt, tp, minute_book)
                         and (coin, tf, sig, round(sl * 100, 6),
                              round(tp * 100, 6)) not in deployed):
                     gated += 1

@@ -172,6 +172,70 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-15-A — the nightly update stopped re-testing strategies practice still traded, because their coin's fees looked too high
+
+**CEO**
+
+* The practice audit found practice trades with no backtest twin: QNTX 15m
+  traded three times on Oct 12, 2026 while its backtest still ended Oct 11.
+* Why: each night the update skipped any strategy whose coin's buying and
+  selling cost half its target or more, while practice judges that cost
+  trade by trade and still took some of them.
+* What stops it now: the update re-tests them and, like practice, refuses
+  only the single trades the cost rule would refuse.
+
+**DEV**
+
+* `.github/scripts/sweep_shard.py` `run_pair` (the v2 full measure) and
+  `tradingagents/market_sweep.py:1402` `run_pair` skipped a combination on
+  `rt / tp >= GATE_BLOCK` with `rt` the COIN-WIDE round trip, although
+  `backtest_strategy(book=)` already asks `auto_trader.entry_refusal` of
+  every entry minute (the coin's flat cost where a minute has no reading).
+* Invariant broken: **the backtest refuses what practice refuses, at the same
+  grain** — per entry, never a whole strategy by one coin-wide number.
+* Guard: `tests/test_backtest_v2_measures_what_practice_trades.py`;
+  `tests/test_a_deployed_row_is_always_measured.py` follows the one rule.
+
+**SAW** — the practice audit (Oct 15, 2026): of 45 practice trades since the
+move to Gate, 11 had no backtest twin; 3 were QNTX 15m (#55D32617, stoch14
+and willr14, TP 1% / SL 0.8%) on rows last measured Oct 11, 2026 12:00pm.
+
+**TIMELINE**
+
+1. Oct 11, 2026 — QNTX 15m measured with a 0.48% round trip: 48% of a 1%
+   target, under the line, so stoch14 and willr14 TP 1% were measured.
+2. Every nightly update since — both skipped, their rows left on Oct 11,
+   12:00pm (the Oct 14, 2026 run read QNTX at 0.66%: 66% of the target).
+3. Oct 12, 2026 11:45am-1:02pm — #55D32617 traded them three times in
+   practice (-$1.28, -$1.47, -$1.47); the stale rows held none of it.
+4. Oct 14-15, 2026 — the same on DOOD 15m elder and XDC 30m fvg until their
+   costs fell back under the line; re-measured, both practice trades matched
+   (DOOD +$0.69 against +$0.77, XDC +$0.74 against +$0.79).
+5. Measured over 300 v2 pairs: 31.5% of every pair's combinations were being
+   skipped this way. Re-tested from today: about 46% more engine runs a
+   night; last night's slowest machine took 90 minutes of its 350.
+
+**ROOT CAUSE** — a coin-wide cost skip written for v1, which has no book of
+each minute, stayed in front of a v2 engine that judges each entry by the
+runner's own rule.
+
+**WHY IT WAS NOT CAUGHT** — the skip's tests (`test_a_deployed_row_is_
+always_measured.py`) guarded the one case that had hurt before — a strategy
+being RUN by the operator — and asserted the skip was correct for every
+other one. Nothing compared which strategies the backtest measures with which
+ones practice trades; it took the practice audit to see a row older than the
+trades practice made on it.
+
+**COST** — none in money; strategies practice traded had backtests days old,
+and the audit's accuracy read 34 of 45 where part of the 11 was this.
+
+**FIX** — this commit. The next nightly update (Oct 16, 2026 1:26am) re-tests
+the skipped combinations.
+
+**GUARD** — `tests/test_backtest_v2_measures_what_practice_trades.py`.
+
+---
+
 ## RCA-2026-10-14-N — two trade lists of one strategy asked for at once: the second crashed, because the first took away the name both were using
 
 **CEO**

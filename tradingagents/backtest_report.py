@@ -379,6 +379,20 @@ MIN_TRADES = 30          # the skill's floor: below this a row is noise
 GATE_BLOCK = 0.50        # round-trip cost >= 50% of target -> cannot win
 
 
+def skips_by_coin_cost(rt, tp, book) -> bool:
+    """Is a combination left unmeasured because its COIN-WIDE round trip
+    (`rt`, a fraction) eats half its target (`tp`) or more?
+
+    Only when there is no order book of each minute (`book` None: v1, or a
+    coin with no recorded book). With one, every entry asks the runner's own
+    cost rule of its own minute (`auto_trader.entry_refusal`, the coin's flat
+    cost where a minute has no reading), so a coin-wide skip would only throw
+    away a strategy the minute rule judges trade by trade, as practice does
+    (RCA-2026-10-15-A: QNTX 15m stoch14/willr14, TP 1%, unmeasured since
+    Oct 11, 2026 on a 0.66% round trip while practice traded them)."""
+    return book is None and rt is not None and rt / tp >= GATE_BLOCK
+
+
 _CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"   # no 0/O/1/I
 
 

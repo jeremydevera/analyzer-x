@@ -208,8 +208,8 @@ printed `days the button passes: 1`.
 3. Oct 15, 2026 7:06-7:10pm — seven presses for the practice audit's
    unmatched strategies: QNTX willr14 50 rows and stoch14 30 rows, ALAB fvg
    21 rows went from 29 days (82-160 trades) to 0 days (11-16 trades); ANKR
-   fade15's press was stopped at 7:2x pm by its exact process id, after it
-   had saved 153 of its 270 rows. DOOD, XDC, CLANKER and IOTX wrote nothing.
+   fade15's press (started 7:10pm) was stopped by its exact process id,
+   after it had saved 153 of its 270 rows. DOOD, XDC, CLANKER and IOTX wrote nothing.
 4. No room switched anything on or off on QNTX, ALAB or ANKR meanwhile
    (deploy logs since 7:06pm: 0 lines).
 5. After the fix — the same press on QNTX willr14 (saving switched off)
@@ -226,7 +226,8 @@ minute file, and the comment that named the accident did not become a test.
 **COST** — none in money; 254 rows wrong for under two hours, read by
 nothing that switches.
 
-**FIX** — this commit; the 254 rows re-pressed with it.
+**FIX** — 5b39171; the nine strategies re-pressed with it, done 7:26pm:
+every one of their rows 29 days again, 0 one-day rows left.
 
 **GUARD** — `tests/test_update_this_backtest_measures_the_shards_window.py`.
 

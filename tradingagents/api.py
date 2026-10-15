@@ -649,6 +649,16 @@ def venue_info() -> dict:
     return {"venue": venue.current(), "name": venue.name()}
 
 
+@app.get("/api/claude-skills")
+def claude_skills_list() -> dict:
+    """Every Claude skill in this repo, grouped by what it is for (the Claude
+    skills tab; operator, Oct 15, 2026). Read from the skill folders on every
+    call, so a new skill shows up without a restart."""
+    from tradingagents import claude_skills
+
+    return claude_skills.listing()
+
+
 # -------------------------------------------------------------- strategies
 @app.get("/api/strategies")
 def strategies(coin: str | None = None, tf: str | None = None,

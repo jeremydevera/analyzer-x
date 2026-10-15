@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import {
   ChevronDownIcon,
+  DocsIcon,
   DollarLineIcon,
   DownloadIcon,
   HorizontaLDots,
@@ -67,6 +68,14 @@ const navItems: NavItem[] = [
     icon: <TableIcon />,
     name: "Backtest",
     path: "/backtest-v2",
+  },
+  // CLAUDE SKILLS (operator, Oct 15, 2026: "can you create a tab called
+  // 'Claude skills' then categorize them for their function and what do
+  // they do"). The page reads the skill folders through /api/claude-skills.
+  {
+    icon: <DocsIcon />,
+    name: "Claude skills",
+    path: "/claude-skills",
   },
 ];
 

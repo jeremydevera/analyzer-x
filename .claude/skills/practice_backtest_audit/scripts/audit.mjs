@@ -6,6 +6,7 @@ import { chromium } from "playwright-core";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { compare, fmtWhen, money, parseWhen, split, tradeKey } from "./match.mjs";
 
 const argv = process.argv.slice(2);
 const arg = (name, def) => {
@@ -20,38 +21,9 @@ const OPEN_TOL_MIN = Number(arg("open-tolerance", "10"));
 const HOME = join(homedir(), ".tradingagents", "practice_backtest_audit");
 const STATE = join(HOME, "state.json");
 // The move to Gate: every id before it was measured on MEXC and cannot match.
+// The trades the move itself closed in that minute (`VENUE_SWITCH`) are named
+// by match.mjs's split(), never compared.
 const FIRST_RUN_FROM = "Oct 10, 2026 3:59am";
-
-// ---------------------------------------------------------------- dates
-const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-/** "Oct 13, 2026 7:15pm" (this PC's local time, as every screen prints it). */
-function parseWhen(s) {
-  const m = /([A-Z][a-z]{2}) (\d{1,2}), (\d{4})(?: (\d{1,2}):(\d{2})(am|pm))?/.exec(s || "");
-  if (!m || !MON.includes(m[1])) return null;
-  let h = 0;
-  let mi = 0;
-  if (m[4]) {
-    h = Number(m[4]) % 12 + (m[6] === "pm" ? 12 : 0);
-    mi = Number(m[5]);
-  }
-  return new Date(Number(m[3]), MON.indexOf(m[1]), Number(m[2]), h, mi).getTime();
-}
-
-/** The project's one date format: Oct 03, 2026 8:03pm. */
-function fmtWhen(ms) {
-  const d = new Date(ms);
-  const h12 = d.getHours() % 12 || 12;
-  const ap = d.getHours() < 12 ? "am" : "pm";
-  return `${MON[d.getMonth()]} ${String(d.getDate()).padStart(2, "0")}, ${d.getFullYear()} `
-    + `${h12}:${String(d.getMinutes()).padStart(2, "0")}${ap}`;
-}
-
-function money(s) {
-  const t = String(s || "").replace(/[−–]/g, "-").replace(/[^0-9.+-]/g, "");
-  const v = parseFloat(t);
-  return Number.isFinite(v) ? v : null;
-}
 
 // ---------------------------------------------------------------- window
 function readState() {
@@ -126,7 +98,7 @@ async function collect(page, since, until) {
       const c = parseWhen(closed);
       if (c != null && c < since) { older = true; continue; }
       if (c != null && c >= until) continue;
-      const key = `${tradeId}|${closed}`;
+      const key = tradeKey({ room, trade_id: tradeId, closed });
       if (seen.has(key)) continue;              // the list refreshes while it is read
       seen.add(key);
       trades.push({
@@ -222,42 +194,8 @@ async function lookup(page, id) {
   return { found: true, log: out };
 }
 
-// ---------------------------------------------------------- step 12: match
-function verdict(p, b) {
-  if (p == null || b == null) return "unreadable";
-  if (p !== 0 && b !== 0 && (p > 0) !== (b > 0)) return "not close (one won, one lost)";
-  const d = Math.abs(p - b);
-  return d <= Math.max(0.10, 0.10 * Math.abs(p)) ? "close" : "not close";
-}
-
-function compare(t, log) {
-  let best = null;
-  for (const b of log) {
-    if (b.opened_ms == null || t.opened_ms == null) continue;
-    const dO = Math.abs(b.opened_ms - t.opened_ms);
-    const dC = b.closed_ms != null && t.closed_ms != null ? Math.abs(b.closed_ms - t.closed_ms) : 0;
-    const score = dO * 10 + dC;          // the opened time decides, closed breaks ties
-    if (!best || score < best.score) best = { b, dO, dC, score };
-  }
-  if (!best || best.dO > OPEN_TOL_MIN * 60_000) {
-    return { verdict: "no equivalent",
-             note: best ? `nearest backtest trade opened ${best.b.opened} (${Math.round(best.dO / 60000)} min away)`
-                        : "the backtest's trade list is empty" };
-  }
-  if (/^END$/i.test(best.b.closed_by || "")) {
-    // the backtest's candles stopped while this trade was still open: its
-    // "profit" is only the mark at that last candle (XDC 30m, Oct 13, 2026:
-    // +0.12 at 11:30am against practice's +0.74 at 12:23pm)
-    return { verdict: "backtest ends before this trade closed", backtest: best.b,
-             opened_gap_min: Math.round(best.dO / 60000),
-             note: `the backtest's candles end ${best.b.closed}, while this trade was still open` };
-  }
-  return { verdict: verdict(t.profit, best.b.pnl), backtest: best.b,
-           opened_gap_min: Math.round(best.dO / 60000), closed_gap_min: Math.round(best.dC / 60000),
-           difference: t.profit != null && best.b.pnl != null ? +(best.b.pnl - t.profit).toFixed(2) : null };
-}
-
 // ------------------------------------------------------------------- run
+// (step 12, the match itself, is match.mjs's compare)
 const win = windowOf();
 const started = Date.now();
 const day = new Date(started);
@@ -279,7 +217,12 @@ try {
   const { trades, examined } = await collect(page, win.since, win.until);
   report.examined = examined;
   console.log(`[audit] ${trades.length} practice trade(s) in the window (${examined} rows read on the Main tab's DEMO list)`);
-  const ids = [...new Set(trades.map((t) => t.strategy_id).filter(Boolean))];
+  const { compared, named, ids } = split(trades);
+  if (named.length) {
+    const why = {};
+    for (const t of named) why[t.verdict] = (why[t.verdict] || 0) + 1;
+    console.log(`[audit] ${named.length} not compared: ${Object.entries(why).map(([k, v]) => `${v} ${k}`).join("; ")}`);
+  }
   console.log(`[audit] ${ids.length} strategy id(s) to look up: ${ids.join(", ")}`);
   if (ids.length) {
     await page.goto(`${BASE}/backtest-v2`, { waitUntil: "domcontentloaded", timeout: 120_000 });
@@ -292,9 +235,9 @@ try {
                          ...(got.screenshot ? { screenshot: got.screenshot } : {}) };
       console.log(`[audit] ${n + 1}/${ids.length} #${id}: ${!got.found ? `no result: ${got.why}`
         : got.log ? `${got.log.length} backtest trade(s)` : `NOT CHECKED: ${got.why}`}`);
-      for (const t of trades.filter((x) => x.strategy_id === id)) {
+      for (const t of compared.filter((x) => x.strategy_id === id)) {
         const r = !got.found ? { verdict: "id not in Stored strategies", note: got.why }
-          : got.log ? compare(t, got.log)
+          : got.log ? compare(t, got.log, OPEN_TOL_MIN)
             : { verdict: "not checked (its trade list did not load)", note: got.why };
         report.trades.push({ ...t, ...r });
       }
@@ -303,12 +246,12 @@ try {
       await page.screenshot({ path: shot, fullPage: true }).catch(() => {});
       report.failures.push({ id, error: String(e).slice(0, 300), screenshot: shot });
       report.ids[id] = { found: null, why: `failed: ${String(e).slice(0, 160)}` };
-      for (const t of trades.filter((x) => x.strategy_id === id)) report.trades.push({ ...t, verdict: "not checked (the step failed)" });
+      for (const t of compared.filter((x) => x.strategy_id === id)) report.trades.push({ ...t, verdict: "not checked (the step failed)" });
       console.log(`[audit] ${n + 1}/${ids.length} #${id}: FAILED ${String(e).slice(0, 160)} (screenshot ${shot})`);
       await page.goto(`${BASE}/backtest-v2`, { waitUntil: "domcontentloaded", timeout: 120_000 }).catch(() => {});
     }
   }
-  for (const t of trades.filter((x) => !x.strategy_id)) report.trades.push({ ...t, verdict: "no strategy id on the row" });
+  report.trades.push(...named);
 } finally {
   await browser.close().catch(() => {});
 }

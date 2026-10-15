@@ -172,6 +172,120 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-15-D — the practice-against-backtest check counted two rooms' trades as one when they shared a trade id
+
+**CEO**
+
+* The first full check read 19 of the 20 trades the move to Gate closed at
+  3:59am: one was dropped because another room held a trade with the same id.
+* Why: rooms running the same strategy give the same trade the same id, and
+  the check told trades apart by id and closing time only.
+* What stops it now: the room is part of what makes a trade one trade.
+
+**DEV**
+
+* `.claude/skills/practice_backtest_audit/scripts/audit.mjs` `collect()` keyed
+  its "already read" set on `` `${tradeId}|${closed}` `` (f205910).
+* Invariant broken: **a trade is one room's trade** — the key of a row on the
+  all-rooms list carries the room.
+* Guard: `tests/test_practice_backtest_audit.py::test_two_rooms_trades_with_one_id_are_two_trades`
+  (`tradeKey` in `scripts/match.mjs`).
+
+**SAW** — the audit's own line on Oct 15, 2026 7:53pm: "19 not compared: 19
+closed by the move to Gate", where the site's list holds 20 at 3:59am.
+
+**TIMELINE**
+
+1. Oct 10, 2026 3:59am — AZOSTOCK #MRTZALF8 is closed by the move to Gate in
+   room #CC94D9FB and in room #6B08FF64: two trades, one id.
+2. Oct 15, 2026 7:53pm — the full check (`--since "Oct 10, 2026 3:59am"`)
+   reads 71 trades and names 19 switch closes; the 20th is the second
+   #MRTZALF8, dropped as a re-read row.
+3. Measured on the site's newest 4,000 practice trades: 593 id + closing-minute
+   pairs held by two rooms (e.g. BIIBSTOCK #2KTWTS3E, -1.08 in both #55D32617
+   and #B2404C0B, Oct 09, 2026 10:10am); 0 among the 52 Gate trades closed by
+   their own target or stop, so no compared trade was lost.
+4. After the fix — each room's trade is its own row in the report.
+
+**ROOT CAUSE** — the de-duplication key assumed a trade id is unique across
+rooms; it is unique inside one room.
+
+**WHY IT WAS NOT CAUGHT** — the only real run before this one (Oct 13, 2026,
+six trades) had no shared id, and the key lived inside the browser code where
+no test reached it.
+
+**COST** — none: one switch close, which is listed and never compared.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_practice_backtest_audit.py::test_two_rooms_trades_with_one_id_are_two_trades`.
+
+---
+
+## RCA-2026-10-15-C — the practice-against-backtest check would have compared 20 trades the move to Gate closed itself (NEVER HAPPENED YET)
+
+**CEO**
+
+* Never happened: the first full run of the new practice-against-backtest
+  check would have listed 20 trades that the move to Gate closed, not their
+  strategies, as missing or mismatched.
+* Why: the check started at the move to Gate's own minute and compared every
+  trade it read, whatever had closed it.
+* What stops it now: only a trade its own target or stop closed is compared;
+  the others are listed with the reason, and their strategies are never searched.
+
+**DEV**
+
+* `.claude/skills/practice_backtest_audit/scripts/audit.mjs` (f205910) took
+  `FIRST_RUN_FROM = "Oct 10, 2026 3:59am"` inclusive and fed every row's id
+  to `lookup()` and every trade to `compare()`, reading `closed_by` but never
+  acting on it.
+* Invariant broken: **a backtest exit can only answer a trade its own target
+  or stop closed**.
+* Guard: `tests/test_practice_backtest_audit.py::test_a_trade_the_move_to_gate_closed_is_named_never_compared`
+  (the matching rules now live in `scripts/match.mjs`, which the test imports).
+
+**SAW** — nothing on screen; found while counting the trades for the
+operator's "how accurate is my practice trade to my backtest" (Oct 14, 2026).
+
+**TIMELINE**
+
+NEVER HAPPENED YET.
+
+1. Oct 10, 2026 3:56am, 3:58am and 3:59am — the move to Gate closes 91 open
+   practice trades at the old exchange's last price (`VENUE_SWITCH`: 39, 32
+   and 20).
+2. Oct 14, 2026 — the skill ships with its first run starting at 3:59am,
+   inclusive. Its runs that day used `--day yesterday` and then its saved
+   place, so the start was never used.
+3. A first run on another PC (no saved place), or `--since "Oct 10, 2026
+   3:59am"`, would have read those 20 trades — 19 strategies of rooms
+   #CC94D9FB and #6B08FF64 on ADMSTOCK, AZNSTOCK, AZOSTOCK, DVNSTOCK,
+   FASTSTOCK, GPNSTOCK, JPY, KIMISTOCK and XLI, opened from Oct 08, 2026
+   1:45pm — searched each strategy, and listed it as an id with no result or
+   set its switch price (FASTSTOCK #SHU6ESVA -0.43) against a backtest exit.
+4. After the fix — the same window names the 20 as "closed by the move to
+   Gate, not by its strategy" and searches only the 17 strategies of the 45
+   trades their own target or stop closed.
+
+**ROOT CAUSE** — the comparison never asked what closed the practice trade.
+
+**WHY IT WAS NOT CAUGHT** — the skill was checked only by running it on one
+real day (Oct 13, 2026), and every trade that day was closed by its own target
+or stop; the matching rules sat inside the browser script, where no test could
+import them.
+
+**COST** — none.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_practice_backtest_audit.py` (6 tests:
+`test_a_trade_the_move_to_gate_closed_is_named_never_compared`,
+`test_a_trade_closed_by_hand_or_the_panic_button_is_named_too`, and the
+operator's own 10.6 / 10.8 / 100 rule in `test_the_matching_rules_the_operator_set`).
+
+---
+
 ## RCA-2026-10-15-B — UPDATE THIS BACKTEST re-tested one day instead of 30 on Gate, and saved it over the 30-day results
 
 **CEO**

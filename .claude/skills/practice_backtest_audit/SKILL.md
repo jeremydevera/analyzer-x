@@ -67,6 +67,16 @@ Verdicts beyond the three approved ones, both added on the first day:
 * **not checked (its trade list did not load)**: the row was found but its
   trade list never drew. The row is clicked twice, then a screenshot and the
   panel's own message are saved. It is never reported as "no equivalent".
+* **closed by the move to Gate / by hand / by the panic button, not by its
+  strategy**: only a trade its own target or stop closed (`TP`, `SL`) is set
+  against a backtest exit, and the others' ids are never looked up. The move
+  to Gate closed 91 practice trades at the old exchange's last price (Oct 10,
+  2026 3:56am-3:59am, `VENUE_SWITCH`), 20 of them inside the first run's
+  opening minute (RCA-2026-10-15-C).
+
+The matching rules (`split`, `compare`, `verdict`) live in
+`scripts/match.mjs`, which `tests/test_practice_backtest_audit.py` imports —
+change them there, never inside `audit.mjs`.
 
 ## What the first runs taught (Oct 14, 2026)
 

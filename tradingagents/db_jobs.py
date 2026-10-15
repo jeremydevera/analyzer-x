@@ -2654,6 +2654,16 @@ def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
         c = (msw.candle_index(scan=False) or {}).get(f"{sym}-{_frame}") or {}
         span = (int(c.get("last_ms") or 0) - int(c.get("first_ms") or 0)) / 86_400_000
         days = max(1, int(span)) or 365
+    # ON GATE, BACKTEST v2 MEASURES THE NIGHTLY RUN'S WINDOW (RCA-2026-10-15-B).
+    # The span above is this PC's own minute file, which on MEXC held the 30
+    # days MEXC sells; on Gate the runners fetch their own minutes and this
+    # file holds about a day, so every press measured ONE day and merged it
+    # over the shard's 30-day rows under the same ids (Oct 15, 2026: QNTX
+    # 15m willr14 50 rows, stoch14 30, ALAB 15m fvg 21 went to 0 days).
+    if msw.FINE_TF and msw._gate_v2():
+        from tradingagents import cloud_sweep as _cs
+
+        days = int(_cs.SWEEP_DAYS)
     before = msw.pair_watermark(coin, tf)
 
     def _pub(**kw) -> None:

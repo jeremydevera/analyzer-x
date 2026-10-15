@@ -172,6 +172,66 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-15-B — UPDATE THIS BACKTEST re-tested one day instead of 30 on Gate, and saved it over the 30-day results
+
+**CEO**
+
+* Pressing "UPDATE THIS BACKTEST" on Backtest v2 re-tested only the last day
+  and saved that over the strategy's 30-day result: on Oct 15, 2026 my
+  presses changed 254 rows (ANKR 30m fade15 153, QNTX 15m willr14 50 and
+  stoch14 30, ALAB 15m fvg 21) to one day and about 11-16 trades.
+* Why: the button sized its window from this PC's own minute file, which on
+  Gate holds about a day, because GitHub's machines now fetch their own.
+* What stops it now: on Gate the button always re-tests the same 30 days the
+  nightly run does; the 254 rows were re-tested and are 29-day rows again.
+
+**DEV**
+
+* `tradingagents/db_jobs.py` `_run_pairbt`: `days = max(1, span)` from
+  `msw.candle_index()["SYM-1m"]` → `market_sweep.run_pair(days=1)` →
+  Gate path `_cut = now - days` measured one day, merged over the shard's
+  rows under the same ids.
+* Invariant broken: **a press measures what the store keeps** — Backtest v2
+  on Gate keeps the nightly run's `cloud_sweep.SWEEP_DAYS` window.
+* Guard: `tests/test_update_this_backtest_measures_the_shards_window.py`.
+
+**SAW** — nothing on screen; found while re-testing the operator's unmatched
+practice trades: the press reported "50 rows" for QNTX willr14 while the
+row the operator cared about stayed at Oct 11, and a replay of the press
+printed `days the button passes: 1`.
+
+**TIMELINE**
+
+1. Oct 10, 2026 3:56am — the move to Gate. GitHub's machines fetch their own
+   minutes; this PC's 1-minute files stop covering 30 days.
+2. Since then every v2 press measured the span of that file (QNTX: one day).
+3. Oct 15, 2026 7:06-7:10pm — seven presses for the practice audit's
+   unmatched strategies: QNTX willr14 50 rows and stoch14 30 rows, ALAB fvg
+   21 rows went from 29 days (82-160 trades) to 0 days (11-16 trades); ANKR
+   fade15's press was stopped at 7:2x pm by its exact process id, after it
+   had saved 153 of its 270 rows. DOOD, XDC, CLANKER and IOTX wrote nothing.
+4. No room switched anything on or off on QNTX, ALAB or ANKR meanwhile
+   (deploy logs since 7:06pm: 0 lines).
+5. After the fix — the same press on QNTX willr14 (saving switched off)
+   would write 90 rows, 29 days, median 148 trades, targets 0.4%-3.0%.
+
+**ROOT CAUSE** — the press's window came from a file that only matched the
+store's window by accident on MEXC (the code's own comment said "it was
+right by accident").
+
+**WHY IT WAS NOT CAUGHT** — the window's tests asserted the span rule for v1
+(the trade floor of #SW8Q96E6); no test ran a v2 press on Gate with a short
+minute file, and the comment that named the accident did not become a test.
+
+**COST** — none in money; 254 rows wrong for under two hours, read by
+nothing that switches.
+
+**FIX** — this commit; the 254 rows re-pressed with it.
+
+**GUARD** — `tests/test_update_this_backtest_measures_the_shards_window.py`.
+
+---
+
 ## RCA-2026-10-15-A — the nightly update stopped re-testing strategies practice still traded, because their coin's fees looked too high
 
 **CEO**

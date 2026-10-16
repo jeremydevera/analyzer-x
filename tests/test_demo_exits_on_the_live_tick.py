@@ -145,6 +145,21 @@ class Fx:
         return {"protected": True}
 
 
+@pytest.fixture(autouse=True)
+def _the_clock_of_this_test():
+    """ONE TIMELINE, read when each test RUNS (Oct 15, 2026). These clocks
+    were fixed when the file was imported, and the feed drops a print older
+    than `live_price.KEEP_S` (900 s): in a full suite that reached this file
+    more than 7 minutes after collection, every print fed in at
+    `OPENED_AT + 120` was already too old to keep, so three of these tests
+    failed in a 15-minute run of the whole suite and passed on their own."""
+    global NOW, OPENED_AT, SIG_BAR
+    NOW = int(time.time())
+    OPENED_AT = NOW - 600
+    SIG_BAR = OPENED_AT - HOUR - 11
+    yield
+
+
 @pytest.fixture
 def sandbox(monkeypatch):
     for name in ("_BAR_CACHE", "_GATE_CACHE", "_GATE_LOGGED",

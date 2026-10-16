@@ -92,3 +92,10 @@ def test_switching_books_shows_a_spinner_not_the_other_books_numbers():
     assert "animate-spin" in PANEL
     # and the empty-account sentence waits for the answer
     assert "{!keys.length && !loading && <p" in PANEL
+
+
+def test_a_day_with_no_trade_says_no_trade_on_auto_trade_too():
+    """The same calendar on Auto Trade (operator, Oct 16, 2026: "indicate no
+    trade because im not sure if you made a trade that day"): from the first
+    day the account traded to today, an empty day says "no trade"."""
+    assert "span={first ? { from: first, to: today } : undefined}" in PANEL

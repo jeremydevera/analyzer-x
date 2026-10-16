@@ -682,3 +682,23 @@ def test_the_pop_up_draws_the_calendar_beside_its_table():
     assert 'import { DayCalendar } from "@/components/trade/PnlPanel";' in src
     # it opens on the month of the dates' newest trade, not on today's
     assert "start={" in trades
+
+
+def test_a_day_with_no_trade_says_no_trade():
+    """Operator, Oct 16, 2026: "if there is no pnl for the day just make it 0$
+    or indicate no trade because im not sure if you made a trade that day" —
+    #CB69A137's calendar went blank after Sep 21, 2026 and read as missing.
+    Every day inside the dates (never after today) that made no trade says so;
+    the dates' first and last day come from the server, on its own clock."""
+    a, _ = _keep_two()
+    lo, hi = ms(2026, 9, 20, 0) / 1000, ms(2026, 9, 30, 23) / 1000
+    got = rst.trades(a, lo, hi)
+    assert (got["day_from"], got["day_to"]) == ("2026-09-20", "2026-09-30")
+    future = rst.trades(a, lo, dt.datetime.now().timestamp() + 30 * 86400)
+    assert future["day_to"] == dt.date.today().isoformat(), "never a day that has not happened"
+    src = _src_all()
+    trades = src.split("\nfunction StrategyTrades(")[1].split("\nfunction CopyId(")[0]
+    assert "span={{ from: d.day_from, to: d.day_to }}" in trades
+    cal = (ROOT / "webapp/src/components/trade/PnlPanel.tsx").read_text(encoding="utf-8")
+    body = cal[cal.index("export function DayCalendar"):]
+    assert "no trade" in body and "span && k >= span.from && k <= span.to" in body

@@ -1376,7 +1376,7 @@ function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string
         {/* fills the space the table leaves (a fixed 22rem wrapped under it at
             1,500 px with ~20rem free), and wraps only below 17rem */}
         <div className="min-w-[17rem] max-w-sm flex-1">
-          <DayCalendar days={d.days} book={`#${d.id}`}
+          <DayCalendar days={d.days} book={`#${d.id}`} span={{ from: d.day_from, to: d.day_to }}
             start={Object.keys(d.days).sort().pop()} />
         </div>
         </div>

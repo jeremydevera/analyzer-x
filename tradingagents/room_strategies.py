@@ -783,6 +783,11 @@ def trades(rid: str, from_s: float, to_s: float, *, page: int = 1, per: int = 10
         d["coins"] = sorted(d["coins"])
     return {"id": want, "words": w["words"], "from": from_s, "to": to_s,
             "days": days,
+            # the dates' first and last LOCAL day, never past today: the
+            # calendar says "no trade" on an empty day between them (operator,
+            # Oct 16, 2026: "im not sure if you made a trade that day")
+            "day_from": _dt.date.fromtimestamp(from_s).isoformat(),
+            "day_to": _dt.date.fromtimestamp(min(to_s, time.time())).isoformat(),
             "trades": n, "wins": wins, "losses": n - wins,
             # the dates' own win rate, by the table's own formula (_measured),
             # so the pop-up, its CSV and the row print one number

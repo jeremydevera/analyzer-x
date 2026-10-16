@@ -60,12 +60,17 @@ export default function PnlPanel() {
   }, 5_000, [dry]);
 
   const loading = shown !== dry;
+  // from the first day this account traded to today, an empty day says "no trade"
+  const first = loading ? undefined : Object.keys(days).sort()[0];
+  const n = new Date();
+  const today = dayKey(n.getFullYear(), n.getMonth(), n.getDate());
 
   return (
     <div className="min-w-0">
       <PanelStatus err={err} loaded={got.current} />
       <DayCalendar days={loading ? {} : days} loading={loading}
-        book={dry ? "practice account" : "real-money account"} dry={dry} onBook={pick} />
+        book={dry ? "practice account" : "real-money account"} dry={dry} onBook={pick}
+        span={first ? { from: first, to: today } : undefined} />
     </div>
   );
 }
@@ -90,12 +95,17 @@ const dayKey = (y: number, m: number, d: number) => `${y}-${pad2(m + 1)}-${pad2(
  * month's total summed from the same boxes, so the caption cannot disagree
  * with the grid. A day with no closed trade stays blank rather than +0.00:
  * "nothing closed" and "closed at break-even" are different days. */
-export function DayCalendar({ days, book, dry, onBook, loading = false, start }: {
+export function DayCalendar({ days, book, dry, onBook, loading = false, start, span }: {
   days: Record<string, DayStat>; book: string; dry?: boolean; onBook?: (dry: boolean) => void;
   loading?: boolean;
   /** a "YYYY-MM-DD" day whose month it opens on (default: this month) — a
    *  Room strategy's dates may end in a month before today's (Oct 15, 2026) */
   start?: string;
+  /** "YYYY-MM-DD" first and last day the figures cover: an empty day inside
+   *  says "no trade" instead of sitting blank (operator, Oct 16, 2026: "if
+   *  there is no pnl for the day just make it 0$ or indicate no trade because
+   *  im not sure if you made a trade that day"). Outside it stays blank. */
+  span?: { from: string; to: string };
 }) {
   const now = new Date();
   const [month, setMonth] = useState(() => start
@@ -175,6 +185,7 @@ export function DayCalendar({ days, book, dry, onBook, loading = false, start }:
             if (d == null) return <div key={`b${i}`} />;
             const k = dayKey(month.y, month.m, d);
             const v = days[k];
+            const none = !v && span && k >= span.from && k <= span.to;
             const tone = !v ? "border-gray-100 dark:border-white/[0.05]"
               : v.pnl >= 0 ? "border-success-200 bg-success-50 dark:border-success-500/30 dark:bg-success-500/10"
               : "border-error-200 bg-error-50 dark:border-error-500/30 dark:bg-error-500/10";
@@ -183,6 +194,7 @@ export function DayCalendar({ days, book, dry, onBook, loading = false, start }:
                 className={`flex min-h-14 min-w-0 flex-col items-stretch rounded-lg border p-1 text-start ${tone}
                   ${k === todayKey ? "ring-2 ring-brand-500" : ""} ${picked === k ? "outline outline-2 outline-gray-700 dark:outline-white" : ""}`}>
                 <span className="text-[10px] text-gray-500 dark:text-gray-400">{d}</span>
+                {none && <span className="text-[9px] leading-tight text-gray-400 dark:text-gray-500">no trade</span>}
                 {v && <>
                   {/* a phone box is ~40px: whole dollars there, cents from md
                       up and always in the line under the grid when tapped */}

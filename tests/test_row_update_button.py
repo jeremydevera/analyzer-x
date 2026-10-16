@@ -202,10 +202,27 @@ def test_a_success_takes_the_pair_off_the_books(monkeypatch):
 
 
 def test_no_new_bars_says_so(monkeypatch):
-    """Pressed twice in a row, the second press must not imply it did work."""
+    """Pressed twice in a row, the second press must not imply it did work.
+
+    "Nothing to measure" is `run_pair`'s own answer, `why: "no new bars"` —
+    the fake says it the way the real one does. A press that measured with
+    the last candle unchanged is NOT current (RCA-2026-10-15-H): ANKR 30m
+    fade15 re-measured 300 rows on Oct 15, 2026 7:23pm under this label."""
+    from tradingagents import market_sweep as msw
+
     _wire(monkeypatch)
+    monkeypatch.setattr(msw, "run_pair", lambda sym, tf, **kw: {
+        "rows": [{}] * 3, "why": "no new bars", "new_bars": 0})
     dj._run_pairbt({"coin": "STBL", "tf": "4h"})
     assert "already current" in _progress()["note"]
+    assert _progress()["already_current"] is True
+
+
+def test_a_press_that_measured_is_not_called_current(monkeypatch):
+    _wire(monkeypatch)                       # measures 3 rows, last candle unchanged
+    dj._run_pairbt({"coin": "STBL", "tf": "4h"})
+    assert "already current" not in _progress()["note"]
+    assert _progress()["already_current"] is False
 
 
 def test_the_job_is_routed():

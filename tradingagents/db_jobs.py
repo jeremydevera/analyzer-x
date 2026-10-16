@@ -2835,6 +2835,12 @@ def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
               f"({index_error})" + (" — queued for the index catch-up"
                                     if queued else ""), flush=True)
     after = msw.pair_watermark(coin, tf)
+    # ALREADY CURRENT is run_pair's own word that it measured nothing ("no new
+    # bars"), never "the last candle did not move": on Gate a press measures
+    # the whole window, and ANKR 30m fade15 re-measured 300 rows over 30 days
+    # on Oct 15, 2026 7:23pm under "no new bars — it was already current"
+    # (RCA-2026-10-15-H).
+    _current = bool(isinstance(res, dict) and res.get("why") == "no new bars")
     try:
         from tradingagents import pending_ledger as _pl
 
@@ -2846,8 +2852,7 @@ def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
                 "catch-up runs" if queued else
                 f" · measured, but NOT indexed: {index_error}")
                if index_error else "")
-            + (" · no new bars — it was already current"
-               if after and after == before else "")
+            + (" · no new bars — it was already current" if _current else "")
             + (f" · {cost_said}" if cost_said else "")
             # an ml_ row this PC cannot rebuild says so (market_sweep
             # .ml_history_short), never "0 rows" alone
@@ -2860,7 +2865,7 @@ def _run_pairbt(spec: dict, kind: str = "pairbt") -> None:
          # The first write carried the signal and every later one overwrote
          # the file without it, so the finished state could not name its own
          # rule; and "no new bars" lived only inside the free-text note.
-         signal=signal, already_current=bool(after and after == before),
+         signal=signal, already_current=_current,
          cost_note=cost_said,
          # WHAT MOVED, in the operator's own date format — the whole point of
          # the button is that "last backtest Aug 24" becomes today

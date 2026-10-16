@@ -172,6 +172,72 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-15-H — UPDATE THIS BACKTEST said "no new bars — it was already current" on presses that had just re-measured every row (ANKR 30m: 300 rows, Oct 15, 2026 7:23pm)
+
+**CEO**
+
+* Four of the nine presses made on Oct 15, 2026 to repair one-day rows
+  said "no new bars — it was already current", and the row's own panel
+  would have read "Already up to date", while each had just re-tested its
+  rows over 30 days (ANKR 30m: 300 rows).
+* Why: the message looked only at whether the newest candle had moved since
+  the last press, not at whether anything was re-tested.
+* What stops it now: the message says "already current" only when the
+  re-test itself found nothing to do.
+
+**DEV**
+
+* `tradingagents/db_jobs.py` `_run_pairbt` set `already_current` and the
+  note's "no new bars" from `pair_watermark` before == after; on Gate a v2
+  press measures the nightly window in full, so the watermark stays put
+  while every row is replaced.
+* Invariant broken: **label-must-match-data** — "already current" is
+  `run_pair`'s own answer (`why: "no new bars"`), never inferred from a
+  watermark.
+* Guard: `tests/test_update_this_backtest_measures_the_shards_window.py::test_a_press_that_measured_never_says_it_was_already_current`
+  and `tests/test_row_update_button.py::test_a_press_that_measured_is_not_called_current`.
+
+**SAW** — my own presses repairing RCA-2026-10-15-B, in the bell list:
+Oct 15, 2026 7:22pm "QNTX 15m · stoch14: 90 row(s), 68 indexed · no new
+bars — it was already current", 7:23pm ANKR 30m fade15 (300 rows), 7:24pm
+XDC 30m fvg (54), 7:25pm IOTX 30m cx_fast (100).
+
+**TIMELINE**
+
+1. Oct 15, 2026 7:08-7:09pm — the first presses (before the RCA-2026-10-15-B
+   fix) save one-day rows; the candles are current.
+2. 7:21-7:26pm — the nine presses again, fixed: each re-tests its rows over
+   30 days. No candle has closed since the 7:08pm presses on QNTX 15m
+   stoch14, ANKR 30m, XDC 30m or IOTX 30m, so their watermark is unchanged
+   and their notes end "no new bars — it was already current".
+3. Oct 15, 2026 — found reading those notes back; fixed with a test that
+   reproduces "300 row(s) ... no new bars — it was already current" first.
+
+**ROOT CAUSE** — `already_current=bool(after and after == before)`: a
+measurement that ends on the same candle it started from was treated as no
+measurement.
+
+**WHY IT WAS NOT CAUGHT** — `test_no_new_bars_says_so` faked a press that
+MEASURED (rows, no `why`) and asserted "already current", so the test
+encoded the watermark rule instead of `run_pair`'s answer; it held as long
+as every press resumed from the watermark (v1, MEXC), and Gate's full-window
+press was never driven through it.
+
+**COST** — none in money; four notes on the bell list, and the row panel's
+"Already up to date" had it been open, said the rows had not changed when
+they had.
+
+**FIX** — this commit. Also: the two RCA-2026-10-15-B tests waited 60 s each
+on the table write's retry loop; their fixture now answers at once.
+
+**GUARD** — `tests/test_update_this_backtest_measures_the_shards_window.py::test_a_press_that_measured_never_says_it_was_already_current`,
+`::test_a_press_with_no_new_bars_still_says_so`, and
+`tests/test_row_update_button.py::test_no_new_bars_says_so` (now faking
+`run_pair`'s real "no new bars" answer) with
+`::test_a_press_that_measured_is_not_called_current`.
+
+---
+
 ## RCA-2026-10-15-G — the backtest read Gate's order book at the very second a candle closed, while practice reads it about 3 seconds later (IOTX: a 2-second move made the backtest skip a trade practice took)
 
 **CEO**

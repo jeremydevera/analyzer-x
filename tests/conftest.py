@@ -471,6 +471,15 @@ def _never_touch_the_live_book(tmp_path, monkeypatch):
     except Exception:
         pass
     try:
+        # THE APP'S OWN ORDER BOOKS (Oct 16, 2026, RCA-2026-10-16-A): the
+        # recorder's files, lock, pid and log - a test must never append a
+        # fixture reading to the books the backtest will price from
+        from tradingagents import app_books as _ab
+
+        monkeypatch.setattr(_ab, "HOME", sandbox / "app_books")
+    except Exception:
+        pass
+    try:
         # BACKTEST A ROOM's saved replays, trade-list cache and run lock
         # (Oct 02, 2026) live under ~/.tradingagents/v2/room_replay — a test
         # that replays a fixture room must never file it beside the real ones

@@ -32,7 +32,10 @@ import io
 
 _EPS = 1e-12
 _KIND = {"set": 0, "make": 1, "take": 2}
-SOURCES = {"full": 1, "snapshot": 2}
+# "app": the book the APP can trade, recorded live by `app_books` (Oct 16,
+# 2026, RCA-2026-10-16-A) - Gate's archive ("full", "snapshot") also holds
+# RPI offers the API can never fill
+SOURCES = {"full": 1, "snapshot": 2, "app": 3}
 # WHEN PRACTICE LOOKS (Oct 15, 2026, RCA-2026-10-15-G): the runner writes an
 # entry 1 to 6 seconds after the candle closes — 52 practice entries since the
 # move to Gate, 7 at 1 s, 16 at 2 s, 15 at 3 s, 10 at 4 s, 3 at 5 s, 1 at 6 s.

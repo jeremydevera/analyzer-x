@@ -368,6 +368,22 @@ def _keep_the_row_index_current() -> None:
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[supervisor] could not restart the indexer: "
                           f"{exc!r}", flush=True)
+                # THE APP'S OWN ORDER BOOK, every minute (Oct 16, 2026,
+                # RCA-2026-10-16-A; the operator chose "Record app's
+                # prices"): Gate's record holds RPI offers the API cannot
+                # fill, so the backtest prices off what this records. A
+                # minute it is down is a minute lost for good, so it is
+                # supervised like the indexer; it no-ops while one runs.
+                try:
+                    from tradingagents import app_books as _ab
+
+                    pid = _ab.spawn_recorder()
+                    if pid:
+                        print(f"[supervisor] the order-book recorder was "
+                              f"down — restarted (pid {pid})", flush=True)
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[supervisor] could not restart the order-book "
+                          f"recorder: {exc!r}", flush=True)
                 # AND THE RUNNER, on the machines launchd cannot watch.
                 # Operator, 2026-09-04: *"IF I RUN IT RUN IT / I DONT WANT ANY
                 # INCONVENIENCE"*. `supervisor.py` is a macOS LaunchAgent, so

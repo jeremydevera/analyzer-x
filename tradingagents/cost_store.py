@@ -116,9 +116,10 @@ def without_hours(packed: dict, hours) -> dict:
 
 
 def merge(a: dict | None, b: dict | None) -> dict:
-    """Both, sorted by minute; where both hold a minute, the reading taken
-    when practice looks (`book_history.READ_AT_S`) wins, and between two of
-    one kind `b` (the newer) does.
+    """Both, sorted by minute; where both hold a minute, the APP'S OWN book
+    wins (`app_books`, source "app": RCA-2026-10-16-A, Gate's record holds RPI
+    offers the API cannot fill), then the reading taken when practice looks
+    (`book_history.READ_AT_S`), and between two of one kind `b` (the newer).
 
     THE KIND FIRST (RCA-2026-10-15-G): one coin-month can sit on both
     accounts and a reader merges them in a fixed order, so after the re-read
@@ -126,7 +127,7 @@ def merge(a: dict | None, b: dict | None) -> dict:
     on the first, minute for minute."""
     import numpy as np
 
-    from tradingagents.book_history import READ_AT_S
+    from tradingagents.book_history import READ_AT_S, SOURCES
 
     parts = [_whole(p) for p in (a, b) if p is not None and len(p["t"])]
     if not parts:
@@ -136,7 +137,8 @@ def merge(a: dict | None, b: dict | None) -> dict:
     # rank: the new kind over the old, then the later file over the earlier
     later = np.concatenate([np.full(len(p["t"]), i, "int64")
                             for i, p in enumerate(parts)])
-    rank = (np.asarray(cat["at"]) == READ_AT_S).astype("int64") * 2 + later
+    rank = ((np.asarray(cat["source"]) == SOURCES["app"]).astype("int64") * 4
+            + (np.asarray(cat["at"]) == READ_AT_S).astype("int64") * 2 + later)
     # sort by minute, then rank; the LAST row of each minute is the winner
     order = np.lexsort((rank, t))
     ts = t[order]
@@ -283,7 +285,21 @@ def engine_book(sym: str, start_s: int, end_s: int):
     if venue.current() != "gate":
         return None
     try:
-        return book_for(sym, int(start_s), int(end_s))
+        got = book_for(sym, int(start_s), int(end_s))
     except Exception:                                          # noqa: BLE001
-        return empty()
+        got = empty()
+    # THE APP'S OWN BOOK FIRST (RCA-2026-10-16-A): where this PC recorded the
+    # book the app can trade, it answers that minute instead of Gate's
+    # record, which holds RPI offers no API order can fill. A store that
+    # cannot be read is no readings, never an error.
+    try:
+        from tradingagents import app_books as _ab
+
+        if _ab.IN_BACKTEST:
+            mine = _ab.book_for(sym, int(start_s) - LEAD_S, int(end_s))
+            if len(mine["t"]):
+                got = merge(got, mine)
+    except Exception:                                          # noqa: BLE001
+        pass
+    return got
 

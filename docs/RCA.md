@@ -172,6 +172,98 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-16-A — the backtest priced Gate trades off an order-book record that holds offers the app can never trade (QNTX: 0 of 45 same-second checks matched the app's own book)
+
+**CEO**
+
+* Practice and the backtest disagreed on costly coins: QNTX's Oct 12, 2026
+  trades lost -1.47 in practice against -0.98 in the backtest, and RECALL's
+  Oct 10, 2026 11:00am short was taken by the backtest and refused by
+  practice, which then left two practice trades with no backtest twin.
+* Why: Gate's published record of its order books includes "RPI" offers,
+  which Gate fills only for orders placed on its website or phone app; your
+  app trades through Gate's API and never sees them. The backtest priced off
+  the record, so it got prices practice could not.
+* What stops it now: the app records the prices it can really trade, for
+  every coin, every minute, 3 seconds in; the backtest switches to them once
+  GitHub's machines can read them too.
+
+**DEV**
+
+* `tradingagents/book_history.py` replays Gate's `download.gatedata.org`
+  order books, which hold RPI orders; `cost_store.engine_book` handed them to
+  `auto_trader.entry_refusal` / `book_fill_price` / `_c_out`, while practice
+  reads REST `order_book` (= `futures.obu`, the normal book).
+* Invariant broken: **the backtest decides with the book practice decides
+  with** — the one the API can trade. Now `app_books` records `futures.obu`
+  every minute (source "app") and `cost_store.merge` ranks it above Gate's
+  record; `app_books.IN_BACKTEST` turns that on once GitHub reads them.
+* Guard: `tests/test_the_app_records_its_own_book.py` (16 tests).
+
+**SAW** — the practice audit, Oct 15, 2026 7:27pm: A3H5UHQH and PZTXYRL8
+(QNTX, -1.47 against -0.98) and KVPFLUDH / CXY5SDEN (RECALL) "not close";
+XVZSBK95 and YZXCSEFZ (RECALL) "no equivalent". The operator, asked how to
+fix it (Oct 16, 2026): *"Record app's prices (Recommended)"*.
+
+**TIMELINE**
+
+1. Oct 10, 2026 11:00:02am — practice's RECALL short (hull20 15m, stop 1%)
+   read a best bid of 0.04432 and skipped: "ran away" 0.203% against 0.1%.
+   Gate's record held five bids above it, 0.04441 x113 to 0.04433 x100,
+   2,612 contracts; the backtest sold at 0.04441 and stayed in past 2:30pm.
+2. Oct 12, 2026 12:45:04pm — practice bought QNTX at 39.87; the record's
+   best ask that second was 39.81 x314.
+3. Oct 15, 2026 — 1,998 live readings the runners filed since the move to
+   Gate against the record at the same second: equal 940, live wider 967,
+   live narrower 91; QNTX wider 142 of 142 (median spread 0.31% against
+   0.025%), GME 20 of 20, DOOD 188 of 207; XDC equal 79 of 81.
+4. Oct 15, 2026 8:00-8:03pm — a live capture of 45 REST reads per coin
+   against the record's same instants: BTC 42 equal, 0 wider; QNTX 0 equal,
+   45 wider (REST 36.91 / 37.12, record 36.94 / 36.96); ANKR 41 of 45 wider,
+   CLANKER 14, IOTX 12, RECALL 7. REST equalled Gate's live stream 220 of
+   248 reads.
+5. Oct 16, 2026 — Gate's feed itself: `futures.obu` QNTX 37.20 / 37.34
+   (REST's), `futures.rpi_obu` 37.20 / 37.22; ANKR bid 0.004464 against the
+   RPI book's 0.004469.
+6. Oct 16, 2026 — the recorder: one subscribe of every contract's
+   `futures.obu` (50 levels) on 4 connections answered 1,039 of 1,039 in
+   0.5 s, 1.9 MB; live for 4 minutes, 1,039 of 1,039 coins a minute, read 3
+   s in (5 s on the first, while connecting).
+
+**ROOT CAUSE** — the backtest's only order-book history is Gate's record,
+which includes orders no API order can fill; nothing recorded the book the
+app sees.
+
+**WHY IT WAS NOT CAUGHT** — the record was validated against ITSELF: the
+replay matched Gate's next snapshot on 41,387 of 41,387 levels, which proves
+the replay and says nothing about whether those levels were tradeable by the
+app. No check set it against practice's own reads until the audit; and the
+runner's book readings never kept their prices, only spreads and costs, so
+the gap was in plain sight as "live wider 967 of 1,998" without a single
+price to compare.
+
+**COST** — none in real money (no real Gate trades). The backtest was
+optimistic on coins with RPI offers: better fills, lower costs, fewer
+refusals than practice (QNTX $0.30 a trade of spread alone on $100).
+
+**FIX** — this commit records the app's book from Oct 16, 2026 6:00am on;
+the backtest prefers it once the publishing step lets GitHub read it
+(`IN_BACKTEST`), so the PC and GitHub never measure one strategy two ways.
+Harddev: Gate's `t` is when a book last CHANGED (NEURALINK 46 minutes on
+Oct 16, 2026), so a snapshot is judged by when it arrives and leftovers are
+drained first (round 1); rewriting 1,039 day files every 5 minutes is ~5.8
+GB a day on G:, appending 39-byte records is 58 MB (round 2); a PC press
+preferring files GitHub cannot read would give one strategy two results
+(round 3).
+
+**GUARD** — `tests/test_the_app_records_its_own_book.py`, among them
+`test_a_burst_keeps_one_full_snapshot_per_coin_asked_for_and_unsubscribes`,
+`test_a_flush_appends_and_never_rewrites_the_day`,
+`test_until_github_can_read_them_the_backtest_does_not_either` and
+`test_the_backtest_takes_the_apps_book_where_it_has_one`.
+
+---
+
 ## RCA-2026-10-15-H — UPDATE THIS BACKTEST said "no new bars — it was already current" on presses that had just re-measured every row (ANKR 30m: 300 rows, Oct 15, 2026 7:23pm)
 
 **CEO**

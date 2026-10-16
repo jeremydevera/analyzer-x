@@ -245,6 +245,16 @@ own `maintenance_rate`.
   **A practice exit pays the book of the moment it closes**
   (`exit_book_slippage`, RCA-2026-10-15-F), as the backtest's exit minute
   and a real close do; one found late keeps the reading from its entry.
+  **GATE'S RECORD HOLDS OFFERS THE APP CANNOT TRADE** (RPI: "only matched
+  with non-API taker orders"; QNTX 0 of 45 same-second checks matched,
+  RCA-2026-10-16-A). The operator chose *"Record app's prices"*:
+  `app_books` (a supervised process, no window) reads every contract's
+  normal book (`futures.obu`, never `futures.rpi_obu`) 3 s into every
+  minute into `~/.tradingagents/app_books/<SYM>/<YYYYMMDD>.bin`, and
+  `cost_store.merge` ranks those readings above the record. The backtest
+  uses them only while `app_books.IN_BACKTEST` is True — set it only with
+  the step that lets GitHub's machines read them, or one strategy gets two
+  results by where it was measured.
 * **AND IT SKIPS WHAT PRACTICE SKIPS (Oct 11, 2026: *"i said it should
   behave like practice, meaning backtest should know wether to skip a trade
   or not"*).** One function, `auto_trader.entry_refusal`, for the engine and

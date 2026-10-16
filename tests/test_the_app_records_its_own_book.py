@@ -16,6 +16,8 @@ from __future__ import annotations
 import asyncio
 import json
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -68,6 +70,12 @@ def test_app_is_its_own_source_in_the_packed_month():
 
 
 # -------------------------------------------------------------- the store
+def _publish(day, coins):
+    m = ab._marker(day)
+    m.parent.mkdir(parents=True, exist_ok=True)
+    m.write_text(json.dumps({"coins": coins, "failed": [], "at": 0}), encoding="utf-8")
+
+
 def _r(t, bid, *, source="app", at=3):
     return {"t": t, "bid": bid, "ask": bid + 0.01, "spread": 0.0003, "buy": 0.0002,
             "sell": 0.0002, "exhausted": False, "source": source, "at": at}
@@ -81,10 +89,10 @@ def test_readings_are_kept_by_coin_and_utc_day_and_read_back(home):
     st.flush()
     assert (home / "QNTX_USDT" / "20261015.bin").exists()
     assert (home / "QNTX_USDT" / "20261016.bin").exists()
-    got = ab.book_for("QNTX_USDT", T - 3600, T + 60)
+    got = ab.book_for("QNTX_USDT", T - 3600, T + 60, published_only=False)
     assert got["t"].tolist() == [T - 60, T] and got["bid"].tolist() == [36.9, 36.91]
-    assert ab.book_for("BTC_USDT", T, T)["bid"].tolist() == [82205.7]
-    assert len(ab.book_for("ETH_USDT", T, T)["t"]) == 0
+    assert ab.book_for("BTC_USDT", T, T, published_only=False)["bid"].tolist() == [82205.7]
+    assert len(ab.book_for("ETH_USDT", T, T, published_only=False)["t"]) == 0
 
 
 def test_a_restart_mid_day_keeps_the_mornings_readings(home):
@@ -94,7 +102,7 @@ def test_a_restart_mid_day_keeps_the_mornings_readings(home):
     again = ab.Store()                             # a new process, same day
     again.add("QNTX_USDT", _r(T + 60, 36.95))
     again.flush()
-    assert ab.book_for("QNTX_USDT", T, T + 60)["t"].tolist() == [T, T + 60]
+    assert ab.book_for("QNTX_USDT", T, T + 60, published_only=False)["t"].tolist() == [T, T + 60]
 
 
 def test_a_flush_with_nothing_new_writes_nothing(home):
@@ -125,7 +133,7 @@ def test_a_record_cut_short_by_a_killed_process_is_dropped(home):
     f = home / "QNTX_USDT" / "20261016.bin"
     with open(f, "ab") as fh:
         fh.write(b"")                       # half a record
-    assert ab.book_for("QNTX_USDT", T, T + 60)["bid"].tolist() == [36.91]
+    assert ab.book_for("QNTX_USDT", T, T + 60, published_only=False)["bid"].tolist() == [36.91]
 
 
 def test_a_minute_recorded_twice_is_read_once_the_last_kept(home):
@@ -134,7 +142,7 @@ def test_a_minute_recorded_twice_is_read_once_the_last_kept(home):
     st.flush()
     st.add("QNTX_USDT", _r(T, 36.93))                      # a restart, same minute
     st.flush()
-    got = ab.book_for("QNTX_USDT", T, T)
+    got = ab.book_for("QNTX_USDT", T, T, published_only=False)
     assert got["t"].tolist() == [T] and got["bid"].tolist() == [36.93]
 
 
@@ -144,34 +152,40 @@ def test_the_backtest_takes_the_apps_book_where_it_has_one(home, monkeypatch):
     app could trade. Where both exist the app's wins, in either merge order;
     elsewhere the record still answers."""
     monkeypatch.setenv("TA_VENUE", "gate")
-    monkeypatch.setattr(ab, "IN_BACKTEST", True)
+    assert ab.IN_BACKTEST is True
     record = bh.pack([_r(T, 36.94, source="full"), _r(T + 60, 36.95, source="full")])
     monkeypatch.setattr(cs, "book_for", lambda sym, a, b, **k: record)
     st = ab.Store()
     st.add("QNTX_USDT", _r(T, 36.91))
     st.flush()
+    _publish("20261016", ["QNTX_USDT"])
     got = cs.engine_book("QNTX_USDT", T, T + 60)
     assert got["t"].tolist() == [T, T + 60]
     assert got["bid"].tolist() == [36.91, 36.95], \
         "the app's 36.91 at T, the record at T + 60 where the app has none"
     assert got["source"].tolist() == [3, 1]
-    for a, b in ((record, ab.book_for("QNTX_USDT", T, T)),
-                 (ab.book_for("QNTX_USDT", T, T), record)):
+    mine = ab.book_for("QNTX_USDT", T, T)
+    for a, b in ((record, mine), (mine, record)):
         assert cs.merge(a, b)["bid"][0] == 36.91
 
 
-def test_until_github_can_read_them_the_backtest_does_not_either(home, monkeypatch):
-    """Harddev round 3: the nightly v2 update measures on GitHub, which
-    cannot see this PC's files; a PC press preferring them would give one
-    strategy two results by where it was measured."""
+def test_a_day_github_cannot_read_yet_is_not_read_here_either(home, monkeypatch):
+    """Harddev round 3: the nightly v2 update measures on GitHub, which reads
+    a day only once it is published; this PC reads the same days and no
+    others, so one strategy has one result wherever it was measured."""
     monkeypatch.setenv("TA_VENUE", "gate")
-    assert ab.IN_BACKTEST is False
     record = bh.pack([_r(T, 36.94, source="full")])
     monkeypatch.setattr(cs, "book_for", lambda sym, a, b, **k: record)
     st = ab.Store()
     st.add("QNTX_USDT", _r(T, 36.91))
     st.flush()
-    assert cs.engine_book("QNTX_USDT", T, T)["bid"].tolist() == [36.94]
+    assert cs.engine_book("QNTX_USDT", T, T)["bid"].tolist() == [36.94], \
+        "today, unpublished: Gate's record, as on GitHub"
+    _publish("20261016", ["QNTX_USDT"])
+    assert cs.engine_book("QNTX_USDT", T, T)["bid"].tolist() == [36.91]
+    monkeypatch.setattr(ab, "IN_BACKTEST", False)
+    assert cs.engine_book("QNTX_USDT", T, T)["bid"].tolist() == [36.94], \
+        "the switch takes the app's books out of every backtest at once"
 
 
 def test_off_gate_there_is_no_book_at_all(home, monkeypatch):
@@ -255,3 +269,118 @@ def test_the_supervisor_keeps_it_running():
     src = inspect.getsource(api)
     assert "_ab.spawn_recorder()" in src, \
         "a recorder that dies must be started again, like the indexer"
+
+
+# ------------------------------------------------------------- publishing
+class FakeGh:
+    def __init__(self, fail_tags=()):
+        self.calls: list = []
+        self.fail = set(fail_tags)
+
+    def __call__(self, *args):
+        import subprocess
+
+        self.calls.append(args)
+        ok = not (args[:2] == ("release", "upload") and args[2] in self.fail)
+        return subprocess.CompletedProcess(args, 0 if ok else 1, "",
+                                           "" if ok else "HTTP 502")
+
+
+def _no_sleep(monkeypatch):
+    monkeypatch.setattr(ab.time, "sleep", lambda _s: None)
+
+
+def test_a_finished_day_goes_up_one_file_per_coin_two_releases_a_day(home, monkeypatch):
+    _no_sleep(monkeypatch)
+    gh = FakeGh()
+    monkeypatch.setattr(ab, "_gh", gh)
+    st = ab.Store()
+    for sym in ("ANKR_USDT", "QNTX_USDT", "BTC_USDT"):
+        st.add(sym, _r(T, 1.0))
+    st.flush()
+    got = ab.publish_day("20261016")
+    assert got == {"day": "20261016", "coins": 3, "failed": []}
+    ups = [c for c in gh.calls if c[:2] == ("release", "upload")]
+    assert sorted(c[2] for c in ups) == ["appbook-20261016-a", "appbook-20261016-b"]
+    files = sorted(Path(f).name for c in ups for f in c[3:] if str(f).endswith(".npz"))
+    assert files == ["ANKR_USDT.npz", "BTC_USDT.npz", "QNTX_USDT.npz"]
+    assert ab._published("20261016") == {"ANKR_USDT", "QNTX_USDT", "BTC_USDT"}
+    assert ab.url("20261016", "QNTX_USDT") == (
+        "https://github.com/jeremydevera/analyzer-x/releases/download/"
+        "appbook-20261016-b/QNTX_USDT.npz")
+
+
+def test_a_coin_whose_upload_failed_is_neither_read_nor_forgotten(home, monkeypatch):
+    _no_sleep(monkeypatch)
+    monkeypatch.setenv("TA_VENUE", "gate")
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    gh = FakeGh(fail_tags={"appbook-20261016-b"})
+    monkeypatch.setattr(ab, "_gh", gh)
+    st = ab.Store()
+    st.add("ANKR_USDT", _r(T, 1.0))
+    st.add("QNTX_USDT", _r(T, 36.91))
+    st.flush()
+    got = ab.publish_day("20261016")
+    assert got["coins"] == 1 and got["failed"] == ["QNTX_USDT"]
+    assert ab._published("20261016") == {"ANKR_USDT"}
+    assert len(ab.book_for("QNTX_USDT", T, T)["t"]) == 0, "not on GitHub, not read here"
+    gh.fail.clear()
+    monkeypatch.setattr(ab, "_TICKED", {"at": 0.0})
+    tick = ab.publish_tick(now=T + 86400 + 3600)        # Oct 17, 2026 1:00am UTC
+    assert [g["day"] for g in tick["published"]] == ["20261016"]
+    assert tick["published"][0]["coins"] == 1, "only the coin that failed goes up again"
+    assert ab._published("20261016") == {"ANKR_USDT", "QNTX_USDT"}
+
+
+def test_the_tick_publishes_finished_days_only_after_twenty_past_midnight(home, monkeypatch):
+    _no_sleep(monkeypatch)
+    monkeypatch.setenv("TA_VENUE", "gate")
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    monkeypatch.setattr(ab, "_gh", FakeGh())
+    monkeypatch.setattr(ab, "_TICKED", {"at": 0.0})
+    st = ab.Store()
+    st.add("QNTX_USDT", _r(T - 60, 36.9))               # Oct 15
+    st.add("QNTX_USDT", _r(T + 600, 36.95))             # Oct 16, still being recorded
+    st.flush()
+    assert ab.publish_tick(now=T + 600)["published"] == [], "00:10 UTC: too early"
+    got = ab.publish_tick(now=T + 1500)                 # 00:25 UTC
+    assert [g["day"] for g in got["published"]] == ["20261015"], "never today"
+    assert ab.publish_tick(now=T + 1600)["why"] == "looked less than an hour ago"
+
+
+def test_github_reads_a_published_day_from_its_release(tmp_path, monkeypatch):
+    """GitHub's machines have no recorder: a coin-day comes from its release,
+    once per process; one never published is no reading."""
+    monkeypatch.setattr(ab, "HOME", tmp_path / "nothing_here")
+    monkeypatch.setattr(ab, "_REMOTE", {})
+    packed = cs.merge(None, bh.pack([_r(T, 36.91)]))
+    asked = []
+
+    def fetch(u):
+        asked.append(u)
+        return (200, cs.to_bytes(packed)) if "20261016" in u else (404, b"")
+
+    monkeypatch.setattr(cs, "_fetch", fetch)
+    got = ab.book_for("QNTX_USDT", T - 86400, T + 60)
+    assert got["bid"].tolist() == [36.91]
+    ab.book_for("QNTX_USDT", T - 86400, T + 60)
+    assert len(asked) == 2, "Oct 15 (404) and Oct 16, each asked once"
+
+
+def test_github_s_shards_lay_the_apps_books_over_the_record():
+    import inspect
+
+    root = Path(__file__).resolve().parents[1] / ".github" / "scripts"
+    for name in ("sweep_shard.py", "replay_shard.py"):
+        src = (root / name).read_text(encoding="utf-8")
+        assert "cost_store.with_app_books(" in src, name
+    assert "with_app_books(sym, got" in inspect.getsource(cs.engine_book)
+
+
+def test_the_supervisor_publishes_once_a_day():
+    import inspect
+
+    from tradingagents import api
+
+    src = inspect.getsource(api)
+    assert '"app-books-publish"' in src and "_ab.publish_tick" in src

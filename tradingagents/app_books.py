@@ -54,13 +54,14 @@ FLUSH_S = 300
 SIZES_TTL_S = 3600
 LOG_EVERY_S = 3600
 WARN_EVERY_S = 600         # the same failure is logged once in ten minutes
-# THE BACKTEST READS THESE ONLY WHEN EVERY MACHINE CAN (harddev round 3, Oct
-# 16, 2026): the nightly v2 update measures on GitHub, which cannot see this
-# PC's files, so a PC press preferring them would give one strategy two
-# results by where it was measured ("the analysis and the button run the
-# same grid"). Recording starts now - a minute not recorded is lost for good
-# - and this goes True with the publishing step that lets GitHub read them.
-IN_BACKTEST = False
+# THE BACKTEST READS THESE WHERE EVERY MACHINE CAN (harddev round 3, Oct 16,
+# 2026): the nightly v2 update measures on GitHub, which cannot see this
+# PC's files, so a day counts only once `publish_day` has put it on GitHub
+# (`book_for(published_only=True)` here, a release download there) - one
+# strategy, one result, wherever it was measured ("the analysis and the
+# button run the same grid"). False switches the app's books out of every
+# backtest at once (`cost_store.with_app_books`).
+IN_BACKTEST = True
 
 logger = logging.getLogger("app_books")
 
@@ -179,9 +180,17 @@ class Store:
         return wrote
 
 
-def book_for(sym: str, start_s: int, end_s: int) -> dict:
+def book_for(sym: str, start_s: int, end_s: int, *,
+             published_only: bool = True) -> dict:
     """Every recorded reading of `sym` in [start_s, end_s], packed in
-    `cost_store`'s keys; empty when none was recorded."""
+    `cost_store`'s keys; empty when none was recorded.
+
+    ONLY PUBLISHED DAYS (RCA-2026-10-16-A, harddev round 3): the nightly v2
+    update measures on GitHub, which reads a day only once `publish_day` put
+    it there, so this PC reads the same days and no others - one strategy,
+    one result, wherever it was measured. A day with no file here (GitHub's
+    machines) is downloaded from its release; `published_only=False` reads
+    this PC's files as they are (the recorder's own checks)."""
     import numpy as np
 
     from tradingagents import cost_store as cs
@@ -189,7 +198,15 @@ def book_for(sym: str, start_s: int, end_s: int) -> dict:
     got = None
     d = int(start_s) - int(start_s) % 86400
     while d <= int(end_s):
-        part = _read(_day_file(sym, _day(d)))
+        day = _day(d)
+        local = _day_file(sym, day)
+        if local.exists():
+            part = (_read(local) if not published_only or sym in _published(day)
+                    else None)
+        elif HOME.exists():
+            part = None          # the recorder's own PC: what it did not record, nobody did
+        else:
+            part = _remote(day, sym)
         if part is not None and len(part["t"]):
             got = cs.merge(got, part)
         d += 86400
@@ -199,6 +216,228 @@ def book_for(sym: str, start_s: int, end_s: int) -> dict:
     t = np.asarray(got["t"], dtype="int64")
     keep = (t >= int(start_s)) & (t <= int(end_s))
     return {k: np.asarray(got[k])[keep] for k in cs.KEYS}
+
+
+# ------------------------------------------------------------ publishing
+# WHERE GITHUB'S MACHINES READ THEM: one release per UTC day and half of the
+# market (`cost_store.group`: 0-9 and A-M, N-Z), because a release holds at
+# most 1,000 files and Gate lists 1,039 contracts; one compressed file per
+# coin. On the origin account, public, so both accounts' machines read it.
+PUBLISH_REPO = os.environ.get("APP_BOOKS_REPO", "jeremydevera/analyzer-x")
+PUBLISH_AFTER_UTC_S = 20 * 60      # the recorder's last flush of a day is ~5 min past it
+PUBLISH_DAYS = 61                  # as far back as the costs job keeps (BACKFILL_DAYS)
+UPLOAD_BATCH = 100
+UPLOAD_TRIES = 5
+SCAN_EVERY_S = 3600
+_REMOTE: dict = {}
+_TICKED: dict = {"at": 0.0}
+
+
+def tag(day: str, sym: str) -> str:
+    from tradingagents import cost_store as cs
+
+    return f"appbook-{day}-{cs.group(sym)}"
+
+
+def asset(sym: str) -> str:
+    from tradingagents import cost_store as cs
+
+    return cs.asset(sym, "x").rsplit("-", 1)[0] + ".npz"
+
+
+def url(day: str, sym: str, repo: str | None = None) -> str:
+    import urllib.parse as _up
+
+    return (f"https://github.com/{repo or PUBLISH_REPO}/releases/download/"
+            f"{tag(day, sym)}/{_up.quote(asset(sym))}")
+
+
+def _marker(day: str) -> Path:
+    return HOME / "published" / f"{day}.json"
+
+
+def _marker_of(day: str) -> dict:
+    try:
+        return json.loads(_marker(day).read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def _published(day: str) -> set:
+    return set(_marker_of(day).get("coins") or [])
+
+
+def _remote(day: str, sym: str) -> dict | None:
+    """A published coin-day from its release, once per process; None when it
+    was never published (404) or cannot be read - the record answers then."""
+    from tradingagents import cost_store as cs
+
+    key = (day, sym)
+    if key not in _REMOTE:
+        status, raw = cs._fetch(url(day, sym))
+        try:
+            _REMOTE[key] = cs.from_bytes(raw) if status == 200 and raw else None
+        except (OSError, ValueError, KeyError):
+            _REMOTE[key] = None
+    return _REMOTE[key]
+
+
+_GH_ENV: dict = {}
+
+
+def _gh_env() -> dict:
+    """The environment `gh` runs in: the publishing repo's OWNER's login when
+    this PC holds it (`gh auth token --user`), so the uploads never depend on
+    which account happens to be active (Oct 16, 2026: jeremydvera active,
+    jeremydevera owns the repo); else the active login, as before."""
+    import subprocess
+
+    if "env" not in _GH_ENV:
+        env = dict(os.environ)
+        owner = PUBLISH_REPO.split("/", 1)[0]
+        with contextlib.suppress(Exception):
+            r = subprocess.run(["gh", "auth", "token", "--user", owner],
+                               capture_output=True, text=True, timeout=30)
+            if r.returncode == 0 and r.stdout.strip():
+                env["GH_TOKEN"] = r.stdout.strip()
+        _GH_ENV["env"] = env
+    return _GH_ENV["env"]
+
+
+def _gh(*args: str):
+    import subprocess
+
+    return subprocess.run(["gh", *args], capture_output=True, text=True,
+                          env=_gh_env())
+
+
+def _upload(tag_: str, files: list) -> bool:
+    """`files` into release `tag_`, creating it the first time; a refusal
+    for the rate limit waits, never loses the files."""
+    r = None
+    for attempt in range(UPLOAD_TRIES):
+        r = _gh("release", "upload", tag_, *[str(f) for f in files], "--clobber",
+                "-R", PUBLISH_REPO)
+        if r.returncode == 0:
+            return True
+        said = (r.stderr + r.stdout).lower()
+        if "rate limit" in said:
+            time.sleep(min(60 * 2 ** attempt, 600))
+            continue
+        if "not found" in said:
+            _gh("release", "create", tag_, "-R", PUBLISH_REPO, "--title", tag_,
+                "--latest=false", "--notes",
+                "The order book the app can trade, recorded every minute 3 s in "
+                "(tradingagents/app_books.py). One file per coin for one UTC day.")
+        time.sleep(2 + 3 * attempt)
+    logger.warning("could not upload %d file(s) to %s: %s", len(files), tag_,
+                   (r.stderr if r else "").strip()[:200])
+    return False
+
+
+def publish_day(day: str, only: set | None = None) -> dict:
+    """One finished UTC day of every coin this PC recorded (or of `only`),
+    to GitHub. The marker lists the coins that really went up and the ones
+    that failed; a failed coin stays out of `coins`, so neither this PC nor
+    GitHub reads it, and the next tick tries it again."""
+    from tradingagents import cost_store as cs
+
+    out = HOME / "outbox" / day
+    out.mkdir(parents=True, exist_ok=True)
+    by_tag: dict = {}
+    for folder in sorted(p for p in HOME.iterdir() if p.is_dir()):
+        f = folder / f"{day}.bin"
+        if not f.exists() or folder.name in ("published", "outbox"):
+            continue
+        sym = _sym_of_folder(folder.name)
+        if only is not None and sym not in only:
+            continue
+        packed = _read(f)
+        if packed is None:
+            continue
+        packed = cs.merge(None, packed)
+        target = out / asset(sym)
+        target.write_bytes(cs.to_bytes(packed))
+        by_tag.setdefault(tag(day, sym), []).append((sym, target))
+    done, failed = [], []
+    for tag_, items in sorted(by_tag.items()):
+        for i in range(0, len(items), UPLOAD_BATCH):
+            part = items[i:i + UPLOAD_BATCH]
+            if _upload(tag_, [p for _s, p in part]):
+                done += [s for s, _p in part]
+            else:
+                failed += [s for s, _p in part]
+    for p in out.iterdir():
+        with contextlib.suppress(OSError):
+            p.unlink()
+    with contextlib.suppress(OSError):
+        out.rmdir()
+    if done or failed:
+        m = _marker(day)
+        m.parent.mkdir(parents=True, exist_ok=True)
+        coins = _published(day) | set(done)
+        m.write_text(json.dumps({"coins": sorted(coins),
+                                 "failed": sorted(set(failed) - coins),
+                                 "at": time.time()}), encoding="utf-8")
+    return {"day": day, "coins": len(done), "failed": failed}
+
+
+def _sym_of_folder(name: str) -> str:
+    """A folder's coin: the plain name back to Gate's own (`x` + hex)."""
+    if name.startswith("x") and "_" not in name:
+        with contextlib.suppress(ValueError):
+            return bytes.fromhex(name[1:]).decode("utf-8")
+    return name
+
+
+def _days_here() -> set:
+    days = set()
+    if not HOME.exists():
+        return days
+    for folder in HOME.iterdir():
+        if folder.is_dir() and folder.name not in ("published", "outbox"):
+            days.update(p.stem for p in folder.glob("*.bin"))
+    return days
+
+
+def publish_tick(now: float | None = None) -> dict:
+    """Once a UTC day, `PUBLISH_AFTER_UTC_S` past midnight: every finished
+    day of the last `PUBLISH_DAYS` that holds readings here and is not
+    published yet, oldest first (a PC that was off catches up). Runs in the
+    API's supervisor, on its own thread; never under pytest."""
+    from tradingagents import venue
+
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return {"published": [], "why": "never under pytest"}
+    if venue.current() != "gate":
+        return {"published": [], "why": "the app trades MEXC"}
+    now = time.time() if now is None else float(now)
+    if int(now) % 86400 < PUBLISH_AFTER_UTC_S:
+        return {"published": [], "why": "waiting for the last minutes of yesterday"}
+    # the supervisor asks every 30 s; walking ~1,000 coin folders that often
+    # would churn the store's disk for nothing, so once an hour
+    if now - _TICKED["at"] < SCAN_EVERY_S:
+        return {"published": [], "why": "looked less than an hour ago"}
+    _TICKED["at"] = now
+    today = _day(now)
+    oldest = _day(now - PUBLISH_DAYS * 86400)
+    want = sorted(d for d in _days_here()
+                  if oldest <= d < today
+                  and (not _marker(d).exists() or _marker_of(d).get("failed")))
+    got = []
+    for d in want:
+        try:
+            left = set(_marker_of(d).get("failed") or []) or None
+            got.append(publish_day(d, only=left))
+        except Exception as exc:                               # noqa: BLE001
+            logger.error("could not publish %s (%s)", d, exc)
+            got.append({"day": d, "coins": 0, "failed": [], "error": str(exc)})
+    if got:
+        logger.info("published %s", "; ".join(f"{g['day']}: {g['coins']} coins"
+                                              + (f", {len(g['failed'])} failed"
+                                                 if g.get("failed") else "")
+                                              for g in got))
+    return {"published": got}
 
 
 # ------------------------------------------------------------ the snapshots

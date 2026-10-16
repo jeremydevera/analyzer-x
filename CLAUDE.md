@@ -251,10 +251,12 @@ own `maintenance_rate`.
   `app_books` (a supervised process, no window) reads every contract's
   normal book (`futures.obu`, never `futures.rpi_obu`) 3 s into every
   minute into `~/.tradingagents/app_books/<SYM>/<YYYYMMDD>.bin`, and
-  `cost_store.merge` ranks those readings above the record. The backtest
-  uses them only while `app_books.IN_BACKTEST` is True — set it only with
-  the step that lets GitHub's machines read them, or one strategy gets two
-  results by where it was measured.
+  `cost_store.merge` ranks those readings above the record. Each finished
+  UTC day goes to GitHub at 00:20 UTC (`publish_tick`, releases
+  `appbook-<day>-a/b`), and every backtest — this PC and GitHub's shards,
+  through ONE function, `cost_store.with_app_books` — reads a day only once
+  it is published, so one strategy never gets two results by where it was
+  measured. `app_books.IN_BACKTEST = False` takes them out everywhere.
 * **AND IT SKIPS WHAT PRACTICE SKIPS (Oct 11, 2026: *"i said it should
   behave like practice, meaning backtest should know wether to skip a trade
   or not"*).** One function, `auto_trader.entry_refusal`, for the engine and

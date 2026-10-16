@@ -288,18 +288,25 @@ def engine_book(sym: str, start_s: int, end_s: int):
         got = book_for(sym, int(start_s), int(end_s))
     except Exception:                                          # noqa: BLE001
         got = empty()
-    # THE APP'S OWN BOOK FIRST (RCA-2026-10-16-A): where this PC recorded the
-    # book the app can trade, it answers that minute instead of Gate's
-    # record, which holds RPI offers no API order can fill. A store that
-    # cannot be read is no readings, never an error.
+    return with_app_books(sym, got, start_s, end_s)
+
+
+def with_app_books(sym: str, book: dict, start_s: int, end_s: int) -> dict:
+    """`book` (Gate's record) with the app's OWN readings laid over every
+    minute the app recorded and published (RCA-2026-10-16-A): the record
+    holds RPI offers no API order can fill. ONE function for this PC
+    (`engine_book`) and GitHub's shards (sweep_shard, replay_shard), so a
+    strategy is measured off the same book wherever it runs. Unchanged while
+    `app_books.IN_BACKTEST` is off, or when the readings cannot be read."""
     try:
         from tradingagents import app_books as _ab
 
-        if _ab.IN_BACKTEST:
-            mine = _ab.book_for(sym, int(start_s) - LEAD_S, int(end_s))
-            if len(mine["t"]):
-                got = merge(got, mine)
+        if not _ab.IN_BACKTEST:
+            return book
+        mine = _ab.book_for(sym, int(start_s) - LEAD_S, int(end_s))
+        if len(mine["t"]):
+            return merge(book, mine)
     except Exception:                                          # noqa: BLE001
         pass
-    return got
+    return book
 

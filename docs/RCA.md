@@ -246,9 +246,12 @@ price to compare.
 optimistic on coins with RPI offers: better fills, lower costs, fewer
 refusals than practice (QNTX $0.30 a trade of spread alone on $100).
 
-**FIX** — this commit records the app's book from Oct 16, 2026 6:00am on;
-the backtest prefers it once the publishing step lets GitHub read it
-(`IN_BACKTEST`), so the PC and GitHub never measure one strategy two ways.
+**FIX** — this commit records the app's book from Oct 16, 2026 6:14am on
+(the recorder's first minute); the next commit publishes each finished UTC
+day to GitHub at 00:20 UTC and lays it over the record in every backtest,
+the PC's and GitHub's shards alike (`cost_store.with_app_books`), so the PC
+and GitHub never measure one strategy two ways; Oct 16, 2026 is the first
+day any backtest reads.
 Harddev: Gate's `t` is when a book last CHANGED (NEURALINK 46 minutes on
 Oct 16, 2026), so a snapshot is judged by when it arrives and leftovers are
 drained first (round 1); rewriting 1,039 day files every 5 minutes is ~5.8

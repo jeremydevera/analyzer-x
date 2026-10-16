@@ -381,6 +381,12 @@ def _keep_the_row_index_current() -> None:
                     if pid:
                         print(f"[supervisor] the order-book recorder was "
                               f"down — restarted (pid {pid})", flush=True)
+                    # ...and once a UTC day its finished day goes to GitHub,
+                    # where the nightly v2 update reads it; its own thread,
+                    # because ~1,000 uploads take minutes
+                    if not any(t.name == "app-books-publish" for t in _th.enumerate()):
+                        _th.Thread(target=_ab.publish_tick, name="app-books-publish",
+                                   daemon=True).start()
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[supervisor] could not restart the order-book "
                           f"recorder: {exc!r}", flush=True)

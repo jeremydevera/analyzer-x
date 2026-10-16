@@ -365,7 +365,10 @@ def coin_costs(sym: str, usual: dict) -> dict:
         now_s = int(time.time())
         first_s = (start_ms() - max(WRITE["windows"]) * wr.DAY_MS) // 1000 - 2 * 86400
         try:
-            minute_book = cost_store.book_for(sym, first_s, now_s)
+            # Gate's record, with the app's own readings over it wherever the
+            # PC recorded and published them (RCA-2026-10-16-A)
+            minute_book = cost_store.with_app_books(
+                sym, cost_store.book_for(sym, first_s, now_s), first_s, now_s)
         except Exception as exc:                               # noqa: BLE001
             print(f"{sym}: per-minute costs could not be read ({exc}); every "
                   f"trade pays the flat cost and is counted unmeasured", flush=True)

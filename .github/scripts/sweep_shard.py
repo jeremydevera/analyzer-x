@@ -346,7 +346,11 @@ def cost_book(sym):
 
         now_s = int(time.time())
         try:
-            COST_BOOKS[sym] = cost_store.book_for(sym, now_s - (DAYS + 2) * 86400, now_s)
+            # Gate's record, with the app's own readings over it wherever the
+            # PC recorded and published them (RCA-2026-10-16-A)
+            _lo = now_s - (DAYS + 2) * 86400
+            COST_BOOKS[sym] = cost_store.with_app_books(
+                sym, cost_store.book_for(sym, _lo, now_s), _lo, now_s)
         except Exception as exc:                               # noqa: BLE001
             log(f"{sym}: the per-minute costs could not be read ({exc}) — every "
                 f"trade pays the flat cost and is counted unmeasured")

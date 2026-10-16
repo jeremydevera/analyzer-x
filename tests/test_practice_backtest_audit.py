@@ -119,6 +119,31 @@ def test_a_backtest_that_ends_while_the_trade_is_open_is_not_a_miss():
     assert got["verdict"] == "backtest ends before this trade closed"
 
 
+def test_a_backtest_already_in_its_own_trade_is_named_not_left_as_no_equivalent():
+    """CLANKER 15m choch #WVUWQDBP in #55D32617 (Oct 15, 2026): switched on at
+    Oct 10, 2026 9:56am, practice bought at 10:45am (L6XSRUW3, TP +0.96). The
+    stored backtest walks without switch-ons: it had been short since Oct 09,
+    2026 11:45pm and stayed in until 12:40pm, so it could not open practice's
+    trade. Same for ALAB #R2RLBEME and ANKR #U9DUR9HV on Oct 12, 2026. The
+    audit names WHY, with the backtest's own trade, instead of a bare "no
+    equivalent"."""
+    clanker = {"strategy_id": "WVUWQDBP", "coin": "CLANKER", "side": "LONG",
+               "closed_by": "TP", "profit": 0.96,
+               "opened": "Oct 10, 2026 10:45am", "closed": "Oct 10, 2026 12:39pm"}
+    log = [{"opened": "Oct 09, 2026 11:45pm", "closed": "Oct 10, 2026 12:40pm",
+            "side": "SHORT", "closed_by": "SL", "pnl": -1.28},
+           {"opened": "Oct 10, 2026 6:30pm", "closed": "Oct 10, 2026 11:24pm",
+            "side": "SHORT", "closed_by": "TP", "pnl": 0.95}]
+    got = _node(f"m.compare({json.dumps(clanker)}, {json.dumps(log)})")
+    assert got["verdict"] == "backtest already in its own trade"
+    assert got["note"] == ("the backtest held a SHORT from Oct 09, 2026 11:45pm to "
+                           "Oct 10, 2026 12:40pm, so it could not open this one")
+    assert got["backtest"]["opened"] == "Oct 09, 2026 11:45pm"
+    # a trade nobody was in the way of stays "no equivalent"
+    free = {**clanker, "opened": "Oct 10, 2026 1:00pm", "closed": "Oct 10, 2026 2:00pm"}
+    assert _node(f"m.compare({json.dumps(free)}, {json.dumps(log)})")["verdict"] == "no equivalent"
+
+
 def test_two_rooms_trades_with_one_id_are_two_trades():
     """Rooms running the same strategy get the same trade id: AZOSTOCK
     #MRTZALF8 closed Oct 10, 2026 3:59am in #CC94D9FB AND #6B08FF64, and

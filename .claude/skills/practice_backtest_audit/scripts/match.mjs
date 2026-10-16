@@ -102,6 +102,20 @@ export function compare(t, log, openTolMin = 10) {
     if (!best || score < best.score) best = { b, dO, dC, score };
   }
   if (!best || best.dO > openTolMin * 60_000) {
+    // ALREADY IN ITS OWN TRADE (Oct 15, 2026): the stored backtest walks
+    // without switch-ons, so a strategy switched on while it held a trade -
+    // CLANKER #WVUWQDBP, short from Oct 09, 2026 11:45pm to Oct 10, 2026
+    // 12:40pm, switched on at 9:56am - cannot open practice's first one.
+    const busy = tO == null ? null : log.find((b) => {
+      const bO = msOf(b, "opened");
+      const bC = msOf(b, "closed");
+      return bO != null && bC != null && bO < tO && bC > tO;
+    });
+    if (busy) {
+      return { verdict: "backtest already in its own trade", backtest: busy,
+               note: `the backtest held a ${busy.side || "trade"} from ${busy.opened} to `
+                     + `${busy.closed}, so it could not open this one` };
+    }
     return { verdict: "no equivalent",
              note: best ? `nearest backtest trade opened ${best.b.opened} (${Math.round(best.dO / 60000)} min away)`
                         : "the backtest's trade list is empty" };

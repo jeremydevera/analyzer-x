@@ -67,6 +67,16 @@ Verdicts beyond the three approved ones, both added on the first day:
 * **not checked (its trade list did not load)**: the row was found but its
   trade list never drew. The row is clicked twice, then a screenshot and the
   panel's own message are saved. It is never reported as "no equivalent".
+* **backtest already in its own trade** (Oct 15, 2026): no backtest trade
+  opened near it, but one was OPEN across its opening, so the backtest could
+  not have taken it; the note names that trade. The stored backtest walks
+  without switch-ons, so a strategy switched on while it held a trade
+  disagrees with practice's first trade (CLANKER #WVUWQDBP: short from Oct
+  09, 2026 11:45pm to Oct 10, 2026 12:40pm, switched on at 9:56am, practice
+  bought at 10:45am). When the backtest's trade opened AFTER the switch-on,
+  it is a real difference upstream — report the trade that put it there
+  (RECALL #9ZEFCCRT: the backtest's 11:00am short, which practice skipped
+  on its own book).
 * **closed by the move to Gate / by hand / by the panic button, not by its
   strategy**: only a trade its own target or stop closed (`TP`, `SL`) is set
   against a backtest exit, and the others' ids are never looked up. The move

@@ -3,24 +3,28 @@
 import { useEffect, useRef } from "react";
 import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.css";
+import { placeCalendar } from "@/lib/calendarPlace";
 
 const KEY = "Y-m-d";              // what a date input holds: "2026-10-01"
 const SHOWN = "M d, Y";           // what the box shows: "Oct 01, 2026"
 
 const asDate = (day?: string) => (day ? flatpickr.parseDate(day, KEY) ?? undefined : undefined);
 
-/** Put the open calendar right ABOVE its box. flatpickr's "above" adds up
- *  the calendar's CHILDREN's heights, so this app's calendar styling
- *  (globals.css: p-5, mt-2, a border — 50px) left it sitting over its own box:
- *  bottom 875 against the box's top 827 (Chrome, Oct 05, 2026). */
+/** Put the open calendar right ABOVE its box when it fits, else below
+ *  (`placeCalendar`). flatpickr's "above" adds up the calendar's CHILDREN's
+ *  heights, so this app's calendar styling (globals.css: p-5, mt-2, a border
+ *  — 50px) left it sitting over its own box: bottom 875 against the box's top
+ *  827 (Chrome, Oct 05, 2026). And always-above ran off the top of a window
+ *  where the box sat near it (Backtest a room, Oct 16, 2026). */
 function placeAbove(self: flatpickr.Instance) {
   requestAnimationFrame(() => {
     const cal = self.calendarContainer;
     const r = self._input.getBoundingClientRect();
     const margin = parseFloat(getComputedStyle(cal).marginTop) || 0;
-    cal.style.top = `${r.top + window.scrollY - cal.offsetHeight - margin - 6}px`;
-    cal.classList.remove("arrowTop");
-    cal.classList.add("arrowBottom");
+    const at = placeCalendar(r, cal.offsetHeight, window.innerHeight);   // the box itself; margin-top moves it down by `margin`
+    cal.style.top = `${at.top + window.scrollY - margin}px`;
+    cal.classList.toggle("arrowTop", !at.above);
+    cal.classList.toggle("arrowBottom", at.above);
   });
 }
 

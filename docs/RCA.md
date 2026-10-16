@@ -172,6 +172,61 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-16-C — Backtest a room's calendar opened off the top of the window, hiding its month name, arrows and weekday row
+
+**CEO**
+
+* You clicked a date box in Backtest a room and the calendar's top was cut
+  off: no month name, no arrows to change month, no day names.
+* Why: since Oct 05, 2026 the calendar always opened ABOVE its box, as asked,
+  and on your window the box sat closer to the top than a calendar is tall.
+* What stops it now: it opens above when it fits and below when it does not,
+  and its top never leaves the window.
+
+**DEV**
+
+* `webapp/src/components/form/DayPicker.tsx` `placeAbove()` set
+  `top = box.top + scrollY - calendar height - margin - 6` with no check
+  against the window (990be534).
+* Invariant broken: **a pop-up's place is chosen from the room the window
+  has** — a fixed side is a preference, never a rule.
+* Guard: `tests/test_the_calendar_never_opens_off_screen.py` (4), the rule in
+  `webapp/src/lib/calendarPlace.ts`.
+
+**SAW** — the operator's screenshot, Oct 16, 2026: "when i click calendar in
+bakctest a room look at this" — the calendar starting at the week of the 6th,
+its header and weekday row above the window.
+
+**TIMELINE**
+
+1. Oct 05, 2026 — "the pop is showing under, its very hard to click, it
+   should be above": the calendar is fixed above its box (b083d981, 990be534).
+2. Oct 16, 2026 — the operator's window: the box well under a calendar's
+   height from the top (the calendar is 378px tall in this app's styling), so
+   the calendar's first ~120px (month row, weekday row) sat above the window.
+3. After the fix, measured in Chrome at 1500 x 870 on a copy of the page:
+   box at 204px -> opens below, 238-616px, month row at 259px; box at 504px
+   -> opens above, 120-498px; box at 704px -> opens above, 320-698px, its
+   bottom 6px above the box.
+
+**ROOT CAUSE** — the side was fixed instead of chosen from the room the
+window has.
+
+**WHY IT WAS NOT CAUGHT** — the Oct 05, 2026 fix was checked with the box low
+on a tall window, where above always fits, and its only test asserts the text
+`position: "above"` in the file — a test that the side is fixed, which is the
+fault.
+
+**COST** — none in money; the date range could not be changed month by month
+on that window.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_calendar_never_opens_off_screen.py::test_it_opens_below_when_above_would_leave_the_window`
+and `::test_its_top_is_never_outside_the_window`.
+
+---
+
 ## RCA-2026-10-16-B — a back-end restart left the old back end's progress download running, and the new one gave up on it and threw away both accounts' progress bookmarks (Oct 16, 2026 6:16-6:19am)
 
 **CEO**

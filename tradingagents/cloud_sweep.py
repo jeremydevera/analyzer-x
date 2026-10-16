@@ -21,6 +21,7 @@ import os
 import pathlib
 import subprocess
 import tempfile
+import threading
 import time
 from pathlib import Path
 
@@ -814,16 +815,34 @@ def remote_for(slug: str | None = None) -> str:
 # fetch's lock is seconds old, never minutes. The fetch timeout is 180 s.
 DEAD_LOCK_S = 600.0
 
+# A LIVE git process's `shallow.lock` is WAITED OUT, for at most this long. A
+# restart ends the back end by its pid alone (`start.py kill(tree=False)`, so
+# the detached jobs live), and a progress fetch the old back end had running
+# keeps going with no timeout over it: Oct 16, 2026 one held the lock from
+# 6:16:11am to 6:19:29am (198 s) while the new back end failed twice and
+# dropped both progress bookmarks (RCA-2026-10-16-B).
+LIVE_LOCK_WAIT_S = 300.0
+LOCK_POLL_S = 1.0
+
+# The back end reads progress on two threads (the cloud tile's and the LOGS
+# panel's), and git lets one fetch hold `.git/shallow.lock` at a time.
+_FETCH_GUARD = threading.Lock()
+
+
+def _shallow_lock() -> pathlib.Path:
+    return pathlib.Path(__file__).resolve().parent.parent / ".git" / "shallow.lock"
+
 
 def _clear_dead_lock(force: bool = False) -> None:
     """Remove `.git/shallow.lock` left by a fetch that was killed.
 
     OURS TO CLEAN, and only when it cannot belong to a live fetch: older than
-    `DEAD_LOCK_S`, or `force` after git itself has just refused over it. Never
+    `DEAD_LOCK_S`, or `force` after git itself has just refused over it (a
+    live fetch holds the file open, and Windows will not delete it). Never
     any other lock file, and never silently — a lock this old is a fault that
     has been blinding a screen, so it is logged.
     """
-    lock = pathlib.Path(__file__).resolve().parent.parent / ".git" / "shallow.lock"
+    lock = _shallow_lock()
     try:
         age = time.time() - lock.stat().st_mtime
     except OSError:
@@ -858,28 +877,53 @@ def _fetch_progress(remote: str = "origin") -> None:
     remote = remote or "origin"
     ref = f"refs/remotes/{remote}/{PROGRESS_BRANCH}"
     fetch_args = (*_PROGRESS_FETCH[:-1], remote)
-    _sweep_dead_packs()
-    _clear_dead_lock()
-    try:
+    with _FETCH_GUARD:
+        _sweep_dead_packs()
+        _clear_dead_lock()
+        try:
+            _git("fetch", "--quiet", *fetch_args, f"{PROGRESS_BRANCH}:{ref}",
+                 timeout=180)
+            return
+        except CloudError as exc:
+            # A KILLED FETCH LEAVES ITS OWN LOCK. `--depth=1` writes
+            # `.git/shallow`, so every fetch takes `.git/shallow.lock` — and a
+            # fetch this reader times out and KILLS never removes it. Measured
+            # Sep 22, 2026 11:14pm: that file was dated `Sep 14, 2026 4:51pm`,
+            # so every progress read for EIGHT DAYS answered "Another git
+            # process seems to be running" and the panel said no machine had
+            # reported, through every run in between.
+            if "cannot lock ref" not in str(exc) and ".lock" not in str(exc):
+                raise
+            _clear_dead_lock(force=True)
+            if "shallow.lock" in str(exc):
+                # ...AND A LIVE ONE IS WAITED OUT. Still there after the
+                # forced clear means a running git holds it open — after a
+                # restart, the old back end's fetch. It is not a wedged ref:
+                # dropping the bookmark only makes that fetch's own update
+                # fail (Oct 16, 2026, RCA-2026-10-16-B).
+                lock = _shallow_lock()
+                deadline = time.monotonic() + LIVE_LOCK_WAIT_S
+                while lock.exists() and time.monotonic() < deadline:
+                    time.sleep(LOCK_POLL_S)
+                    _clear_dead_lock()
+                if lock.exists():
+                    try:
+                        held = time.time() - lock.stat().st_mtime
+                    except OSError:
+                        held = LIVE_LOCK_WAIT_S
+                    raise CloudError(
+                        f"git fetch: another git process has held "
+                        f".git/shallow.lock for {held:.0f} s (a fetch the "
+                        f"previous back end left running, or a git command "
+                        f"in this checkout)") from exc
+                _git("fetch", "--quiet", *fetch_args,
+                     f"{PROGRESS_BRANCH}:{ref}", timeout=180)
+                return
+        # drop the wedged tracking ref and take the branch again from scratch
+        with contextlib.suppress(CloudError):
+            _git("update-ref", "-d", ref, timeout=30)
         _git("fetch", "--quiet", *fetch_args, f"{PROGRESS_BRANCH}:{ref}",
              timeout=180)
-        return
-    except CloudError as exc:
-        # A KILLED FETCH LEAVES ITS OWN LOCK. `--depth=1` writes
-        # `.git/shallow`, so every fetch takes `.git/shallow.lock` — and a
-        # fetch this reader times out and KILLS never removes it. Measured
-        # Sep 22, 2026 11:14pm: that file was dated `Sep 14, 2026 4:51pm`,
-        # so every progress read for EIGHT DAYS answered "Another git process
-        # seems to be running" and the panel said no machine had reported,
-        # through every run in between.
-        if "cannot lock ref" not in str(exc) and ".lock" not in str(exc):
-            raise
-        _clear_dead_lock(force=True)
-    # drop the wedged tracking ref and take the branch again from scratch
-    with contextlib.suppress(CloudError):
-        _git("update-ref", "-d", ref, timeout=30)
-    _git("fetch", "--quiet", *fetch_args, f"{PROGRESS_BRANCH}:{ref}",
-         timeout=180)
 
 
 def live_progress(run_id: int, slug: str | None = None) -> list:

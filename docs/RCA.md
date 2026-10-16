@@ -172,6 +172,107 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-16-B — a back-end restart left the old back end's progress download running, and the new one gave up on it and threw away both accounts' progress bookmarks (Oct 16, 2026 6:16-6:19am)
+
+**CEO**
+
+* After the 6:16am restart of the back end, the site twice logged "could
+  not fetch sweep-progress" (it became an error issue), and the machine
+  tiles had no progress to read from either account until a later download
+  put it back.
+* Why: a restart stops the old back end but not a download it had started,
+  and that download held git's one-at-a-time lock for 198 seconds; the new
+  back end treated the busy lock as a fault instead of waiting, and deleted
+  the two places the progress is kept while the old download was still
+  writing to one of them.
+* What stops it now: a lock another live download holds is waited out
+  (up to 5 minutes) and nothing is deleted under it; the site's own two
+  progress readers take turns instead of colliding.
+
+**DEV**
+
+* `start.py cmd_api` → `kill(pid, tree=False)` leaves the API's in-flight
+  `git fetch --depth=1` (from `cloud_sweep._fetch_progress`) running with no
+  timeout over it, holding `.git/shallow.lock`; the new API's
+  `_fetch_progress` (`tradingagents/cloud_sweep.py`) got "Unable to create
+  …shallow.lock: File exists", `_clear_dead_lock(force=True)` could not
+  delete a file a live git has open, `update-ref -d` dropped
+  `refs/remotes/<remote>/sweep-progress`, the immediate retry was refused
+  again and `live_progress` printed it. Two readers (`cloud-status` in
+  `api.py`, `cloud-errors` in `backtest_logs.py`) also fetched on their own
+  threads with nothing serialising them.
+* Invariant broken: **a blocked resource is waited for and NAMES ITS
+  HOLDER** (RCA-2026-09-10-C) — and a repair for one lock (a wedged
+  tracking ref) must not be applied to another (`shallow.lock`).
+* Guard: `tests/test_a_restart_does_not_blind_the_progress_tiles.py` (5).
+
+**SAW** — the Errors list, "The site's cloud failed": *"[cloud] could not
+fetch sweep-progress: git fetch: fatal: Unable to create
+'G:/analyzer-x/.git/shallow.lock': File exists."*, twice, filed at
+Oct 16, 2026 6:19am.
+
+**TIMELINE**
+
+1. Oct 16, 2026 6:13am — commit 1f1cd8e (app books); 6:15am another
+   session announces `python start.py api` to load it.
+2. 6:16:11am — the OLD back end's progress download of the partner
+   account's branch writes `.git/shallow.lock` (the 106,149-byte
+   `.git/shallow` it later commits carries that time).
+3. 6:16:13am — the old back end is ended by its pid alone; 6:16:14am the
+   new one (pid 7492) is up. The old download keeps running — no parent,
+   no 180 s timeout.
+4. 6:17:30am — the new back end's read is refused over the lock, cannot
+   delete it, drops `colleague/sweep-progress` (that folder's time), is
+   refused again: the first "could not fetch" line.
+5. 6:18:36am — a minute later (`FETCH_FAIL_S` = 60 s) the same on the
+   operator's account: `origin/sweep-progress` dropped, the second line.
+6. 6:19am — the error filer files it, 2 occurrences.
+7. 6:19:29am — the old download finishes after 198 s: `.git/shallow`
+   committed, `FETCH_HEAD` written for jeremydvera's `sweep-progress` — but
+   the bookmark it fetched for had been deleted under it, so it is not
+   written. 6:31am: neither account's bookmark exists; the new back end's
+   download started at 6:30:20am is fetching the partner's from scratch.
+8. Oct 16, 2026 — four of the five new tests fail on the old code with
+   that same message (the killed-fetch case passes, as it should); all five
+   pass after the fix.
+
+**ROOT CAUSE** — `_fetch_progress` took every refusal naming a `.lock` for
+a dead lock or a wedged ref: it forced, dropped the bookmark and retried at
+once, with no way to wait for a live holder — and its two in-process
+callers could be that live holder for each other.
+
+**WHY IT WAS NOT CAUGHT** — the lock tests came from two incidents and each
+drove its own: a wedged tracking ref (`test_progress_fetch_survives_a_lock_race`)
+and a lock DEAD for eight days (`test_a_killed_fetchs_lock_is_cleared_and_a_live_one_is_not`,
+which checks the age rule of `_clear_dead_lock()` alone). No test put a
+LIVE holder on the other side of the refusal, and none drove two readers at
+once — and the holder here only exists across a restart, which kills the
+parent but not its child, so a test inside one process never meets it.
+**When a fix clears a lock, test it against a holder that is still alive.**
+
+**COST** — none in money or rows; both accounts' machine tiles had no
+progress bookmark from 6:17-6:18am until the next download that completes
+(none by 6:31am), and one error issue.
+
+**FIX** — this commit: `_FETCH_GUARD` makes the site's readers take turns;
+a `shallow.lock` still there after the forced clear is waited out
+(`LIVE_LOCK_WAIT_S` = 300 s, polled every `LOCK_POLL_S`), never answered by
+dropping the bookmark; one that never lets go raises "another git process
+has held .git/shallow.lock for N s". A killed fetch's lock is still removed
+at once. Seen in passing, not changed: `.git/objects/pack` still holds
+59 `tmp_*` files (3.32 GB, 58 older than today, the oldest Sep 11, 2026),
+read-only, which `_sweep_dead_packs`' plain unlink cannot delete on
+Windows.
+
+**GUARD** — `tests/test_a_restart_does_not_blind_the_progress_tiles.py`:
+`::test_a_live_fetchs_lock_is_waited_out_not_reported`,
+`::test_a_live_fetchs_lock_never_costs_the_bookmark`,
+`::test_a_lock_nobody_holds_is_still_cleared_at_once`,
+`::test_a_lock_that_never_lets_go_is_named_with_its_age`,
+`::test_the_back_ends_two_readers_take_turns`.
+
+---
+
 ## RCA-2026-10-16-A — the backtest priced Gate trades off an order-book record that holds offers the app can never trade (QNTX: 0 of 45 same-second checks matched the app's own book)
 
 **CEO**

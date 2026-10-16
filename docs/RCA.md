@@ -172,6 +172,87 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-15-F — practice charged the cost of closing a trade from the order book of the moment it OPENED (QNTX: 0.520% when the exit's own book asked 0.071%)
+
+**CEO**
+
+* QNTX 15m in #55D32617: two practice trades bought Oct 12, 2026 12:45pm
+  and were stopped at 1:02pm; practice booked -1.47 each while the backtest
+  booked -0.98 for the same signal.
+* Why: practice priced the cost of getting OUT from the order book of the
+  moment it got IN. At 12:45pm the buyers were thin (0.52% to sell $100); at
+  1:02pm, when it really sold, Gate's record says 0.07%.
+* What stops it now: a practice trade closing now pays the order book of
+  now, as a real close does and as the backtest already did; one found late
+  keeps the reading from its entry, and its row says which it paid.
+
+**DEV**
+
+* `tradingagents/auto_trader.py` `_process_slot` → `paper_round_trip(pos)`
+  charged `pos["exit_slippage"]`, which `edge_check` files at ENTRY
+  (`exit_slip`), on every paper exit; `backtest_strategy` charges `_c_out`
+  from the EXIT minute's book.
+* Invariant broken: **each leg pays the book of its own moment** (CLAUDE.md,
+  "EVERY TRADE PAYS THE ORDER BOOK OF ITS OWN MINUTE") — practice's closing
+  leg was paid at the opening moment. Now `exit_book_slippage` reads the live
+  book when the stop or target was crossed in the last `EXIT_BOOK_FRESH_S`.
+* Guard: `tests/test_practice_exit_pays_the_exit_book.py` (8 tests).
+
+**SAW** — the practice audit, Oct 15, 2026 7:27pm: A3H5UHQH and PZTXYRL8,
+practice -1.47 against backtest -0.98, "not close". The operator: *"for Same
+result, profit off by more than 10% what's the reason for the gap"*, then
+*"keep on looping until its fixed apply harddev"*.
+
+**TIMELINE**
+
+1. Oct 12, 2026 12:45:04pm — #55D32617 buys QNTX at 39.87 on stoch14 and
+   willr14 (15m, TP 1% / SL 0.8%). The cost check reads the book: the
+   closing side (the bids) costs 0.5198% to sell $100.
+2. 1:02:58pm — the live feed sees the stop (39.551). Practice books -1.47
+   each: the 0.80% move, 0.15% of fees and the 0.52% closing side read at
+   12:45pm.
+3. Gate's recorded book at 1:02:00pm asked 0.071% to sell $100 (bids 39.45
+   x18, 39.44 x183), which is what the backtest charges a 1:02pm exit.
+4. Oct 15, 2026 — over the 52 practice trades closed by their own target or
+   stop since the move to Gate, the closing side charged at entry sat 0.058%
+   (mean, either way) from the book the backtest pays at the exit minute;
+   Gate's recorded book at the exit SECOND sat 0.035% from it.
+5. Oct 15, 2026 — fixed: an exit crossed in the last 120 seconds (the live
+   feed's tick, the last price, or the minute that just closed) reads the
+   live book then; the exit row carries `exit_slippage` and
+   `exit_cost_from`.
+
+**ROOT CAUSE** — the paper exit path never read a book, so
+`paper_round_trip` could only charge the closing side measured at entry.
+
+**WHY IT WAS NOT CAUGHT** — RCA-2026-10-11-B made the exit pay the right
+SIDE (the bids for a long, the asks for a short) and its tests pinned that
+side on the entry reading. No test asked WHEN the closing side is read, and
+every fixture's book was the same at entry and at exit, so the two moments
+could never disagree. The audit that found it compares practice with the
+backtest trade by trade, which no test does.
+
+**COST** — none in real money. Practice trades on thin books were charged an
+exit cost from the wrong moment: QNTX, $0.45 more per trade than its exit's
+own book. Not closed by this: on some coins the live book the runner reads is
+wider than Gate's recorded book at the same second (QNTX: 142 of 142 live
+readings since the move to Gate, median spread 0.31% against 0.025%), so the
+same exit can still cost practice more than the backtest; that is measured
+and investigated on its own.
+
+**FIX** — this commit. Positions open now are charged this way when they
+close, once each room's program has restarted onto it.
+
+**GUARD** — `tests/test_practice_exit_pays_the_exit_book.py`: the QNTX stop
+pays the book of now; a short pays the asks; an exit found late, an
+unreadable book and a position with no entry reading keep the entry reading.
+Found by the harddev loop: a cross stamped in the future read as "now" and an
+entry reading of None crashed the exit row (round 1), and nothing pinned the
+minute walk's clock — `test_a_stop_found_in_the_minute_that_just_closed_pays_the_book_of_now`
+fails when that clock is 4 hours out (round 3).
+
+---
+
 ## RCA-2026-10-15-E — the new Room strategies calendar added up to one cent less than the pop-up's TOTAL PROFIT (#BBE0A361: +6.01 against +6.02)
 
 **CEO**

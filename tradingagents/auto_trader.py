@@ -2716,10 +2716,53 @@ def paper_round_trip(pos: dict, symbol: str, *, fx=None) -> float:
             # by selling the bids, a short by buying the asks — the
             # backtest's exit leg (`_c_out`). `rt_cost` carries the ENTRY
             # side twice (cost_verdict's `2 * (slippage + fee)`), one of
-            # which the fill price already holds.
+            # which the fill price already holds. `exit_slippage` is the
+            # book of the EXIT when the runner read it as the trade closed
+            # (`exit_book_slippage`), else the one read at entry.
             return max(rt - 2 * slip + float(pos.get("exit_slippage") or 0.0), 0.0)
         return max(rt - slip, 0.0)
     return live_fee_estimate(symbol, fx=fx) + 2 * PAPER_SLIPPAGE
+
+
+# A PRACTICE EXIT PAYS THE BOOK OF ITS OWN MOMENT (Oct 15, 2026,
+# RCA-2026-10-15-F). The closing side used to be charged from the book read
+# at ENTRY: QNTX 15m (#55D32617) bought at Oct 12, 2026 12:45:04pm, when the
+# bids were thin (0.520% to sell $100), and was stopped at 1:02pm, when they
+# asked 0.071% — practice booked -1.47 against the backtest's -0.98, which
+# pays the book of the exit minute (`backtest_strategy`'s `_c_out`), as a
+# real close does. An exit happening NOW reads the book now; one found later
+# (an outage, a reconnect, a closed candle) keeps the entry reading, because
+# the book of now is not the book of that exit.
+EXIT_BOOK_FRESH_S = 120
+
+
+def exit_book_slippage(symbol: str, pos: dict, crossed_at, *,
+                       fx) -> float | None:
+    """The closing side's cost from the live book, when the exit is happening
+    now — the bids for a long, the asks for a short — or None: the exit was
+    found more than `EXIT_BOOK_FRESH_S` after it happened, the position
+    carries no entry reading to replace (opened before `book_slippage`), or
+    the book cannot be read. None means "charge the entry reading", never
+    "no cost", and an unreadable book never stops an exit."""
+    if crossed_at is None:
+        return None
+    # both ways: a cross stamped in the future is no more "now" than one
+    # found minutes late (a millisecond stamp read as seconds would otherwise
+    # pass for ever); a minute of venue clock ahead of this PC is allowed
+    if not -60 <= time.time() - float(crossed_at) <= EXIT_BOOK_FRESH_S:
+        return None
+    if not (float(pos.get("rt_cost") or 0) > 0 and "book_slippage" in pos):
+        return None
+    try:
+        m, _ = _book_for(symbol, float(pos["margin"]) * LEVERAGE, fx=fx,
+                         shared=True)
+        v = m.get("slippage_sell" if int(pos["side"]) > 0 else "slippage_buy")
+        return None if v is None else max(float(v), 0.0)
+    except Exception as exc:                                   # noqa: BLE001
+        logger.warning("%s %s: could not read the book at the exit (%s) — "
+                       "charging the closing side read at entry.", symbol,
+                       pos.get("strategy"), exc)
+        return None
 # How far SHY of a resting barrier a real fill may land and still be named
 # after it. A fill THROUGH the barrier always counts (a stop slips past by
 # any amount — ALICE's 0.1396 stop filled at 0.1407); shy fills happen on
@@ -5758,7 +5801,8 @@ def _bars_exposed_to(df, since: int, bar_seconds: int, *,
     return (hi, lo, starts) if opens else (hi, lo)
 
 
-def _dry_fill(pos: dict, high: list, low: list, *, both=None) -> str | None:
+def _dry_fill(pos: dict, high: list, low: list, *, both=None,
+              at: list | None = None) -> str | None:
     """Walk bars since entry; SL first when both barriers sit in one bar —
     the same worst-case rule the backtest used.
 
@@ -5767,12 +5811,18 @@ def _dry_fill(pos: dict, high: list, low: list, *, both=None) -> str | None:
     worst case. Backtest v2 asks its minutes the same question
     (`backtest_strategy(fine=)`); the practice exit asks through
     `_settle_on_minutes`, which answers with THIS walk over the minutes —
-    one barrier rule, at every resolution."""
+    one barrier rule, at every resolution.
+
+    `at`, when given, receives the index of the bar the walk stopped on, so
+    a caller can say WHEN the exit happened without a second copy of the
+    barrier rule (`exit_book_slippage`)."""
     for i, (hi, lo) in enumerate(zip(high, low, strict=False)):
         if pos["side"] > 0:
             hit_sl, hit_tp = lo <= pos["sl"], hi >= pos["tp"]
         else:
             hit_sl, hit_tp = hi >= pos["sl"], lo <= pos["tp"]
+        if (hit_sl or hit_tp) and at is not None:
+            at.append(i)
         if hit_sl and hit_tp and both is not None:
             return both(i) or "SL"
         if hit_sl:
@@ -6260,6 +6310,10 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             (lambda i: _settle_on_minutes(symbol, pos, _at[i],
                                           seconds_of[_iv], _since, fx=fx))
             if pos_dry else None))
+        # WHEN the practice exit happened, so its closing side is paid at the
+        # book of that moment (`exit_book_slippage`). A closed candle's cross
+        # is old news; the walks below set it when they find one.
+        _cross_at = None
         if not outcome and pos_dry:
             # A real bracket rests AT THE EXCHANGE and fills the instant any
             # trade prints through the barrier — on a wick, intrabar, at 3am.
@@ -6280,8 +6334,11 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                 # THIS is where the reach-back did its damage: one-minute
                 # resolution against a floor expressed in STRATEGY-BAR time
                 # replayed the whole hour (or four) before the order existed.
-                _hi, _lo = _bars_exposed_to(fine, _since, 60)
-                outcome = _dry_fill(pos, _hi, _lo)
+                _hi, _lo, _m_at = _bars_exposed_to(fine, _since, 60, opens=True)
+                _stop: list = []
+                outcome = _dry_fill(pos, _hi, _lo, at=_stop)
+                if outcome and _stop:
+                    _cross_at = _m_at[_stop[0]] + 60     # the minute's end
             except Exception as exc:
                 logger.warning("%s: could not read 1-minute ranges for the "
                                "paper bracket (%s) — falling back to the "
@@ -6302,11 +6359,12 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                 _t_hi = [p for _t, p in rows]
                 outcome = _dry_fill(pos, _t_hi, _t_hi)
                 if outcome:
+                    _cross_at = _first_cross_ts(pos, rows)
                     logger.info(
                         "%s %s: %s crossed on the live feed at %s — %d tick(s) "
                         "since the last closed minute", symbol,
                         pos.get("strategy"), outcome,
-                        _pv_fmt(_first_cross_ts(pos, rows)), len(rows))
+                        _pv_fmt(_cross_at), len(rows))
         if not outcome and pos_dry:
             # Real-time exit for simulated positions: closed bars lag, so
             # also test the live tick against the bracket. SL checked first,
@@ -6333,6 +6391,8 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                 else:
                     outcome = ("SL" if px >= pos["sl"]
                                else "TP" if px <= pos["tp"] else None)
+                if outcome:
+                    _cross_at = time.time()
         live_gone = False
         if not pos_dry:
             # A SLICE is gone when ITS contracts are gone, not when the whole
@@ -6442,6 +6502,12 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
             # Charge the round-trip cost. Reporting a gross figure made every
             # displayed PnL optimistic and fed the loss limits a number the
             # account never saw.
+            _exit_slip = (exit_book_slippage(symbol, pos, _cross_at, fx=fx)
+                          if pos_dry and outcome in ("TP", "SL") else None)
+            if _exit_slip is not None:
+                # a COPY: the slot's own record is cleared below, and nothing
+                # after this branch reads `pos` (it reads `st["position"]`)
+                pos = {**pos, "exit_slippage": _exit_slip}
             cost = (paper_round_trip(pos, symbol, fx=fx) if pos_dry
                     else live_fee_estimate(symbol, fx=fx))
             pnl = (move - cost) * pos["margin"] * LEVERAGE
@@ -6529,6 +6595,13 @@ def _process_slot(symbol: str, settings: dict, state: dict, *, fx,
                            # which book the NUMBER came from: MEXC's realized
                            # figure when it could be read, else our estimate
                            "pnl_source": pnl_source,
+                           # and, for practice, which book paid the way out
+                           **({"exit_slippage": round(
+                                   float(pos.get("exit_slippage") or 0.0), 6),
+                               "exit_cost_from": (
+                                   "the book when it opened" if _exit_slip is None
+                                   else "the book when it closed")}
+                              if pos_dry and "exit_slippage" in pos else {}),
                            "step_next": st["step"],
                            "dry_run": pos_dry})
             if close_rings_the_bell(why):

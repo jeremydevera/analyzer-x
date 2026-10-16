@@ -659,6 +659,14 @@ def test_the_pop_up_calendar_adds_every_trade_by_the_day_it_closed():
     assert rst.trades(a, lo, hi, page=2, per=2)["days"] == got["days"], "every trade, whatever the page"
     assert round(sum(v["pnl"] for v in got["days"].values()), 2) == got["profit"]
     assert rst.trades(a, ms(2026, 10, 4, 0) / 1000, ms(2026, 10, 7, 0) / 1000)["days"] == {}
+    # the days add up to the TOTAL to the cent: #BBE0A361's days summed to
+    # +6.01 against a TOTAL PROFIT of +6.02 when each day was rounded first
+    c = rst.cfg(30, 60, 20, ">", 2.0)
+    t = _trades([(2026, 9, 21, 0.004), (2026, 9, 22, 0.004), (2026, 9, 25, 0.004)])
+    rst.keep([{"id": rst.sid(c), "cfg": c, "words": fr.words(c), "deployable": True, "deploy_why": "",
+               "p4": rst.measure(t, END, REAL), "trades": t}], "r2", "RUN", now=2000)
+    tiny = rst.trades(rst.sid(c), lo, hi)
+    assert round(sum(v["pnl"] for v in tiny["days"].values()), 2) == tiny["profit"] == 0.01
 
 
 def test_the_pop_up_draws_the_calendar_beside_its_table():

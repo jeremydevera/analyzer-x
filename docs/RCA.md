@@ -172,6 +172,56 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-15-E — the new Room strategies calendar added up to one cent less than the pop-up's TOTAL PROFIT (#BBE0A361: +6.01 against +6.02)
+
+**CEO**
+
+* The day-by-day calendar added beside a rule set's trades the same evening
+  summed #BBE0A361's 17 days to +6.01 while the line above it said TOTAL
+  PROFIT +6.02 — one cent, but two figures on one pop-up that disagreed.
+* Why: each day was rounded to the cent before the month added them up, and
+  small roundings pile up.
+* What stops it now: each day keeps four decimal places and only the screen
+  rounds; a test holds that the days add up to the total to the cent.
+
+**DEV**
+
+* `tradingagents/room_strategies.py` `trades()` stored each day's
+  `pnl` as `round(.., 2)`; `webapp/src/components/trade/PnlPanel.tsx`
+  `DayCalendar` sums the days for the month caption.
+* Invariant broken: **itemised figures sum to the total shown**
+  (label-must-match-data) — round once, at the end.
+* Guard: `tests/test_prompt4_room_strategies.py::test_the_pop_up_calendar_adds_every_trade_by_the_day_it_closed`
+  (three trades of +0.004: days rounded first sum to 0.00 against a total of
+  0.01).
+
+**SAW** — my own check before reporting the calendar done, Oct 15, 2026:
+the API's days for #BBE0A361 (Sep 16 - Oct 16, 2026) summed to 6.01 over 38
+trades on 17 days; TOTAL PROFIT 6.02.
+
+**TIMELINE**
+
+1. Oct 15, 2026 evening — b88c88bb1731 ships the calendar; the site is
+   rebuilt.
+2. Minutes later — the check: 38 trades on 17 days, days +6.01, total +6.02.
+3. Same minutes — days kept to 4 places; the new assertion fails on the
+   cent-rounded days and passes on the fix; the back end restarts and the
+   same check reads +6.02 on both.
+
+**ROOT CAUSE** — rounding each item before summing them.
+
+**WHY IT WAS NOT CAUGHT** — the first test's trades were whole and half
+dollars, which round to themselves, so "the days sum to the total" held by
+the fixture's luck; only real cents show the drift.
+
+**COST** — none in money; the gap was on screen for a few minutes.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_prompt4_room_strategies.py::test_the_pop_up_calendar_adds_every_trade_by_the_day_it_closed`.
+
+---
+
 ## RCA-2026-10-15-D — the practice-against-backtest check counted two rooms' trades as one when they shared a trade id
 
 **CEO**

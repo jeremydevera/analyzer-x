@@ -777,7 +777,9 @@ def trades(rid: str, from_s: float, to_s: float, *, page: int = 1, per: int = 10
         if coin:
             d["coins"].add(str(coin).replace("_USDT", ""))
     for d in days.values():
-        d["pnl"] = round(d["pnl"], 2)
+        # 4 places, never the cent: the calendar's month adds these, and days
+        # rounded first summed to +6.01 beside a TOTAL PROFIT of +6.02
+        d["pnl"] = round(d["pnl"], 4)
         d["coins"] = sorted(d["coins"])
     return {"id": want, "words": w["words"], "from": from_s, "to": to_s,
             "days": days,

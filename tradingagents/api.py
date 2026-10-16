@@ -1499,11 +1499,34 @@ def downloads_page_route():
         f"{rows or '<tr><td colspan=3>No file yet.</td></tr>'}</table></body>")
 
 
+def _rs_span(from_s, to_s, from_day: str, to_day: str) -> tuple[float, float]:
+    """Room strategies' dates as THIS PC's days (operator, Oct 16, 2026, from a
+    browser 12 hours ahead: Backtest a room's #CB69A137 for Sep 18 read +1.00
+    over 1 trade beside a calendar of this PC's days — the browser's
+    midnights were noon here). Days win over seconds; seconds stay for "last
+    N days", which is a span of time, not a day (RCA-2026-10-05-D's rule)."""
+    from tradingagents import room_replay as _rr
+
+    try:
+        if from_day:
+            from_s = _rr._midnight(from_day) / 1000
+        if to_day:
+            to_s = _rr._next_midnight(to_day) / 1000 - 1
+    except ValueError as exc:
+        raise HTTPException(400, f"a day is YYYY-MM-DD: {exc}") from exc
+    if from_s is None or to_s is None:
+        raise HTTPException(400, "give the days (from_day, to_day) or from_s and to_s")
+    if to_s < from_s:
+        raise HTTPException(400, "the end of the range is before its start")
+    return float(from_s), float(to_s)
+
+
 @app.get("/api/forecasts/room-strategies")
-def room_strategies_route(from_s: float, to_s: float, min_winrate: float = 0,
+def room_strategies_route(from_s: float | None = None, to_s: float | None = None,
+                          min_winrate: float = 0,
                           min_profit: float | None = None, window: int = 0,
                           deployable: str = "", find: str = "", sort: str = "profit",
-                          page: int = 1) -> dict:
+                          page: int = 1, from_day: str = "", to_day: str = "") -> dict:
     """Forecast -> Room strategies: every winner prompt 4 kept, RE-MEASURED over
     exactly the chosen dates from its own stored trades (operator, Oct 02, 2026:
     "when i run that prompt i want you to look for all kinds of combination
@@ -1511,8 +1534,7 @@ def room_strategies_route(from_s: float, to_s: float, min_winrate: float = 0,
     page like every list on the Forecast page (forecast_v2_api.PER_PAGE)."""
     from tradingagents import forecast_v2_api as _f2a, room_strategies as _rst
 
-    if to_s < from_s:
-        raise HTTPException(400, "the end of the range is before its start")
+    from_s, to_s = _rs_span(from_s, to_s, from_day, to_day)
     try:
         # the Forecast page's own reality check, kept fresh in the background —
         # never worked out again per request (14 s each, 122 s after a restart).
@@ -1549,8 +1571,9 @@ TRADES_EXPORT_MAX = 100_000
 
 
 @app.get("/api/forecasts/room-strategies/trades")
-def room_strategy_trades_route(id: str, from_s: float, to_s: float, page: int = 1,
-                               per: int = 0) -> dict:
+def room_strategy_trades_route(id: str, from_s: float | None = None, to_s: float | None = None,
+                               page: int = 1, per: int = 0, from_day: str = "",
+                               to_day: str = "") -> dict:
     """Forecast -> Room strategies -> an id clicked: that rule set's trades
     that opened and closed in the chosen dates — the same trades its row
     counts — oldest first with the running total and the TOTAL for the dates,
@@ -1560,8 +1583,7 @@ def room_strategy_trades_route(id: str, from_s: float, to_s: float, page: int = 
     csv", Oct 08, 2026), at most TRADES_EXPORT_MAX."""
     from tradingagents import forecast_v2_api as _f2a, room_strategies as _rst
 
-    if to_s < from_s:
-        raise HTTPException(400, "the end of the range is before its start")
+    from_s, to_s = _rs_span(from_s, to_s, from_day, to_day)
     try:
         return _rst.trades(id, from_s, to_s, page=page,
                            per=min(int(per), TRADES_EXPORT_MAX) if per > 0 else _f2a.PER_PAGE)

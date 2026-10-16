@@ -580,6 +580,9 @@ function dayOf(ms: number) {
   return m ? m[1] : fmtWhenMs(ms);
 }
 
+/** A day box's key as its day ("2026-09-18" -> "Sep 18, 2026"): a day, never a clock time. */
+const dayKey = (k: string) => dayOf(dayStart(k) * 1000);
+
 const RR_STATE: Record<string, string> = {
   measuring: "Being measured", busy: "Waiting for another replay", waiting: "Waiting for the disk",
   failed: "The last run failed", not_measured: "Not measured yet",
@@ -811,7 +814,8 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
             daily re-test (on GitHub, over every Backtest v2 strategy) for {dayOf(dayStart(asked.from) * 1000)} to {dayOf(dayStart(asked.to) * 1000)} —
             the same trades Room strategies counts for it.
           </p>
-          <StrategyTrades id={ruleSet} words="" from_s={dayStart(asked.from)} to_s={dayStart(asked.to) + 86_399} />
+          <StrategyTrades id={ruleSet} words="" from_s={dayStart(asked.from)} to_s={dayStart(asked.to) + 86_399}
+            days={{ from: asked.from, to: asked.to }} />
         </div>
       )}
       {err && <p className="mt-3 text-theme-xs text-error-500">could not read the replay — {err}</p>}
@@ -1055,7 +1059,11 @@ export function RoomsAndBacktest() {
  *  Loading... and cannot be pressed until its answer lands ("when i click
  *  apply, i want to see loading, then make apply button disabled"). */
 type RsDraft = { from: string; to: string; days: string; minWin: string; minProfit: string; find: string };
-type RsAsk = { from_s: number; to_s: number; days: number | null; min_winrate: number;
+type RsAsk = { from_s: number; to_s: number;
+  /** the date boxes as DAYS ("2026-09-18"), "" with "last N days": the server
+   *  makes this PC's midnights of them (Oct 16, 2026: a browser 12 hours ahead
+   *  sent its own, and a "Sep 18" held noon to noon here) */
+  from_day: string; to_day: string; days: number | null; min_winrate: number;
   min_profit: number | null; find: string };
 
 const rsDefault = (): RsDraft => ({ from: dateBoxValue(30), to: dateBoxValue(0), days: "", minWin: "",
@@ -1086,6 +1094,8 @@ function rsAsk(f: RsDraft, nowS: number): RsAsk {
   return {
     from_s: days ? nowS - Math.round(days * 86_400) : dayStart(f.from),
     to_s: days ? nowS : dayStart(f.to) + 86_399,
+    from_day: days ? "" : f.from,
+    to_day: days ? "" : f.to,
     days: days || null,
     min_winrate: f.minWin.trim() === "" ? 0 : Number(f.minWin),
     min_profit: f.minProfit.trim() === "" ? null : Number(f.minProfit),
@@ -1133,7 +1143,8 @@ export function RoomStrategiesSection() {
   const load = useCallback(() => {
     const ask = applied.ask;
     const key = JSON.stringify([ask, page]);
-    api.roomStrategies({ from_s: ask.from_s, to_s: ask.to_s, min_winrate: ask.min_winrate,
+    api.roomStrategies({ from_s: ask.from_s, to_s: ask.to_s, from_day: ask.from_day, to_day: ask.to_day,
+      min_winrate: ask.min_winrate,
       min_profit: ask.min_profit, find: ask.find, page })
       .then((x) => { if (key === want.current) { setShown({ key, ask, d: x }); setErr(""); } })
       .catch((e) => { if (key === want.current) setErr(String(e?.message ?? e)); });
@@ -1218,7 +1229,8 @@ export function RoomStrategiesSection() {
       {d && asked && (
         <>
           <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
-            {d.matched.toLocaleString()} of {d.kept.toLocaleString()} kept · {asked.days ? `last ${asked.days} day${asked.days === 1 ? "" : "s"}: ` : ""}{fmtWhen(d.from)} to {fmtWhen(d.to)}
+            {d.matched.toLocaleString()} of {d.kept.toLocaleString()} kept · {asked.days ? `last ${asked.days} day${asked.days === 1 ? "" : "s"}: ${fmtWhen(d.from)} to ${fmtWhen(d.to)}`
+              : `${dayKey(asked.from_day)} to ${dayKey(asked.to_day)}`}
             {words.length > 0 && ` · ${words.join(" · ")}`} · ${d.margin} a trade at {d.leverage}x
             {d.reality.took != null ? ` · reality check: practice takes ${(100 * d.reality.took).toFixed(0)}% of the backtest's trades, ${fmtMoney(-(d.reality.gap ?? 0))} a trade worse`
               : d.reality_pending ? " · the reality check is still being worked out (about a minute after a restart) — the column after it fills in then" : ""}
@@ -1283,7 +1295,8 @@ export function RoomStrategiesSection() {
             {open && (
               <div role="dialog" aria-modal="true" aria-label={`Room strategy #${open.id}`}
                 className="max-h-[80vh] overflow-y-auto pr-10 sm:pr-14">
-                <StrategyTrades id={open.id} words={open.words} from_s={d.from} to_s={d.to} />
+                <StrategyTrades id={open.id} words={open.words} from_s={d.from} to_s={d.to}
+                  days={asked?.from_day ? { from: asked.from_day, to: asked.to_day } : undefined} />
               </div>
             )}
           </Modal>
@@ -1301,7 +1314,11 @@ const EXPORT_MAX = 100_000;
  *  running total and the TOTAL PROFIT for the dates; ten a page, paged by the
  *  server. Export CSV writes every one of them, each date as the screen
  *  prints it (fmtWhenMs, this browser's clock). */
-function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string; from_s: number; to_s: number }) {
+function StrategyTrades({ id, words, from_s, to_s, days }: { id: string; words: string; from_s: number; to_s: number;
+  /** the date boxes' DAYS: sent as days, so the server reads this PC's
+   *  midnights — the days its calendar counts (Oct 16, 2026) */
+  days?: { from: string; to: string } }) {
+  const span = days ? { from_s, to_s, from_day: days.from, to_day: days.to } : { from_s, to_s };
   const [page, setPage] = useState(1);
   const [got, setGot] = useState<{ key: string; d: RoomStrategyTrades } | null>(null);
   const [err, setErr] = useState("");
@@ -1309,7 +1326,7 @@ function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string
   const [csv, setCsv] = useState("");
   const exportCsv = () => {
     setCsv("busy");
-    api.roomStrategyTrades({ id, from_s, to_s, page: 1, per: EXPORT_MAX })
+    api.roomStrategyTrades({ id, ...span, page: 1, per: EXPORT_MAX })
       .then((all) => {
         const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
         const lines = [["#", "Coin", "Timeframe", "Signal", "TP %", "SL %", "Opened", "Closed", "Held",
@@ -1329,7 +1346,7 @@ function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string
           { type: "text/csv;charset=utf-8" }));
         const a = document.createElement("a");
         a.href = url;
-        a.download = `room-strategy-${id}-${dateBoxAt(from_s)}-to-${dateBoxAt(to_s)}.csv`;
+        a.download = `room-strategy-${id}-${days?.from ?? dateBoxAt(from_s)}-to-${days?.to ?? dateBoxAt(to_s)}.csv`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -1340,14 +1357,17 @@ function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string
       })
       .catch((e) => setCsv(`could not export — ${String(e?.message ?? e)}`));
   };
-  const key = `${id}|${from_s}|${to_s}|${page}`;
+  const dayFrom = days?.from ?? "";
+  const dayTo = days?.to ?? "";
+  const key = `${id}|${from_s}|${to_s}|${dayFrom}|${dayTo}|${page}`;
   useEffect(() => {
     let live = true;
-    api.roomStrategyTrades({ id, from_s, to_s, page })
-      .then((x) => { if (live) { setGot({ key: `${id}|${from_s}|${to_s}|${page}`, d: x }); setErr(""); } })
+    const q = dayFrom ? { from_s, to_s, from_day: dayFrom, to_day: dayTo } : { from_s, to_s };
+    api.roomStrategyTrades({ id, ...q, page })
+      .then((x) => { if (live) { setGot({ key: `${id}|${from_s}|${to_s}|${dayFrom}|${dayTo}|${page}`, d: x }); setErr(""); } })
       .catch((e) => { if (live) setErr(String(e?.message ?? e)); });
     return () => { live = false; };
-  }, [id, from_s, to_s, page]);
+  }, [id, from_s, to_s, dayFrom, dayTo, page]);
   const th = "px-2 py-1 text-start font-medium whitespace-nowrap";
   const td = "px-2 py-1 whitespace-nowrap";
   if (err) return <p className="text-theme-xs text-error-500">could not read #{id}&apos;s trades — {err}</p>;
@@ -1366,7 +1386,7 @@ function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string
       <p className="mt-1 text-theme-xs text-gray-600 dark:text-gray-300">{words || d.words}</p>
       <p className="mt-2 text-theme-sm font-semibold text-gray-800 dark:text-white/90">
         TOTAL PROFIT <span className={tone(d.profit)}>{fmtMoney(d.profit)}</span>
-        <span className="font-normal text-gray-500 dark:text-gray-400"> over {d.trades.toLocaleString()} trade{d.trades === 1 ? "" : "s"} ({d.wins.toLocaleString()} won, {d.losses.toLocaleString()} lost, win rate {pct(d.winrate)}{d.worst_run_trades == null ? "" : `, worst losing run ${d.worst_run_trades ? `${fmtMoney(d.worst_run)} over ${d.worst_run_trades} trade${d.worst_run_trades === 1 ? "" : "s"}` : "none"}`}) that opened and closed between {fmtWhen(d.from)} and {fmtWhen(d.to)} · ${d.margin} a trade at {d.leverage}x</span>
+        <span className="font-normal text-gray-500 dark:text-gray-400"> over {d.trades.toLocaleString()} trade{d.trades === 1 ? "" : "s"} ({d.wins.toLocaleString()} won, {d.losses.toLocaleString()} lost, win rate {pct(d.winrate)}{d.worst_run_trades == null ? "" : `, worst losing run ${d.worst_run_trades ? `${fmtMoney(d.worst_run)} over ${d.worst_run_trades} trade${d.worst_run_trades === 1 ? "" : "s"}` : "none"}`}) that opened and closed {days ? `from ${dayKey(days.from)} through ${dayKey(days.to)}` : `between ${fmtWhen(d.from)} and ${fmtWhen(d.to)}`} · ${d.margin} a trade at {d.leverage}x</span>
       </p>
       {d.trades === 0 ? (
         <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">

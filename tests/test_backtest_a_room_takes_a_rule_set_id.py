@@ -68,3 +68,41 @@ def test_the_room_box_offers_a_rule_set_id_and_the_panel_shows_its_re_test():
     assert "<StrategyTrades" in panel, "the id's dates through the pop-up's own view"
     trades_view = tsx[tsx.index("function StrategyTrades"):]
     assert "worst_run" in trades_view[:trades_view.index("\nfunction ")]
+
+
+# ------------------------------------- the date boxes are THIS PC's days
+def test_a_day_box_is_this_pcs_day_whatever_the_browsers_clock(monkeypatch):
+    """Operator, Oct 16, 2026, from a browser 12 hours ahead of this PC:
+    Backtest a room, #CB69A137, Sep 18 to Sep 18 read "+1.00 over 1 trade" —
+    the browser sent ITS midnights, noon Sep 17 to noon Sep 18 here — while
+    the calendar beside it counts this PC's days. The days go as days, and
+    the server makes its own midnights (Backtest a room's rule since
+    RCA-2026-10-05-D)."""
+    import datetime as dt
+
+    from tradingagents import api
+
+    day = dt.datetime(2026, 9, 18)
+    t = lambda h, m=0: day.replace(hour=h, minute=m).timestamp() * 1000      # noqa: E731
+    # #CB69A137's Sep 18, 2026 in this PC's clock (SAMSUNG opened the day before)
+    _kept(monkeypatch, [(t(7, 30), t(10), 1.00), (t(9, 30) - DAY, t(11, 30), 1.05),
+                        (t(10), t(12, 30), 1.00), (t(16, 30), t(20), 1.01), (t(21, 30), t(22, 30), 1.01)])
+    got = api.room_strategy_trades_route(id="CB69A137", from_day="2026-09-18", to_day="2026-09-18")
+    assert got["from"] == day.timestamp()
+    assert got["to"] == (day + dt.timedelta(days=1)).timestamp() - 1
+    assert (got["trades"], got["profit"]) == (4, 4.02), "opened AND closed on Sep 18"
+    assert list(got["days"]) == ["2026-09-18"]
+
+
+def test_the_list_takes_days_too():
+    import inspect
+
+    from tradingagents import api
+
+    for fn in (api.room_strategies_route, api.room_strategy_trades_route):
+        assert {"from_day", "to_day"} <= set(inspect.signature(fn).parameters), fn.__name__
+    tsx = FORECASTS.read_text(encoding="utf-8")
+    trades_view = tsx[tsx.index("function StrategyTrades"):]
+    trades_view = trades_view[:trades_view.index("\nfunction ")]
+    assert "from_day" in trades_view, "the pop-up and Backtest a room send days"
+    assert "from_day" in tsx[tsx.index("function rsAsk"):tsx.index("function rsFilterWords")]

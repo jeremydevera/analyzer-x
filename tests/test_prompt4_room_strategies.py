@@ -143,7 +143,8 @@ def test_the_page_shows_the_room_strategies_and_asks_the_server():
     page = (ROOT / "webapp/src/app/(admin)/forecast-v2/page.tsx").read_text(encoding="utf-8")
     assert "<RoomBacktest /><RoomStrategiesSection />" in page
     # the server is asked with what was APPLIED, never with the boxes as typed
-    assert "api.roomStrategies({ from_s: ask.from_s, to_s: ask.to_s, min_winrate: ask.min_winrate," in src
+    # the date boxes go as DAYS too (Oct 16, 2026: this PC's midnights, whatever the browser's clock)
+    assert "api.roomStrategies({ from_s: ask.from_s, to_s: ask.to_s, from_day: ask.from_day, to_day: ask.to_day," in src
     api_py = (ROOT / "tradingagents/api.py").read_text(encoding="utf-8")
     assert '@app.get("/api/forecasts/room-strategies")' in api_py
     assert '@app.get("/api/forecasts/room-strategies/trades")' in api_py
@@ -383,8 +384,9 @@ def test_a_range_past_the_saved_trades_says_where_they_end():
     assert "the replay names the strategy behind a trade only from ${fmtWhenMs(d.named_from)} on." in trades
     assert '<td className={`${td} font-medium`}>{t.coin ?? "—"}</td>' in trades
     assert '"#", "Coin", "Timeframe", "Signal", "TP %", "SL %", "Opened", "Closed", "Held",' in trades
-    assert "api.roomStrategyTrades({ id, from_s, to_s, page })" in trades
-    assert '<StrategyTrades id={open.id} words={open.words} from_s={d.from} to_s={d.to} />' in s, \
+    assert "api.roomStrategyTrades({ id, ...q, page })" in trades
+    assert '<StrategyTrades id={open.id} words={open.words} from_s={d.from} to_s={d.to}' in s \
+        and 'days={asked?.from_day ? { from: asked.from_day, to: asked.to_day } : undefined} />' in s, \
         "a row's trades are read over the dates its row was measured on"
 
 
@@ -401,11 +403,11 @@ def test_the_id_opens_a_pop_up_with_its_trades_and_export_csv():
     assert "<td colSpan={cols.length}" not in s, "no trade list opens inside the table any more"
     trades = src.split("\nfunction StrategyTrades(")[1].split("\nfunction CopyId(")[0]
     assert '"Exporting…" : "Export CSV"' in trades and "<CopyId id={d.id} />" in trades
-    assert "api.roomStrategyTrades({ id, from_s, to_s, page: 1, per: EXPORT_MAX })" in trades
+    assert "api.roomStrategyTrades({ id, ...span, page: 1, per: EXPORT_MAX })" in trades
     # every date as the screen prints it, each cell quoted: "Oct 07, 2026 8:00pm" holds a comma
     assert "fmtWhenMs(t.opened), fmtWhenMs(t.closed)" in trades
     assert """const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;""" in trades
-    assert 'q("TOTAL PROFIT")' in trades and "that opened and closed between" in trades
+    assert 'q("TOTAL PROFIT")' in trades and "that opened and closed {days ? `from" in trades
     # the dates' own win rate in the pop-up, and as the CSV's LAST row (Oct 08,
     # 2026: "when i export the csv, show me the winrate for last row")
     # ...and the worst losing run beside it (Oct 16, 2026, CLAUDE.md item 6)
@@ -413,7 +415,7 @@ def test_the_id_opens_a_pop_up_with_its_trades_and_export_csv():
     rows = [ln.strip() for ln in trades.split("const lines = ")[1].split("const url")[0].splitlines()
             if "lines.push(" in ln]
     assert 'q("TOTAL PROFIT")' in rows[-2] and 'q("WIN RATE")' in rows[-1], rows
-    assert "a.download = `room-strategy-${id}-${dateBoxAt(from_s)}-to-${dateBoxAt(to_s)}.csv`;" in trades
+    assert "a.download = `room-strategy-${id}-${days?.from ?? dateBoxAt(from_s)}-to-${days?.to ?? dateBoxAt(to_s)}.csv`;" in trades
     assert "const EXPORT_MAX = 100_000;" in src and api.TRADES_EXPORT_MAX == 100_000
     # the page behind stays readable (Oct 08, 2026: "when it pop up why cant i
     # see the contents behind?") — a light dim here; every other pop-up keeps

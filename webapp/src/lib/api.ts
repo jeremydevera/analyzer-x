@@ -1439,7 +1439,8 @@ export const api = {
   forecasts: (page = 1) => get<Forecasts>(`/api/forecasts?page=${page}`),
   forecastsLive: () => get<ForecastsLive>("/api/forecasts/live"),
   // Forecast -> Backtest a room (Oct 02, 2026): sorted and paged by the server
-  roomStrategies: (q: { from_s: number; to_s: number; min_winrate?: number; min_profit?: number | null;
+  roomStrategies: (q: { from_s: number; to_s: number; from_day?: string; to_day?: string;
+    min_winrate?: number; min_profit?: number | null;
     window?: number; deployable?: string; find?: string; sort?: string; page?: number }) => {
     const p = new URLSearchParams({ from_s: String(Math.floor(q.from_s)), to_s: String(Math.floor(q.to_s)),
       sort: q.sort ?? "profit", page: String(q.page ?? 1) });
@@ -1448,12 +1449,16 @@ export const api = {
     if (q.window) p.set("window", String(q.window));
     if (q.deployable) p.set("deployable", q.deployable);
     if (q.find) p.set("find", q.find);
+    // the date boxes as DAYS: the server makes this PC's midnights (Oct 16, 2026)
+    if (q.from_day && q.to_day) { p.set("from_day", q.from_day); p.set("to_day", q.to_day); }
     return get<RoomStrategies>(`/api/forecasts/room-strategies?${p}`);
   },
-  roomStrategyTrades: (q: { id: string; from_s: number; to_s: number; page?: number; per?: number }) => {
+  roomStrategyTrades: (q: { id: string; from_s: number; to_s: number; from_day?: string; to_day?: string;
+    page?: number; per?: number }) => {
     const p = new URLSearchParams({ id: q.id, from_s: String(Math.floor(q.from_s)),
       to_s: String(Math.floor(q.to_s)), page: String(q.page ?? 1) });
     if (q.per) p.set("per", String(q.per));          // the CSV export: every trade at once
+    if (q.from_day && q.to_day) { p.set("from_day", q.from_day); p.set("to_day", q.to_day); }
     return get<RoomStrategyTrades>(`/api/forecasts/room-strategies/trades?${p}`);
   },
   // Backtest a room = a replay of its own rules, day by day (Oct 02, 2026);

@@ -172,6 +172,67 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-16-D — #CB69A137 for Sep 18 read +1.00 in Backtest a room and +5.07 on the calendar, because the date boxes used the viewer's midnights and the calendar this PC's days
+
+**CEO**
+
+* You backtested #CB69A137 for Sep 18, 2026 and got +1.00 from 1 trade,
+  while the calendar of the same rule set showed Sep 18 as +5.07 from 5 wins.
+* Why: your Mac's clock is 12 hours ahead of the PC. The date boxes sent your
+  Mac's midnights, so "Sep 18" meant noon Sep 17 to noon Sep 18 on the PC,
+  while the calendar counts the PC's days. A one-day range also counts only
+  trades that opened AND closed that day (your Oct 08 rule), so SAMSUNG,
+  opened Sep 17, is in the calendar's day but not in a Sep 18-only range.
+* What stops it now: the date boxes are sent as days and the PC makes its own
+  midnights, as Backtest a room's replay has done since Oct 05; Sep 18 now
+  reads +4.02 over 4 trades on any screen.
+
+**DEV**
+
+* `webapp/src/components/forecast/RoomForecasts.tsx` `rsAsk` / `StrategyTrades`
+  sent `dayStart(box)` (the browser's midnight, seconds) to
+  `/api/forecasts/room-strategies[/trades]`, while `room_strategies.trades`
+  keys `days` by `date.fromtimestamp` (this PC).
+* Invariant broken: **a day box means this PC's day** (RCA-2026-10-05-D's
+  rule, applied to the replay only).
+* Guard: `tests/test_backtest_a_room_takes_a_rule_set_id.py::test_a_day_box_is_this_pcs_day_whatever_the_browsers_clock`.
+
+**SAW** — the operator's screenshot, Oct 16, 2026 1:28pm: "TOTAL PROFIT +1.00
+over 1 trade ... between Sep 18, 2026 12:00am and Sep 18, 2026 11:59pm",
+MANTA 7:30pm to 10:00pm, calendar Sep 18 +1.00 1W, against Room strategies'
+Sep 18 +5.07 5W 0L.
+
+**TIMELINE**
+
+1. Oct 16, 2026 — Backtest a room takes Room strategies ids (45963f8),
+   passing the boxes as the browser's seconds, as Room strategies did.
+2. The operator's browser runs at UTC+8, the PC at UTC-4: their "Sep 18" is
+   Sep 17 12:00pm to Sep 18 11:59am here. Measured with Chrome set to
+   Asia/Manila: +1.00 over 1 trade (only MANTA 7:30am-10:00am here fits);
+   set to America/New_York: +4.02 over 4.
+3. The month calendar's Sep 18 holds every trade that closed on the PC's
+   Sep 18 among those inside the month: 5 trades, +5.07 (1.00 + 1.05 + 1.00
+   + 1.01 + 1.01), SAMSUNG opened Sep 17 9:30am.
+4. After the fix — both screens send `from_day`/`to_day`; Sep 18 reads +4.02
+   over 4 trades in either time zone, and the line prints the days ("from
+   Sep 18, 2026 through Sep 18, 2026"), never clock times.
+
+**ROOT CAUSE** — the date boxes were turned into seconds in the browser, in
+the browser's time zone, while the days beside them are the PC's.
+
+**WHY IT WAS NOT CAUGHT** — every test of these screens runs in the PC's time
+zone, where the two clocks are one; RCA-2026-10-05-D fixed the same fault in
+the replay's route only, and Room strategies kept sending seconds.
+
+**COST** — none in money; two numbers for one day on the operator's screen.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_backtest_a_room_takes_a_rule_set_id.py::test_a_day_box_is_this_pcs_day_whatever_the_browsers_clock`
+and `::test_the_list_takes_days_too`.
+
+---
+
 ## RCA-2026-10-16-C — Backtest a room's calendar opened off the top of the window, hiding its month name, arrows and weekday row
 
 **CEO**

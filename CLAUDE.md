@@ -236,6 +236,15 @@ own `maintenance_rate`.
   `cost_unmeasured`, never hidden. A costs run that runs out of time is
   RESUMED by the next press: days a coin's month already holds are skipped
   (RCA-2026-10-10-D).
+  **Each reading is the book 3 seconds into its minute — when practice
+  looks** (`book_history.READ_AT_S`; practice writes an entry 1-6 s after a
+  close, median 3): read at the close itself, IOTX's 6:30am bid on Oct 12,
+  2026 said "ran away" and the backtest skipped a trade practice took
+  (RCA-2026-10-15-G). Readings carry `at`; a month read the old way (0) is
+  read again, a week a press, newest first (`MAX_DAYS_PER_PRESS`).
+  **A practice exit pays the book of the moment it closes**
+  (`exit_book_slippage`, RCA-2026-10-15-F), as the backtest's exit minute
+  and a real close do; one found late keeps the reading from its entry.
 * **AND IT SKIPS WHAT PRACTICE SKIPS (Oct 11, 2026: *"i said it should
   behave like practice, meaning backtest should know wether to skip a trade
   or not"*).** One function, `auto_trader.entry_refusal`, for the engine and

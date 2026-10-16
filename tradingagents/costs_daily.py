@@ -5,9 +5,9 @@ its own minute, read from per-minute cost files the `costs.yml` job writes
 (tradingagents/cost_store.py). Gate publishes each order-book hour about two
 hours after it ends, so once a UTC day — from READY_HOUR_UTC — this deals
 Gate's coins between the accounts (cloud_sweep.split_coins, the 40-machine
-rule) and starts `costs.yml` on each for every day of the last BACKFILL_DAYS
-not yet done. The first press therefore backfills the month; every later one
-adds yesterday.
+rule) and starts `costs.yml` on each for the newest MAX_DAYS_PER_PRESS days
+of the last BACKFILL_DAYS not yet done. The first presses therefore backfill
+the month a week at a time, newest first; every later one adds yesterday.
 
 A day is DONE only when every account's run finished green. A red share, a
 share that never appeared, or one still running after STALE_S leaves its days
@@ -33,6 +33,13 @@ TODAY_HOUR_UTC = 7
 # the operator, Oct 11, 2026: "what i want is past 2 months of backtest" —
 # two months of per-minute costs, so a 60-day backtest pays every minute
 BACKFILL_DAYS = 61
+# NEWEST DAYS FIRST, A WEEK A PRESS (Oct 15, 2026, RCA-2026-10-15-G). One
+# day of every coin takes ~10 minutes on an account's 20 machines (the 03:00
+# UTC presses of Oct 11-15, 2026); 61 at once would hold all 40 machines
+# past the job's 350-minute limit, end red, back off, and stand in front of
+# the nightly backtest. A week is ~70 minutes; the next week follows
+# `RETRY_S` after it goes green, until the backfill is whole.
+MAX_DAYS_PER_PRESS = 7
 SHARDS = 20
 RETRY_S = 30 * 60
 MAX_WAIT_S = 8 * 3600       # the longest a run of red presses ever waits
@@ -55,6 +62,23 @@ def _write(d: dict) -> None:
 
 def _day(t: float) -> str:
     return time.strftime("%Y-%m-%d", time.gmtime(int(t)))
+
+
+def redo_if_read_differently(st: dict) -> bool:
+    """Every day done before the book was read when practice looks
+    (`book_history.READ_AT_S`, Oct 15, 2026, RCA-2026-10-15-G) is asked for
+    again, ONCE: the shards re-read only the hours a month holds the old way
+    (`costs_shard.held_hours`), so a press that runs out of time is resumed
+    like any other. True when it just did."""
+    from tradingagents import book_history as bh
+
+    if st.get("read_at_s") == bh.READ_AT_S:
+        return False
+    st["done_days"] = []
+    st.pop("today_pressed", None)
+    st["read_at_s"] = bh.READ_AT_S
+    _write(st)
+    return True
 
 
 def wanted_days(now: float, done) -> list[str]:
@@ -94,6 +118,13 @@ def _settle(st: dict, now: float) -> None:
     if red:
         st["last_error"] = "not every share finished green: " + "; ".join(red)
         st["reds"] = int(st.get("reds") or 0) + 1
+    elif fl.get("read_at_s") != _read_at_s():
+        # a run pressed before the book was read when practice looks: green,
+        # but its hours were read at the close, so its days stay to be asked
+        st["last_error"] = ("a costs run started before the order book was read "
+                            f"{_read_at_s()} s after the close finished — its days "
+                            "are read again")
+        st["reds"] = 0
     else:
         today = fl.get("today")
         st["done_days"] = sorted(set(st.get("done_days") or [])
@@ -104,6 +135,12 @@ def _settle(st: dict, now: float) -> None:
         st["last_done_at"] = now
         st["reds"] = 0
     st.pop("flight", None)
+
+
+def _read_at_s() -> int:
+    from tradingagents import book_history as bh
+
+    return int(bh.READ_AT_S)
 
 
 def wait_s(reds: int) -> float:
@@ -129,6 +166,7 @@ def tick(now: float | None = None) -> dict:
         return {"started": False, "why": "the costs job is Gate's (the app trades MEXC)"}
     now = time.time() if now is None else float(now)
     st = read()
+    redo_if_read_differently(st)
     _settle(st, now)
     if st.get("flight"):
         _write(st)
@@ -150,7 +188,7 @@ def tick(now: float | None = None) -> dict:
                            f"({st.get('last_error', '')[:160]}); trying again "
                            f"{fmt_when(float(st.get('tried_at') or 0) + wait)}"}
         return {"started": False, "why": "the last press failed; trying again soon"}
-    days = wanted_days(now, st.get("done_days"))
+    days = wanted_days(now, st.get("done_days"))[-MAX_DAYS_PER_PRESS:]
     today = _day(now)
     today_due = (time.gmtime(int(now)).tm_hour >= TODAY_HOUR_UTC
                  and st.get("today_pressed") != today)
@@ -167,7 +205,10 @@ def tick(now: float | None = None) -> dict:
         _write(st)
         return {"started": False, "why": st["last_error"]}
     st["flight"] = {"at": now, "days": days, "runs": got["runs"],
-                    "unrun": got["unrun"], "today": today if today_due else None}
+                    "unrun": got["unrun"], "today": today if today_due else None,
+                    # the read its shards make: a flight pressed before
+                    # READ_AT_S never marks its days done (`_settle`)
+                    "read_at_s": _read_at_s()}
     if got["refused"]:
         st["last_error"] = "; ".join(got["refused"])
     _write(st)

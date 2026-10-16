@@ -172,6 +172,91 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-15-G — the backtest read Gate's order book at the very second a candle closed, while practice reads it about 3 seconds later (IOTX: a 2-second move made the backtest skip a trade practice took)
+
+**CEO**
+
+* IOTX 30m in #55D32617: practice sold short at Oct 12, 2026 6:30am and was
+  stopped at 6:46am (-1.28); the backtest of the same strategy had no such
+  trade.
+* Why: the backtest looked at Gate's record of the prices at the exact
+  second the candle closed, and practice looks about 3 seconds later. In
+  those seconds the best price moved from "it already ran away, skip" to
+  "fine, take it".
+* What stops it now: the backtest reads Gate's record 3 seconds after each
+  close, as practice does, and the last two months of that record are being
+  read again a week at a time.
+
+**DEV**
+
+* `tradingagents/book_history.py` `replay_hour` sampled each minute at
+  `edge` (its first instant); `auto_trader.entry_refusal` (chase and cost
+  checks) and `book_fill_price` (the fill) read that reading, while the
+  runner reads 1-6 s after the close (`opened_at`, median 3 s).
+* Invariant broken: **the backtest decides with the book practice decides
+  with** (Oct 11, 2026: *"i said it should behave like practice"*), at the
+  same moment. Now every reading is taken `READ_AT_S` (3) seconds in and
+  carries `at`; months written before carry 0 and are read again
+  (`costs_shard.held_hours`, `costs_daily.redo_if_read_differently`).
+* Guard: `tests/test_the_book_is_read_when_practice_reads_it.py` and
+  `tests/test_costs_daily.py::test_the_backfill_goes_a_week_a_press_newest_first_until_whole`.
+
+**SAW** — the practice audit, Oct 15, 2026 7:27pm: PK4GZT65, IOTX SHORT Oct
+12, 2026 6:30am to 6:46am, SL -1.28, "no equivalent — nearest backtest trade
+opened Oct 12, 2026 7:00am (30 min away)". The operator: *"keep on looping
+until its fixed apply harddev"*.
+
+**TIMELINE**
+
+1. Oct 12, 2026 6:00am — the IOTX 30m candle closes at 0.003872; cx_fast
+   signals a short (stop 1%, so the "ran away" limit is 0.1%).
+2. 6:30:00am — Gate's recorded best bid is 0.003867: 0.129% below the close,
+   past the 0.1% limit. The backtest skips the trade.
+3. 6:30:01-03am — the best bid is 0.003869 (0.077%). Practice reads at
+   6:30:02am and shorts at 0.003869, the recorded bid of that second to the
+   tick; stopped at 6:46am for -1.28.
+4. Oct 15, 2026 — measured: the 52 practice entries since the move to Gate
+   are written 1-6 s after the close (7 at 1 s, 16 at 2 s, 15 at 3 s, 10 at
+   4 s, 3 at 5 s, 1 at 6 s). Of 49 of them, the recorded best price equals
+   practice's fill on 32 when read at the close, 33 at 1 or 2 s, 36 at 3 s.
+5. Oct 15, 2026 — fixed. The costs job reads every hour again whose month
+   holds it the old way, newest week first: one day of every coin is ~10
+   minutes on an account's 20 machines (the 03:00 UTC presses of Oct 11-15,
+   2026), so a week is ~70 minutes and 61 days nine presses.
+
+**ROOT CAUSE** — `replay_hour` read each minute's book at the minute's first
+instant, a median 3 seconds before the runner reads the same book.
+
+**WHY IT WAS NOT CAUGHT** — the instant was assumed, never measured: the
+module's own words called the minute's first instant "the moment a candle
+closes and a signal is read", and its tests compared the replayed book with
+Gate's next snapshot (41,387 of 41,387 levels) — the record against itself.
+None compared the record with practice's own fills at the second practice
+made them; the practice audit did, and that is what found it.
+
+**COST** — none in real money. The backtest decided entries on a book 1-6 s
+older than practice's: IOTX, one practice trade (-1.28) with no backtest
+twin, and its price matched practice's on 4 fewer of 49 entries.
+
+**FIX** — this commit. Backtests measured while the costs job reads the 61
+days again read whichever reading each minute holds; a reader that finds
+both kinds of one minute (the two accounts can each hold a coin-month)
+takes the one read 3 s in (`cost_store.merge`).
+
+**GUARD** — `tests/test_the_book_is_read_when_practice_reads_it.py`: each
+minute is the book 3 s in, stamped at its start; an event at exactly 3 s is
+in, the hour's last minute reads inside its own file; months keep `at`, an
+old month reads as 0 and is read again; a re-read hour is replaced whole but
+a failed download keeps the old one. Found by the harddev loop: an old month
+on the second account would have beaten the re-read one on the first
+(`test_a_reading_taken_when_practice_looks_wins_whatever_account_holds_it`,
+round 1), and 61 days in one press would have held all 40 machines past the
+350-minute limit in front of the nightly backtest
+(`tests/test_costs_daily.py::test_the_backfill_goes_a_week_a_press_newest_first_until_whole`,
+round 2).
+
+---
+
 ## RCA-2026-10-15-F — practice charged the cost of closing a trade from the order book of the moment it OPENED (QNTX: 0.520% when the exit's own book asked 0.071%)
 
 **CEO**

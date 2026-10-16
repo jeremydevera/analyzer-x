@@ -166,11 +166,18 @@ def my_coins(board, todo: list, shards: int, redo: list):
 def held_hours(packed: dict) -> set[int]:
     """The hours (their first second) a month file has readings in. By the
     HOUR, not the day (RCA-2026-10-10-H): the 07:00 UTC press saves today so
-    far, and a day "held" by its first reading would never get the rest."""
+    far, and a day "held" by its first reading would never get the rest.
+
+    Only readings taken when practice looks count (`bh.READ_AT_S`,
+    RCA-2026-10-15-G): an hour read at the close itself — every month written
+    before Oct 15, 2026 — is read again and replaced."""
     t = packed.get("t") if packed else None
     if t is None or not len(t):
         return set()
-    return {int(x) - int(x) % 3600 for x in t}
+    at = packed.get("at")
+    if at is None:
+        return set()
+    return {int(x) - int(x) % 3600 for x, a in zip(t, at) if int(a) == bh.READ_AT_S}
 
 
 def held_days(packed: dict) -> set[int]:
@@ -243,7 +250,14 @@ def main() -> int:
                 day = time.strftime("%Y-%m-%d", time.gmtime(d))
                 failed = list(part.pop("hours_failed", []) or [])
                 bad = list(part.pop("hours_bad", []) or [])
-                part.pop("hours_missing", None)
+                missing = list(part.pop("hours_missing", []) or [])
+                # an hour READ is replaced whole (`cs.without_hours`); one
+                # that failed, did not parse or was never published keeps
+                # what the month already held
+                read = (set(want_hours) - set(failed) - set(missing)
+                        - {hs for hs, _why in bad})
+                if merged is not None:
+                    merged = cs.without_hours(merged, read)
                 for hs, why in bad:
                     log(f"{sym} {day} hour {time.gmtime(hs).tm_hour:02d}: the file "
                         f"does not read ({why}) — its minutes stay unmeasured")

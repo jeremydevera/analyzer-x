@@ -34,7 +34,7 @@ CURRENT_TTL_S = 6 * 3600
 FINAL_AFTER_S = 35 * 86400
 FETCH_TRIES = 4
 LEAD_S = 3600            # a reading this old still answers a minute (book_history.MAX_AGE_S)
-KEYS = ("t", "bid", "ask", "spread", "buy", "sell", "exhausted", "source")
+KEYS = ("t", "bid", "ask", "spread", "buy", "sell", "exhausted", "source", "at")
 _now = time.time
 
 
@@ -71,12 +71,23 @@ def empty() -> dict:
     return {"t": np.zeros(0, "int64"), "bid": np.zeros(0), "ask": np.zeros(0),
             "spread": np.zeros(0, "float32"), "buy": np.zeros(0, "float32"),
             "sell": np.zeros(0, "float32"), "exhausted": np.zeros(0, "bool"),
-            "source": np.zeros(0, "int8")}
+            "source": np.zeros(0, "int8"), "at": np.zeros(0, "int8")}
+
+
+def _whole(packed: dict) -> dict:
+    """Every key present: a month written before Oct 15, 2026 has no `at`,
+    and every one of its readings was taken at the close itself — 0."""
+    import numpy as np
+
+    if "at" in packed:
+        return packed
+    return {**packed, "at": np.zeros(len(packed["t"]), "int8")}
 
 
 def to_bytes(packed: dict) -> bytes:
     import numpy as np
 
+    packed = _whole(packed)
     buf = io.BytesIO()
     np.savez_compressed(buf, **{k: packed[k] for k in KEYS})
     return buf.getvalue()
@@ -86,23 +97,51 @@ def from_bytes(raw: bytes) -> dict:
     import numpy as np
 
     with np.load(io.BytesIO(raw)) as z:
-        return {k: z[k] for k in KEYS}
+        return _whole({k: z[k] for k in KEYS if k in z.files})
+
+
+def without_hours(packed: dict, hours) -> dict:
+    """`packed` less every reading inside the given hours (their first
+    seconds): an hour read again is REPLACED whole, so a minute the new read
+    could not answer is no reading, never the old one left behind."""
+    import numpy as np
+
+    packed = _whole(packed)
+    hrs = np.asarray(sorted(int(h) for h in hours), dtype="int64")
+    if not len(hrs) or not len(packed["t"]):
+        return packed
+    t = np.asarray(packed["t"], dtype="int64")
+    keep = ~np.isin(t - t % 3600, hrs)
+    return {k: np.asarray(packed[k])[keep] for k in KEYS}
 
 
 def merge(a: dict | None, b: dict | None) -> dict:
-    """Both, sorted by minute; where both hold a minute, `b` (the newer) wins."""
+    """Both, sorted by minute; where both hold a minute, the reading taken
+    when practice looks (`book_history.READ_AT_S`) wins, and between two of
+    one kind `b` (the newer) does.
+
+    THE KIND FIRST (RCA-2026-10-15-G): one coin-month can sit on both
+    accounts and a reader merges them in a fixed order, so after the re-read
+    an old month left on the second account would otherwise beat the new one
+    on the first, minute for minute."""
     import numpy as np
 
-    parts = [p for p in (a, b) if p is not None and len(p["t"])]
+    from tradingagents.book_history import READ_AT_S
+
+    parts = [_whole(p) for p in (a, b) if p is not None and len(p["t"])]
     if not parts:
         return empty()
     cat = {k: np.concatenate([p[k] for p in parts]) for k in KEYS}
-    # the LAST occurrence of each minute wins: reverse, unique, reverse back
-    t = cat["t"][::-1]
-    _, first = np.unique(t, return_index=True)
-    keep = (len(t) - 1 - first)
-    order = np.argsort(cat["t"][keep], kind="stable")
-    idx = keep[order]
+    t = np.asarray(cat["t"], dtype="int64")
+    # rank: the new kind over the old, then the later file over the earlier
+    later = np.concatenate([np.full(len(p["t"]), i, "int64")
+                            for i, p in enumerate(parts)])
+    rank = (np.asarray(cat["at"]) == READ_AT_S).astype("int64") * 2 + later
+    # sort by minute, then rank; the LAST row of each minute is the winner
+    order = np.lexsort((rank, t))
+    ts = t[order]
+    last = np.r_[ts[1:] != ts[:-1], True]
+    idx = order[last]
     return {k: cat[k][idx] for k in KEYS}
 
 

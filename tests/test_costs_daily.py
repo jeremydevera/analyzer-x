@@ -51,8 +51,32 @@ def test_one_press_deals_every_coin_once_across_both_accounts(env):
     c1, c2 = set(in1["coin_list"].split(",")), set(in2["coin_list"].split(","))
     assert not c1 & c2 and c1 | c2 == {f"C{i}_USDT" for i in range(6)}
     days = in1["days"].split(",")
-    assert days[-1] == "2026-10-09" and len(days) == cd.BACKFILL_DAYS
+    assert days[-1] == "2026-10-09" and len(days) == cd.MAX_DAYS_PER_PRESS,         "the newest week first (RCA-2026-10-15-G)"
     assert in1["shards"] == "20"
+
+
+def test_the_backfill_goes_a_week_a_press_newest_first_until_whole(env, monkeypatch):
+    """61 days in one press held all 40 machines past the job's 350-minute
+    limit; a week is ~70 minutes, and each green week is followed by the next
+    older one until every day of the backfill is done. (Today so far rides on
+    top of a week after 07:00 UTC; that press is its own test, below.)"""
+    monkeypatch.setattr(cd, "TODAY_HOUR_UTC", 24)
+    now = NOW
+    for _ in range(12):
+        cd.tick(now=now)                    # settles the last week, presses the next
+        for r in range(1001, 1001 + len(env["dispatch"])):
+            env["status"][r] = {"status": "completed", "conclusion": "success"}
+        now += cd.RETRY_S + 60
+    weeks = [env["dispatch"][k][1]["days"].split(",")
+             for k in range(0, len(env["dispatch"]), 2)]     # both accounts, one week
+    seen: list = []
+    for days in weeks:
+        assert len(days) <= cd.MAX_DAYS_PER_PRESS
+        assert not set(days) & set(seen), "a green day is never asked again"
+        assert not seen or max(days) < min(seen), "newest first"
+        seen += days
+    assert sorted(seen) == sorted(set(seen)) and len(seen) == cd.BACKFILL_DAYS
+    assert len(weeks) == -(-cd.BACKFILL_DAYS // cd.MAX_DAYS_PER_PRESS)
 
 
 def test_days_are_done_only_when_every_share_is_green(env):
@@ -69,6 +93,7 @@ def test_days_are_done_only_when_every_share_is_green(env):
 
 
 def test_a_green_day_is_never_asked_again(env):
+    cd._write({"read_at_s": 3, "done_days": cd.wanted_days(NOW, [])[:-1]})
     cd.tick(now=NOW)
     env["status"][1001] = {"status": "completed", "conclusion": "success"}
     env["status"][1002] = {"status": "completed", "conclusion": "success"}
@@ -140,7 +165,9 @@ def test_today_so_far_is_pressed_once_after_seven_and_never_marked_done(env):
     import time as _t
 
     day = lambda t: _t.strftime("%Y-%m-%d", _t.gmtime(t))
-    cd.tick(now=NOW)                                       # 05:00 — the backfill
+    # the backfill already whole but for yesterday (it goes a week a press)
+    cd._write({"read_at_s": 3, "done_days": cd.wanted_days(NOW, [])[:-1]})
+    cd.tick(now=NOW)                                       # 05:00 — yesterday
     assert day(NOW) not in env["dispatch"][-1][1]["days"].split(",")
     env["status"][1001] = env["status"][1002] = {"status": "completed",
                                                  "conclusion": "success"}

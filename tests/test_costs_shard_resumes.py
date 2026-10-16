@@ -41,8 +41,14 @@ def shard(monkeypatch, tmp_path):
 
 
 def _reading(t):
+    """A reading taken when practice looks (`READ_AT_S`), as every reading
+    the shard writes since Oct 15, 2026 is; one read at the close is the
+    subject of tests/test_the_book_is_read_when_practice_reads_it.py."""
+    from tradingagents import book_history as bh
+
     return {"t": t, "bid": 1.0, "ask": 1.0, "spread": 0.0001, "buy": 0.0002,
-            "sell": 0.0002, "exhausted": False, "source": "full"}
+            "sell": 0.0002, "exhausted": False, "source": "full",
+            "at": bh.READ_AT_S}
 
 
 def _whole(d):

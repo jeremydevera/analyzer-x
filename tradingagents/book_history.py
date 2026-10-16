@@ -16,10 +16,13 @@ buy side, a negative one the sell side; `make` ADDS the size to the level and
 equals the 01:00 snapshot on 41,387 of 41,387 levels (reading the size as the
 level's new amount matched 221 of 4,909).
 
-A reading is the book as it stood AT the minute's first instant (every event
-stamped at or before it applied) — the moment a candle closes and a signal is
-read. Each carries the cost of filling `notional_usd` on each side, walked
-level by level exactly as `exchange_common.book_cost_from` walks a live book.
+A reading is the book as it stood READ_AT_S seconds after the minute's first
+instant (every event stamped at or before then applied) — the moment the
+runner reads a closed candle's signal — and is stamped with the minute it
+answers for. Each carries the cost of filling `notional_usd` on each side,
+walked level by level exactly as `exchange_common.book_cost_from` walks a
+live book, and `at`, the second it was read at (0 for every month written
+before Oct 15, 2026, which read the close itself).
 """
 from __future__ import annotations
 
@@ -30,6 +33,15 @@ import io
 _EPS = 1e-12
 _KIND = {"set": 0, "make": 1, "take": 2}
 SOURCES = {"full": 1, "snapshot": 2}
+# WHEN PRACTICE LOOKS (Oct 15, 2026, RCA-2026-10-15-G): the runner writes an
+# entry 1 to 6 seconds after the candle closes — 52 practice entries since the
+# move to Gate, 7 at 1 s, 16 at 2 s, 15 at 3 s, 10 at 4 s, 3 at 5 s, 1 at 6 s.
+# Read AT the close, the recorded best price matched practice's own fill on
+# 32 of 49 of them; read 3 s in, on 36. IOTX 30m, Oct 12, 2026: the best bid
+# was 0.003867 at 6:30:00am ("the price ran away", 0.129% against a 0.1%
+# limit) and 0.003869 from 6:30:01am, when practice shorted it - so the
+# backtest skipped a trade practice took.
+READ_AT_S = 3
 
 
 def _events(raw_gz: bytes):
@@ -110,9 +122,11 @@ def _sample(bids: dict, asks: dict, t: int, *, contract_size: float,
 
 
 def replay_hour(raw_gz: bytes, *, hour_start: int, contract_size: float,
-                notional_usd: float) -> list:
+                notional_usd: float, at_s: int = READ_AT_S) -> list:
     """Sixty readings — one per minute of the hour starting `hour_start`
-    (unix s) — each a dict or None (crossed, empty, or unreadable book)."""
+    (unix s), each the book `at_s` seconds into its minute and stamped with
+    the minute's start — each a dict or None (crossed, empty, or unreadable
+    book)."""
     ts, kinds, ps, ss = _events(raw_gz)
     bids: dict = {}
     asks: dict = {}
@@ -122,19 +136,24 @@ def replay_hour(raw_gz: bytes, *, hour_start: int, contract_size: float,
     i, n = 0, len(ts)
     for k in range(60):
         edge = hour_start + 60 * k
-        while i < n and ts[i] <= edge:
+        while i < n and ts[i] <= edge + at_s:
             if kinds[i] >= 0:
                 _apply(bids, asks, kinds[i], ps[i], ss[i])
             i += 1
-        out.append(_sample(bids, asks, edge, contract_size=contract_size,
-                           notional_usd=notional_usd, source=source))
+        r = _sample(bids, asks, edge, contract_size=contract_size,
+                    notional_usd=notional_usd, source=source)
+        if r is not None:
+            r["at"] = int(at_s)
+        out.append(r)
     return out
 
 
 def pack(readings) -> dict:
     """Readings → compact arrays (None readings dropped): t (int64, s), bid,
     ask (float64), spread, buy, sell (float32 fractions), exhausted (bool),
-    source (int8: 1 full replay, 2 snapshot-only hour)."""
+    source (int8: 1 full replay, 2 snapshot-only hour), at (int8: the second
+    of its minute the book was read at; a reading that does not say is the
+    old kind, read at the close, 0)."""
     import numpy as np
 
     rows = [r for r in readings if r]
@@ -147,6 +166,7 @@ def pack(readings) -> dict:
         "sell": np.asarray([r["sell"] for r in rows], dtype="float32"),
         "exhausted": np.asarray([r["exhausted"] for r in rows], dtype="bool"),
         "source": np.asarray([SOURCES[r["source"]] for r in rows], dtype="int8"),
+        "at": np.asarray([int(r.get("at", 0)) for r in rows], dtype="int8"),
     }
 
 

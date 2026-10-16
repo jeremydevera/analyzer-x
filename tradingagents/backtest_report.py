@@ -307,6 +307,44 @@ def target_over_stop(row: dict) -> bool:
         return False
 
 
+# 2:1 AFTER FEES (operator, Oct 16, 2026: "when i say 2:1 this means in 2 lose
+# all fees are already included there", for "Backtest list and rooms"). One
+# win, less its round trip, pays for two losses, each with theirs. Half a
+# hundredth of a percent of slack: `cost_of_tp` is stored to 0.1% of the target.
+PAY_RATIO = 2.0
+_PAY_SLACK = 0.005
+
+
+def win_and_loss(row: dict) -> tuple[float, float] | None:
+    """(a win, a loss) in percent of the position, after the row's own round
+    trip — the target less the cost, the stop plus it — or None when the
+    backtest could not read the cost (`gate` "unknown", or no `cost_of_tp`)."""
+    try:
+        tp, sl = float(row["tp"]), float(row["sl"])
+        ratio = row["cost_of_tp"]
+    except (KeyError, TypeError, ValueError):
+        return None
+    if ratio is None or str(row.get("gate") or "").lower() == "unknown":
+        return None
+    cost = float(ratio) / 100.0 * tp
+    return tp - cost, sl + cost
+
+
+def pays_two_to_one(row: dict, need: float | None = None) -> bool:
+    """Does one win, after fees, pay for `need` (PAY_RATIO) losses after fees?
+    #5RKPYVQ7 (GPS 15m tsi, TP 1% / SL 0.8%) does not: practice paid +$0.79 a
+    win and -$1.09 a loss. An unread cost never passes (CLAUDE.md rule 12).
+    A ratio of 0 is no floor."""
+    need = PAY_RATIO if need is None else float(need)
+    if need <= 0:
+        return True
+    got = win_and_loss(row)
+    if got is None:
+        return False
+    win, loss = got
+    return win > 0 and win + _PAY_SLACK >= need * loss
+
+
 def store_keeps(row: dict) -> bool:
     """Does the store this row belongs to keep it? The row's own `res` names
     the store. The index files by this (`rows_index._kept`, through
@@ -335,7 +373,9 @@ def index_keeps(row: dict) -> bool:
         return False
     if str(row.get("res") or "").strip().lower() != "1m":
         return True
-    return target_over_stop(row)
+    # and since Oct 16, 2026, 2:1 AFTER FEES ("Backtest list and rooms"): a
+    # target bigger than the stop on paper is not enough
+    return target_over_stop(row) and pays_two_to_one(row)
 
 
 BARRIERS: dict[str, list[tuple[float, float]]] = {

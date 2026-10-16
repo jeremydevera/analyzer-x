@@ -29,6 +29,16 @@ from tradingagents import rows_index as ri, stores
 ROOT = Path(__file__).resolve().parents[1]
 
 
+# 2:1 AFTER FEES (Oct 16, 2026) is not what this file tests: its sample rows
+# were written before it, and the rule has its own file,
+# tests/test_two_to_one_after_fees.py. Off here, never in code.
+@pytest.fixture(autouse=True)
+def _no_two_to_one_floor(monkeypatch):
+    from tradingagents import backtest_report as _br
+
+    monkeypatch.setattr(_br, "PAY_RATIO", 0.0)
+
+
 def _row(sizing, *, res="1m", signal="keltner"):
     return {"coin": "GPNSTOCK", "tf": "30m", "signal": signal, "th": 0.0,
             "sl": 2.0, "tp": 3.0, "rr": 1.5, "sizing": sizing, "lev": 20,

@@ -85,6 +85,8 @@ class _Book:
                 "signal": c["signal"], "th": c.get("th", 0.0),
                 "group": c.get("group", "classic"),
                 "sl": c["sl"], "tp": c["tp"], "gate": c.get("gate", "ok"),
+                # the row's own fee: passes_on judges 2:1 after fees on it
+                "cost_of_tp": c.get("cost_of_tp"),
                 "trades": n, "wins": wins, "losses": n - wins,
                 "winrate": round(100 * wins / n, 2),
                 "profit": round(self.p[b] - self.p[a], 2)}

@@ -34,6 +34,7 @@ here** — this file exists because the operator won't remember them all
 | `/analyze15m30m` | Best win rate for a coin on 15m + 30m over a full year that still makes money → artifact. |
 | `/analyze1hr4hr` | Same, for 1h + 4h. |
 | `/yearly-strategy-sweep` | Re-runs the whole-market sweep ("what's working now"). |
+| `/practice_backtest_audit` | Opens the real screens in Chrome and checks every practice trade against its backtest trade (Main → DEMO, then Stored strategies → Filters → #id): close, not close, or no equivalent, each with both profits. `node audit.mjs --day yesterday` or since the last run. Made Oct 14, 2026. |
 | `/store-indexes` | Fixes the Stored-strategies page when it is slow or missing rows after a big sweep. |
 | `/feedcheck` | Trade report since the LAST feedcheck (opened, won, lost and why, refused and why, EMERGENCY list), then judges the feed lines: normal or bug. |
 

@@ -36,7 +36,13 @@ DEFAULTS = {"on_winrate": 90.0, "off_winrate": 90.0, "min_trades": 20,
             # THE SMALLEST TARGET (Oct 01, 2026: "currently i think you are
             # avoiding ... tp that is very high but low trade"): a row whose
             # TP is under this percent is never switched on; 0 = no floor
-            "min_tp": 0.0}
+            "min_tp": 0.0,
+            # 2:1 AFTER FEES (operator, Oct 16, 2026: "when i say 2:1 this
+            # means in 2 lose all fees are already included there", for
+            # "Backtest list and rooms"): a row whose win, after its round
+            # trip, pays fewer than this many losses is never switched on and
+            # a running one is switched off. 0 = no floor.
+            "min_pay": 2.0}
 
 # "=" (Oct 01, 2026): the target EQUAL to the stop. Percents are stored to
 # three places (backtest_report rounds them), so equal is equal to 1e-6.
@@ -73,9 +79,34 @@ def tp_fails(tp, sl, cfg: dict) -> str:
     return ""
 
 
+def pay_fails(row: dict, cfg: dict, *, unknown_fails: bool = True) -> str:
+    """Why a row's win, after fees, pays fewer than `min_pay` losses, or "".
+    The fee is the row's own (`backtest_report.win_and_loss`). A fee that
+    cannot be read fails a switch-on (money: unknown is not ok) and is left
+    alone by the switch-off, as a target that cannot be read is."""
+    from tradingagents import backtest_report as br
+
+    need = float(cfg.get("min_pay", DEFAULTS["min_pay"]) or 0)
+    if need <= 0 or "cost_of_tp" not in row:
+        # a row that never carried a fee at all (a hand-made test row) is not
+        # judged on it; every real path carries the field — the index, the
+        # pair files, the GitHub replay's combinations and _Book.row
+        # (test_the_replays_see_the_fee_so_they_judge_as_the_rooms_do) — so
+        # an UNREAD fee there is None, and that fails a switch-on
+        return ""
+    got = br.win_and_loss(row)
+    if got is None:
+        return "its trading fee could not be read, so 2:1 after fees is unknown" if unknown_fails else ""
+    if br.pays_two_to_one(row, need):
+        return ""
+    win, loss = got
+    return (f"a win pays {win:.2f}% and a loss costs {loss:.2f}% after fees — "
+            f"under {need:g}:1")
+
+
 def passes_on(row: dict, cfg: dict) -> str:
     tp, sl = float(row["tp"]), float(row["sl"])
-    why = tp_fails(tp, sl, cfg)
+    why = tp_fails(tp, sl, cfg) or pay_fails(row, cfg)
     if why:
         return why
     floor = float(cfg.get("min_tp") or 0)
@@ -176,6 +207,12 @@ def judge(slot, fresh_row, cfg) -> str:
         why = tp_fails(tp, sl, cfg)
     except (TypeError, ValueError):
         why = ""                         # no readable target or stop: rule unknown
+    if not why and tp is not None and sl is not None:
+        # 2:1 after fees (Oct 16, 2026), on the fee the row's file holds now
+        try:
+            why = pay_fails({**fresh_row, "tp": tp, "sl": sl}, cfg, unknown_fails=False)
+        except (TypeError, ValueError):
+            why = ""
     if why:
         return why
     if float(fresh_row["winrate"]) < cfg["off_winrate"]:

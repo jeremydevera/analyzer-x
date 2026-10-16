@@ -43,6 +43,14 @@ def home(tmp_path, monkeypatch):
     return tmp_path
 
 
+@pytest.fixture
+def no_pay_floor(monkeypatch):
+    """The twin and waiting tests below were written before 2:1 after fees
+    (Oct 16, 2026) with pairs like 0.4% / 0.3% that can never pay it; they test
+    how a twin is found, so the floor is off for them alone."""
+    monkeypatch.setattr(br, "PAY_RATIO", 0.0)
+
+
 def _watch(room, line):
     room.mkdir(parents=True, exist_ok=True)
     with (room / "strategy_watcher.jsonl").open("a", encoding="utf-8") as fh:
@@ -124,6 +132,7 @@ def test_a_threshold_signal_from_the_watcher_log_is_found(home):
     assert got["reason"] == "not_listed" and got["signal"] == "fade15"
 
 
+@pytest.mark.usefixtures("no_pay_floor")
 def test_a_stock_the_exchange_sells_under_its_short_name_points_at_that_id(home):
     """MEXC named stocks ABNBSTOCK; Gate names the same stock ABNB (60 of the
     145 stock names the rooms ever switched on, Oct 13, 2026)."""
@@ -175,6 +184,7 @@ def test_a_pair_measured_with_nothing_kept_is_not_called_unmeasured(home):
     assert "yet" not in got["words"]
 
 
+@pytest.mark.usefixtures("no_pay_floor")
 def test_a_measured_row_waiting_for_the_list(home):
     _pair(home, "FASTSTOCK", "15m", [_row("FASTSTOCK", "15m", "prank", 1.2, 1.5)])
     got = _explain(home, FAST, listed=("FASTSTOCK_USDT",))
@@ -238,6 +248,7 @@ def _v1_case(home):
     return got, seen
 
 
+@pytest.mark.usefixtures("no_pay_floor")
 def test_a_v1_id_names_the_same_strategy_on_this_list(home):
     """Review: a switched-off row loses its v2 mark, so the trade history
     prints its v1 hash — #2H8Z7JCP (KII 15m stoch14) was sent to an empty v1
@@ -351,3 +362,30 @@ def test_the_logs_are_read_once_at_start_not_on_the_first_search(home, monkeypat
     assert reads == [], "every log came from the cache"
     src = inspect.getsource(api._ids_lose_the_exchange)
     assert "missing_row" in src and "warm" in src and "Thread" in src
+
+
+def test_a_strategy_under_two_to_one_after_fees_is_never_said_to_be_waiting(home):
+    """Oct 16, 2026 ("Backtest list and rooms"): a measured strategy whose win,
+    after fees, pays fewer than two losses is never listed. Saying it "waits
+    to be added to this list" would be a promise the list never keeps."""
+    code = br.row_code("BTC", "1h", "trend50", 0, 0.8, 1.0, "flat", res="1m")
+    _watch(home / "profiles" / "55D32617",
+           {"at": SINCE + 3600, "action": "on", "id": code, "coin": "BTC", "tf": "1h",
+            "signal": "trend50", "tp": 1.0, "sl": 0.8})
+    _pair(home, "BTC", "1h", [{**_row("BTC", "1h", "trend50", 0.8, 1.0), "cost_of_tp": 25.0,
+                               "gate": "warn"}])
+    got = _explain(home, code, listed=("BTC_USDT",))
+    assert got["reason"] == "not_two_to_one", got
+    assert "after fees" in got["words"] and "+0.75%" in got["words"] and "-1.05%" in got["words"]
+    assert "waits to be added" not in got["words"]
+
+
+def test_a_two_to_one_strategy_not_filed_yet_still_waits(home):
+    code = br.row_code("BTC", "1h", "trend50", 0, 1.0, 3.0, "flat", res="1m")
+    _watch(home / "profiles" / "55D32617",
+           {"at": SINCE + 3600, "action": "on", "id": code, "coin": "BTC", "tf": "1h",
+            "signal": "trend50", "tp": 3.0, "sl": 1.0})
+    _pair(home, "BTC", "1h", [{**_row("BTC", "1h", "trend50", 1.0, 3.0), "cost_of_tp": 5.0,
+                               "gate": "ok"}])
+    got = _explain(home, code, listed=("BTC_USDT",))
+    assert got["reason"] == "waiting", got

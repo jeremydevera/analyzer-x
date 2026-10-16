@@ -18,6 +18,16 @@ H = 3_600_000
 D = 24 * H
 
 
+# 2:1 AFTER FEES (Oct 16, 2026) is not what this file tests: its sample targets
+# and stops (1.2% / 1% and the like) were written before it, and the rule has
+# its own file, tests/test_two_to_one_after_fees.py. Off here, never in code.
+@pytest.fixture(autouse=True)
+def _no_two_to_one_floor(monkeypatch):
+    from tradingagents import watcher_policy as _wp
+
+    monkeypatch.setitem(_wp.DEFAULTS, "min_pay", 0.0)
+
+
 def _ms(y, m, d, h=0):
     return int(dt.datetime(y, m, d, h).timestamp() * 1000)
 

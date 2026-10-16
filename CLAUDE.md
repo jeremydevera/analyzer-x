@@ -1994,6 +1994,26 @@ it, in order, are in the spec).
 * Guard: `tests/test_backtest_v2_keeps_target_over_stop.py`.
 Spec: `docs/superpowers/specs/2026-10-06-backtest-v2-target-over-stop-design.md`.
 
+**AND 2:1 AFTER FEES — the list AND the rooms (operator, Oct 16, 2026):**
+*"first of all i asked claude to update those 1:1 to use 2:1 ... when i say
+2:1 this means in 2 lose all fees are already included there"*, then
+"Backtest list and rooms". Their Oct 06 ask had been *"atleast 1:2 / meaning 1
+win will break even 2 loss"* in dollars after fees; the build compared prices.
+
+* **One rule, `backtest_report.pays_two_to_one`:** with the row's own round
+  trip c (`cost_of_tp` % of the target), a win is TP − c, a loss SL + c, and
+  the win must be at least `PAY_RATIO` (2) losses. A fee the backtest could
+  not read (`gate` "unknown") never passes. `index_keeps` = TP > SL AND this.
+* **Rooms:** `watcher_policy` `min_pay` (2.0) — `pay_fails` in `passes_on`
+  (switch-on) and `judge` (the hourly switch-off; an unread fee keeps a
+  running row, as an unread target does). The replays and the research decide
+  through the same functions: `_Book.row` and the research rows carry
+  `cost_of_tp`, and `watcher_research._pay_ok` is its array copy.
+* **The pair files still keep every row** (the Oct 06 reason); the list is
+  cleaned by one v2 index rebuild. "Why isn't #ID listed" names it
+  (`missing_row` state `not_two_to_one`, with the win and loss after fees).
+* Guard: `tests/test_two_to_one_after_fees.py`.
+
 ## The daytime rule (MANDATORY — Oct 07, 2026; trial on #4FC03172)
 
 The operator: *"so what do you think is the correct, because its seems like i

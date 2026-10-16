@@ -172,6 +172,74 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-16-E — "2:1" was asked on Oct 06 in dollars after fees and built as "target bigger than stop" on prices: 8,493,517 listed strategies paid less on a win than they lost on a loss
+
+**CEO**
+
+* You asked on Oct 06, 2026 for every backtest strategy to be at least 1:2 —
+  one win pays two losses, fees included — and found on Oct 16, 2026 strategies
+  still at 1% / 1%, and rooms trading pairs whose win paid less than a loss.
+* Why: that day's last words were "the goal is to have higher tp than sl", and
+  that was built on the target and stop as prices, without the fees — so a
+  1.2% target over a 1% stop counted as "higher" while it paid +$1.00 against
+  -$1.20.
+* What stops it now: the Backtest v2 list and every room keep only strategies
+  whose win, after its own fees, pays at least two losses with theirs; rooms
+  switch the rest off within the hour (practice only).
+
+**DEV**
+
+* `tradingagents/backtest_report.py` `index_keeps` → `target_over_stop` read
+  `tp > sl` alone; `watcher_policy.tp_fails` the same for the rooms; neither
+  read the row's own `cost_of_tp`.
+* Invariant broken: **a ratio the operator states in dollars is measured
+  after fees** (rule 11: a win rate is meaningless without the break-even, and
+  so is a target without its cost).
+* Guard: `tests/test_two_to_one_after_fees.py` (7) and
+  `tests/test_a_missing_id_is_explained_from_your_records.py::test_a_strategy_under_two_to_one_after_fees_is_never_said_to_be_waiting`.
+
+**SAW** — Oct 16, 2026: Backtest a room for #64C921CE showed O 15m ote at
+TP 1% / SL 1%; *"why do i still have 1% tp and 1% sl? did not i commanded
+claude to create atlest 2:1 ratio? this is very critical"*, then *"when i say
+2:1 this means in 2 lose all fees are already included there"*.
+
+**TIMELINE**
+
+1. Oct 06, 2026 — asks, in order: *"update all to have atleast 1:2 / meaning
+   1 win will break even 2 loss"* (dollars after fees), then *"those are too
+   high tp ... i want 1:1 ... 1:25TP then 1.0% sl"*, then *"the goal is to have
+   higher tp than sl"*. The spec followed the last, on prices.
+2. Oct 06 - Oct 16, 2026 — rooms trade 3,714 practice trades, every one with
+   a target 1.2x-3x its stop, 0 at 1:1; #5RKPYVQ7 (GPS 15m tsi, 1% / 0.8%)
+   pays +$0.79 a win and -$1.09 a loss.
+3. Oct 16, 2026, measured on the Backtest v2 list (26,273,457 strategies, all
+   TP > SL): 10,389,743 pay two losses after fees, 17,779,940 pay one, and
+   8,493,517 pay less than one. The pair files behind it still hold
+   1,803,976 at 1:1 and 5,663,135 with a smaller target (kept on Oct 06 for
+   the rooms' replays).
+4. After the fix — the list keeps the 2:1-after-fees strategies (one rebuild
+   from the pair files), the rooms' switch-on and hourly switch-off read the
+   same rule, and the replays and the research decide through it too.
+
+**ROOT CAUSE** — the rule compared the target and the stop as prices; the
+operator's ratio was in money, and the money differs by the fee on both sides.
+
+**WHY IT WAS NOT CAUGHT** — `tests/test_backtest_v2_keeps_target_over_stop.py`
+asserts `tp > sl` exactly as built, and its rows carry no fee at all; nothing
+compared what a listed strategy WINS with what it LOSES after costs, though
+practice had printed +0.80 against -1.04 every day since Oct 06.
+
+**COST** — practice only: rooms kept trading strategies whose win paid less
+than their loss (e.g. -$1.09 against +$0.79 on #5RKPYVQ7). No real money.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_two_to_one_after_fees.py::test_a_win_must_pay_two_losses_after_fees`,
+`::test_a_room_switches_off_a_running_strategy_that_pays_less` and
+`::test_the_replays_see_the_fee_so_they_judge_as_the_rooms_do`.
+
+---
+
 ## RCA-2026-10-16-D — #CB69A137 for Sep 18 read +1.00 in Backtest a room and +5.07 on the calendar, because the date boxes used the viewer's midnights and the calendar this PC's days
 
 **CEO**

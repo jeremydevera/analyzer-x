@@ -285,17 +285,23 @@ def _pair_state(code: str, combo: dict, store_home: Path | None,
         return "measured_empty", {"last_ms": last_ms}
 
     def ids_of(p):
-        out = set()
+        out = {}
         for r in _rows_file(p) or []:
             try:
-                out.add(br.row_code(coin, tf, r["signal"], r.get("th") or 0, r["sl"],
-                                    r["tp"], r.get("sizing") or "flat",
-                                    res=store_res or None))
+                out[br.row_code(coin, tf, r["signal"], r.get("th") or 0, r["sl"],
+                                r["tp"], r.get("sizing") or "flat",
+                                res=store_res or None)] = r
             except (KeyError, TypeError, ValueError):
                 continue
         return out
 
-    if code in _cached(rows_path, f"ids:{store_res}", ids_of):
+    found = _cached(rows_path, f"ids:{store_res}", ids_of).get(code)
+    if found is not None:
+        # 2:1 AFTER FEES (Oct 16, 2026): measured, and never listed — it does
+        # not "wait to be added"
+        if store_res and not br.pays_two_to_one({**found, "res": store_res}):
+            got = br.win_and_loss(found)
+            return "not_two_to_one", ({"win": got[0], "loss": got[1]} if got else {})
         return "measured", {}
     sl, tp = float(combo["sl"]), float(combo["tp"])
     in_grid = any(abs(s * 100 - sl) < 1e-6 and abs(t * 100 - tp) < 1e-6
@@ -315,6 +321,13 @@ def _clause(state: str, info: dict, coin: str, tf: str, combo: dict, now: str) -
     if state == "tp_not_over_sl":
         return ("this list shows only strategies whose TP is bigger than their SL, "
                 "so it is measured but not listed here")
+    if state == "not_two_to_one":
+        if "win" in info:
+            return (f"this list shows only strategies whose win pays at least two losses "
+                    f"after fees; here a win pays +{info['win']:.2f}% and a loss costs "
+                    f"-{info['loss']:.2f}% after fees, so it is measured but not listed")
+        return ("this list shows only strategies whose win pays at least two losses "
+                "after fees, and this one's trading fee could not be read")
     if state == "flat_only":
         return "this list keeps flat rows only, so a martingale id is never on it"
     if state == "not_measured":

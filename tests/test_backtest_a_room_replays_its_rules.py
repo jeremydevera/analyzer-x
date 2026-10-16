@@ -22,11 +22,21 @@ H = 3_600_000
 MIN = 60_000
 
 
+# 2:1 AFTER FEES (Oct 16, 2026) is not what this file tests: its sample targets
+# and stops (1.2% / 1% and the like) were written before it, and the rule has
+# its own file, tests/test_two_to_one_after_fees.py. Off here, never in code.
+@pytest.fixture(autouse=True)
+def _no_two_to_one_floor(monkeypatch):
+    from tradingagents import watcher_policy as _wp
+
+    monkeypatch.setitem(_wp.DEFAULTS, "min_pay", 0.0)
+
+
 def _ms(y, m, d, h=0, mi=0):
     return int(dt.datetime(y, m, d, h, mi).timestamp() * 1000)
 
 
-ROOM_RULES = {**wp.DEFAULTS, "on_winrate": 80.0, "off_winrate": 80.0, "min_trades": 30,
+ROOM_RULES = {**wp.DEFAULTS, "min_pay": 0.0, "on_winrate": 80.0, "off_winrate": 80.0, "min_trades": 30,
               "tp_rule": ">", "max_sl": 2.0, "window_days": 15, "raw": True,
               "max_new_per_day": 0, "max_slots": 0, "max_per_coin": 0}
 

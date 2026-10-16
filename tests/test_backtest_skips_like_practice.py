@@ -159,7 +159,8 @@ def test_the_room_replay_keeps_practice_s_same_direction_rule_before_the_room():
              "trades": [warm, [t0 + 30 * hr, t0 + 40 * hr, 0.9, 1, t0 + 40 * hr, "TP", "LONG"]]}
     short = {**long_, "id": "SHRT0002",
              "trades": [warm, [t0 + 31 * hr, t0 + 35 * hr, 0.9, 1, t0 + 35 * hr, "TP", "SHORT"]]}
-    cfg = {**wp.DEFAULTS, "on_winrate": 50.0, "off_winrate": 0.0, "min_trades": 1,
+    # min_pay 0: this tests the same-direction rule, not 2:1 after fees (Oct 16, 2026)
+    cfg = {**wp.DEFAULTS, "min_pay": 0.0, "on_winrate": 50.0, "off_winrate": 0.0, "min_trades": 1,
            "tp_rule": ">", "max_sl": 2.0, "window_days": 30, "raw": True,
            "max_new_per_day": 0, "max_slots": 0, "max_per_coin": 0, "cooldown_days": 0,
            "coin_slices": 4}

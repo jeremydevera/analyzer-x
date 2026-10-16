@@ -35,8 +35,11 @@ def _row(sl, tp, res="1m", **kw):
 
 # ------------------------------------------------------------------ the rule
 def test_a_target_bigger_than_the_stop_is_listed():
+    """...and, since Oct 16, 2026, one that pays 2:1 after fees: bigger on
+    paper is necessary, no longer enough (tests/test_two_to_one_after_fees.py)."""
     assert br.target_over_stop(_row(5.0, 6.0))
-    assert br.index_keeps(_row(5.0, 6.0))
+    assert br.index_keeps(_row(2.0, 6.0, cost_of_tp=5.0, gate="ok"))       # +5.70 vs -2.30
+    assert not br.index_keeps(_row(5.0, 6.0, cost_of_tp=5.0, gate="ok"))   # +5.70 vs -5.30
 
 
 def test_an_equal_target_is_not_listed():
@@ -90,14 +93,17 @@ def test_the_pair_file_keeps_an_equal_row_the_rooms_read(index):
 
 
 def test_the_index_files_only_rows_whose_target_is_bigger(index):
-    msw.save_pair_rows("GPNSTOCK", "30m", _three())
+    # a 1% stop: the bigger target (3%) also pays 2:1 after its 0.15% fee
+    # (+2.85 vs -1.15 a loss); the equal and the smaller ones are left out
+    msw.save_pair_rows("GPNSTOCK", "30m", [_row(1.0, tp, tf="30m", signal="keltner", cost_of_tp=5.0,
+                                                gate="ok") for tp in (1.0, 3.0, 0.75)])
     ri.index_pair(msw.ROWDIR / "GPNSTOCK-30m.json")
     con = sqlite3.connect(index / "rows.db")
     try:
         filed = sorted((r[0], r[1]) for r in con.execute("SELECT sl, tp FROM rows"))
     finally:
         con.close()
-    assert filed == [(2.0, 3.0)]
+    assert filed == [(1.0, 3.0)]
 
 
 def test_the_index_and_the_files_read_their_own_rule():

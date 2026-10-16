@@ -325,6 +325,7 @@ def _row_dict(c: dict, n: int, wins: int, profit: float) -> dict:
             "signal": c["signal"], "th": c.get("th", 0.0),
             "group": c.get("group", "classic"),
             "sl": c["sl"], "tp": c["tp"], "gate": c.get("gate", "ok"),
+            "cost_of_tp": c.get("cost_of_tp"),
             "trades": n, "wins": wins, "losses": n - wins,
             "winrate": round(100 * wins / n, 2), "profit": round(profit, 2)}
 
@@ -440,7 +441,8 @@ def compact_rows(books: dict, checks: list[int], window_ms: int, lo: dict) -> di
     tp = np.array([books[i].c["tp"] for i in ids])
     sl = np.array([books[i].c["sl"] for i in ids])
     gate = np.array([books[i].c.get("gate", "ok") == "ok" for i in ids])
-    tp_ok = _tp_ok(tp, sl, lo["tp_rule"]) & _sl_ok(sl, lo.get("max_sl"))
+    pay = _pay_ok(books, lo.get("min_pay", wp.DEFAULTS["min_pay"]))
+    tp_ok = _tp_ok(tp, sl, lo["tp_rule"]) & _sl_ok(sl, lo.get("max_sl")) & pay
     out = {}
     for at in checks:
         n = np.zeros(len(ids), np.int64)
@@ -455,7 +457,7 @@ def compact_rows(books: dict, checks: list[int], window_ms: int, lo: dict) -> di
                 & money & tp_ok)
         k = np.nonzero(keep)[0]
         out[at] = (k, n[k], w[k], pr[k])
-    return {"ids": ids, "tp": tp, "sl": sl, "at": out}
+    return {"ids": ids, "tp": tp, "sl": sl, "pay": pay, "at": out}
 
 
 def _tp_ok(tp, sl, rule):
@@ -507,7 +509,8 @@ class CfgRows:
         ok = ((n >= c["min_trades"]) & (rate >= c["on_winrate"])
               & ((np.round(pr, 2) > c["profit_floor"]) if not c.get("raw")
                  else np.ones(len(n), bool))
-              & _tp_ok(tp, sl, c["tp_rule"]) & _sl_ok(sl, c.get("max_sl")))
+              & _tp_ok(tp, sl, c["tp_rule"]) & _sl_ok(sl, c.get("max_sl"))
+              & (self.pre["pay"][k] if "pay" in self.pre else np.ones(len(n), bool)))
         ids = self.pre["ids"]
         return [_row_dict(self.books[ids[kk]].c, int(nn), int(ww), float(pp))
                 for kk, nn, ww, pp in zip(k[ok], n[ok], w[ok], pr[ok])]
@@ -630,6 +633,32 @@ def count_grid(books: list, checks: list[int], window_ms: int) -> tuple:
 _TPSL: dict = {}
 
 
+_PAY: dict = {}
+
+
+def _pay_ok(books, need) -> "np.ndarray":
+    """`passes_on`'s 2:1 AFTER FEES over a book list (Oct 16, 2026: "when i say
+    2:1 this means in 2 lose all fees are already included there"), from each
+    combination's own `cost_of_tp` — the one rule, `backtest_report.
+    pays_two_to_one`, asked once per list and floor. 0 or None is no floor."""
+    from tradingagents import backtest_report as br
+
+    need = float(need or 0)
+    seq = list(books.values()) if isinstance(books, dict) else books
+    if need <= 0:
+        return np.ones(len(seq), bool)
+    key = (id(books), len(seq), need)
+    hit = _PAY.get(key)
+    if hit is None or hit[0] is not books:
+        # passes_on's own reading: a combination that never carried a fee is
+        # not judged on it (wp.pay_fails)
+        hit = (books, np.array(["cost_of_tp" not in b.c or br.pays_two_to_one(b.c, need)
+                                for b in seq], bool))
+        _PAY.clear()
+        _PAY[key] = hit
+    return hit[1]
+
+
 def _tp_sl(books: list) -> tuple:
     """(tp, sl) arrays for a book list, made once per list (a grid of rule
     sets asks for the same list thousands of times)."""
@@ -661,7 +690,7 @@ def raw_fast(books: list, grid: tuple, checks: list[int], cfg: dict, end_ms: int
     # rest are dropped before the walk — a rule set's cost follows ITS rows,
     # and a grid of thousands of rule sets fits a GitHub machine's six hours.
     keep = np.nonzero(_tp_ok(tp, sl, c["tp_rule"]) & _sl_ok(sl, c.get("max_sl"))
-                      & _min_tp_ok(tp, c.get("min_tp")))[0]
+                      & _min_tp_ok(tp, c.get("min_tp")) & _pay_ok(books, c.get("min_pay")))[0]
     books = [books[i] for i in keep]
     N, W = N[:, keep], W[:, keep]
     rate = np.round(100.0 * W / np.maximum(N, 1), 2)
@@ -888,7 +917,7 @@ def raw_trades(books: list, flat: "Flat", grid: tuple, checks: list[int], cfg: d
     N, W = grid
     tp, sl = _tp_sl(books)
     allow = (_tp_ok(tp, sl, c["tp_rule"]) & _sl_ok(sl, c.get("max_sl"))
-             & _min_tp_ok(tp, c.get("min_tp")))
+             & _min_tp_ok(tp, c.get("min_tp")) & _pay_ok(books, c.get("min_pay")))
     if starts is None:
         keep = np.nonzero(allow)[0]
         b_sub, on_ms, off_ms = _starts(N[:, keep], W[:, keep], checks, c, flat.id_rank[keep])

@@ -644,6 +644,11 @@ function RoomPicker({ rooms, value, onChange }: {
   const shown = rooms.filter((r) => !words
     || `${r.name} ${r.id} ${r.rules ?? ""}`.toLowerCase().includes(words));
   const pick = (id: string) => { onChange(id); setOpen(false); setQ(""); };
+  // A ROOM STRATEGIES ID (operator, Oct 16, 2026: "when i am trying to back
+  // test CB69A137 i dont have option"): eight letters and digits that name no
+  // room are offered as that rule set — its daily re-test over the dates
+  const setId = words.toUpperCase();
+  const asSet = !shown.length && /^[A-Z0-9]{8}$/.test(setId) ? setId : "";
   const cur = rooms.find((r) => r.id === value);
   return (
     <div ref={box} className="relative">
@@ -655,7 +660,7 @@ function RoomPicker({ rooms, value, onChange }: {
           setOpen(!open);
         }}
         className="flex min-w-[9rem] items-center justify-between gap-2 rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:text-gray-300">
-        <span>{cur?.name ?? value}</span><span aria-hidden className="text-gray-400">▾</span>
+        <span>{cur?.name ?? (value.startsWith("rs:") ? `#${value.slice(3)} · room strategy` : value)}</span><span aria-hidden className="text-gray-400">▾</span>
       </button>
       {open && (
         <div className={`absolute left-0 z-50 w-64 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900 ${up ? "bottom-full mb-1" : "top-full mt-1"}`}>
@@ -664,6 +669,7 @@ function RoomPicker({ rooms, value, onChange }: {
             onKeyDown={(e) => {
               if (e.key === "Escape") setOpen(false);
               if (e.key === "Enter" && shown[0]) pick(shown[0].id);
+              else if (e.key === "Enter" && asSet) pick(`rs:${asSet}`);
             }}
             className="w-full rounded-md border border-gray-300 bg-transparent px-2 py-1 text-theme-xs text-gray-700 dark:border-gray-700 dark:text-gray-200" />
           <ul role="listbox" aria-label="rooms" className="mt-1 max-h-60 overflow-auto">
@@ -676,8 +682,17 @@ function RoomPicker({ rooms, value, onChange }: {
                 </button>
               </li>
             ))}
-            {!shown.length && (
-              <li className="px-2 py-1 text-theme-xs text-gray-400">no room matches &ldquo;{q}&rdquo; — {rooms.length} rooms in all</li>
+            {!shown.length && asSet && (
+              <li role="option" aria-selected={value === `rs:${asSet}`}>
+                <button type="button" onClick={() => pick(`rs:${asSet}`)}
+                  className="block w-full rounded-md px-2 py-1 text-start text-theme-xs text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.06]">
+                  #{asSet}
+                  <span className="block text-[10px] font-normal text-gray-400">a Room strategies rule set: its daily re-test over these dates</span>
+                </button>
+              </li>
+            )}
+            {!shown.length && !asSet && (
+              <li className="px-2 py-1 text-theme-xs text-gray-400">no room matches &ldquo;{q}&rdquo; — {rooms.length} rooms in all; type a Room strategies id (8 letters and digits) to see its re-test</li>
             )}
           </ul>
         </div>
@@ -704,7 +719,10 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
   // browser in another time zone than this PC turned Oct 01 into Sep 30
   // (Oct 05, 2026: "10/01/2026 to 10/04/2026" was measured as 2026-09-30 to
   // 2026-10-04)
-  const base = asked && { room: asked.room, from_day: asked.from, to_day: asked.to };
+  // a Room strategies id ("rs:CB69A137") is never replayed here: its backtest
+  // is its daily re-test, shown by the pop-up's own view below
+  const ruleSet = asked?.room.startsWith("rs:") ? asked.room.slice(3) : "";
+  const base = asked && !ruleSet && { room: asked.room, from_day: asked.from, to_day: asked.to };
   // set the moment Replay is pressed, cleared by the first answer: the bar and
   // the greyed button show at once (operator, Oct 05, 2026: "when i click
   // replay, immediately show me loading bar and disable the replay button")
@@ -729,7 +747,7 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
   useLiveRefresh(loadDay, 60_000, [loadDay]);
   const go = () => {
     setPage(1); setDay(""); setEv(null); setTr(null); setD(null); setErr("");
-    setStarting(true);
+    if (!room.startsWith("rs:")) setStarting(true);   // a rule set measures nothing here
     setAsked({ room, from, to });
   };
   const again = () => base && api.roomReplay({ ...base, view: "days", page: 1, refresh: true })
@@ -784,6 +802,16 @@ function RoomBacktestPanel({ rooms }: { rooms: RoomNow[] }) {
         <div className="mt-3 rounded-xl border border-gray-200 p-3 text-theme-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
           <b>Starting</b> — {name(asked.room)} {dayOf(dayStart(asked.from) * 1000)} to {dayOf(dayStart(asked.to) * 1000)}
           <RunProgress run={{ running: true, step: 1, steps: 7, step_words: "starting up", pct: null }} />
+        </div>
+      )}
+      {asked && ruleSet && (
+        <div className="mt-3 rounded-xl border border-gray-200 p-3 text-theme-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
+          <p className="mb-2 text-gray-500 dark:text-gray-400">
+            #{ruleSet} is a Room strategies rule set, not a room: no practice account traded it, so this is its own
+            daily re-test (on GitHub, over every Backtest v2 strategy) for {dayOf(dayStart(asked.from) * 1000)} to {dayOf(dayStart(asked.to) * 1000)} —
+            the same trades Room strategies counts for it.
+          </p>
+          <StrategyTrades id={ruleSet} words="" from_s={dayStart(asked.from)} to_s={dayStart(asked.to) + 86_399} />
         </div>
       )}
       {err && <p className="mt-3 text-theme-xs text-error-500">could not read the replay — {err}</p>}
@@ -1335,10 +1363,10 @@ function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string
         </button>
         {csv && csv !== "busy" && <span className="text-theme-xs text-gray-500 dark:text-gray-400">{csv}</span>}
       </div>
-      <p className="mt-1 text-theme-xs text-gray-600 dark:text-gray-300">{words}</p>
+      <p className="mt-1 text-theme-xs text-gray-600 dark:text-gray-300">{words || d.words}</p>
       <p className="mt-2 text-theme-sm font-semibold text-gray-800 dark:text-white/90">
         TOTAL PROFIT <span className={tone(d.profit)}>{fmtMoney(d.profit)}</span>
-        <span className="font-normal text-gray-500 dark:text-gray-400"> over {d.trades.toLocaleString()} trade{d.trades === 1 ? "" : "s"} ({d.wins.toLocaleString()} won, {d.losses.toLocaleString()} lost, win rate {pct(d.winrate)}) that opened and closed between {fmtWhen(d.from)} and {fmtWhen(d.to)} · ${d.margin} a trade at {d.leverage}x</span>
+        <span className="font-normal text-gray-500 dark:text-gray-400"> over {d.trades.toLocaleString()} trade{d.trades === 1 ? "" : "s"} ({d.wins.toLocaleString()} won, {d.losses.toLocaleString()} lost, win rate {pct(d.winrate)}{d.worst_run_trades == null ? "" : `, worst losing run ${d.worst_run_trades ? `${fmtMoney(d.worst_run)} over ${d.worst_run_trades} trade${d.worst_run_trades === 1 ? "" : "s"}` : "none"}`}) that opened and closed between {fmtWhen(d.from)} and {fmtWhen(d.to)} · ${d.margin} a trade at {d.leverage}x</span>
       </p>
       {d.trades === 0 ? (
         <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">

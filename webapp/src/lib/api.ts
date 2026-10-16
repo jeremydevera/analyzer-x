@@ -1250,6 +1250,9 @@ export type RoomStrategyTrades = {
   trades: number; wins: number; losses: number; profit: number;
   /** the dates' own win rate, % (null with no trade) */
   winrate: number | null;
+  /** the worst unbroken run of losses in the dates and how many trades it
+   *  was (0 and 0 with no loss) — the row's own count, one helper */
+  worst_run?: number; worst_run_trades?: number;
   rows: { n: number; opened: number; closed: number; profit: number; total: number;
     /** the strategy that made it — null when the replay never named it */
     coin: string | null; tf: string | null; signal: string | null; tp: number | null; sl: number | null }[];

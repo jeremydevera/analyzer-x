@@ -408,7 +408,8 @@ def test_the_id_opens_a_pop_up_with_its_trades_and_export_csv():
     assert 'q("TOTAL PROFIT")' in trades and "that opened and closed between" in trades
     # the dates' own win rate in the pop-up, and as the CSV's LAST row (Oct 08,
     # 2026: "when i export the csv, show me the winrate for last row")
-    assert "lost, win rate {pct(d.winrate)})" in trades
+    # ...and the worst losing run beside it (Oct 16, 2026, CLAUDE.md item 6)
+    assert "lost, win rate {pct(d.winrate)}{d.worst_run_trades == null" in trades and ", worst losing run " in trades
     rows = [ln.strip() for ln in trades.split("const lines = ")[1].split("const url")[0].splitlines()
             if "lines.push(" in ln]
     assert 'q("TOTAL PROFIT")' in rows[-2] and 'q("WIN RATE")' in rows[-1], rows

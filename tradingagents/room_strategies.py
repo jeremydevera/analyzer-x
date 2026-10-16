@@ -575,16 +575,7 @@ def _measured(from_s: float, to_s: float, reality: dict) -> list[dict]:
         loss_avg = float(-p[p <= 0].mean()) if n - wins else None
         be = (round(100 * loss_avg / (win_avg + loss_avg), 1)
               if win_avg is not None and loss_avg is not None else None)
-        run = worst = 0.0
-        rn = wn = 0
-        for v in p:
-            if v > 0:
-                run, rn = 0.0, 0
-            else:
-                run += v
-                rn += 1
-                if run < worst:
-                    worst, wn = run, rn
+        worst, wn = _worst_run(p)
         day = (t[:, 1] // 86_400_000).astype(np.int64) if n else np.zeros(0, np.int64)
         worst_day = float(min(np.bincount(day - day.min(), weights=p))) if n else None
         days = max(1.0, (to_s - from_s) / 86_400)
@@ -695,6 +686,23 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
             "reality": {k: reality.get(k) for k in ("took", "gap")}, "margin": 5.0, "leverage": 20}
 
 
+def _worst_run(p) -> tuple[float, int]:
+    """The worst unbroken run of losses, in the order given (the store's: by
+    close, ties in machine order), and how many trades it was. One helper for
+    a row's "worst run" and its trade list's, so the two print one number."""
+    run = worst = 0.0
+    rn = wn = 0
+    for v in p:
+        if v > 0:
+            run, rn = 0.0, 0
+        else:
+            run += float(v)
+            rn += 1
+            if run < worst:
+                worst, wn = run, rn
+    return worst, wn
+
+
 def inside(t, lo_ms: float, hi_ms: float):
     """Which trades belong to the dates [lo_ms, hi_ms]: those that OPENED and
     CLOSED inside them (operator, Oct 08, 2026, on "last 1 day": "i want to
@@ -739,6 +747,9 @@ def trades(rid: str, from_s: float, to_s: float, *, page: int = 1, per: int = 10
              else np.full(len(t), -1, np.int64))
     m = inside(t, lo, hi) if len(t) else np.zeros(0, bool)
     sel, s_sel = (t[m], s_all[m]) if len(t) else (t, s_all)
+    # the worst losing run in the STORE's order, before the sort below: the
+    # table's row counts it that way (CLAUDE.md item 6, Oct 16, 2026)
+    run_worst, run_n = _worst_run(sel[:, 2]) if len(sel) else (0.0, 0)
     if len(sel):
         order = np.lexsort((sel[:, 0], sel[:, 1]))                         # by close, then open
         sel, s_sel = sel[order], s_sel[order]
@@ -793,6 +804,7 @@ def trades(rid: str, from_s: float, to_s: float, *, page: int = 1, per: int = 10
             # so the pop-up, its CSV and the row print one number
             "winrate": round(100 * wins / n, 1) if n else None,
             "profit": round(float(p.sum()), 2) if n else 0.0,
+            "worst_run": round(run_worst, 2), "worst_run_trades": run_n,
             "rows": rows, "page": page, "pages": pages, "per": per,
             # trades in the dates whose coin is not known, and from when the
             # replay names them (research_shard's TEST part); None for a

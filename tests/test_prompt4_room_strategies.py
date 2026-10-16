@@ -676,6 +676,9 @@ def test_the_pop_up_draws_the_calendar_beside_its_table():
     assert "d.rows.reduce" not in trades and "rows.forEach" not in trades
     # beside the table where it fits, under it on a narrow screen
     assert 'className="mt-2 flex flex-wrap items-start gap-4"' in trades
+    # ...and it shrinks into the space left rather than wrapping under at 1,500 px
+    assert '<div className="min-w-[17rem] max-w-sm flex-1">' in trades
+    assert 'className="m-4 max-w-[1280px] p-5' in _section(), "wide enough for both side by side"
     assert 'import { DayCalendar } from "@/components/trade/PnlPanel";' in src
     # it opens on the month of the dates' newest trade, not on today's
     assert "start={" in trades

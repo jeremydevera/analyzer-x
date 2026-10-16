@@ -1249,7 +1249,9 @@ export function RoomStrategiesSection() {
               i click the id, i want it on pop up then i should have option to
               export via csv") — over the dates the table above answered */}
           <Modal isOpen={!!open} onClose={() => setOpen(null)} backdropClassName="bg-gray-900/20"
-            className="m-4 max-w-[1080px] p-5 shadow-2xl ring-1 ring-gray-200 lg:p-6 dark:ring-gray-700">
+            // 1280: room for the calendar BESIDE the trades (Oct 15, 2026) — at
+            // 1080 the 976 px inside left 264 px past a 696 px table
+            className="m-4 max-w-[1280px] p-5 shadow-2xl ring-1 ring-gray-200 lg:p-6 dark:ring-gray-700">
             {open && (
               <div role="dialog" aria-modal="true" aria-label={`Room strategy #${open.id}`}
                 className="max-h-[80vh] overflow-y-auto pr-10 sm:pr-14">
@@ -1371,7 +1373,9 @@ function StrategyTrades({ id, words, from_s, to_s }: { id: string; words: string
             </tbody>
           </table>
         </div>
-        <div className="w-full shrink-0 sm:w-[22rem]">
+        {/* fills the space the table leaves (a fixed 22rem wrapped under it at
+            1,500 px with ~20rem free), and wraps only below 17rem */}
+        <div className="min-w-[17rem] max-w-sm flex-1">
           <DayCalendar days={d.days} book={`#${d.id}`}
             start={Object.keys(d.days).sort().pop()} />
         </div>

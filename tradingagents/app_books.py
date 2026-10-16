@@ -229,7 +229,14 @@ PUBLISH_DAYS = 61                  # as far back as the costs job keeps (BACKFIL
 UPLOAD_BATCH = 100
 UPLOAD_TRIES = 5
 SCAN_EVERY_S = 3600
+# THE LIST OF PUBLISHED DAYS, one small file GitHub's machines read first:
+# without it a replay reaching back to Jul 01, 2026 asked for ~110 days of
+# each of ~26 coins a machine, nearly all "no such file". A day is published
+# - here and there alike - only once this list names it.
+INDEX_TAG = "appbook-index"
+INDEX_ASSET = "days.json"
 _REMOTE: dict = {}
+_REMOTE_DAYS: dict = {}
 _TICKED: dict = {"at": 0.0}
 
 
@@ -267,11 +274,34 @@ def _published(day: str) -> set:
     return set(_marker_of(day).get("coins") or [])
 
 
-def _remote(day: str, sym: str) -> dict | None:
-    """A published coin-day from its release, once per process; None when it
-    was never published (404) or cannot be read - the record answers then."""
+def index_url(repo: str | None = None) -> str:
+    return (f"https://github.com/{repo or PUBLISH_REPO}/releases/download/"
+            f"{INDEX_TAG}/{INDEX_ASSET}")
+
+
+def _remote_days() -> set:
+    """The published days, from the list, once per process; none when the
+    list cannot be read (then no day is read from GitHub at all)."""
     from tradingagents import cost_store as cs
 
+    if "days" not in _REMOTE_DAYS:
+        status, raw = cs._fetch(index_url())
+        try:
+            days = set(json.loads(raw.decode("utf-8"))["days"]) if status == 200 else set()
+        except (ValueError, KeyError, TypeError, UnicodeDecodeError):
+            days = set()
+        _REMOTE_DAYS["days"] = days
+    return _REMOTE_DAYS["days"]
+
+
+def _remote(day: str, sym: str) -> dict | None:
+    """A published coin-day from its release, once per process; None when it
+    was never published (404) or cannot be read - the record answers then.
+    Only a day the published list names is asked for."""
+    from tradingagents import cost_store as cs
+
+    if day not in _remote_days():
+        return None
     key = (day, sym)
     if key not in _REMOTE:
         status, raw = cs._fetch(url(day, sym))
@@ -367,19 +397,46 @@ def publish_day(day: str, only: set | None = None) -> dict:
                 done += [s for s, _p in part]
             else:
                 failed += [s for s, _p in part]
+    coins = _published(day) | set(done)
+    listed = bool(coins) and _publish_index(out, extra={day})
     for p in out.iterdir():
         with contextlib.suppress(OSError):
             p.unlink()
     with contextlib.suppress(OSError):
         out.rmdir()
-    if done or failed:
-        m = _marker(day)
-        m.parent.mkdir(parents=True, exist_ok=True)
-        coins = _published(day) | set(done)
-        m.write_text(json.dumps({"coins": sorted(coins),
-                                 "failed": sorted(set(failed) - coins),
-                                 "at": time.time()}), encoding="utf-8")
-    return {"day": day, "coins": len(done), "failed": failed}
+    # THE MARKER LAST, and only once the list names the day: a day this PC
+    # reads is a day GitHub reads, never one it cannot find
+    if listed:
+        _write_marker(day, coins=coins, failed=set(failed) - coins)
+        return {"day": day, "coins": len(done), "failed": failed}
+    if coins:
+        # the files went up, the list did not: no marker, so the next tick
+        # sends the whole day again (harmless: --clobber)
+        logger.warning("%s: %d coins went up but the list of published days "
+                       "did not - tried again next time", day, len(coins))
+        return {"day": day, "coins": 0, "failed": sorted(coins | set(failed)),
+                "why": "the list of published days did not go up"}
+    if failed:
+        _write_marker(day, coins=set(), failed=set(failed))
+    return {"day": day, "coins": 0, "failed": failed}
+
+
+def _write_marker(day: str, *, coins: set, failed: set) -> None:
+    m = _marker(day)
+    m.parent.mkdir(parents=True, exist_ok=True)
+    m.write_text(json.dumps({"coins": sorted(coins), "failed": sorted(failed),
+                             "at": time.time()}), encoding="utf-8")
+
+
+def _publish_index(out: Path, *, extra: set) -> bool:
+    """Every published day (the markers) plus `extra`, as the one list
+    GitHub's machines read first."""
+    folder = HOME / "published"
+    known = {q.stem for q in folder.glob("*.json")} if folder.exists() else set()
+    days = sorted({d for d in known if _published(d)} | set(extra))
+    f = out / INDEX_ASSET
+    f.write_text(json.dumps({"days": days, "at": time.time()}), encoding="utf-8")
+    return _upload(INDEX_TAG, [f])
 
 
 def _sym_of_folder(name: str) -> str:

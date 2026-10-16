@@ -301,7 +301,9 @@ def test_a_finished_day_goes_up_one_file_per_coin_two_releases_a_day(home, monke
     got = ab.publish_day("20261016")
     assert got == {"day": "20261016", "coins": 3, "failed": []}
     ups = [c for c in gh.calls if c[:2] == ("release", "upload")]
-    assert sorted(c[2] for c in ups) == ["appbook-20261016-a", "appbook-20261016-b"]
+    assert sorted(c[2] for c in ups) == ["appbook-20261016-a", "appbook-20261016-b",
+                                         "appbook-index"], "the coins, then the list"
+    assert ups[-1][2] == "appbook-index", "the list goes up after the coins it names"
     files = sorted(Path(f).name for c in ups for f in c[3:] if str(f).endswith(".npz"))
     assert files == ["ANKR_USDT.npz", "BTC_USDT.npz", "QNTX_USDT.npz"]
     assert ab._published("20261016") == {"ANKR_USDT", "QNTX_USDT", "BTC_USDT"}
@@ -349,22 +351,52 @@ def test_the_tick_publishes_finished_days_only_after_twenty_past_midnight(home, 
 
 
 def test_github_reads_a_published_day_from_its_release(tmp_path, monkeypatch):
-    """GitHub's machines have no recorder: a coin-day comes from its release,
-    once per process; one never published is no reading."""
+    """GitHub's machines have no recorder: they read the list of published
+    days once, then each listed coin-day from its release, once per process.
+    A day the list does not name is never asked for - a replay reaching back
+    to Jul 01, 2026 would otherwise ask ~110 days of every coin it measures,
+    nearly all "no such file"."""
     monkeypatch.setattr(ab, "HOME", tmp_path / "nothing_here")
     monkeypatch.setattr(ab, "_REMOTE", {})
+    monkeypatch.setattr(ab, "_REMOTE_DAYS", {})
     packed = cs.merge(None, bh.pack([_r(T, 36.91)]))
     asked = []
 
     def fetch(u):
         asked.append(u)
+        if u == ab.index_url():
+            return 200, json.dumps({"days": ["20261016"]}).encode()
         return (200, cs.to_bytes(packed)) if "20261016" in u else (404, b"")
 
     monkeypatch.setattr(cs, "_fetch", fetch)
-    got = ab.book_for("QNTX_USDT", T - 86400, T + 60)
+    got = ab.book_for("QNTX_USDT", T - 3 * 86400, T + 60)
     assert got["bid"].tolist() == [36.91]
-    ab.book_for("QNTX_USDT", T - 86400, T + 60)
-    assert len(asked) == 2, "Oct 15 (404) and Oct 16, each asked once"
+    ab.book_for("QNTX_USDT", T - 3 * 86400, T + 60)
+    assert asked == [ab.index_url(), ab.url("20261016", "QNTX_USDT")], \
+        "the list once, the one listed day once, nothing else"
+
+
+def test_a_day_whose_list_did_not_go_up_is_not_read_anywhere(home, monkeypatch):
+    """Harddev: the coins went up but the list naming the day did not - so
+    GitHub cannot find the day, and this PC must not read it either; the next
+    tick sends the day again."""
+    _no_sleep(monkeypatch)
+    monkeypatch.setenv("TA_VENUE", "gate")
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    gh = FakeGh(fail_tags={"appbook-index"})
+    monkeypatch.setattr(ab, "_gh", gh)
+    st = ab.Store()
+    st.add("QNTX_USDT", _r(T, 36.91))
+    st.flush()
+    got = ab.publish_day("20261016")
+    assert got["coins"] == 0 and "list" in got["why"]
+    assert not ab._marker("20261016").exists()
+    assert len(ab.book_for("QNTX_USDT", T, T)["t"]) == 0
+    gh.fail.clear()
+    monkeypatch.setattr(ab, "_TICKED", {"at": 0.0})
+    tick = ab.publish_tick(now=T + 86400 + 3600)
+    assert tick["published"][0]["coins"] == 1
+    assert ab.book_for("QNTX_USDT", T, T)["bid"].tolist() == [36.91]
 
 
 def test_github_s_shards_lay_the_apps_books_over_the_record():

@@ -981,11 +981,13 @@ def _try_picks(picks, now, st, act, out, settings, ws, arm, refused) -> None:
             refused.add(r["id"])
             continue
         try:
-            # RAW deploys what the table says; the runner still checks the
-            # cost at the moment of every trade (gate_blocked), so no order
-            # goes out on a contract its edge cannot survive (rule 12)
-            edge = ({"verdict": "ok", "reason": "raw: checked at each trade"}
-                    if st.get("cfg", {}).get("raw") else _edge(key, sym))
+            # EVERY ROOM, RAW TOO, asks the live cost check before switching
+            # on (operator, Oct 17, 2026, "Yes, do it"): raw skipped it, the
+            # runner refusing at each trade instead, and #BBE0A361 switched on
+            # 63 strategies on four thin coins whose 189 signals practice then
+            # refused (YONGDING: round trip 2.451% against a 3% target). Raw
+            # still means no limits and no stored-cost floor.
+            edge = _edge(key, sym)
         finally:
             if reg == "in memory":
                 # a PREVIEW recipe must not outlive its check: left in memory

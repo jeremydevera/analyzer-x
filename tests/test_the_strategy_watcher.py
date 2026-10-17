@@ -742,17 +742,25 @@ def test_raw_is_the_criteria_and_nothing_else():
         "no wait, no daily cap, no per-coin cap"
 
 
-def test_raw_deploys_every_match_without_the_cost_pre_check(world, monkeypatch):
+def test_raw_deploys_every_match_the_live_cost_check_lets_trade(world, monkeypatch):
+    """Raw is still no limit and no stored-cost floor (a losing row, "warn",
+    is switched on) — but since Oct 17, 2026 ("Yes, do it") never a coin the
+    live cost check blocks: #BBE0A361 switched on 63 strategies on XIECHUANG,
+    HUT, CCTC and YONGDING at 8:46am and practice refused all 189 of their
+    signals by 10:55am (YONGDING: round trip 2.451% against a 3% target, the
+    gap 1.076% wider than the 0.60% stop)."""
     many = [{**R6, "id": f"RAW{i:03d}", "coin": f"C{i}", "gate": "warn", "profit": -1.0}
             for i in range(30)]
     world["cands"] = many
-    world["edge"] = {f"C{i}_USDT": "block" for i in range(30)}   # would refuse all
+    world["edge"] = {f"C{i}_USDT": "block" for i in range(0, 30, 2)}   # every other coin
     st = sw._read()
     st["cfg"] = {"raw": True}
     sw._write(st)
     got = sw.consider(now=NOW)
-    assert sum(d["action"] == "on" for d in got["decisions"]) == 30
-    assert len(world["settings"]["watcher_slots"]) == 30
+    on = [d for d in got["decisions"] if d["action"] == "on"]
+    refused = [d for d in got["decisions"] if d["action"] == "refused"]
+    assert len(on) == 15 and len(world["settings"]["watcher_slots"]) == 15
+    assert len(refused) == 15 and all("the cost check said block" in d["why"] for d in refused)
 
 
 def test_a_used_up_day_stops_it_never_turns_into_no_limit(world):

@@ -123,3 +123,47 @@ def test_the_replays_carry_the_real_fee_too():
                      "sl": 0.2, "tp": 1.0, "gate": "ok", "cost_of_tp": 54.9, "rt_paid": 0.28,
                      "trades": [[1_000, 2_000, 0.72, 1]]})
     assert book.row(3_000)["rt_paid"] == 0.28
+
+
+# ------------------------------- a rule set may ask its own ratio (Oct 17, 2026)
+# "Research 1.5:1 after fees": prompt 4 runs the same search with one win
+# paying 1.5 losses. A rule set carries `min_pay`; 2 (the default) is never
+# hashed, so every id made before keeps its value.
+
+def _cfg(**kw):
+    from tradingagents import forecast_rules as fr
+
+    return fr.cfg_of(30, 65.0, 30, ">", 1.0, min_tp=2.0, **kw)
+
+
+def test_a_rule_sets_own_ratio_is_part_of_its_id_and_its_words():
+    from tradingagents import forecast_rules as fr
+
+    two, one_half = _cfg(), _cfg(min_pay=1.5)
+    assert fr.rule_id(_cfg(min_pay=2.0)) == fr.rule_id(two), "the default never moves an id"
+    assert fr.rule_id(one_half) != fr.rule_id(two)
+    assert "a win pays 1.5 losses after fees" in fr.words(one_half)
+    assert "losses after fees" not in fr.words(two)
+
+
+def test_a_ratio_under_the_lists_two_to_one_is_not_room_ready():
+    """Rooms nominate from the Backtest list, which keeps 2:1 only: a 1.5:1
+    rule set could never find its strategies there."""
+    from tradingagents import forecast_rules as fr
+
+    ok, why = fr.deployable(_cfg(min_pay=1.5))
+    assert not ok and "2:1" in why
+    assert fr.deployable(_cfg()) == (True, "")
+
+
+def test_the_researchs_loosest_rule_takes_the_lowest_ratio():
+    from tradingagents import watcher_research as wres
+
+    assert wres.loose([_cfg(), _cfg(min_pay=1.5)])["min_pay"] == 1.5
+    assert wres.loose([_cfg()])["min_pay"] == 2.0
+
+
+def test_the_ids_default_ratio_is_the_rooms_own():
+    from tradingagents import forecast_rules as fr
+
+    assert fr._DEFAULT_PAY == wp.DEFAULTS["min_pay"] == br.PAY_RATIO

@@ -104,6 +104,10 @@ def write_rule(text: str) -> dict:
             rule["tp"] = v
         elif k == "windows":
             rule["windows"] = sorted({int(x) for x in v.split("|") if x.strip()})
+        elif k == "pay":
+            # the ratio after fees a written combination must pay (Oct 17,
+            # 2026, "Research 1.5:1 after fees"); none = the rooms' own
+            rule["pay"] = float(v)
     return rule
 
 
@@ -121,7 +125,8 @@ def _tp_written(tp: float, sl: float, rule: str) -> bool:
 
 WRITE = write_rule(os.environ.get("REPLAY_WRITE", ""))
 WRITE_CFG = {**CFG, "on_winrate": WRITE["wr"], "min_trades": WRITE["trades"],
-             "tp_rule": WRITE["tp"]}
+             "tp_rule": WRITE["tp"],
+             **({"min_pay": WRITE["pay"]} if "pay" in WRITE else {})}
 
 
 def start_ms() -> int:

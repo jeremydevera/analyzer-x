@@ -419,3 +419,17 @@ def test_the_replay_and_the_engine_skip_by_one_rule():
     col = (ROOT / "tradingagents" / "replay_collect.py").read_text(encoding="utf-8")
     assert '"chase_skip"' in col
 
+
+
+def test_the_write_rule_can_ask_for_a_smaller_ratio_after_fees(rs, monkeypatch):
+    """Oct 17, 2026, "Research 1.5:1 after fees": the replay writes only what
+    its write rule's ratio passes (2:1 by default, watcher_policy min_pay), so
+    a 1.5:1 search needs `pay=1.5` in the rule, or it could never see one."""
+    assert rs.write_rule("wr=40,trades=1,tp=any,windows=7|15|30,pay=1.5")["pay"] == 1.5
+    assert "pay" not in rs.write_rule("wr=40,trades=1")
+    monkeypatch.setenv("REPLAY_WRITE", "wr=40,trades=1,tp=any,pay=1.5")
+    spec = importlib.util.spec_from_file_location("replay_shard_pay", SCRIPTS / "replay_shard.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod.WRITE_CFG["min_pay"] == 1.5
+    sys.modules.pop("replay_shard_pay", None)

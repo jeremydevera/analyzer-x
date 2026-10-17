@@ -159,16 +159,21 @@ ID_KEYS =("window_days", "on_winrate", "off_winrate", "min_trades", "tp_rule",
     "min_tp",
     # the switch-off's own window (Oct 07, 2026: the 1-4 day rooms). Hashed
     # only when it differs from window_days, so no id made before it moves
-    "judge_days")
+    "judge_days",
+    # the ratio after fees it asks (Oct 17, 2026). Hashed only when it is not
+    # the rooms' own 2, so no id made before it moves
+    "min_pay")
 
 
 def rule_id(cfg: dict) -> str:
     """A stable short id, hashed from the rule set's own values — never a
     position on a page (CLAUDE.md kit H)."""
     key = {k: cfg.get(k) for k in ID_KEYS if cfg.get(k) not in (None, False)}
-    for k in ("on_winrate", "off_winrate", "max_sl", "max_cost", "day_loss", "min_tp"):
+    for k in ("on_winrate", "off_winrate", "max_sl", "max_cost", "day_loss", "min_tp", "min_pay"):
         if k in key:
             key[k] = float(key[k])
+    if key.get("min_pay") == _DEFAULT_PAY:
+        del key["min_pay"]               # the rooms' own ratio is no new rule
     for k in ("window_days", "min_trades", "coin_slices", "judge_days"):
         if k in key:
             key[k] = int(key[k])
@@ -176,6 +181,8 @@ def rule_id(cfg: dict) -> str:
         del key["judge_days"]            # the same window twice is the one window
     return hashlib.sha1(json.dumps(key, sort_keys=True).encode()).hexdigest()[:8].upper()
 
+
+_DEFAULT_PAY = 2.0          # watcher_policy.DEFAULTS["min_pay"]; a test holds them equal
 
 TP_WORDS = {">": "TP wider than SL", "1.5x": "TP at least 1.5x SL", "2x": "TP at least 2x SL",
             "any": "any TP", ">=": "TP at least SL", "<": "TP narrower than SL",
@@ -196,6 +203,9 @@ def words(cfg: dict) -> str:
     j = int(cfg.get("judge_days") or 0)
     if j and j != w:
         out.append(f"switched off on its last {j} days")
+    pay = cfg.get("min_pay")
+    if pay is not None and float(pay) != _DEFAULT_PAY:
+        out.append(f"a win pays {float(pay):g} losses after fees")
     for key, val, w in _LABELS:
         if key == "coin_slices":
             continue
@@ -227,6 +237,11 @@ def deployable(cfg: dict) -> tuple[bool, str]:
         extra.insert(0, f"a {int(cfg['window_days'])}-day window")
     if extra:
         return False, "needs a new switch before a room can run it: " + "; ".join(extra)
+    pay = cfg.get("min_pay")
+    if pay is not None and float(pay) < br.PAY_RATIO:
+        # rooms nominate from the Backtest list, which keeps 2:1 after fees
+        return False, (f"rooms pick from the Backtest list, which keeps only "
+                       f"{br.PAY_RATIO:g}:1 after fees; this rule set asks {float(pay):g}:1")
     if int(cfg.get("coin_slices") or COIN_SLICES) != COIN_SLICES:
         return False, ("the trades-per-coin limit is set per runner "
                        "(partial_max_slices), not per rule set")

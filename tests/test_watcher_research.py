@@ -258,3 +258,25 @@ def test_the_fast_raw_path_is_simulate_with_two_windows(tmp_path, window, judge)
     assert fast == slow
     one = rs.score(rs.raw_fast(blist, grid, checks, {**cfg, "judge_days": 0}, end), end_ms=end)
     assert one != slow, "the fixture must make the second window matter"
+
+
+def test_each_rule_set_reads_its_own_ratio_after_fees_from_the_shared_rows(tmp_path, monkeypatch):
+    """Oct 17, 2026 ("Research 1.5:1 after fees"): the rows every rule set
+    shares are cut by the LOOSEST rule of the grid, so a grid holding 1.5:1
+    and 2:1 rule sets keeps the 1.5:1 strategies — and a 2:1 rule set must
+    still never pick one of them (CfgRows reads ITS OWN min_pay)."""
+    monkeypatch.setitem(wp.DEFAULTS, "min_pay", 2.0)
+    # AAAA0001 pays 2:1 after its fee (+0.95 vs -0.45), BBBB0002 only 1.5:1
+    a = {**_combo("AAAA0001", "GPNSTOCK", _ms(2026, 6, 5), 300, 9, tp=1.0, sl=0.3), "rt_paid": 0.05}
+    b = {**_combo("BBBB0002", "KKRSTOCK", _ms(2026, 6, 5), 300, 9, tp=1.0, sl=0.5), "rt_paid": 0.05}
+    end = _ms(2026, 9, 20)
+    L = rs.load_lean([_folder(tmp_path, [a, b], end)])
+    books, start = L["books"], _ms(2026, 9, 1)
+    two = {**rs.CURRENT, **rs.RAW, "on_winrate": 50.0, "off_winrate": 50.0, "min_trades": 5,
+           "tp_rule": ">", "max_sl": 0.0}
+    one_half = {**two, "min_pay": 1.5}
+    checks = wr.local_midnights(start, end)
+    pre = rs.compact_rows(books, checks, two["window_days"] * wr.DAY_MS, rs.loose([two, one_half]))
+    at = checks[-1]
+    assert {r["id"] for r in rs.CfgRows(pre, books, one_half).get(at)} == {"AAAA0001", "BBBB0002"}
+    assert {r["id"] for r in rs.CfgRows(pre, books, two).get(at)} == {"AAAA0001"}

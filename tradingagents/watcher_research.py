@@ -133,6 +133,8 @@ def loose(grid_: list[dict]) -> dict:
             "max_sl": 0.0 if min(caps) <= 0 else max(caps),
             # and the loosest target floor is the lowest one
             "min_tp": min(float(c.get("min_tp") or 0) for c in grid_),
+            # and the smallest ratio after fees any of them asks (Oct 17, 2026)
+            "min_pay": min(float(c.get("min_pay", wp.DEFAULTS["min_pay"])) for c in grid_),
             "raw": any(c.get("raw") for c in grid_)}
 
 
@@ -510,7 +512,9 @@ class CfgRows:
               & ((np.round(pr, 2) > c["profit_floor"]) if not c.get("raw")
                  else np.ones(len(n), bool))
               & _tp_ok(tp, sl, c["tp_rule"]) & _sl_ok(sl, c.get("max_sl"))
-              & (self.pre["pay"][k] if "pay" in self.pre else np.ones(len(n), bool)))
+              # ITS OWN ratio after fees, never the loosest rule's the rows
+              # were cut by (Oct 17, 2026: 2:1 and 1.5:1 in one grid)
+              & _pay_ok(self.books, c.get("min_pay"))[k])
         ids = self.pre["ids"]
         return [_row_dict(self.books[ids[kk]].c, int(nn), int(ww), float(pp))
                 for kk, nn, ww, pp in zip(k[ok], n[ok], w[ok], pr[ok])]
@@ -654,7 +658,8 @@ def _pay_ok(books, need) -> "np.ndarray":
         # not judged on it (wp.pay_fails)
         hit = (books, np.array([not any(k in b.c for k in wr.FEE_KEYS) or br.pays_two_to_one(b.c, need)
                                 for b in seq], bool))
-        _PAY.clear()
+        if len(_PAY) >= 8:              # a few ratios per list, never thousands
+            _PAY.clear()
         _PAY[key] = hit
     return hit[1]
 

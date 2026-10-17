@@ -167,3 +167,33 @@ def test_the_ids_default_ratio_is_the_rooms_own():
     from tradingagents import forecast_rules as fr
 
     assert fr._DEFAULT_PAY == wp.DEFAULTS["min_pay"] == br.PAY_RATIO
+
+
+def test_a_round_file_carries_each_rule_sets_ratio_to_github(tmp_path, monkeypatch):
+    """Oct 17, 2026: write_round kept only the six dials, so p15round1.json
+    reached GitHub without min_pay and the "1.5:1 search" ran 2:1 again — it
+    found #BBE0A361 (a 2:1 id) once more. The ratio travels in the file, and a
+    file written before it reads back exactly as it did."""
+    import json as _json
+
+    from tradingagents import forecast_rules as fr
+    from tradingagents import room_strategies as rst
+
+    monkeypatch.setattr(rst, "ROUNDS_DIR", tmp_path)
+    monkeypatch.setattr(rst, "ROOT", tmp_path)
+    sets = [_cfg(min_pay=1.5), _cfg()]
+    p = rst.write_round("t", sets)
+    back = rst.read_round(p.name)
+    assert [fr.rule_id(c) for c in back] == [fr.rule_id(c) for c in sets]
+    assert back[0]["min_pay"] == 1.5 and "min_pay" not in back[1]
+    old = [{k: v for k, v in r.items() if k != "min_pay"} for r in _json.loads(p.read_text())]
+    p.write_text(_json.dumps(old))
+    assert [fr.rule_id(c) for c in rst.read_round(p.name)] == [fr.rule_id(sets[1])] * 2
+
+
+def test_the_next_rounds_neighbours_keep_their_parents_ratio():
+    from tradingagents import room_strategies as rst
+
+    nxt = rst.neighbours([_cfg(min_pay=1.5)], set())
+    assert nxt and all(c.get("min_pay") == 1.5 for c in nxt)
+    assert all("min_pay" not in c for c in rst.neighbours([_cfg()], set()))

@@ -172,6 +172,57 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-17-A — the "1.5:1 after fees" search ran at 2:1 on GitHub, because the round file dropped each rule set's ratio
+
+**CEO**
+
+* The first 1.5:1 search came back with the same winner as the 2:1 one
+  (#BBE0A361): it had not searched 1.5:1 at all.
+* Why: the list of rule sets sent to GitHub kept only six settings, and the
+  new "a win pays 1.5 losses" setting was not one of them, so every rule set
+  arrived at the default 2:1.
+* What stops it now: the list carries each rule set's ratio, and the next
+  rounds' neighbours keep their parent's.
+
+**DEV**
+
+* `tradingagents/room_strategies.py` `write_round` wrote `dict(zip(DIALS,
+  dials(c)))` and `read_round` rebuilt `cfg(*(r[k] for k in DIALS))` —
+  `min_pay` (797222c) is not a dial; `neighbours` rebuilt from the dials too.
+* Invariant broken: **a rule set's file form holds every value its id
+  hashes** — `forecast_rules.rule_id` hashed `min_pay`, the file lost it.
+* Guard: `tests/test_two_to_one_after_fees.py::test_a_round_file_carries_each_rule_sets_ratio_to_github`
+  and `::test_the_next_rounds_neighbours_keep_their_parents_ratio`.
+
+**SAW** — Oct 17, 2026, p15round1 scored over 6,082,984 combinations (the 1.5:1
+replay) returned 2:1 ids: #722E1728, #BBE0A361, #C1133C2A, #1A582A2B.
+
+**TIMELINE**
+
+1. Oct 17, 2026 1:45am — 1.5:1 support ships (797222c); p15round1.json is
+   written with 8,898 rule sets at min_pay 1.5 — in memory.
+2. The file on disk holds the six dials only; GitHub reads 8,898 rule sets
+   at the default 2:1 (research 39023668872 and 39029309885).
+3. 8:40am — the score shows the 2:1 winners again, ids unchanged.
+4. After the fix — the file holds `min_pay` (8,898 of 8,898 read back at 1.5,
+   ids equal), and round 1 runs again on the same 1.5:1 replays.
+
+**ROOT CAUSE** — a new rule setting was added to the id and the walk, not to
+the file form that carries rule sets to GitHub.
+
+**WHY IT WAS NOT CAUGHT** — the 1.5:1 tests built rule sets in memory and
+checked ids, words and the research walk; none sent a rule set through
+`write_round` / `read_round`, the one path GitHub uses.
+
+**COST** — none in money; one round of GitHub time (2 x ~1 hour) and the
+answer an hour later.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_two_to_one_after_fees.py::test_a_round_file_carries_each_rule_sets_ratio_to_github`.
+
+---
+
 ## RCA-2026-10-16-F — 2:1 after fees was judged on a one-time fee estimate, and the list and the research held two different ones: CTK 15m mom15 1% / 0.2% read 0.549% on the list, ~0.28% in the replay, and its trades paid ~0.28%
 
 **CEO**

@@ -65,12 +65,16 @@ def tried_path(replay_run: str) -> Path:
     return _home() / f"room_strategies_tried_{replay_run}.json"
 
 
-def cfg(window_days, on_winrate, min_trades, tp_rule, max_sl, min_tp=0.0) -> dict:
-    """One room strategy as the watcher's cfg, raw, the rooms' way."""
+def cfg(window_days, on_winrate, min_trades, tp_rule, max_sl, min_tp=0.0,
+        min_pay=None) -> dict:
+    """One room strategy as the watcher's cfg, raw, the rooms' way. `min_pay`
+    — the ratio after fees it asks (Oct 17, 2026) — only when it is not the
+    rooms' own, so every rule set made before keeps its id."""
     from tradingagents import forecast_rules as fr
 
+    pay = None if min_pay is None or float(min_pay) == fr._DEFAULT_PAY else float(min_pay)
     return fr.cfg_of(int(window_days), float(on_winrate), int(min_trades), str(tp_rule),
-                     float(max_sl), min_tp=float(min_tp) or None)
+                     float(max_sl), min_tp=float(min_tp) or None, min_pay=pay)
 
 
 def dials(c: dict) -> tuple:
@@ -299,7 +303,11 @@ def write_round(name: str, sets: list[dict]) -> Path:
     (`scenarios=file:research/p4/<name>.json`): only the dials, compact."""
     ROUNDS_DIR.mkdir(parents=True, exist_ok=True)
     p = ROUNDS_DIR / f"{name}.json"
-    rows = [dict(zip(DIALS, dials(c))) for c in sets]
+    # ...and the ratio after fees, the one setting beyond the six dials a
+    # round can ask (Oct 17, 2026: without it p15round1 ran at 2:1 on GitHub)
+    rows = [{**dict(zip(DIALS, dials(c))), **({"min_pay": float(c["min_pay"])}
+                                               if c.get("min_pay") is not None else {})}
+            for c in sets]
     p.write_text(json.dumps(rows, separators=(",", ":")), encoding="utf-8")
     return p
 
@@ -307,7 +315,7 @@ def write_round(name: str, sets: list[dict]) -> Path:
 def read_round(path: str) -> list[dict]:
     """What research_shard runs for `scenarios=file:<path>`."""
     rows = json.loads((ROOT / path).read_text(encoding="utf-8"))
-    return [cfg(*(r[k] for k in DIALS)) for r in rows]
+    return [cfg(*(r[k] for k in DIALS), min_pay=r.get("min_pay")) for r in rows]
 
 
 # ------------------------------------------------------------ new rounds
@@ -332,7 +340,8 @@ def neighbours(best: list[dict], tried: set) -> list[dict]:
                  + [("max_sl", v) for v in _steps(CAPS, float(base["max_sl"] or 0))]
                  + [("min_tp", v) for v in _steps(FLOORS, float(base["min_tp"] or 0))])
         for k, v in moves:
-            c = cfg(**{**base, k: v})
+            # a neighbour asks its parent's ratio after fees (Oct 17, 2026)
+            c = cfg(**{**base, k: v}, min_pay=b.get("min_pay"))
             i = sid(c)
             if i not in seen:
                 seen.add(i)

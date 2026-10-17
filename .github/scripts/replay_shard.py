@@ -286,18 +286,21 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
                                  reenter=br.reenter_for("1m"))
                 if len(walked) < WRITE["trades"]:
                     continue
+                fees = [trade_fee(minute_book, cost, side, ts[e], ts[x], stats)
+                        for (_s, e, x, side, o, w, ff) in walked]
                 trades = [[ts[e], ts[x] + bs * 1000,
                            round(fg.trade_pnl(o, w, ff, margin=ss.BASE_MARGIN,
-                                              lev=at.LEVERAGE,
-                                              fee=trade_fee(minute_book, cost, side, ts[e], ts[x],
-                                                            stats)), 4),
+                                              lev=at.LEVERAGE, fee=fee_), 4),
                            int(w != fg.WHY_END)]
-                          for (_s, e, x, side, o, w, ff) in walked]
+                          for (_s, e, x, side, o, w, ff), fee_ in zip(walked, fees)]
                 combo = {"id": br.row_code(coin, tf, sig, thp, round(sl * 100, 3),
                                            round(tp * 100, 3), "flat", res="1m"),
                          "coin": coin, "tf": tf, "signal": sig, "th": thp,
                          "sl": round(sl * 100, 3), "tp": round(tp * 100, 3),
                          "gate": "ok", "cost_of_tp": round(rt / tp * 100, 1),
+                         # what its trades REALLY paid (Oct 16, 2026): trade_pnl
+                         # charges each trade 2 x its fee, so the round trip
+                         "rt_paid": (round(200 * sum(fees) / len(fees), 4) if fees else None),
                          "group": group_of(sig),
                          "trades": trades}
                 book = wr._Book(combo)

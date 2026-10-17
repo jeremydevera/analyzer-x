@@ -318,15 +318,32 @@ _PAY_SLACK = 0.005
 def win_and_loss(row: dict) -> tuple[float, float] | None:
     """(a win, a loss) in percent of the position, after the row's own round
     trip — the target less the cost, the stop plus it — or None when the
-    backtest could not read the cost (`gate` "unknown", or no `cost_of_tp`)."""
+    backtest could not read the cost.
+
+    THE COST ITS TRADES REALLY PAID FIRST (Oct 16, 2026, "Yes, use real
+    fees"): `rt_paid`, each trade's two taker fees and its own minutes'
+    fills, averaged. Only a row measured before that, or with no trade, falls
+    back to `cost_of_tp`, the one-time estimate (`gate` "unknown" = unread):
+    for CTK 15m mom15 the estimate said 0.549% and the trades paid ~0.28%."""
     try:
         tp, sl = float(row["tp"]), float(row["sl"])
-        ratio = row["cost_of_tp"]
     except (KeyError, TypeError, ValueError):
         return None
+    paid = row.get("rt_paid")
+    if paid is not None:
+        try:
+            cost = float(paid)
+        except (TypeError, ValueError):
+            cost = None
+        if cost is not None:
+            return tp - cost, sl + cost
+    ratio = row.get("cost_of_tp")
     if ratio is None or str(row.get("gate") or "").lower() == "unknown":
         return None
-    cost = float(ratio) / 100.0 * tp
+    try:
+        cost = float(ratio) / 100.0 * tp
+    except (TypeError, ValueError):
+        return None
     return tp - cost, sl + cost
 
 

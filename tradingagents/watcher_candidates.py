@@ -164,6 +164,7 @@ def _fresh(coin: str, tf: str, r: dict, last_ms: float, window: int = 30) -> dic
            "losses": int(r.get("losses", int(r["trades"]) - int(r["wins"]))),
            "winrate": float(r["winrate"]), "profit": float(r["profit"]),
            "gate": r.get("gate") or "", "cost_of_tp": r.get("cost_of_tp"),
+           "rt_paid": r.get("rt_paid"),
            "measured_ms": last_ms, "window_days": 30}
     if window in br.RECENT_WINDOWS:
         tk, wk, pk = br.recent_keys(window)

@@ -709,7 +709,8 @@ LATE_COLUMNS = (("unclear", "INTEGER"), ("res", "TEXT"),
                 ("t15", "INTEGER"), ("w15", "INTEGER"), ("p15", "REAL")) + tuple(
     # the short windows (Oct 07, 2026)
     (f"{k}{d}", "REAL" if k == "p" else "INTEGER") for d in (1, 2, 3, 4) for k in "twp") + (
-    ("reenter", "INTEGER"),)   # the rule a row was walked under (Oct 13, 2026)
+    ("reenter", "INTEGER"),    # the rule a row was walked under (Oct 13, 2026)
+    ("rt_paid", "REAL"))       # what its trades really paid (Oct 16, 2026)
 
 
 def _late_columns(con: sqlite3.Connection) -> None:

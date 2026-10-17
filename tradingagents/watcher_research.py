@@ -325,9 +325,9 @@ def _row_dict(c: dict, n: int, wins: int, profit: float) -> dict:
             "signal": c["signal"], "th": c.get("th", 0.0),
             "group": c.get("group", "classic"),
             "sl": c["sl"], "tp": c["tp"], "gate": c.get("gate", "ok"),
-            "cost_of_tp": c.get("cost_of_tp"),
             "trades": n, "wins": wins, "losses": n - wins,
-            "winrate": round(100 * wins / n, 2), "profit": round(profit, 2)}
+            "winrate": round(100 * wins / n, 2), "profit": round(profit, 2),
+            **{k: c[k] for k in wr.FEE_KEYS if k in c}}
 
 
 def load_lean(folders: list[str], lazy: bool = False, packed: bool = True,
@@ -652,7 +652,7 @@ def _pay_ok(books, need) -> "np.ndarray":
     if hit is None or hit[0] is not books:
         # passes_on's own reading: a combination that never carried a fee is
         # not judged on it (wp.pay_fails)
-        hit = (books, np.array(["cost_of_tp" not in b.c or br.pays_two_to_one(b.c, need)
+        hit = (books, np.array([not any(k in b.c for k in wr.FEE_KEYS) or br.pays_two_to_one(b.c, need)
                                 for b in seq], bool))
         _PAY.clear()
         _PAY[key] = hit

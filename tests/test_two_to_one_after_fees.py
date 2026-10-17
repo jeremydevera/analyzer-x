@@ -20,6 +20,8 @@ money (rule 12).
 """
 from __future__ import annotations
 
+import pytest
+
 from tradingagents import backtest_report as br
 from tradingagents import watcher_policy as wp
 from tradingagents import watcher_replay as wr
@@ -80,3 +82,44 @@ def test_the_replays_see_the_fee_so_they_judge_as_the_rooms_do():
                      "sl": 0.8, "tp": 1.0, "gate": "warn", "cost_of_tp": 25.0,
                      "trades": [[1_000, 2_000, 0.79, 1]]})
     assert book.row(3_000)["cost_of_tp"] == 25.0
+
+
+# ----------------------------- the REAL fee, not a one-time estimate (Oct 16)
+# Operator, Oct 16, 2026, "Yes, use real fees": the estimate stored when a
+# strategy was measured said 0.549% for CTK 15m mom15 (TP 1% / SL 0.2%) on the
+# Backtest list and about 0.28% in the research replay; its own trades, each
+# paying its minute's order book, paid about 0.28% (a 1% win came home +$0.72).
+
+def test_the_backtest_keeps_what_its_trades_really_paid():
+    from tests.test_backtest_pays_the_minute import T0, H, book, run
+
+    bk = book([(T0 + 6 * H, 0.0002, 0.0001, 0.0001, False),     # the entry minute
+               (T0 + 8 * H, 0.0004, 0.0002, 0.0005, False)])    # the exit bar
+    r = run(book=bk)
+    # two fees (0.075% each), no entry fill (bought AT the ask), the exit's 0.05%
+    assert r["rt_paid"] == pytest.approx(0.2, abs=1e-6)
+    assert "rt_paid" not in run(), "without minute books the result keeps its shape"
+
+
+def test_two_to_one_reads_the_real_fee_before_the_estimate():
+    row = {"tp": 1.0, "sl": 0.2, "cost_of_tp": 54.9, "gate": "warn", "res": "1m", "sizing": "flat"}
+    assert br.pays_two_to_one(row) is False                     # estimate: +0.45 vs -0.75
+    assert br.pays_two_to_one({**row, "rt_paid": 0.1}) is True  # paid: +0.90 vs -0.30
+    assert br.pays_two_to_one({**row, "rt_paid": 0.28}) is False  # paid: +0.72 vs -0.48
+    assert br.win_and_loss({**row, "rt_paid": 0.28}) == pytest.approx((0.72, 0.48))
+
+
+def test_a_row_with_no_fee_field_is_not_made_unknown_on_the_way_through():
+    """Backtest a room hands _Book combinations without the fee: a row must
+    not grow a None fee there, or every replayed row would read "unknown"."""
+    book = wr._Book({"id": "X", "coin": "GPS", "tf": "15m", "signal": "tsi", "th": 0.0,
+                     "sl": 0.8, "tp": 1.0, "gate": "ok", "trades": [[1_000, 2_000, 0.79, 1]]})
+    row = book.row(3_000)
+    assert "cost_of_tp" not in row and "rt_paid" not in row
+
+
+def test_the_replays_carry_the_real_fee_too():
+    book = wr._Book({"id": "X", "coin": "CTK", "tf": "15m", "signal": "mom15", "th": 0.0,
+                     "sl": 0.2, "tp": 1.0, "gate": "ok", "cost_of_tp": 54.9, "rt_paid": 0.28,
+                     "trades": [[1_000, 2_000, 0.72, 1]]})
+    assert book.row(3_000)["rt_paid"] == 0.28

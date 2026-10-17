@@ -2001,9 +2001,13 @@ Spec: `docs/superpowers/specs/2026-10-06-backtest-v2-target-over-stop-design.md`
 win will break even 2 loss"* in dollars after fees; the build compared prices.
 
 * **One rule, `backtest_report.pays_two_to_one`:** with the row's own round
-  trip c (`cost_of_tp` % of the target), a win is TP − c, a loss SL + c, and
-  the win must be at least `PAY_RATIO` (2) losses. A fee the backtest could
-  not read (`gate` "unknown") never passes. `index_keeps` = TP > SL AND this.
+  trip c, a win is TP − c, a loss SL + c, and the win must be at least
+  `PAY_RATIO` (2) losses. **c is `rt_paid` — what the row's own trades paid,
+  each its own minutes' order book** (`backtest_strategy(book=)` returns it,
+  replay_shard writes it on every combination); only a row without it falls
+  back to `cost_of_tp`, the one-time estimate (CTK 15m mom15 1%/0.2%: estimate
+  0.549%, paid ~0.28%, RCA-2026-10-16-F). A fee that cannot be read never
+  passes. `index_keeps` = TP > SL AND this.
 * **Rooms:** `watcher_policy` `min_pay` (2.0) — `pay_fails` in `passes_on`
   (switch-on) and `judge` (the hourly switch-off; an unread fee keeps a
   running row, as an unread target does). The replays and the research decide

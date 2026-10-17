@@ -87,7 +87,7 @@ def pay_fails(row: dict, cfg: dict, *, unknown_fails: bool = True) -> str:
     from tradingagents import backtest_report as br
 
     need = float(cfg.get("min_pay", DEFAULTS["min_pay"]) or 0)
-    if need <= 0 or "cost_of_tp" not in row:
+    if need <= 0 or not any(k in row for k in ("cost_of_tp", "rt_paid")):
         # a row that never carried a fee at all (a hand-made test row) is not
         # judged on it; every real path carries the field — the index, the
         # pair files, the GitHub replay's combinations and _Book.row

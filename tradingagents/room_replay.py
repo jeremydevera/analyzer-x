@@ -70,7 +70,8 @@ PER_PAGE = 10               # forecast_v2_api.PER_PAGE: every Forecast list page
 STARTING_S = 120            # how long a spawned run may take to reach its lock
 VIEWS = ("days", "events", "slots", "trades", "practice", "reconcile")
 CAND_COLS = ("id", "coin", "tf", "signal", "th", "sl", "tp", "trades", "wins",
-             "winrate", "profit", "cost_of_tp", "gate", "t15", "w15")
+             "winrate", "profit", "cost_of_tp", "gate", "t15", "w15",
+             "rt_paid")          # what its trades really paid (Oct 16, 2026)
 GROUPS = ("preset", "sep25", "sep27ml")       # every other signal is "classic"
 # The screen asks no floor (operator, Oct 03, 2026: "what's this textbox i
 # dont need this, i only need to input date and id of the room"): the API
@@ -327,7 +328,8 @@ def _cand_of(r: dict) -> dict:
          "th": th, "sl": float(r["sl"]), "tp": float(r["tp"]),
          "trades30": int(r["trades"]), "wins30": int(r["wins"]),
          "winrate30": r.get("winrate"),
-         "cost_of_tp": r.get("cost_of_tp"), "gate": r.get("gate") or ""}
+         "cost_of_tp": r.get("cost_of_tp"), "gate": r.get("gate") or "",
+         "rt_paid": r.get("rt_paid")}
     # the id the live watcher gives the same row (watcher_candidates._fresh)
     c["id"] = br.row_code(c["coin"], c["tf"], c["signal"], th, c["sl"], c["tp"],
                           "flat", res="1m")
@@ -1014,7 +1016,9 @@ def replay(room: str, from_day: str, to_day: str, *, store=None, workers: int | 
         if c is None or not rec.get("trades"):
             return rec
         combo = {**{k: c[k] for k in ("id", "coin", "tf", "signal", "th", "sl", "tp",
-                                      "group", "gate")}, "trades": rec["trades"]}
+                                      "group", "gate")}, "trades": rec["trades"],
+                 # its fees, so the replay judges 2:1 after fees as rooms do
+                 **{k: c[k] for k in wr.FEE_KEYS if k in c}}
         book = wr._Book(combo)
         # the room's own strategies are kept whatever the rules say: from the
         # room's first day the replay switches them when the ROOM did

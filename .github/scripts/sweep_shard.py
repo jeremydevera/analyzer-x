@@ -1127,6 +1127,8 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                         "bars": nbars, "monthly": {k: round(v, 2) for k, v in m.items()},
                         "cost_of_tp": round(rt / tp * 100, 1), "rt": round(rt * 100, 4),
                         "gate": "warn" if rt / tp >= .2 else "ok", **VENUE_FIELD,
+                        # what its trades REALLY paid, each its own minutes' book (Oct 16, 2026)
+                        "rt_paid": r.get("rt_paid"),
                         # v2: trades/wins/profit of the last 15 days
                         **br.recent_fields(r)}) + "\n")
                     kept += 1

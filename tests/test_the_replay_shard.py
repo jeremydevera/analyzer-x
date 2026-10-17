@@ -357,6 +357,10 @@ def test_each_replayed_trade_pays_its_own_minutes(rs, world):
     assert won[0][2] == pytest.approx(round(expect, 4))
     assert won[0][2] != pytest.approx(round(
         fg.trade_pnl(0.01, fg.WHY_TP, 0.0, margin=5.0, lev=20, fee=0.0003), 4))
+    # WHAT ITS TRADES REALLY PAID (Oct 16, 2026), the round trip 2:1 after
+    # fees is judged on: 0.1% for a long here, 0.08% for a short (bought back
+    # at the 0.0004 side) - never the coin's flat 0.06%
+    assert 0.08 - 1e-9 <= c["rt_paid"] <= 0.1 + 1e-9, c["rt_paid"]
 
 
 def test_a_minute_with_no_reading_pays_the_flat_cost_and_is_counted(rs, world):

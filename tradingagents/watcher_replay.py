@@ -53,6 +53,10 @@ def day_of(ms: int) -> str:
     return _dt.datetime.fromtimestamp(ms / 1000).strftime("%Y-%m-%d")
 
 
+# what passes_on reads for 2:1 after fees (Oct 16, 2026)
+FEE_KEYS = ("cost_of_tp", "rt_paid")
+
+
 class _Book:
     """One combination's trades, indexed by EXIT for window questions."""
 
@@ -85,11 +89,13 @@ class _Book:
                 "signal": c["signal"], "th": c.get("th", 0.0),
                 "group": c.get("group", "classic"),
                 "sl": c["sl"], "tp": c["tp"], "gate": c.get("gate", "ok"),
-                # the row's own fee: passes_on judges 2:1 after fees on it
-                "cost_of_tp": c.get("cost_of_tp"),
                 "trades": n, "wins": wins, "losses": n - wins,
                 "winrate": round(100 * wins / n, 2),
-                "profit": round(self.p[b] - self.p[a], 2)}
+                "profit": round(self.p[b] - self.p[a], 2),
+                # the row's own fees, as the combination holds them: passes_on
+                # judges 2:1 after fees on them; a combination without them
+                # never grows a None fee here (that would read "unknown")
+                **{k: c[k] for k in FEE_KEYS if k in c}}
 
 
 def rows_by_check(books: dict, checks: list[int], window_ms: int) -> dict:

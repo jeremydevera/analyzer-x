@@ -4232,6 +4232,10 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     _bk = book
     _bk_on = book is not None
     n_gate = n_unmeasured = n_chase = 0
+    # WHAT THE TRADES REALLY PAID (Oct 16, 2026, "Yes, use real fees"): the
+    # round trip each trade was charged - two taker fees and its own minutes'
+    # fills - summed, so 2:1 after fees is judged on it, not on an estimate
+    rt_sum, rt_n = 0.0, 0
     # AND THE "PRICE ALREADY RAN AWAY" CHECK (Oct 11, 2026: "i said it should
     # behave like practice, meaning backtest should know wether to skip a
     # trade or not"): the runner refuses a signal whose tradable price - the
@@ -4713,8 +4717,12 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                           else _out_at_entry if _out_at_entry is not None
                           else _c_in)
                 pnl = (out - 2 * _taker - _c_in - _c_out) * notional
+                rt_sum += 2 * _taker + _c_in + _c_out
+                rt_n += 1
             else:
                 pnl = (out - 2 * fee) * notional
+                rt_sum += 2 * fee
+                rt_n += 1
         # Holding cost: every settlement between the entry fill and the exit.
         # A long pays when the rate is positive, a short receives it.
         if not _skip_single:
@@ -4841,7 +4849,10 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                             for d, _ms, n_, w_, p_ in _recs}}
                if recent_windows is not None else {}),
             **({"gate_blocked": n_gate, "cost_unmeasured": n_unmeasured,
-                "chase_skip": n_chase}
+                "chase_skip": n_chase,
+                # the average round trip its trades paid, % of the position;
+                # None with no trade (backtest_report.win_and_loss reads it)
+                "rt_paid": round(100 * rt_sum / rt_n, 4) if rt_n else None}
                if _bk_on else {})}
 
 

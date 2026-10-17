@@ -1549,6 +1549,8 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                     "cost_of_tp": round(rt / tp * 100, 1),
                     "rt": round(rt * 100, 4),
                     "gate": "warn" if rt / tp >= .2 else "ok",
+                    # what its trades REALLY paid, each its own minutes' book (Oct 16, 2026)
+                    "rt_paid": r.get("rt_paid"),
                     # LAST, as GitHub writes them: watcher_candidates reads
                     # a pair file's tail for t15 / t1..t4 (Gate only here)
                     **(br.recent_fields(r) if FINE_TF and _gate_v2() else {})})
@@ -1928,7 +1930,9 @@ def compute_combos(symbol: str, tf: str, combos: list, *,
             "cost_of_tp": 0.0 if rt is None else round(rt / tp * 100, 1),
             "rt": None if rt is None else round(rt * 100, 4),
             "gate": ("unknown" if rt is None
-                     else "warn" if rt / tp >= .2 else "ok")})
+                     else "warn" if rt / tp >= .2 else "ok"),
+            # what its trades REALLY paid, each its own minutes' book (Oct 16, 2026)
+            "rt_paid": r.get("rt_paid")})
     if out:
         have = pair_rows(coin, tf)
         seen = {(r["signal"], r["th"], r["sl"], r["tp"], r["sizing"])

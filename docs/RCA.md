@@ -172,6 +172,68 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-16-F — 2:1 after fees was judged on a one-time fee estimate, and the list and the research held two different ones: CTK 15m mom15 1% / 0.2% read 0.549% on the list, ~0.28% in the replay, and its trades paid ~0.28%
+
+**CEO**
+
+* The first 2:1 search found 16 winning rule sets whose trades won +$0.73
+  and lost -$0.41 on average — 1.8 to 1, not the 2 to 1 you asked for.
+* Why: "fees included" was read from a fee estimate taken once when each
+  strategy was measured, and the Backtest list and the research worked that
+  estimate out differently — neither was what the trades really paid.
+* What stops it now: every strategy keeps the average fee its own trades
+  paid, minute by minute, and 2:1 is judged on that on the list, in the
+  rooms and in the research alike.
+
+**DEV**
+
+* `tradingagents/backtest_report.py` `win_and_loss` (3bafc87) read
+  `cost_of_tp`, set from `rt` — the shard's flat round trip
+  (`br.round_trip_cost(fee, charged_slippage(...))` in sweep_shard,
+  `coin_costs` in replay_shard), two smoothings of one live book read.
+* Invariant broken: **one strategy has one fee, and it is the one its trades
+  paid** — `backtest_strategy(book=)` now returns `rt_paid` (2 taker fees +
+  each trade's own minutes' fills, averaged), replay_shard writes it on every
+  combination, and `win_and_loss` reads it first.
+* Guard: `tests/test_two_to_one_after_fees.py::test_the_backtest_keeps_what_its_trades_really_paid`
+  and `::test_two_to_one_reads_the_real_fee_before_the_estimate`;
+  `tests/test_the_replay_shard.py::test_each_replayed_trade_pays_its_own_minutes`.
+
+**SAW** — prompt 4's first 2:1 round (Oct 16, 2026, runs 38983575253 +
+38983584706): winner #81992A55, 119 trades, 54W/65L, +$12.32, a win +$0.73 and
+a loss -$0.41; most trades on CTK 15m mom15 (TP 1% / SL 0.2%): wins +0.72,
+losses -0.48 = 1.5 to 1.
+
+**TIMELINE**
+
+1. Oct 16, 2026 6:00pm — 2:1 after fees ships judged on `cost_of_tp` (3bafc87).
+2. The Backtest v2 list stores CTK 15m mom15 1%/0.2% at cost_of_tp 54.9
+   (rt 0.549%): +0.45 against -0.75, not listed, and no room may run it.
+3. The research replay, working its own rt, passes it; its trades, each
+   charged its minute's book, paid ~0.28% a round trip (1% win -> +$0.72).
+4. 16 winners of 8,898 rule sets, all built on such strategies: 1.8 to 1 in
+   money.
+5. After the fix — the backtest and the replay keep `rt_paid`, the list, the
+   rooms (watcher_candidates rows), Backtest a room and the research read it
+   first; tonight's daily update (Oct 17, 2026 1:27am) writes it on every
+   row, and prompt 4 is run again on it.
+
+**ROOT CAUSE** — "fees included" was taken from an estimate stored beside the
+strategy instead of from the fees its own trades were charged.
+
+**WHY IT WAS NOT CAUGHT** — `tests/test_two_to_one_after_fees.py` built rows
+with a `cost_of_tp` and asserted on that; nothing compared a winner's
+realised win and loss with the rule it was picked by, and the two shards'
+estimates were never compared with each other.
+
+**COST** — none: no room was changed by the first round's winners.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_two_to_one_after_fees.py::test_two_to_one_reads_the_real_fee_before_the_estimate`.
+
+---
+
 ## RCA-2026-10-16-E — "2:1" was asked on Oct 06 in dollars after fees and built as "target bigger than stop" on prices: 8,493,517 listed strategies paid less on a win than they lost on a loss
 
 **CEO**

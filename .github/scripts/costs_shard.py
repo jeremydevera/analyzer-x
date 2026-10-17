@@ -177,7 +177,8 @@ def held_hours(packed: dict) -> set[int]:
     at = packed.get("at")
     if at is None:
         return set()
-    return {int(x) - int(x) % 3600 for x, a in zip(t, at) if int(a) == bh.READ_AT_S}
+    return {int(x) - int(x) % 3600 for x, a in zip(t, at, strict=True)
+            if int(a) == bh.READ_AT_S}
 
 
 def held_days(packed: dict) -> set[int]:

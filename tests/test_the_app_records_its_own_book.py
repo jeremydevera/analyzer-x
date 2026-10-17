@@ -15,10 +15,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 from tradingagents import app_books as ab, book_history as bh, cost_store as cs

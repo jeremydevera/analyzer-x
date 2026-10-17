@@ -179,7 +179,7 @@ def test_an_hour_that_failed_to_download_keeps_its_old_readings(shard, monkeypat
     monkeypatch.setattr(shard, "upload", lambda path, tag: uploaded.append(
         shard.cs.from_bytes(path.read_bytes())) or True)
     assert shard.main() == 1, "a failed hour ends the run red"
-    hour7 = [(int(t), int(a)) for t, a in zip(uploaded[0]["t"], uploaded[0]["at"])
+    hour7 = [(int(t), int(a)) for t, a in zip(uploaded[0]["t"], uploaded[0]["at"], strict=True)
              if D1 + 7 * 3600 <= t < D1 + 8 * 3600]
     assert hour7 and {a for _t, a in hour7} == {0}
 

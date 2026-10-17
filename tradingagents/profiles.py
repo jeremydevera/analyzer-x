@@ -92,6 +92,14 @@ BUILTIN[1:1] = [
     {"id": "C7396286", "name": "#C7396286", "rules": _rule(2, 80.0, 30, judge=30)},
     {"id": "1D4274C1", "name": "#1D4274C1", "rules": _rule(3, 80.0, 30, judge=30)},
     {"id": "8F0C7926", "name": "#8F0C7926", "rules": _rule(4, 80.0, 30, judge=30)},
+    # 2:1 AFTER REAL FEES (operator, Oct 17, 2026: "Room for #BBE0A361"): the
+    # one rule set prompt 4 kept when one win, after the fees its trades
+    # really paid, must pay two losses — 65% wins, 30+ trades in 30 days, any
+    # TP, stop 1% or tighter, target 2% or wider. Found on BANANA 30m cx_veto
+    # 2.5% / 1%: 18 trades Jul 11 - Oct 11, 2026, 8W/10L, +$6.92, a win +$2.15
+    # against a loss -$1.03. The rooms' own 2:1 floor (watcher_policy min_pay).
+    {"id": "BBE0A361", "name": "#BBE0A361",
+     "rules": {**_rule(30, 65.0, 30), "tp_rule": "any", "max_sl": 1.0, "min_tp": 2.0}},
 ]
 
 

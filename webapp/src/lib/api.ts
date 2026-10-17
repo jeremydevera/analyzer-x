@@ -151,6 +151,9 @@ export const PROFILES: readonly { id: string; name: string; display_id?: string 
   { id: "C7396286", name: "#C7396286" },
   { id: "1D4274C1", name: "#1D4274C1" },
   { id: "8F0C7926", name: "#8F0C7926" },
+  // Oct 17, 2026: "Room for #BBE0A361" — the one rule set that pays 2:1
+  // after real fees (prompt 4, BANANA 30m: +$2.15 a win, -$1.03 a loss)
+  { id: "BBE0A361", name: "#BBE0A361" },
 ];
 
 /** How a room is PRINTED — the one place in the browser, as

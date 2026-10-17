@@ -1584,6 +1584,7 @@ tighter, raw, practice, $5 x 20x):
 | #C7396286 | on: last 2 days · off: DEMO 30 days | 80% | 30 inside the 2 days |
 | #1D4274C1 | on: last 3 days · off: DEMO 30 days | 80% | 30 inside the 3 days |
 | #8F0C7926 | on: last 4 days · off: DEMO 30 days | 80% | 30 inside the 4 days |
+| #BBE0A361 (Oct 17, 2026) | 30 days; any TP, stop 1% or tighter, target 2% or wider | 65% | 30 |
 | #DC57174E, #CC8DC54C, #B52662ED | retired, no tab | — | — |
 
 The four short-window rooms were added Oct 07, 2026 (see "Rooms that switch

@@ -197,3 +197,29 @@ def test_the_next_rounds_neighbours_keep_their_parents_ratio():
     nxt = rst.neighbours([_cfg(min_pay=1.5)], set())
     assert nxt and all(c.get("min_pay") == 1.5 for c in nxt)
     assert all("min_pay" not in c for c in rst.neighbours([_cfg()], set()))
+
+
+# ------------------------------------------------ the #BBE0A361 room (Oct 17, 2026)
+def test_the_room_for_bbe0a361_is_that_rule_set_exactly():
+    """Operator, Oct 17, 2026: "Room for #BBE0A361" - the one rule set prompt 4
+    kept at 2:1 after real fees (BANANA 30m cx_veto 2.5% / 1%: 18 trades,
+    8W/10L, +$6.92, a win +$2.15 vs a loss -$1.03). One room per rule set,
+    named by its id, practice only, Smart Watcher on, raw (STANDING SETUP)."""
+    from pathlib import Path
+
+    from tradingagents import forecast_rules as fr
+    from tradingagents import profiles
+    from tradingagents import room_strategies as rst
+
+    p = profiles.get("BBE0A361")
+    assert p and p["name"] == "#BBE0A361" and not profiles.retired("BBE0A361")
+    assert "BBE0A361" in profiles.shown()
+    r = p["rules"]
+    assert fr.rule_id(rst.cfg(30, 65.0, 30, "any", 1.0, 2.0)) == "BBE0A361"
+    assert fr.rule_id({**r, "coin_slices": fr.COIN_SLICES}) == "BBE0A361"
+    assert (r["window_days"], r["on_winrate"], r["off_winrate"], r["min_trades"],
+            r["tp_rule"], r["max_sl"], r["min_tp"]) == (30, 65.0, 65.0, 30, "any", 1.0, 2.0)
+    assert r["raw"] and not (r["max_new_per_day"] or r["max_slots"] or r["max_per_coin"])
+    assert "min_pay" not in r, "the rooms' own 2:1 after fees"
+    api = (Path(__file__).resolve().parents[1] / "webapp" / "src" / "lib" / "api.ts").read_text(encoding="utf-8")
+    assert '{ id: "BBE0A361", name: "#BBE0A361" }' in api, "a tab on the screen"

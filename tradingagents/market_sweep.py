@@ -2282,6 +2282,51 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
             "costs": "cached" if costs is not None else "fetched once"}
 
 
+def trades_for_id(row_id: str, coin: str, tf: str | None = None, *,
+                  store=None, base_margin: float = 5.0) -> dict:
+    """The trade log of the STORED ROW whose own settings make `row_id` —
+    the same `trades_for` a click on that row runs — for a strategy the
+    Backtest list does not show (operator, Oct 17, 2026: "What is the most
+    accurate fix for this", then "yes").
+
+    Since Oct 16, 2026 8:44pm the v2 list keeps only strategies whose win
+    pays two losses after fees (`backtest_report.index_keeps`), while every
+    pair file keeps the row (`store_keeps`), and `trades_for` reads its row,
+    window, fee, re-enter rule and order-book dates from the pair file, never
+    from the list. So nothing is inferred: the row is the one whose settings
+    hash to the id (`row_code`), searched in `coin`'s files on `tf`, or on
+    every timeframe when none is named. No such row is said, never guessed.
+    Measured on the 23 practice strategies the list hid that morning: every
+    row found, and 49 of their 60 practice trades close to their backtest."""
+    from tradingagents import backtest_report as br
+    from tradingagents import capacity
+
+    want = str(row_id or "").strip().lstrip("#").upper()
+    coin = str(coin or "").strip().upper().removesuffix("_USDT")
+    root = str(store.home) if store is not None else None
+    for f in ([tf] if tf else list(capacity.ALL_TFS)):
+        for r in pair_rows(coin, f, root):
+            try:
+                th, sl, tp = float(r.get("th") or 0), float(r["sl"]), float(r["tp"])
+                sizing = r.get("sizing") or "flat"
+                same = br.row_code(coin, f, r.get("signal"), th, sl, tp, sizing,
+                                   res=r.get("res")) == want
+            except (KeyError, TypeError, ValueError):
+                continue
+            if not same:
+                continue
+            got = trades_for(coin, f, signal=r["signal"], th=th, sl=sl, tp=tp,
+                             sizing=sizing, base_margin=base_margin, store=store)
+            return {**got, "found": True,
+                    "row": {"id": want, "coin": coin, "tf": f, "signal": r["signal"],
+                            "th": th, "sl": sl, "tp": tp, "sizing": sizing,
+                            "trades": r.get("trades"), "wins": r.get("wins"),
+                            "profit": r.get("profit"), "listed": br.index_keeps(r)}}
+    return {"found": False, "log": [],
+            "why": f"no stored {coin} row makes #{want} "
+                   f"({'on ' + tf if tf else 'on any timeframe'})"}
+
+
 # How many (coin, timeframe, signal, threshold) groups one days-window request
 # may re-measure. The signal computation is the cost -- ~1-2 s per group on this
 # machine for a heavy rule -- and the browser's proxy gives up at 30 s: a 50-row

@@ -172,6 +172,65 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-17-C — a check that checked nothing still moved its start point, so the next ordinary run would have skipped 60 practice trades for good (NEVER HAPPENED YET: no ordinary run since)
+
+**CEO**
+
+* The Oct 17, 2026 6:21am accuracy check compared none of its 60 practice
+  trades, yet it saved "start the next run after Oct 16, 2026 7:03pm" — so the
+  next ordinary run would have looked only at newer trades, and those 60
+  (Oct 10 - Oct 16, 2026) would never have been checked, with nothing saying
+  so.
+* Why: the start point moved to the newest trade the run had LOOKED AT,
+  whether or not it could check it, and it could only ever move forward.
+* What stops it now: the start point stops before the oldest trade a run
+  could not check, and moves back before one when a later run leaves it
+  unchecked; an id that no stored backtest makes is settled, so it cannot
+  hold the point back for ever. The strategies the Backtest list hides are now
+  read from their stored rows, so those 60 are checkable at all.
+
+**DEV**
+
+* `.claude/skills/practice_backtest_audit/scripts/audit.mjs` saved
+  `max(closed_ms)` over every trade of the report, the
+  "id not in Stored strategies" and "not checked" verdicts included, and only
+  when it was larger than the saved one.
+* Invariant broken: **a watermark only passes what was settled** — read
+  "settled" from the verdict, and let an unsettled trade pull it back.
+  `match.mjs` `nextWatermark` / `nextSaved`.
+* Guards: `tests/test_practice_backtest_audit.py::test_the_next_run_never_starts_past_a_trade_that_was_not_checked`
+  and `::test_a_saved_start_point_moves_back_for_a_trade_left_unchecked`.
+
+**SAW** — reading the audit while building the hidden-strategy fix the
+operator approved ("yes", Oct 17, 2026): `state.json` held
+`"last_closed": "Oct 16, 2026 7:03pm"`, `"ran_at": "Oct 17, 2026 6:21am"`.
+
+**TIMELINE**
+
+1. Oct 17, 2026 6:21am-7:35am — 85 practice trades read, 20 closed by the
+   move to Gate, 60 under 23 ids; 0 found (RCA-2026-10-17-B).
+2. 7:35am — the run saves `last_closed_ms` = Oct 16, 2026 7:03pm, the newest
+   of the 85.
+3. The next ordinary run would have started at Oct 16, 2026 7:04pm: the 60
+   would have left the check silently. None had run before this was found.
+4. Fixed the same evening with the hidden-strategy reading; the run over the
+   whole window since the move to Gate is what checks the 60.
+
+**ROOT CAUSE** — the watermark read "looked at" as "done".
+
+**WHY IT WAS NOT CAUGHT** — every earlier run found nearly every id, so
+"looked at" and "checked" were the same set; the state code was never given a
+run with unchecked trades, and no test held it.
+
+**COST** — none: found before an ordinary run used it.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_practice_backtest_audit.py::test_the_next_run_never_starts_past_a_trade_that_was_not_checked`,
+`::test_a_saved_start_point_moves_back_for_a_trade_left_unchecked`.
+
+---
+
 ## RCA-2026-10-17-B — the practice-against-backtest check said "Stored strategies did not answer within 3 minutes" for all 23 ids, when the page had answered in 10 seconds
 
 **CEO**

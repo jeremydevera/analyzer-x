@@ -4822,6 +4822,23 @@ def strategy_trades_v2(q: TradesQuery) -> dict:
                           store=_stores.V2)
 
 
+@app.get("/api/v2/strategies/trades-by-id")
+def strategy_trades_by_id_v2(row_id: str, coin: str, tf: str | None = None) -> dict:
+    """The trade log of a v2 strategy by its id, read from the STORED ROW that
+    makes that id — for one the Backtest list does not show (2:1 after fees,
+    Oct 16, 2026). Read only; the practice-against-backtest check asks it
+    (operator, Oct 17, 2026: "What is the most accurate fix for this"). The
+    same replay a click on the row runs (`market_sweep.trades_for_id`)."""
+    from tradingagents import capacity
+    from tradingagents import market_sweep as msw
+
+    if tf is not None and tf not in capacity.ALL_TFS:
+        raise HTTPException(400, f"timeframe {tf!r} is not one of {', '.join(capacity.ALL_TFS)}")
+    if not _stores.V2.candles.exists():
+        return {"found": False, "log": [], "why": _V2_EMPTY_WHY}
+    return msw.trades_for_id(row_id, coin, tf, store=_stores.V2)
+
+
 _PORTFOLIO_CACHE: dict = {}
 PORTFOLIO_TTL_S = 120
 

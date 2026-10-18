@@ -189,3 +189,70 @@ def test_the_apps_answer_for_an_id_is_read_even_when_it_names_the_room():
     audit = (MATCH.parent / "audit.mjs").read_text(encoding="utf-8")
     assert "m.idAnswer(t, id)" in audit or "idAnswer(t, id)" in audit
     assert "named.some((x) => x !== id)" not in audit
+
+
+def test_a_replayed_trade_log_reads_like_the_row_clicks_table():
+    """A strategy the list hides is read from its stored row's trade log
+    (/api/v2/strategies/trades-by-id): each trade becomes exactly what the
+    audit reads off the table a row click draws — opened = entry time, closed
+    = exit time, closed by = why, profit to the cent as fmtMoney prints it."""
+    log = [{"entry time": "Oct 16, 2026 4:45pm", "exit time": "Oct 16, 2026 7:03pm",
+            "held": "2h 18m", "side": "LONG", "why": "TP", "pnl $": 0.7712}]
+    got = _node(f"m.fromReplay({json.dumps(log)})")
+    assert got == [{"opened": "Oct 16, 2026 4:45pm", "closed": "Oct 16, 2026 7:03pm",
+                    "held": "2h 18m", "side": "LONG", "closed_by": "TP", "pnl": 0.77,
+                    "opened_ms": _node("m.parseWhen('Oct 16, 2026 4:45pm')"),
+                    "closed_ms": _node("m.parseWhen('Oct 16, 2026 7:03pm')")}]
+    # ...and the practice trade it was paired with comes out the way it did by hand
+    t = {"opened": "Oct 16, 2026 4:45pm", "closed": "Oct 16, 2026 7:03pm", "profit": 0.8}
+    assert _node(f"m.compare({json.dumps(t)}, m.fromReplay({json.dumps(log)})).verdict") == "close"
+
+
+def test_the_next_run_never_starts_past_a_trade_that_was_not_checked():
+    """Oct 17, 2026 6:21am checked none of its 60 trades and still saved
+    "Oct 16, 2026 7:03pm" as where the next run starts — so the next ordinary
+    run would have skipped all 60 for good. The saved point stops a minute
+    before the oldest trade that was not checked (the window keeps a trade
+    that closed at or after the saved point plus one minute)."""
+    oct = lambda d, h: _node(f"m.parseWhen('Oct {d:02d}, 2026 {h}:00am')")   # noqa: E731
+    trades = [{"closed_ms": oct(12, 1), "verdict": "close"},
+              {"closed_ms": oct(13, 1), "verdict": "id not in Stored strategies"},
+              {"closed_ms": oct(14, 1), "verdict": "not checked (its trade list did not load)"},
+              {"closed_ms": oct(15, 1), "verdict": "closed by the move to Gate, not by its strategy"}]
+    assert _node(f"m.nextWatermark({json.dumps(trades)})") == oct(13, 1) - 60_000
+    checked = [t for t in trades if not t["verdict"].startswith(("id not", "not checked"))]
+    assert _node(f"m.nextWatermark({json.dumps(checked)})") == oct(15, 1)
+    assert _node("m.nextWatermark([])") is None
+    # an id NO stored row makes is settled (it will never be found); only a
+    # list or a replay that did not answer keeps the trade for the next run
+    gone = [{"closed_ms": oct(12, 1), "verdict": "no stored backtest makes this id"}]
+    assert _node(f"m.nextWatermark({json.dumps(gone)})") == oct(12, 1)
+
+
+def test_the_audit_reads_a_hidden_strategy_through_its_stored_row():
+    audit = (MATCH.parent / "audit.mjs").read_text(encoding="utf-8")
+    assert "/api/v2/strategies/trades-by-id?" in audit
+    # straight to the back end: the page's /api proxy gives up at 30 s
+    assert "${API}/api/v2/strategies/trades-by-id?" in audit and 'arg("api", "http://localhost:8787")' in audit
+    assert "fromReplay(" in audit and "nextSaved(st.last_closed_ms ?? null, report.trades)" in audit
+    # every such line says where it came from, and the summary counts them apart
+    assert "compared from its stored backtest" in audit and "counts_not_on_list" in audit
+
+
+def test_a_saved_start_point_moves_back_for_a_trade_left_unchecked():
+    """The saved point is where the next ordinary run starts. Oct 17, 2026's
+    run pushed it to Oct 16, 2026 7:03pm over 60 trades it never checked;
+    moving only forward, nothing could ever bring them back. A run that leaves
+    a trade unchecked moves it back to before that trade; a run that checked
+    everything only moves it forward (an old day run again never rewinds it)."""
+    oct = lambda d, h: _node(f"m.parseWhen('Oct {d:02d}, 2026 {h}:00pm')")   # noqa: E731
+    left = [{"closed_ms": oct(12, 1), "verdict": "id not in Stored strategies"},
+            {"closed_ms": oct(14, 1), "verdict": "close"}]
+    assert _node(f"m.nextSaved({oct(16, 7)}, {json.dumps(left)})") == oct(12, 1) - 60_000
+    done = [{"closed_ms": oct(14, 1), "verdict": "close"}]
+    assert _node(f"m.nextSaved({oct(16, 7)}, {json.dumps(done)})") == oct(16, 7)
+    assert _node(f"m.nextSaved({oct(10, 1)}, {json.dumps(done)})") == oct(14, 1)
+    assert _node(f"m.nextSaved(null, {json.dumps(done)})") == oct(14, 1)
+    assert _node("m.nextSaved(5, [])") == 5
+    audit = (MATCH.parent / "audit.mjs").read_text(encoding="utf-8")
+    assert "nextSaved(st.last_closed_ms ?? null, report.trades)" in audit

@@ -104,8 +104,19 @@ change them there, never inside `audit.mjs`.
   on"); reading every other #name as a leftover marked all 23 ids "did not
   answer within 3 minutes" (RCA-2026-10-17-B). `match.mjs` `idAnswer` decides.
 * **Since Oct 16, 2026 8:44pm the Backtest v2 list keeps only strategies whose
-  win pays two losses after fees**, so a practice strategy outside that rule
-  has no row to compare: its line says so, it is not a timeout.
+  win pays two losses after fees**, but every stored row stays in its file. A
+  strategy the list does not show is read from **its stored row**: the back
+  end finds the row whose own settings make the id and runs the replay a click
+  on it would run (`GET /api/v2/strategies/trades-by-id`, read only, straight
+  to port 8787 — the page's proxy gives up at 30 s). Those lines say
+  "not on the Backtest list — compared from its stored backtest", and the
+  summary counts them apart (`counts_not_on_list`). Measured before it was
+  built (Oct 17, 2026): all 23 rows found, 49 of their 60 trades close. An id
+  no stored row makes reads "no stored backtest makes this id".
+* **The saved start point never passes a trade that was not checked**, and a
+  run that leaves one unchecked moves it back before it (`match.mjs`
+  `nextWatermark` / `nextSaved`): the Oct 17, 2026 6:21am run had saved
+  "Oct 16, 2026 7:03pm" over 60 trades it never checked (RCA-2026-10-17-C).
 * **The site may be restarted by another session mid-run.** A trade list
   whose request died with it is asked once more.
 

@@ -145,3 +145,52 @@ export function idAnswer(text, id) {
   const named = [...t.matchAll(/#([A-Z0-9]{8})/g)].map((x) => x[1]);
   return named.includes(id) ? t : null;
 }
+
+/** A trade log from /api/v2/strategies/trades-by-id (`market_sweep.
+ *  trades_for`, the replay a row click runs) in the shape the audit reads off
+ *  the table that click draws: opened = entry time, closed = exit time,
+ *  closed by = why, profit to the cent as the table's fmtMoney prints it
+ *  (Oct 17, 2026: a strategy the list hides is read from its stored row). */
+export function fromReplay(log) {
+  return (log || []).map((t) => ({
+    opened: t["entry time"], closed: t["exit time"], held: t.held ?? "—",
+    side: t.side, closed_by: t.why,
+    pnl: t["pnl $"] == null ? null : Number(Number(t["pnl $"]).toFixed(2)),
+    opened_ms: parseWhen(t["entry time"]), closed_ms: parseWhen(t["exit time"]),
+  }));
+}
+
+/** A verdict that did not check the trade: it must be looked at again. */
+const UNCHECKED = /^(id not in Stored strategies|not checked)/;
+
+/** Where the next ordinary run starts (its window keeps a trade that closed at
+ *  or after this plus one minute): the newest trade this run settled, but
+ *  never past a trade it could not check. Oct 17, 2026 6:21am checked none of
+ *  its 60 trades and saved "Oct 16, 2026 7:03pm", which would have skipped all
+ *  60 for good. Null when there is nothing to save. */
+export function nextWatermark(trades) {
+  let settled = null;
+  let open = null;
+  for (const t of trades || []) {
+    const c = t.closed_ms;
+    if (c == null) continue;
+    if (UNCHECKED.test(String(t.verdict || ""))) open = open == null ? c : Math.min(open, c);
+    else settled = settled == null ? c : Math.max(settled, c);
+  }
+  if (open == null) return settled;
+  const before = open - 60_000;
+  return settled == null ? before : Math.min(settled, before);
+}
+
+/** The start point to SAVE after a run, from the one saved before it: back to
+ *  just before any trade this run left unchecked, else forward to the newest
+ *  it settled — never backward for a run that checked everything (an old day
+ *  run again). Oct 17, 2026's run had pushed it over 60 unchecked trades, and
+ *  a point that only moves forward could never bring them back. */
+export function nextSaved(prev, trades) {
+  const w = nextWatermark(trades);
+  if (w == null) return prev ?? null;
+  if (prev == null) return w;
+  const pending = (trades || []).some((t) => t.closed_ms != null && UNCHECKED.test(String(t.verdict || "")));
+  return pending ? Math.min(prev, w) : Math.max(prev, w);
+}

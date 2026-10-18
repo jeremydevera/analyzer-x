@@ -6,7 +6,7 @@ import { chromium } from "playwright-core";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { compare, fmtWhen, idAnswer, money, parseWhen, split, tradeKey } from "./match.mjs";
+import { compare, fmtWhen, fromReplay, idAnswer, money, nextSaved, parseWhen, split, tradeKey } from "./match.mjs";
 
 const argv = process.argv.slice(2);
 const arg = (name, def) => {
@@ -16,6 +16,9 @@ const arg = (name, def) => {
 const flag = (name) => argv.includes(`--${name}`);
 
 const BASE = arg("base", "http://localhost:8503");
+// the back end itself for the stored-backtest replay: the page's /api proxy
+// gives up at 30 s, and one replay measured 12-26 s (Oct 17, 2026)
+const API = arg("api", "http://localhost:8787");
 const CHROME = arg("chrome", "C:/Program Files/Google/Chrome/Application/chrome.exe");
 const OPEN_TOL_MIN = Number(arg("open-tolerance", "10"));
 const HOME = join(homedir(), ".tradingagents", "practice_backtest_audit");
@@ -120,8 +123,36 @@ async function collect(page, since, until) {
   return { trades, examined };
 }
 
+// ------------------------------------- a strategy the Backtest list hides
+// NOT ON THE LIST IS NOT "NOT MEASURED" (operator, Oct 17, 2026: "What is the
+// most accurate fix for this", then "yes"). Since Oct 16, 2026 8:44pm the list
+// keeps only strategies whose win pays two losses after fees, but every stored
+// row stays in its file and a row's trade log is built from the file: the
+// server finds the row whose own settings make the id and runs the replay a
+// click on it would run (/api/v2/strategies/trades-by-id, read only).
+const TF_OF_KEY = /_(15m|30m|1h|4h|1d)(?:_|$)/;
+async function storedLog(id, sample) {
+  const coin = String(sample?.coin || "").trim();
+  if (!coin) return { why: "its coin is not on the practice row" };
+  const tf = TF_OF_KEY.exec(String(sample?.strategy || ""))?.[1];
+  const q = new URLSearchParams({ row_id: id, coin, ...(tf ? { tf } : {}) });
+  try {
+    const r = await fetch(`${API}/api/v2/strategies/trades-by-id?${q}`,
+                          { signal: AbortSignal.timeout(300_000) });
+    if (!r.ok) return { why: `its stored backtest answered HTTP ${r.status}` };
+    const d = await r.json();
+    // no stored row makes the id: settled, never asked again by the next run
+    if (!d.found) return { why: d.why || "no stored row makes this id", none: true };
+    // a replay that could not run says why (no candles, ...): not checked
+    if (!(d.log || []).length && d.why) return { why: d.why };
+    return { log: fromReplay(d.log), row: d.row };
+  } catch (e) {
+    return { why: `its stored backtest did not answer (${String(e?.message || e).slice(0, 120)})` };
+  }
+}
+
 // --------------------------------------------- steps 4-11: Stored strategies
-async function lookup(page, id) {
+async function lookup(page, id, sample) {
   const opener = page.locator('button[title^="every filter"]').first();
   await opener.waitFor({ timeout: 120_000 });
   await opener.click();
@@ -164,7 +195,12 @@ async function lookup(page, id) {
     return null;
   }, 180_000);
   if (!res) return { found: false, why: "Stored strategies did not answer within 3 minutes" };
-  if (res.why) return { found: false, why: res.why.replace(/\s+/g, " ").slice(0, 300) };
+  if (res.why) {
+    const listSaid = res.why.replace(/\s+/g, " ").slice(0, 300);
+    const direct = await storedLog(id, sample);
+    if (direct.log) return { found: true, log: direct.log, hidden: listSaid, row: direct.row };
+    return { found: false, none: !!direct.none, why: `${listSaid} — and ${direct.why}` };
+  }
   await res.row.click();
   const log = page.locator("table", { hasText: "closed by" }).filter({ hasText: "pnl $" }).last();
   const loaded = async () => (await log.count()) && (await log.locator("tbody tr").count()) > 0;
@@ -231,15 +267,23 @@ try {
   }
   for (const [n, id] of ids.entries()) {
     try {
-      const got = await lookup(page, id);
+      const got = await lookup(page, id, compared.find((x) => x.strategy_id === id));
       report.ids[id] = { found: got.found, why: got.why || "", trades: got.log ? got.log.length : null,
+                         ...(got.hidden ? { not_on_list: got.hidden, row: got.row } : {}),
                          ...(got.screenshot ? { screenshot: got.screenshot } : {}) };
       console.log(`[audit] ${n + 1}/${ids.length} #${id}: ${!got.found ? `no result: ${got.why}`
-        : got.log ? `${got.log.length} backtest trade(s)` : `NOT CHECKED: ${got.why}`}`);
+        : got.log ? `${got.log.length} backtest trade(s)${got.hidden ? " (not on the list: read from its stored backtest)" : ""}`
+          : `NOT CHECKED: ${got.why}`}`);
       for (const t of compared.filter((x) => x.strategy_id === id)) {
-        const r = !got.found ? { verdict: "id not in Stored strategies", note: got.why }
+        const r = !got.found ? { verdict: got.none ? "no stored backtest makes this id" : "id not in Stored strategies",
+                                 note: got.why }
           : got.log ? compare(t, got.log, OPEN_TOL_MIN)
             : { verdict: "not checked (its trade list did not load)", note: got.why };
+        if (got.hidden && got.log) {
+          // every such line says where its backtest came from
+          r.source = "stored backtest";
+          r.note = `not on the Backtest list — compared from its stored backtest${r.note ? `; ${r.note}` : ""}`;
+        }
         report.trades.push({ ...t, ...r });
       }
     } catch (e) {
@@ -259,28 +303,37 @@ try {
 
 // ---------------------------------------------------------------- outputs
 const counts = {};
-for (const t of report.trades) counts[t.verdict] = (counts[t.verdict] || 0) + 1;
+// the strategies the list hides, counted apart, so the two can be compared
+const counts_not_on_list = {};
+for (const t of report.trades) {
+  counts[t.verdict] = (counts[t.verdict] || 0) + 1;
+  if (t.source === "stored backtest") counts_not_on_list[t.verdict] = (counts_not_on_list[t.verdict] || 0) + 1;
+}
 report.counts = counts;
+report.counts_not_on_list = counts_not_on_list;
 report.finished = fmtWhen(Date.now());
 writeFileSync(`${base}.json`, JSON.stringify(report, null, 2));
 const cols = ["room", "trade_id", "strategy_id", "strategy", "coin", "side", "opened", "closed", "held",
               "profit", "backtest_opened", "backtest_closed", "backtest_held", "backtest_profit",
-              "opened_gap_min", "closed_gap_min", "difference", "verdict", "note"];
+              "opened_gap_min", "closed_gap_min", "difference", "verdict", "source", "note"];
 const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 const lines = [cols.join(",")].concat(report.trades.map((t) => [
   t.room, t.trade_id, t.strategy_id, t.strategy, t.coin, t.side, t.opened, t.closed, t.held, t.profit,
   t.backtest?.opened, t.backtest?.closed, t.backtest?.held, t.backtest?.pnl,
-  t.opened_gap_min, t.closed_gap_min, t.difference, t.verdict, t.note,
+  t.opened_gap_min, t.closed_gap_min, t.difference, t.verdict, t.source || "list", t.note,
 ].map(q).join(",")));
 writeFileSync(`${base}.csv`, lines.join("\n") + "\n");
 
-const newest = report.trades.reduce((m, t) => Math.max(m, t.closed_ms || 0), 0);
+// never past a trade this run could not check, and back before one it left
+// unchecked (match.mjs nextWatermark / nextSaved)
 const st = readState();
-if (newest && (!st.last_closed_ms || newest > st.last_closed_ms)) {
+const newest = nextSaved(st.last_closed_ms ?? null, report.trades);
+if (newest != null && newest !== st.last_closed_ms) {
   writeFileSync(STATE, JSON.stringify({ last_closed_ms: newest, last_closed: fmtWhen(newest),
                                         ran_at: fmtWhen(started) }, null, 2));
 }
 const missing = Object.entries(report.ids).filter(([, v]) => v.found === false);
 console.log(`[audit] verdicts: ${JSON.stringify(counts)}`);
+console.log(`[audit] of them, strategies not on the Backtest list (compared from their stored backtests): ${JSON.stringify(counts_not_on_list)}`);
 console.log(`[audit] ids with no result: ${missing.length}${missing.length ? ` (${missing.map(([k]) => k).join(", ")})` : ""}`);
 console.log(`[audit] written: ${base}.json and .csv`);

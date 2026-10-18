@@ -99,6 +99,13 @@ change them there, never inside `audit.mjs`.
   is the loading line, not a no-result. The only no-result answers are the
   warning paragraphs Stored strategies draws once an id search has finished
   with no row.
+* **An answer is this id's when it names this id** (Oct 17, 2026). The app's
+  explanation for a missing id also names the ROOM ("#55D32617 switched it
+  on"); reading every other #name as a leftover marked all 23 ids "did not
+  answer within 3 minutes" (RCA-2026-10-17-B). `match.mjs` `idAnswer` decides.
+* **Since Oct 16, 2026 8:44pm the Backtest v2 list keeps only strategies whose
+  win pays two losses after fees**, so a practice strategy outside that rule
+  has no row to compare: its line says so, it is not a timeout.
 * **The site may be restarted by another session mid-run.** A trade list
   whose request died with it is asked once more.
 

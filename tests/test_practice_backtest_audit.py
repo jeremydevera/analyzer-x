@@ -168,3 +168,24 @@ def test_the_audit_runs_these_rules_and_keeps_no_copy_of_its_own():
     for name in ("compare", "verdict", "split", "parseWhen"):
         assert not re.search(rf"\bfunction {name}\s*\(", src), \
             f"audit.mjs defines its own {name}()"
+
+
+def test_the_apps_answer_for_an_id_is_read_even_when_it_names_the_room():
+    """Oct 17, 2026 6:21am: all 23 ids came back "Stored strategies did not
+    answer within 3 minutes". The page HAD answered, inside 10 s: "#L8XAJAWT
+    is FORM 15m lrslope, TP 1% / SL 0.8%: #55D32617 switched it on ... this
+    list shows only strategies whose win pays at least two losses after fees".
+    The script took any OTHER 8-character #name in that sentence for the
+    previous search's leftover — and a room's id (#55D32617) is one. An answer
+    is this id's when it names this id; only one that does not is stale."""
+    now = ("#L8XAJAWT is FORM 15m lrslope, TP 1% / SL 0.8%: #55D32617 switched it on while "
+           "the app traded on Gate (last change Oct 16, 2026 6:51pm); this list shows only "
+           "strategies whose win pays at least two losses after fees")
+    stale = "#82LGV9W9 is GPS 15m tsi: #55D32617 switched it on while the app traded on Gate"
+    assert _node(f"m.idAnswer({json.dumps(now)}, 'L8XAJAWT')") == now
+    assert _node(f"m.idAnswer({json.dumps(stale)}, 'L8XAJAWT')") is None
+    assert _node("m.idAnswer('no row #L8XAJAWT in the store. An id names one exact combination', "
+                 "'L8XAJAWT')").startswith("no row #L8XAJAWT")
+    audit = (MATCH.parent / "audit.mjs").read_text(encoding="utf-8")
+    assert "m.idAnswer(t, id)" in audit or "idAnswer(t, id)" in audit
+    assert "named.some((x) => x !== id)" not in audit

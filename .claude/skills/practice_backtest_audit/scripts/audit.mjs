@@ -6,7 +6,7 @@ import { chromium } from "playwright-core";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { compare, fmtWhen, money, parseWhen, split, tradeKey } from "./match.mjs";
+import { compare, fmtWhen, idAnswer, money, parseWhen, split, tradeKey } from "./match.mjs";
 
 const argv = process.argv.slice(2);
 const arg = (name, def) => {
@@ -155,10 +155,11 @@ async function lookup(page, id) {
     // the app's explanation of that id (StrategiesPanel, `rowIdWhy`)
     const warn = page.locator("p.pt-2.text-warning-600").first();
     if ((await warn.count()) && (await warn.isVisible())) {
-      const t = (await warn.innerText()).replace(/\s+/g, " ").trim();
-      const named = [...t.matchAll(/#([A-Z0-9]{8})/g)].map((m) => m[1]);
-      if (named.some((x) => x !== id)) return null;   // the previous id's answer
-      return { why: t };
+      const t = await warn.innerText();
+      // this id's answer when it names this id; the room it names is not a
+      // leftover (match.mjs idAnswer, Oct 17, 2026)
+      const why = idAnswer(t, id);
+      return why ? { why } : null;
     }
     return null;
   }, 180_000);

@@ -172,6 +172,71 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-17-B — the practice-against-backtest check said "Stored strategies did not answer within 3 minutes" for all 23 ids, when the page had answered in 10 seconds
+
+**CEO**
+
+* This morning's accuracy check (Oct 17, 2026 6:21am-7:35am) gave no
+  accuracy at all: every one of the 23 strategies it looked up was marked
+  "did not answer", so the 60 practice trades behind them were never checked.
+* Why: the Backtest list had answered — "this strategy is not on the list,
+  because its win does not pay two losses after fees" — but that sentence also
+  names the room that ran it (#55D32617), and the check took the room's name
+  for a leftover from the previous search, waited, and gave up.
+* What stops it now: the check reads the list's answer whenever it names the
+  strategy searched, whatever else it names; a test holds it with the real
+  sentence. It still cannot measure these 23: since Oct 16, 2026 8:44pm the
+  Backtest v2 list shows only strategies whose win pays two losses after fees,
+  and these do not.
+
+**DEV**
+
+* `.claude/skills/practice_backtest_audit/scripts/audit.mjs` `lookup()`
+  rejected the warning paragraph when `named.some((x) => x !== id)`; the
+  explanation (`missing_row.explain` → StrategiesPanel `rowIdWhy`) names the
+  room's id, an 8-character `#name` too, so every answer was "stale" until the
+  180 s wait ran out.
+* Invariant broken: **an answer is this id's when it names this id** — never
+  "when it names nothing else". Now `match.mjs` `idAnswer(text, id)`, tested.
+* Guard: `tests/test_practice_backtest_audit.py::test_the_apps_answer_for_an_id_is_read_even_when_it_names_the_room`.
+
+**SAW** — the operator, Oct 17, 2026: *"why did it timed out what is the
+RCA"*, after the 6:21am run's 23 ids all read "Stored strategies did not
+answer within 3 minutes".
+
+**TIMELINE**
+
+1. Oct 16, 2026 8:44pm — 99ed623 (2:1 after fees on the fee each strategy
+   really paid) goes live; the Backtest v2 list keeps only those rows, and the
+   rebuild of its file finishes at 6:46am, its indexes at 6:58am, Oct 17.
+2. Oct 17, 2026 6:21am — the audit starts: 85 practice trades since Oct 10,
+   2026 3:59am, 20 closed by the move to Gate, 60 under 23 strategy ids.
+3. Each search: the list answers "#L8XAJAWT is FORM 15m lrslope, TP 1% / SL
+   0.8%: #55D32617 switched it on ... this list shows only strategies whose
+   win pays at least two losses after fees" (measured afterwards: within 10 s
+   of Apply); the script reads #55D32617 as a leftover and waits 180 s.
+4. 7:35am — finished: 23 ids, 0 found, every one "did not answer".
+5. Fixed and re-measured the same evening: the real sentence is now read as
+   #L8XAJAWT's answer; the 9 audit tests pass.
+
+**ROOT CAUSE** — the leftover check looked for "any other id in the
+sentence", and a room's id is shaped exactly like a strategy's.
+
+**WHY IT WAS NOT CAUGHT** — until Oct 16, 2026 almost every practice id WAS
+on the list, so the explanation paragraph (the only text naming a room) was
+rarely drawn; the earlier runs' few misses happened to be the plain "no row
+#ID in the store" sentence, which names only the id. No test fed the script
+the app's explanation sentence.
+
+**COST** — none in money; one morning's accuracy check measured nothing, and
+its 23 lines said the list was slow when it was not.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_practice_backtest_audit.py::test_the_apps_answer_for_an_id_is_read_even_when_it_names_the_room`.
+
+---
+
 ## RCA-2026-10-17-A — the "1.5:1 after fees" search ran at 2:1 on GitHub, because the round file dropped each rule set's ratio
 
 **CEO**

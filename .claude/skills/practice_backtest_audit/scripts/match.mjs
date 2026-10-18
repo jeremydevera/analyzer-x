@@ -132,3 +132,16 @@ export function compare(t, log, openTolMin = 10) {
            opened_gap_min: Math.round(best.dO / 60000), closed_gap_min: Math.round(best.dC / 60000),
            difference: t.profit != null && best.b.pnl != null ? +(best.b.pnl - t.profit).toFixed(2) : null };
 }
+
+/** Stored strategies' own answer for an id search that found no row — the
+ *  text of its warning paragraph when that answer is about `id`, else null
+ *  (still the previous search's). Oct 17, 2026: the app's explanation names
+ *  the ROOM too ("#L8XAJAWT is FORM 15m lrslope ... #55D32617 switched it
+ *  on"), and treating every other #name as a leftover made all 23 ids wait 3
+ *  minutes and read "did not answer". It is this id's answer when it names
+ *  this id. */
+export function idAnswer(text, id) {
+  const t = String(text || "").replace(/\s+/g, " ").trim();
+  const named = [...t.matchAll(/#([A-Z0-9]{8})/g)].map((x) => x[1]);
+  return named.includes(id) ? t : null;
+}

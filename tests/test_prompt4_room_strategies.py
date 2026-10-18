@@ -211,29 +211,31 @@ def test_a_rows_trades_are_exactly_the_ones_its_row_counts():
         rst.trades("NOSUCHID", lo, hi)
 
 
-def test_a_trade_counts_only_when_it_opened_and_closed_inside_the_dates():
-    """Operator, Oct 08, 2026, on "last 1 day": "i want to see the trades for
-    past 1 day only because currently i see all past trades". The list held
-    every trade that CLOSED in the day, so one opened Oct 05, 2026 7:30pm
-    showed in a day starting Oct 07, 2026 7:58pm. A row and its list now
-    count a trade only when it opened AND closed inside the dates."""
+def test_a_trade_counts_on_the_day_it_closed():
+    """Operator, Oct 17, 2026, asked for the most accurate way after #C1133C2A
+    showed +2.35 on its calendar's Oct 11 and nothing in an Oct 11-only
+    backtest: "Yes, count by close day". A trade's money lands when it
+    closes — the Auto Trade calendar and the practice balance count it so —
+    and "opened AND closed inside" (Oct 08, 2026: "i want to see the trades for
+    past 1 day only") lost every trade straddling an edge: BANANA 30m opened
+    Oct 10, 2026 10:00am, closed Oct 11, 2026 7:30pm, +2.35. A row, its list
+    and its calendar count a trade on the day it CLOSED."""
     def at(d, h, mi=0):
         return int(dt.datetime(2026, 10, d, h, mi).timestamp() * 1000)
     c = rst.cfg(15, 70, 40, "1.5x", 2.0, 2.0)
-    t = [[at(5, 19, 30), at(7, 20), -2.24],        # opened two days before: out
-         [at(7, 19), at(7, 20), 1.75],             # opened a minute before the day: out
-         [at(7, 20, 0), at(7, 20, 45), -1.38],     # opened as the day starts: in
+    t = [[at(5, 19, 30), at(7, 20), -2.24],        # opened two days before, closed as the day starts: in
+         [at(7, 19), at(7, 20), 1.75],             # opened a minute before the day: in
+         [at(7, 20, 0), at(7, 20, 45), -1.38],     # in
          [at(8, 10), at(8, 11), 1.69],             # in
-         [at(8, 19, 30), at(8, 20, 30), 2.0]]      # still open when the day ends: out
+         [at(8, 19, 30), at(8, 20, 30), 2.0]]      # closed after the day ends: out
     t.sort(key=lambda r: r[1])
     rst.keep([{"id": rst.sid(c), "cfg": c, "words": fr.words(c), "deployable": True, "deploy_why": "",
                "p4": rst.measure(t, END, REAL), "trades": t}], "r1", "RUN", now=1000)
     lo, hi = at(7, 20) / 1000, at(8, 20) / 1000
     row = rst.table(lo, hi, reality=REAL)["rows"][0]
     got = rst.trades(rst.sid(c), lo, hi)
-    assert (row["trades"], row["wins"], row["profit"]) == (got["trades"], got["wins"], got["profit"]) \
-        == (2, 1, 0.31)
-    assert [r["opened"] for r in got["rows"]] == [at(7, 20), at(8, 10)]
+    assert (row["trades"], row["wins"], row["profit"]) == (got["trades"], got["wins"], got["profit"])         == (4, 2, -0.18)
+    assert sorted(r["closed"] for r in got["rows"]) == [at(7, 20), at(7, 20), at(7, 20, 45), at(8, 11)]
 
 
 def test_the_trades_route_pages_ten_and_names_a_missing_id():
@@ -407,7 +409,7 @@ def test_the_id_opens_a_pop_up_with_its_trades_and_export_csv():
     # every date as the screen prints it, each cell quoted: "Oct 07, 2026 8:00pm" holds a comma
     assert "fmtWhenMs(t.opened), fmtWhenMs(t.closed)" in trades
     assert """const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;""" in trades
-    assert 'q("TOTAL PROFIT")' in trades and "that opened and closed {days ? `from" in trades
+    assert 'q("TOTAL PROFIT")' in trades and "that closed {days ? `from" in trades
     # the dates' own win rate in the pop-up, and as the CSV's LAST row (Oct 08,
     # 2026: "when i export the csv, show me the winrate for last row")
     # ...and the worst losing run beside it (Oct 16, 2026, CLAUDE.md item 6)

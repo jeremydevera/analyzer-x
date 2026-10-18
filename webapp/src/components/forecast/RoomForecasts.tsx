@@ -1188,7 +1188,7 @@ export function RoomStrategiesSection() {
         Every winner prompt 4 found and kept, never deleted, and re-tested every day on GitHub so its numbers reach
         last night. A winner made money after the reality check in every complete month and in its newest 15 days.
         The numbers below are measured over exactly the dates you pick, or the last N days you type — a trade counts
-        when it opened and closed inside them. Nothing changes until you press Apply. Click an id to open its trades,
+        on the day it closed, as the calendar counts it. Nothing changes until you press Apply. Click an id to open its trades,
         with Export CSV.
       </p>
       {/* THE DAILY RE-TEST (operator, Oct 07, 2026: "it should be updated
@@ -1309,7 +1309,7 @@ export function RoomStrategiesSection() {
 /** The most trades one CSV export reads (api.py TRADES_EXPORT_MAX). */
 const EXPORT_MAX = 100_000;
 
-/** One room strategy's trades that opened and closed in the dates its row was
+/** One room strategy's trades that CLOSED in the dates its row was
  *  measured over — the same trades the row counts — oldest first, with the
  *  running total and the TOTAL PROFIT for the dates; ten a page, paged by the
  *  server. Export CSV writes every one of them, each date as the screen
@@ -1386,11 +1386,11 @@ function StrategyTrades({ id, words, from_s, to_s, days }: { id: string; words: 
       <p className="mt-1 text-theme-xs text-gray-600 dark:text-gray-300">{words || d.words}</p>
       <p className="mt-2 text-theme-sm font-semibold text-gray-800 dark:text-white/90">
         TOTAL PROFIT <span className={tone(d.profit)}>{fmtMoney(d.profit)}</span>
-        <span className="font-normal text-gray-500 dark:text-gray-400"> over {d.trades.toLocaleString()} trade{d.trades === 1 ? "" : "s"} ({d.wins.toLocaleString()} won, {d.losses.toLocaleString()} lost, win rate {pct(d.winrate)}{d.worst_run_trades == null ? "" : `, worst losing run ${d.worst_run_trades ? `${fmtMoney(d.worst_run)} over ${d.worst_run_trades} trade${d.worst_run_trades === 1 ? "" : "s"}` : "none"}`}) that opened and closed {days ? `from ${dayKey(days.from)} through ${dayKey(days.to)}` : `between ${fmtWhen(d.from)} and ${fmtWhen(d.to)}`} · ${d.margin} a trade at {d.leverage}x</span>
+        <span className="font-normal text-gray-500 dark:text-gray-400"> over {d.trades.toLocaleString()} trade{d.trades === 1 ? "" : "s"} ({d.wins.toLocaleString()} won, {d.losses.toLocaleString()} lost, win rate {pct(d.winrate)}{d.worst_run_trades == null ? "" : `, worst losing run ${d.worst_run_trades ? `${fmtMoney(d.worst_run)} over ${d.worst_run_trades} trade${d.worst_run_trades === 1 ? "" : "s"}` : "none"}`}) that closed {days ? `from ${dayKey(days.from)} through ${dayKey(days.to)}` : `between ${fmtWhen(d.from)} and ${fmtWhen(d.to)}`} · ${d.margin} a trade at {d.leverage}x</span>
       </p>
       {d.trades === 0 ? (
         <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-          No trade of #{d.id} opened and closed in these dates.{d.first != null && d.last != null
+          No trade of #{d.id} closed in these dates.{d.first != null && d.last != null
             ? ` Its ${d.saved.toLocaleString()} saved trades closed ${fmtWhenMs(d.first)} to ${fmtWhenMs(d.last)}.` : " It has no saved trades."}
         </p>
       ) : (

@@ -681,6 +681,20 @@ def claude_skills_list() -> dict:
     return claude_skills.listing()
 
 
+@app.get("/api/claude-skills/{name}")
+def claude_skill_doc(name: str) -> dict:
+    """One skill's own text, for its tile (operator, Oct 17, 2026: "in claude
+    skills when i click the tile show me the md on how claude do that skill
+    i want detailed"): the whole SKILL.md, the other notes in its folder and
+    the files it works with. 404 for a name that is not on the page."""
+    from tradingagents import claude_skills
+
+    got = claude_skills.skill_doc(name)
+    if got is None:
+        raise HTTPException(404, f"no skill named {name!r} on the Claude skills tab")
+    return got
+
+
 # -------------------------------------------------------------- strategies
 @app.get("/api/strategies")
 def strategies(coin: str | None = None, tf: str | None = None,
@@ -1575,7 +1589,7 @@ def room_strategy_trades_route(id: str, from_s: float | None = None, to_s: float
                                page: int = 1, per: int = 0, from_day: str = "",
                                to_day: str = "") -> dict:
     """Forecast -> Room strategies -> an id clicked: that rule set's trades
-    that opened and closed in the chosen dates — the same trades its row
+    that closed in the chosen dates — the same trades its row
     counts — oldest first with the running total and the TOTAL for the dates,
     ten a page (operator, Oct 07, 2026: "if i input 3 days show me the room
     strat and its trade for past 3 days"). `per` is the pop-up's CSV export

@@ -561,7 +561,7 @@ _TABLE_KEPT = 8
 
 def _measured(from_s: float, to_s: float, reality: dict) -> list[dict]:
     """Every kept winner re-measured over [from_s, to_s], unfiltered — over
-    the trades that OPENED AND CLOSED inside those dates (`inside`).
+    the trades that CLOSED inside those dates (`inside`, Oct 17, 2026).
 
     NO WORST MONTH, MONEY NEEDED OR MOST OPEN (operator, Oct 08, 2026: "in
     forecast room strategies i dont need worst month no need to compute it,
@@ -713,13 +713,16 @@ def _worst_run(p) -> tuple[float, int]:
 
 
 def inside(t, lo_ms: float, hi_ms: float):
-    """Which trades belong to the dates [lo_ms, hi_ms]: those that OPENED and
-    CLOSED inside them (operator, Oct 08, 2026, on "last 1 day": "i want to
-    see the trades for past 1 day only because currently i see all past
-    trades" — the list held every trade that CLOSED in the day, so one opened
-    Oct 05, 2026 7:30pm showed in a day starting Oct 07, 2026 7:58pm). One
-    rule for a row's numbers and its trade list, so the two always agree."""
-    return (t[:, 0] >= lo_ms) & (t[:, 1] <= hi_ms)
+    """Which trades belong to the dates [lo_ms, hi_ms]: those that CLOSED in
+    them — the day the money lands, as the calendar beside the list and Auto
+    Trade's own calendar count it (operator, Oct 17, 2026, asked for the most
+    accurate way: "Yes, count by close day"). "Opened AND closed inside"
+    (Oct 08, 2026: "i want to see the trades for past 1 day only") lost every
+    trade straddling an edge: #C1133C2A's BANANA 30m, opened Oct 10, 2026
+    10:00am, closed Oct 11, 2026 7:30pm, +2.35, read +2.35 on the calendar's
+    Oct 11 and "no trade" in an Oct 11 backtest. One rule for a row's
+    numbers, its trade list and its calendar, so all three agree."""
+    return (t[:, 1] >= lo_ms) & (t[:, 1] <= hi_ms)
 
 
 def _named_from() -> int:
@@ -732,7 +735,7 @@ def _named_from() -> int:
 
 
 def trades(rid: str, from_s: float, to_s: float, *, page: int = 1, per: int = 10) -> dict:
-    """One kept winner's trades that OPENED AND CLOSED in [from_s, to_s] —
+    """One kept winner's trades that CLOSED in [from_s, to_s] (Oct 17, 2026) —
     exactly the trades its row in `table` counts — oldest first, each with the
     running total, and the total for the dates (operator, Oct 07, 2026: "if i
     input 3 days show me the room strat and its trade for past 3 days"). Paged

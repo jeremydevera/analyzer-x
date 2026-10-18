@@ -90,7 +90,9 @@ def test_a_day_box_is_this_pcs_day_whatever_the_browsers_clock(monkeypatch):
     got = api.room_strategy_trades_route(id="CB69A137", from_day="2026-09-18", to_day="2026-09-18")
     assert got["from"] == day.timestamp()
     assert got["to"] == (day + dt.timedelta(days=1)).timestamp() - 1
-    assert (got["trades"], got["profit"]) == (4, 4.02), "opened AND closed on Sep 18"
+    # every trade that CLOSED on Sep 18 (Oct 17, 2026: "count by close day"),
+    # SAMSUNG's +1.05, opened the day before, included - the calendar's +5.07
+    assert (got["trades"], got["profit"]) == (5, 5.07)
     assert list(got["days"]) == ["2026-09-18"]
 
 

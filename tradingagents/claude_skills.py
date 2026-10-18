@@ -200,6 +200,63 @@ def _first_sentence(s: str) -> str:
     return (m.group(1) if m else s)[:300]
 
 
+# A SKILL'S OWN TEXT, when its tile is clicked (operator, Oct 17, 2026: "in
+# claude skills when i click the tile show me the md on how claude do that
+# skill i want detailed"). What a skill folder holds beside SKILL.md that is
+# not the skill: installed packages and the pictures its checks took.
+_SKIP_PARTS = {"node_modules", "__pycache__", ".git", ".pytest_cache"}
+_SKIP_SUFFIX = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico"}
+_SKIP_NAMES = {"package-lock.json"}
+DOC_MAX = 120_000        # one extra .md shown in full up to this size
+DOCS_MAX = 600_000       # all of a skill's extra .md together
+
+
+def _folders(base: Path):
+    """(folder, its SKILL.md text, name) for every skill on disk."""
+    for d in sorted(p for p in base.iterdir() if p.is_dir()) if base.is_dir() else []:
+        try:
+            text = (d / "SKILL.md").read_text(encoding="utf-8")
+        except OSError:
+            continue
+        yield d, text, (_front(text).get("name") or d.name)
+
+
+def skill_doc(name: str, skills_dir: Path | None = None) -> dict | None:
+    """Everything one skill tells Claude to do: its whole SKILL.md, the
+    other notes in its folder (each .md in full, up to `DOC_MAX`; any left out
+    is NAMED in `docs_left_out`), and the files it works with. None for a
+    name that is not on the page - the name is matched against the skill
+    folders, never joined into a path, so nothing else can be read here."""
+    base = Path(skills_dir or SKILLS_DIR)
+    hit = next(((d, text) for d, text, n in _folders(base) if n == name), None)
+    if hit is None:
+        return None
+    d, text = hit
+    own = _front(text).get("description", "")
+    group, plain = SKILLS.get(name, (UNSORTED, _first_sentence(own)))
+    files, docs, left_out, used = [], [], [], 0
+    for p in sorted(d.rglob("*")):
+        rel = p.relative_to(d)
+        if (not p.is_file() or rel.as_posix() == "SKILL.md"
+                or any(part in _SKIP_PARTS for part in rel.parts)
+                or p.suffix.lower() in _SKIP_SUFFIX or rel.name in _SKIP_NAMES):
+            continue
+        size = p.stat().st_size
+        files.append({"path": rel.as_posix(), "bytes": size})
+        if p.suffix.lower() == ".md":
+            if size <= DOC_MAX and used + size <= DOCS_MAX:
+                docs.append({"path": rel.as_posix(),
+                             "markdown": p.read_text(encoding="utf-8", errors="replace")})
+                used += size
+            else:
+                left_out.append(rel.as_posix())
+    return {"name": name, "group": group, "description": plain,
+            "own_description": own,
+            "always": "ALWAYS ON" in own or name in _always_on(),
+            "path": f".claude/skills/{d.name}/SKILL.md", "markdown": text,
+            "files": files, "docs": docs, "docs_left_out": left_out}
+
+
 def listing(skills_dir: Path | None = None) -> dict:
     """Every skill on disk, grouped. Groups in GROUPS order, then "Not sorted
     yet"; skills by name inside a group; empty groups are left out."""

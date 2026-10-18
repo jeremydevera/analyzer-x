@@ -10,8 +10,9 @@
  * skill folders on each call — nothing on this page is typed in by hand, so
  * a new skill appears here the day it is added.
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "@/lib/api";
+import SkillDoc from "./SkillDoc";
 
 type Skill = { name: string; group: string; description: string; always: boolean };
 type Group = { name: string; about: string; skills: Skill[] };
@@ -21,6 +22,10 @@ export default function ClaudeSkills() {
   const [d, setD] = useState<Listing | null>(null);
   const [err, setErr] = useState("");
   const [q, setQ] = useState("");
+  // the tile that is open: its whole SKILL.md in a panel (operator, Oct 17,
+  // 2026: "when i click the tile show me the md on how claude do that skill")
+  const [open, setOpen] = useState<string | null>(null);
+  const close = useCallback(() => setOpen(null), []);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/claude-skills`, { cache: "no-store" })
@@ -53,6 +58,7 @@ export default function ClaudeSkills() {
             The ways of working Claude follows in this app, grouped by what each one is for.
             {d && <> {d.total} skills in {d.groups.length} groups; {d.always} of them run by
               themselves, the rest only when the job calls for them.</>}
+            {" "}Click a skill to read exactly how Claude does it.
           </p>
         </div>
         <input
@@ -83,19 +89,22 @@ export default function ClaudeSkills() {
             <p className="mt-0.5 text-theme-xs text-gray-500 dark:text-gray-400">{g.about}</p>
             <ul className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {g.skills.map((s) => (
-                <li key={s.name}
-                    className="rounded-xl border border-gray-200 p-3 dark:border-white/[0.06]">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <code className="break-all text-theme-xs font-semibold text-gray-800 dark:text-white/90">{s.name}</code>
-                    <span className={
-                      "rounded-full px-2 py-0.5 text-[11px] font-medium "
-                      + (s.always
-                        ? "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400"
-                        : "bg-gray-100 text-gray-600 dark:bg-white/[0.06] dark:text-gray-400")}>
-                      {s.always ? "runs by itself" : "when needed"}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-theme-xs leading-relaxed text-gray-600 dark:text-gray-300">{s.description}</p>
+                <li key={s.name}>
+                  <button type="button" onClick={() => setOpen(s.name)}
+                          title={`Read how Claude does ${s.name}`}
+                          className="h-full w-full rounded-xl border border-gray-200 p-3 text-left transition hover:border-brand-300 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:border-white/[0.06] dark:hover:border-brand-500/40 dark:hover:bg-white/[0.03]">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <code className="break-all text-theme-xs font-semibold text-gray-800 dark:text-white/90">{s.name}</code>
+                      <span className={
+                        "rounded-full px-2 py-0.5 text-[11px] font-medium "
+                        + (s.always
+                          ? "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400"
+                          : "bg-gray-100 text-gray-600 dark:bg-white/[0.06] dark:text-gray-400")}>
+                        {s.always ? "runs by itself" : "when needed"}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-theme-xs leading-relaxed text-gray-600 dark:text-gray-300">{s.description}</p>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -107,6 +116,7 @@ export default function ClaudeSkills() {
           </p>
         )}
       </div>
+      {open && <SkillDoc key={open} name={open} onClose={close} />}
     </div>
   );
 }

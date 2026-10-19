@@ -598,7 +598,12 @@ def _measured(from_s: float, to_s: float, reality: dict) -> list[dict]:
                "profit": round(float(p.sum()), 2), "corrected": f2.corrected(float(p.sum()), n, reality),
                "worst_day": round(worst_day, 2) if worst_day is not None else None,
                "worst_run": round(worst, 2), "worst_run_n": wn,
-               "still_works": (w["p4"]["last15"]["corrected"] or 0) > 0}
+               "still_works": (w["p4"]["last15"]["corrected"] or 0) > 0,
+               # WHICH of the two ways it is not working (operator, Oct 19,
+               # 2026: "why are all 'stopped working'"): 985 of 1,008 had NO
+               # trade in their newest 15 days, and the one label said they
+               # had stopped working like the 19 that really lost
+               "last15_trades": int(w["p4"]["last15"].get("trades") or 0)}
         rows.append(row)
     return rows
 

@@ -1226,7 +1226,9 @@ export type RoomStrategies = {
     deployable: boolean; deploy_why: string; window: number; tp: string; max_sl: number;
     trades: number; per_day: number; wins: number; losses: number; winrate: number | null;
     break_even: number | null; profit: number; corrected: number | null; worst_day: number | null;
-    worst_run: number; worst_run_n: number; still_works: boolean }[];
+    worst_run: number; worst_run_n: number; still_works: boolean;
+    /** trades its newest 15 days held: 0 = "no trades", not "stopped working" */
+    last15_trades?: number }[];
   matched: number; kept: number; page: number; pages: number; from: number; to: number;
   reality: { took: number | null; gap: number | null }; margin: number; leverage: number;
   /** the reality check is still being worked out (the first minute or two after a restart) */

@@ -172,6 +172,65 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-19-E — Room strategies said "stopped working" for 985 rule sets that simply had no trade in their newest 15 days
+
+**CEO**
+
+* With the "last 5 days" filter on, almost every row of Room strategies
+  said "stopped working", and you were sure some of them had traded.
+* Why: the page used one label for two different things, "lost money in
+  its last 15 days" and "made no trade at all in its last 15 days"; checked
+  one by one, 985 of the 1,008 were the second kind and only 19 had lost.
+* What stops it now: a rule set with no recent trade says "no trades in its
+  last 15 days", and "stopped working" is kept for the ones that really lost.
+
+**DEV**
+
+* `room_strategies._measured` set `still_works = last15.corrected > 0`;
+  `RoomForecasts.tsx` printed "stopped working" for every `!still_works`,
+  so `corrected == 0` from ZERO trades read as a loss.
+* Invariant broken: **a label must name the state its number came from**
+  (label-must-match-data) — "no trades" and "lost" are two states with one
+  number (≤ 0), so the row now carries `last15_trades` and the page reads it.
+* Guard: `tests/test_room_strategies_no_trade_label.py::test_a_rule_set_with_no_recent_trade_is_told_apart_from_one_that_lost`
+  (red on the committed `room_strategies.py`, green with the fix).
+
+**SAW** — Forecast → Room strategies, "or last N days" 5 (Oct 15, 2026 7:42am
+to Oct 20, 2026 7:42am): *"why are all 'stopped working'"*, then *"can you
+check 1 by 1 if its really no trade? because I'm pretty sure there is"*.
+
+**TIMELINE**
+
+1. `Oct 16, 2026 6:00pm` — 3bafc87c749c: a win must pay two losses after
+   fees, for the Backtest v2 list and every re-test, as the operator asked.
+2. `Oct 17-19, 2026` — the daily re-tests measure the 1,008 kept rule sets
+   under it; today's list holds 12,388,586 strategies, of which 0 have 80%+
+   wins and 20+ trades with a stop of 2% or tighter, and 0 have 60%+ wins
+   with 50+ trades.
+3. `Oct 19, 2026 7:44pm` — checked all 1,008 against their own saved trades
+   (Jul 04 - Oct 18, 2026 9:45pm): 0 count mismatches; 23 traded in the
+   newest 15 days (155 trades), 985 traded nothing there, 962 nothing in
+   the whole history; 4 made money (#BBE0A361 #C1133C2A #1A582A2B
+   #722E1728, +3.14 each over 3 trades), 19 lost.
+4. Fixed: the 985 now read "no trades in its last 15 days".
+
+**ROOT CAUSE** — `still_works` was the only state sent to the page, and a
+zero from no trades is not above zero.
+
+**WHY IT WAS NOT CAUGHT** — the label was written when every kept winner had
+traded in its last 15 days (prompt 4 only keeps rule sets that did), so "not
+above zero" could only mean "lost"; no test kept a rule set with an empty
+recent window, which is the normal case once a stricter rule re-tests them.
+
+**COST** — none in money: Room strategies only report. The cost was a false
+reading of 985 rows.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_room_strategies_no_trade_label.py::test_a_rule_set_with_no_recent_trade_is_told_apart_from_one_that_lost`.
+
+---
+
 ## RCA-2026-10-19-D — room #4FC03172's status said "18 fail one, most often ?" for 18 strategies that failed only the daytime rule, which the same line already named
 
 **CEO**

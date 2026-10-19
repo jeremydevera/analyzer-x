@@ -1265,7 +1265,12 @@ export function RoomStrategiesSection() {
                             onClick={(e) => { e.stopPropagation(); setOpen({ id: r.id, words: r.words }); }}>#{r.id}</button>
                         </td>
                         <td className="min-w-[280px] max-w-[360px] px-2 py-1.5 text-gray-700 dark:text-gray-300">{r.words}
-                          {!r.still_works && <span className="ml-1 rounded bg-warning-50 px-1 text-[10px] text-warning-700 dark:bg-warning-500/10">stopped working</span>}</td>
+                          {/* two different states, two labels (operator, Oct 19, 2026:
+                              "why are all 'stopped working'"): a strategy whose newest 15
+                              days held NO trade has not stopped working, it found nothing */}
+                          {!r.still_works && (r.last15_trades === 0
+                            ? <span className="ml-1 rounded bg-gray-100 px-1 text-[10px] text-gray-600 dark:bg-white/[0.06] dark:text-gray-400">no trades in its last 15 days</span>
+                            : <span className="ml-1 rounded bg-warning-50 px-1 text-[10px] text-warning-700 dark:bg-warning-500/10">stopped working</span>)}</td>
                         <td className={td}>{r.found_by} · {fmtWhen(r.found_at)}</td>
                         <td className={td}>{r.trades.toLocaleString()}</td>
                         <td className={td}>{r.per_day}</td>

@@ -31,6 +31,10 @@ GROUPS = {
     "Checking the screen": "Opening the real app in a browser and looking at it before saying a screen change works.",
     "Finding strategies": "Searching the backtests for strategies worth running, and making sure you can find them.",
     "Trading checks": "Reading your practice and real trades, and switching strategies on by their #id.",
+    # operator, Oct 18, 2026: "add this skill in claude skills tab along with
+    # practice backtest audit skill since this is an automation"
+    "Automation": "Jobs you start by name that read the app's own screens and tables for you "
+                  "and report back.",
     "How I talk to you": "Rules for my replies: short, plain words, a sound when done, a ping when I need you.",
     "Design": "How the app and pages should look: colours, fonts, layouts, logos, slides.",
     "Animation": "How things on screen should move.",
@@ -99,9 +103,13 @@ SKILLS = {
     "feedcheck": ("Trading checks",
         "Read the trader's log and trade record and say which lines are normal "
         "and which are a real problem, e.g. \"why no trades today\"."),
-    "practice_backtest_audit": ("Trading checks",
+    # ---------------------------------------------------------- Automation
+    "practice_backtest_audit": ("Automation",
         "Check each practice trade against its backtest: same times, same price, "
         "same profit, using the real screens."),
+    "winning_room_strategy": ("Automation",
+        "Tell you which room strategies made money over the days you name (past 2 "
+        "days, 7 days, this week or last week), read from the Room strategies table."),
     # --------------------------------------------------- How I talk to you
     "short-and-plain": ("How I talk to you",
         "Every reply is one short sentence in plain words with one of your own "

@@ -697,6 +697,55 @@ def _values(r: dict, pair: str) -> tuple:
     return tuple(out)
 
 
+def _newest_measure(path: Path, rows: list) -> int:
+    """The last candle of this pair's NEWEST backtest — its watermark, or its
+    newest row when the watermark lags — for a Backtest v2 pair; 0 (no rule)
+    for anything else. The watermark lives beside the pair's own store
+    (`<store>/state/`), found from the pair file's folder, so a filing in any
+    process reads the right store (RCA-2026-10-19-B)."""
+    if not any(str(r.get("res") or "").strip().lower() == "1m" for r in rows[:50]):
+        return 0
+    coin, _, tf = Path(path).stem.rpartition("-")
+    try:
+        wm = int(msw.pair_watermark(coin, tf, str(Path(path).parent.parent)) or 0)
+    except Exception:                                          # noqa: BLE001
+        wm = 0
+    return max([wm] + [int(r.get("last_ms") or 0) for r in rows])
+
+
+def _from_newest(r: dict, newest: int) -> bool:
+    """Is this row from the pair's NEWEST backtest? A Backtest v2 row another
+    run wrote, and the newest did not, is not listed (P0, RCA-2026-10-19-B):
+    the merge keeps it in the file on purpose — the rooms read the file, and a
+    run that measures FEWER rows must never shrink it (Sep 10, 2026) — but on
+    the list it read as current. US 1h volclimax showed its Oct 16, 2026
+    numbers beside an Oct 18 backtest that made no trade for it, and seven
+    coins Gate cut to 10x (ARK, BLUR, COOKIE, LYN, PTB, RARE, VELODROME) kept
+    100,892 Oct 12 rows while every night's 20x backtest found nothing. A row
+    with no date, every v1 row, and a rule the nightly grid does not measure
+    (a learned lx_ formula, an ml_ model: their own jobs date them) is filed
+    as before."""
+    if not newest or str(r.get("res") or "").strip().lower() != "1m":
+        return True
+    if str(r.get("signal") or "") not in _nightly_signals():
+        return True
+    lm = int(r.get("last_ms") or 0)
+    return not lm or lm >= newest
+
+
+_NIGHTLY: set = set()
+
+
+def _nightly_signals() -> set:
+    """The rules every nightly backtest measures for every pair
+    (`backtest_report.SIGNALS`, the shard's own list)."""
+    if not _NIGHTLY:
+        from tradingagents import backtest_report as br
+
+        _NIGHTLY.update(str(s) for s in br.SIGNALS)
+    return _NIGHTLY
+
+
 def _kept(r: dict) -> bool:
     """Does this store keep the row? Backtest v2 keeps FLAT only since
     Sep 24, 2026 (`backtest_report.sizings_for`: "remove the martinangale in
@@ -790,7 +839,9 @@ def index_pair(path: Path, con: sqlite3.Connection | None = None, *,
         elif not fresh:
             con.execute("DELETE FROM rows WHERE pair = ?", (pair,))
         t1 = _t()
+        newest = _newest_measure(path, rows)
         vals = [_values(r, pair) for r in rows if r.get("coin") and _kept(r)
+                and _from_newest(r, newest)
                 and (want is None or str(r.get("signal")) in want)]
         t2 = _t()
         con.executemany(

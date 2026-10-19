@@ -302,6 +302,15 @@ def _pair_state(code: str, combo: dict, store_home: Path | None,
         if store_res and not br.pays_two_to_one({**found, "res": store_res}):
             got = br.win_and_loss(found)
             return "not_two_to_one", ({"win": got[0], "loss": got[1]} if got else {})
+        # ...and only the NEWEST backtest's rows are listed (Oct 19, 2026,
+        # RCA-2026-10-19-B): an older row the file keeps is never "waiting"
+        if store_res:
+            from tradingagents import rows_index as _ri
+
+            newest = _ri._newest_measure(rows_path, rows)
+            if not _ri._from_newest({**found, "res": store_res}, newest):
+                return "not_in_newest", {"row_ms": int(found.get("last_ms") or 0),
+                                         "last_ms": newest}
         return "measured", {}
     sl, tp = float(combo["sl"]), float(combo["tp"])
     in_grid = any(abs(s * 100 - sl) < 1e-6 and abs(t * 100 - tp) < 1e-6
@@ -328,6 +337,11 @@ def _clause(state: str, info: dict, coin: str, tf: str, combo: dict, now: str) -
                     f"-{info['loss']:.2f}% after fees, so it is measured but not listed")
         return ("this list shows only strategies whose win pays at least two losses "
                 "after fees, and this one's trading fee could not be read")
+    if state == "not_in_newest":
+        return (f"its numbers are from the backtest of {fmt_when(info['row_ms'] / 1000)}, and "
+                f"the newest backtest of {coin} {tf} (candles to "
+                f"{fmt_when(info['last_ms'] / 1000)}) made no trade for it, so it is not "
+                f"listed")
     if state == "flat_only":
         return "this list keeps flat rows only, so a martingale id is never on it"
     if state == "not_measured":

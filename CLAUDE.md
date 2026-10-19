@@ -909,8 +909,15 @@ a program was alive under that rebuild's old pid (RCA-2026-10-19-A).
   strategy's trades really paid, which 2:1 is judged on) was read at filing
   and never saved, so every check made from the list fell back to the
   estimate; it is a column now.
+* **A listed row is a row of its pair's NEWEST backtest** (RCA-2026-10-19-B).
+  The pair files keep older rows on purpose (merge, never replace — the rooms
+  read them), so the list files only the nightly grid's rows dated at the
+  pair's watermark (`rows_index._from_newest`): about 3% of the list was older
+  numbers shown as current, including 100,892 rows of 7 coins Gate cut to 10x
+  while the app trades 20x. "Updated 100%" means every listed row is from its
+  pair's newest backtest — measure it, never assume it from a swap.
 
-Guard: `tests/test_stored_strategies_keep_up_every_night.py` (11).
+Guard: `tests/test_stored_strategies_keep_up_every_night.py` (15).
 
 ## The row index is a BULK LOAD, not a trickle (MANDATORY — 2026-08-26)
 

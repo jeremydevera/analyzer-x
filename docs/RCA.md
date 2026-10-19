@@ -172,6 +172,87 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-19-B — P0: about 3% of Stored strategies kept numbers from an OLDER backtest, shown as current — including 100,892 rows of 7 coins the app can no longer trade
+
+**CEO**
+
+* After the list caught up with last night's backtest (RCA-2026-10-19-A),
+  about 3% of its rows still showed older numbers as if they were current:
+  US 1h volclimax (TP 1.5% / SL 0.3%) showed Oct 16, 2026, and every row of
+  ARK, BLUR, COOKIE, LYN, PTB, RARE and VELODROME — 100,892 rows — showed
+  Oct 12, 2026.
+* Why: when the newest backtest makes no trade for a strategy (or, for those
+  7 coins, finds nothing at all, because Gate now allows them only 10x and
+  the app trades 20x), it writes no row for it, and the store rightly keeps
+  the older row in its file — but the list showed that old row beside the new
+  ones with nothing to tell them apart.
+* What stops it now: the list shows only the rows of each pair's NEWEST
+  backtest; older rows stay in the files the rooms read, and an #id search
+  says "its numbers are from the backtest of ... and the newest backtest made
+  no trade for it".
+
+**DEV**
+
+* `cloud_sweep.land_rows` merges and never replaces (Sep 10, 2026: a shard
+  that measured FEWER rows had wiped 1,261,358), and the shard writes no row
+  for a combination with no trade (`if not r["trades"]: continue`) or a stop
+  past liquidation (`sl * 100 >= liq`; `liquidation_move_pct` at 20x is 0.0
+  on a 10x-max contract). `rows_index.index_pair` filed every row of the file:
+  `ingest.log` shows `landed 1 pair(s) · 0 row(s) · ARK 15m` every night
+  since Oct 13, 2026, its watermark moving to Oct 19, 2026 2:00am while its
+  rows stayed Oct 12.
+* Invariant broken: **a list row is a row of its pair's newest backtest** —
+  `_from_newest` (a nightly-grid v2 row older than the pair's watermark is
+  not listed; v1 rows, undated rows and lx_/ml_ rows their own jobs date are
+  untouched) in the one filing loop; `missing_row` names the new state
+  `not_in_newest` instead of "waits to be added".
+* Guards: `tests/test_stored_strategies_keep_up_every_night.py`
+  (`test_a_row_the_newest_backtest_did_not_produce_is_not_listed`,
+  `test_a_pair_whose_newest_backtest_found_nothing_leaves_the_list`,
+  `test_backtest_v1_rows_and_rows_without_a_date_are_filed_as_before`,
+  `test_a_row_another_job_measures_keeps_its_own_date`) and
+  `tests/test_a_missing_id_is_explained_from_your_records.py::test_a_strategy_the_newest_backtest_did_not_reproduce_is_never_said_to_be_waiting`.
+
+**SAW** — Oct 19, 2026, the operator: *"So you mean the million lines has been
+updated?"*, then *"I want all rows in stored strategies for past 2 months just
+tell me are they updated 100% or not?"*.
+
+**TIMELINE**
+
+1. Oct 12, 2026 ~12:07pm — ARK 15m's last rows land (10,720 rows).
+2. Oct 13, 2026 onward — Gate allows ARK, BLUR, COOKIE, LYN, PTB, RARE and
+   VELODROME at most 10x; each night's 20x backtest finds nothing for them,
+   `landed 1 pair(s) · 0 row(s)`, their watermarks move, their rows stay.
+3. Oct 19, 2026 12:48am — the re-file of RCA-2026-10-19-A swaps in: 4,116
+   pairs (12,807,656 rows) from Oct 18 and 28 pairs (100,892 rows) from
+   Oct 12.
+4. Oct 19, 2026 ~2:35am — a sample of 60 random pairs: 5,579 of 187,070
+   listed rows (2.98%) older than their pair's newest backtest, in 46 of the
+   60 pairs (US 1h volclimax: rows Oct 16, backtest Oct 18).
+5. Fix committed the same night; the next filing — after tonight's backtest
+   lands (~6am) — files only each pair's newest rows.
+
+**ROOT CAUSE** — the list filed every row of a pair file, and a pair file
+holds older measurements on purpose.
+
+**WHY IT WAS NOT CAUGHT** — every filing test built a pair file from ONE
+measurement, so "every row in the file" and "every row of the newest
+backtest" were the same set; the merge that keeps older rows was tested for
+what it KEEPS, never for what the list then SHOWS. And no check compared a
+listed row's date with its pair's newest backtest.
+
+**COST** — no money: the rooms judge on the file's fresh figures and skip a
+backtest older than 36 hours. The operator's list showed about 3% stale
+numbers, and 100,892 rows of strategies that cannot run at 20x.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_stored_strategies_keep_up_every_night.py::test_a_pair_whose_newest_backtest_found_nothing_leaves_the_list`
+and `::test_a_row_the_newest_backtest_did_not_produce_is_not_listed`;
+`tests/test_a_missing_id_is_explained_from_your_records.py::test_a_strategy_the_newest_backtest_did_not_reproduce_is_never_said_to_be_waiting`.
+
+---
+
 ## RCA-2026-10-19-A — P0: Stored strategies stopped taking in the nightly backtests after Oct 17, 2026, because "is a rebuild running?" trusted a program number Windows had given to another program
 
 **CEO**

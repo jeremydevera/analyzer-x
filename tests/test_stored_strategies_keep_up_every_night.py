@@ -46,6 +46,9 @@ def store(tmp_path, monkeypatch):
     rows_dir = tmp_path / "rows"
     rows_dir.mkdir()
     monkeypatch.setattr(msw, "ROWDIR", rows_dir)
+    # the store's real layout: results and watermarks side by side
+    (tmp_path / "state").mkdir()
+    monkeypatch.setattr(msw, "STATES", tmp_path / "state")
     monkeypatch.setattr(ri, "DB_PATH", tmp_path / "rows.db")
     monkeypatch.setattr(ri, "REBUILD_PROGRESS", tmp_path / "rows_rebuild.json")
     ri._ready.discard(str(tmp_path / "rows.db"))
@@ -248,3 +251,88 @@ def test_a_filing_program_files_on_the_command_line():
     import inspect
 
     assert '"--file"' in inspect.getsource(ri.main)
+
+
+# ------------------------------- only the NEWEST backtest's rows are listed
+
+
+T_OLD = 1_792_040_400_000          # Oct 12, 2026 (ARK's last rows)
+T_NEW = 1_792_299_600_000          # Oct 18, 2026 (its newest backtest)
+
+
+def _v2_rows(coin, tf, specs):
+    d = msw.ROWDIR / f"{coin}-{tf}.json"
+    d.write_text(json.dumps([
+        {"id": f"{coin}{tf}{i}", "coin": coin, "tf": tf, "signal": "volclimax",
+         "sizing": "flat", "res": "1m", "trades": 30, "wins": 25, "profit": 9.0,
+         "tp": tp, "sl": sl, "rt_paid": 0.2, "cost_of_tp": 10.0, "gate": "ok",
+         "monthly": {}, **({"last_ms": lm} if lm else {})}
+        for i, (tp, sl, lm) in enumerate(specs)]), encoding="utf-8")
+    return d
+
+
+def _listed(pair):
+    with ri._open() as con:
+        return sorted(r[0] for r in con.execute("SELECT tp FROM rows WHERE pair = ?", (pair,)))
+
+
+def test_a_row_the_newest_backtest_did_not_produce_is_not_listed(store):
+    """US 1h volclimax TP 1.5% / SL 0.3%: rows from Oct 16, 2026 sat in the
+    list beside the pair's Oct 18 backtest, which made no trade for them — the
+    merge keeps a row the newest run did not write (it must: the rooms read the
+    file), and the list showed it as current. 5,579 of 187,070 listed rows on
+    a sample of 60 pairs (2.98%)."""
+    _v2_rows("US", "1h", [(1.5, 0.3, T_OLD), (2.0, 0.3, T_NEW), (3.0, 0.3, T_NEW)])
+    msw.save_states("US", "1h", {"__cloud__": True, "__last_ms__": T_NEW})
+    ri.ensure()
+    with ri._open() as con:
+        ri.index_pair(msw.ROWDIR / "US-1h.json", con)
+    assert _listed("US-1h") == [2.0, 3.0]
+    assert len(msw.pair_rows("US", "1h")) == 3, "the file keeps every row: the rooms read it"
+
+
+def test_a_pair_whose_newest_backtest_found_nothing_leaves_the_list(store):
+    """ARK, BLUR, COOKIE, LYN, PTB, RARE and VELODROME: Gate cut them to 10x,
+    the app trades 20x, so every night's backtest found nothing (`landed 1
+    pair(s) · 0 row(s) · ARK 15m`) while their Oct 12 rows stayed listed —
+    100,892 rows of strategies the app cannot run."""
+    _v2_rows("ARK", "15m", [(1.5, 0.3, T_OLD), (2.0, 0.3, T_OLD)])
+    msw.save_states("ARK", "15m", {"__cloud__": True, "__last_ms__": T_NEW})
+    ri.ensure()
+    with ri._open() as con:
+        ri.index_pair(msw.ROWDIR / "ARK-15m.json", con)
+    assert _listed("ARK-15m") == []
+
+
+def test_backtest_v1_rows_and_rows_without_a_date_are_filed_as_before(store):
+    d = msw.ROWDIR / "ETH-1h.json"
+    d.write_text(json.dumps([
+        {"id": "v1old", "coin": "ETH", "tf": "1h", "signal": "rsi14", "sizing": "flat",
+         "trades": 10, "tp": 2.0, "sl": 1.0, "monthly": {}, "last_ms": T_OLD},
+        {"id": "nodate", "coin": "ETH", "tf": "1h", "signal": "rsi14", "sizing": "flat",
+         "res": "1m", "trades": 10, "tp": 3.0, "sl": 1.0, "rt_paid": 0.2,
+         "cost_of_tp": 5.0, "gate": "ok", "monthly": {}}]), encoding="utf-8")
+    msw.save_states("ETH", "1h", {"__cloud__": True, "__last_ms__": T_NEW})
+    ri.ensure()
+    with ri._open() as con:
+        ri.index_pair(d, con)
+    assert _listed("ETH-1h") == [2.0, 3.0]
+
+
+def test_a_row_another_job_measures_keeps_its_own_date(store):
+    """Learned formulas (lx_) and ML models (ml_) are measured by their own
+    jobs, never by the nightly grid: their rows carry their own run's date and
+    must stay listed beside a newer nightly backtest of the same pair."""
+    d = msw.ROWDIR / "SOL-1h.json"
+    d.write_text(json.dumps([
+        {"id": "lx1", "coin": "SOL", "tf": "1h", "signal": "lx_SOL_1h_3", "sizing": "flat",
+         "res": "1m", "trades": 40, "tp": 3.0, "sl": 1.0, "rt_paid": 0.2,
+         "cost_of_tp": 5.0, "gate": "ok", "monthly": {}, "last_ms": T_OLD},
+        {"id": "new", "coin": "SOL", "tf": "1h", "signal": "volclimax", "sizing": "flat",
+         "res": "1m", "trades": 40, "tp": 2.0, "sl": 0.5, "rt_paid": 0.2,
+         "cost_of_tp": 5.0, "gate": "ok", "monthly": {}, "last_ms": T_NEW}]), encoding="utf-8")
+    msw.save_states("SOL", "1h", {"__cloud__": True, "__last_ms__": T_NEW})
+    ri.ensure()
+    with ri._open() as con:
+        ri.index_pair(d, con)
+    assert _listed("SOL-1h") == [2.0, 3.0]

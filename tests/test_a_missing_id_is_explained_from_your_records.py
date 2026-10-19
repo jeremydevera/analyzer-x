@@ -389,3 +389,20 @@ def test_a_two_to_one_strategy_not_filed_yet_still_waits(home):
                                "gate": "ok"}])
     got = _explain(home, code, listed=("BTC_USDT",))
     assert got["reason"] == "waiting", got
+
+
+def test_a_strategy_the_newest_backtest_did_not_reproduce_is_never_said_to_be_waiting(home):
+    """Oct 19, 2026 (P0, RCA-2026-10-19-B): the list shows only the rows of a
+    pair's NEWEST backtest. ARK 15m's rows date from Oct 12 while every night
+    since found nothing at 20x (Gate allows ARK 10x) — "waits to be added"
+    would promise a row the list will never take."""
+    code = br.row_code("BTC", "1h", "trend50", 0, 1.0, 3.0, "flat", res="1m")
+    _watch(home / "profiles" / "55D32617",
+           {"at": SINCE + 3600, "action": "on", "id": code, "coin": "BTC", "tf": "1h",
+            "signal": "trend50", "tp": 3.0, "sl": 1.0})
+    _pair(home, "BTC", "1h", [{**_row("BTC", "1h", "trend50", 1.0, 3.0), "cost_of_tp": 5.0,
+                               "gate": "ok", "last_ms": 1_792_040_400_000}],
+          last_ms=1_792_299_600_000)
+    got = _explain(home, code, listed=("BTC_USDT",))
+    assert got["reason"] == "not_in_newest", got
+    assert "made no trade for it" in got["words"] and "waits to be added" not in got["words"]

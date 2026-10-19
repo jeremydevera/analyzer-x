@@ -172,6 +172,71 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-19-D — room #4FC03172's status said "18 fail one, most often ?" for 18 strategies that failed only the daytime rule, which the same line already named
+
+**CEO**
+
+* Room #4FC03172's status line read "0 pass every rule on their own result
+  file (18 fail one, most often ?) · daytime rule: 0 of 18 pass (18 fail the
+  fee)": the same 18 strategies counted twice, and the first count gave "?"
+  as its reason.
+* Why: the "fail one" count was worked out as "whatever is left over at the
+  end", so it swallowed the strategies the daytime rule had already counted,
+  and the part that names a reason only knows the room's own rules.
+* What stops it now: "fail one" counts only the room's own rules, at the
+  moment they are checked; the daytime rule, the instant-switch-off guard and
+  a coin Gate no longer lists keep their own counts.
+
+**DEV**
+
+* `strategy_watcher._on_pass` set `failed_one = len(cands) - len(rows) -
+  n_dead - len(at_once)` with `rows` taken AFTER `dr.screen`, while
+  `_top_fail(cands, cfg)` counts only `wp.passes_on` reasons — so a daytime
+  failure was in the count and in no reason: `"?"`.
+* Invariant broken: **every count on the status line has exactly one
+  reason, and no failure is counted twice** — `n_rule_fail = len(cands) -
+  len(rows)` at the `passes_on` line is the "fail one" count; the other
+  screens keep their own suffixes.
+* Guards: `tests/test_daytime_rule.py::test_a_daytime_failure_is_named_once_never_as_a_question_mark`
+  and `::test_a_rule_failure_and_a_daytime_failure_are_each_counted_once`.
+
+**SAW** — the Watcher panel of #4FC03172, last switch-on pass Oct 19, 2026
+12:00am: "18 row(s) in the Backtest v2 table pass the win rate, trades and
+stop floors with TP at least as wide as SL — 0 pass every rule on their own
+result file (18 fail one, most often ?) · daytime rule: 0 of 18 pass (18
+fail the fee)". Found while checking why no room had opened a practice trade
+since Oct 16, 2026 4:45pm.
+
+**TIMELINE**
+
+1. Oct 07, 2026 — the daytime rule screens #4FC03172's candidates after the
+   room's own rules (`dr.screen`), with its own count on the line.
+2. Oct 19, 2026 12:00am — 18 candidates pass the room's rules; all 18 fail
+   the daytime fee check; the line says "18 fail one, most often ?" beside
+   "0 of 18 pass (18 fail the fee)".
+3. Oct 19, 2026 ~7:20pm — both tests red on the old code ("(2 fail one, most
+   often ?)" for two daytime failures; 2 instead of 1 for a mix); green
+   after, with 168 watcher, daytime and room-window tests.
+
+**ROOT CAUSE** — "fail one" was the remainder of everything else, so it took
+in a failure another screen had already counted and could not name.
+
+**WHY IT WAS NOT CAUGHT** — the status-line tests (a delisted coin, the
+at-once guard, the 15-day and 1-4 day rooms) each subtracted their own count
+from the remainder, and no test ran the daytime screen and then READ the
+line: the daytime tests asserted only that "daytime" appeared in it, never
+that the rest of the sentence still added up.
+
+**COST** — none in money: nothing was switched on or off by it. The panel
+showed a "?" for the reason 18 strategies could not be switched on.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_daytime_rule.py::test_a_daytime_failure_is_named_once_never_as_a_question_mark`
+and `::test_a_rule_failure_and_a_daytime_failure_are_each_counted_once`.
+
+---
+
 ## RCA-2026-10-19-C — every 15-minute backtest held one fake "nothing traded" candle, and its exit minutes a few more, because Gate answers the candle that opens at the exact second asked for as empty
 
 **CEO**

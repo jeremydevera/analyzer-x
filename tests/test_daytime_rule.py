@@ -243,6 +243,33 @@ def test_the_pass_switches_on_only_what_passes_the_daytime_checks(room):
     assert "daytime" in (sw._read().get("last_candidates") or "")
 
 
+def test_a_daytime_failure_is_named_once_never_as_a_question_mark(room):
+    """RCA-2026-10-19-D: #4FC03172's panel read "18 row(s) ... — 0 pass every
+    rule on their own result file (18 fail one, most often ?) · daytime rule:
+    0 of 18 pass (18 fail the fee)" (Oct 19, 2026 12:00am pass). The 18 had
+    passed the room's own rules and failed only the daytime screen, which
+    the line already names; "fail one" counted them again, and its reason
+    finder, which knows only the room's own rules, had none to give."""
+    room["cands"] = [_cand("BBBB2222", "GPNSTOCK", 1.0, 0.8),
+                     _cand("DDDD4444", "FWDISTOCK", 1.0, 0.8)]       # both fail the fee
+    sw.consider(now=NOW)
+    line = sw._read()["last_candidates"]
+    assert "?" not in line, line
+    assert line == ("fake — 0 pass every rule on their own result file"
+                    " · daytime rule: 0 of 2 pass (2 fail the fee)")
+
+
+def test_a_rule_failure_and_a_daytime_failure_are_each_counted_once(room):
+    room["cands"] = [_cand("AAAA1111", "GPNSTOCK", 1.5, 1.0),        # passes all
+                     _cand("BBBB2222", "GPNSTOCK", 1.0, 0.8),        # fee fails
+                     {**_cand("EEEE5555", "VUG", 1.5, 1.0), "winrate": 60.0}]
+    room["lists"] = {"AAAA1111": GOOD}
+    sw.consider(now=NOW)
+    assert sw._read()["last_candidates"] == (
+        "fake — 1 pass every rule on their own result file (1 fail one, most "
+        "often win rate is under) · daytime rule: 1 of 2 pass (1 fail the fee)")
+
+
 def test_a_running_row_that_fails_is_switched_off_by_name(room):
     room["cands"] = [_cand("CCCC3333", "FWDISTOCK", 1.5, 1.0)]
     room["lists"] = {"CCCC3333": NIGHT}

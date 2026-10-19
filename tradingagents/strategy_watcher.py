@@ -1039,6 +1039,12 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
                      f"ago, so {'its' if len(stale) == 1 else 'their'} last {w_} "
                      f"day{'' if w_ == 1 else 's'} are not the latest")
     rows = [r for r in cands if not wp.passes_on(r, cfg)]
+    # "fail one" is THESE failures — the room's own rules, whose reason
+    # `_top_fail` names. Counted here, never as what is left at the end: the
+    # daytime screen, the at-once guard and a delisted coin each say their
+    # own count, and folded in here they read "(18 fail one, most often ?)"
+    # beside "daytime rule: 0 of 18 pass" on #4FC03172 (RCA-2026-10-19-D)
+    n_rule_fail = len(cands) - len(rows)
     # A ROOM WITH TWO WINDOWS (Oct 07, 2026: on by the last 1-4 days, off by
     # the DEMO 30 DAYS figure): a row the hourly switch-off would drop the
     # moment it went on is never switched on — RCA-2026-10-01-B's rule across
@@ -1165,7 +1171,7 @@ def _on_pass(now: float, cfg: dict, st: dict, act: bool, out: list) -> str:
     # the count that passes EVERY rule, beside the one the list was asked for
     # (RCA-2026-09-30-C): "1,511 meet the criteria" over 539 switched on read
     # as 972 rows lost
-    failed_one = len(cands) - len(rows) - n_dead - len(at_once)
+    failed_one = n_rule_fail
     st["last_candidates"] = (f"{got.get('why', '')} — {len(rows):,} pass every rule "
                              f"on their own result file"
                              + (f" ({failed_one:,} fail one, most often "
@@ -1320,7 +1326,12 @@ def _last_on(st: dict) -> float:
 def _on_due(now: float, last: float, raw: bool = False) -> bool:
     """Once per local day, at or after ON_HOUR — any hour when RAW: the noon
     rule existed for the switch-on cost check (stock books are wide before
-    the open), and raw leaves that check to the runner at each trade."""
+    the open), and raw skipped that check (Sep 30, 2026). Since Oct 17, 2026
+    raw rooms ask it too (`_try_picks`), so a raw room's check runs just after
+    midnight; measured Oct 19, 2026, the hour changed none of its refusals:
+    all 102 since Oct 17 were on four stock tokens as wide at noon (HUT 1.13%
+    against 1.18% at midnight, UNIS 2.41% both) or tighter at midnight (CCTC
+    0.52% against 1.16%). Measure before moving it."""
     import datetime as _dt
 
     here = _dt.datetime.fromtimestamp(now)

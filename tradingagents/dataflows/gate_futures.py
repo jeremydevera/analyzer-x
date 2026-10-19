@@ -1159,16 +1159,27 @@ def rest_edge(interval: str, now: float | None = None) -> int:
 
 def _rest_range(symbol: str, iv: str, lo: int, hi: int):
     """Bars opening in [lo, hi] from REST, paged back 2,000 at a time and
-    never past the edge."""
+    never past the edge.
+
+    A CLOSED bar is asked by its LAST second, never its opening one: Gate
+    answers the candle that opens exactly AT `to` as an empty placeholder —
+    open = high = low = close = the previous close, volume 0 — however long
+    ago it closed (KSTR 15m, Oct 19, 2026: `to=8:45:00am` gave 19.39 flat,
+    volume 0; `to=8:45:01am` gave 19.36/19.44/19.36/19.40, volume 1,086).
+    Asked at the opening second, every page break left one fake candle every
+    2,001 bars back (RCA-2026-10-19-C). The FORMING bar is asked at its open
+    as before: it is not final either way, and every reader drops it."""
     per = PER_S[iv]
     lo = max(lo, rest_edge(iv))
     hi = hi - hi % per
+    now = int(_now())
     rows: dict[int, dict] = {}
     end = hi
     while end >= lo:
         n = min(_KLINE_PAGE, (end - lo) // per + 1)
+        to = end + per - 1 if end + per <= now else end
         got = _get_public(f"{FUT}/candlesticks?"
-                          + _q(contract=symbol, interval=iv, to=end, limit=n))
+                          + _q(contract=symbol, interval=iv, to=to, limit=n))
         if not got:
             break
         for r in got:
@@ -1342,6 +1353,12 @@ def _range(symbol: str, interval: str, lo: int, hi: int):
     return _join(old, rest)
 
 
+# The mark of a saved copy whose closed candles were all asked whole. A copy
+# saved before Oct 19, 2026 holds Gate's empty placeholders at the page breaks
+# of its last long read (RCA-2026-10-19-C); `klines` reads it again once.
+_DISK_WHOLE = 1
+
+
 def _disk_path(symbol: str, iv: str):
     safe = "".join(c for c in f"{symbol}_{iv}" if c.isalnum() or c in "_-")
     return KLINE_DISK_DIR / f"{safe}.json.gz"
@@ -1360,9 +1377,11 @@ def _disk_load(symbol: str, iv: str):
             d = json.load(fh)
         if not d.get("t"):
             return None
-        return pd.DataFrame({"Date": pd.to_datetime(d["t"], unit="s"),
-                             "Open": d["o"], "High": d["h"], "Low": d["l"],
-                             "Close": d["c"], "Volume": d["v"]})
+        f = pd.DataFrame({"Date": pd.to_datetime(d["t"], unit="s"),
+                          "Open": d["o"], "High": d["h"], "Low": d["l"],
+                          "Close": d["c"], "Volume": d["v"]})
+        f.attrs["whole"] = d.get("whole") == _DISK_WHOLE
+        return f
     except Exception:                                          # noqa: BLE001
         return None          # a corrupt cache must never break a fetch
 
@@ -1373,7 +1392,8 @@ def _disk_save(symbol: str, iv: str, frame) -> None:
     try:
         KLINE_DISK_DIR.mkdir(parents=True, exist_ok=True)
         f = frame.tail(_KLINE_DISK_MAX)
-        d = {"t": [int(x.timestamp()) for x in f["Date"]],
+        d = {"whole": _DISK_WHOLE,
+             "t": [int(x.timestamp()) for x in f["Date"]],
              "o": [float(x) for x in f["Open"]], "h": [float(x) for x in f["High"]],
              "l": [float(x) for x in f["Low"]], "c": [float(x) for x in f["Close"]],
              "v": [float(x) for x in f["Volume"]]}
@@ -1425,7 +1445,13 @@ def klines(symbol: str, interval: str = "Min5", limit: int = 300):
         out = _rest_range(symbol, iv, lo, hi)
     else:
         cached = _disk_load(symbol, iv)
-        if cached is not None and len(cached) >= limit:
+        if cached is not None and not cached.attrs.get("whole"):
+            # saved before the page breaks were asked whole: read again
+            # everything REST and the archive still hold of it, once — the
+            # copy read now wins, and the saved file carries the mark
+            first = int(_secs(cached).iloc[0])
+            out = _join(cached, _range(symbol, iv, min(lo, first), hi))
+        elif cached is not None and len(cached) >= limit:
             last = int(cached["Date"].iloc[-1].timestamp())
             out = _join(cached, _range(symbol, iv, last - 2 * per, hi))
         else:

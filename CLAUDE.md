@@ -227,6 +227,17 @@ own `maintenance_rate`.
   the click-written cost file's 0.03%: on flat stock tokens 10 of 18 rows
   did not add up to their list, 17 of 18 after (RCA-2026-10-18-A). BTC
   proves nothing here; check a flat stock token.
+* **GATE ANSWERS THE CANDLE THAT OPENS AT `to` AS AN EMPTY PLACEHOLDER** —
+  flat at the previous close, volume 0, however long ago it closed (KSTR
+  15m, Oct 19, 2026: `to=8:45:00am` 19.39 flat; `to=8:45:01am` the real
+  candle, volume 1,086). `gate_futures._rest_range` asks a CLOSED candle by
+  its LAST second and the forming one at its open, as the runner always did.
+  Asked at the open, every 2,000-candle page break put a fake candle into
+  every long read — one in every 15m backtest window, a few among the exit
+  minutes — while the runner's 300-candle read never met one; #WL867UTS
+  carried one extra −$0.69 trade (RCA-2026-10-19-C). A saved copy without
+  `_DISK_WHOLE` is read again once. Test a candle reader on the VALUES of
+  its closed candles against the exchange's, never only their count.
 * **EVERY TRADE PAYS THE ORDER BOOK OF ITS OWN MINUTE.** `costs.yml` (daily,
   both accounts, `costs_daily` ticks it after 3:00 UTC, backfilling 30 days)
   replays Gate's hourly order-book files (`book_history`: `make` ADDS, `take`

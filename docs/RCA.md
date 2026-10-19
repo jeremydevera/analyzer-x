@@ -172,6 +172,108 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-19-C — every 15-minute backtest held one fake "nothing traded" candle, and its exit minutes a few more, because Gate answers the candle that opens at the exact second asked for as empty
+
+**CEO**
+
+* Clicking #WL867UTS (KSTR 15m inside-bar breakout, TP 3% / SL 0.5%) listed
+  45 trades while the row said 46: the row carried one losing trade
+  (−$0.69, Sep 28, 2026 8:30am) that never really happened.
+* Why: when the app asks Gate for "candles up to this second" and that
+  second is exactly when a candle opens, Gate hands that candle back empty —
+  flat price, no trades — and the app asked that way at every 2,000 candles,
+  so each long backtest read carried a fake empty candle every 2,001 candles,
+  while practice, reading 300 candles at a time, never met one.
+* What stops it now: every finished candle is asked for by its LAST second,
+  which Gate answers in full; this PC's saved copies are read again once;
+  tonight's backtest re-measures every row with whole candles.
+
+**DEV**
+
+* `gate_futures._rest_range` paged with `to=end`, and `end` is always a
+  bar's opening second (`hi - hi % per`, then `first - per`); Gate answers
+  the bar opening AT `to` as a placeholder (o = h = l = c = the previous
+  close, v = 0). Every `klines(sym, iv, >2000)`, `klines_page(end)` and
+  `minutes()` read got one per page break (and `minutes()`' 5m hole read
+  always ended on one); `klines`' disk copy then kept them, refreshing only
+  its newest three bars.
+* Invariant broken: **a closed candle the app reads is the candle the
+  exchange recorded** — a closed bar is asked by its last second
+  (`to = end + per - 1`), the forming bar at its open as before (the
+  runner's one-page read is byte-identical); disk copies carry
+  `_DISK_WHOLE`, and an unmarked copy is read again once over its whole span.
+* Guards: `tests/test_gate_candles_are_whole_at_every_page_break.py`
+  (`test_a_long_read_has_no_fake_candle_at_a_page_break`,
+  `test_the_exit_minutes_have_no_fake_minute`,
+  `test_a_read_that_ends_in_the_past_ends_on_the_whole_candle`,
+  `test_the_runners_short_read_asks_exactly_as_before`,
+  `test_a_copy_saved_before_the_fix_is_read_again_once`).
+
+**SAW** — Oct 19, 2026, the operator: *"id i will click them one by one, the
+trades will appear each day right? are the trades updated as well?"* — and of
+9 rows clicked to answer it, #WL867UTS listed 46 trades (−$15.81) while its
+trade list showed 45 (−$15.11), September −$8.31 against −$7.62.
+
+**TIMELINE**
+
+1. Oct 10, 2026 3:56am — the app moves to Gate; `_rest_range` asks every
+   page `to=<a candle's opening second>`.
+2. Oct 19, 2026, between 4:15am and 4:30am (08:15-08:30 UTC) — GitHub
+   measures KSTR 15m. Its read's first page break falls on Sep 28, 2026
+   8:00am, which Gate hands back as 22.76 flat, volume 0; the inside-bar rule
+   takes it for a candle inside the one before it and buys the breakout:
+   LONG 22.78 at 8:30am, stopped out at 9:36am, −$0.69. Row #WL867UTS: 46
+   trades, 6 wins, −$15.81.
+3. Oct 19, 2026 ~9:45am — this PC's own read of KSTR 15m puts ITS fake on
+   Sep 28, 2026 1:30pm (Gate's real candle 22.64 / 22.70 / 22.64 / 22.69,
+   volume 264; the saved copy 22.64 flat, volume 0). The click: 45 trades,
+   −$15.11.
+4. Oct 19, 2026 ~10:00am — measured on Gate directly: `to=8:45:00am` gives
+   KSTR's 8:45am candle as 19.39 flat, volume 0; `to=8:45:01am` gives 19.36 /
+   19.44 / 19.36 / 19.40, volume 1,086. A fresh 6,000-candle read of BTC holds
+   empty candles exactly 2,001 and 4,002 back on 15m (Sep 28 1:30pm, Sep 07
+   5:15pm), 5m (Oct 12 11:05am, Oct 05 12:20pm) and 1m (Oct 18 12:32am,
+   Oct 16 3:11pm); this PC's saved BTC, ETH and SOL 15m copies hold 4 each
+   (Jul 27, Aug 17, Sep 07, Sep 28).
+5. Same morning — GitHub's way re-run on this PC, the cost record cut where
+   the row's ended: 45 trades. With GitHub's one fake candle (Sep 28 8:00am)
+   put back: 46 trades, 6 wins, 40 losses, 10 price-ran-away skips, and the
+   listed trades add up to −$15.81 — the row to the cent. The only extra
+   trade is the 8:30am LONG.
+6. With the fix: 9,994-9,995 candles of every size on BTC and ETH from real
+   Gate, 0 empty, 0 gaps, no refusal at the 10,000-candle wall; KSTR's saved
+   copy read again and marked, its Sep 28 1:30pm candle whole.
+
+**ROOT CAUSE** — `_rest_range` asked for each page "up to" a candle's opening
+second, the one second Gate answers with an empty placeholder instead of the
+candle.
+
+**WHY IT WAS NOT CAUGHT** — the fake Gate in `tests/test_gate_futures_candles.py`
+answered `to=` with the real candle, because it was written from Gate's
+documentation and a trial that COUNTED candles ("15m to May 06 no holes"): a
+placeholder is still a candle, so counts, gaps and order all passed, and
+nothing compared a closed candle's VALUES with the exchange's. And the one
+path every live trade checks — the runner — reads 300 candles in one page and
+never meets a page break, so practice never disagreed with itself; it
+disagreed with the backtest, one trade in one row at a time.
+
+**COST** — no money: practice and real trades never read a fake candle. Every
+15m Backtest v2 row measured since Oct 10, 2026 had one fake candle inside
+its 30 days and a few among its last week's exit minutes, and the daily
+replays behind Forecast and Room strategies (~140 days of candles) one every
+2,001; a result moved only where a trade touched one — #WL867UTS by one
+losing trade, −$0.69.
+
+**FIX** — this commit. Tonight's daily backtest (Oct 20, 2026 ~1:31am)
+re-measures every row with whole candles.
+
+**GUARD** — `tests/test_gate_candles_are_whole_at_every_page_break.py::test_a_long_read_has_no_fake_candle_at_a_page_break`,
+`::test_the_exit_minutes_have_no_fake_minute`,
+`::test_a_copy_saved_before_the_fix_is_read_again_once` and
+`::test_the_runners_short_read_asks_exactly_as_before`.
+
+---
+
 ## RCA-2026-10-19-B — P0: about 3% of Stored strategies kept numbers from an OLDER backtest, shown as current — including 100,892 rows of 7 coins the app can no longer trade
 
 **CEO**

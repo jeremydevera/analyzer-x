@@ -172,6 +172,131 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-18-B — room #BBE0A361 switched on 63 strategies whose backtest wins were bought from stock tokens' frozen order books while nothing traded, and practice refused every one of their 1,158 signals
+
+**CEO**
+
+* Room #BBE0A361 switched on 63 strategies at Oct 17, 2026 8:46am, each
+  reading 66-70% wins over 30-59 backtest trades in 30 days (together 2,732
+  trades, 77.1% won, +$4,115.94); by Oct 18, 2026 2:15am practice had
+  refused all 1,158 of their signals and made no trade.
+* Why: on a stock token, Gate's saved order book stands still while the
+  stock's home market is shut, at prices nobody can trade; the backtest bought
+  from that frozen book on candles where nothing traded at all, and won —
+  trades practice can never make, because the real book at those hours is
+  2-3% wide.
+* What stops it now: the backtest no longer buys a stock token's candle where
+  nothing traded, unless the app's own book of that minute says practice
+  could. Tonight's backtest re-measures every row: the same 63 read 724
+  trades, 30.4% won, -$201.07, and none of them is at 65% any more.
+
+**DEV**
+
+* `auto_trader.backtest_strategy` → `entry_refusal(_r_in, ...)` read
+  `book_history.reading_at` off Gate's record (`cost_store.book_for`, source
+  full/snapshot) and asked nothing else of the candle: XIECHUANG's record
+  stood at 36.04 / 36.07 for 514 minutes on Sep 28, 2026 (12:42am-9:15am)
+  while 46 of its 49 15m candles to noon printed no trade, so
+  `minute_verdict` said "ok" and `book_fill_price` filled at 36.07 — 27 of
+  the 33 trades of #CK42WZCP (XIECHUANG 15m rsi2, TP 3% / SL 0.1%) were
+  bought that way.
+* Invariant: **the backtest buys only from a book practice could have
+  traded — a stock token's candle that printed no trade is not bought
+  unless the entry minute holds the app's own book** (`closed_market`, ONE
+  function for the engine and `replay_shard`; every row measured so is
+  stamped `closed_skip` / `closed_skipped`, an index column, and its trade
+  list, last-N-days window and DEMO 30-day figure follow the stamp, as
+  `reenter` does).
+* Guards: `tests/test_backtest_skips_a_closed_stock_market.py` (16).
+
+**SAW** — Oct 18, 2026, after the practice-against-backtest check found no
+practice trade on Oct 17: "Yes" to finding why the backtest let #BBE0A361's
+strategies trade while practice refuses them. Its record: 1,122 cost
+refusals and 36 "the price already ran away", 0 entries, e.g. HUT_USDT
+cf_mom_15m_sl02tp2 — "round-trip cost 1.323% vs take-profit 2.00% = 66% of
+the target · the gap between buy and sell (1.154%) is wider than the 0.20%
+stop".
+
+**TIMELINE**
+
+1. Sep 28, 2026 12:42am-9:15am — XIECHUANG's recorded book reads 36.04 /
+   36.07 for 514 minutes; 46 of its 49 15m candles to noon print no trade.
+   The backtest buys #CK42WZCP 27 times between 2:45am and 9:15am, every
+   one at 36.07.
+2. Oct 16, 2026 6:14am — the app starts recording the book it can trade,
+   every minute (RCA-2026-10-16-A); from then on a backtest reads it over
+   Gate's record.
+3. Oct 17, 2026 8:46am — #BBE0A361 switches on 63 strategies, all on four
+   stock tokens (XIECHUANG, HUT, CCTC, YONGDING), e.g. #MLHFD34L HUT 15m
+   cx_first TP 2% / SL 0.4%: "69.49% over 59 trades in the last 30 days,
+   +58.03".
+4. Oct 17, 2026 8:50am — the app's own book of XIECHUANG reads 31.87 /
+   32.62, a 2.326% gap; practice refuses. Through Oct 18, 2026 2:15am:
+   1,158 refusals, 0 trades.
+5. Oct 18, 2026 — measured before choosing a fix: every 15-minute decision
+   since Oct 16, 2026 6:15am at which Gate's record was fresh, practice's
+   rule on the app's book as the answer key. The backtest's rule on Gate's
+   record agreed 79.9% of the time on the room's four tokens (87.4% over
+   36 coins); skipping a stock token's dead candle, 97.7% (90.0%); a guard
+   on how far the recorded price sits from what traded added nothing
+   (90.0% at 1%, 88.5% at 0.25%). Practice entered none of those dead
+   candles on the four tokens at a stop of 0.2% or less, and 28-61% of
+   crypto's, so crypto is left alone.
+6. After the fix, the room's 63 rows replayed on this PC from their own
+   files (each list added up to its row before: 63 of 63): 2,732 trades /
+   2,106 won / +$4,115.94 become 724 / 220 / -$201.07; 53,644 signal
+   candles not bought. XIECHUANG 1,513 / 1,231 / +$2,708.73 → 289 / 78 /
+   -$183.35; CCTC 399 / 286 / +$486.02 → 135 / 23 / -$67.65; YONGDING
+   170 / 123 / +$232.84 → 43 / 10 / -$26.39; HUT 650 / 466 / +$688.35 →
+   257 / 109 / +$76.32. #CK42WZCP: 33 / 31 / +$80.63 → no trade at all,
+   which is what practice did.
+
+**ROOT CAUSE** — the engine asked the runner's cost rule of Gate's RECORDED
+book at every entry minute, and nothing in the walk asked whether the candle
+had traded: on a stock token out of hours that record is a frozen book no
+order can trade at.
+
+**WHY IT WAS NOT CAUGHT** — every cost-check test feeds the engine a live,
+consistent book (`test_backtest_skips_like_practice`,
+`test_backtest_buys_at_practices_price`), and the parity checks
+(RCA-2026-10-10-L, 7 of 7 BTC 1h rows) ran on BTC, which trades every
+minute. The practice-against-backtest check compares practice's trades
+with the backtest's, so a strategy practice never trades leaves nothing to
+compare: "the backtest trades and practice never does" read as "no trades
+yesterday". A check that starts from practice's trades cannot see a
+backtest trade practice refused.
+
+**COST** — no money: #BBE0A361 is practice only and refused every signal.
+But the room switched on 63 strategies, and kept them on, on wins that
+could not happen.
+
+**FIX** — this commit. Rows measured before it keep their old trades until
+tonight's GitHub run re-measures Backtest v2 (due Oct 19, 2026 1:31am); then the
+room's hourly check reads the new figures. The rule is for contracts Gate
+lists as stocks; indices, metals and forex tokens were not measured and
+are left alone. Backtest a room's saved answers move to a new tag
+(`RESULT_TAG` r5), so a saved range is not served across the rule.
+
+**GUARD** — `tests/test_backtest_skips_a_closed_stock_market.py`:
+`test_a_stock_tokens_dead_candle_is_not_bought_off_gates_record`,
+`test_no_reading_at_all_is_not_a_reason_to_buy_either`,
+`test_the_apps_own_book_decides_like_practice`,
+`test_an_app_book_of_an_earlier_minute_is_not_the_entry_minutes`,
+`test_candles_without_their_volume_run_no_rule_and_say_so`,
+`test_a_candle_that_traded_is_bought_as_before`,
+`test_the_rule_off_is_the_engine_of_before`,
+`test_a_candle_the_room_really_took_is_never_refused`,
+`test_one_rule_for_the_engine_and_the_replay`,
+`test_the_rule_is_for_stock_tokens_on_gate`,
+`test_every_measuring_path_asks_it_and_every_row_says_so`,
+`test_the_row_index_keeps_the_stamp_as_a_number`,
+`test_a_rows_trade_list_follows_the_rule_it_was_measured_with`,
+`test_a_rows_days_window_follows_its_own_stamp`,
+`test_the_demo_figure_is_walked_under_its_rows_stamp`,
+`test_a_saved_room_backtest_is_not_served_across_the_rule`.
+
+---
+
 ## RCA-2026-10-18-A — on a stock token whose price sat still, the backtest took the other side from the runner, and a row's own trade list read 30 trades where the row said 58
 
 **CEO**

@@ -373,7 +373,7 @@ def test_the_room_replays_cache_is_signed_by_the_code_it_loaded(monkeypatch):
     monkeypatch.setattr(Path, "stat", later)
     monkeypatch.setattr(rr, "_CODE_SIG", [])
     assert rr._code_sig() == first
-    assert rr.RESULT_TAG == "r4"
+    assert rr.RESULT_TAG >= "r4"      # r5: the closed-market rule (Oct 18, 2026)
 
 
 def test_backtest_v2_is_never_measured_by_a_local_market_sweep(monkeypatch):

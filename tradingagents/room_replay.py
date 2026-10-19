@@ -83,8 +83,12 @@ FLOOR_BELOW = 10.0
 # 2 = the room's own switch-ons are always candidates (Oct 03, 2026);
 # 3 = from the room's first switch-on, its own switches decide (Oct 05, 2026);
 # 4 = every candidate list reads the candle a trade closed in, as the room's
-#     own lists always did (Oct 13, 2026, backtest_report.reenter_for).
-RESULT_TAG = "r4"
+#     own lists always did (Oct 13, 2026, backtest_report.reenter_for);
+# 5 = a stock token's candle where nothing traded is not bought without the
+#     app's own book of the entry minute (Oct 18, 2026,
+#     auto_trader.closed_market) — a saved range with stock tokens in it
+#     answered with trades practice could never have made.
+RESULT_TAG = "r5"
 
 
 # --------------------------------------------------------------- the paths

@@ -220,10 +220,14 @@ def rebuild(slot: str, settings: dict, *, deployed_at: float | None = None) -> d
     # since reads the candle a trade closed in, as the runner does; an
     # unstamped one was measured before, and its figure must add up to it
     _re = bool(row.get("reenter"))
+    # ...and its closed-market rule, the same way (Oct 18, 2026): a stock
+    # token's dead candle the row did not buy is not bought here either
+    _cs = bool(row.get("closed_skip")) and _msw.closed_rule(ident["sym"])
     r = at.backtest_strategy(key, df, 5.0, sizing="flat",
                              dirs=dirs, tp=ident["tp"] / 100, sl=ident["sl"] / 100,
                              liq_move_pct=liq, funding=fund, keep_log=True,
-                             start_at=warm, fine=fine, reenter=_re, **_cost)
+                             start_at=warm, fine=fine, reenter=_re,
+                             closed_skip=_cs, **_cost)
     rebuilt = {"trades": int(r["trades"]), "wins": int(r["wins"]),
                "profit": round(float(r["profit"]), 2)}
     stored = {"trades": int(row["trades"]), "wins": int(row["wins"]),
@@ -234,6 +238,7 @@ def rebuild(slot: str, settings: dict, *, deployed_at: float | None = None) -> d
            # the rule it was walked under — its row's, which changes only
            # when the row is re-measured, and that moves the watermark
            "reenter": _re,
+           "closed_skip": _cs,
            # and its own store, so it can be rebuilt after its slot is
            # switched off and the room's `strategy_res` entry is gone
            "res": ident.get("res") or "",

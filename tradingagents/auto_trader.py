@@ -3408,13 +3408,42 @@ def minute_verdict(reading: dict | None, *, side: int, tp: float, sl: float,
     return {**out, "slippage": slip, "measured": reading is not None}
 
 
+def closed_market(reading: dict | None, *, stock: bool, signal_volume) -> bool:
+    """A STOCK TOKEN'S CANDLE WHERE NOTHING TRADED, met without the app's own
+    book of the entry minute (Oct 18, 2026: "Do your reaseach first on what is
+    best fix and fix for moving forward"). Gate's record of such minutes is no
+    book practice can trade: XIECHUANG's stood frozen at 36.04 / 36.07 for 514
+    minutes on Sep 28, 2026 (12:42am-9:15am) while 46 of its 49 15m candles to
+    noon printed no trade, and the backtest bought 27 times at 36.07; the
+    app's own book of Oct 17, 2026 8:50am read 31.87 / 32.62, a 2.326% gap
+    practice refused.
+    Measured over every 15-minute decision from Oct 16, 2026 6:15am, practice's
+    rule on the app's book as the key: practice entered none of these candles
+    on the room's four stock tokens at a stop of 0.2% or less, and skipping
+    them took the backtest's agreement there from 79.9% to 97.7% (90.0% over
+    36 coins, against 87.4%). Crypto's quiet candles are traded by practice
+    (28-61%), so the rule is for stock tokens; where the app's own book OF THE
+    ENTRY MINUTE exists (at most CHASE_READING_MAX_AGE_S old, the chase
+    guard's rule), it decides instead, as it does for practice."""
+    if not stock or signal_volume is None or float(signal_volume) != 0.0:
+        return False
+    from tradingagents.book_history import SOURCES, book_age_s
+    return not (reading is not None
+                and int(reading.get("source") or 0) == SOURCES["app"]
+                and book_age_s(reading) <= CHASE_READING_MAX_AGE_S)
+
+
 def entry_refusal(reading: dict | None, *, side: int, signal_close: float,
                   tp: float, sl: float, fee: float, hold_s: float, liq,
-                  fund_day: float, flat_slip: float = 0.0) -> tuple[str, dict]:
+                  fund_day: float, flat_slip: float = 0.0,
+                  closed: bool = False) -> tuple[str, dict]:
     """What the runner answers at ONE recorded entry minute, in its own
     order: the cost check (`minute_verdict`, "gate_blocked"), then "the
     price already ran away" (`chase_ok` on the minute's best price - the ask
     for a long, the bid for a short - "chase_skip"); "" = it would enter.
+    `closed` (a stock token's dead candle with no app book of the minute,
+    `closed_market`) answers "closed_skip" before either: the book practice
+    would read there is not the one Gate recorded.
     Returns (that answer, the cost verdict: its `slippage` is the fill).
 
     ONE function for the engine (`backtest_strategy(book=)`) and the GitHub
@@ -3428,6 +3457,10 @@ def entry_refusal(reading: dict | None, *, side: int, signal_close: float,
 
     cv = minute_verdict(reading, side=side, tp=tp, sl=sl, fee=fee, hold_s=hold_s,
                         liq=liq, fund_day=fund_day, flat_slip=flat_slip)
+    # a stock token's dead candle with no app book (`closed_market`): the
+    # wide live book practice would read there is not in Gate's record
+    if closed:
+        return "closed_skip", cv
     if cv["verdict"] == "block":
         return "gate_blocked", cv
     if (reading is not None
@@ -4118,7 +4151,8 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                       reenter: bool = False,
                       book: dict | None = None,
                       book_hold_s: float | None = None,
-                      keep=None) -> dict:
+                      keep=None,
+                      closed_skip: bool = False) -> dict:
     """Run one strategy's exact live rules over a candle history.
 
     ``reenter=True`` (Oct 05, 2026, Backtest a room; since Oct 13, 2026
@@ -4240,6 +4274,12 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     _bk = book
     _bk_on = book is not None
     n_gate = n_unmeasured = n_chase = 0
+    # A STOCK TOKEN'S DEAD CANDLE (`closed_market`, Oct 18, 2026): with a book
+    # and `closed_skip` (a Gate stock token), a signal candle that printed no
+    # trade is not bought unless the entry minute holds the app's own book
+    n_closed = 0
+    _vol_sig = (df["Volume"].to_numpy(dtype="float64")
+                if closed_skip and _bk_on and "Volume" in df.columns else None)
     # WHAT THE TRADES REALLY PAID (Oct 16, 2026, "Yes, use real fees"): the
     # round trip each trade was charged - two taker fees and its own minutes'
     # fills - summed, so 2:1 after fees is judged on it, not on an estimate
@@ -4544,10 +4584,15 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                                           tp=tp, sl=sl, fee=_taker, hold_s=_bk_hold,
                                           liq=liq,
                                           fund_day=_fund_day_at(_t_in * 1000, s),
-                                          flat_slip=_flat_slip)
+                                          flat_slip=_flat_slip,
+                                          closed=(_vol_sig is not None
+                                                  and closed_market(_r_in, stock=True,
+                                                                    signal_volume=_vol_sig[i])))
                 if _why and not _kept:
                     if _why == "gate_blocked":
                         n_gate += 1
+                    elif _why == "closed_skip":
+                        n_closed += 1
                     else:
                         n_chase += 1
                     i += 1
@@ -4860,7 +4905,11 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                 "chase_skip": n_chase,
                 # the average round trip its trades paid, % of the position;
                 # None with no trade (backtest_report.win_and_loss reads it)
-                "rt_paid": round(100 * rt_sum / rt_n, 4) if rt_n else None}
+                "rt_paid": round(100 * rt_sum / rt_n, 4) if rt_n else None,
+                # and the closed-market refusals, only where the rule ran (it
+                # was asked, and the candles carry their volume) - a row is
+                # stamped by this key, never by the asking
+                **({"closed_skip": n_closed} if _vol_sig is not None else {})}
                if _bk_on else {})}
 
 

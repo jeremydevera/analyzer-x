@@ -82,13 +82,18 @@ COLS = ("id", "coin", "tf", "signal", "th", "sl", "tp", "rr", "sizing", "lev",
         # candle a trade closed in, as the runner does
         # (backtest_report.reenter_for); NULL on every row measured before —
         # the old rule — so a row is always replayed the way it was measured
-        "reenter")
+        "reenter",
+        # and its closed-market rule (Oct 18, 2026, auto_trader.closed_market):
+        # 1 = a stock token's dead candle was not bought without the app's own
+        # book; NULL = measured before, and its window replays it so
+        "closed_skip")
 _NUMERIC = {"th", "sl", "tp", "rr", "base", "notional", "winrate", "profit",
             "funding", "h1", "h2", "worst", "dd", "cost_of_tp", "rt", "p15",
             "p1", "p2", "p3", "p4"}
 _INTEGER = {"lev", "trades", "wins", "losses", "green", "months", "liqs",
             "days", "bars", "stop_reachable", "unclear", "t15", "w15",
-            "t1", "w1", "t2", "w2", "t3", "w3", "t4", "w4", "reenter"}
+            "t1", "w1", "t2", "w2", "t3", "w3", "t4", "w4", "reenter",
+            "closed_skip"}
 
 _SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS rows (
@@ -710,7 +715,8 @@ LATE_COLUMNS = (("unclear", "INTEGER"), ("res", "TEXT"),
     # the short windows (Oct 07, 2026)
     (f"{k}{d}", "REAL" if k == "p" else "INTEGER") for d in (1, 2, 3, 4) for k in "twp") + (
     ("reenter", "INTEGER"),    # the rule a row was walked under (Oct 13, 2026)
-    ("rt_paid", "REAL"))       # what its trades really paid (Oct 16, 2026)
+    ("rt_paid", "REAL"),       # what its trades really paid (Oct 16, 2026)
+    ("closed_skip", "INTEGER"))  # its closed-market rule (Oct 18, 2026)
 
 
 def _late_columns(con: sqlite3.Connection) -> None:

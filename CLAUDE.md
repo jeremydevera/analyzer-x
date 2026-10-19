@@ -325,6 +325,24 @@ own `maintenance_rate`.
   just closed, lets the runner buy THAT candle (TJXSTOCK 15m #85C73SLV, Oct
   09, 2026) — round timing, not price: 38 times vs 29 in the MEXC era, 0 of
   28 on Gate.
+* **AND IT DOES NOT BUY A STOCK TOKEN'S DEAD CANDLE (Oct 18, 2026: *"Do your
+  reaseach first on what is best fix and fix for moving forward"*).** Gate's
+  recorded book of a stock token stands still while its home market is shut
+  (XIECHUANG 36.04 / 36.07 for 514 minutes on Sep 28, 2026, 46 of 49 15m
+  candles to noon with no trade), and the backtest bought there: room
+  #BBE0A361 switched on 63 such strategies, practice refused all 1,158
+  signals. `auto_trader.closed_market`, ONE function for the engine
+  (`backtest_strategy(closed_skip=)`) and replay_shard, refuses a signal
+  candle with zero volume on a contract Gate lists as a stock
+  (`market_sweep.closed_rule`) unless the entry minute holds the app's own
+  book (source `app`, at most 59 s old), counted `closed_skip`. Against
+  practice's rule on the app's book it took agreement on the room's four
+  stock tokens from 79.9% to 97.7% (87.4% to 90.0% over 36 coins); crypto
+  is untouched (practice takes 28-61% of its quiet candles). Rows are
+  stamped (`closed_skip`, `closed_skipped`; an index column) and the trade
+  list, the last-N-days window and the DEMO figure follow the stamp.
+  Guard: `tests/test_backtest_skips_a_closed_stock_market.py`;
+  RCA-2026-10-18-B.
 * **Gate's fee is 0.075% taker on every contract** (`fee_floor()`), against
   MEXC's 0.02% floor. Funding cycles are 8 h, 4 h or 1 h per contract.
 * **Real money on Gate is built and shut.** Orders, the resting stop (Gate

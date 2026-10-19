@@ -860,6 +860,11 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
         log(f"{sym} {tf}: only {len(df) - warm} measurable bars, skipped")
         return 0
     coin = sym.replace("_USDT", "")
+    # A STOCK TOKEN'S DEAD CANDLE (auto_trader.closed_market, Oct 18, 2026):
+    # with the minute's book, a signal candle that printed no trade is not
+    # bought unless the minute holds the app's own book. Every row measured so
+    # says so, and a reader replays it the same way (market_sweep.closed_rule)
+    _closed = book is not None and _venue.kind(sym) == "stocks"
     # the MEASURED span, never the warm-up's. A row that says 59 days while
     # 33 of them were only feeding averages is a label over the wrong number.
     days = int((df["Date"].iloc[-1] - df["Date"].iloc[warm]).days)
@@ -1028,6 +1033,7 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                                 # each trade pays its own minute's book and is
                                 # refused where the runner would refuse it
                                 book=book, book_hold_s=bs * at.FUNDING_HOLD_BARS,
+                                closed_skip=_closed,
                                 # the row's last 15 days too (br.RECENT_DAYS)
                                 recent_from_ms=(int(ts[-1]) - br.RECENT_DAYS * 86_400_000
                                                 if len(ts) else None),
@@ -1096,6 +1102,10 @@ def run_pair(sym, tf, out, *, i=0, n=0, rows_so_far=0, signals=None,
                         # trade closed in (Oct 13, 2026) — a reader replays
                         # every row the way it was measured
                         **({"reenter": True} if br.reenter_for(RES) else {}),
+                        # and its closed-market rule, with how many signals it
+                        # refused for it (Oct 18, 2026)
+                        **({"closed_skip": True, "closed_skipped": int(r["closed_skip"])}
+                           if _closed and "closed_skip" in r else {}),
                         # the runner's cost check, asked at every entry's own
                         # minute: how many signals it refused, and how many
                         # trades had no reading and paid the flat cost

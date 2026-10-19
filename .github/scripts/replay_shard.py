@@ -230,6 +230,9 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
     end = ts[-1] + bs * 1000
     cks = checks(end)
     coin = sym.replace("_USDT", "")
+    # a stock token's dead candle with no app book is not bought - the one
+    # rule the engine asks (auto_trader.closed_market, Oct 18, 2026)
+    _stock = _venue.kind(sym) == "stocks"
     lines: list[str] = []
     for sig in sigs:
         key = f"{sig}_rp_{tf}"
@@ -277,7 +280,10 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
                             fee=cost["fee"], hold_s=hold_s, liq=liq_frac,
                             fund_day=at.funding_day_at(f_ms, f_rate, f_cyc,
                                                        ts[i + 1], side),
-                            flat_slip=cost["slip"])
+                            flat_slip=cost["slip"],
+                            closed=at.closed_market(
+                                r, stock=_stock,
+                                signal_volume=vol[i] if vol is not None else None))
                         if why:
                             stats[why] = stats.get(why, 0) + 1
                             return True
@@ -426,7 +432,8 @@ def main() -> int:
              "groups": list(GROUPS), "write": WRITE,
              "cfg": CFG, "coins_board": len(coins), "coins_done": 0,
              "pairs": 0, "tested": 0, "kept": 0, "short": [], "failed": {},
-             "spans": {}, "gate_blocked": 0, "chase_skip": 0, "cost_unmeasured": 0}
+             "spans": {}, "gate_blocked": 0, "chase_skip": 0, "closed_skip": 0,
+             "cost_unmeasured": 0}
     ss.log(f"watcher replay from {START}: {len(coins)} coin(s), {TFS}")
     ss.report.board = len(coins)
     failed: dict = {}
@@ -441,7 +448,7 @@ def main() -> int:
                 sym = queue.pop(0)
             before = {k: stats.get(k, 0) for k in ("pairs", "tested", "kept",
                                                    "gate_blocked", "chase_skip",
-                                                   "cost_unmeasured")}
+                                                   "closed_skip", "cost_unmeasured")}
             before_short, before_spans = list(stats["short"]), dict(stats["spans"])
             try:
                 cost = coin_costs(sym, usual)
@@ -471,6 +478,7 @@ def main() -> int:
     ss.log(f"done: {stats['coins_done']} coin(s), {stats['tested']:,} tested, "
            f"{stats['kept']:,} could pass, {stats['gate_blocked']:,} entries the "
            f"cost check refused, {stats['chase_skip']:,} whose price had run away, "
+           f"{stats['closed_skip']:,} on a stock token's candle where nothing traded, "
            f"{stats['cost_unmeasured']:,} trades with no "
            f"recorded book, in {(time.time() - t0) / 60:.0f} min")
     return 0

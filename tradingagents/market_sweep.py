@@ -923,6 +923,19 @@ def reenter_of(store=None) -> bool:
     return br.reenter_for(getattr(store, "fine_tf", "") if store is not None else FINE_TF)
 
 
+def closed_rule(symbol: str) -> bool:
+    """Does a walk of `symbol` skip a stock token's candle where nothing
+    traded, unless the entry minute holds the app's own book
+    (`auto_trader.closed_market`, Oct 18, 2026)? On Gate, for a contract Gate
+    lists as a stock: only there does a walk read the minute's book, and the
+    research behind the rule measured stock tokens only. One answer for the
+    PC's measuring and its readers, as `reenter_of` is for the re-entry rule;
+    a reader asks it only for a row stamped `closed_skip`."""
+    from tradingagents import venue
+
+    return venue.current() == "gate" and venue.kind(symbol) == "stocks"
+
+
 def resume_start(off: int, prev, *, reenter: bool) -> int:
     """Where an UPDATE's signal search starts on the frame: `off`, the first
     new candle — or, under Backtest v2's rule (`reenter`), the LAST MEASURED
@@ -1296,6 +1309,11 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
             states, last_ms = {"__version__": ver}, 0
     book_to = (int(minute_book["t"][-1])
                if minute_book is not None and len(minute_book["t"]) else 0)
+    # A STOCK TOKEN'S DEAD CANDLE (`closed_rule`, Oct 18, 2026): with the
+    # minute's book, a signal candle that printed no trade is not bought
+    # unless the minute holds the app's own book — as the GitHub shard
+    # measures, and every row so measured says so
+    _closed = minute_book is not None and closed_rule(symbol)
     # State without rows shows the operator nothing. If the grid for this pair
     # is missing (first build, or a store wiped by hand), ignore the resume
     # point and measure it again rather than reporting "no new bars" forever.
@@ -1452,6 +1470,7 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                         # them by time, so a sliced `frame` is fine)
                         fine=fine, book=minute_book,
                         book_hold_s=bs * at.FUNDING_HOLD_BARS,
+                        closed_skip=_closed,
                         # v2 reads the candle a trade closed in, as the
                         # runner and the GitHub shard do (Oct 13, 2026)
                         reenter=reenter_of(),
@@ -1545,6 +1564,10 @@ def run_pair(symbol: str, tf: str, *, slot: int | None = None,
                        if FINE_TF else {}),
                     # the rule its walk followed, as the shard stamps it
                     **({"reenter": True} if reenter_of() else {}),
+                    # and its closed-market rule, with how many signals it
+                    # refused for it, as the shard stamps them (Oct 18, 2026)
+                    **({"closed_skip": True, "closed_skipped": int(r["closed_skip"])}
+                       if _closed and "closed_skip" in r else {}),
                     # the cost check's own counts and the last minute of book
                     # it read — the same fields as a GitHub v2 row
                     **({"gate_blocked": int(r.get("gate_blocked", 0)),
@@ -2287,6 +2310,12 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
                                           if the_row is not None and not whole
                                           else reenter_of(store)), book=_book,
                                  book_hold_s=bs * at.FUNDING_HOLD_BARS,
+                                 # and its closed-market rule (Oct 18, 2026),
+                                 # read off the row as `reenter` is: a walk up
+                                 # to today, or one with no row, takes today's
+                                 closed_skip=(bool(the_row.get("closed_skip"))
+                                              if the_row is not None and not whole
+                                              else True) and closed_rule(symbol),
                                  # the candles the ROOM entered (signal opens,
                                  # seconds): no cost or chase model refuses them
                                  keep=_keep_of(took))
@@ -2299,6 +2328,9 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
             **({"gate_blocked": int(r.get("gate_blocked", 0)),
                 "cost_unmeasured": int(r.get("cost_unmeasured", 0)),
                 "chase_skip": int(r.get("chase_skip", 0)),
+                # and the stock token's dead candles it did not buy, when the
+                # closed-market rule ran (Oct 18, 2026)
+                **({"closed_skip": int(r["closed_skip"])} if "closed_skip" in r else {}),
                 "book_to": fmt_stamp(_bend) if _bend else None}
                if _book is not None else {}),
             "winrate": round(100 * r["wins"] / max(r["trades"], 1), 2),
@@ -2726,7 +2758,9 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                     book_hold_s=bs * at.FUNDING_HOLD_BARS,
                     # the rule the ROW was measured with (Oct 13, 2026):
                     # unstamped = the old rule, so its window is its own
-                    reenter=bool(r.get("reenter")))
+                    reenter=bool(r.get("reenter")),
+                    # and its closed-market rule, the same way (Oct 18, 2026)
+                    closed_skip=bool(r.get("closed_skip")) and closed_rule(sym))
                 # A TRADE BELONGS TO THE WINDOW IF IT CLOSED IN IT, even if
                 # it opened before. Operator, Sep 11, 2026, with the case that
                 # names the rule: *"open: aug 1 closed aug 12 what will

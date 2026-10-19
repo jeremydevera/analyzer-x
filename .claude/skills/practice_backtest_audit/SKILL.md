@@ -35,6 +35,7 @@ other lost, **no equivalent** = no backtest trade opened near it.
 cd .claude/skills/practice_backtest_audit/scripts
 npm install            # first time only: playwright-core, no browser download
 node audit.mjs --day yesterday          # trades closed yesterday (local day)
+node audit.mjs --days 7                 # the past 7 days, today included
 node audit.mjs                          # everything closed since the last run
 node audit.mjs --since "Oct 12, 2026 12:00am" --until "Oct 14, 2026 12:00am"
 ```
@@ -52,9 +53,23 @@ plain run starts there.
 
 Plain words, short, with their own numbers (`short-and-plain`):
 
-1. how many practice trades and ids were read, and the window's real dates;
-2. the ids with NO result in Stored strategies: how many and which;
-3. for every compared trade, practice profit against backtest profit and the
+1. **the accuracy of each day, every time, without being asked** (operator,
+   Oct 18, 2026: *"moving forward when i trigger this skill you should
+   automatically report me the percentage of accuracy each day"*). Every run
+   prints it last and saves it as `daily` in the run's JSON
+   (`match.mjs` `dailyAccuracy` / `accuracyLines`): for each local day of the
+   window, by the day the practice trade CLOSED, **the trades whose backtest
+   came out close, out of the practice trades set against a backtest** — and
+   that denominator is said out loud
+   with the number (CLAUDE.md rule 24). A practice trade the backtest has no
+   trade for (no equivalent, already in its own trade, no stored row) is a
+   miss; one the check could not judge (its list did not load, the step
+   failed, the backtest's candles end first, closed by hand or by the move to
+   Gate) is left out and named beside that day. A day with no practice trade
+   says so — it never vanishes from the report;
+2. how many practice trades and ids were read, and the window's real dates;
+3. the ids with NO result in Stored strategies: how many and which;
+4. for every compared trade, practice profit against backtest profit and the
    verdict; lead with the ones that are not close or have no equivalent.
 
 Verdicts beyond the three approved ones, both added on the first day:

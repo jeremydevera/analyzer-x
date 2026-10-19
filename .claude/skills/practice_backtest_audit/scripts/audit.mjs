@@ -6,7 +6,8 @@ import { chromium } from "playwright-core";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { compare, fmtWhen, fromReplay, idAnswer, money, nextSaved, parseWhen, split, tradeKey } from "./match.mjs";
+import { accuracyLines, compare, dailyAccuracy, fmtWhen, fromReplay, idAnswer, money, nextSaved, parseWhen,
+         pastDays, split, tradeKey } from "./match.mjs";
 
 const argv = process.argv.slice(2);
 const arg = (name, def) => {
@@ -45,6 +46,13 @@ function windowOf() {
     if (base == null) throw new Error(`--day ${day}: write it like "Oct 13, 2026", "yesterday" or "today"`);
     const next = new Date(base); next.setDate(next.getDate() + 1);
     return { since: base, until: next.getTime(), why: `trades closed on ${fmtWhen(base).slice(0, 12)}` };
+  }
+  // "the past N days" (operator, Oct 18, 2026): today and the days before it
+  if (arg("days")) {
+    const n = Number(arg("days"));
+    if (!Number.isInteger(n) || n < 1) throw new Error(`--days ${arg("days")}: a whole number of days, 1 or more`);
+    const { since, until } = pastDays(n, now);
+    return { since, until, why: `trades closed in the past ${n} day(s), today included` };
   }
   if (arg("since")) {
     const since = parseWhen(arg("since"));
@@ -311,6 +319,8 @@ for (const t of report.trades) {
 }
 report.counts = counts;
 report.counts_not_on_list = counts_not_on_list;
+// the accuracy of each day of the window, on every run (Oct 18, 2026)
+report.daily = dailyAccuracy(report.trades, win.since, win.until);
 report.finished = fmtWhen(Date.now());
 writeFileSync(`${base}.json`, JSON.stringify(report, null, 2));
 const cols = ["room", "trade_id", "strategy_id", "strategy", "coin", "side", "opened", "closed", "held",
@@ -336,4 +346,5 @@ const missing = Object.entries(report.ids).filter(([, v]) => v.found === false);
 console.log(`[audit] verdicts: ${JSON.stringify(counts)}`);
 console.log(`[audit] of them, strategies not on the Backtest list (compared from their stored backtests): ${JSON.stringify(counts_not_on_list)}`);
 console.log(`[audit] ids with no result: ${missing.length}${missing.length ? ` (${missing.map(([k]) => k).join(", ")})` : ""}`);
+for (const line of accuracyLines(report.daily)) console.log(`[audit] ${line}`);
 console.log(`[audit] written: ${base}.json and .csv`);

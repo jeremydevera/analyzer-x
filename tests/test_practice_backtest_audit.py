@@ -39,7 +39,7 @@ def _node(expr: str):
     script = (f'import * as m from "{MATCH.as_uri()}";'
               f"console.log(JSON.stringify({expr}));")
     out = subprocess.run([node, "--input-type=module", "-e", script],
-                         capture_output=True, text=True, timeout=120)
+                         capture_output=True, text=True, encoding="utf-8", timeout=120)
     assert out.returncode == 0, out.stderr
     return json.loads(out.stdout.strip().splitlines()[-1])
 
@@ -256,3 +256,91 @@ def test_a_saved_start_point_moves_back_for_a_trade_left_unchecked():
     assert _node("m.nextSaved(5, [])") == 5
     audit = (MATCH.parent / "audit.mjs").read_text(encoding="utf-8")
     assert "nextSaved(st.last_closed_ms ?? null, report.trades)" in audit
+
+
+# ---- accuracy, every day of the window (Oct 18, 2026) ----------------------
+def _at(d: int, hm: str) -> int:
+    return _node(f"m.parseWhen('Oct {d:02d}, 2026 {hm}')")
+
+
+DAY_TRADES = None
+
+
+def _day_trades():
+    """One timeline: trades closing Oct 13-15, 2026, every kind of verdict."""
+    global DAY_TRADES
+    if DAY_TRADES is None:
+        rows = [(13, "7:46am", "close"), (13, "8:19am", "close"),
+                (13, "9:00am", "not close"), (13, "10:00am", "no equivalent"),
+                (13, "11:00am", "not checked (its trade list did not load)"),
+                (14, "1:00am", "closed by hand, not by its strategy"),
+                (14, "2:00am", "backtest ends before this trade closed"),
+                (15, "3:00pm", "backtest already in its own trade"),
+                (15, "4:00pm", "not close (one won, one lost)"),
+                (15, "5:00pm", "close"),
+                (15, "6:00pm", "no stored backtest makes this id")]
+        DAY_TRADES = [{"closed_ms": _at(d, hm), "verdict": v} for d, hm, v in rows]
+    return DAY_TRADES
+
+
+def test_accuracy_is_reported_for_every_day_of_the_window():
+    """Operator, Oct 18, 2026: "Do the /practice_backtest_audit for past 7
+    days and report to me how many percentage is accuracy, also moving
+    forward when i trigger this skill you should automatically report me the
+    percentage of accuracy each day". Accuracy = the practice trades whose
+    backtest trade came out close, out of every practice trade the check set
+    against a backtest, on the local day the trade CLOSED. A trade the check
+    could not judge (its list did not load, closed by hand, the backtest's
+    candles end first) is left out of that count and named beside it."""
+    got = _node(f"m.dailyAccuracy({json.dumps(_day_trades())}, "
+                f"{_at(13, '12:00am')}, {_at(16, '12:00am')})")
+    d13, d14, d15 = got["days"]
+    assert [d["day"] for d in got["days"]] == ["Oct 13, 2026", "Oct 14, 2026", "Oct 15, 2026"]
+    assert (d13["trades"], d13["close"], d13["judged"], d13["pct"]) == (5, 2, 4, 50.0)
+    assert d13["left_out"] == {"not checked (its trade list did not load)": 1}
+    assert (d14["trades"], d14["judged"], d14["pct"]) == (2, 0, None)
+    # a practice trade with no backtest trade behind it is a miss, whatever
+    # the reason the backtest has none
+    assert (d15["trades"], d15["close"], d15["judged"], d15["pct"]) == (4, 1, 4, 25.0)
+    assert (got["trades"], got["close"], got["judged"], got["pct"]) == (11, 3, 8, 37.5)
+
+
+def test_a_day_with_no_practice_trade_still_gets_its_line():
+    """Oct 17, 2026 had no practice trade in any room; its line says so
+    instead of the day vanishing from the report."""
+    got = _node(f"m.dailyAccuracy([], {_at(17, '12:00am')}, {_at(18, '11:29pm')})")
+    assert [(d["day"], d["trades"], d["pct"]) for d in got["days"]] == \
+        [("Oct 17, 2026", 0, None), ("Oct 18, 2026", 0, None)]
+    assert got["pct"] is None
+
+
+def test_the_printed_lines_name_what_was_divided_by_what():
+    """CLAUDE.md rule 24: a percentage names its denominator before it is
+    spoken; and every day's words come from that day's own counts."""
+    got = _node(f"m.accuracyLines(m.dailyAccuracy({json.dumps(_day_trades())}, "
+                f"{_at(13, '12:00am')}, {_at(17, '12:00am')}))")
+    assert got[0].startswith("accuracy by the day a practice trade closed")
+    assert "came out close, out of the practice trades set against a backtest" in got[0]
+    assert got[1] == ("Oct 13, 2026: 2 of 4 close = 50.0% "
+                      "(left out: 1 not checked (its trade list did not load))")
+    assert got[2] == ("Oct 14, 2026: none of its 2 trades could be set against a backtest "
+                      "(1 closed by hand, not by its strategy; 1 backtest ends before this trade closed)")
+    assert got[3] == "Oct 15, 2026: 1 of 4 close = 25.0%"
+    assert got[4] == "Oct 16, 2026: no practice trade closed"
+    assert got[5] == "whole window: 3 of 8 close = 37.5%"
+
+
+def test_the_past_n_days_is_today_and_the_days_before_it():
+    now = _at(18, "11:29pm")
+    assert _node(f"m.pastDays(7, {now})") == {"since": _at(12, "12:00am"), "until": now}
+    assert _node(f"m.pastDays(1, {now})") == {"since": _at(18, "12:00am"), "until": now}
+
+
+def test_every_run_prints_and_saves_the_accuracy_of_each_day():
+    audit = AUDIT.read_text(encoding="utf-8")
+    assert re.search(r'import \{[^}]*\bdailyAccuracy\b[^}]*\} from "\./match\.mjs"', audit)
+    assert "report.daily = dailyAccuracy(report.trades, win.since, win.until)" in audit
+    assert "accuracyLines(report.daily)" in audit
+    assert 'arg("days")' in audit and "pastDays(" in audit
+    skill = (SCRIPTS.parent / "SKILL.md").read_text(encoding="utf-8")
+    assert "accuracy of each day" in skill and "--days 7" in skill

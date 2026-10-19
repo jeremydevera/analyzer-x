@@ -194,3 +194,89 @@ export function nextSaved(prev, trades) {
   const pending = (trades || []).some((t) => t.closed_ms != null && UNCHECKED.test(String(t.verdict || "")));
   return pending ? Math.min(prev, w) : Math.max(prev, w);
 }
+
+
+// ACCURACY, EVERY DAY (operator, Oct 18, 2026: "Do the /practice_backtest_audit
+// for past 7 days and report to me how many percentage is accuracy, also moving
+// forward when i trigger this skill you should automatically report me the
+// percentage of accuracy each day"). A practice trade is JUDGED when the check
+// set it against a backtest: the verdict says how the backtest answered, or
+// that the backtest had no trade (or no row) for it - a miss either way, since
+// the backtest did not show that trade. The rest could not be judged and are
+// named beside the count: its list did not load, the step failed, the
+// backtest's candles end first, closed by hand or by the move to Gate.
+const JUDGED = new Set(["close", "not close", "not close (one won, one lost)", "no equivalent",
+                        "backtest already in its own trade", "no stored backtest makes this id"]);
+
+const dayStart = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const nextDay = (ms) => { const d = new Date(ms); d.setDate(d.getDate() + 1); return d.getTime(); };
+const share = (close, judged) => (judged ? Math.round((1000 * close) / judged) / 10 : null);
+
+/** "The past N days": today and the N - 1 days before it, from local midnight. */
+export function pastDays(n, now = Date.now()) {
+  const d = new Date(now);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - (Math.max(1, Math.floor(n)) - 1));
+  return { since: d.getTime(), until: now };
+}
+
+/** Close ÷ judged for every local day of [since, until), by the day each
+ *  practice trade CLOSED (the calendar's rule), and for the whole window. A
+ *  day with no trade still gets its line. */
+export function dailyAccuracy(trades, since, until) {
+  const days = [];
+  for (let t = dayStart(since); t < until; t = nextDay(t)) {
+    days.push({ day: fmtWhen(t).slice(0, 12), start: t, trades: 0, close: 0, judged: 0,
+                pct: null, left_out: {} });
+  }
+  let n = 0;
+  let close = 0;
+  let judged = 0;
+  for (const tr of trades || []) {
+    if (tr.closed_ms == null) continue;
+    const day = days.find((d) => d.start === dayStart(tr.closed_ms));
+    if (!day) continue;
+    day.trades += 1;
+    n += 1;
+    const v = String(tr.verdict || "");
+    if (!JUDGED.has(v)) {
+      day.left_out[v] = (day.left_out[v] || 0) + 1;
+      continue;
+    }
+    day.judged += 1;
+    judged += 1;
+    if (v === "close") {
+      day.close += 1;
+      close += 1;
+    }
+  }
+  for (const d of days) {
+    d.pct = share(d.close, d.judged);
+    delete d.start;
+  }
+  return { days, trades: n, close, judged, pct: share(close, judged) };
+}
+
+const listed = (o) => Object.entries(o).map(([k, v]) => `${v} ${k}`).join("; ");
+
+/** The lines every run prints: what was divided by what first (CLAUDE.md rule
+ *  24), then one line per day from that day's own counts, then the window. */
+export function accuracyLines(daily) {
+  const out = ["accuracy by the day a practice trade closed (the trades whose backtest came out "
+               + "close, out of the practice trades set against a backtest; close = same result "
+               + "and within 10% or 10 cents; a practice trade the backtest has no trade for is a miss):"];
+  for (const d of daily.days) {
+    if (!d.trades) out.push(`${d.day}: no practice trade closed`);
+    else if (!d.judged) {
+      out.push(`${d.day}: ${d.trades === 1 ? "its one trade" : `none of its ${d.trades} trades`} `
+               + `could be set against a backtest (${listed(d.left_out)})`);
+    } else {
+      out.push(`${d.day}: ${d.close} of ${d.judged} close = ${d.pct.toFixed(1)}%`
+               + (Object.keys(d.left_out).length ? ` (left out: ${listed(d.left_out)})` : ""));
+    }
+  }
+  out.push(daily.judged
+    ? `whole window: ${daily.close} of ${daily.judged} close = ${daily.pct.toFixed(1)}%`
+    : "whole window: no practice trade could be set against a backtest");
+  return out;
+}

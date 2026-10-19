@@ -243,6 +243,17 @@ trade list showed 45 (−$15.11), September −$8.31 against −$7.62.
 6. With the fix: 9,994-9,995 candles of every size on BTC and ETH from real
    Gate, 0 empty, 0 gaps, no refusal at the 10,000-candle wall; KSTR's saved
    copy read again and marked, its Sep 28 1:30pm candle whole.
+7. Oct 19, 2026 ~10:08am — the site restarted on the fix; no rate-limit
+   refusal in any room's log after it. KSTR re-measured GitHub's way at the
+   row's own cost: 45 trades, 6 wins, −$15.11 (the click list); with
+   GitHub's fake candle put back, 46 trades, −$15.81 (the row). A click
+   sample against last night's rows: 25 of 30 15m rows and 6 of 6 1h rows
+   equal their list; 3 of the 5 others equal their row once GitHub's fake
+   candle is put back (#R8NKB865 SNXX 23 trades −$5.18, #CH4C9SAT MOODENG 47
+   −$9.53, #C6ZPZTDG LPT 168 / 25 wins), and 2 differ by $0.07 (#48XWR9GA
+   ASTS, #J3PFN6DV PUNDIX): their exits on Oct 12, 2026 between ~6am and
+   11:45am were measured by the minute and are replayed on 5-minute candles,
+   because Gate's REST stopped selling those minutes in between.
 
 **ROOT CAUSE** — `_rest_range` asked for each page "up to" a candle's opening
 second, the one second Gate answers with an empty placeholder instead of the

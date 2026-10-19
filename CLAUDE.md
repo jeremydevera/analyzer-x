@@ -877,6 +877,41 @@ for 24 hours. It prints `up (pid N): X indexed of Y, Z to re-file` now.
 none about the process being ABSENT — "stalled" and "gone" produce the same
 screen, and only one of them had ever been imagined.
 
+## Stored strategies takes in EVERY night's backtest (P0 — MANDATORY — Oct 19, 2026)
+
+The operator, Oct 19, 2026: *"Why did you not updated it? Why did you not
+asses that bactest stored strategies must be updated as well, you did know
+that stored strategies is very important to me"*, then *"this is p0 critical
+issue i dont want to happen this anymore in the future"*. Stored strategies
+(Backtest v2) held the Oct 17 backtests through all of Oct 18: the nightly
+collect waited on a list rebuild that had finished 22 hours earlier, because
+a program was alive under that rebuild's old pid (RCA-2026-10-19-A).
+
+* **"Is X running?" is a LOCK held, never a pid — for EVERY long process.**
+  The indexer learned it on Sep 14, 2026 (`run_lock_held`); the rebuild had
+  not. `rebuild()` now holds `rows_rebuild.lock` for its whole run
+  (`rebuild_lock_held`), and a record that says "done" is never running. Any
+  background job other code waits on gets its lock from its first commit.
+* **Backtest v2 has no indexer, so the SITE keeps its list filed.**
+  `rows_index.keep_list_filed(stores.V2)` runs from the supervisor every 10
+  minutes: results newer than the list for 30 minutes, none landing for 15,
+  nothing rebuilding or writing → a filing program started with v2's own
+  settings. A one-shot filer (a collect, a rebuild's after-step) is never the
+  only thing between a result file and the list.
+* **A change to what the list KEEPS is not done until the list has
+  REFRESHED.** After any change to `index_keeps` (TP > SL, 2:1, a new floor)
+  or to how rows are filed, check — that day and the next morning — that
+  `stale_pairs()` is 0 under `rows_index.using_db(stores.V2.rows_db)` and the
+  `pairs` table's newest `last_ms` matches the newest result files. "The rule
+  is in the code" was true on Oct 16, 2026 and the list was a night behind
+  on Oct 19.
+* **The list keeps every number its rules judge by.** `rt_paid` (what a
+  strategy's trades really paid, which 2:1 is judged on) was read at filing
+  and never saved, so every check made from the list fell back to the
+  estimate; it is a column now.
+
+Guard: `tests/test_stored_strategies_keep_up_every_night.py` (11).
+
 ## The row index is a BULK LOAD, not a trickle (MANDATORY — 2026-08-26)
 
 The operator: *"why is my stored strategy few? ... where are those?"* and then

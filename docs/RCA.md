@@ -172,6 +172,99 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-19-A — P0: Stored strategies stopped taking in the nightly backtests after Oct 17, 2026, because "is a rebuild running?" trusted a program number Windows had given to another program
+
+**CEO**
+
+* Stored strategies (Backtest v2) showed the Oct 17 backtests all through
+  Oct 18 and into Oct 19: last night's results for all 4,144 coin-timeframe
+  pairs never reached the list, and rows that had stopped paying 2:1 stayed
+  on it — #UC4AB4XN (0G 15m mom6, TP 0.8% / SL 0.1%) paid 1.98:1 on the
+  Oct 18 measurement and was still listed.
+* Why: the nightly job only files results when no list rebuild is running,
+  and it decided one WAS running because a program was alive under the old
+  rebuild's number — 22 hours after that rebuild had finished. Nothing else
+  ever files this list.
+* What stops it now: a rebuild proves it is running by holding a lock (a
+  fact, not a number); a finished rebuild never counts as running; and the
+  site itself checks every 10 minutes and files the list whenever it has been
+  behind its results for 30 minutes.
+
+**DEV**
+
+* `db_collect_v2` → `rows_index.file_after_collect()` →
+  `rebuild_progress(DB_PATH)["running"]` = `portable.pid_alive(12208)` →
+  True on Oct 18, 2026 5:10:31am, although `rows_rebuild.json` had said
+  `"phase": "done"` since Oct 17, 2026 6:46:18am → "4,060 pair(s) wait for
+  the table — a rebuild of it is already running (4,144 of 4,144)". The
+  rebuild's own after-step (RCA-2026-10-10-O) asks the same question about
+  ITSELF — its own pid is alive — so for any batch over `BIG_FILL` it could
+  never file either. And `rows_index.COLS` never held `rt_paid` (only
+  `LATE_COLUMNS` got it on Oct 16): the 2:1 rule read it at filing, the list
+  kept NULL on all 12,901,894 rows.
+* Invariants broken: **"is X running?" is a lock held, never a pid** — the
+  rule the indexer adopted on Sep 14, 2026 (`run_lock_held`,
+  RCA-2026-09-12-B) was never applied to the rebuild; **a finished record is
+  finished**; and **a list no process keeps is checked by one that is always
+  there** (`keep_list_filed`, from the site's supervisor). `rebuild()` now
+  holds `rows_rebuild.lock` (`_holds_the_rebuild_lock`), `rebuild_progress`
+  reads the lock (a record with no lock file beside it, from a rebuild older
+  than the lock, still falls back to its pid), and `rt_paid` is a column.
+* Guards: `tests/test_stored_strategies_keep_up_every_night.py` (11), among
+  them `test_a_finished_rebuild_never_reads_as_running_whatever_owns_its_number`
+  and `test_the_filing_after_a_collect_starts_a_rebuild_when_the_last_one_is_done`,
+  which printed the production sentence word for word before the fix.
+
+**SAW** — Oct 19, 2026 12:05am, the operator: *"So the 2:1 ratio, did you
+update all backtest. Stored strategies for past 2 months?"*, then *"Why did
+you not updated it? Why did you not asses that bactest stored strategies must
+be updated as well, you did know that stored strategies is very important to
+me"* and *"this is p0 critical issue i dont want to happen this anymore in the
+future"*.
+
+**TIMELINE**
+
+1. Oct 16, 2026 6:00pm — 3bafc87 adds 2:1 after fees to the list and the
+   rooms; 8:44pm, 99ed623 judges it on what each strategy's trades really
+   paid (`rt_paid`).
+2. Oct 17, 2026 6:46am — a list rebuild finishes: 4,144 pairs, 12,901,894
+   rows, `phase: done`; its after-step says "the table holds every measured
+   pair"; pid 12208 exits. The list file is last written at 6:58am.
+3. Oct 18, 2026 4:42am — the nightly collect rewrites every result file
+   (0G 15m: 1,248 trades, `rt_paid` 0.2025).
+4. Oct 18, 2026 5:10:31am — the collect's filing asks "is a rebuild
+   running?": a program is alive under 12208 → yes → it waits. Nothing files.
+5. Oct 19, 2026 12:05-12:30am — found while answering the operator:
+   `stale_pairs()` = 4,144 of 4,144; 2,505,201 of 12,901,894 rows read "not
+   2:1" from the list (NULL `rt_paid` → the estimate); on a sample of 30
+   pairs, 90,137 of 90,334 listed rows pass on Oct 18's results, 621 would
+   leave the list and 424 join it.
+6. Oct 19, 2026 12:15am — a full re-file of all 4,144 pairs starts (~151
+   pairs a minute); the fix is committed the same night.
+
+**ROOT CAUSE** — `rebuild_progress` let a live pid outvote a record that
+said "done", and Windows reuses pids.
+
+**WHY IT WAS NOT CAUGHT** — The pid-is-not-an-identity rule was bought on
+Sep 12-14, 2026 and written into the INDEXER alone; the rebuild check kept
+"the pid decides when there is one" (added Sep 23 so a long verify would not
+read "not running") — a guard only as wide as the function it was written
+for. Every rebuild test drove a rebuild that was really running or really
+gone; none had a finished record and a stranger alive under its number. And
+nothing anywhere asked "is the list as new as its result files?": the 2:1
+change was checked by the rows it filtered, never by whether the list kept
+refreshing after it.
+
+**COST** — no money: the rooms switch strategies on from the result files,
+not from this list. But the operator chose strategies from a list a day old,
+which still showed rows that had stopped paying 2:1.
+
+**FIX** — this commit, and the re-file started Oct 19, 2026 12:15am.
+
+**GUARD** — `tests/test_stored_strategies_keep_up_every_night.py`.
+
+---
+
 ## RCA-2026-10-18-C — a skill's page on the Claude skills tab printed its own name wrong: "winning_room_strategy" read "winning" + a slanted "room" + "strategy", the underscores gone
 
 **CEO**

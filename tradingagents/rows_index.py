@@ -86,10 +86,16 @@ COLS = ("id", "coin", "tf", "signal", "th", "sl", "tp", "rr", "sizing", "lev",
         # and its closed-market rule (Oct 18, 2026, auto_trader.closed_market):
         # 1 = a stock token's dead candle was not bought without the app's own
         # book; NULL = measured before, and its window replays it so
-        "closed_skip")
+        "closed_skip",
+        # and what its trades REALLY paid (Oct 16, 2026), the cost the 2:1
+        # rule judges by. The rule read it at filing and the list never kept
+        # it: all 12,901,894 rows said NULL, so every check made FROM the list
+        # fell back to the estimate and called 2,505,201 of them not 2:1
+        # (P0, RCA-2026-10-19-A)
+        "rt_paid")
 _NUMERIC = {"th", "sl", "tp", "rr", "base", "notional", "winrate", "profit",
             "funding", "h1", "h2", "worst", "dd", "cost_of_tp", "rt", "p15",
-            "p1", "p2", "p3", "p4"}
+            "p1", "p2", "p3", "p4", "rt_paid"}
 _INTEGER = {"lev", "trades", "wins", "losses", "green", "months", "liqs",
             "days", "bars", "stop_reachable", "unclear", "t15", "w15",
             "t1", "w1", "t2", "w2", "t3", "w3", "t4", "w4", "reenter",
@@ -1717,6 +1723,97 @@ LEGACY_REBUILD_PROGRESS = Path.home() / ".tradingagents" / "rows_rebuild.json"
 # a rebuild writes its progress at least once a minute; older than this and
 # the file describes a run that is no longer there
 REBUILD_FRESH_S = 300
+# THE REBUILD'S IDENTITY IS ITS LOCK, NEVER ITS PID (P0, RCA-2026-10-19-A).
+# `rebuild()` holds `rows_rebuild.lock`, beside its progress record, for its
+# whole run; "is a rebuild running?" is "is that lock held?". The record alone
+# answered by asking whether a program was alive under the record's pid — and
+# on Oct 18, 2026 5:10am one was, 22 hours after rebuild 12208 had written
+# "done". The nightly collect left its 4,060 pairs to that phantom, nothing
+# else files Backtest v2, and Stored strategies stayed a night behind. The
+# indexer learned the same lesson on Sep 14, 2026 (`run_lock_held`, "A PID IS
+# NOT ONE", RCA-2026-09-12-B); the rebuild check had never been moved to it.
+REBUILD_LOCK_WAIT_S = 10.0     # a probe holds the lock for an instant; a start retries past it
+
+
+def _rebuild_lock_path(progress: Path | None = None) -> Path:
+    """The lock beside a store's rebuild record (`rows_rebuild.lock`)."""
+    return Path(progress or REBUILD_PROGRESS).with_suffix(".lock")
+
+
+def take_rebuild_lock(progress: Path | None = None, wait_s: float | None = None):
+    """Claim "the rebuild of this store" for this process: the open, locked
+    handle, or None when another rebuild holds it. Held open on purpose —
+    closing the handle is what gives it up."""
+    path = _rebuild_lock_path(progress)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fh = open(path, "a+", encoding="utf-8")         # noqa: SIM115
+    except OSError:
+        return None
+    deadline = time.monotonic() + (REBUILD_LOCK_WAIT_S if wait_s is None else float(wait_s))
+    while True:
+        try:
+            portable.lock_exclusive(fh, blocking=False)
+            return fh
+        except OSError:
+            if time.monotonic() >= deadline:
+                with contextlib.suppress(Exception):
+                    fh.close()
+                return None
+            time.sleep(0.1)
+
+
+def release_rebuild_lock(fh) -> None:
+    if fh is None:
+        return
+    with contextlib.suppress(Exception):
+        portable.unlock(fh)
+    with contextlib.suppress(Exception):
+        fh.close()
+
+
+def _holds_the_rebuild_lock(fn):
+    """`rebuild()` runs holding `rows_rebuild.lock` — the one fact "is a
+    rebuild running?" may read (RCA-2026-10-19-A). A second rebuild of the
+    same store refuses at once, by name, instead of writing beside the first;
+    the lock is given up on every way out, so the rebuild's own after-step
+    (`main --rebuild` -> `file_after_collect`) never waits on itself."""
+    import functools
+
+    @functools.wraps(fn)
+    def held(*a, **k):
+        lock = take_rebuild_lock()
+        if lock is None:
+            return {"rebuilt": False,
+                    "why": "a rebuild of this file is already running (it holds rows_rebuild.lock)"}
+        try:
+            return fn(*a, **k)
+        finally:
+            release_rebuild_lock(lock)
+    return held
+
+
+def rebuild_lock_held(progress: Path | None = None) -> bool | None:
+    """True while a rebuild of this store holds its lock, False when none
+    does, None when no rebuild on this code has ever run here (no lock file:
+    the caller falls back to the record). Never opens with "w"."""
+    path = _rebuild_lock_path(progress)
+    if not path.exists():
+        return None
+    try:
+        fh = open(path, "a+", encoding="utf-8")         # noqa: SIM115
+    except OSError:
+        return None
+    try:
+        try:
+            portable.lock_exclusive(fh, blocking=False)
+        except OSError:
+            return True                       # somebody else is holding it
+        portable.unlock(fh)
+        return False
+    finally:
+        with contextlib.suppress(Exception):
+            fh.close()
 # How old the rebuild's progress file may be before it stops counting as a
 # live rebuild. A running one republishes constantly (every long phase does),
 # so anything older than this is a rebuild that died without tidying up — and
@@ -1838,6 +1935,7 @@ def _walk_every_index(con, expected_rows: int) -> str:
     return "ok"
 
 
+@_holds_the_rebuild_lock
 def rebuild(*, dest: Path | None = None, keep_backup: bool = True,
             resume: bool = True, force: bool = False,
             full_check: bool = False) -> dict:
@@ -2242,16 +2340,27 @@ def rebuild_progress(db_path: Path | None = None) -> dict:
         if store == "unknown" and own.exists():
             continue
         got["store"] = store
-        # ALIVE IS THE PROCESS, NOT THE FILE'S AGE. The verify phase is one
-        # long quick_check that publishes nothing for its whole length
-        # (estimated 7,449 s on the v2 rebuild of Sep 23, 2026), so a
-        # freshness rule alone read "not running" 11 minutes into it and the
-        # header's chip and the table's line both vanished while pid 24444
-        # was at 567 MB doing exactly what they had said. The pid decides
-        # when there is one; the file's age is the fallback.
+        # ALIVE IS THE LOCK, NOT THE FILE'S AGE AND NOT A PID. The verify
+        # phase is one long quick_check that publishes nothing for its whole
+        # length (estimated 7,449 s on the v2 rebuild of Sep 23, 2026), so a
+        # freshness rule alone read "not running" 11 minutes into it. The pid
+        # replaced it, and a pid is not an identity: on Oct 18, 2026 5:10am a
+        # program alive under rebuild 12208's number made a record that had
+        # said "done" for 22 hours read as running, and the nightly collect
+        # waited on it (P0, RCA-2026-10-19-A). So: a finished rebuild is
+        # never running; a rebuild on this code is running exactly while it
+        # holds `rows_rebuild.lock`; only a record with no lock file beside it
+        # (a rebuild from before the lock) still falls back to its pid.
         pid = int(got.get("pid") or 0)
-        got["running"] = (portable.pid_alive(pid) if pid
-                          else age < REBUILD_FRESH_S)
+        phase = str(got.get("phase") or "").strip().lower()
+        held = rebuild_lock_held(path) if store == "this" else None
+        if phase == "done":
+            got["running"] = False
+        elif held is not None:
+            got["running"] = held
+        else:
+            got["running"] = (portable.pid_alive(pid) if pid
+                              else age < REBUILD_FRESH_S)
         got["age_s"] = round(age)
         # HOW LONG IS LEFT, from the rebuild's own measured rates — never a
         # guess. Loading: pairs left at this run's pairs/min. Verifying: the
@@ -5578,6 +5687,61 @@ def file_after_collect() -> str:
             f"70 minutes) — the page shows the earlier numbers until it swaps in")
 
 
+# THE SAFETY NET: A LIST NO PROCESS KEEPS IS FILED BY THE SITE (P0, Oct 19,
+# 2026, RCA-2026-10-19-A). Backtest v2 has no indexer; only the nightly
+# collect and a rebuild's after-step file it, ONCE each. When both skip — on
+# Oct 18, 2026 5:10am the collect waited on a rebuild that had finished 22
+# hours earlier — nothing else ever would, and Stored strategies stays behind
+# its result files until somebody notices. The site's supervisor asks every
+# LIST_CHECK_EVERY_S: results newer than the list for LIST_BEHIND_S, none
+# landing for LIST_SETTLE_S (a collect still landing finishes first), nothing
+# rebuilding and nothing writing → a filing program is started with the
+# STORE's own settings (never the site's process, whose list is v1).
+LIST_BEHIND_S = 30 * 60
+LIST_SETTLE_S = 15 * 60
+LIST_CHECK_EVERY_S = 10 * 60
+_LIST_CHECKED: dict = {}
+
+
+def keep_list_filed(store, now: float | None = None) -> str:
+    """"" when the store's list is current or something is already bringing
+    it up; else what was started. Never raises into the supervisor."""
+    now = time.time() if now is None else float(now)
+    key = str(store.rows_db)
+    if now - _LIST_CHECKED.get(key, 0.0) < LIST_CHECK_EVERY_S:
+        return ""
+    _LIST_CHECKED[key] = now
+    try:
+        progress = Path(store.rows_db).with_name("rows_rebuild.json")
+        with using_db(Path(store.rows_db)):
+            behind = stale_pairs(now)
+            if not behind:
+                return ""
+            times = []
+            for f in behind:
+                with contextlib.suppress(OSError):
+                    times.append(Path(f).stat().st_mtime)
+            if not times or now - max(times) < LIST_SETTLE_S or now - min(times) < LIST_BEHIND_S:
+                return ""                 # results are still landing, or only just landed
+            if rebuild_lock_held(progress) or rebuild_progress(Path(store.rows_db)).get("running"):
+                return ""                 # a rebuild is bringing it up
+            if jobs_writing() or write_available():
+                return ""                 # the disk or the file is busy; ask again later
+        log_path = Path(store.rows_db).with_name("rows_rebuild.log")
+        env = {**os.environ, **store.env_for(), "PYTHONUNBUFFERED": "1"}
+        with open(log_path, "a", encoding="utf-8", errors="replace") as log:
+            log.write(f"[rows-index] the safety net: {len(behind):,} pair(s) have been newer "
+                      f"than the list for {round((now - min(times)) / 60):,} min — filing them\n")
+            log.flush()
+            proc = subprocess.Popen(
+                [sys.executable, "-u", "-m", "tradingagents.rows_index", "--file"],
+                stdout=log, stderr=subprocess.STDOUT, env=env, **portable.DETACHED)
+        return (f"{len(behind):,} pair(s) were newer than the list for "
+                f"{round((now - min(times)) / 60):,} min — filing them (pid {proc.pid})")
+    except Exception as exc:                                   # noqa: BLE001
+        return f"could not check whether the list is behind: {type(exc).__name__}: {exc}"
+
+
 # HOW LONG TO WAIT BEFORE ASKING FOR THE DATABASE AGAIN.
 #
 # THE INDEXER MAY NOT DIE (Sep 14, 2026). `main()` called `ensure()` bare, so
@@ -5866,6 +6030,12 @@ def main(argv: list | None = None) -> int:
             print(f"[rows-index] after the rebuild, the pairs that arrived "
                   f"during it could not be filed: {type(exc).__name__}: {exc}",
                   flush=True)
+        return 0
+    if args and args[0] == "--file":
+        # the safety net's filing program (keep_list_filed): started with the
+        # store's own settings, it files what the list is missing the way a
+        # collect does — a few pairs in place, many by one fresh rebuild
+        print(f"[rows-index] filing: {file_after_collect()}", flush=True)
         return 0
     if args and args[0] == "--build":
         if len(args) < 2:

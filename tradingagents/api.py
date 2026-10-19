@@ -355,6 +355,14 @@ def _keep_the_row_index_current() -> None:
                         _said = _ri.fold_idle_wal(_live)
                         if _said:
                             print(f"[supervisor] {_live}: {_said}", flush=True)
+                    # STORED STRATEGIES NEVER WAITS A NIGHT FOR A FILER (P0,
+                    # RCA-2026-10-19-A): Backtest v2 has no indexer, and on
+                    # Oct 18, 2026 both of its filers skipped, leaving the list
+                    # a night behind. A list behind its result files is filed
+                    # from here, by a program started with v2's own settings.
+                    _said = _ri.keep_list_filed(_st.V2)
+                    if _said:
+                        print(f"[supervisor] Backtest v2 list: {_said}", flush=True)
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[supervisor] rebuild swap failed: {exc!r}",
                           flush=True)

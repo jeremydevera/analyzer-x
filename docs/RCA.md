@@ -262,7 +262,11 @@ disagreed with the backtest, one trade in one row at a time.
 its 30 days and a few among its last week's exit minutes, and the daily
 replays behind Forecast and Room strategies (~140 days of candles) one every
 2,001; a result moved only where a trade touched one — #WL867UTS by one
-losing trade, −$0.69.
+losing trade, −$0.69. And on a stock token, from Oct 18, 2026, a fake candle
+could also SKIP a real signal: the closed-market rule (RCA-2026-10-18-B)
+refuses a signal candle that printed no trade unless the app's own book of
+the entry minute exists (`closed_market`, pointed out by the session that
+wrote it).
 
 **FIX** — this commit. Tonight's daily backtest (Oct 20, 2026 ~1:31am)
 re-measures every row with whole candles.

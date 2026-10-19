@@ -220,7 +220,13 @@ own `maintenance_rate`.
   frame's own candles + `fine_bars`), never `bars_from_1m`, and measures the
   shard's window (30 days + 300 lead-in, no `resume`, t15 / t1..t4 at the
   END of the row). Checked Oct 10, 2026: 7 of 7 BTC 1h rows equal their
-  trade list (RCA-2026-10-10-L).
+  trade list (RCA-2026-10-10-L). **A replay reads what its row read** — the
+  signal over the row's candles and 300 before them
+  (`msw.shard_history_start`, also `rolling30.rebuild`), never every saved
+  candle, and the row's own cost from its `rt` (`msw.row_slippage`), never
+  the click-written cost file's 0.03%: on flat stock tokens 10 of 18 rows
+  did not add up to their list, 17 of 18 after (RCA-2026-10-18-A). BTC
+  proves nothing here; check a flat stock token.
 * **EVERY TRADE PAYS THE ORDER BOOK OF ITS OWN MINUTE.** `costs.yml` (daily,
   both accounts, `costs_daily` ticks it after 3:00 UTC, backfilling 30 days)
   replays Gate's hourly order-book files (`book_history`: `make` ADDS, `take`

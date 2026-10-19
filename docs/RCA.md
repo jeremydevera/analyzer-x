@@ -172,6 +172,110 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-18-A — on a stock token whose price sat still, the backtest took the other side from the runner, and a row's own trade list read 30 trades where the row said 58
+
+**CEO**
+
+* Room #6B08FF64 switched on #M9T9ZM3E (UNIS 15m trend50, target 3%, stop
+  0.4%) at Oct 17, 2026 12:00am on "80.95% over 42 trades in the last 15
+  days, +78.59", and its stored row read 58 trades, 35 wins, +$61.80 — while
+  a click on the same row listed 30 trades, 7 wins, -$13.26.
+* Why: the trend50 rule asks "is the price above its 50-candle average?";
+  on a stock token whose candles repeat one price for hours, the answer is a
+  tie, and the backtest broke the tie with a rounding error the live runner
+  never makes — so the backtest bought where the runner would sell — and the
+  trade list read the signal over different history and a different cost
+  from the backtest it belongs to.
+* What stops it now: the backtest works the average out exactly the way the
+  runner does, every replay of a Gate row reads the same candles and charges
+  the same cost as that row, and a flat-price test holds both. Tonight's
+  backtest re-measures every row: #M9T9ZM3E becomes 28 trades, 7 wins,
+  -$11.74, with 11 trades and 6 wins in its last 15 days.
+
+**DEV**
+
+* `auto_trader._dirs_for_backtest` (`trend50`) kept `run_sum += close[i] -
+  close[i - 50]`; `sig_trend50` takes `sum(close[-50:]) / 50`. On repeated
+  closes `close[i] > run_sum / 50` was decided by the running sum's
+  accumulated error: 1,850 of 3,243 candles of a stock-token-shaped series
+  disagreed with the runner, and UNIS's own window read 1,210 of 2,879 sides
+  differently from Aug 06 than from GitHub's 300-candle lead-in.
+  `market_sweep.trades_for` and `window_rows` computed a Gate row's signal
+  over every saved candle and `rolling30.rebuild` over ~400 of lead-in
+  (`sweep_shard.window` reads 300), and `trades_for` / `window_rows` charged
+  the click-written cost file's 0.03% (`PAPER_SLIPPAGE`) on minutes with no
+  book reading where the shard charged the coin's usual cost (UNIS `rt`
+  1.6392 = 2 x (0.075% + 0.7446%)).
+* Invariants broken: **the backtest's rule is the runner's arithmetic, not
+  only its formula**, and **a replay reads what its row read: the same
+  history (`shard_history_start`) and the same cost (`row_slippage`)**.
+* Guards: `tests/test_a_flat_price_reads_like_the_runner.py` (9): every
+  candle of three flat-price series against `signal_for`, history
+  independence, and the trade list, the DEMO figure and the last-N-days view
+  each reading GitHub's history and the row's own cost; the replay's 300 is
+  held equal to `sweep_shard.WARMUP_BARS`.
+
+**SAW** — Oct 18, 2026 ~9:30pm, checking why no room had made a practice
+trade since Oct 16, 2026 7:03pm: #6B08FF64's only strategy refused every
+signal (69 `gate_blocked`, Oct 17, 2026 12:05am to Oct 18, 2026 8:50pm, the
+gap between buy and sell 1.46%-3.38%), while its row's last 4 days read 30
+trades and 26 wins, and the row's click read something else again.
+
+**TIMELINE**
+
+1. Oct 14, 2026 1:45am-9:45am — UNIS 15m candles sit at 4.186 with no
+   trade; the 50-candle average equals the close on every one.
+2. Oct 16, 2026 4:15am — the backtest measures the 15-day figure the
+   watcher reads: 42 trades, 34 wins, +78.59.
+3. Oct 17, 2026 12:00am — #6B08FF64 switches #M9T9ZM3E on; 12:05am the
+   first of 69 cost refusals. No practice trade is ever placed.
+4. Oct 18, 2026 3:30am — GitHub's nightly run (39100814112) measures it
+   again: 58 trades, 35 wins, +$61.80, t4 30 trades / 26 wins. Its Oct 14
+   2:00am-9:00am holds 29 LONG trades, each +$2.68 inside its own minute
+   (bought at the book's ~4.02 under candles at 4.186 — the frozen-book
+   fills analyzer-x-ab is fixing), on the side the running sum chose; the
+   runner's own rule, over its 300 candles, reads SHORT on all 29 signal
+   candles (1:45am-8:45am).
+5. Oct 18, 2026 ~9:40pm — the row's click lists 30 trades, 7 wins,
+   -$13.26. Re-run GitHub's way on this PC: 58 / 35 / +$61.23, the candles
+   (2,896 of 2,896) and the Oct 14 order books (1,440 of 1,440 minutes)
+   identical — the split is the signal's history and the cost: 10 of 18
+   rows on UNIS, XIECHUANG and HUT added up to their own list.
+6. After the fix — GitHub's way gives 28 trades, 7 wins, -$11.74 (last 15
+   days: 11 trades, 6 wins, under the room's 80%); 17 of the 18 rows add up
+   to their list. The 18th (HUT 15m mom15 th0.1 sl0.4 tp0.4) has the same 21
+   trades and 12 wins and is $0.17 off: Gate serves only the last 10,000
+   minutes, so since GitHub measured, a day of its exits has fallen back to
+   5-minute candles on this PC. Still open, not fixed here.
+
+**ROOT CAUSE** — `_dirs_for_backtest` implemented trend50's average as a
+running total, which is the runner's formula but not its arithmetic; and the
+Gate replays read their own history and a guessed cost instead of the row's.
+
+**WHY IT WAS NOT CAUGHT** — `test_backtest_dirs_match_the_live_signal`
+compares every candle, but of random walks, which never repeat a price
+exactly, so a tie never happened; and RCA-2026-10-10-L's "7 of 7 rows
+reproduce their trade list" was measured on BTC 1h, where neither the
+history length nor a minute without a book reading changes anything. A
+parity check is only as wide as the prices it is fed: flat stock tokens,
+the case where a tie decides, were in no fixture.
+
+**COST** — no money: #6B08FF64 is practice only and refused every signal on
+cost. But the room switched the strategy on, and kept it, on a figure the
+runner's own rule would not have produced, and the audit's backtest side for
+such rows was a different strategy from the row.
+
+**FIX** — this commit. Rows measured before it keep the old trend50 side
+until tonight's GitHub run (Backtest v2 is re-measured in full every night).
+Still history-sensitive on flat prices, now read the shard's way by every
+replay: stochrsi (up to 40 of 2,879 candles), ao (37), cf_triple (2), bb20
+(1); the runner reads 300 candles, so those can still differ from practice
+by a candle on a flat stock token.
+
+**GUARD** — `tests/test_a_flat_price_reads_like_the_runner.py`.
+
+---
+
 ## RCA-2026-10-17-C — a check that checked nothing still moved its start point, so the next ordinary run would have skipped 60 practice trades for good (NEVER HAPPENED YET: no ordinary run since)
 
 **CEO**

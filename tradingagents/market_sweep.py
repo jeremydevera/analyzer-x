@@ -115,6 +115,32 @@ CONTEXT_BARS = 300        # lookback a signal needs before the first new bar
 GATE_WARMUP_BARS = 300
 
 
+def shard_history_start(n_upto: int, bars) -> int:
+    """Where the history a GitHub shard READ began, for a Gate v2 row whose
+    last candle is candle `n_upto - 1` and which measured `bars` candles: the
+    row's own candles and up to GATE_WARMUP_BARS in front of them
+    (`sweep_shard.window`).
+
+    Every replay of such a row computes its signal over exactly this — the
+    trade list a click shows, the DEMO 30-day figure, the last-N-days view —
+    never over every candle this PC has saved. A rule that remembers further
+    back than its own lookback gives another side with another history:
+    UNIS_USDT 15m trend50 read 30 trades from its saved history back to Aug
+    06 against its row's 58 (Oct 18, 2026), and stochrsi, ao, cf_triple and
+    bb20 still move by up to 40 candles of 2,879 on a flat stock token."""
+    n = int(n_upto)
+    measured = max(0, min(int(bars or 0), n))
+    return n - measured - min(GATE_WARMUP_BARS, n - measured)
+
+
+def row_slippage(row: dict, fee: float) -> float:
+    """The slippage a row was charged, per side, from its own round trip:
+    `rt` is `backtest_report.round_trip_cost` in percent, 2 x (fee +
+    slippage), kept to four places — so this is the shard's figure to
+    within 0.00005%. `rolling30.rebuild` reads its row the same way."""
+    return max(0.0, float(row.get("rt") or 0) / 100 / 2 - float(fee))
+
+
 def deployed_combos() -> set:
     """Every combination the operator has DEPLOYED, as
     `(coin, tf, signal, sl%, tp%)`.
@@ -2148,6 +2174,12 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     # rule: AGT 1h cf_soup1 came back 107 trades / $148.87 against the row's
     # 108 / $145.73 when the signal was computed on the slice alone.
     full = df
+    # ...EXCEPT A GATE ROW: GitHub's shard computed its signal over the row's
+    # own candles and 300 in front of them, so that is the history the click
+    # reads too, or the list is another strategy under the row's name
+    # (UNIS_USDT 15m trend50, Oct 18, 2026: 30 trades listed, 58 stored)
+    if _gate_said and want_bars and not whole:
+        full = full.iloc[shard_history_start(len(full), want_bars):].reset_index(drop=True)
     if not (60 <= want_bars < len(full)):
         want_bars = 0
     # AN ml_ ROW NEEDS ITS 200 BARS OF CLUES BEFORE THE WINDOW: without them
@@ -2201,6 +2233,14 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     # measured under (see the PONS figures above)
     if row_fee > 0:
         fee = row_fee
+    # ...AND A GATE ROW'S OWN COST. GitHub charged the coin's usual cost off
+    # the live book and kept it in the row as `rt` (2 x (fee + slippage));
+    # this PC's cost file is written by the click itself, with no slippage,
+    # so a minute with no book reading paid 0.03% here against the row's
+    # 0.74% on UNIS_USDT, and the list took trades the row had refused: 8 of
+    # 18 rows on three stock tokens did not add up to it (Oct 18, 2026)
+    if _gate_said and the_row is not None and float(the_row.get("rt") or 0) > 0:
+        slip = row_slippage(the_row, fee)
     hi = [float(x) for x in full["High"]]
     lo = [float(x) for x in full["Low"]]
     cl = [float(x) for x in full["Close"]]
@@ -2490,6 +2530,25 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
             # where the MEASUREMENT ends, not where the candle file does
             wm = int(load_states(coin, tf, root).get("__last_ms__") or 0)
             ends = {int(r.get("last_ms") or 0) or wm or int(ms[-1]) for r in grp}
+            if v2 and _gate_v2():
+                # A GATE ROW's signal is GitHub's, computed over the row's own
+                # candles and 300 in front of them (`shard_history_start`) —
+                # never every candle saved here (Oct 18, 2026). A group
+                # shares its rule; the earliest start any of its rows read
+                # covers them all, and a row without its candle count reads
+                # everything, as before.
+                cut0 = None
+                for r in grp:
+                    b = int(r.get("bars") or 0)
+                    if not b:
+                        cut0 = 0
+                        break
+                    end = int(r.get("last_ms") or 0) or wm or int(ms[-1])
+                    s0 = shard_history_start(int((ms <= end).sum()), b)
+                    cut0 = s0 if cut0 is None else min(cut0, s0)
+                if cut0:
+                    full = full.iloc[cut0:].reset_index(drop=True)
+                    ms = ms[cut0:]
             op = [float(x) for x in full["Open"]]
             hi = [float(x) for x in full["High"]]
             lo = [float(x) for x in full["Low"]]
@@ -2639,6 +2698,11 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                 # the ROW's own fee when it recorded one: a contract's fee
                 # changes, and today's is not what this row was measured under
                 row_fee = float(r.get("fee") or 0) or fee
+                # and a Gate row's own cost, as its trade list reads it
+                # (`row_slippage`, Oct 18, 2026)
+                row_slip = (row_slippage(r, row_fee)
+                            if v2 and _gate_v2() and float(r.get("rt") or 0) > 0
+                            else slip)
                 # THE ORDER BOOK OF EACH MINUTE on a v2 row (Gate): the window
                 # refuses and prices its trades as the row was measured — up
                 # to the row's own last bar (the index carries no `book_to`),
@@ -2654,7 +2718,7 @@ def window_rows(rows: list, days: int, base_margin: float = 5.0,
                     _book = _books[_bk]
                 res = at.backtest_strategy(
                     key, frame, float(r.get("base") or base_margin),
-                    fee=row_fee, slippage=slip, sizing=r["sizing"],
+                    fee=row_fee, slippage=row_slip, sizing=r["sizing"],
                     dirs=win_dirs,
                     tp=float(r["tp"]) / 100.0, sl=float(r["sl"]) / 100.0,
                     liq_move_pct=liq, funding=fund, keep_log=True,

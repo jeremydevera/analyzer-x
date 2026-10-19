@@ -174,6 +174,13 @@ def rebuild(slot: str, settings: dict, *, deployed_at: float | None = None) -> d
                                    min(cap, int(row["bars"]) + 400 + behind)), bs)
     ts_all = df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
     df = df[ts_all <= wm].reset_index(drop=True)
+    # A GATE v2 ROW: the history GitHub's shard read — the row's own candles
+    # and 300 in front of them — never the 400 asked for above, or a rule
+    # that remembers further back reads another side (Oct 18, 2026)
+    from tradingagents import market_sweep as _msw, venue as _venue
+
+    if ident["res"] == "1m" and _venue.current() == "gate":
+        df = df.iloc[_msw.shard_history_start(len(df), int(row["bars"])):].reset_index(drop=True)
     warm = max(0, len(df) - int(row["bars"]))
     fine = None
     if ident["res"] == "1m":

@@ -4067,11 +4067,19 @@ def _dirs_for_backtest(key: str, high: list, low: list,
         # published playbook. An earlier version averaged the previous 50
         # excluding it — a different rule, so the backtest was not measuring
         # what traded. Pinned by test_backtest_dirs_match_the_live_signal.
-        run_sum = sum(close[:50])
+        #
+        # AND IT IS WORKED OUT THE RUNNER'S WAY, fresh from the 50 closes at
+        # every candle — never a running total (Oct 18, 2026). On a price
+        # that does not move the close IS its average, and a total that added
+        # the newest close and took away the oldest carried its rounding
+        # error from the first candle: UNIS_USDT 15m (a stock token, flat
+        # at 4.186 for six hours on Oct 14, 2026) took the other side from
+        # the runner on whichever candles that error fell above the price,
+        # and on 1,210 of 2,879 candles another side again when the walk
+        # began on Aug 06 instead of GitHub's 300-candle lead-in. Same slice,
+        # same `sum`, same division: the same side as `sig_trend50`.
         for i in range(49, n):
-            if i > 49:
-                run_sum += close[i] - close[i - 50]
-            out[i] = 1 if close[i] > run_sum / 50 else -1
+            out[i] = 1 if close[i] > sum(close[i - 49:i + 1]) / 50 else -1
     elif key in ("sweep_1h", "sweep_rt") or key.startswith("sweep30"):
         for i in range(30, n):
             pl = min(low[i - 30:i])

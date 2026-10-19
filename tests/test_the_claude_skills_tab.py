@@ -147,3 +147,45 @@ def test_the_tile_opens_the_panel_and_the_panel_never_injects_html():
     assert "<SkillDoc key={open} name={open}" in tab
     assert "/api/claude-skills/${encodeURIComponent(name)}" in doc
     assert "dangerouslySetInnerHTML" not in doc and "innerHTML" not in doc
+
+
+def _marks(text: str, module=None) -> list:
+    """The page's own inline-marks code, run by Node as it is (Node 22.6+
+    strips the types from a .ts file)."""
+    import json as _json
+    import subprocess
+
+    url = (module or REPO / "webapp" / "src" / "components" / "skills" / "inlineMarks.ts").as_uri()
+    js = (f"import {{ inlineTokens }} from {_json.dumps(url)};"
+          f"console.log(JSON.stringify(inlineTokens({_json.dumps(text)})));")
+    got = subprocess.run(["node", "--input-type=module", "-e", js], capture_output=True,
+                         text=True, timeout=60)
+    assert got.returncode == 0, got.stderr[-800:]
+    return _json.loads(got.stdout.strip().splitlines()[-1])
+
+
+def test_an_underscore_inside_a_word_is_part_of_the_word():
+    """Oct 18, 2026: the skill page of winning_room_strategy printed its own
+    name as "winning" + an italic "room" + "strategy", the underscores gone
+    (and practice_backtest_audit the same). CommonMark: an underscore inside a
+    word is never a mark."""
+    for name in ("winning_room_strategy", "practice_backtest_audit", "snake__case__name",
+                 "/winning_room_strategy", "'/winning_room_strategy'"):
+        assert _marks(name) == [{"kind": "text", "text": name}], name
+    assert _marks("my_var and _real italic_ here") == [
+        {"kind": "text", "text": "my_var and "}, {"kind": "em", "text": "real italic"},
+        {"kind": "text", "text": " here"}]
+    assert _marks("_whole_") == [{"kind": "em", "text": "whole"}]
+    assert _marks("**bold** `a_b_c` *it*") == [
+        {"kind": "strong", "text": "bold"}, {"kind": "text", "text": " "},
+        {"kind": "code", "text": "a_b_c"}, {"kind": "text", "text": " "},
+        {"kind": "em", "text": "it"}]
+    assert _marks("see [the page](https://x.y/a_b_c)") == [
+        {"kind": "text", "text": "see "}, {"kind": "link", "text": "the page", "href": "https://x.y/a_b_c"}]
+
+
+def test_the_panel_draws_its_marks_with_the_tested_code():
+    """The page must use the function the test above runs, not a copy."""
+    src = (REPO / "webapp" / "src" / "components" / "skills" / "SkillDoc.tsx").read_text(encoding="utf-8")
+    assert 'from "./inlineMarks"' in src and "inlineTokens(" in src
+    assert "matchAll(" not in src and "const INLINE" not in src, "a second copy of the marks"

@@ -172,6 +172,65 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-18-C — a skill's page on the Claude skills tab printed its own name wrong: "winning_room_strategy" read "winning" + a slanted "room" + "strategy", the underscores gone
+
+**CEO**
+
+* Clicking the new winning_room_strategy tile on Oct 18, 2026 11:44pm opened
+  its page with the title "winningroomstrategy" and "room" in slanted
+  letters; practice_backtest_audit's page did the same to its own name.
+* Why: the page read two underscores inside a word as "make this slanted",
+  which real Markdown never does inside a word.
+* What stops it now: an underscore inside a word is printed as itself, and a
+  test runs the page's own code on these names.
+
+**DEV**
+
+* `webapp/src/components/skills/SkillDoc.tsx` `inline()` matched
+  `_[^_\s][^_]*_` anywhere, so `winning_room_strategy` gave text
+  "winning", em "room", text "strategy" (shipped in 721b15c, Oct 17, 2026).
+* Invariant broken: **an underscore run flanked by a letter or digit is part
+  of the word (CommonMark)** — judged over the whole run, so the `_case_`
+  inside `snake__case__name` stays text too. The marks now live in
+  `inlineMarks.ts` (no JSX), which the page imports and Node runs as it is.
+* Guards: `tests/test_the_claude_skills_tab.py::test_an_underscore_inside_a_word_is_part_of_the_word`
+  and `::test_the_panel_draws_its_marks_with_the_tested_code`.
+
+**SAW** — the browser check of the new Automation group, Oct 18, 2026
+11:44pm (phone width): the panel title "winning*room*strategy" with "room"
+in italics, and "/winning*room*strategy" inside the operator's own quoted
+words.
+
+**TIMELINE**
+
+1. Oct 17, 2026 9:54pm — 721b15c ships the skill page with its own Markdown
+   reader; every name with underscores written outside backticks —
+   practice_backtest_audit's own title among them — is read as italics
+   (a name inside backticks was always drawn as code).
+2. Oct 18, 2026 11:40pm — d5f33f7 adds winning_room_strategy; its page title
+   shows the fault on the first look.
+3. Same night — the copy without the new rule gives
+   `[text "winning", em "room", text "strategy"]`; the fixed code gives one
+   text token, "winning_room_strategy".
+
+**ROOT CAUSE** — the inline pattern had no idea of a word: it took any
+underscore pair as an italic mark.
+
+**WHY IT WAS NOT CAUGHT** — the tab's tests checked that the page received
+the whole SKILL.md and never injected HTML; nothing asserted on how a line
+was DRAWN, and the drawing code was JSX that no test could run. The
+browser check after 721b15c opened `harddev` and `design`, whose titles have
+no underscore.
+
+**COST** — none: words on a help page, no number or trade involved.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_the_claude_skills_tab.py::test_an_underscore_inside_a_word_is_part_of_the_word`,
+`::test_the_panel_draws_its_marks_with_the_tested_code`.
+
+---
+
 ## RCA-2026-10-18-B — room #BBE0A361 switched on 63 strategies whose backtest wins were bought from stock tokens' frozen order books while nothing traded, and practice refused every one of their 1,158 signals
 
 **CEO**

@@ -12,6 +12,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { API_BASE } from "@/lib/api";
+import { inlineTokens } from "./inlineMarks";
 
 type Doc = {
   name: string;
@@ -27,35 +28,28 @@ type Doc = {
 };
 
 // ------------------------------------------------------------ inline text
-const INLINE = /(`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|\[[^\]]+\]\([^)\s]+\)|\*[^*\s][^*]*\*|_[^_\s][^_]*_)/g;
-
+// the marks are found by inlineMarks.ts, which a test runs as it is: an
+// underscore inside a word is part of the word (Oct 18, 2026)
 function inline(text: string, key = ""): ReactNode[] {
-  const out: ReactNode[] = [];
-  let last = 0;
-  let i = 0;
-  for (const m of text.matchAll(INLINE)) {
-    const at = m.index ?? 0;
-    if (at > last) out.push(text.slice(last, at));
-    const t = m[0];
-    const k = `${key}-${i++}`;
-    if (t.startsWith("`")) {
-      out.push(<code key={k} className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[0.92em] text-gray-800 dark:bg-white/[0.08] dark:text-gray-100">{t.slice(1, -1)}</code>);
-    } else if (t.startsWith("**") || t.startsWith("__")) {
-      out.push(<strong key={k} className="font-semibold text-gray-900 dark:text-white">{inline(t.slice(2, -2), k)}</strong>);
-    } else if (t.startsWith("[")) {
-      const mm = /^\[([^\]]+)\]\(([^)\s]+)\)$/.exec(t);
-      const href = mm ? mm[2] : "";
-      const safe = /^https?:\/\//i.test(href);
-      out.push(safe
-        ? <a key={k} href={href} target="_blank" rel="noopener noreferrer" className="text-brand-600 underline dark:text-brand-400">{inline(mm ? mm[1] : t, k)}</a>
-        : <span key={k} className="text-gray-800 dark:text-gray-200">{inline(mm ? mm[1] : t, k)}{href && <span className="text-gray-400"> ({href})</span>}</span>);
-    } else {
-      out.push(<em key={k}>{inline(t.slice(1, -1), k)}</em>);
+  return inlineTokens(text).map((tok, i) => {
+    const k = `${key}-${i}`;
+    switch (tok.kind) {
+      case "text":
+        return tok.text;
+      case "code":
+        return <code key={k} className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[0.92em] text-gray-800 dark:bg-white/[0.08] dark:text-gray-100">{tok.text}</code>;
+      case "strong":
+        return <strong key={k} className="font-semibold text-gray-900 dark:text-white">{inline(tok.text, k)}</strong>;
+      case "link": {
+        const safe = /^https?:\/\//i.test(tok.href);
+        return safe
+          ? <a key={k} href={tok.href} target="_blank" rel="noopener noreferrer" className="text-brand-600 underline dark:text-brand-400">{inline(tok.text, k)}</a>
+          : <span key={k} className="text-gray-800 dark:text-gray-200">{inline(tok.text, k)}{tok.href && <span className="text-gray-400"> ({tok.href})</span>}</span>;
+      }
+      case "em":
+        return <em key={k}>{inline(tok.text, k)}</em>;
     }
-    last = at + t.length;
-  }
-  if (last < text.length) out.push(text.slice(last));
-  return out;
+  });
 }
 
 // ------------------------------------------------------------ blocks

@@ -334,6 +334,9 @@ def page_rows(cfgs: list, check: dict) -> tuple:
             "name": c["name"], "words": words(c["name"]), "same": c["same"],
             "place": c["place"], "of": c["of"], "preset": c["preset"],
             "sl": c["sl"], "tp": c["tp"], "search": c["search"], "listed": listed,
+            # its place when each half of the coins (one account each) is
+            # ranked on its own — a winner of one lucky half is not a winner
+            "halves": c.get("halves"),
             "all": stats(lines),
             "days": [stats(lines, end - n * DAY_MS) for n in range(1, WINDOW_DAYS + 1)],
             "months": [stats(lines, _month_start(end - 1, k)) for k in range(0, 2)]})

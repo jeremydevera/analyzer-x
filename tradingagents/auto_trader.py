@@ -4391,7 +4391,6 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     n_unclear = 0
     rec_n = rec_w = 0
     rec_p = 0.0
-    # each extra window: [days, from_ms, trades, wins, profit]
     # [days, from ms, trades, wins, profit, round trips paid] per window
     _recs = [[int(d), int(ms), 0, 0, 0.0, 0.0]
              for d, ms in sorted((recent_windows or {}).items())]

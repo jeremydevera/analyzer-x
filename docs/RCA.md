@@ -172,6 +172,83 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-20-A — the Pro Trader pilot page judged "pays 2:1" on the wrong days' fees and could pass a row it never compared with luck; the re-measure was not tied to what the search read
+
+**CEO**
+
+* The first Pro Trader results page (20 coins, 75 rows) showed each row's
+  "pays at least 2:1 after fees" using the average fee of up to three years
+  of trades, not the fee of the 120 days it was judged on, and its checks
+  could have called a row "passed" without ever comparing it with random
+  entries.
+* Why: the checks were written without tests, and the page re-measured each
+  row with books that could change after the search, with nothing comparing
+  the two answers.
+* What stops it now: every check reads the judged days' own numbers, a row
+  that cannot be compared with luck has not passed, and every re-measured row
+  is compared with the search number by number, any difference named on it.
+
+**DEV**
+
+* `pro_checks.py` read `rt_paid` (the whole deep window) for `pay2`, counted
+  `None` as a pass in `passed()`, and `Index.oos` returned `(0, 0, 0)` for a
+  line that only traded before the test months; `pro_shard.prefetch` re-read
+  the fee, the liquidation distance and the book up to the check run's own
+  clock.
+* Invariant broken: **a check is judged on the days it names, from numbers
+  measured there, and an unjudgeable required check is a fail** — and a
+  re-measure that cannot freeze its inputs is COMPARED, never assumed equal.
+* Guard: `tests/test_pro_checks.py` (6 tests, red on e8e7da1's
+  `pro_checks.py`), `tests/test_pro_page.py::test_a_re_measure_that_drifted_from_the_search_is_named_on_its_row`,
+  `tests/test_pro_shard.py::test_the_check_run_replays_the_searchs_fee_liquidation_cost_and_book_end`.
+
+**SAW** — the superpowers code review of 6b93bba (asked for by the operator,
+Oct 20, 2026: *"user superpower for reviewing code"*), finished after the
+pilot page was published at https://claude.ai/artifact/4j3qJsqWRnBqATYoenNksj.
+
+**TIMELINE**
+
+1. `Oct 20, 2026 1:00pm` — pilot search, runs 39462298102 + 39462320934: 100
+   of 100 coin + timeframe pairs, 34,406 combinations that traded.
+2. `1:04pm` — check run for the 75 picks: jeremydvera 39462920168 started,
+   jeremydevera answered HTTP 502 (and left a job-less run, 39462886181);
+   redone alone at `1:07pm` as 39463173817.
+3. `1:12pm` — page built: 75 rows, 0 passed every check; each pick's
+   untouched-days trade COUNT matched the search's (the only number compared).
+4. `1:26pm` — the review: on a made-up line whose whole window paid 0.202%
+   and whose 100 untouched trades paid 0.40%, `pay2` passed and printed "this
+   coin's 0.20% round trip" ($1.10 a win against 2 x $0.80 a loss is not
+   2:1); a probe that added two days of readings after the search turned a
+   search row of 1,734 trades (newest month +$28.60) into a check row of
+   1,716 (+$12.81) and nothing said so.
+5. Fixed in this commit: `pay2` on c120/t120 (0.400% in the same probe, a
+   fail); the 6 new check tests fail 6 of 6 on the old file and pass on the
+   new; 283 research tests pass.
+
+**ROOT CAUSE** — the checks read the line's whole-window figures where the
+spec says "over its untouched days", `passed()` treated "could not judge" as
+"passed", and the check run was trusted to equal the search instead of being
+compared with it.
+
+**WHY IT WAS NOT CAUGHT** — `pro_checks.py` shipped with no test at all, and
+the end-to-end test handed the search and the check run the same `pre`
+dictionary on a market that never changes, so the one thing that can differ
+between them (what the exchange serves later) could not differ in any test.
+
+**COST** — none in money: the research switches nothing on. The published
+pilot page printed the wrong fee basis on its "pays 2:1" line; no row passed,
+so no false pass was shown.
+
+**FIX** — this commit (also: the luck bar for passing, the choice re-made at
+1.5x fees, the squeeze bought once a side, the busy-hours window judged at
+the entry minute, a refused account's coins named as not reached).
+
+**GUARD** — `tests/test_pro_checks.py`, `tests/test_pro_page.py::test_a_re_measure_that_drifted_from_the_search_is_named_on_its_row`,
+`tests/test_pro_shard.py::test_the_check_run_replays_the_searchs_fee_liquidation_cost_and_book_end`,
+`tests/test_pro_shard.py::test_a_refused_share_is_named_as_not_reached_never_a_smaller_board`.
+
+---
+
 ## RCA-2026-10-19-E — Room strategies said "stopped working" for 985 rule sets that simply had no trade in their newest 15 days
 
 **CEO**

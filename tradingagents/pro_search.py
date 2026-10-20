@@ -57,6 +57,22 @@ def _runs(repo: str, limit: int = 10) -> list:
                           "--limit", str(limit), "--json", "databaseId,displayTitle,createdAt"))
 
 
+def _listed(repo: str, title: str, since: float) -> int | None:
+    """A run of `title` on `repo` created at or after `since` (unix s), or
+    None: GitHub can take a dispatch and list it late, and a run nobody
+    adopts is 20 machines measuring coins nobody collects (the rule Forecast
+    v2's dispatch follows)."""
+    import datetime as _dt
+
+    for r in _runs(repo, 30):
+        if str(r.get("displayTitle", "")).strip() != title:
+            continue
+        made = _dt.datetime.fromisoformat(str(r["createdAt"]).replace("Z", "+00:00")).timestamp()
+        if made >= since - 5:
+            return int(r["databaseId"])
+    return None
+
+
 def _start(repo: str, inputs: dict) -> int:
     """Start pro.yml on `repo` and return ITS run id, found by its title."""
     want = title_of(inputs["label"])
@@ -92,7 +108,8 @@ def dispatch(label: str | None = None, *, coins: list | None = None, base: float
     board = sorted({c if c.endswith("_USDT") else f"{c}_USDT" for c in coins}) if coins \
         else fd.market()
     piles = cs.split_coins(board, len(ready))
-    label = label or fmt_when(time.time())
+    t0 = time.time()
+    label = label or fmt_when(t0)
     origin = cs.origin_fleet()
     runs, named, dealt = {}, list(refused), {}
     for k, (repo, pile) in enumerate(zip(ready, piles, strict=False)):
@@ -116,7 +133,7 @@ def dispatch(label: str | None = None, *, coins: list | None = None, base: float
                           "label": inputs["label"], "coin_list": list(pile)}
         except Exception as exc:                               # noqa: BLE001
             named.append(f"{repo}: {str(exc)[:160]}")
-    state = {"label": label, "started": time.time(), "started_at": fmt_when(time.time()),
+    state = {"label": label, "started": t0, "started_at": fmt_when(t0), "base": base,
              "coins": len(board), "runs": runs, "refused": named, "dealt": dealt,
              **({"check": check} if check else {})}
     _save_state(state_name, state)
@@ -151,12 +168,16 @@ def redo(state_name: str, repo: str, coins: list | None = None) -> dict:
                   "label": f"{state['label']} · redone {n}"}
         if state.get("check"):
             inputs["check"] = state["check"]
-    if repo != cs.origin_fleet():
-        drift = cs.sync_fleet(repo)
-        if drift:
-            raise RuntimeError(f"{repo}: not brought up to this code ({drift})")
     pile = inputs["coin_list"].split(",")
-    state.setdefault("runs", {})[repo] = {"run": _start(repo, inputs), "coins": len(pile),
+    # a refused dispatch GitHub listed late is ADOPTED, never doubled
+    run = _listed(repo, title_of(inputs["label"]), float(state.get("started") or 0))
+    if run is None:
+        if repo != cs.origin_fleet():
+            drift = cs.sync_fleet(repo)
+            if drift:
+                raise RuntimeError(f"{repo}: not brought up to this code ({drift})")
+        run = _start(repo, inputs)
+    state.setdefault("runs", {})[repo] = {"run": run, "coins": len(pile),
                                           "label": inputs["label"], "coin_list": pile}
     state["refused"] = [x for x in state.get("refused", []) if not x.startswith(repo + ":")]
     state.setdefault("dealt", {})[repo] = inputs
@@ -267,10 +288,13 @@ def collect(state_name: str = STATE) -> dict:
             unfinished.append(f"{repo} run {r['run']} is {st.get('status')}")
     if unfinished:
         raise RuntimeError("not collected, still running: " + "; ".join(unfinished))
-    roots, board = [], []
-    for repo, r in state["runs"].items():
-        roots.append(download(int(r["run"]), repo))
-        board += list(r.get("coin_list") or [])
+    roots = [download(int(r["run"]), repo) for repo, r in state["runs"].items()]
+    # the board is every share DEALT, started or not: a share GitHub refused
+    # is coins not reached, NAMED - never a smaller board (code review, Oct
+    # 20, 2026)
+    dealt = state.get("dealt") or {}
+    board = (sorted({c for x in dealt.values() for c in str(x.get("coin_list", "")).split(",") if c})
+             or [c for r in state["runs"].values() for c in (r.get("coin_list") or [])])
     report = read_json_parts(roots, "pro-report-*.json", "report")
     summary = {"label": state.get("label"), "runs": {k: v["run"] for k, v in state["runs"].items()},
                "roots": [str(r) for r in roots],

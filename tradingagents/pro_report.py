@@ -32,6 +32,8 @@ import math
 
 import numpy as np
 
+from tradingagents import backtest_report as br
+
 # the shard's FIELDS, in order (.github/scripts/pro_shard.py); `months`
 # refuses lines written with any other list
 FIELDS = ("trades", "wins", "profit",
@@ -52,8 +54,8 @@ OWN_MIN_WINS = 5
 OWN_MARGIN = 1.0           # ...and must beat the group default by $1 there
 MIN_WINS = 20              # wins a row needs on its untouched days to pass
 STOP_WORSE = 0.10          # $ a losing trade costs on $100 when its stop fills 0.1% worse
-PAY_RATIO = 2.0            # backtest_report.PAY_RATIO
-PAY_SLACK = 0.005          # backtest_report._PAY_SLACK
+PAY_RATIO = br.PAY_RATIO   # the one 2:1 rule's own numbers, never a copy
+PAY_SLACK = br._PAY_SLACK
 
 
 def _check_fields(lines: dict) -> None:
@@ -101,20 +103,31 @@ def baseline_mask(lines: dict) -> np.ndarray:
     return base[lines["var"]] if len(lines["var"]) else np.zeros(0, dtype=bool)
 
 
-def candidates(lines: dict, upto: int) -> np.ndarray:
-    """Lines that may be chosen before month `upto`: traded on the choosing
-    days, pay 2:1 after the fees THOSE days paid, not the baseline."""
+def choosing_paid(lines: dict, upto: int) -> tuple[np.ndarray, np.ndarray]:
+    """(trades, round trips paid summed, % of the position) of each line on
+    the choosing days before month `upto`: the whole window less the trades
+    that closed in the months judged after."""
     v = lines["vals"]
     w = WINDOW_OF[upto]
     t_all = v[:, F["trades"]]
-    th = t_all - v[:, F[f"t{w}"]]
-    paid = v[:, F["rt_paid"]] * t_all - v[:, F[f"c{w}"]]
+    return t_all - v[:, F[f"t{w}"]], v[:, F["rt_paid"]] * t_all - v[:, F[f"c{w}"]]
+
+
+def candidates(lines: dict, upto: int, cost_mult: float = 1.0,
+               baseline: bool = False) -> np.ndarray:
+    """Lines that may be chosen before month `upto`: traded on the choosing
+    days, pay 2:1 after the fees THOSE days paid (x `cost_mult`, the
+    sensitivity run), not the baseline — or, with `baseline`, ONLY the
+    baseline: random entries chosen exactly as a strategy would be, which
+    shows how often luck alone gets through the choice and the checks."""
+    th, paid = choosing_paid(lines, upto)
     with np.errstate(invalid="ignore", divide="ignore"):
-        c = np.where(th > 0, paid / np.maximum(th, 1), np.nan)
+        c = cost_mult * np.where(th > 0, paid / np.maximum(th, 1), np.nan)
     sl, tp = stops_targets(lines)
     win, loss = tp - c, sl + c
     ok = (th > 0) & np.isfinite(c) & (win > 0) & (win + PAY_SLACK >= PAY_RATIO * loss)
-    return ok & ~baseline_mask(lines)
+    base = baseline_mask(lines)
+    return ok & (base if baseline else ~base)
 
 
 def groups(stats: dict) -> dict:
@@ -168,14 +181,25 @@ def _first_per(keys: np.ndarray, order: np.ndarray) -> np.ndarray:
     return order[new]
 
 
-def choose(lines: dict, mon: np.ndarray, grp: dict, upto: int) -> dict:
+def choose(lines: dict, mon: np.ndarray, grp: dict, upto: int, cost_mult: float = 1.0,
+           notional: float = 100.0, baseline: bool = False) -> dict:
     """(coin index, tf index) -> (line index, how) from the choosing days
     before month `upto` (1 = before all four months ... 4 = before the
-    newest). `how` is "group default" or "own pick"."""
+    newest). `how` is "group default" or "own pick".
+
+    `cost_mult` re-makes the choice as if every choosing-day trade had paid
+    that many times its round trip (profit and the 2:1 rule both): trades
+    older than the recorded order books pay each coin's usual cost, which is
+    measured on the newest ~45 days, so the main test's choice reads a cost
+    level from the days it is judged on (code review, Oct 20, 2026) — this
+    shows how much the choice leans on it."""
     if not len(lines["vals"]):
         return {}
     hist = mon[:, :upto].sum(axis=1)                    # trades, wins, profit
-    cand = candidates(lines, upto)
+    if cost_mult != 1.0:
+        _th, paid = choosing_paid(lines, upto)
+        hist[:, 2] -= (cost_mult - 1.0) * np.nan_to_num(paid) * notional / 100.0
+    cand = candidates(lines, upto, cost_mult, baseline)
     coins = list(lines["coins"])
     gnames = sorted(set(grp.values()))
     g_of_coin = np.array([gnames.index(grp[c]) if c in grp else -1 for c in coins], dtype=np.int64)

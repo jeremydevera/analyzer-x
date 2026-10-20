@@ -98,11 +98,58 @@ def row_id(coin: str, tf: str, name: str, sl: float, tp: float) -> str:
     return br.row_code(coin, tf, name, 0.0, sl, tp, "flat", res="1m")
 
 
-def rows(S: dict, picks: dict, wf: dict, check_lines: list) -> tuple[list, dict, list]:
+# every number the check run's row and the search's line both carry, and how
+# far apart they may sit (the line is float32; rt_paid is rounded to 4 places)
+DRIFT = (("trades", 0.0), ("wins", 0.0), ("profit", 0.011),
+         ("t30", 0.0), ("w30", 0.0), ("p30", 0.011), ("t60", 0.0), ("w60", 0.0), ("p60", 0.011),
+         ("t90", 0.0), ("w90", 0.0), ("p90", 0.011), ("t120", 0.0), ("w120", 0.0), ("p120", 0.011),
+         ("rt_paid", 0.00051))
+
+
+def drift(vals, row: dict) -> list[str]:
+    """Every number on which the check run's row differs from the search's
+    line, named with both values: the check run cannot freeze everything the
+    search read (pro_shard.prefetch), so it is compared, never assumed equal
+    (code review, Oct 20, 2026)."""
+    from tradingagents import pro_report as pr
+
+    out = []
+    for f, tol in DRIFT:
+        a = float(vals[pr.F[f]])
+        b = row.get(f)
+        if b is None or math.isnan(a):
+            if not (b is None and math.isnan(a)):
+                out.append(f"{f}: search {a:g}, check {b}")
+            continue
+        if abs(a - float(b)) > tol:
+            out.append(f"{f}: search {a:g}, check {float(b):g}")
+    return out
+
+
+def money_pass(trades: float, wins: float, profit: float, sl: float, tp: float, rt: float,
+               notional: float = 100.0) -> bool:
+    """The money checks judged from a line's counts alone (no trade list):
+    made money with at least MIN_WINS wins, and the low end of a 90% range
+    above zero, the spread of a trade taken as a win of TP less fees against
+    a loss of SL plus fees. For the random-entry picks, which have no check
+    run: how often luck alone would pass."""
+    from tradingagents import pro_checks as pck, pro_report as pr
+
+    if trades < 2 or profit <= 0 or wins < pr.MIN_WINS:
+        return False
+    p = wins / trades
+    k = notional / 100.0
+    spread = math.sqrt(p * (1 - p)) * ((tp - rt) + (sl + rt)) * k
+    return profit / trades - pck.Z90 * spread / math.sqrt(trades) > 0
+
+
+def rows(S: dict, picks: dict, wf: dict, check_lines: list,
+         notional: float = 100.0) -> tuple[list, dict, list]:
     """(page rows, {file name: {row id: trades}}, problems). Each row: the
     pick's untouched-days trades [entry ms, exit ms, side, why, profit], its
-    checks and verdict. A pick the check run did not return is NAMED in the
-    problems, never dropped silently."""
+    checks and verdict, and whether the check run re-measured it to the cent
+    (`drift`). A pick the check run did not return, or returned with another
+    number, is NAMED in the problems, never dropped silently."""
     from tradingagents import pro_checks as pck, pro_report as pr, signals_pro as sp
 
     L, mon, grp = S["lines"], S["mon"], S["groups"]
@@ -129,16 +176,15 @@ def rows(S: dict, picks: dict, wf: dict, check_lines: list) -> tuple[list, dict,
         sl, tp = float(sl_all[i]), float(tp_all[i])
         group = grp.get(coin, "?")
         cks = pck.checks(ix, ci, ti, i, how, group, by_group.get(group, []), trades,
-                         (wf or {}).get((ci, ti)))
-        rt = float(L["vals"][i][pr.F["rt_paid"]])
-        rt = 0.23 if math.isnan(rt) else rt
+                         (wf or {}).get((ci, ti)), notional=notional)
+        rt = pck.untouched_cost(L["vals"][i])
+        rt = 0.23 if rt is None else rt
         rid = row_id(coin, tf, name, sl, tp)
-        # the search's own count for the four months beside the check run's:
-        # the same bars and costs, so they must agree (named if not)
+        diffs = drift(L["vals"][i], line.get("row") or {})
         want = int(round(float(mon[i, 1:, 0].sum())))
         if want != len(trades):
-            problems.append(f"#{rid} {coin} {tf} {key}: the check run kept {len(trades)} "
-                            f"untouched-days trades where the search counted {want}")
+            diffs.append(f"untouched-days trades: search {want}, check {len(trades)}")
+        problems += [f"#{rid} {coin} {tf} {key}: {d}" for d in diffs]
         before = mon[i, 0]
         spec = sp.spec_for(name)
         out.append({
@@ -148,6 +194,7 @@ def rows(S: dict, picks: dict, wf: dict, check_lines: list) -> tuple[list, dict,
             "name": name, "words": sp.words(name) or name, "how": how, "sl": round(sl, 4),
             "tp": round(tp, 4), "be": round(pck.break_even(sl, tp, rt), 2), "rt": round(rt, 4),
             "pass": pck.passed(cks), "ok": sum(1 for c in cks if c[2] is True),
+            "same": not diffs, "drift": diffs,
             "checks": [list(c) for c in cks],
             "chosen_on": {"trades": int(before[0]), "wins": int(before[1]),
                           "profit": round(float(before[2]), 2)},

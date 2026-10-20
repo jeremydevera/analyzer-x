@@ -63,14 +63,21 @@ def test_a_pick_the_report_cannot_date_is_refused():
         raise AssertionError("a pick with no dated pair must be refused")
 
 
+def _row_of(S, i=0):
+    """The check run's row when it re-measured the search's line exactly."""
+    v = S["lines"]["vals"][i]
+    return {f: float(v[pr.F[f]]) for f, _tol in pg.DRIFT}
+
+
 def test_a_row_shows_only_its_untouched_days_and_says_when_the_counts_disagree():
     S = _search([(0, 0, _line((60, 20, 30.0), GOOD))])       # 4 x 5 = 20 untouched trades
     picks = pr.choose(S["lines"], S["mon"], S["groups"], upto=1)
     key = pg.key_of(S["lines"], 0)
-    lines = [{"coin": "A", "tf": "15m", "cfg": key, "trades": _trades(7, 20)}]
+    lines = [{"coin": "A", "tf": "15m", "cfg": key, "trades": _trades(7, 20), "row": _row_of(S)}]
     rows, files, problems = pg.rows(S, picks, {}, lines)
     assert problems == []
     (r,) = rows
+    assert r["same"] is True and r["drift"] == []
     assert r["id"] == br.row_code("A", "15m", "pt_aaa_x0", 0.0, 0.4, 1.5, "flat", res="1m")
     assert len(r["tr"]) == 20 and all(x >= LAST * 1000 - 120 * DAY for x, _p in r["tr"])
     assert files[r["file"]][r["id"]][0][:4] == [_trades(7, 20)[7][0], _trades(7, 20)[7][1], -1, "TP"]
@@ -80,7 +87,32 @@ def test_a_row_shows_only_its_untouched_days_and_says_when_the_counts_disagree()
     # one trade fewer from the check run than the search counted: NAMED
     lines[0]["trades"] = _trades(7, 19)
     _rows, _f, problems = pg.rows(S, picks, {}, lines)
-    assert problems and "19" in problems[0] and "20" in problems[0]
+    assert problems and "search 20, check 19" in problems[0]
+
+
+def test_a_re_measure_that_drifted_from_the_search_is_named_on_its_row():
+    # the check run re-reads books and minutes that can change after the
+    # search (code review, Oct 20, 2026: 1,734 trades became 1,716 and the
+    # newest month +$28.60 became +$12.81, with nothing said)
+    S = _search([(0, 0, _line((60, 20, 30.0), GOOD))])
+    picks = pr.choose(S["lines"], S["mon"], S["groups"], upto=1)
+    row = {**_row_of(S), "p30": _row_of(S)["p30"] - 0.5, "trades": _row_of(S)["trades"] - 1}
+    lines = [{"coin": "A", "tf": "15m", "cfg": pg.key_of(S["lines"], 0), "trades": _trades(7, 20),
+              "row": row}]
+    (r,), _f, problems = pg.rows(S, picks, {}, lines)
+    assert r["same"] is False
+    assert any(d.startswith("trades: search 80") for d in r["drift"])
+    assert any(d.startswith("p30:") for d in r["drift"])
+    assert len(problems) == len(r["drift"]) == 2
+
+
+def test_the_money_checks_from_counts_alone():
+    # 40 trades, 20 wins, +$20 at SL 0.4 / TP 1.5 and a 0.2% round trip:
+    # spread sqrt(.25) * (1.3 + 0.6) = 0.95; low end 0.5 - 1.6449 * 0.95 / sqrt(40) = +0.253
+    assert pg.money_pass(40, 20, 20.0, 0.4, 1.5, 0.2) is True
+    assert pg.money_pass(40, 19, 20.0, 0.4, 1.5, 0.2) is False      # under 20 wins
+    assert pg.money_pass(40, 20, 4.0, 0.4, 1.5, 0.2) is False       # 0.1 - 0.247 < 0
+    assert pg.money_pass(40, 20, -1.0, 0.4, 1.5, 0.2) is False
 
 
 def test_a_pick_the_check_run_did_not_return_is_named_never_dropped_quietly():

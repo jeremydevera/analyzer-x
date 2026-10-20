@@ -79,6 +79,19 @@ def test_the_runners_299_candles_decide_what_the_backtest_decides(name):
         assert _dirs(name, tail)[-1] == full[end - 1], (name, end)
 
 
+@pytest.mark.parametrize("name", EVERY)
+def test_a_family_decides_from_exactly_the_bars_it_declares(name):
+    # the declared lookback is a promise the runner's 299 candles keep; one bar
+    # short on nine settings went unseen while the guard only asked <= 250
+    # (code review, Oct 20, 2026)
+    lb = sp.FAMILIES[sp.spec_for(name)["family"]]["lookback"]
+    fr = _frame(n=1800, seed=13)
+    full = _dirs(name, fr)
+    for end in range(400, 1801, 47):
+        tail = tuple(x[end - lb:end] for x in fr)
+        assert _dirs(name, tail)[-1] == full[end - 1], (name, end, lb)
+
+
 def test_every_family_fits_the_runners_candles():
     for fam, f in sp.FAMILIES.items():
         assert f["lookback"] <= pi.MAX_LOOKBACK, fam
@@ -166,14 +179,41 @@ def test_every_setting_fires_somewhere_and_no_two_settings_are_one_rule():
             seen[key] = nm
 
 
-def test_the_us_window_on_weekdays_is_the_daytime_rules_market_hours():
+def test_the_us_window_on_weekdays_is_the_daytime_rules_market_hours_at_the_entry():
     from tradingagents import daytime_rule as dr
 
     fr = _frame(n=2000, seed=2, step_s=900, start_ms=1_793_404_800_000)  # Nov 2026: a DST change
     ctx = sp.Ctx(*fr)
     got = sp._window(ctx, "us") & sp._weekday(ctx)
-    want = [dr.in_market_hours(t / 1000.0) for t in fr[5]]
+    want = [dr.in_market_hours((t + 900_000) / 1000.0) for t in fr[5]]   # bought at the close
     assert got.tolist() == want and any(want)
+
+
+def test_a_rule_that_needs_the_clock_abstains_without_one():
+    o, h, lo, c, v, _ts = _frame(n=600)
+    for nm in EVERY:
+        if sp.spec_for(nm)["family"] in ("ses", "rand"):
+            assert set(sp.dirs_for(sp.spec_for(nm), o, h, lo, c, v, [])) == {0}, nm
+
+
+def test_a_squeeze_is_bought_once_a_side():
+    fr = _frame(n=4000, seed=21, vol=0.004)
+    for nm in [n for n in EVERY if n.startswith("pt_sqz_")]:
+        d = _dirs(nm, fr)
+        for side in (1, -1):
+            at = [i for i, x in enumerate(d) if x == side]
+            assert all(b - a > sp.SQUEEZE_ONCE for a, b in zip(at, at[1:], strict=False)), nm
+
+
+def test_the_session_is_judged_where_the_entry_is_bought():
+    # a 4h candle opening 8:00pm UTC is bought at midnight, outside 12pm-9pm
+    day = 86_400_000
+    start = 1_793_404_800_000 + 3 * day                   # a Wednesday midnight UTC
+    fr = _frame(n=400, seed=4, step_s=4 * 3600, start_ms=start)
+    ctx = sp.Ctx(*fr)
+    win = sp._window(ctx, "eu-us")
+    hours = [(t // 3_600_000) % 24 for t in fr[5]]
+    assert [bool(w) for w in win] == [h in (8, 12, 16) for h in hours]
 
 
 def test_every_setting_reads_in_plain_words():

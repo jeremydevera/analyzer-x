@@ -201,6 +201,7 @@ def _fleet(monkeypatch, tmp_path, fail=()):
 
     monkeypatch.setattr(ps, "home", lambda: tmp_path)
     monkeypatch.setattr(ps, "_start", start)
+    monkeypatch.setattr(ps, "_runs", lambda repo, limit=10: [])      # nothing listed late
     monkeypatch.setattr(fd, "fleets_now", lambda: (["a/x", "b/x"], []))
     monkeypatch.setattr(cs, "origin_fleet", lambda: "a/x")
     monkeypatch.setattr(cs, "sync_fleet", lambda repo: "")
@@ -235,3 +236,77 @@ def test_a_state_written_before_shares_were_kept_needs_its_coins(monkeypatch, tm
     got = ps.redo("old.json", "a/x", coins=["SOL", "BTC"])
     assert got["runs"]["a/x"]["coin_list"] == ["BTC_USDT", "SOL_USDT"]
     assert got["dealt"]["a/x"]["check"] == "research/pro/p.json.gz"
+
+
+def test_a_refused_share_is_named_as_not_reached_never_a_smaller_board(monkeypatch, tmp_path):
+    _fleet(monkeypatch, tmp_path, fail=("a/x",))
+    st = ps.dispatch("t", coins=["BTC", "ETH", "SOL", "XRP"])
+    started = st["runs"]["b/x"]["coin_list"]
+    root = tmp_path / "run-b"
+    root.mkdir()
+    (root / "pro-report-0.json").write_text(json.dumps(
+        {"report": [{"coin": c.replace("_USDT", ""), "tf": "1h", "rows": 1} for c in started]}),
+        encoding="utf-8")
+    monkeypatch.setattr(ps, "_gh", lambda *a, **k: json.dumps({"status": "completed"}))
+    monkeypatch.setattr(ps, "download", lambda run, repo: root)
+    cov = ps.collect(ps.STATE)["coverage"]
+    assert cov["board"] == 4 and cov["reached"] == 2
+    assert sorted(cov["not_reached"]) == sorted(
+        c.replace("_USDT", "") for c in st["dealt"]["a/x"]["coin_list"].split(","))
+
+
+def test_a_dispatch_github_listed_late_is_adopted_not_doubled(monkeypatch, tmp_path):
+    import datetime as dt
+
+    started = _fleet(monkeypatch, tmp_path, fail=("a/x",))
+    st = ps.dispatch("t", coins=["BTC", "ETH", "SOL", "XRP"])
+    late = dt.datetime.fromtimestamp(st["started"] + 120, dt.timezone.utc).isoformat()
+    title = ps.title_of(st["dealt"]["a/x"]["label"])
+    monkeypatch.setattr(ps, "_runs", lambda repo, limit=10: [
+        {"databaseId": 777, "displayTitle": title, "createdAt": late}] if repo == "a/x" else [])
+    started.clear()
+    got = ps.redo(ps.STATE, "a/x")
+    assert got["runs"]["a/x"]["run"] == 777 and started == []
+
+
+_PREFETCH = r'''
+import json, os, sys
+ROOT = sys.argv[1]
+sys.path.insert(0, os.path.join(ROOT, ".github", "scripts"))
+sys.path.insert(0, ROOT)
+os.environ.update({"GITHUB_TOKEN": "", "GITHUB_REPOSITORY": "", "INGEST_URL": "",
+                   "COIN_LIST": "", "TA_VENUE": "gate", "TFS": "1d", "SHARD": "0"})
+import pro_shard as ps
+from tradingagents import cost_store
+asked = []
+ps.at.taker_fee = lambda sym, fx=None: 0.0009            # TODAY'S numbers differ from the search's
+ps.fx.liquidation_move_pct = lambda sym, lev: 3.3
+ps.fx.funding_history = lambda sym: []
+def book_for(sym, lo, hi):
+    asked.append([lo, hi])
+    return cost_store.empty()
+cost_store.book_for = book_for
+cost_store.with_app_books = lambda sym, book, lo, hi: book
+ps.br.fine_bars = lambda sym, since, fx=None: ([], [], [], 0)
+ps.fx.book_cost = lambda sym, n: {"slippage": 0.0004}
+search = ps.prefetch("TEST_USDT")
+meta = dict(search["meta"])
+meta.update({"fee": 0.00075, "liq": 4.5, "book_hi": meta["book_hi"] - 3600})
+check = ps.prefetch("TEST_USDT", meta)
+print(json.dumps({"search_meta": search["meta"], "check": {"fee": check["fee"], "liq": check["liq"],
+                  "slip": check["slip"]}, "meta": meta, "asked": asked}))
+'''
+
+
+def test_the_check_run_replays_the_searchs_fee_liquidation_cost_and_book_end(tmp_path):
+    out = subprocess.run([sys.executable, "-c", _PREFETCH, str(ROOT)], cwd=str(tmp_path),
+                         capture_output=True, text=True, timeout=300)
+    assert out.returncode == 0, out.stderr[-2000:]
+    got = json.loads(out.stdout.strip().splitlines()[-1])
+    sm = got["search_meta"]
+    # the search records every choice the check run must replay...
+    assert {"fee", "liq", "book_hi", "book_lo", "fine_from", "slip"} <= set(sm)
+    assert sm["fee"] == 0.0009 and sm["liq"] == 3.3
+    # ...and the check run uses them, not today's
+    assert got["check"] == {"fee": 0.00075, "liq": 4.5, "slip": sm["slip"]}
+    assert got["asked"][1] == [got["meta"]["book_lo"], got["meta"]["book_hi"]]

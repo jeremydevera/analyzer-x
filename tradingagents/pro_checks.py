@@ -2,12 +2,12 @@
 must pass on the days it was never chosen on, before anyone calls it ready.
 
 The approved prompt's list, each check named and explained on the page:
-* pays at least 2:1 after the coin's own fees;
+* pays at least 2:1 after the fees its untouched-days trades PAID;
 * makes money with at least 20 WINS on the untouched days, and stays above
   zero at the low end of a 90% range per trade;
 * beats random entries with the same stop and target on the same coin;
 * still makes money with costs x 1.5 and every stop filling 0.1% worse;
-* its neighbouring settings (one knob one step away) also make money;
+* its neighbouring settings (one knob one step away) make money on average;
 * when it is its group's choice, that choice made money on both halves of
   the group's coins;
 * every on/off filter in it helps (switching one off made less);
@@ -15,6 +15,11 @@ The approved prompt's list, each check named and explained on the page:
   says so — never a silent pass.
 Re-choosing before every test month (the walk-forward) is reported beside
 them; it does not decide a pass.
+
+A check that cannot be judged is None. The checks a row MUST pass are never
+passed by being unjudgeable (`passed`): a row that could not be compared with
+random entries, or whose neighbours never traded, has not shown what they ask
+(code review, Oct 20, 2026).
 """
 from __future__ import annotations
 
@@ -91,30 +96,53 @@ class Index:
 
     def oos(self, coin: int, tf: int, name: str, bar: int):
         """(trades, wins, profit) of a FIXED setting over the four test months,
-        or None when it never traded there."""
+        or None when it made no trade there — a line that traded only on the
+        choosing days is no evidence about the untouched ones, so it is never
+        counted as $0 (code review, Oct 20, 2026)."""
         i = self.at.get((coin, tf, name, bar))
         if i is None:
             return None
-        return tuple(float(x) for x in self.mon[i, 1:].sum(axis=0))
+        got = tuple(float(x) for x in self.mon[i, 1:].sum(axis=0))
+        return got if got[0] > 0 else None
+
+
+def untouched_cost(v) -> float | None:
+    """The round trip (% of the position) an average trade of the four test
+    months PAID — never the whole window's average, which is mostly older
+    days at the coin's usual cost (code review, Oct 20, 2026: a 0.20% window
+    average passed 2:1 while those trades paid 0.40%). None when the line has
+    no trade there and no measured cost at all."""
+    t = float(v[pr.F["t120"]])
+    if t > 0:
+        return float(v[pr.F["c120"]]) / t
+    rt = float(v[pr.F["rt_paid"]])
+    return None if math.isnan(rt) else rt
 
 
 def checks(ix: Index, coin: int, tf: int, line: int, how: str, group: str,
-           group_coins: list, trades: list, wf: list | None) -> list:
+           group_coins: list, trades: list, wf: list | None, notional: float = 100.0) -> list:
     """[(key, label, ok True/False/None, plain detail)] for one row. `trades`
     are the row's untouched-days trades from the check run:
-    [entry ms, exit ms, side, why, profit, round trip % or None]."""
+    [entry ms, exit ms, side, why, profit, round trip % or None]. Every $ in a
+    detail is on `notional` of position (the search's margin x leverage)."""
     L = ix.lines
     names = L["names"]
     name = names[int(L["var"][line])]
     bar = int(L["bar"][line])
     v = L["vals"][line]
     sl, tp = (float(x) * 100 for x in L["barriers"][f"barriers_{L['tfs'][tf]}"][bar])
-    rt = float(v[pr.F["rt_paid"]]) if not math.isnan(float(v[pr.F["rt_paid"]])) else 0.23
-    win, loss = after_fees(sl, tp, rt)
+    k = notional / 100.0
+    rt = untouched_cost(v)
     out = []
-    out.append(("pay2", "Pays at least 2:1 after fees", bool(v[pr.F["pay2"]] > 0),
-                f"a win pays +${win:.2f}, a loss costs -${loss:.2f} on $100 after this coin's "
-                f"{rt:.2f}% round trip"))
+    if rt is None:
+        out.append(("pay2", "Pays at least 2:1 after fees", None,
+                    "no round trip was measured for this row"))
+    else:
+        win, loss = after_fees(sl, tp, rt)
+        out.append(("pay2", "Pays at least 2:1 after fees",
+                    bool(win > 0 and win + pr.PAY_SLACK >= pr.PAY_RATIO * loss),
+                    f"a win pays +${win * k:.2f}, a loss costs -${loss * k:.2f} on ${notional:.0f} after "
+                    f"the {rt:.3f}% round trip its untouched-days trades paid"))
     pnls = [float(t[4]) for t in trades]
     n = len(pnls)
     wins = sum(1 for p in pnls if p > 0)
@@ -127,36 +155,41 @@ def checks(ix: Index, coin: int, tf: int, line: int, how: str, group: str,
                 "fewer than 2 trades" if lo is None else f"low end ${lo:+.3f} a trade "
                 f"(average ${prof / n:+.3f})"))
     rand = [ix.oos(coin, tf, nm, bar) for nm in sp.variants(["rand"])]
-    rand = [r for r in rand if r and r[0] > 0]
+    rand = [r for r in rand if r is not None]
     if rand:
         r_t = sum(r[0] for r in rand)
         r_ppt = sum(r[2] for r in rand) / r_t
         mine = prof / n if n else -math.inf
         out.append(("random", "Beat random entries with the same stop and target", mine > r_ppt,
-                    f"${mine:+.3f} a trade against ${r_ppt:+.3f} for {len(rand)} random runs"))
+                    f"${mine:+.3f} a trade against ${r_ppt:+.3f} for {len(rand)} random runs "
+                    f"({int(r_t)} trades)"))
     else:
         out.append(("random", "Beat random entries with the same stop and target", None,
-                    "no random run traded this coin, timeframe and stop/target"))
-    extra = sum(0.5 * (float(t[5]) if t[5] is not None else rt) for t in trades)
-    worse = STOP_WORSE * sum(1 for t in trades if t[3] == "SL")
+                    "no random run traded this coin, timeframe and stop/target on these days"))
+    # costs x 1.5: half again of each trade's round trip as the engine charged
+    # it (fees, the exit's fill and the entry's walk past the best price; a
+    # book-priced entry's spread is inside its price and is not stressed),
+    # and every stop filling 0.1% worse
+    extra = sum(0.5 * (float(t[5]) if t[5] is not None else (rt or 0.0)) for t in trades) * k
+    worse = STOP_WORSE * sum(1 for t in trades if t[3] == "SL") * k
     stressed = prof - extra - worse
     out.append(("stress", "Survives costs x1.5 and stops filling 0.1% worse", n > 0 and stressed > 0,
                 f"${stressed:+.2f} after +${extra:.2f} of extra cost and -${worse:.2f} on stops"))
-    nb = [ix.oos(coin, tf, nm, bar) for nm in neighbours(name)]
-    nb = [x for x in nb if x is not None]
+    nb = [x for x in (ix.oos(coin, tf, nm, bar) for nm in neighbours(name)) if x is not None]
     if nb:
         avg = sum(x[2] for x in nb) / len(nb)
-        out.append(("plateau", "Its neighbouring settings also made money", avg > 0,
-                    f"{len(nb)} settings one step away made ${avg:+.2f} each on average"))
+        up = sum(1 for x in nb if x[2] > 0)
+        out.append(("plateau", "Its neighbouring settings made money on average", avg > 0,
+                    f"{up} of {len(nb)} settings one step away made money; ${avg:+.2f} each on average"))
     else:
-        out.append(("plateau", "Its neighbouring settings also made money", None,
-                    "no neighbouring setting traded here"))
+        out.append(("plateau", "Its neighbouring settings made money on average", None,
+                    "no setting one step away traded on these days"))
     if how == "group default" and len(group_coins) >= 2:
         halves = [0.0, 0.0]
-        for k, ci in enumerate(sorted(group_coins)):
+        for j, ci in enumerate(sorted(group_coins)):
             x = ix.oos(ci, tf, name, bar)
             if x is not None:
-                halves[k % 2] += x[2]
+                halves[j % 2] += x[2]
         out.append(("halves", "Its group's choice made money on both halves of the group",
                     halves[0] > 0 and halves[1] > 0,
                     f"${halves[0]:+.2f} and ${halves[1]:+.2f} on the two halves of {group}"))
@@ -164,15 +197,17 @@ def checks(ix: Index, coin: int, tf: int, line: int, how: str, group: str,
         out.append(("halves", "Its group's choice made money on both halves of the group", None,
                     "this coin's own pick" if how != "group default" else "a one-coin group"))
     tg = toggles(name)
-    if tg:
-        mine = ix.oos(coin, tf, name, bar)
-        bad = [s for s, other in tg if (x := ix.oos(coin, tf, other, bar)) is not None
-               and mine is not None and x[2] >= mine[2]]
+    mine = ix.oos(coin, tf, name, bar)
+    seen = [(st, x) for st, other in tg if (x := ix.oos(coin, tf, other, bar)) is not None]
+    if seen and mine is not None:
+        bad = [st for st, x in seen if x[2] >= mine[2]]
         out.append(("filters", "Every on/off filter in it helps", not bad,
-                    "switching off " + ", ".join(bad) + " made as much or more" if bad
-                    else f"switching off any of {len(tg)} filter(s) made less"))
+                    "; ".join(f"without {st}: ${x[2]:+.2f}" for st, x in seen)
+                    + f" (with every filter: ${mine[2]:+.2f})"))
     else:
-        out.append(("filters", "Every on/off filter in it helps", None, "no on/off filter is on"))
+        out.append(("filters", "Every on/off filter in it helps", None,
+                    "no on/off filter is on" if not tg else
+                    "switching its filter off left nothing that traded on these days"))
     out.append(("late", "Still works one minute late", None,
                 "not measured: the backtest engine cannot delay an entry"))
     if wf:
@@ -182,14 +217,20 @@ def checks(ix: Index, coin: int, tf: int, line: int, how: str, group: str,
     return out
 
 
-REQUIRED = ("pay2", "wins", "range", "random", "stress", "plateau", "halves", "filters")
+# must be judged AND pass: a row that could not be compared with luck, or
+# whose neighbours never traded, has not shown what these checks ask
+# (code review, Oct 20, 2026: None used to count as a pass)
+MUST = ("pay2", "wins", "range", "random", "stress", "plateau")
+# may be "not applicable": an own pick has no group halves, and a setting with
+# no on/off filter switched on has nothing to switch off
+WHEN_APPLICABLE = ("halves", "filters")
+REQUIRED = MUST + WHEN_APPLICABLE
 STOP_WORSE = pr.STOP_WORSE
 
 
 def passed(cks: list) -> bool:
-    """Every required check that could be judged passed (None = not
-    applicable), and the money checks were judged at all."""
+    """Every MUST check judged and passed; every other required check passed
+    or not applicable."""
     got = {k: ok for k, _l, ok, _d in cks}
-    if got.get("wins") is not True or got.get("range") is not True:
-        return False
-    return all(got.get(k) is not False for k in REQUIRED)
+    return (all(got.get(k) is True for k in MUST)
+            and all(got.get(k) is not False for k in WHEN_APPLICABLE))

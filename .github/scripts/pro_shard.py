@@ -260,18 +260,27 @@ def prefetch(sym: str, meta: dict | None = None) -> dict:
     """One coin's fee, liquidation distance, funding (Gate serves 180 days),
     minute order book and finest bars for the newest FINE_DAYS, and the usual
     cost every older trade pays. `meta` (the check run) replays the search's
-    own choices of those, so both walk the same thing."""
+    own choices of those — the fee, the liquidation distance, the usual cost
+    and both ends of the book — so both walk the same thing. What cannot be
+    frozen without copying it (readings Gate's record or the app published
+    for older minutes after the search, minutes that moved from one source to
+    another, the oldest funding falling out of Gate's 180 days) is caught by
+    comparing every number of the two rows (pro_page.drift), never assumed
+    away (code review, Oct 20, 2026)."""
     from tradingagents import cost_store
 
     now = int(time.time())
     meta = dict(meta or {})
-    fee = at.taker_fee(sym, fx=fx)
-    liq = fx.liquidation_move_pct(sym, at.LEVERAGE)
+    fee = float(meta["fee"]) if meta.get("fee") is not None else at.taker_fee(sym, fx=fx)
+    liq = (float(meta["liq"]) if meta.get("liq") is not None
+           else fx.liquidation_move_pct(sym, at.LEVERAGE))
     fund = fx.funding_history(sym)
     fine_from = int(meta.get("fine_from") or now - (FINE_DAYS + 1) * 86400)
     book_lo = int(meta.get("book_lo") or now - (FINE_DAYS + 2) * 86400)
+    book_hi = int(meta.get("book_hi") or now)
     try:
-        book = cost_store.with_app_books(sym, cost_store.book_for(sym, book_lo, now), book_lo, now)
+        book = cost_store.with_app_books(sym, cost_store.book_for(sym, book_lo, book_hi),
+                                         book_lo, book_hi)
     except Exception as exc:                                   # noqa: BLE001
         ss.log(f"{sym}: the per-minute costs could not be read ({exc}); every trade pays "
                f"the usual cost and is counted unmeasured")
@@ -288,8 +297,8 @@ def prefetch(sym: str, meta: dict | None = None) -> dict:
             source = "one live reading (no minutes recorded)"
     _t, _h, _l, _n5 = br.fine_bars(sym, fine_from, fx=fx)
     return {"fee": fee, "liq": liq, "fund": fund, "slip": float(slip), "fine": (_t, _h, _l),
-            "meta": {"fine_from": fine_from, "book_lo": book_lo, "slip": float(slip),
-                     "slip_source": source}}
+            "meta": {"fine_from": fine_from, "book_lo": book_lo, "book_hi": book_hi,
+                     "fee": fee, "liq": liq, "slip": float(slip), "slip_source": source}}
 
 
 _BTC: dict = {}
@@ -297,14 +306,18 @@ _BTC: dict = {}
 
 def coin_stats(sym: str, pre: dict) -> dict:
     """What the coin IS, measured on its 1h candles BEFORE the four test
-    months (no look-ahead into the days the choice is judged on); its usual
-    cost (from the recorded minutes) decides only whether it is too costly
-    to trade at all."""
+    months of every timeframe (no look-ahead into the days the choice is
+    judged on): daily volatility and trending vs. snapping back decide its
+    group (pro_report.groups); its usual cost and its correlation with BTC
+    are reported beside them and decide nothing."""
     df = at._closed_bars(fx.klines(sym, "Min60", WINDOW_DAYS["1h"] * 24 + 40), 3600)
     if len(df) < 200:
         return {"why": f"only {len(df)} hourly candles"}
     ts = df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
-    cut = int(ts[-1]) - max(FOLDS) * DAY_MS
+    # before EVERY timeframe's test months: the 1d frame's last closed candle
+    # opened up to two days before the 1h frame's, so its months start that
+    # much earlier (code review, Oct 20, 2026)
+    cut = int(ts[-1]) - (max(FOLDS) + 2) * DAY_MS
     keep = ts < cut
     c = df["Close"].to_numpy(dtype=float)[keep]
     if len(c) < 200:

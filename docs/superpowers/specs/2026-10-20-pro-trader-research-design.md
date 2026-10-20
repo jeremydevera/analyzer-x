@@ -68,9 +68,19 @@ so i can review it if we can push to prod"*.
   for 30/60/90/120 days (`br.SHORT_DAYS` is set to those in the research
   process only), so every row carries the trades CLOSED in each of the last four
   30-day months plus everything before them, from one walk.
-* **Coin groups** from the days BEFORE the test months only (no look-ahead):
-  asset kind (`venue.kind`), daily volatility tercile, trending vs. snapping back
-  (variance ratio of 24 one-hour returns), cost, and correlation with BTC.
+* **Coin groups** from the days BEFORE every timeframe's test months only (no
+  look-ahead; the 1h candles are cut two days early because the 1d frame's
+  months start up to two days before the 1h frame's): asset kind
+  (`venue.kind`), daily volatility third, trending vs. snapping back (variance
+  ratio of 24 one-hour returns). Each coin's usual cost and correlation with
+  BTC are measured and kept beside them; they group nothing.
+* **What the older days pay:** Gate's per-minute order books exist only for
+  the newest ~45 days, so every older trade pays the coin's USUAL cost,
+  measured on those newest days. The main test's choice therefore reads a
+  cost level from the days it is judged on (a level per coin, never a trade's
+  outcome): the page says so, and the choice is made again as if every
+  choosing-day trade had paid 1.5x its fees, to show how much it leans on it
+  (`pro_report.choose(cost_mult=)`).
 * **Choosing, then judging:**
   * main test: one choice per coin and timeframe made on the days before the four
     test months, judged on the 120 days it never saw; the newest month is the
@@ -81,18 +91,34 @@ so i can review it if we can push to prod"*.
     its own pick only if it beat the group default on the choosing days.
     Deliberate change from the prompt: the prompt said to choose between the two on
     the untouched days, but choosing there would spoil them as a test.
-* **A row passes** only if, over its untouched days, it does all of these:
-  * pays 2:1 after fees
+* **A row passes** only if, over its untouched days, it does all of these
+  (`pro_checks`):
+  * pays 2:1 after the fees ITS UNTOUCHED-DAYS TRADES paid
   * makes money with at least 20 wins
   * stays above zero at the low end of a 90% confidence range per trade
-  * beats `pt_rand` on the same coin and stop/target
+  * beats `pt_rand` on the same coin and stop/target, per trade
   * survives costs x 1.5 and a stop filling 0.1% worse
-  * its neighbouring settings make money
-  * its group's default holds on both halves of the group
+  * its neighbouring settings (one knob one step away) make money on average
+  * when it is a group's default, it made money on both halves of the group
+  * every on/off filter in it helps (the same rule with it off made less)
 
-  "One minute late" is reported as not measured (the engine has no entry delay).
+  The first six MUST be judged and pass: a row that could not be compared
+  with random entries, or whose neighbours never traded, has not passed. The
+  last two may be "not applicable" (an own pick; no filter switched on).
+  "One minute late" is reported as not measured (the engine has no entry
+  delay).
+* **The luck bar for passing:** random entries are chosen EXACTLY as a
+  strategy is (`choose(baseline=True)`) and their money checks judged from
+  their counts (`pro_page.money_pass`): how many of those pass is how often
+  luck alone gets through, beside how many real rows do.
 * **The check run** measures the chosen rows again with every trade kept, which
   gives every row its day-by-day results, market moods (BTC up / down / sideways,
   quiet / wild), long vs. short beside holding the coin, and the room-as-one test.
+  It replays the search's own fee, liquidation distance, usual cost and both ends
+  of the order book; what cannot be frozen without copying it (readings Gate or
+  the app published for older minutes after the search, minutes that moved from
+  one source to another, the oldest funding leaving Gate's 180 days) is caught by
+  comparing every number of the two rows, and a row that differs says so on the
+  page (`pro_page.drift`).
 * **Nothing is switched on**, filed into Stored strategies or added to the nightly
   grid: the operator reviews the page first.

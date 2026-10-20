@@ -71,7 +71,11 @@ def _rand(ctx, s) -> np.ndarray:
     out = np.zeros(ctx.n, dtype=np.int8)
     rate = float(s["rate"])
     for i, t in enumerate(ctx.ts):
-        h = hashlib.blake2b(f"{s['seed']}:{int(t)}:{ctx.c[i]!r}".encode(), digest_size=8).digest()
+        # the close as a PYTHON float: numpy's own repr changed between major
+        # versions ("100.0" -> "np.float64(100.0)"), which would re-deal the
+        # draws (code review, Oct 20, 2026)
+        h = hashlib.blake2b(f"{s['seed']}:{int(t)}:{float(ctx.c[i])!r}".encode(),
+                            digest_size=8).digest()
         u = int.from_bytes(h[:4], "big") / 2 ** 32
         if u < rate:
             out[i] = 1 if h[4] & 1 else -1
@@ -116,39 +120,62 @@ def _calm(ctx, q: float, n: int = 20, m: int = 200) -> np.ndarray:
     m readings. The hold-time gate (survey #3): a fixed stop and target stay
     open long enough to collect a trend only while the coin is quiet."""
     def make():
-        r = np.diff(np.log(ctx.c), prepend=np.nan)
+        # simple returns, not logs: a division is exact on every machine, a
+        # log's last bit may differ between GitHub's Linux and this PC
+        r = pi.roc(ctx.c, 1)
         with np.errstate(invalid="ignore"):
             return pi.pct_rank(pi.rolling_std(r, n), m) <= q
     return ctx.memo(("calm", q, n, m), make)
 
 
+def _closes(ctx):
+    """Each candle's CLOSE in epoch ms — the moment the entry is bought, where
+    the spread is paid (survey #7) — as its open plus its own length (the
+    gap to the candle before; the first candle takes the next gap). None when
+    the frame carries no times: a rule that needs the clock then abstains."""
+    def make():
+        if ctx.n < 2 or len(ctx.ts) != ctx.n:
+            return None
+        t = np.asarray(ctx.ts, dtype=np.int64)
+        step = np.diff(t, prepend=t[0] - (t[1] - t[0]))
+        return t + step
+    return ctx.memo("closes", make)
+
+
 def _window(ctx, w: str) -> np.ndarray:
-    """Candles that OPENED inside a trading window, any day of the week:
+    """Candles that CLOSE inside a trading window, any day of the week:
     "us" = 9:30am-4pm New York, on New York's own clock (daytime_rule.NY, so
     daylight saving is never a fixed offset); "eu-us" = 12:00pm-9:00pm UTC,
     when spreads are lowest (Dyhrberg, Foley & Svec 2018). With the weekday
-    filter, "us" is exactly the daytime rule's market hours."""
+    filter, "us" is the daytime rule's market hours at the entry minute."""
     def make():
+        closes = _closes(ctx)
+        if closes is None:
+            return np.zeros(ctx.n, dtype=bool)
         if w == "us":
             import datetime as _dt
 
             from tradingagents import daytime_rule as _dr
 
             out = np.zeros(ctx.n, dtype=bool)
-            for i, t in enumerate(ctx.ts):
+            for i, t in enumerate(closes):
                 d = _dt.datetime.fromtimestamp(int(t) / 1000.0, _dr.NY)
                 out[i] = 9 * 60 + 30 <= d.hour * 60 + d.minute < 16 * 60
             return out
-        hours = np.array([(int(t) // 3_600_000) % 24 for t in ctx.ts])
+        hours = (closes // 3_600_000) % 24
         return (hours >= 12) & (hours < 21)
     return ctx.memo(("win", w), make)
 
 
 def _weekday(ctx) -> np.ndarray:
-    """Candles that opened Monday to Friday (UTC)."""
-    # 1970-01-01 was a Thursday: day 0 -> weekday 3
-    return ctx.memo("weekday", lambda: np.array(
-        [((int(t) // 86_400_000) + 3) % 7 < 5 for t in ctx.ts], dtype=bool))
+    """Candles that close Monday to Friday (UTC)."""
+    def make():
+        closes = _closes(ctx)
+        if closes is None:
+            return np.zeros(ctx.n, dtype=bool)
+        # 1970-01-01 was a Thursday: day 0 -> weekday 3
+        return ((closes // 86_400_000) + 3) % 7 < 5
+    return ctx.memo("weekday", make)
 
 
 def _brk(ctx, s) -> np.ndarray:
@@ -178,7 +205,8 @@ def _tsm(ctx, s) -> np.ndarray:
 
 def _ses(ctx, s) -> np.ndarray:
     """#7: the #1 breakout (20 bars, trend agreeing) taken only on candles
-    inside a trading window, and never at the weekend when `weekdays`."""
+    that close inside a trading window, and never at the weekend when
+    `weekdays`."""
     up, dn = _closing_break(ctx, 20)
     tr = _trend(ctx)
     ok = _window(ctx, s["window"])
@@ -187,11 +215,26 @@ def _ses(ctx, s) -> np.ndarray:
     return _level(up & (tr > 0) & ok, dn & (tr < 0) & ok)
 
 
+SQUEEZE_ONCE = 10             # one entry a side per squeeze: none in the 10 bars before
+
+
+def _first_in(cond, w: int) -> np.ndarray:
+    """True on a bar where `cond` holds and held on none of the w bars before
+    it — fixed-window, so the runner's candles decide it the same way."""
+    c = np.nan_to_num(cond, nan=0).astype(bool)
+    prev = np.zeros_like(c)
+    for j in range(1, w + 1):
+        prev[j:] |= c[:-j]
+    return c & ~prev
+
+
 def _sqz(ctx, s) -> np.ndarray:
     """#9: within 5 bars after the Bollinger bandwidth (20 bars, 2 deviations)
     sat in the lowest q of its last 120 readings, a close beyond the k-bar box
     (the highs and lows of the k bars before it); the 200-bar trend agreeing
-    when `gate`. Once per squeeze: the bar the break starts."""
+    when `gate`. Once per squeeze: a break counts only when the same side had
+    no break in the SQUEEZE_ONCE candles before it (code review, Oct 20, 2026:
+    the first cut re-entered within one squeeze 58 times on one pair)."""
     q, k = float(s["q"]), int(s["box"])
 
     def squeezed():
@@ -209,7 +252,7 @@ def _sqz(ctx, s) -> np.ndarray:
     if s["gate"]:
         tr = _trend(ctx)
         up, dn = up & (tr > 0), dn & (tr < 0)
-    return _edge(up, dn)
+    return _level(_first_in(up, SQUEEZE_ONCE), _first_in(dn, SQUEEZE_ONCE))
 
 
 def _abn(ctx, s) -> np.ndarray:
@@ -290,7 +333,7 @@ FAMILIES: dict = {
     "tsm": {"title": "Time-series momentum (survey #2)",
             "knobs": (("l", "lookbacks", ((90,), (30,), (30, 90), (30, 90, 180))),
                       ("e", "entry", ("hold", "flip")), ("s", "sides", ("both", "long"))),
-            "fn": _tsm, "lookback": 181,
+            "fn": _tsm, "lookback": 182,
             "say": lambda s: ("buy while the price is above where it was "
                               + " and ".join(str(n) for n in s["lookbacks"]) + " candles ago"
                               + ("" if s["sides"] == "long" else ", sell short while below")
@@ -310,7 +353,7 @@ FAMILIES: dict = {
                       "cheaper a trade, 30-60% fewer trades"},
     "sqz": {"title": "Squeeze breakout with the trend (survey #9)",
             "knobs": (("q", "q", (0.2, 0.1)), ("k", "box", (20, 10)), ("g", "gate", (True, False))),
-            "fn": _sqz, "lookback": 201,
+            "fn": _sqz, "lookback": 211,
             "say": lambda s: (f"after the price goes unusually quiet (the narrowest {int(s['q'] * 100)}% "
                               f"of the last 120 candles), buy the close above the last {s['box']} "
                               "candles' highs" + (" with the 200-candle trend up" if s["gate"] else "")
@@ -336,7 +379,7 @@ FAMILIES: dict = {
                      "intraday, a little better on 1d"},
     "pull": {"title": "Pullback inside the trend (Connors RSI 2)",
              "knobs": (("x", "rsi", (10, 5)), ("t", "trend", (200, 100))),
-             "fn": _pull, "lookback": 201,
+             "fn": _pull, "lookback": 202,
              "say": lambda s: (f"with the price above where it was {s['trend']} candles ago, buy the "
                                f"candle the 2-candle RSI falls to {s['rsi']:g} or below; sell short, "
                                "mirrored, in a downtrend"),
@@ -344,7 +387,7 @@ FAMILIES: dict = {
                        "fail at 2:1, kept as the comparison"},
     "vwm": {"title": "Volume-weighted momentum",
             "knobs": (("n", "bars", (100, 50, 200)), ("e", "entry", ("hold", "flip"))),
-            "fn": _vwm, "lookback": 201,
+            "fn": _vwm, "lookback": 202,
             "say": lambda s: (f"buy while the last {s['bars']} candles' moves, weighted by their "
                               "volume, add up to a rise; sell short while they add up to a fall"
                               + ("; buys again after a trade closes" if s["entry"] == "hold"
@@ -354,7 +397,7 @@ FAMILIES: dict = {
     # the luck baseline: measured like every family, never chosen as a strategy
     "rand": {"title": "Random entries (the luck baseline)", "baseline": True,
              "knobs": (("s", "seed", (0, 1, 2)), ("r", "rate", (0.01, 0.03))),
-             "fn": _rand, "lookback": 0,
+             "fn": _rand, "lookback": 1,
              "say": lambda s: f"a coin flip on {s['rate'] * 100:g}% of candles (seed {s['seed']})",
              "expect": "loses about its own fees every trade: the bar every family must clear"},
 }

@@ -53,13 +53,14 @@ def _one_of_each():
 
 
 NAMES = _one_of_each()
+EVERY = sp.variants()
 
 
 def _dirs(name, fr):
     return sp.dirs_for(sp.spec_for(name), *fr)
 
 
-@pytest.mark.parametrize("name", NAMES)
+@pytest.mark.parametrize("name", EVERY)
 def test_no_bar_reads_the_future(name):
     fr = _frame()
     full = _dirs(name, fr)
@@ -69,7 +70,7 @@ def test_no_bar_reads_the_future(name):
         assert part == full[:cut], (name, cut, [k for k in range(cut) if part[k] != full[k]][:5])
 
 
-@pytest.mark.parametrize("name", NAMES)
+@pytest.mark.parametrize("name", EVERY)
 def test_the_runners_299_candles_decide_what_the_backtest_decides(name):
     fr = _frame(n=2400, seed=3)
     full = _dirs(name, fr)
@@ -109,6 +110,10 @@ def test_random_entries_are_the_same_coin_flip_for_the_same_bar_in_any_frame():
     rate = sum(1 for d in a if d) / len(a)
     assert 0.015 < rate < 0.05
     assert _dirs("pt_rand_s0r1", fr) != a
+    # another coin at the same times draws its own coin flips
+    other = (fr[0], fr[1], fr[2], [x * 1.37 for x in fr[3]], fr[4], fr[5])
+    assert _dirs("pt_rand_s1r1", other) != a
+    assert sp.is_baseline("pt_rand_s1r1") and not sp.is_baseline("trend50")
 
 
 def test_the_runner_and_the_backtest_read_the_same_signal():
@@ -144,3 +149,35 @@ def test_every_stop_target_is_one_the_grid_measures_and_pays_two_to_one_at_the_u
             assert sl <= 3.0 and tp > sl
             c = 0.23                       # the median round trip paid (Oct 20, 2026)
             assert (tp - c) >= 2 * (sl + c), (tf, sl, tp)
+
+
+def test_every_setting_fires_somewhere_and_no_two_settings_are_one_rule():
+    # a knob that changes nothing is a setting measured twice and a filter
+    # check that can only fail (Oct 20, 2026: "US hours" was already Mon-Fri,
+    # so its weekday filter was inert)
+    for n, seed, step in ((6000, 11, 900), (3000, 4, 3600)):
+        fr = _frame(n=n, seed=seed, step_s=step)
+        seen = {}
+        for nm in EVERY:
+            d = tuple(_dirs(nm, fr))
+            assert any(d), (step, nm)
+            key = (sp.spec_for(nm)["family"], d)
+            assert key not in seen, (step, nm, seen.get(key))
+            seen[key] = nm
+
+
+def test_the_us_window_on_weekdays_is_the_daytime_rules_market_hours():
+    from tradingagents import daytime_rule as dr
+
+    fr = _frame(n=2000, seed=2, step_s=900, start_ms=1_793_404_800_000)  # Nov 2026: a DST change
+    ctx = sp.Ctx(*fr)
+    got = sp._window(ctx, "us") & sp._weekday(ctx)
+    want = [dr.in_market_hours(t / 1000.0) for t in fr[5]]
+    assert got.tolist() == want and any(want)
+
+
+def test_every_setting_reads_in_plain_words():
+    for nm in EVERY:
+        w = sp.words(nm)
+        assert w and "True" not in w and "False" not in w and "None" not in w, nm
+    assert sp.words("trend50") == ""

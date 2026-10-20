@@ -82,3 +82,5 @@ def test_the_windows_are_what_they_say():
     zig = np.array([1.0, 2.0] * 10)
     assert pi.efficiency(zig, 4)[-1] == pytest.approx(0.0)         # back and forth
     assert pi.rsi(c, 5)[-1] == 100.0
+    # bar 0 has no change: the first full window of 5 changes ends at bar 5
+    assert np.isnan(pi.rsi(c, 5)[4]) and pi.rsi(c, 5)[5] == 100.0

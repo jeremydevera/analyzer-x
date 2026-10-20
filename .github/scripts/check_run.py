@@ -56,21 +56,23 @@ def parse_configs(text: str, spec_for, family: str) -> list:
 
 def compact_trades(log: list, df, bs: int, fee: float | None = None) -> list:
     """The engine's trade log as [entry ms, exit ms, side, why, profit, cost].
-    The exit is the minute the minutes settled it, else the end of the bar it
-    closed in; the entry is the entry bar's open (the exit less `held_s`,
-    which the engine counts from that open, floored to the minute). `cost` is
-    the trade's whole round trip in percent of the position — both fees
-    (`fee`, a fraction) and both fills' slippage, as the engine charged it
-    (`pnl = (move - 2 x fee - cost in - cost out) x notional`) — when the
-    minute's book priced it, else None."""
+    The exit is on the ENGINE'S OWN CLOCK — the minute the minutes settled it,
+    else the open of the bar it closed in — so a trade falls in the same test
+    month here as in the engine's window counts; the entry is the entry bar's
+    open (the exit less `held_s`, which the engine counts from that open,
+    floored to the minute). `cost` is the trade's whole round trip in percent
+    of the position — both fees (`fee`, a fraction) and both fills, as the
+    engine charged it (`pnl = (move - 2 x fee - cost in - cost out) x
+    notional`) — whenever the engine ran with a minute book (a minute with no
+    reading pays the coin's usual cost, so a cost here does not mean the
+    book priced that very minute); None without a book."""
     ts = df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
     out = []
     for e in log:
         xb = int(e["exit_bar"])
         xm = e.get("exit_minute_ms")
-        anchor = int(xm) if xm is not None else int(ts[xb])
-        exit_ms = int(xm) if xm is not None else int(ts[xb]) + bs * 1000
-        entry_ms = (anchor - int(e.get("held_s") or 0) * 1000) // 60_000 * 60_000
+        exit_ms = int(xm) if xm is not None else int(ts[xb])
+        entry_ms = (exit_ms - int(e.get("held_s") or 0) * 1000) // 60_000 * 60_000
         c_in, c_out = e.get("cost in %"), e.get("cost out %")
         cost = (round(2 * float(fee) * 100 + float(c_in) + float(c_out), 5)
                 if fee is not None and c_in is not None and c_out is not None else None)

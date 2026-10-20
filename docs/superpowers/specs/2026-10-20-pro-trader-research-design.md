@@ -31,6 +31,28 @@ so i can review it if we can push to prod"*.
   (`auto_trader.signal_for`) and the backtest (`_dirs_for_backtest`). A seeded
   random-entry family (`pt_rand`) is the luck baseline, measured exactly like the
   others.
+* **The families as built (64 settings, every one firing and matching the
+  runner's 299 candles at every cut tested; no two settings of a family give
+  the same signals):**
+
+  | code | family | survey | knobs (digit 0 first) |
+  |---|---|---|---|
+  | `brk` | closing breakout (new n-bar closing high/low) | #1 | bars 20/55 · 200-bar trend gate on/off · quiet-stretch gate off/on (#3) |
+  | `tsm` | time-series momentum, every lookback agreeing | #2 | 90 / 30 / 30+90 / 30+90+180 bars · hold / flip · both sides / long only |
+  | `ses` | the #1 breakout in the busy hours | #7 | 12pm-9pm UTC / 9:30am-4pm New York · Mon-Fri on/off |
+  | `sqz` | squeeze breakout (Bollinger bandwidth percentile) | #9 | lowest 20% / 10% · box 20/10 bars · trend gate on/off |
+  | `abn` | big-candle continuation (k x the 60 candles' usual move) | #10 | k 2 / 1.5 / 2.5 · 1.5x volume off/on |
+  | `ma` | moving-average crossover | BLL 1992, Szakmary 2010 | 50/200, 20/100, 10/50 · flip / hold |
+  | `pull` | pullback inside the trend (2-bar RSI) | Connors | RSI 10 / 5 · trend 200 / 100 bars |
+  | `vwm` | volume-weighted momentum | Huang et al. 2024 | 100 / 50 / 200 bars · hold / flip |
+  | `rand` | random entries, the luck baseline | — | seed 0/1/2 · 1% / 3% of candles |
+
+  Left out because the runner hands a strategy only its own coin's candles of
+  its own timeframe (no funding, no BTC, no other coin): #4 liquidity tiers
+  and #6 cross-sectional strength (the coin groups stand in for both), #5 the
+  BTC gate, #8 funding crowding, #11 liquidation flushes. Each needs a runner
+  change first, which is the operator's call. A session window on 1d never
+  trades (every daily candle opens at midnight UTC) and is skipped there.
 * **Exits:** fixed stop/target pairs from the grid (`br.pairs_for`) whose payout
   after fees is at least 2:1 on the coin's own cost (`br.pays_two_to_one`), stop
   at most 3% (rows over 2% are flagged: the rooms cap stops at 2%). No new exit

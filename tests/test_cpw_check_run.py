@@ -87,7 +87,9 @@ def test_the_check_runs_row_is_the_searchs_row_and_its_trades_add_up(seed, name)
         assert sum(t[4] for t in trades) == pytest.approx(row["profit"], abs=0.01 * len(trades))
         for entry_ms, exit_ms, side, why, _pnl, cost in trades:
             assert entry_ms in bars, "an entry is the open of a bar of the window"
-            assert exit_ms > entry_ms and side in (1, -1)
+            # the exit on the engine's clock: a trade closed inside its entry
+            # bar (no minutes here) shows that bar's open
+            assert exit_ms >= entry_ms and side in (1, -1)
             assert why in ("TP", "SL", "END", "LIQ")
             # no minute book in this made-up market: the engine prices the
             # fills from the flat cost, so no per-trade book cost is claimed

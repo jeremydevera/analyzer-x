@@ -3,21 +3,26 @@ days never seen. Design: docs/superpowers/specs/2026-10-20-pro-trader-research-d
 
 Every measured line (pro_search.read_lines) is one coin x timeframe x setting x
 stop/target with its whole deep window and its four test months (the trades
-that CLOSED in the last 30, 60, 90, 120 days). From those numbers alone:
+that CLOSED in the last 30, 60, 90, 120 days, and the round trips they paid).
+From those numbers alone:
 
 * MONTHS: month 4 is the newest 30 days, month 1 the oldest of the four; the
   choosing days are everything closed before the month being judged.
 * GROUPS: coins grouped by what they ARE, measured before the test months
   (pro_shard.coin_stats): asset kind, daily volatility third, trending or
   snapping back. A group too small to judge joins its wider group.
-* THE CHOICE for a coin and timeframe, from choosing days only: its group's
-  default (the setting + stop/target that made the most over the group's
-  coins), or the coin's own best when that beat the default on the coin's own
-  choosing days. Only settings that pay at least 2:1 after the coin's fees.
+* CANDIDATES before a month: a setting that traded on the choosing days and
+  pays at least 2:1 after the fees ITS CHOOSING DAYS paid (never the whole
+  window's average, which includes the judged month — code review, Oct 20,
+  2026); never the random baseline.
+* THE CHOICE for a coin and timeframe: its group's default (the candidate that
+  made the most over the group's coins, if that was money), or the coin's own
+  best when that made money and beat the default on the coin's own choosing
+  days by OWN_MARGIN.
 * THE MAIN TEST: one choice from the days before all four months, judged on
   the four months (120 days). THE WALK-FORWARD: the choice made again before
   each month from everything closed before it, each month judged by its own.
-* THE CHECKS each row must pass (`checks`), on its untouched days.
+* The checks each row must pass live in `pro_checks`.
 
 Nothing here switches anything on.
 """
@@ -27,10 +32,18 @@ import math
 
 import numpy as np
 
-F = {k: i for i, k in enumerate((
-    "trades", "wins", "profit", "t30", "w30", "p30", "t60", "w60", "p60",
-    "t90", "w90", "p90", "t120", "w120", "p120", "rt_paid", "pay2", "streak", "dd"))}
+# the shard's FIELDS, in order (.github/scripts/pro_shard.py); `months`
+# refuses lines written with any other list
+FIELDS = ("trades", "wins", "profit",
+          "t30", "w30", "p30", "t60", "w60", "p60",
+          "t90", "w90", "p90", "t120", "w120", "p120",
+          "rt_paid", "pay2", "streak", "dd",
+          "c30", "c60", "c90", "c120",
+          "gate_blocked", "cost_unmeasured", "chase_skip", "closed_skipped", "unclear",
+          "funding")
+F = {k: i for i, k in enumerate(FIELDS)}
 MONTHS = 4
+WINDOW_OF = {1: 120, 2: 90, 3: 60, 4: 30}   # the window holding months m..4
 MIN_GROUP = 8              # coins a group needs to have its own default
 GROUP_MIN_TRADES = 30      # a group default needs this many choosing trades...
 GROUP_MIN_WINS = 10        # ...and wins, across the group
@@ -38,12 +51,21 @@ OWN_MIN_TRADES = 15        # a coin's own pick needs this many on its own...
 OWN_MIN_WINS = 5
 OWN_MARGIN = 1.0           # ...and must beat the group default by $1 there
 MIN_WINS = 20              # wins a row needs on its untouched days to pass
-STOP_WORSE = 0.10          # $ a losing trade costs when its stop fills 0.1% worse
+STOP_WORSE = 0.10          # $ a losing trade costs on $100 when its stop fills 0.1% worse
+PAY_RATIO = 2.0            # backtest_report.PAY_RATIO
+PAY_SLACK = 0.005          # backtest_report._PAY_SLACK
+
+
+def _check_fields(lines: dict) -> None:
+    got = [str(x) for x in lines.get("fields") or FIELDS]
+    if got != list(FIELDS):
+        raise ValueError(f"lines carry fields {got[:6]}..., this reader expects {list(FIELDS)[:6]}...")
 
 
 def months(lines: dict) -> np.ndarray:
     """[line, k, (trades, wins, profit)] for k = 0 (before the four months),
     1..4 (oldest -> newest test month)."""
+    _check_fields(lines)
     v = lines["vals"]
     t = [v[:, F["t120"]], v[:, F["t90"]], v[:, F["t60"]], v[:, F["t30"]]]
     w = [v[:, F["w120"]], v[:, F["w90"]], v[:, F["w60"]], v[:, F["w30"]]]
@@ -57,12 +79,50 @@ def months(lines: dict) -> np.ndarray:
     return out
 
 
+def stops_targets(lines: dict) -> tuple[np.ndarray, np.ndarray]:
+    """Each line's stop and target, in percent."""
+    tfs = list(lines["tfs"])
+    sl = np.zeros(len(lines["vals"]))
+    tp = np.zeros(len(lines["vals"]))
+    for k, tf in enumerate(tfs):
+        bars = np.asarray(lines["barriers"][f"barriers_{tf}"], dtype=float).reshape(-1, 2) * 100
+        m = lines["tf"] == k
+        if m.any():
+            sl[m] = bars[lines["bar"][m], 0]
+            tp[m] = bars[lines["bar"][m], 1]
+    return sl, tp
+
+
+def baseline_mask(lines: dict) -> np.ndarray:
+    """Lines of the luck baseline (signals_pro `baseline` families)."""
+    from tradingagents import signals_pro as sp
+
+    base = np.array([sp.is_baseline(n) for n in lines["names"]], dtype=bool)
+    return base[lines["var"]] if len(lines["var"]) else np.zeros(0, dtype=bool)
+
+
+def candidates(lines: dict, upto: int) -> np.ndarray:
+    """Lines that may be chosen before month `upto`: traded on the choosing
+    days, pay 2:1 after the fees THOSE days paid, not the baseline."""
+    v = lines["vals"]
+    w = WINDOW_OF[upto]
+    t_all = v[:, F["trades"]]
+    th = t_all - v[:, F[f"t{w}"]]
+    paid = v[:, F["rt_paid"]] * t_all - v[:, F[f"c{w}"]]
+    with np.errstate(invalid="ignore", divide="ignore"):
+        c = np.where(th > 0, paid / np.maximum(th, 1), np.nan)
+    sl, tp = stops_targets(lines)
+    win, loss = tp - c, sl + c
+    ok = (th > 0) & np.isfinite(c) & (win > 0) & (win + PAY_SLACK >= PAY_RATIO * loss)
+    return ok & ~baseline_mask(lines)
+
+
 def groups(stats: dict) -> dict:
     """coin -> its group name. kind (crypto / stocks / other) x volatility
     third within the kind x trending (variance ratio >= 1) or snapping back;
     a group under MIN_GROUP coins drops its trend half, then its volatility
     third."""
-    kinds = {}
+    kinds: dict = {}
     for coin, s in stats.items():
         if not isinstance(s, dict) or s.get("vol") is None or s.get("error") or s.get("why"):
             continue
@@ -72,18 +132,19 @@ def groups(stats: dict) -> dict:
     full: dict = {}
     for kind, coins in kinds.items():
         vols = sorted(float(stats[c]["vol"]) for c in coins)
-        cuts = (vols[len(vols) // 3], vols[(2 * len(vols)) // 3]) if len(vols) >= 3 else (math.inf, math.inf)
+        cuts = ((vols[len(vols) // 3], vols[(2 * len(vols)) // 3]) if len(vols) >= 3
+                else (math.inf, math.inf))
         for c in coins:
             vol = float(stats[c]["vol"])
             third = "quiet" if vol < cuts[0] else "middle" if vol < cuts[1] else "wild"
             vr = stats[c].get("vr")
-            trend = "trending" if vr is not None and not math.isnan(float(vr)) and float(vr) >= 1 else "snapping-back"
+            trend = ("trending" if vr is not None and not math.isnan(float(vr)) and float(vr) >= 1
+                     else "snapping-back")
             full[c] = (kind, third, trend)
-    size3 = {}
+    size3: dict = {}
+    size2: dict = {}
     for g in full.values():
         size3[g] = size3.get(g, 0) + 1
-    size2 = {}
-    for g in full.values():
         size2[g[:2]] = size2.get(g[:2], 0) + 1
     out = {}
     for c, g in full.items():
@@ -96,63 +157,82 @@ def groups(stats: dict) -> dict:
     return out
 
 
+def _first_per(keys: np.ndarray, order: np.ndarray) -> np.ndarray:
+    """Positions in `order` where a new key starts (keys already sorted by
+    `order` so equal keys sit together)."""
+    if not len(order):
+        return order
+    k = keys[order]
+    new = np.ones(len(order), dtype=bool)
+    new[1:] = np.any(k[1:] != k[:-1], axis=1)
+    return order[new]
+
+
 def choose(lines: dict, mon: np.ndarray, grp: dict, upto: int) -> dict:
     """(coin index, tf index) -> (line index, how) from the choosing days
-    before month `upto` (1 = before all four months ... 4 = before the newest).
-    `how` is "group default" or "own pick". Only lines that pay 2:1 after the
-    coin's own fees are candidates."""
+    before month `upto` (1 = before all four months ... 4 = before the
+    newest). `how` is "group default" or "own pick"."""
+    if not len(lines["vals"]):
+        return {}
     hist = mon[:, :upto].sum(axis=1)                    # trades, wins, profit
-    cand = lines["vals"][:, F["pay2"]] > 0
-    coins = lines["coins"]
-    c_ix, tf_ix = lines["coin"], lines["tf"]
+    cand = candidates(lines, upto)
+    coins = list(lines["coins"])
+    gnames = sorted(set(grp.values()))
+    g_of_coin = np.array([gnames.index(grp[c]) if c in grp else -1 for c in coins], dtype=np.int64)
+    c_ix = lines["coin"].astype(np.int64)
+    tf_ix = lines["tf"].astype(np.int64)
     cfg = lines["var"].astype(np.int64) * 64 + lines["bar"].astype(np.int64)
-    gname = np.array([grp.get(coins[i], "") for i in range(len(coins))], dtype=object)[c_ix] \
-        if len(c_ix) else np.zeros(0, dtype=object)
-    out: dict = {}
-    # the group defaults, one per (group, timeframe)
+    g_line = g_of_coin[c_ix]
+    # ---- the group defaults: one per (group, timeframe)
+    idx = np.where(cand & (g_line >= 0))[0]
     defaults: dict = {}
-    sel = np.where(cand & (gname != ""))[0]
-    keys: dict = {}
-    for i in sel:
-        k = (gname[i], int(tf_ix[i]), int(cfg[i]))
-        a = keys.setdefault(k, [0.0, 0.0, 0.0])
-        a[0] += hist[i, 0]
-        a[1] += hist[i, 1]
-        a[2] += hist[i, 2]
-    for (g, tf, c), (t, w, p) in keys.items():
-        if t < GROUP_MIN_TRADES or w < GROUP_MIN_WINS:
-            continue
-        best = defaults.get((g, tf))
-        if best is None or (p, t) > (best[1], best[2]):
-            defaults[(g, tf)] = (c, p, t)
-    # each coin and timeframe
-    by_pair: dict = {}
-    for i in np.where(cand)[0]:
-        by_pair.setdefault((int(c_ix[i]), int(tf_ix[i])), []).append(i)
-    for (ci, tf), idx in by_pair.items():
-        g = grp.get(coins[ci], "")
-        dflt = defaults.get((g, tf))
-        mine = [i for i in idx if hist[i, 0] >= OWN_MIN_TRADES and hist[i, 1] >= OWN_MIN_WINS]
-        own = max(mine, key=lambda i: (hist[i, 2], hist[i, 0])) if mine else None
-        d_line = None
-        if dflt is not None:
-            hit = [i for i in idx if cfg[i] == dflt[0]]
-            d_line = hit[0] if hit else None
-        if own is not None and (d_line is None or hist[own, 2] > hist[d_line, 2] + OWN_MARGIN):
-            out[(ci, tf)] = (int(own), "own pick")
-        elif d_line is not None:
-            out[(ci, tf)] = (int(d_line), "group default")
+    if len(idx):
+        key = np.stack([g_line[idx], tf_ix[idx], cfg[idx]], 1)
+        uk, inv = np.unique(key, axis=0, return_inverse=True)
+        inv = inv.ravel()
+        T = np.bincount(inv, weights=hist[idx, 0], minlength=len(uk))
+        W = np.bincount(inv, weights=hist[idx, 1], minlength=len(uk))
+        P = np.bincount(inv, weights=hist[idx, 2], minlength=len(uk))
+        ok = np.where((T >= GROUP_MIN_TRADES) & (W >= GROUP_MIN_WINS) & (P > 0))[0]
+        if len(ok):
+            order = ok[np.lexsort((-T[ok], -P[ok], uk[ok, 1], uk[ok, 0]))]
+            for j in _first_per(uk[:, :2], order):
+                defaults[(int(uk[j, 0]), int(uk[j, 1]))] = int(uk[j, 2])
+    # ---- each coin's own best that made money on its choosing days
+    own_ok = np.where(cand & (hist[:, 0] >= OWN_MIN_TRADES) & (hist[:, 1] >= OWN_MIN_WINS)
+                      & (hist[:, 2] > 0))[0]
+    own: dict = {}
+    if len(own_ok):
+        pk = np.stack([c_ix[own_ok], tf_ix[own_ok]], 1)
+        order = own_ok[np.lexsort((-hist[own_ok, 0], -hist[own_ok, 2], pk[:, 1], pk[:, 0]))]
+        keys = np.stack([c_ix, tf_ix], 1)
+        for i in _first_per(keys, order):
+            own[(int(c_ix[i]), int(tf_ix[i]))] = int(i)
+    # ---- each coin's line of its group's default
+    d_line: dict = {}
+    for i in np.where(cand & (g_line >= 0))[0]:
+        d = defaults.get((int(g_line[i]), int(tf_ix[i])))
+        if d is not None and int(cfg[i]) == d:
+            d_line[(int(c_ix[i]), int(tf_ix[i]))] = int(i)
+    out: dict = {}
+    for pair in set(own) | set(d_line):
+        o, d = own.get(pair), d_line.get(pair)
+        if o is not None and (d is None or hist[o, 2] > hist[d, 2] + OWN_MARGIN):
+            out[pair] = (o, "own pick")
+        elif d is not None:
+            out[pair] = (d, "group default")
     return out
 
 
 def judged(mon: np.ndarray, picks: dict, frm: int, to: int) -> dict:
     """(coin, tf) -> (trades, wins, profit) of each pick over months frm..to."""
-    return {k: tuple(float(x) for x in mon[i, frm:to + 1].sum(axis=0)) for k, (i, _how) in picks.items()}
+    return {k: tuple(float(x) for x in mon[i, frm:to + 1].sum(axis=0))
+            for k, (i, _how) in picks.items()}
 
 
 def walk_forward(mon: np.ndarray, lines: dict, grp: dict) -> dict:
-    """(coin, tf) -> [(line, how, trades, wins, profit) for months 1..4]: the
-    pick made again before each month, judged on that month alone."""
+    """(coin, tf) -> [(line, how, trades, wins, profit) or None for months
+    1..4]: the pick made again before each month, judged on that month alone."""
     out: dict = {}
     for m in range(1, MONTHS + 1):
         for k, (i, how) in choose(lines, mon, grp, m).items():

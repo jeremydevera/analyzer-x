@@ -29,8 +29,10 @@ Outputs (artifacts), rewritten after every coin so a machine stopped at the
   seconds, or the error.
 
 CHECK MODE (CHECK = a file under research/pro/, gzip JSON
-{"coin": {"tf": ["name:tf:sl:tp", ...]}}): those settings measured again over
-the same deep window with every trade kept -> out/pro-trades-<N>.jsonl.
+{coin: {"pre": the search's minutes/book/usual-cost choices, "tfs": {tf:
+{"last": the search's last bar, "keys": ["name:tf:sl:tp", ...]}}}}): those
+settings measured again over the SAME bars with every trade kept ->
+out/pro-trades-<N>.jsonl (one coin's lines appended at once).
 """
 # ruff: noqa: E402  (the imports must follow the RES/MODE/DAYS environment below)
 from __future__ import annotations
@@ -80,14 +82,22 @@ BARRIERS = {tf: [b for b in (cr.barrier_of(tf, sl, tp) for sl, tp in sp.BARRIERS
 FIELDS = ("trades", "wins", "profit",
           "t30", "w30", "p30", "t60", "w60", "p60",
           "t90", "w90", "p90", "t120", "w120", "p120",
-          "rt_paid", "pay2", "streak", "dd")
+          "rt_paid", "pay2", "streak", "dd",
+          # the round trips the trades closed in each window PAID, summed (%):
+          # a choice made before a month reads the fees of its own days only
+          "c30", "c60", "c90", "c120",
+          "gate_blocked", "cost_unmeasured", "chase_skip", "closed_skipped", "unclear",
+          "funding")
 OUT_NPZ = os.path.join("out", f"pro-{ss.SHARD}.npz")
 OUT_COINS = os.path.join("out", f"pro-coins-{ss.SHARD}.json")
 REPORT_OUT = os.path.join("out", f"pro-report-{ss.SHARD}.json")
 TRADES_OUT = os.path.join("out", f"pro-trades-{ss.SHARD}.jsonl")
 CHECK = os.environ.get("CHECK") or ""
 COIN_RETRIES = 2
+PAIR_RETRIES = 2                 # a failed coin + timeframe is redone BY ITSELF
+RETRY_CUTOFF_S = 4.8 * 3600      # no retry starts after this (runners die at 6 h)
 DAY_MS = 86_400_000
+T0 = time.time()
 
 
 class Store:
@@ -102,7 +112,7 @@ class Store:
         self.bar: list = []
         self.vals: list = []
 
-    def add(self, coin: str, tf: str, name: str, k_bar: int, row: dict) -> None:
+    def add(self, coin: str, tf: str, name: str, k_bar: int, row: dict, rec: dict) -> None:
         c = self.coin_ix.setdefault(coin, len(self.coins))
         if c == len(self.coins):
             self.coins.append(coin)
@@ -111,10 +121,13 @@ class Store:
         self.var.append(NAME_IX[name])
         self.bar.append(k_bar)
         rt = row.get("rt_paid")
+        sums = [float(((rec or {}).get(d) or {}).get("rt_sum") or 0.0) for d in FOLDS]
         self.vals.append([float(row.get(f) or 0) for f in FIELDS[:15]]
                          + [float(rt) if rt is not None else math.nan,
                             1.0 if br.pays_two_to_one(row) else 0.0,
-                            float(row.get("streak") or 0), float(row.get("dd") or 0)])
+                            float(row.get("streak") or 0), float(row.get("dd") or 0)]
+                         + sums
+                         + [float(row.get(f) or 0) for f in FIELDS[23:]])
 
     def save(self) -> None:
         os.makedirs("out", exist_ok=True)
@@ -129,12 +142,19 @@ class Store:
         os.replace(tmp, OUT_NPZ)
 
 
-def frame(sym: str, tf: str):
+def frame(sym: str, tf: str, end_s: int | None = None):
     """The deep window of one timeframe, closed candles only, with the lead-in
-    the rules read: (whole frame, measured window, lead-in bars)."""
+    the rules read: (whole frame, measured window, lead-in bars). `end_s` cuts
+    it at the search's own last bar (the check run measures the SAME bars).
+    A coin younger than the window has no lead-in: its rules sit idle until
+    their lookback fills, never filled from bars that do not exist."""
     iv, bs, _cap = br.TFS[tf]
     need = WINDOW_DAYS[tf] * BARS_PER_DAY[tf] + ss.WARMUP_BARS + 20
+    if end_s is not None:
+        need += int(max(0, time.time() - end_s) // bs) + 2
     df = at._closed_bars(fx.klines(sym, iv, need), bs)
+    if end_s is not None and len(df):
+        df = df[df["Date"] <= pd.Timestamp(int(end_s), unit="s")].reset_index(drop=True)
     if not len(df):
         return df, df, 0
     cut = df["Date"].iloc[-1] - pd.Timedelta(days=WINDOW_DAYS[tf])
@@ -155,7 +175,7 @@ def columns(df):
 
 
 def groups_for(dfw, warm: int, fund) -> dict:
-    """{signals in the window: [setting names]} — settings that never trade
+    """{signals in the window: [setting names]}; settings that never trade
     in the window are left out."""
     o, h, lo, c, v, ts = columns(dfw)
     out: dict = {}
@@ -168,6 +188,9 @@ def groups_for(dfw, warm: int, fund) -> dict:
 
 
 def pro_pair(sym: str, tf: str, store: Store, pre: dict, done: int, total: int) -> dict:
+    """Every setting of every family on one coin + timeframe. Lines reach the
+    Store only after the whole pair measured: a pair that raises leaves
+    nothing behind, so it can be redone by itself."""
     df, dfw, warm = frame(sym, tf)
     if len(dfw) - warm < br.min_bars(tf):
         return {"why": f"only {len(dfw) - warm} measurable bars"}
@@ -176,17 +199,28 @@ def pro_pair(sym: str, tf: str, store: Store, pre: dict, done: int, total: int) 
     if not reps:
         return {"settings": len(NAMES), "distinct": 0, "rows": 0, "why": "no setting traded"}
     buf = io.StringIO()
-    saved = (ss.window, br.pairs_for)
+    recs: dict = {}
+    engine = at.backtest_strategy
+
+    def keep(*a, **kw):
+        # the engine's own window counts, fees included, kept on the way out
+        r = engine(*a, **kw)
+        sig = str(a[0]).rsplit("_gh_", 1)[0]
+        recs[(sig, round(float(kw["sl"]), 6), round(float(kw["tp"]), 6))] = r.get("recents") or {}
+        return r
+
+    saved = (ss.window, br.pairs_for, at.backtest_strategy)
     ss.window = lambda _df: (dfw, warm)
     br.pairs_for = lambda _tf, _b=tuple(BARRIERS[tf]): list(_b)
+    at.backtest_strategy = keep
     try:
         ss.run_pair(sym, tf, buf, i=done, n=total, signals=list(reps),
                     learned={**pre, "df": df})
     finally:
-        ss.window, br.pairs_for = saved
+        ss.window, br.pairs_for, at.backtest_strategy = saved
     bix = {(round(b[0], 6), round(b[1], 6)): k for k, b in enumerate(BARRIERS[tf])}
     coin = sym.replace("_USDT", "")
-    n_rows = 0
+    lines = []
     for line in buf.getvalue().splitlines():
         if not line.strip():
             continue
@@ -194,28 +228,68 @@ def pro_pair(sym: str, tf: str, store: Store, pre: dict, done: int, total: int) 
         rep = row.get("signal")
         if rep not in reps:
             continue
-        k = bix.get((round(float(row["sl"]) / 100, 6), round(float(row["tp"]) / 100, 6)))
+        bkey = (round(float(row["sl"]) / 100, 6), round(float(row["tp"]) / 100, 6))
+        k = bix.get(bkey)
         if k is None:
             continue
+        lines.append((rep, k, row, recs.get((rep,) + bkey)))
+    for rep, k, row, rec in lines:
         for name in reps[rep]:
-            store.add(coin, tf, name, k, row)
-        n_rows += 1
-    return {"settings": len(NAMES), "distinct": len(reps), "rows": n_rows,
+            store.add(coin, tf, name, k, row, rec)
+    return {"settings": len(NAMES), "distinct": len(reps), "rows": len(lines),
             "days": int((dfw["Date"].iloc[-1] - dfw["Date"].iloc[warm]).days),
             "first": int(dfw["Date"].iloc[warm].timestamp()),
             "last": int(dfw["Date"].iloc[-1].timestamp())}
 
 
-def prefetch(sym: str) -> dict:
+def usual_slip(book: dict) -> float | None:
+    """A coin's usual one-side cost: the median of its recorded minutes' buy
+    and sell costs (never one live reading, which at night is a stock token's
+    closed-market spread). None when nothing was recorded."""
+    if book is None or not len(book.get("t", [])):
+        return None
+    ok = ~np.asarray(book["exhausted"], dtype=bool)
+    if not ok.any():
+        return None
+    both = (np.asarray(book["buy"], dtype=float)[ok] + np.asarray(book["sell"], dtype=float)[ok]) / 2
+    both = both[np.isfinite(both)]
+    return float(np.median(both)) if len(both) else None
+
+
+def prefetch(sym: str, meta: dict | None = None) -> dict:
     """One coin's fee, liquidation distance, funding (Gate serves 180 days),
-    usual cost and the finest bars of the newest FINE_DAYS."""
+    minute order book and finest bars for the newest FINE_DAYS, and the usual
+    cost every older trade pays. `meta` (the check run) replays the search's
+    own choices of those, so both walk the same thing."""
+    from tradingagents import cost_store
+
+    now = int(time.time())
+    meta = dict(meta or {})
     fee = at.taker_fee(sym, fx=fx)
     liq = fx.liquidation_move_pct(sym, at.LEVERAGE)
     fund = fx.funding_history(sym)
-    book = fx.book_cost(sym, ss.BASE_MARGIN * at.LEVERAGE)
-    slip = br.charged_slippage([float(book.get("slippage") or 0.0) or 0.0003])
-    _t, _h, _l, _n5 = br.fine_bars(sym, int(time.time()) - (FINE_DAYS + 1) * 86400, fx=fx)
-    return {"fee": fee, "liq": liq, "fund": fund, "slip": slip, "fine": (_t, _h, _l)}
+    fine_from = int(meta.get("fine_from") or now - (FINE_DAYS + 1) * 86400)
+    book_lo = int(meta.get("book_lo") or now - (FINE_DAYS + 2) * 86400)
+    try:
+        book = cost_store.with_app_books(sym, cost_store.book_for(sym, book_lo, now), book_lo, now)
+    except Exception as exc:                                   # noqa: BLE001
+        ss.log(f"{sym}: the per-minute costs could not be read ({exc}); every trade pays "
+               f"the usual cost and is counted unmeasured")
+        book = cost_store.empty()
+    ss.COST_BOOKS[sym] = book            # run_pair's cost_book(sym) reads this one
+    slip = meta.get("slip")
+    source = meta.get("slip_source")
+    if slip is None:
+        slip = usual_slip(book)
+        source = "median of the recorded minutes"
+        if slip is None:
+            live = fx.book_cost(sym, ss.BASE_MARGIN * at.LEVERAGE)
+            slip = br.charged_slippage([float(live.get("slippage") or 0.0) or 0.0003])
+            source = "one live reading (no minutes recorded)"
+    _t, _h, _l, _n5 = br.fine_bars(sym, fine_from, fx=fx)
+    return {"fee": fee, "liq": liq, "fund": fund, "slip": float(slip), "fine": (_t, _h, _l),
+            "meta": {"fine_from": fine_from, "book_lo": book_lo, "slip": float(slip),
+                     "slip_source": source}}
 
 
 _BTC: dict = {}
@@ -223,7 +297,9 @@ _BTC: dict = {}
 
 def coin_stats(sym: str, pre: dict) -> dict:
     """What the coin IS, measured on its 1h candles BEFORE the four test
-    months (no look-ahead into the days the choice is judged on)."""
+    months (no look-ahead into the days the choice is judged on); its usual
+    cost (from the recorded minutes) decides only whether it is too costly
+    to trade at all."""
     df = at._closed_bars(fx.klines(sym, "Min60", WINDOW_DAYS["1h"] * 24 + 40), 3600)
     if len(df) < 200:
         return {"why": f"only {len(df)} hourly candles"}
@@ -262,22 +338,29 @@ def save_json(path: str, obj) -> None:
     os.replace(tmp, path)
 
 
+def late() -> bool:
+    """No retry starts this late: a runner is killed at 6 hours."""
+    return time.time() - T0 > RETRY_CUTOFF_S
+
+
 def run(per_coin) -> int:
     """Claim coins off the board one at a time; a coin that raises is tried
-    again by itself up to COIN_RETRIES, then named."""
-    t0 = time.time()
+    again by itself up to COIN_RETRIES (never past the cutoff), then named."""
     os.makedirs("out", exist_ok=True)
     coins = ss.eligible()
     ss.report.board = len(coins)
     report: list = []
     failed: dict = {}
     done = 0
-    stream = ss.coin_stream(coins, t0)
+    stream = ss.coin_stream(coins, T0)
     queue: list = []
     while True:
         sym = next(stream, None)
         if sym is None:
-            if not queue:
+            if not queue or late():
+                for q in queue:
+                    report.append({"coin": q.replace("_USDT", ""), "tf": "*",
+                                   "error": "not redone: out of time"})
                 break
             sym = queue.pop(0)
         try:
@@ -295,8 +378,41 @@ def run(per_coin) -> int:
         save_json(REPORT_OUT, {"report": report, "names": len(NAMES), "tfs": TFS,
                                "window_days": WINDOW_DAYS, "folds": FOLDS})
         ss.report("testing", done, len(coins), note=f"{sym.replace('_USDT', '')} done")
-    ss.log(f"done: {done} coin(s) in {(time.time() - t0) / 60:.0f} min")
+    ss.log(f"done: {done} coin(s) in {(time.time() - T0) / 60:.0f} min")
     return 0
+
+
+def each_tf(coin: str, tfs, work, report: list) -> None:
+    """Run `work(tf) -> dict` for every timeframe; a timeframe that raises is
+    redone BY ITSELF after the others, up to PAIR_RETRIES (CLAUDE.md: a
+    failed coin is redone alone, never the whole run), and named if it never
+    recovers."""
+    pending = list(tfs)
+    for attempt in range(PAIR_RETRIES + 1):
+        again = []
+        for tf in pending:
+            t1 = time.time()
+            entry = {"coin": coin, "tf": tf}
+            try:
+                entry.update(work(tf))
+            except Exception as exc:                           # noqa: BLE001
+                entry["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
+                ss.log(f"{coin} {tf}: FAILED (try {attempt + 1}) {entry['error']}")
+                ss.log(traceback.format_exc()[-800:])
+                if attempt < PAIR_RETRIES and not late():
+                    again.append(tf)
+                    continue
+            entry["seconds"] = round(time.time() - t1, 1)
+            if attempt:
+                entry["tries"] = attempt + 1
+            report.append(entry)
+            ss.log(f"{coin} {tf}: {entry.get('distinct', entry.get('lines', 0))} / "
+                   f"{entry.get('rows', '')} ({entry.get('why') or entry.get('error') or 'ok'}) "
+                   f"in {entry['seconds']}s")
+        if not again:
+            return
+        time.sleep(5 * (attempt + 1))
+        pending = again
 
 
 def search() -> int:
@@ -312,20 +428,8 @@ def search() -> int:
             stats[coin] = coin_stats(sym, pre)
         except Exception as exc:                               # noqa: BLE001
             stats[coin] = {"error": f"{type(exc).__name__}: {str(exc)[:160]}"}
-        for tf in TFS:
-            t1 = time.time()
-            entry = {"coin": coin, "tf": tf}
-            try:
-                entry.update(pro_pair(sym, tf, store, pre, done, total))
-            except Exception as exc:                           # noqa: BLE001
-                entry["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
-                ss.log(f"{coin} {tf}: FAILED {entry['error']}")
-                ss.log(traceback.format_exc()[-800:])
-            entry["seconds"] = round(time.time() - t1, 1)
-            report.append(entry)
-            ss.log(f"{coin} {tf}: {entry.get('distinct', 0)} distinct of {len(NAMES)}, "
-                   f"{entry.get('rows', 0)} rows ({entry.get('why') or entry.get('error') or 'ok'}) "
-                   f"in {entry['seconds']}s")
+        stats[coin]["pre"] = pre["meta"]
+        each_tf(coin, TFS, lambda tf: pro_pair(sym, tf, store, pre, done, total), report)
         store.save()
         save_json(OUT_COINS, stats)
 
@@ -333,39 +437,42 @@ def search() -> int:
 
 
 def check() -> int:
-    """The chosen settings, measured again over the same deep windows with
-    every trade kept."""
+    """The chosen settings, measured again over the SAME bars as the search
+    (cut at the search's last bar, with the search's minutes, book and usual
+    cost), with every trade kept. Plan: {coin: {"pre": meta, "tfs": {tf:
+    {"last": unix s, "keys": ["name:tf:sl:tp", ...]}}}}."""
     with gzip.open(os.path.join(ROOT, CHECK), "rt", encoding="utf-8") as fh:
         plan = json.load(fh)
-    ss.log(f"pro trader check run: {sum(len(v) for t in plan.values() for v in t.values())} "
+    ss.log(f"pro trader check run: "
+           f"{sum(len(t['keys']) for c in plan.values() for t in c['tfs'].values())} "
            f"setting(s) on {len(plan)} coin(s)")
-    with open(TRADES_OUT, "w", encoding="utf-8") as out:
 
-        def per_coin(sym, report, done, total):
-            coin = sym.replace("_USDT", "")
-            mine = plan.get(coin) or {}
-            if not mine:
-                return
-            pre = prefetch(sym)
-            for tf, keys in mine.items():
-                t1 = time.time()
-                entry = {"coin": coin, "tf": tf}
-                try:
-                    cfgs = cr.parse_configs(",".join(keys), sp.spec_for, "Pro Trader")
-                    df, dfw, warm = frame(sym, tf)
-                    got = cr.verify_pair(sym, tf, df, pre, cfgs, done, total,
-                                         window=lambda _df, _w=(dfw, warm): _w)
-                    for line in got:
-                        out.write(json.dumps(line, separators=(",", ":")) + "\n")
-                    entry["lines"] = len(got)
-                except Exception as exc:                       # noqa: BLE001
-                    entry["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
-                    ss.log(f"{coin} {tf}: FAILED {entry['error']}")
-                entry["seconds"] = round(time.time() - t1, 1)
-                report.append(entry)
-            out.flush()
+    def per_coin(sym, report, done, total):
+        coin = sym.replace("_USDT", "")
+        mine = plan.get(coin)
+        if not mine:
+            return
+        pre = prefetch(sym, mine.get("pre"))
+        lines: list = []
 
-        return run(per_coin)
+        def work(tf):
+            spec = mine["tfs"][tf]
+            cfgs = cr.parse_configs(",".join(spec["keys"]), sp.spec_for, "Pro Trader")
+            df, dfw, warm = frame(sym, tf, end_s=int(spec["last"]))
+            got = cr.verify_pair(sym, tf, df, pre, cfgs, done, total,
+                                 window=lambda _df, _w=(dfw, warm): _w)
+            lines.extend(got)
+            return {"lines": len(got)}
+
+        each_tf(coin, list(mine["tfs"]), work, report)
+        # one coin's lines in one append: a machine killed mid-write leaves at
+        # most one cut line, which the collect skips and names
+        with open(TRADES_OUT, "a", encoding="utf-8") as out:
+            out.write("".join(json.dumps(x, separators=(",", ":")) + "\n" for x in lines))
+
+    if os.path.exists(TRADES_OUT):
+        os.remove(TRADES_OUT)
+    return run(per_coin)
 
 
 def main() -> int:

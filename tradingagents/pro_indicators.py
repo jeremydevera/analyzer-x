@@ -121,11 +121,13 @@ def pct_rank(x, n: int) -> np.ndarray:
 def rsi(c, n: int) -> np.ndarray:
     """Cutler's RSI: plain averages of the last n gains and losses."""
     d = np.diff(np.asarray(c, dtype=float), prepend=np.nan)
-    up = sma(np.where(d > 0, d, 0.0), n)
-    dn = sma(np.where(d < 0, -d, 0.0), n)
+    # bar 0 has no change: NaN keeps the first window from counting a fake 0
+    up = sma(np.where(np.isnan(d), np.nan, np.where(d > 0, d, 0.0)), n)
+    dn = sma(np.where(np.isnan(d), np.nan, np.where(d < 0, -d, 0.0)), n)
     with np.errstate(invalid="ignore", divide="ignore"):
         out = 100.0 - 100.0 / (1.0 + up / dn)
-    return np.where(dn == 0, np.where(up > 0, 100.0, 50.0), out)
+    out = np.where(dn == 0, np.where(up > 0, 100.0, 50.0), out)
+    return np.where(np.isnan(up) | np.isnan(dn), np.nan, out)
 
 
 def zscore(c, n: int) -> np.ndarray:

@@ -73,7 +73,8 @@ def _start(repo: str, inputs: dict) -> int:
 
 
 def dispatch(label: str | None = None, *, coins: list | None = None, base: float = 5.0,
-             check: str = "", state_name: str = STATE, timeframes: str = TIMEFRAMES) -> dict:
+             check: str = "", state_name: str | None = None,
+             timeframes: str = TIMEFRAMES) -> dict:
     """Deal the board (the whole market, or `coins`) between every account that
     can run now (round robin, cloud_sweep.split_coins) and start one run on
     each. An account that refuses, or cannot be brought up to this code, is
@@ -81,6 +82,9 @@ def dispatch(label: str | None = None, *, coins: list | None = None, base: float
     from tradingagents import cloud_sweep as cs, forecast_v2_daily as fd
     from tradingagents.positions_view import fmt_when
 
+    if check and not coins:
+        raise ValueError("a check run names its coins (the plan's own)")
+    state_name = state_name or (CHECK_STATE if check else STATE)
     ready, refused = fd.fleets_now()
     if not ready:
         raise RuntimeError("no GitHub account can run the research: " + "; ".join(refused))
@@ -190,13 +194,20 @@ def read_json_parts(roots, pattern: str, key: str | None = None):
     return joined if joined is not None else ([] if key else {})
 
 
-def read_trades(roots) -> list:
-    """The check run's lines (one per coin, timeframe and setting)."""
-    out = []
+def read_trades(roots) -> tuple[list, list]:
+    """(the check run's lines, one per coin + timeframe + setting; the files
+    whose last line was cut by a machine killed mid-write — skipped, NAMED)."""
+    out, cut = [], []
     for f in files(roots, "pro-trades-*.jsonl"):
         with open(f, encoding="utf-8") as fh:
-            out += [json.loads(x) for x in fh if x.strip()]
-    return out
+            for x in fh:
+                if not x.strip():
+                    continue
+                try:
+                    out.append(json.loads(x))
+                except ValueError:
+                    cut.append(str(f))
+    return out, cut
 
 
 def collect(state_name: str = STATE) -> dict:
@@ -206,6 +217,13 @@ def collect(state_name: str = STATE) -> dict:
     from tradingagents import cpw_search as cpw
 
     state = json.loads((home() / state_name).read_text(encoding="utf-8"))
+    unfinished = []
+    for repo, r in state["runs"].items():
+        st = json.loads(_gh("run", "view", str(r["run"]), "--repo", repo, "--json", "status"))
+        if st.get("status") != "completed":
+            unfinished.append(f"{repo} run {r['run']} is {st.get('status')}")
+    if unfinished:
+        raise RuntimeError("not collected, still running: " + "; ".join(unfinished))
     roots, board = [], []
     for repo, r in state["runs"].items():
         roots.append(download(int(r["run"]), repo))

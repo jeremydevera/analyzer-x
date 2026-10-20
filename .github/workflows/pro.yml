@@ -78,7 +78,9 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          pip install pandas requests numpy
+          # the PC's own versions: the runner and the backtest must compute
+          # the same indicator values to the last bit (pro_indicators)
+          pip install "pandas==3.0.5" "numpy==2.5.2" requests
 
       - name: Research shard ${{ matrix.shard }}
         env:

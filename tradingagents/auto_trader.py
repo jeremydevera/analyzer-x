@@ -4392,7 +4392,9 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
     rec_n = rec_w = 0
     rec_p = 0.0
     # each extra window: [days, from_ms, trades, wins, profit]
-    _recs = [[int(d), int(ms), 0, 0, 0.0] for d, ms in sorted((recent_windows or {}).items())]
+    # [days, from ms, trades, wins, profit, round trips paid] per window
+    _recs = [[int(d), int(ms), 0, 0, 0.0, 0.0]
+             for d, ms in sorted((recent_windows or {}).items())]
     _rec_ms = (df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
                if recent_from_ms is not None or _recs else None)
     # Bar timestamps in EPOCH MILLISECONDS, converted through datetime64[ms]
@@ -4803,6 +4805,7 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             out, why = s * (close[-1] / entry - 1), "END"
             j = n - 1
         _c_in = _c_out = None
+        _rt_this = 0.0
         if not _skip_single:
             if _bk is not None:
                 _c_in = _slip_in if _slip_in is not None else _flat_slip
@@ -4815,10 +4818,12 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                           else _c_in)
                 pnl = (out - 2 * _taker - _c_in - _c_out) * notional
                 rt_sum += 2 * _taker + _c_in + _c_out
+                _rt_this = 2 * _taker + _c_in + _c_out
                 rt_n += 1
             else:
                 pnl = (out - 2 * fee) * notional
                 rt_sum += 2 * fee
+                _rt_this = 2 * fee
                 rt_n += 1
         # Holding cost: every settlement between the entry fill and the exit.
         # A long pays when the rate is positive, a short receives it.
@@ -4854,6 +4859,7 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
                     _rw[2] += 1
                     _rw[3] += pnl > 0
                     _rw[4] += pnl
+                    _rw[5] += _rt_this
         worst_trade = min(worst_trade, pnl)
         equity += pnl
         peak = max(peak, equity)
@@ -4942,8 +4948,11 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
             **({"recent": {"trades": rec_n, "wins": int(rec_w),
                            "profit": round(rec_p, 2)}}
                if recent_from_ms is not None else {}),
-            **({"recents": {d: {"trades": n_, "wins": int(w_), "profit": round(p_, 2)}
-                            for d, _ms, n_, w_, p_ in _recs}}
+            **({"recents": {d: {"trades": n_, "wins": int(w_), "profit": round(p_, 2),
+                                # the round trips those trades paid, summed, % of the
+                                # position — what a choice made on other days reads
+                                "rt_sum": round(100 * rt_, 6)}
+                            for d, _ms, n_, w_, p_, rt_ in _recs}}
                if recent_windows is not None else {}),
             **({"gate_blocked": n_gate, "cost_unmeasured": n_unmeasured,
                 "chase_skip": n_chase,

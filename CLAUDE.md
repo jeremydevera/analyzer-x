@@ -2090,6 +2090,19 @@ combination and see what's setting will win"* and *"One run first"*.
   `tests/test_cpw_check_run.py`), and `cpw_report.page_rows` turns the trades
   into every column of the results page (worst losing run walked in closing
   order across coins, each half of the coins ranked on its own).
+* **Results (search Oct 19, 2026 10:12pm, check run 11:29pm):**
+  https://claude.ai/artifact/MPT37PzcrgjsF8fYpXXqLC — 1,044 of 1,048 coins
+  (the 4 not reached are named in Chinese characters), 5,220 coin-timeframes,
+  none failed, 56,282,436 combinations that traded, 163 winners checked trade
+  by trade (175,930 trades, every list adding up to its row). Best: BB Stoch
+  S/D 1h #KWU8TKFD (only "close back inside the band" and "bigger chart's
+  200-average" ON) TP 8% / SL 3%: +$944.34 over 3,995 trades on 306 coins,
+  32.2% won, #2 and #1 on each half of the coins. The winners win RARELY
+  (30-45%; 63% for Confirmation Model 1d) — none reaches the rooms' 65-90%
+  bars as a market-wide setting. Strongest switch: FluxGate's minimum
+  quality 5 instead of the app's 0, +$771 to +$2,362 on 15m-4h in 64 of 64
+  pairs; the app's own presets lost on most rules and timeframes (FluxGate
+  30m −$2,498.44). Nothing was landed in Stored strategies or switched on.
 
 ## Backtest v2 keeps only TP > SL (MANDATORY — Oct 06, 2026)
 

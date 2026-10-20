@@ -73,11 +73,20 @@ def _start(repo: str, inputs: dict) -> int:
     raise RuntimeError(f"the {WORKFLOW} run on {repo} ({want}) did not appear within 90 seconds")
 
 
-def dispatch(label: str | None = None, *, days: int = 30, base: float = 5.0) -> dict:
+ARTIFACTS = ("cpw-rows-*", "cpw-summary-*")             # the search's
+CHECK_ARTIFACTS = ("cpw-trades-*", "cpw-summary-*")      # the check run's
+STATE = "state.json"            # the search
+CHECK_STATE = "check.json"      # the check run: the winners, every trade kept
+
+
+def dispatch(label: str | None = None, *, days: int = 30, base: float = 5.0,
+             configs: str = "", state_name: str = STATE) -> dict:
     """Deal the exchange's whole market between every account that can run
     now (round robin, cloud_sweep.split_coins) and start one run on each. An
     account that refuses, or cannot be brought up to this code, is NAMED and
-    the others still run."""
+    the others still run. With `configs` (name:tf:sl:tp,...) it is the CHECK
+    RUN: those settings measured again on every coin with each trade kept,
+    its runs saved in `state_name`."""
     from tradingagents import cloud_sweep as cs, forecast_v2_daily as fd
     from tradingagents.positions_view import fmt_when
 
@@ -98,6 +107,8 @@ def dispatch(label: str | None = None, *, days: int = 30, base: float = 5.0) -> 
         inputs = {"shards": str(SHARDS), "timeframes": TIMEFRAMES,
                   "coin_list": ",".join(pile), "days": str(days), "base": f"{base:g}",
                   "label": f"{label} · {k + 1} of {len(ready)}"}
+        if configs:
+            inputs["configs"] = configs
         try:
             runs[repo] = {"run": _start(repo, inputs), "coins": len(pile),
                           "label": inputs["label"],
@@ -107,21 +118,21 @@ def dispatch(label: str | None = None, *, days: int = 30, base: float = 5.0) -> 
         except Exception as exc:                               # noqa: BLE001
             named.append(f"{repo}: {str(exc)[:160]}")
     state = {"label": label, "started": time.time(), "started_at": fmt_when(time.time()),
-             "coins": len(coins), "runs": runs, "refused": named}
-    tmp = home() / "state.json.tmp"
+             "coins": len(coins), "runs": runs, "refused": named,
+             **({"configs": configs} if configs else {})}
+    tmp = home() / f"{state_name}.tmp"
     tmp.write_text(json.dumps(state, indent=2), encoding="utf-8")
-    tmp.replace(home() / "state.json")
+    tmp.replace(home() / state_name)
     return state
 
 
 # ------------------------------------------------- bringing the results home
 
-ARTIFACTS = ("cpw-rows-*", "cpw-summary-*")
 FIELDS = ("pairs", "pairs_up", "trades", "wins", "profit",
           "l_pairs", "l_pairs_up", "l_trades", "l_wins", "l_profit")
 
 
-def download(run: int, repo: str) -> Path:
+def download(run: int, repo: str, patterns: tuple = ARTIFACTS) -> Path:
     """One run's artifacts, unpacked in THIS RUN'S OWN folder under home() —
     the store's drive (CLAUDE.md: big files go where the store is, never the
     system drive), emptied first because `gh run download` refuses to write
@@ -131,7 +142,7 @@ def download(run: int, repo: str) -> Path:
         shutil.rmtree(root)
     root.mkdir(parents=True, exist_ok=True)
     cmd = ["gh", "run", "download", str(int(run)), "-R", repo, "-D", str(root)]
-    for p in ARTIFACTS:
+    for p in patterns:
         cmd += ["-p", p]
     subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=1800)
     return root
@@ -257,7 +268,7 @@ def collect() -> dict:
     from tradingagents import cloud_sweep as cs, forecast_v2_daily as fd
     from tradingagents.positions_view import fmt_when
 
-    state = json.loads((home() / "state.json").read_text(encoding="utf-8"))
+    state = json.loads((home() / STATE).read_text(encoding="utf-8"))
     roots, board, notes = [], [], []
     for repo, r in state["runs"].items():
         roots.append(download(int(r["run"]), repo))
@@ -290,6 +301,22 @@ def collect() -> dict:
                "report": report}
     (out / "report.json").write_text(json.dumps(summary, indent=0), encoding="utf-8")
     return {k: v for k, v in summary.items() if k != "report"}
+
+
+def collect_check() -> dict:
+    """Bring the check run home: {"roots": [...], "lines": n, "coverage":
+    ...} — the trades stay in the run folders for cpw_report.read_check."""
+    from tradingagents import cpw_report as rep
+
+    state = json.loads((home() / CHECK_STATE).read_text(encoding="utf-8"))
+    roots, board = [], []
+    for repo, r in state["runs"].items():
+        roots.append(download(int(r["run"]), repo, CHECK_ARTIFACTS))
+        board += list(r.get("coin_list") or [])
+    check = rep.read_check(roots)
+    return {"roots": [str(r) for r in roots], "configs": len(check),
+            "lines": sum(len(v) for v in check.values()),
+            "coverage": coverage(board, read_reports(roots))}
 
 
 if __name__ == "__main__":

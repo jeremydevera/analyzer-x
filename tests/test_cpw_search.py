@@ -171,3 +171,19 @@ def test_a_half_written_copy_left_by_a_killed_machine_is_never_added(tmp_path):
     got = search.read_machines([a])
     assert got["machines"] == 1
     assert float(got["tf"]["15m"][0, 0, FIELDS.index("profit")]) == 1.0
+
+
+def test_the_check_run_hands_its_settings_to_every_account_and_keeps_its_own_state(world, tmp_path):
+    state = search.dispatch("c", configs="cp_st_f1u0h0x0i0d0:15m:0.5:1",
+                            state_name=search.CHECK_STATE)
+    assert [r for r, _ in world["started"]] == [ORIGIN, FORK]
+    assert all(inp["configs"] == "cp_st_f1u0h0x0i0d0:15m:0.5:1" for _, inp in world["started"])
+    piles = [inp["coin_list"].split(",") for _, inp in world["started"]]
+    assert sorted(piles[0] + piles[1]) == sorted(COINS)      # every coin, once
+    assert (tmp_path / search.CHECK_STATE).exists() and not (tmp_path / search.STATE).exists()
+    assert state["configs"] == "cp_st_f1u0h0x0i0d0:15m:0.5:1"
+
+
+def test_the_search_itself_sends_no_check_settings(world):
+    search.dispatch("s")
+    assert all("configs" not in inp for _, inp in world["started"])

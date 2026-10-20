@@ -122,3 +122,17 @@ def test_the_page_rows_carry_every_window_and_their_trades():
     assert f["coins"] == ["A", "B"]
     assert [t[2] for t in f["t"]] == sorted(t[2] for t in f["t"])             # closed in order
     assert f["t"][0] == [0, (end - 52 * day) // 1000, (end - 51 * day) // 1000, 1, 1, -1.0]
+
+
+def test_the_check_run_also_takes_the_best_within_the_operators_usual_limits():
+    # the overall winner needs a 1% target; under TP <= 0.6% and SL <= 0.3%
+    # (the made-up limits here) another setting wins, and is checked too
+    m = _merged([[None, 2.0, None], [None, None, 9.0], [4.0, None, None], [None, 1.0, None]])
+    rank = rep.ranking(m, max_tp=0.6, max_sl=0.3)
+    assert [ln["name"] for ln in rank[("st", "15m")]] == [ST[2], ST[0], ST[3]]
+    cfgs = rep.choose(m, top=1, caps=(0.6, 0.3))
+    got = [(c["name"], c["tp"], c["place"], c["of"], c.get("capped")) for c in cfgs]
+    assert got == [(ST[1], 1.0, 1, 4, None),            # the winner
+                   (ST[0], 0.6, 3, 4, None),            # the app's own, 3rd overall
+                   (ST[2], 0.4, 1, 3, [0.6, 0.3])]      # the best inside the limits
+    assert rep.choose(m, top=1, caps=None)[-1]["name"] == ST[0]

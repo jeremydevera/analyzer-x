@@ -111,12 +111,17 @@ def twins(merged: dict, tf: str) -> dict:
     return out
 
 
-def ranking(merged: dict) -> dict:
+def ranking(merged: dict, max_tp: float | None = None, max_sl: float | None = None) -> dict:
     """(strategy, tf) -> one line per DISTINCT setting at its best
-    stop/target, most profitable first, each naming its twins."""
+    stop/target, most profitable first, each naming its twins. With
+    `max_tp`/`max_sl` (percent, inclusive) only the stop/targets inside
+    those limits are considered — the page's MAX TP % and MAX SL %."""
     from tradingagents import cpw_search as search
 
-    best = search.best_by_setting(search.cells(merged))
+    cells_ = [c for c in search.cells(merged)
+              if (max_tp is None or c["tp"] <= max_tp + 1e-9)
+              and (max_sl is None or c["sl"] <= max_sl + 1e-9)]
+    best = search.best_by_setting(cells_)
     out: dict = {}
     for tf in merged["tf"]:
         tw = twins(merged, tf)
@@ -170,29 +175,43 @@ def effects(merged: dict) -> list:
     return out
 
 
-def choose(merged: dict, top: int = 3) -> list:
+# the operator's own limits (Sep 02-03, 2026: "when i input tp 3% it should
+# show tp below 3%", "for sl if i input 1 then show below 1 or equal 1")
+USUAL_CAPS = (3.0, 1.0)
+
+
+def choose(merged: dict, top: int = 3, caps: tuple | None = USUAL_CAPS) -> list:
     """The check run's settings: per strategy and timeframe, the `top` most
     profitable DISTINCT settings and the app's preset, each at its own best
-    stop/target, with why it was chosen."""
+    stop/target — and the best inside `caps` (TP, SL in percent), so the
+    page's MAX TP % / MAX SL % boxes have that rule's winner to find rather
+    than an empty page (CLAUDE.md kit G: a filter must reach the data)."""
     rank = ranking(merged)
+    capped = ranking(merged, max_tp=caps[0], max_sl=caps[1]) if caps else {}
     out, seen = [], set()
+
+    def add(c, tf, place, of, preset, cap=None):
+        key = (c["name"], tf, c["sl"], c["tp"])
+        if key in seen:
+            return
+        seen.add(key)
+        out.append({"name": c["name"], "tf": tf, "sl": c["sl"], "tp": c["tp"],
+                    "place": place, "of": of, "same": c["same"],
+                    "preset": preset in c["same"], "capped": cap,
+                    "search": {k2: c[k2] for k2 in ("pairs", "pairs_up", "trades",
+                                                     "wins", "profit")}})
+
     for (st, tf), lines in sorted(rank.items()):
-        picks = [(k + 1, c) for k, c in enumerate(lines[:top])]
         preset = preset_of(st)
+        for k, c in enumerate(lines[:top]):
+            add(c, tf, k + 1, len(lines), preset)
         for k, c in enumerate(lines):
             if preset in c["same"]:
-                picks.append((k + 1, c))
+                add(c, tf, k + 1, len(lines), preset)
                 break
-        for place, c in picks:
-            key = (c["name"], tf, c["sl"], c["tp"])
-            if key in seen:
-                continue
-            seen.add(key)
-            out.append({"name": c["name"], "tf": tf, "sl": c["sl"], "tp": c["tp"],
-                        "place": place, "of": len(lines), "same": c["same"],
-                        "preset": preset in c["same"],
-                        "search": {k2: c[k2] for k2 in ("pairs", "pairs_up", "trades",
-                                                         "wins", "profit")}})
+        inside = capped.get((st, tf)) or []
+        if inside:
+            add(inside[0], tf, 1, len(inside), preset, [caps[0], caps[1]])
     return out
 
 
@@ -337,6 +356,8 @@ def page_rows(cfgs: list, check: dict) -> tuple:
             # its place when each half of the coins (one account each) is
             # ranked on its own — a winner of one lucky half is not a winner
             "halves": c.get("halves"),
+            # chosen as the best inside these limits [TP, SL] (percent)
+            "capped": c.get("capped"),
             "all": stats(lines),
             "days": [stats(lines, end - n * DAY_MS) for n in range(1, WINDOW_DAYS + 1)],
             "months": [stats(lines, _month_start(end - 1, k)) for k in range(0, 2)]})

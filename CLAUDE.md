@@ -2078,6 +2078,18 @@ combination and see what's setting will win"* and *"One run first"*.
   (`rows-*.jsonl`) and a setting × timeframe × stop/target summary
   (`cpw-*.npz`). NOT in the nightly grid (`br.SIGNALS`) — the operator decides
   after the results.
+* **Collect, read, check:** `cpw_search.collect()` brings both runs to
+  `<store>/backtest/cpw/` (every machine's sums added, every coin no machine
+  reached NAMED); `cpw_report.choose()` picks, per rule and timeframe, the 3
+  best DISTINCT settings (identical sums = one strategy there), the app's own
+  preset, and the best inside the operator's TP ≤ 3% / SL ≤ 1% — so those
+  filters on the page find that rule's winner. `dispatch(configs=...,
+  state_name="check.json")` measures them AGAIN on every coin with every trade
+  kept (`cpw_shard.verify_pair`: the same `run_pair`, one setting at one
+  stop/target, its row equal to the search's row field for field —
+  `tests/test_cpw_check_run.py`), and `cpw_report.page_rows` turns the trades
+  into every column of the results page (worst losing run walked in closing
+  order across coins, each half of the coins ranked on its own).
 
 ## Backtest v2 keeps only TP > SL (MANDATORY — Oct 06, 2026)
 

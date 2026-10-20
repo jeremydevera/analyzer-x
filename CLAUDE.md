@@ -2104,6 +2104,50 @@ combination and see what's setting will win"* and *"One run first"*.
   pairs; the app's own presets lost on most rules and timeframes (FluxGate
   30m −$2,498.44). Nothing was landed in Stored strategies or switched on.
 
+## The Pro Trader research (Oct 20, 2026)
+
+The operator: *"i want to you to create different strategies for each coin
+... think of your self as a professional trader, meaning you will need to
+research on proven and working indicators out there"*, the enhanced prompt
+they approved (target at least 2:1 after fees), *"okay start developing, then
+show me the results each day per coin per time frame in artefact so i can
+review it if we can push to prod"*, and *"Run full market"*. Spec:
+`docs/superpowers/specs/2026-10-20-pro-trader-research-design.md`; the
+literature behind every family: `docs/research/2026-10-20-pro-trader-survey.md`.
+
+* **What it is:** 8 families + random entries as the luck bar
+  (`signals_pro`, prefix `pt_`, 64 settings), built on fixed-window
+  indicators (`pro_indicators`, no recursion, every family's lookback at most
+  250 bars) so the runner's 299 closed candles decide exactly what the deep
+  backtest decides — tested on every setting at exactly its declared
+  lookback. NOT in the nightly grid (`br.SIGNALS`).
+* **Measured on GitHub, both accounts:** `python -m tradingagents.pro_search
+  dispatch [label] [--coins A,B]` → `pro.yml` → `.github/scripts/pro_shard.py`
+  → `sweep_shard.run_pair` over deep windows (15m/30m 180 days, 1h 365, 4h
+  730, 1d 1,095), the four test months counted by EXIT (`br.SHORT_DAYS =
+  (30, 60, 90, 120)` in that process only). `collect [state]` brings it home;
+  `redo <state> <owner/repo>` starts one refused share alone and ADOPTS a run
+  GitHub listed late (a 502 on Oct 20, 2026 1:04pm left a job-less run).
+* **Chosen on older days, judged on 120 it never saw:** `pro_report.choose`
+  (a coin group's default, or the coin's own pick when it beat that by $1),
+  candidates paying 2:1 on the fees THEIR choosing days paid; `pro_checks`
+  (the approved list — a MUST check is never passed by being unjudgeable);
+  `pro_page` (the check plan the machines replay, each row's untouched days,
+  `drift` naming any re-measured number that differs from the search, and
+  `money_pass`: random entries chosen exactly the same way, the luck bar for
+  passing). Older trades pay each coin's usual cost from the newest ~45 days
+  of order books (no older books exist); the choice is also made at 1.5x fees.
+* **Results:** pilot https://claude.ai/artifact/4j3qJsqWRnBqATYoenNksj; whole
+  market https://claude.ai/artifact/Ux8QUuwhhW5GcoF4W9yJVe — 1,045 of 1,049
+  coins (the 4 Chinese-character names not reached), 1,227,441 combinations,
+  2,255 picks: **−$51,811.98 over 220,977 unseen trades (−$0.23 a trade)**,
+  random entries −$0.22; every family lost; 2 rows passed every check
+  (#B8SNWZCU TQQQX 30m MA 10/50, #VDVM7YXQ AWE 15m squeeze) while 3 of 1,900
+  random picks chosen the same way pass the money checks against 3 of 2,255
+  real ones — the passes are what luck produces. 357 coins (mostly stock
+  tokens: the big US names were listed Sep 03, 2026) are too young to judge.
+  Nothing was switched on.
+
 ## Backtest v2 keeps only TP > SL (MANDATORY — Oct 06, 2026)
 
 The operator, after six rooms lost $889.10 on 4,375 practice trades (average

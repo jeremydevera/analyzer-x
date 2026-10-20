@@ -2045,6 +2045,40 @@ now fills the front whenever a frame is shorter than its cap; the pending
 ledger did not know `candles_v2`; nothing indexed the v2 folder, so the v2 job
 files its own rows; a v2 report defaulted to v1's file name.
 
+## The Crypto-Predictor switch search (Oct 19, 2026)
+
+The operator: *"use the strategy and switches and come up with best
+combination for all coins"*, then *"Im talking about the switches used for
+the strategy in the repo im not talking about the tp sl, use the best
+combination and see what's setting will win"* and *"One run first"*.
+
+* **What it is:** the seven entry rules of
+  github.com/jeremydevera/Crypto-Predictor-Web (Elite Context Breakout, Elite
+  Retest Reversal, Breakout Retest, Confirmation Model, FluxGate, Supertrend +
+  RelVol, BB Stoch S/D), ported from its LIVE server code
+  (`api/utils/signalEval.ts`) into `cpw_indicators` / `cpw_rules`, with every
+  combination of each one's main switches as a strategy name
+  (`signals_cpw`, prefix `cp_`, 528 settings; digit 0 = the app's own
+  preset). Exits are the grid's stop/target pairs, never the app's.
+* **Four named differences from the app**, in `cpw_rules`' docstring: the
+  bigger-timeframe candles are what had happened by each close (their browser
+  backtest read a candle's later close); a bigger average lacking history
+  counts as agreeing (the app always had 220 bigger candles); indicators run
+  over the whole frame; untouched settings stay at the app's per-strategy
+  preset. The app's 4-hour repeat block and its chart-pattern signal stay.
+* **No bar may read the future:** `tests/test_cpw_strategies.py` compares
+  every per-bar reading of every strategy on frames cut at 11 points against
+  the whole frame — a planted peek at the forming bigger candle was caught in
+  7 of 7 strategies, where comparing decisions alone caught 0 of 13.
+* **Measured on GitHub, one run:** `python -m tradingagents.cpw_search
+  dispatch` deals the market between both accounts (`cpw.yml` →
+  `.github/scripts/cpw_shard.py` → `sweep_shard.run_pair`, the nightly grid's
+  own measurement). Settings giving the same signals on a pair are measured
+  once. A machine keeps the best 5 listed rows per strategy per pair
+  (`rows-*.jsonl`) and a setting × timeframe × stop/target summary
+  (`cpw-*.npz`). NOT in the nightly grid (`br.SIGNALS`) — the operator decides
+  after the results.
+
 ## Backtest v2 keeps only TP > SL (MANDATORY — Oct 06, 2026)
 
 The operator, after six rooms lost $889.10 on 4,375 practice trades (average

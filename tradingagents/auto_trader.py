@@ -1846,6 +1846,18 @@ def signal_for(key: str, high: list, low: list, close: list,
         dirs = _sl.dirs_for(_spec, opens or [], high, low, close, volume or [],
                             ts or [], funding or [])
         return dirs[-1] if dirs else 0
+    # A CRYPTO-PREDICTOR setting (signals_cpw, Oct 19, 2026): the same
+    # `dirs_for` the grid measured it with, last bar only. An unknown cp_
+    # name abstains.
+    if str(key).startswith("cp_"):
+        from tradingagents import signals_cpw as _sc
+
+        _spec = _sc.spec_for(key)
+        if _spec is None:
+            return 0
+        dirs = _sc.dirs_for(_spec, opens or [], high, low, close, volume or [],
+                            ts or [], funding or [])
+        return dirs[-1] if dirs else 0
     # A SEP 27 ML model (signals_ml): the same `dirs_for` the grid measured
     # it with, last bar only. An unknown ml_ name abstains.
     if str(key).startswith("ml_"):
@@ -4021,6 +4033,16 @@ def _dirs_for_backtest(key: str, high: list, low: list,
         if _spec is None:
             return out
         return _sl.dirs_for(_spec, opens or [], high, low, close, volume or [],
+                            ts or [], funding or [])
+    # A CRYPTO-PREDICTOR setting (signals_cpw, Oct 19, 2026), checked before
+    # every registry like lx_ and ml_: an unknown cp_ name abstains.
+    if str(key).startswith("cp_"):
+        from tradingagents import signals_cpw as _sc
+
+        _spec = _sc.spec_for(key)
+        if _spec is None:
+            return out
+        return _sc.dirs_for(_spec, opens or [], high, low, close, volume or [],
                             ts or [], funding or [])
     # A SEP 27 ML model (signals_ml), checked before every registry for the
     # same reason as lx_: an unknown ml_ name abstains rather than guessing.

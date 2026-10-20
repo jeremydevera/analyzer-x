@@ -219,7 +219,10 @@ def coverage(board: list, report: list) -> dict:
 
 def strategy_of(name: str) -> str:
     """cp_st_f0u0h0x0i0d0 -> "st"."""
-    return str(name).split("_")[1]
+    from tradingagents import signals_cpw as _sc
+
+    got = _sc.parts_of(name)
+    return got[0] if got else ""
 
 
 def cells(merged: dict) -> list:

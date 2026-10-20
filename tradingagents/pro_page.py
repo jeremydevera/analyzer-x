@@ -190,7 +190,7 @@ def rows(S: dict, picks: dict, wf: dict, check_lines: list,
         out.append({
             "id": rid, "coin": coin, "tf": tf, "group": group,
             # a name the families cannot read keeps its own code (never a blank)
-            "fam": spec["family"] if spec else name.split("_")[1],
+            "fam": spec["family"] if spec else (sp.parts_of(name) or (name,))[0],
             "name": name, "words": sp.words(name) or name, "how": how, "sl": round(sl, 4),
             "tp": round(tp, 4), "be": round(pck.break_even(sl, tp, rt), 2), "rt": round(rt, 4),
             "pass": pck.passed(cks), "ok": sum(1 for c in cks if c[2] is True),

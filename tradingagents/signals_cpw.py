@@ -22,6 +22,7 @@ nothing.
 from __future__ import annotations
 
 import itertools
+import re
 import threading
 
 from tradingagents import cpw_rules as rules
@@ -96,17 +97,26 @@ def variants(strategies=None) -> list:
     return out
 
 
+# a name is read by its own grammar - prefix, strategy, letter-digit code, then
+# nothing or the grid's `_gh_<tf>` - never split on "_" (RCA-2026-09-24-G: a
+# split read `cf_soup1_1h` as signal `cf`; tests/test_an_underscored_signal_keeps_its_id.py)
+_NAME = re.compile(r"cp_([a-z]+)_((?:[a-z][0-9])+)(?=_|$)")
+
+
+def parts_of(name: str) -> tuple[str, str] | None:
+    """cp_st_f1u0h0x0i0d0[_gh_1h] -> ("st", "f1u0h0x0i0d0"), or None."""
+    m = _NAME.match(str(name))
+    return (m.group(1), m.group(2)) if m else None
+
+
 def spec_for(key: str) -> dict | None:
     """The settings a name holds, or None for a name that is not one of
     ours. The grid calls `<name>_gh_<tf>`, so anything after the code is
     ignored."""
-    k = str(key)
-    if not k.startswith(PREFIX):
+    got = parts_of(key)
+    if got is None or got[0] not in SWITCHES:
         return None
-    parts = k[len(PREFIX):].split("_")
-    if len(parts) < 2 or parts[0] not in SWITCHES:
-        return None
-    st, code = parts[0], parts[1]
+    st, code = got
     sw = SWITCHES[st]
     if len(code) != 2 * len(sw):
         return None

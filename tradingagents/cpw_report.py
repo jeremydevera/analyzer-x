@@ -78,7 +78,7 @@ def words(name: str) -> str:
 
 def digits_of(name: str) -> tuple:
     """cp_st_f1u0h0x0i0d0 -> (1, 0, 0, 0, 0, 0)."""
-    code = name.split("_")[2]
+    code = cp.parts_of(name)[1]
     return tuple(int(code[k]) for k in range(1, len(code), 2))
 
 

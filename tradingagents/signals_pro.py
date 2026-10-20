@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 import itertools
+import re
 import threading
 
 import numpy as np
@@ -424,16 +425,25 @@ def variants(families=None) -> list[str]:
     return out
 
 
+# a name is read by its own grammar - prefix, family, letter-digit code, then
+# nothing or the grid's `_gh_<tf>` - never split on "_" (RCA-2026-09-24-G;
+# tests/test_an_underscored_signal_keeps_its_id.py)
+_NAME = re.compile(r"pt_([a-z]+)_((?:[a-z][0-9])+)(?=_|$)")
+
+
+def parts_of(name: str) -> tuple[str, str] | None:
+    """pt_brk_n0g0c0[_gh_1h] -> ("brk", "n0g0c0"), or None."""
+    m = _NAME.match(str(name))
+    return (m.group(1), m.group(2)) if m else None
+
+
 def spec_for(key: str) -> dict | None:
     """The family and settings a name holds, or None. Anything after the code
     (the grid's `_gh_<tf>`) is ignored."""
-    k = str(key)
-    if not k.startswith(PREFIX):
+    got = parts_of(key)
+    if got is None or got[0] not in FAMILIES:
         return None
-    parts = k[len(PREFIX):].split("_")
-    if len(parts) < 2 or parts[0] not in FAMILIES:
-        return None
-    fam, code = parts[0], parts[1]
+    fam, code = got
     kn = FAMILIES[fam]["knobs"]
     if len(code) != 2 * len(kn):
         return None

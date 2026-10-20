@@ -184,3 +184,54 @@ def test_machines_that_measured_other_settings_are_refused(tmp_path):
     write(tmp_path / "b", ["pt_rand_s1r0"])
     with pytest.raises(ValueError, match="other settings"):
         ps.read_lines([tmp_path / "a", tmp_path / "b"])
+
+
+def _fleet(monkeypatch, tmp_path, fail=()):
+    """Two accounts, no network: `_start` records what it was asked and fails
+    for the accounts in `fail` the way GitHub's 502 did."""
+    from tradingagents import cloud_sweep as cs, forecast_v2_daily as fd
+
+    started = []
+
+    def start(repo, inputs):
+        if repo in fail:
+            raise RuntimeError("could not create workflow dispatch event: HTTP 502")
+        started.append((repo, dict(inputs)))
+        return 1000 + len(started)
+
+    monkeypatch.setattr(ps, "home", lambda: tmp_path)
+    monkeypatch.setattr(ps, "_start", start)
+    monkeypatch.setattr(fd, "fleets_now", lambda: (["a/x", "b/x"], []))
+    monkeypatch.setattr(cs, "origin_fleet", lambda: "a/x")
+    monkeypatch.setattr(cs, "sync_fleet", lambda repo: "")
+    return started
+
+
+def test_a_share_github_refused_is_started_again_by_itself(monkeypatch, tmp_path):
+    started = _fleet(monkeypatch, tmp_path, fail=("a/x",))
+    st = ps.dispatch("t", coins=["BTC", "ETH", "SOL", "XRP"], check="research/pro/p.json.gz")
+    assert list(st["runs"]) == ["b/x"] and st["refused"][0].startswith("a/x:")
+    assert set(st["dealt"]) == {"a/x", "b/x"}
+    mine = st["dealt"]["a/x"]
+    started.clear()
+    monkeypatch.setattr(ps, "_start", lambda repo, inputs: started.append((repo, dict(inputs))) or 2001)
+    got = ps.redo(ps.CHECK_STATE, "a/x")
+    # only the refused account, with exactly the share it was dealt
+    assert started == [("a/x", mine)]
+    assert got["runs"]["a/x"]["run"] == 2001 and got["refused"] == []
+    assert sorted(got["runs"]["a/x"]["coin_list"] + got["runs"]["b/x"]["coin_list"]) == \
+        ["BTC_USDT", "ETH_USDT", "SOL_USDT", "XRP_USDT"]
+    # and never a second run for an account that has one
+    with pytest.raises(ValueError, match="already has run"):
+        ps.redo(ps.CHECK_STATE, "a/x")
+
+
+def test_a_state_written_before_shares_were_kept_needs_its_coins(monkeypatch, tmp_path):
+    _fleet(monkeypatch, tmp_path)
+    (tmp_path / "old.json").write_text(json.dumps({"label": "old", "runs": {}, "refused": ["a/x: 502"],
+                                                   "check": "research/pro/p.json.gz"}), encoding="utf-8")
+    with pytest.raises(ValueError, match="pass its coins"):
+        ps.redo("old.json", "a/x")
+    got = ps.redo("old.json", "a/x", coins=["SOL", "BTC"])
+    assert got["runs"]["a/x"]["coin_list"] == ["BTC_USDT", "SOL_USDT"]
+    assert got["dealt"]["a/x"]["check"] == "research/pro/p.json.gz"

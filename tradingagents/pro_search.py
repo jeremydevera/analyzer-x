@@ -7,6 +7,7 @@ beside the store, never onto the system drive. Design:
 docs/superpowers/specs/2026-10-20-pro-trader-research-design.md.
 
     python -m tradingagents.pro_search dispatch [label] [--coins A,B,...]
+    python -m tradingagents.pro_search redo <state-name> <owner/repo> [--coins A,B,...]
     python -m tradingagents.pro_search collect [state-name]
 
 `--coins` limits the board (the 20-coin pilot); the check run passes a plan
@@ -93,31 +94,73 @@ def dispatch(label: str | None = None, *, coins: list | None = None, base: float
     piles = cs.split_coins(board, len(ready))
     label = label or fmt_when(time.time())
     origin = cs.origin_fleet()
-    runs, named = {}, list(refused)
+    runs, named, dealt = {}, list(refused), {}
     for k, (repo, pile) in enumerate(zip(ready, piles, strict=False)):
         if not pile:
             continue
-        if repo != origin:
-            drift = cs.sync_fleet(repo)
-            if drift:
-                named.append(f"{repo}: not brought up to this code ({drift})")
-                continue
         inputs = {"shards": str(min(SHARDS, len(pile))), "timeframes": timeframes,
                   "coin_list": ",".join(pile), "base": f"{base:g}",
                   "label": f"{label} · {k + 1} of {len(ready)}"}
         if check:
             inputs["check"] = check
+        # every account's share is KEPT, started or not: a share GitHub refused
+        # (a 502 on Oct 20, 2026 1:04pm) is started again by itself (`redo`)
+        dealt[repo] = inputs
+        if repo != origin:
+            drift = cs.sync_fleet(repo)
+            if drift:
+                named.append(f"{repo}: not brought up to this code ({drift})")
+                continue
         try:
             runs[repo] = {"run": _start(repo, inputs), "coins": len(pile),
                           "label": inputs["label"], "coin_list": list(pile)}
         except Exception as exc:                               # noqa: BLE001
             named.append(f"{repo}: {str(exc)[:160]}")
     state = {"label": label, "started": time.time(), "started_at": fmt_when(time.time()),
-             "coins": len(board), "runs": runs, "refused": named,
+             "coins": len(board), "runs": runs, "refused": named, "dealt": dealt,
              **({"check": check} if check else {})}
+    _save_state(state_name, state)
+    return state
+
+
+def _save_state(state_name: str, state: dict) -> None:
     tmp = home() / f"{state_name}.tmp"
     tmp.write_text(json.dumps(state, indent=2), encoding="utf-8")
     tmp.replace(home() / state_name)
+
+
+def redo(state_name: str, repo: str, coins: list | None = None) -> dict:
+    """Start ONE account's share of a run again by itself — the account
+    GitHub refused, never the whole run (CLAUDE.md: a failed coin is redone
+    alone). The share is the one the dispatch dealt (`dealt`); a state written
+    before shares were kept passes `coins`. An account that already has a run
+    in the state is refused by name: two runs would measure its coins twice."""
+    from tradingagents import cloud_sweep as cs
+
+    state = json.loads((home() / state_name).read_text(encoding="utf-8"))
+    if repo in state.get("runs", {}):
+        raise ValueError(f"{repo} already has run {state['runs'][repo]['run']} in {state_name}")
+    inputs = dict((state.get("dealt") or {}).get(repo) or {})
+    if not inputs:
+        if not coins:
+            raise ValueError(f"{state_name} kept no share for {repo}: pass its coins")
+        pile = sorted({c if c.endswith("_USDT") else f"{c}_USDT" for c in coins})
+        n = len(state.get("runs", {})) + 1
+        inputs = {"shards": str(min(SHARDS, len(pile))), "timeframes": TIMEFRAMES,
+                  "coin_list": ",".join(pile), "base": "5",
+                  "label": f"{state['label']} · redone {n}"}
+        if state.get("check"):
+            inputs["check"] = state["check"]
+    if repo != cs.origin_fleet():
+        drift = cs.sync_fleet(repo)
+        if drift:
+            raise RuntimeError(f"{repo}: not brought up to this code ({drift})")
+    pile = inputs["coin_list"].split(",")
+    state.setdefault("runs", {})[repo] = {"run": _start(repo, inputs), "coins": len(pile),
+                                          "label": inputs["label"], "coin_list": pile}
+    state["refused"] = [x for x in state.get("refused", []) if not x.startswith(repo + ":")]
+    state.setdefault("dealt", {})[repo] = inputs
+    _save_state(state_name, state)
     return state
 
 
@@ -245,6 +288,12 @@ if __name__ == "__main__":
             coins = args[args.index("--coins") + 1].split(",")
             args = args[:args.index("--coins")] + args[args.index("--coins") + 2:]
         print(json.dumps(dispatch(args[1] if len(args) > 1 else None, coins=coins), indent=2))
+    elif args and args[0] == "redo":
+        coins = None
+        if "--coins" in args:
+            coins = args[args.index("--coins") + 1].split(",")
+            args = args[:args.index("--coins")] + args[args.index("--coins") + 2:]
+        print(json.dumps(redo(args[1], args[2], coins=coins), indent=2))
     elif args and args[0] == "collect":
         got = collect(args[1] if len(args) > 1 else STATE)
         cov = got["coverage"]
@@ -253,4 +302,4 @@ if __name__ == "__main__":
         print(json.dumps(got, indent=2))
     else:
         print("usage: python -m tradingagents.pro_search dispatch [label] [--coins A,B] | "
-              "collect [state-name]")
+              "redo <state-name> <owner/repo> [--coins A,B] | collect [state-name]")

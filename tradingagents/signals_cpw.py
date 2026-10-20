@@ -83,7 +83,7 @@ _DECIDE = {
 
 def name_of(strategy: str, digits) -> str:
     sw = SWITCHES[strategy]
-    return PREFIX + strategy + "_" + "".join(f"{s[0]}{d}" for s, d in zip(sw, digits))
+    return PREFIX + strategy + "_" + "".join(f"{s[0]}{d}" for s, d in zip(sw, digits, strict=True))
 
 
 def variants(strategies=None) -> list:

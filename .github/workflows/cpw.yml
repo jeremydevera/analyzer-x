@@ -35,6 +35,9 @@ on:
       label:
         description: "A name for this run (its title)"
         default: "manual"
+      configs:
+        description: "The check run: name:tf:sl:tp,... measured again with every trade kept; empty = the search"
+        default: ""
 
 permissions:
   contents: write        # claims and progress on the sweep-progress branch
@@ -92,6 +95,7 @@ jobs:
           COIN_LIST: ${{ github.event.inputs.coin_list }}
           DAYS: ${{ github.event.inputs.days }}
           BASE_MARGIN: ${{ github.event.inputs.base }}
+          CONFIGS: ${{ github.event.inputs.configs }}
         run: python .github/scripts/cpw_shard.py
 
       # always(): a machine stopped at the time limit still hands over every
@@ -112,4 +116,13 @@ jobs:
             out/cpw-*.npz
             out/cpw-report-*.json
           if-no-files-found: warn
+          retention-days: 30
+
+      # the check run's trades (CONFIGS): one line per setting and coin
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cpw-trades-${{ matrix.shard }}
+          path: out/cpw-trades-*.jsonl
+          if-no-files-found: ignore
           retention-days: 30

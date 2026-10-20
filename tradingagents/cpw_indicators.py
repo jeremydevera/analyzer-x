@@ -466,12 +466,12 @@ def chart_pattern(h, lo, c, n: int):
     if len(sht) >= 2 and len(slt) >= 2:
         (_, h1), (_, h2) = sht[-2], sht[-1]
         (_, l1), (_, l2) = slt[-2], slt[-1]
-        if _pct_diff(h1, h2) < 0.8 and l2 > l1 and _pct_diff(l1, l2) >= 0.5:
-            if cur >= (h1 + h2) / 2 * 0.997:
-                cands.append((68, "buy", "Ascending Triangle"))
-        if h2 < h1 and _pct_diff(h1, h2) >= 0.5 and _pct_diff(l1, l2) < 0.8:
-            if cur <= (l1 + l2) / 2 * 1.003:
-                cands.append((68, "sell", "Descending Triangle"))
+        if (_pct_diff(h1, h2) < 0.8 and l2 > l1 and _pct_diff(l1, l2) >= 0.5
+                and cur >= (h1 + h2) / 2 * 0.997):
+            cands.append((68, "buy", "Ascending Triangle"))
+        if (h2 < h1 and _pct_diff(h1, h2) >= 0.5 and _pct_diff(l1, l2) < 0.8
+                and cur <= (l1 + l2) / 2 * 1.003):
+            cands.append((68, "sell", "Descending Triangle"))
     if not cands:
         return None
     best = cands[0]

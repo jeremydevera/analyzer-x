@@ -47,8 +47,7 @@ import numpy as np  # noqa: E402
 import sweep_shard as ss  # noqa: E402
 
 import tradingagents.auto_trader as at  # noqa: E402
-from tradingagents import backtest_report as br  # noqa: E402
-from tradingagents import signals_cpw as cp  # noqa: E402
+from tradingagents import backtest_report as br, signals_cpw as cp  # noqa: E402
 from tradingagents.dataflows import exchange as fx  # noqa: E402
 
 TFS = [t.strip() for t in (os.environ.get("TFS") or "15m,30m,1h,4h,1d").split(",")
@@ -167,7 +166,7 @@ def cpw_pair(sym: str, tf: str, out, summary: Summary, prefetched: dict,
                 best.setdefault(st, []).append((float(row.get("profit") or 0), name, row))
         n_rows += 1
     kept = 0
-    for st, items in best.items():
+    for items in best.values():
         items.sort(key=lambda x: -x[0])
         for _p, name, row in items[:KEEP]:
             out.write(json.dumps({**row, "signal": name}, separators=(",", ":")) + "\n")
@@ -216,7 +215,173 @@ def _save_report(report: list) -> None:
     os.replace(tmp, REPORT_OUT)
 
 
+# ------------------------------------------------------- the check run (CONFIGS)
+#
+# After the search, the winners are measured AGAIN on every coin with each
+# trade kept — the search keeps sums, and a results table needs every row's
+# trades (the click), its worst losing run and its months (CLAUDE.md kit
+# items 6 and B). Same function as the search (`sweep_shard.run_pair` through
+# `backtest_strategy`), asked for one setting at one stop/target; the trade
+# log the engine already writes is captured on its way out, never a second
+# walk of the exits.
+
+CONFIGS = os.environ.get("CONFIGS") or ""
+TRADES_OUT = os.path.join("out", f"cpw-trades-{ss.SHARD}.jsonl")
+
+
+def parse_configs(text: str) -> list:
+    """'name:tf:sl:tp,...' (stop and target in percent) -> one dict each,
+    with the grid's OWN floats for that stop/target (br.pairs_for) — a pair
+    re-derived from its percent could differ in the last bit and decide a
+    touch the search decided the other way. Anything the search did not
+    measure is refused by name."""
+    out = []
+    for part in [p for p in str(text).split(",") if p.strip()]:
+        name, tf, sl, tp = part.strip().split(":")
+        if cp.spec_for(name) is None or cp.spec_for(name)["name"] != name:
+            raise ValueError(f"{part}: not a Crypto-Predictor setting")
+        if tf not in br.BARRIERS:
+            raise ValueError(f"{part}: not a timeframe the search measures")
+        hit = [b for b in br.pairs_for(tf)
+               if round(b[0] * 100, 4) == round(float(sl), 4)
+               and round(b[1] * 100, 4) == round(float(tp), 4)]
+        if not hit:
+            raise ValueError(f"{part}: not a stop/target the search measured on {tf}")
+        out.append({"key": f"{name}:{tf}:{sl}:{tp}", "name": name, "tf": tf,
+                    "sl": float(sl), "tp": float(tp), "barrier": hit[0]})
+    return out
+
+
+def compact_trades(log: list, df, bs: int) -> list:
+    """The engine's trade log as [entry ms, exit ms, side, why, profit].
+    The exit is the minute the minutes settled it, else the end of the bar it
+    closed in; the entry is the entry bar's open (the exit less `held_s`,
+    which the engine counts from that open, floored to the minute)."""
+    ts = df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
+    out = []
+    for e in log:
+        xb = int(e["exit_bar"])
+        xm = e.get("exit_minute_ms")
+        anchor = int(xm) if xm is not None else int(ts[xb])
+        exit_ms = int(xm) if xm is not None else int(ts[xb]) + bs * 1000
+        entry_ms = (anchor - int(e.get("held_s") or 0) * 1000) // 60_000 * 60_000
+        out.append([entry_ms, exit_ms, 1 if e["side"] == "LONG" else -1,
+                    str(e["why"]), round(float(e["pnl $"]), 2)])
+    return out
+
+
+def verify_pair(sym: str, tf: str, df, prefetched: dict, cfgs: list,
+                done: int = 0, total: int = 0) -> list:
+    """Each config of this timeframe on one coin: its row and its trades.
+    A config that made no trade here has no line (as the search wrote no
+    row)."""
+    _iv, bs, _cap = br.TFS[tf]
+    dfw, warm = ss.window(df)
+    lines = []
+    for cfg in cfgs:
+        logs: list = []
+        engine = at.backtest_strategy
+
+        def keep(*a, _engine=engine, _logs=logs, **kw):
+            kw["keep_log"] = True
+            r = _engine(*a, **kw)
+            _logs.append(r.get("log") or [])
+            return r
+
+        buf = io.StringIO()
+        saved = (ss.window, br.pairs_for, at.backtest_strategy)
+        ss.window = lambda _df: (dfw, warm)
+        br.pairs_for = lambda _tf, _b=cfg["barrier"]: [_b]
+        at.backtest_strategy = keep
+        try:
+            ss.run_pair(sym, tf, buf, i=done, n=total, signals=[cfg["name"]],
+                        learned={**prefetched, "df": df})
+        finally:
+            ss.window, br.pairs_for, at.backtest_strategy = saved
+        rows = [json.loads(x) for x in buf.getvalue().splitlines() if x.strip()]
+        rows = [r for r in rows if r.get("signal") == cfg["name"]]
+        if not rows or not logs:
+            continue
+        lines.append({"cfg": cfg["key"], "coin": sym.replace("_USDT", ""), "tf": tf,
+                      "row": rows[0], "trades": compact_trades(logs[-1], dfw, bs)})
+    return lines
+
+
+def prefetch(sym: str) -> dict:
+    """One coin's fee, liquidation distance, funding, cost and finest bars —
+    the search's own reads (cpw_coin)."""
+    fee = at.taker_fee(sym, fx=fx)
+    liq = fx.liquidation_move_pct(sym, at.LEVERAGE)
+    fund = fx.funding_history(sym)
+    book = fx.book_cost(sym, ss.BASE_MARGIN * at.LEVERAGE)
+    slip = br.charged_slippage([float(book.get("slippage") or 0.0) or 0.0003])
+    _t, _h, _l, _n5 = br.fine_bars(sym, int(time.time()) - 31 * 86400, fx=fx)
+    return {"fee": fee, "liq": liq, "fund": fund, "slip": slip, "fine": (_t, _h, _l)}
+
+
+def verify_main(cfgs: list) -> int:
+    t0 = time.time()
+    os.makedirs("out", exist_ok=True)
+    coins = ss.eligible()
+    by_tf: dict = {}
+    for c in cfgs:
+        by_tf.setdefault(c["tf"], []).append(c)
+    ss.log(f"crypto-predictor check run: {len(coins)} coin(s), {len(cfgs)} setting(s) "
+           f"on {sorted(by_tf)}")
+    ss.report.board = len(coins)
+    report: list = []
+    failed: dict = {}
+    done = n_lines = 0
+    with open(TRADES_OUT, "w", encoding="utf-8") as out:
+        stream = ss.coin_stream(coins, t0)
+        queue: list = []
+        while True:
+            sym = next(stream, None)
+            if sym is None:
+                if not queue:
+                    break
+                sym = queue.pop(0)
+            coin = sym.replace("_USDT", "")
+            try:
+                pre = prefetch(sym)
+                for tf, group in by_tf.items():
+                    t1 = time.time()
+                    entry = {"coin": coin, "tf": tf}
+                    try:
+                        iv, bs, cap = br.TFS[tf]
+                        df = at._closed_bars(fx.klines(sym, iv, cap), bs)
+                        got = verify_pair(sym, tf, df, pre, group, done, len(coins))
+                        for line in got:
+                            out.write(json.dumps(line, separators=(",", ":")) + "\n")
+                        n_lines += len(got)
+                        entry["lines"] = len(got)
+                    except Exception as exc:                   # noqa: BLE001
+                        entry["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
+                        ss.log(f"{coin} {tf}: FAILED {entry['error']}")
+                    entry["seconds"] = round(time.time() - t1, 1)
+                    report.append(entry)
+                out.flush()
+                done += 1
+            except Exception as exc:                           # noqa: BLE001
+                n = failed.get(sym, 0) + 1
+                failed[sym] = n
+                ss.log(f"{sym}: FAILED ({type(exc).__name__}: {exc}) try {n}")
+                if n <= COIN_RETRIES:
+                    queue.append(sym)
+                else:
+                    report.append({"coin": coin, "tf": "*",
+                                   "error": f"{type(exc).__name__}: {str(exc)[:200]}"})
+            _save_report(report)
+            ss.report("testing", done, len(coins), rows=n_lines, note=f"{coin} done")
+    _save_report(report)
+    ss.log(f"check run done: {done} coin(s), {n_lines} line(s) in "
+           f"{(time.time() - t0) / 60:.0f} min")
+    return 0
+
+
 def main() -> int:
+    if CONFIGS:
+        return verify_main(parse_configs(CONFIGS))
     t0 = time.time()
     os.makedirs("out", exist_ok=True)
     coins = ss.eligible()

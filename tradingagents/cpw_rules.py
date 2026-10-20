@@ -107,7 +107,7 @@ class Ctx:
         pats = self.memo("patterns", lambda: _patterns(self))
         return pats[i]
 
-    def htf(self) -> "Htf":
+    def htf(self) -> Htf:
         return self.memo("htf", lambda: Htf(self))
 
 
@@ -349,7 +349,7 @@ def raw_elite(ctx: Ctx, strategy: str) -> list:
         ext = 0.005 if med else 0.003
         fresh_lim = 4 if med else 6
 
-        def pool(idx, ref, up):
+        def pool(idx, ref, up, h=h, lo=lo):
             if idx < 4:
                 return False
             for k in range(idx - 3, max(2, idx - 40) - 1, -1):
@@ -360,12 +360,12 @@ def raw_elite(ctx: Ctx, strategy: str) -> list:
                     return True
             return False
 
-        def crange(idx):
+        def crange(idx, h=h, lo=lo, atr=atr):
             if idx < 8:
                 return atr * 8
             return max(h[idx - 8:idx]) - min(lo[idx - 8:idx])
 
-        def cbars(idx):
+        def cbars(idx, h=h, lo=lo, atr=atr):
             if idx < 8:
                 return 0
             return sum(1 for k in range(idx - 8, idx) if h[k] - lo[k] <= atr * 0.8)
@@ -373,7 +373,7 @@ def raw_elite(ctx: Ctx, strategy: str) -> list:
         cr_b, cr_s = crange(sh_i), crange(sl_i)
         cmult = 0.8 if med else 1.0
 
-        def breakout(idx, level, up):
+        def breakout(idx, level, up, i=i, c=c, ext=ext):
             if idx < 0:
                 return -1
             for k in range(max(idx + 1, i - 20), i + 1):
@@ -389,7 +389,8 @@ def raw_elite(ctx: Ctx, strategy: str) -> list:
         b_body = 55 if med else 45
         b_vol = 2.0 if med else 1.5
 
-        def grade(k, up, crng):
+        def grade(k, up, crng, h=h, lo=lo, c=c, o=o, v=v, avg=avg, atr=atr,
+                  a_body=a_body, b_body=b_body, b_vol=b_vol):
             if k < 0:
                 return 0
             rng = h[k] - lo[k]
@@ -414,7 +415,7 @@ def raw_elite(ctx: Ctx, strategy: str) -> list:
 
         g_b, g_s = grade(b_b, True, cr_b), grade(b_s, False, cr_s)
 
-        def retest(k0, level, up):
+        def retest(k0, level, up, i=i, v=v, atr=atr, lo=lo, c=c, h=h):
             # (retest, ema-aligned, volume-ok, breakout volume)
             if not (0 <= k0 < i):
                 return False, False, False, 0.0
@@ -473,9 +474,7 @@ def raw_elite(ctx: Ctx, strategy: str) -> list:
 def _vol_ok(sw_vol: str, reg: str) -> bool:
     if sw_vol == "medium" and reg == "low":
         return False
-    if sw_vol == "high" and reg != "high":
-        return False
-    return True
+    return not (sw_vol == "high" and reg != "high")
 
 
 def decide_ecb(ctx: Ctx, raw: list, sw: dict) -> list:
@@ -651,7 +650,7 @@ def raw_br(ctx: Ctx) -> list:
         avg = ctx.avgvol[i]
         res = {}
         for mult in (1.8, 1.0):
-            def brk(idx, level, up):
+            def brk(idx, level, up, i=i, avg=avg, mult=mult):
                 if idx < 0:
                     return -1
                 for k in range(max(idx + 1, i - 20), i + 1):
@@ -660,7 +659,7 @@ def raw_br(ctx: Ctx) -> list:
                         return k
                 return -1
 
-            def retest(b, level, up):
+            def retest(b, level, up, i=i, atr=atr):
                 if b < 0 or b >= i:
                     return False
                 move = (c[b] - level) if up else (level - c[b])
@@ -1068,7 +1067,7 @@ def decide_st(ctx: Ctx, raw: list, sw: dict) -> list:
             qs = [6]
             if sw["relvol"] and r["rv"]:
                 qs.append(4)
-            if sw["htf"] and r["hbull"] is (True if up else False):
+            if sw["htf"] and r["hbull"] is bool(up):
                 qs.append(4)
             if sw["adx"] and r["adx"]:
                 qs.append(4)

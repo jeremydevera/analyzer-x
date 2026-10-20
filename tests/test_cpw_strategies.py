@@ -22,9 +22,7 @@ import random
 
 import pytest
 
-from tradingagents import cpw_indicators as ind
-from tradingagents import cpw_rules as rules
-from tradingagents import signals_cpw as cp
+from tradingagents import cpw_indicators as ind, cpw_rules as rules, signals_cpw as cp
 
 
 def _frame(n=900, seed=7, tf_s=900, start_ms=1_788_048_000_000, vol=0.004):

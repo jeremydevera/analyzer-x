@@ -1,0 +1,76 @@
+# Pro Trader research: a strategy per coin and timeframe, proven on days it never saw
+
+Operator, Oct 20, 2026: *"i want to you to create different strategies for each
+coin, with you applying all you've learned for the repository i gave you and the
+existing strategies which uses different confluence, I want an advannced research
+where you will think of your self as a professional trader, meaning you will need
+to research on proven and working indicators out there"*, the enhanced prompt they
+approved (24 additions, target **at least 2:1 after fees**), then *"okay start
+developing, then show me the results each day per coin per time frame in artefact
+so i can review it if we can push to prod"*.
+
+## What the data already says (measured before building)
+
+| lesson | measured |
+|---|---|
+| Fees are the whole loss | 3,819,977 v2 rows (450 random of 4,175 pair files, Oct 20, 2026): before fees the average trade made about $0.00; median round trip paid 0.228% ($0.23 on $100); every row kind lost $0.17-$0.25 a trade |
+| Picking past winners does not hold | every rule tested (win rate, beat break-even, $/trade, best per coin, best rule across coins, green two periods in a row) lost on the days after the pick: about -$0.13 to -$0.22 a trade |
+| Per-coin fitting finds luck | Sep 25 Strat, 5,020 formulas fitted per coin+tf: +$66,803.59 on the days they were chosen on, -$20,162.67 over 165,661 trades on unseen days (-$0.122 a trade, 38% of formulas green) |
+| Confidence-filtered ML did best | Sep 27 ML, 474 models (top 2% most confident moments, Wilson lower bound): +$13,150.19 when chosen, -$229.49 over 15,566 unseen trades (-$0.015 a trade, 46% green) |
+| Backtest win rate collapses in practice | rooms on MEXC: backtests 70-90%, practice won 44% of 4,347 trades, -$931.49 |
+| 2:1 with a 65-90% floor is empty | 0 of 1,460,718 2:1 rows won 80%+ with 15+ trades; rooms took 3 practice trades after Oct 16, 2026 |
+| A maker order is paid, a taker pays | Gate's contract list (BTC, SOL, AAPL): maker -0.01% (a rebate), taker 0.075%. The account's own rate needs a key to confirm |
+| History Gate serves | candles: years (REST 10,000 bars + monthly archive); funding, open interest, liquidation totals, long/short ratio (`contract_stats`): the last 180 days only; single liquidation orders: one hour at a time |
+
+## The design
+
+* **Families** (`tradingagents/signals_pro.py`, prefix `pt_`): at most 12, from a
+  literature survey (`docs/research/2026-10-20-pro-trader-survey.md`), each with a
+  pre-registered expectation and at most 3 knobs; digit 0 of every knob is the
+  literature's default. One implementation shared by the runner
+  (`auto_trader.signal_for`) and the backtest (`_dirs_for_backtest`). A seeded
+  random-entry family (`pt_rand`) is the luck baseline, measured exactly like the
+  others.
+* **Exits:** fixed stop/target pairs from the grid (`br.pairs_for`) whose payout
+  after fees is at least 2:1 on the coin's own cost (`br.pays_two_to_one`), stop
+  at most 3% (rows over 2% are flagged: the rooms cap stops at 2%). No new exit
+  type in this cut; ATR-sized exits need the operator's OK first.
+* **Measured on GitHub, both accounts** (`pro.yml` -> `.github/scripts/pro_shard.py`
+  -> `sweep_shard.run_pair` -> `backtest_strategy(fine=, book=)`), the nightly
+  engine untouched: per-minute order-book costs and minute exits where they exist
+  (the newest ~45 days), the flat cost and bar exits before (counted
+  `cost_unmeasured`), funding where Gate still serves it (180 days).
+* **Deep windows:** 15m and 30m 180 days, 1h 365, 4h 730, 1d 1,095, each with
+  300 bars of lead-in.
+* **Four test months, by closing time:** the engine's recent windows are asked
+  for 30/60/90/120 days (`br.SHORT_DAYS` is set to those in the research
+  process only), so every row carries the trades CLOSED in each of the last four
+  30-day months plus everything before them, from one walk.
+* **Coin groups** from the days BEFORE the test months only (no look-ahead):
+  asset kind (`venue.kind`), daily volatility tercile, trending vs. snapping back
+  (variance ratio of 24 one-hour returns), cost, and correlation with BTC.
+* **Choosing, then judging:**
+  * main test: one choice per coin and timeframe made on the days before the four
+    test months, judged on the 120 days it never saw; the newest month is the
+    strictest check;
+  * walk-forward: the choice re-made before each test month from everything
+    closed before it;
+  * each group gets a default (best summed over the group's coins); a coin keeps
+    its own pick only if it beat the group default on the choosing days.
+    Deliberate change from the prompt: the prompt said to choose between the two on
+    the untouched days, but choosing there would spoil them as a test.
+* **A row passes** only if, over its untouched days, it does all of these:
+  * pays 2:1 after fees
+  * makes money with at least 20 wins
+  * stays above zero at the low end of a 90% confidence range per trade
+  * beats `pt_rand` on the same coin and stop/target
+  * survives costs x 1.5 and a stop filling 0.1% worse
+  * its neighbouring settings make money
+  * its group's default holds on both halves of the group
+
+  "One minute late" is reported as not measured (the engine has no entry delay).
+* **The check run** measures the chosen rows again with every trade kept, which
+  gives every row its day-by-day results, market moods (BTC up / down / sideways,
+  quiet / wild), long vs. short beside holding the coin, and the room-as-one test.
+* **Nothing is switched on**, filed into Stored strategies or added to the nightly
+  grid: the operator reviews the page first.

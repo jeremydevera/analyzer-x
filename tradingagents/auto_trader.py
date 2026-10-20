@@ -1858,6 +1858,18 @@ def signal_for(key: str, high: list, low: list, close: list,
         dirs = _sc.dirs_for(_spec, opens or [], high, low, close, volume or [],
                             ts or [], funding or [])
         return dirs[-1] if dirs else 0
+    # A PRO TRADER setting (signals_pro, Oct 20, 2026): the same `dirs_for`
+    # the research measured it with, last bar only. An unknown pt_ name
+    # abstains.
+    if str(key).startswith("pt_"):
+        from tradingagents import signals_pro as _sp
+
+        _spec = _sp.spec_for(key)
+        if _spec is None:
+            return 0
+        dirs = _sp.dirs_for(_spec, opens or [], high, low, close, volume or [],
+                            ts or [], funding or [])
+        return dirs[-1] if dirs else 0
     # A SEP 27 ML model (signals_ml): the same `dirs_for` the grid measured
     # it with, last bar only. An unknown ml_ name abstains.
     if str(key).startswith("ml_"):
@@ -4043,6 +4055,16 @@ def _dirs_for_backtest(key: str, high: list, low: list,
         if _spec is None:
             return out
         return _sc.dirs_for(_spec, opens or [], high, low, close, volume or [],
+                            ts or [], funding or [])
+    # A PRO TRADER setting (signals_pro, Oct 20, 2026), checked before every
+    # registry like cp_: an unknown pt_ name abstains.
+    if str(key).startswith("pt_"):
+        from tradingagents import signals_pro as _sp
+
+        _spec = _sp.spec_for(key)
+        if _spec is None:
+            return out
+        return _sp.dirs_for(_spec, opens or [], high, low, close, volume or [],
                             ts or [], funding or [])
     # A SEP 27 ML model (signals_ml), checked before every registry for the
     # same reason as lx_: an unknown ml_ name abstains rather than guessing.

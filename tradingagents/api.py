@@ -537,6 +537,29 @@ def _keep_the_row_index_current() -> None:
                     print(f"[error-issues] fixer failed: {exc!r}", flush=True)
 
         _th.Thread(target=_error_issues_loop, name="error-issues", daemon=True).start()
+
+        # GITHUB MACHINES (operator, Oct 19, 2026: "can you do a logging
+        # option where if there is error in github machines it will save the
+        # log in error tab"). Its own thread: two accounts' GitHub calls must
+        # never hold the supervisor loop. github_errors.tick decides when a
+        # look is due (every 10 minutes) and keeps why a look could not ask.
+        def _github_errors_loop() -> None:
+            from tradingagents import github_errors as _ge
+
+            print("[github-errors] up: saving the logs of red GitHub machines "
+                  "to the Errors tab", flush=True)
+            while True:
+                _time.sleep(60)
+                try:
+                    got = _ge.tick()
+                    if got.get("saved") or got.get("removed"):
+                        print(f"[github-errors] {got}", flush=True)
+                except Exception as exc:                       # noqa: BLE001
+                    # worded so the issue filer does not file its own
+                    # watcher; the page shows the reason from the state file
+                    print(f"[github-errors] this pass stopped early: {exc!r}", flush=True)
+
+        _th.Thread(target=_github_errors_loop, name="github-errors", daemon=True).start()
         print("[supervisor] watching for crashed jobs", flush=True)
     except Exception as exc:
         # The API must still start -- but SILENTLY skipping this is how
@@ -1764,6 +1787,29 @@ def forecast_v2_rules_route(sort: str = "rank", page: int = 1, base: str = "",
 # rules and see the same prediction section as well"): their routes,
 # /api/forecast-v2/families and /api/forecast-v2/whatif, went with the page's
 # sections, and nothing on this PC starts a what-if run on GitHub any more.
+
+
+@app.get("/api/errors/github")
+def github_errors_route(account: str = "", workflow: str = "", page: int = 1) -> dict:
+    """Auto Trade -> Errors -> GitHub machines (operator, Oct 19, 2026: "if
+    there is error in github machines it will save the log in error tab").
+    Every red machine of both accounts, newest first, filtered and paged here."""
+    from tradingagents import github_errors as _ge
+
+    return _ge.listing(account=account, workflow=workflow, page=page)
+
+
+@app.get("/api/errors/github/log")
+def github_error_log_route(name: str = ""):
+    """One saved machine log, whole, as plain text (opened from the page)."""
+    from fastapi.responses import PlainTextResponse
+
+    from tradingagents import github_errors as _ge
+
+    text = _ge.log_text(name)
+    if text is None:
+        raise HTTPException(404, f"no saved log {name!r}")
+    return PlainTextResponse(text)
 
 
 @app.get("/api/errors/rooms")

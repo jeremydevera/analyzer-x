@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import DeployedTabsErrors from "@/components/errors/DeployedTabsErrors";
+import GithubMachinesErrors from "@/components/errors/GithubMachinesErrors";
 
 export const metadata: Metadata = {
   title: "Errors | TradingAgents",
@@ -13,6 +14,10 @@ export default function ErrorsPage() {
   return (
     <div className="flex flex-col gap-5">
       <DeployedTabsErrors />
+      {/* the red GitHub machines and their saved logs (operator, Oct 19,
+          2026: "if there is error in github machines it will save the log
+          in error tab") */}
+      <GithubMachinesErrors />
     </div>
   );
 }

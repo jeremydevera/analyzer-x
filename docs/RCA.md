@@ -172,6 +172,86 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-21-A — P0 NEAR MISS: a rebuild of Stored strategies kept 895,520 rows of 12.4 million, because the new "Oct 21" rows were dated after the nightly backtest
+
+**CEO**
+
+* Nothing reached your screen: a rebuilt Stored strategies list that would
+  have shown 895,520 strategies instead of about 12.4 million sat ready to
+  replace the real list from 8:22am, and was held at 9:48am before it could.
+* Why: the list keeps only each coin's newest backtest, and it decided
+  "newest" from every row in the coin's file — the new Oct 21 rows were
+  measured the evening after the nightly run, so the nightly's own rows
+  looked out of date and were left out.
+* What stops it now: only the nightly backtest's own rules decide which
+  backtest is a coin's newest; any other family's rows are listed beside
+  them and can never push them out.
+
+**DEV**
+
+* `rows_index.py:700 _newest_measure` returned `max(watermark, last_ms of
+  EVERY row)`, and `_from_newest` drops a nightly row older than that, while
+  exempting non-nightly rules — so a pt_ row newer than the nightly run made
+  every nightly row of its pair "not from the newest backtest".
+* Invariant broken: **the rows a filter exempts may never set that filter's
+  threshold** — `_from_newest` exempted lx_/ml_/pt_, `_newest_measure` still
+  counted them; both now read `_nightly_signals()`.
+* Guard: `tests/test_pro_store.py::test_a_newer_oct_21_row_never_hides_the_pairs_nightly_rows`
+  (red on the committed `rows_index.py`, green with the fix).
+
+**SAW** — while checking, before the site restart that shows the new group,
+that the night's backtest had reached Stored strategies (the P0 rule of
+Oct 19, 2026): `stale_pairs()` was 2,412, and `~/.tradingagents/v2` held a
+`rows.rebuild.db` of 343 MB with its `.ready` marker beside a live
+`rows.db` of 7.8 GB.
+
+**TIMELINE**
+
+1. `Oct 20, 2026 9:45pm` — the Oct 21 landing (`pro_store.collect`) starts;
+   by about 10:10pm it has rewritten 4,397 pair files with their new pt_
+   rows (measured 9:16-9:45pm, last bars minutes before), then files them
+   into the list a hundred pairs a transaction.
+2. `Oct 21, 2026 1:33am` — the nightly update goes to GitHub (15m/30m/1h/4h
+   only); its rows reach the pair files about 5:49am.
+3. The safety net (`keep_list_filed`) finds thousands of pair files newer
+   than the list ("4,197 pair(s) have been newer than the list for 60 min",
+   later 3,709 and 3,009) and starts a full rebuild; each swap is refused by
+   Windows because the landing has `rows.db` open ("WinError 32 ... being used
+   by another process").
+4. `8:22am` — the last rebuild: `pairs 4,999, rows 895,520`, verified,
+   marked ready: "the site swaps it in on its next check (every 30 s)". The
+   list before it held about 12.4 million rows (an earlier rebuild's own
+   count: 12,369,719).
+5. `9:40am` — the landing ends (792,271 rows listed) and releases `rows.db`:
+   from here the next 30-second check could have swapped.
+6. `9:48am` — the marker renamed (`rows.rebuild.db.ready.HELD-oct21`), `9:49am`
+   the file moved aside (`rows.rebuild.db.BAD-oct21`) so no rebuild can
+   resume from it; the live 7.8 GB list never changed.
+7. Fixed in this commit: `_newest_measure` dates a pair from the nightly
+   rules only; the guard test fails on the old file and passes on the new;
+   137 tests over the list, its groups and the learned families pass.
+
+**ROOT CAUSE** — `_newest_measure` counted rows of rules the nightly grid
+never measures, and the first such family ever measured AFTER a nightly run
+(pt_, Oct 20, 2026 9:16pm) moved every one of its pairs' "newest backtest"
+past the nightly's.
+
+**WHY IT WAS NOT CAUGHT** — the P0 tests of Oct 19, 2026
+(`test_stored_strategies_keep_up_every_night.py`) build pairs out of nightly
+rules only, and the learned families' rows (Sep 25, Sep 27) were all older
+than any nightly run since — so "a non-nightly row newer than the nightly"
+existed in no fixture and in no store until this landing made it.
+
+**COST** — none in money and none on screen: the bad list was never swapped
+in. The night's results reached the list late (2,412 pairs stale at 9:46am)
+while the safety net rebuilt with the broken rule.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_pro_store.py::test_a_newer_oct_21_row_never_hides_the_pairs_nightly_rows`.
+
+---
+
 ## RCA-2026-10-20-A — the Pro Trader pilot page judged "pays 2:1" on the wrong days' fees and could pass a row it never compared with luck; the re-measure was not tied to what the search read
 
 **CEO**

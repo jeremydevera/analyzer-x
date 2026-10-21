@@ -710,7 +710,15 @@ def _newest_measure(path: Path, rows: list) -> int:
         wm = int(msw.pair_watermark(coin, tf, str(Path(path).parent.parent)) or 0)
     except Exception:                                          # noqa: BLE001
         wm = 0
-    return max([wm] + [int(r.get("last_ms") or 0) for r in rows])
+    # ONLY THE NIGHTLY GRID'S RULES DATE THE PAIR (RCA-2026-10-21-A): the
+    # "Oct 21" rows (pt_) were measured the evening AFTER the nightly run, and
+    # with their later last_ms counted here every nightly row read as an older
+    # backtest and left the list — the Oct 21, 2026 rebuild kept 895,520 rows
+    # of 12.4 million. A rule the nightly does not measure is filed beside its
+    # rows (`_from_newest`), so it may never decide which of them are current.
+    nightly = _nightly_signals()
+    return max([wm] + [int(r.get("last_ms") or 0) for r in rows
+                       if str(r.get("signal") or "") in nightly])
 
 
 def _from_newest(r: dict, newest: int) -> bool:

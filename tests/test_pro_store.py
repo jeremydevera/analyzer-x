@@ -217,3 +217,25 @@ def test_one_store_machine_writes_backtest_v2_rows_for_every_setting(tmp_path):
                 b = by[(other, sl, tp)]
                 assert {k: v for k, v in b.items() if k != "signal"} == \
                        {k: v for k, v in a.items() if k != "signal"}
+
+
+def test_a_newer_oct_21_row_never_hides_the_pairs_nightly_rows(v2):
+    """RCA-2026-10-21-A. A pair's NEWEST backtest is the nightly grid's: the
+    Oct 21 rows were measured the evening after the nightly run, and when
+    their later `last_ms` counted as the pair's newest, every nightly row read
+    as an older run and left the list — the Oct 21, 2026 rebuild kept 895,520
+    rows of 12.4 million. Only the rules the nightly grid measures date the
+    pair; a learned or Pro Trader row is filed beside them, never over them."""
+    msw, ri, pst, db = v2
+    nightly = [{**_row("BTC", "1d", "keltner"), "last_ms": 1_000},
+               {**_row("BTC", "1d", "trend50"), "last_ms": 1_000}]
+    pt = [{**_row("BTC", "1d", "pt_brk_n0g0c0"), "last_ms": 2_000}]
+    msw.save_pair_rows("BTC", "1d", nightly + pt)
+    msw.save_states("BTC", "1d", {"__cloud__": True, "__last_ms__": 1_000})
+    path = msw.ROWDIR / "BTC-1d.json"
+    assert ri._newest_measure(path, msw.pair_rows("BTC", "1d")) == 1_000
+    ri.index_pair(path)
+    con = sqlite3.connect(db)
+    filed = sorted(r[0] for r in con.execute("SELECT signal FROM rows WHERE pair = 'BTC-1d'"))
+    con.close()
+    assert filed == ["keltner", "pt_brk_n0g0c0", "trend50"]

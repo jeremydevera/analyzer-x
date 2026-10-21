@@ -123,6 +123,51 @@ def _cmf(high, low, close, volume, n=20):
     return out
 
 
+EMA_WINDOW = 250        # bars a long EMA may read: fewer than the trader's 299
+
+
+def _atr_window(high, low, close, n: int) -> list[float]:
+    """The plain average of the last n true ranges, each window summed fresh,
+    so the trader's 299 candles and the backtest's frame read the same number
+    at the same bar (Wilder's recursion never forgets its first bar). The
+    true range of a frame's first bar is 0, as in `_atr`, and no window from
+    bar n on contains it."""
+    import numpy as np
+
+    tr = [0.0] * len(close)
+    for i in range(1, len(close)):
+        tr[i] = max(high[i] - low[i], abs(high[i] - close[i - 1]),
+                    abs(low[i] - close[i - 1]))
+    out = [math.nan] * len(close)
+    if len(close) <= n:
+        return out
+    sums = np.lib.stride_tricks.sliding_window_view(np.asarray(tr, dtype=float), n).sum(axis=1)
+    for i in range(n, len(close)):
+        out[i] = float(sums[i - n + 1]) / n
+    return out
+
+
+def _ema_window(vals, span: int, window: int) -> list[float]:
+    """The EMA of the last `window` bars at each bar, started at the window's
+    first bar: exactly what `_ema` computes on the trader's own candles, with
+    the same multiply-adds in the same order, so live and backtest agree to
+    the last bit. A bar with fewer than `window` bars before it reads the
+    plain EMA of what exists, as a young coin's trader would."""
+    import numpy as np
+
+    out = list(_ema(list(vals[:window - 1]), span)) + [math.nan] * max(0, len(vals) - window + 1)
+    if len(vals) < window:
+        return list(_ema(list(vals), span))
+    x = np.asarray(vals, dtype=float)
+    k = 2.0 / (span + 1)
+    start = np.arange(len(x) - window + 1)
+    e = x[start].copy()
+    for j in range(1, window):
+        e = x[start + j] * k + e * (1 - k)
+    out[window - 1:] = [float(v) for v in e]
+    return out
+
+
 def _pivots(high, low, L):
     """The newest CONFIRMED swing high/low as of each bar, and its index.
 
@@ -190,7 +235,14 @@ def _bundle(opens, high, low, close, volume, ts):
     b = {}
     b["a14"] = _atr(high, low, close, 14)
     b["a20"] = _atr(high, low, close, 20)
-    b["a200"] = _atr(high, low, close, 200)
+    # THE 200-BAR ATR AND EMA ARE FIXED-WINDOW (Oct 21, 2026): Wilder's ATR
+    # and the recursive EMA remember the whole frame — after the live trader's
+    # 299 candles a 200-bar one still carries 22% (ATR) and 5% (EMA) of where
+    # its frame began, so cf_emarsi, cf_eqhl and cf_obretest decided differently
+    # live than in the backtest (6 of 130 rules on real Gate candles; 62
+    # switched-on strategies). Both now read only bars the trader also holds
+    # (tests/test_every_rule_decides_on_the_runners_candles.py).
+    b["a200"] = _atr_window(high, low, close, 200)
     b["rsi14"] = _rsi(close, 14)
     b["s5"] = _sma(close, 5)
     b["s20"] = _sma(close, 20)
@@ -198,7 +250,7 @@ def _bundle(opens, high, low, close, volume, ts):
     b["s200"] = _sma(close, 200)
     b["e20"] = _ema(close, 20)
     b["e50"] = _ema(close, 50)
-    b["e200"] = _ema(close, 200)
+    b["e200"] = _ema_window(close, 200, EMA_WINDOW)
     b["sd20"] = _stdev(close, 20)
     # +DI/-DI/ADX from the ONE implementation (signals_ext2._dmi), and the
     # supertrend flips from the one rule that already computed them -- the

@@ -172,6 +172,76 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-21-B — six confluence rules decided differently live than in their backtests, because a 200-bar ATR and EMA remembered more than the trader's 299 candles
+
+**CEO**
+
+* 62 of your switched-on practice strategies (58 order-block retests and 4
+  "4h" cascades) could buy or sell on a candle where their backtest did
+  nothing, or skip one it traded — about 7% of their trade decisions on real
+  Gate candles.
+* Why: two of their measuring sticks (a 200-candle average move and a
+  200-candle trend line) were computed in a way that never forgets where the
+  data started, and the live trader starts from 300 candles while the
+  backtest starts from thousands.
+* What stops it now: both are computed from a fixed number of recent
+  candles, the same in both places, and every one of the 130 rules is checked
+  on real candles so a rule with this flaw cannot be added again.
+
+**DEV**
+
+* `signals_conf.py:_bundle` built `b["a200"] = _atr(..., 200)` (Wilder's
+  recursion) and `b["e200"] = _ema(close, 200)` (seeded recursion); after
+  299 bars they still carry 22% and 5% of the frame's first bars, and
+  `_emarsi`, `_eqhl`, `_obretest`, `_diadx` and cascades on them read them.
+* Invariant broken: **a rule may read only what the live trader's 299
+  closed candles determine** — the parity the pt_ and cp_ families were
+  built and tested to was never asserted for the registry itself.
+* Guard: `tests/test_every_rule_decides_on_the_runners_candles.py` (every
+  rule in `br.SIGNALS` on four real Gate frames; red on the committed
+  `signals_conf.py`, green with the fix).
+
+**SAW** — the operator, Oct 21, 2026, after asking whether an EMA can be
+computed when a trade is made: *"adjust the ones that needs to be adjusted
+according to your intuition"*.
+
+**TIMELINE**
+
+1. `Oct 21, 2026 11:47am` — checked: every rule of `br.SIGNALS` (130) on 24
+   real Gate frames (8 coins x 15m/1h/4h, 1,499 closed bars), the decision on
+   the trader's last 299 candles against the backtest's at the same bar, the
+   newest 120 bars of each: 124 rules agreed everywhere.
+2. Six did not: cf_emarsi 3 of 23 trade decisions (13.0%), _l1 2 of 11,
+   _l2 1 of 3; cf_eqhl 3 of 26 (11.5%); cf_obretest 3 of 41 (7.3%); cx_4h 3
+   of 118 (2.5%). E.g. BTC 4h bar 1487: live short, backtest nothing.
+3. In the rooms: 62 of 4,010 switched-on strategies used two of them
+   (cf_obretest 58, e.g. #09439DC2's cf_obretest_30m_sl03tp05; cx_4h 4).
+4. Fixed in this commit: the 200-bar ATR is the plain average of the last
+   200 true ranges, the 200-bar EMA runs over the last 250 bars; on the
+   fixture frames 9 differing decisions before, 0 after, the helpers equal to
+   the bit on the trader's own candles; 495 tests over the confluence rules
+   pass.
+
+**ROOT CAUSE** — two recursive 200-bar indicators in the shared bundle, read
+by four setups, on a trader that only ever holds 299 closed candles.
+
+**WHY IT WAS NOT CAUGHT** — the "299 candles decide what the deep frame
+decides" test was written for the new families (pt_, cp_) and never run over
+the registry; the confluence tests assert each setup's own shape on made-up
+frames whole, and the backtest's 300-bar lead-in equals the trader's view at
+the window's FIRST bar, so a spot check there agrees.
+
+**COST** — no real money (practice only). The 62 strategies traded a rule
+about 7% different from their backtests; not measured trade by trade. Their
+stored rows describe the old rule until tonight's nightly backtest
+re-measures them (cf_ rules are in the nightly grid).
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_every_rule_decides_on_the_runners_candles.py`.
+
+---
+
 ## RCA-2026-10-21-A — P0 NEAR MISS: a rebuild of Stored strategies kept 895,520 rows of 12.4 million, because the new "Oct 21" rows were dated after the nightly backtest
 
 **CEO**

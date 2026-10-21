@@ -68,8 +68,19 @@ def test_the_kit_columns_and_filters_are_on_the_page():
 
 
 def test_the_page_says_how_it_settles_exits():
+    """From the run's own counts (Oct 21, 2026): a run made before the replay
+    settled exits by the minute says "candles"; one made after says how many
+    exits its minutes settled. Never one sentence for both."""
+    old = rp.payload(_res())
+    assert old["by_minute"] == 0
     html = rp.build(_res())
-    assert "1-minute candles" in html and "counted as the stop" in html
+    assert "settled on the strategy's own candles" in html and "counted as the stop" in html
+    assert "D.by_minute?" in html, "the sentence is chosen by the run's own count"
+    res = _res()
+    res["totals"] = {**res["totals"], "settled_by_minute": 1_128_264,
+                     "settled_by_candle": 12, "unclear": 14}
+    new = rp.payload(res)
+    assert (new["by_minute"], new["by_candle"], new["unclear"]) == (1_128_264, 12, 14)
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")

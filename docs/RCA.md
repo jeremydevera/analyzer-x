@@ -172,6 +172,80 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-21-C — Room strategies settled every trade by its candle while Stored strategies settle it minute by minute, so one trade could be a loss in one and a win in the other
+
+**CEO**
+
+* Room strategies (the list where clicking an id shows trades per day) and
+  Stored strategies could tell a different story about the same trade: when
+  one candle touched both the "close it, I won" price and the "close it, I
+  was wrong" price, Room strategies always called it a loss.
+* Why: the nightly replay behind Room strategies was built when the exchange
+  sold only 30 days of minute candles, so it checked candle by candle; the
+  Backtest list moved to minute-by-minute checks and the replay never did.
+* What stops it now: the replay reads each coin's minutes for its whole
+  period and asks the very same "which price came first" check the Backtest
+  list uses, so both settle every trade the same way.
+
+**DEV**
+
+* `.github/scripts/replay_shard.py:replay_pair` → `fast_grid.walk` settled
+  the first touching bar by the bar rule (SL before TP), stamped the close at
+  the bar's END, read its exit fee at the bar's open and charged funding to
+  the bar's open; `backtest_strategy(fine=)` settles that bar from its
+  minutes (`_settle_fine`), stamps the minute and charges fee and funding there.
+* Invariant broken: **two measurements of one trade settle it with one
+  rule** — the minute rule is now `auto_trader.settle_in_minutes`, called by
+  the engine's closure AND by the replay through `fast_grid.walk(settle=,
+  exit_at=)`; the replay reads each coin's minutes once
+  (`backtest_report.fine_bars`, Gate's monthly archive) and counts
+  `settled_by_minute` / `settled_by_candle` / `unclear`, which the replay
+  and research pages read to choose their sentence.
+* Guard: `tests/test_room_replay_settles_by_the_minute.py::test_the_replay_and_the_backtest_settle_every_trade_the_same`
+  (three random price paths: same trades, same exit minutes, same dollars)
+  and `::test_a_candle_that_touched_both_is_a_win_when_its_minutes_reached_the_target_first`;
+  all 11 tests red on the old code.
+
+**SAW** — *"which is correct by minute or by candle? because i think they are
+the same"*, *"so stored strategy and backroom strategy both check minute by
+minute?"*, then *"then you should fix room strategy"* (Oct 21, 2026).
+
+**TIMELINE**
+
+1. `Sep 17-22, 2026` — Backtest v2 settles exits by the minute; ARKM 1h mom6
+   on the same 359 trades: 113W/246L −$78.83 by candle, 158W/201L −$47.33 by
+   minute (45 trades flip).
+2. `Sep 28, 2026` — the watcher replay is built with the bar rule ("MEXC
+   sells about 30 days of 1-minute candles"); Room strategies (Oct 02) and
+   their nightly re-test (Oct 07) inherit it.
+3. `Oct 10, 2026` — the move to Gate: monthly 1-minute archives exist (BTC:
+   189,680 minutes from Jun 01, 2026, fetched in 15 s), but the replay kept
+   the bar rule.
+4. `Oct 21, 2026` — measured on ETH 1h with the fix: 1,128,264 exits settled
+   by the minute, 14 with both prices in one minute; the replay took 96.7 s
+   against 83.5 s by candle (+16%); last night's slowest replay machine took
+   97 minutes of its 350.
+
+**ROOT CAUSE** — the replay settled exits with its own bar rule instead of
+the engine's minute rule, so the two measurements of one trade disagreed
+whenever a candle held both barriers.
+
+**WHY IT WAS NOT CAUGHT** — the replay's tests compared it with the engine
+only on prices and costs (`test_the_replay_and_the_engine_skip_by_one_rule`,
+the per-minute book tests), on candles that never touched both barriers at
+once (a steady 0.4% climb). No test ran the replay and the engine over one
+price path where a candle held both prices — the only case where they
+differ.
+
+**COST** — none in money: Room strategies only report. The cost was a
+misleading trade list on candles that touched both prices.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_room_replay_settles_by_the_minute.py::test_the_replay_and_the_backtest_settle_every_trade_the_same`.
+
+---
+
 ## RCA-2026-10-21-B — six confluence rules decided differently live than in their backtests, because a 200-bar ATR and EMA remembered more than the trader's 299 candles
 
 **CEO**

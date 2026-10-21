@@ -36,7 +36,8 @@ def walk(dirs_idx: Sequence[int], dirs, opens, high, low, close, *,
          tp: float, sl: float, liq: float | None,
          start: int = 0, end: int | None = None,
          f_ms=None, f_cum=None, bar_ms=None, refuse=None,
-         entry_px=None, reenter: bool = False) -> list[tuple]:
+         entry_px=None, reenter: bool = False, settle=None,
+         exit_at: list | None = None) -> list[tuple]:
     """The engine's bar walk, once, sizing-free.
 
     Returns one tuple per trade:
@@ -61,6 +62,17 @@ def walk(dirs_idx: Sequence[int], dirs, opens, high, low, close, *,
     `backtest_report.reenter_for`) also reads the signal of the candle a trade
     CLOSED in, as the runner does — the engine's own ``reenter``. False is the
     walk of before (v1's rule, and every parity test built on it).
+
+    ``settle(exit_bar, side, tp_px, sl_px, liq_px)`` settles the first bar
+    that touched a barrier from its MINUTES (Oct 21, 2026, the room strategy
+    replay; operator: *"then you should fix room strategy"*): it answers
+    `auto_trader.settle_in_minutes`' ``(why, minute_ms, unclear)``, and a
+    "TP"/"SL"/"LIQ" there decides the trade — the exit bar never moves, only
+    which barrier it was, exactly as `backtest_strategy(fine=)` decides it.
+    ``None`` or "NONE" (no minutes, or minutes that disagree with their bar)
+    keep the bar rule. With ``exit_at`` given, the walk appends each trade's
+    exit minute (or None when the bar rule settled it), and funding runs to
+    that minute, as the engine charges it. Neither given = the walk of before.
     """
     n = len(close) if end is None else int(end)
     out: list[tuple] = []
@@ -93,10 +105,20 @@ def walk(dirs_idx: Sequence[int], dirs, opens, high, low, close, *,
         j = i + 1
         res_out = None
         why = WHY_END
+        exit_ms = None
         while j < n:
             hit_liq = liq_px is not None and (
                 low[j] <= liq_px if s == 1 else high[j] >= liq_px)
             hit_sl = (low[j] <= sl_px if s == 1 else high[j] >= sl_px)
+            if settle is not None and (hit_liq or hit_sl or (
+                    high[j] >= tp_px if s == 1 else low[j] <= tp_px)):
+                got = settle(j, s, tp_px, sl_px, liq_px)
+                if got is not None and got[0] != "NONE":
+                    exit_ms = got[1]
+                    res_out, why = ((-liq, WHY_LIQ) if got[0] == "LIQ"
+                                    else (-sl, WHY_SL) if got[0] == "SL"
+                                    else (tp, WHY_TP))
+                    break
             if hit_liq and (liq is None or liq <= sl or not hit_sl):
                 res_out, why = -liq, WHY_LIQ
                 break
@@ -113,9 +135,12 @@ def walk(dirs_idx: Sequence[int], dirs, opens, high, low, close, *,
         fund_frac = 0.0
         if f_ms:
             a = bisect.bisect_right(f_ms, int(bar_ms[i + 1]))
-            b = bisect.bisect_right(f_ms, int(bar_ms[j]))
+            b = bisect.bisect_right(f_ms, int(bar_ms[j]) if exit_ms is None
+                                    else int(exit_ms))
             fund_frac = -s * (f_cum[b] - f_cum[a])
         out.append((i, i + 1, j, s, res_out, why, fund_frac))
+        if exit_at is not None:
+            exit_at.append(exit_ms)
         # the engine's own step: on the exit bar itself when re-entering
         # (j > i always, so the walk still moves forward)
         i = j if reenter else j + 1

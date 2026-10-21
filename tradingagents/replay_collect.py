@@ -62,6 +62,10 @@ def merge(folder, _combos: bool = True) -> dict:
     combos: dict[str, dict] = {}
     totals = {"coins_board": 0, "coins_done": 0, "pairs": 0, "tested": 0,
               "kept": 0, "gate_blocked": 0, "chase_skip": 0, "cost_unmeasured": 0,
+              # how the exits were settled (Oct 21, 2026): by the minute, or
+              # by the candle where no minutes were under it; a report from
+              # before then has neither, so its pages say "candle"
+              "settled_by_minute": 0, "settled_by_candle": 0, "unclear": 0,
               "machines": 0, "failed": {}, "short": [],
               "spans": {}, "start": "", "tz": "", "cfg": {}, "groups": [],
               # the WRITE RULE: which combinations the data holds at all — a
@@ -88,7 +92,8 @@ def merge(folder, _combos: bool = True) -> dict:
         totals["machines"] += 1
         totals["coins_board"] = max(totals["coins_board"], int(r.get("coins_board") or 0))
         for k in ("coins_done", "pairs", "tested", "kept", "gate_blocked",
-                  "chase_skip", "cost_unmeasured"):
+                  "chase_skip", "cost_unmeasured", "settled_by_minute",
+                  "settled_by_candle", "unclear"):
             totals[k] += int(r.get(k) or 0)
         totals["failed"].update(r.get("failed") or {})
         totals["short"] += list(r.get("short") or [])

@@ -13,9 +13,19 @@ SAME signals (`auto_trader._dirs_for_backtest`) and the SAME fused walk
 (`fast_grid.walk`) the market grid measures with, priced by the one
 per-trade formula (`fast_grid.trade_pnl`).
 
-THE BAR RULE, NOT THE MINUTES. MEXC sells about 30 days of 1-minute candles,
-so August cannot be settled minute by minute; every exit here is the v1 bar
-rule (both prices in one bar = the stop). Said on the results page.
+EVERY EXIT BY THE MINUTE, like Backtest v2 (Oct 21, 2026). The operator,
+told that Stored strategies settle each trade minute by minute while Room
+strategies (this replay's trades) settled them candle by candle: *"then you
+should fix room strategy"*. Until then an exit candle that touched BOTH the
+target and the stop was always booked as the stop - on ARKM 1h mom6 that one
+rule turned 45 of 359 trades into losses. Now each coin's minutes over the
+whole replay are read once (`backtest_report.fine_bars`: on Gate the monthly
+1-minute archive, 5-minute bars over the current month's gap, REST's last
+week) and the exit candle is settled by `auto_trader.settle_in_minutes` - the
+engine's own function, through `fast_grid.walk(settle=)`. A candle with no
+minutes under it keeps the candle rule and is counted (`settled_by_candle`);
+both in one minute is the stop, counted `unclear`. The exit is stamped, its
+fee read and its funding charged at that minute, as the engine does.
 
 ONLY WHAT COULD EVER BE SWITCHED ON IS WRITTEN. The watcher only arms TP
 strictly wider than SL, a stop inside 80% of liquidation (STOP_LIQ_CEILING)
@@ -41,7 +51,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
-os.environ["RES"] = ""          # the bar rule (see the docstring)
+os.environ["RES"] = ""          # each frame on its own candles; exits by the minute (docstring)
 os.environ["MODE"] = "full"
 
 import datetime as dt
@@ -233,6 +243,18 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
     # a stock token's dead candle with no app book is not bought - the one
     # rule the engine asks (auto_trader.closed_market, Oct 18, 2026)
     _stock = _venue.kind(sym) == "stocks"
+    # each candle's slice of the minutes, worked out ONCE for this frame, and
+    # the minutes as plain lists (read one at a time, far faster than arrays)
+    fine = None
+    if cost.get("fine") is not None:
+        import numpy as _np
+
+        ft_, fh_, fl_ = cost["fine"]
+        opens_ms = _np.asarray(ts, dtype="int64")
+        lo_i = _np.searchsorted(ft_, opens_ms, side="left")
+        hi_i = _np.searchsorted(ft_, opens_ms + bs * 1000, side="left")
+        fine = (_np.asarray(ft_).tolist(), _np.asarray(fh_).tolist(),
+                _np.asarray(fl_).tolist(), list(zip(lo_i.tolist(), hi_i.tolist())))
     lines: list[str] = []
     for sig in sigs:
         key = f"{sig}_rp_{tf}"
@@ -290,20 +312,32 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
                         return False
                 # Backtest v2's rule — these are v2 rows (`res="1m"` ids): the
                 # candle a trade closed in is read, as the runner does (Oct 13,
-                # 2026), so a replayed room trades what its rows measured
+                # 2026), so a replayed room trades what its rows measured; and
+                # the exit candle is settled by its minutes (Oct 21, 2026)
+                exits: list = []
                 walked = fg.walk(dirs_idx, dirs, op, hi, lo, cl, tp=tp, sl=sl,
                                  liq=liq_frac, f_ms=f_ms, f_cum=f_cum, bar_ms=ts,
                                  refuse=refuse, entry_px=price,
-                                 reenter=br.reenter_for("1m"))
+                                 reenter=br.reenter_for("1m"),
+                                 settle=_settler(fine, ts, bs, liq_frac, sl, stats),
+                                 exit_at=exits)
+                for (*_parts, w, _ff), m in zip(walked, exits, strict=True):
+                    if w != fg.WHY_END:
+                        k_ = "settled_by_minute" if m is not None else "settled_by_candle"
+                        stats[k_] = stats.get(k_, 0) + 1
                 if len(walked) < WRITE["trades"]:
                     continue
-                fees = [trade_fee(minute_book, cost, side, ts[e], ts[x], stats)
-                        for (_s, e, x, side, o, w, ff) in walked]
-                trades = [[ts[e], ts[x] + bs * 1000,
+                # the exit's own minute when the minutes settled it (its fee,
+                # its stamp), else the candle as before
+                fees = [trade_fee(minute_book, cost, side, ts[e],
+                                  ts[x] if m is None else int(m), stats)
+                        for (_s, e, x, side, o, w, ff), m in zip(walked, exits, strict=True)]
+                trades = [[ts[e], (ts[x] + bs * 1000) if m is None else int(m) + 60_000,
                            round(fg.trade_pnl(o, w, ff, margin=ss.BASE_MARGIN,
                                               lev=at.LEVERAGE, fee=fee_), 4),
                            int(w != fg.WHY_END)]
-                          for (_s, e, x, side, o, w, ff), fee_ in zip(walked, fees)]
+                          for (_s, e, x, side, o, w, ff), fee_, m
+                          in zip(walked, fees, exits, strict=True)]
                 combo = {"id": br.row_code(coin, tf, sig, thp, round(sl * 100, 3),
                                            round(tp * 100, 3), "flat", res="1m"),
                          "coin": coin, "tf": tf, "signal": sig, "th": thp,
@@ -324,6 +358,23 @@ def replay_pair(sym: str, tf: str, cost: dict, stats: dict) -> list[str]:
     stats["pairs"] += 1
     stats["spans"][f"{coin} {tf}"] = [ts[warm], end]
     return lines
+
+
+def _settler(fine, ts, bs: int, liq_frac, sl: float, stats: dict):
+    """The exit-candle question `fast_grid.walk(settle=)` asks, answered by
+    the engine's own minute rule (`auto_trader.settle_in_minutes`) over this
+    coin's minutes; None without minutes (the candle rule of before)."""
+    if fine is None:
+        return None
+    ft, fh, fl, spans = fine
+
+    def settle(j, s, tp_px, sl_px, liq_px):
+        got = at.settle_in_minutes(ft, fh, fl, ts[j], bs, s, tp_px, sl_px, liq_px,
+                                   liq=liq_frac, sl=sl, span=spans[j])
+        if got is not None and got[2]:
+            stats["unclear"] = stats.get("unclear", 0) + 1
+        return got
+    return settle
 
 
 def trade_fee(book, cost: dict, side: int, entry_ms: int, exit_ms: int,
@@ -387,8 +438,19 @@ def coin_costs(sym: str, usual: dict) -> dict:
             print(f"{sym}: per-minute costs could not be read ({exc}); every "
                   f"trade pays the flat cost and is counted unmeasured", flush=True)
             minute_book = cost_store.empty()
+    # THE MINUTES OVER THE REPLAY'S WHOLE SPAN, read once per coin (Oct 21,
+    # 2026): every exit candle is settled from them, as Backtest v2 settles it
+    fine = None
+    try:
+        _t, _h, _l, _n5 = br.fine_bars(
+            sym, (start_ms() - max(WRITE["windows"]) * wr.DAY_MS) // 1000
+            - 2 * 86400, fx=fx)
+        fine = (_t, _h, _l) if len(_t) else None
+    except Exception as exc:                                   # noqa: BLE001
+        print(f"{sym}: its minutes could not be read ({type(exc).__name__}: "
+              f"{exc}); every exit is settled by its candle", flush=True)
     return {"fee": fee, "liq": liq, "fund": fund, "slip": slip, "book": minute_book,
-            "rt": br.round_trip_cost(fee, {"slippage": slip})}
+            "fine": fine, "rt": br.round_trip_cost(fee, {"slippage": slip})}
 
 
 PASSES = 3
@@ -480,7 +542,10 @@ def main() -> int:
            f"cost check refused, {stats['chase_skip']:,} whose price had run away, "
            f"{stats['closed_skip']:,} on a stock token's candle where nothing traded, "
            f"{stats['cost_unmeasured']:,} trades with no "
-           f"recorded book, in {(time.time() - t0) / 60:.0f} min")
+           f"recorded book; exits settled by the minute "
+           f"{stats.get('settled_by_minute', 0):,}, by the candle (no minutes) "
+           f"{stats.get('settled_by_candle', 0):,}, both in one minute "
+           f"{stats.get('unclear', 0):,}; in {(time.time() - t0) / 60:.0f} min")
     return 0
 
 

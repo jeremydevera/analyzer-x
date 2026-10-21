@@ -4174,6 +4174,64 @@ def _dirs_for_backtest(key: str, high: list, low: list,
     return out
 
 
+def settle_in_minutes(fine_t, fine_h, fine_l, bar_open_ms: int, bar_s: int,
+                      s: int, tp_px: float, sl_px: float, liq_px: float | None,
+                      *, liq: float | None, sl: float,
+                      span: tuple[int, int] | None = None):
+    """Which barrier ONE exit bar reached first, read from its minutes in
+    order — Backtest v2's whole difference from v1 (`backtest_strategy(
+    fine=)`), and since Oct 21, 2026 the room strategy replay's too
+    (`fast_grid.walk(settle=)`; operator: *"then you should fix room
+    strategy"*), so the two can never settle one trade two ways.
+
+    ``fine_*`` are the sorted minute (or, on Gate, 5-minute) opens in ms,
+    highs and lows; the bar is ``[bar_open_ms, bar_open_ms + bar_s)``.
+    Returns ``(why, minute_ms, unclear)`` -- ``why`` is "TP"/"SL"/"LIQ",
+    or "NONE" when the minutes touched nothing although the bar's own
+    high/low says it did (a rebuilt bar and its minutes cannot disagree,
+    so the caller keeps the bar rule) -- or ``None`` when the bar has no
+    minutes under it at all. Both in the same minute is the stop, counted
+    in ``unclear``. ``liq``/``sl`` are the fractions: liquidation wins only
+    when it is nearer than the stop, the bar rule's own precedence.
+    ``span`` is the bar's ``[a, b)`` slice of the minutes when the caller has
+    worked every bar's out once (the replay does); None finds it here.
+    """
+    if span is None:
+        import numpy as _np
+
+        lo_ms = int(bar_open_ms)
+        a = int(_np.searchsorted(fine_t, lo_ms, side="left"))
+        b = int(_np.searchsorted(fine_t, lo_ms + int(bar_s) * 1000, side="left"))
+    else:
+        a, b = span
+    if b <= a:
+        return None
+    # minute by minute, stopping at the first that touched anything: an exit
+    # is usually near the start of its bar, and the replay asks this for
+    # every one of a coin's ~1 million exits (Oct 21, 2026, measured on ETH
+    # 1h: 27 microseconds a call as whole-bar arrays)
+    for k in range(a, b):
+        h, lw = fine_h[k], fine_l[k]
+        if s == 1:
+            t_, s_ = h >= tp_px, lw <= sl_px
+            q_ = liq_px is not None and lw <= liq_px
+        else:
+            t_, s_ = lw <= tp_px, h >= sl_px
+            q_ = liq_px is not None and h >= liq_px
+        if not (t_ or s_ or q_):
+            continue
+        # liquidation first only when it is nearer than the stop -- the same
+        # precedence the bar rule uses
+        if q_ and (liq is None or liq <= sl or not s_):
+            return ("LIQ", int(fine_t[k]), 0)
+        if s_ and t_:
+            return ("SL", int(fine_t[k]), 1)      # same minute: worst case, counted
+        if s_:
+            return ("SL", int(fine_t[k]), 0)
+        return ("TP", int(fine_t[k]), 0)
+    return ("NONE", None, 0)
+
+
 def backtest_strategy(key: str, df, base_margin: float = 10.0,
                       fee: float = 0.0002,
                       slippage: float = 0.0003,
@@ -4455,47 +4513,12 @@ def backtest_strategy(key: str, df, base_margin: float = 10.0,
 
     def _settle_fine(j: int, s: int, tp_px: float, sl_px: float,
                      liq_px: float | None):
-        """Walk the minutes inside bar `j`, in order.
-
-        Returns ``(why, minute_ms, unclear)`` -- ``why`` is "TP"/"SL"/"LIQ",
-        or "NONE" when the minutes touched nothing although the bar's own
-        high/low says it did (a rebuilt bar and its minutes cannot disagree,
-        so the caller keeps the bar rule) -- or ``None`` when the bar has no
-        minutes under it at all.
-        """
+        """Walk the minutes inside bar `j`, in order — `settle_in_minutes`,
+        the one rule the room strategy replay asks too."""
         if _fine_t is None or _bar_ms_all is None:
             return None
-        import numpy as _np
-
-        lo_ms = int(_bar_ms_all[j])
-        a = int(_np.searchsorted(_fine_t, lo_ms, side="left"))
-        b = int(_np.searchsorted(_fine_t, lo_ms + _bar_s * 1000, side="left"))
-        if b <= a:
-            return None
-        hh, ll, tt = _fine_h[a:b], _fine_l[a:b], _fine_t[a:b]
-        if s == 1:
-            hit_tp = hh >= tp_px
-            hit_sl = ll <= sl_px
-            hit_liq = ((ll <= liq_px) if liq_px is not None
-                       else _np.zeros(len(hh), dtype=bool))
-        else:
-            hit_tp = ll <= tp_px
-            hit_sl = hh >= sl_px
-            hit_liq = ((hh >= liq_px) if liq_px is not None
-                       else _np.zeros(len(hh), dtype=bool))
-        first = _np.flatnonzero(hit_tp | hit_sl | hit_liq)
-        if not len(first):
-            return ("NONE", None, 0)
-        k = int(first[0])
-        # liquidation first only when it is nearer than the stop -- the same
-        # precedence the bar rule uses
-        if hit_liq[k] and (liq is None or liq <= sl or not hit_sl[k]):
-            return ("LIQ", int(tt[k]), 0)
-        if hit_sl[k] and hit_tp[k]:
-            return ("SL", int(tt[k]), 1)      # same minute: worst case, counted
-        if hit_sl[k]:
-            return ("SL", int(tt[k]), 0)
-        return ("TP", int(tt[k]), 0)
+        return settle_in_minutes(_fine_t, _fine_h, _fine_l, int(_bar_ms_all[j]),
+                                 _bar_s, s, tp_px, sl_px, liq_px, liq=liq, sl=sl)
 
     def _held(a: int, b: int) -> str:
         """"3d 4h" / "5h 12m" / "42m" — `positions_view.fmt_age`, the same

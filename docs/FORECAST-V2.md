@@ -278,8 +278,12 @@ that rang at 7:25pm were right; the numbers printed in them were not.
   rule set's past months differ between them (#562C0147: July 1,703 trades
   on the first, 2,098 on Oct 01's). Every kept prediction carries what it
   covered, and a grade over other strategies says so.
-* The replay settles every exit by the **bar rule** (MEXC sells about 30 days
-  of 1-minute candles, so July and August cannot be settled minute by minute).
+* The replay settles every exit **minute by minute** since Oct 21, 2026, with
+  the engine's own rule (`auto_trader.settle_in_minutes`): each coin's
+  minutes over the whole replay come from Gate's monthly archive
+  (`backtest_report.fine_bars`). Before then it used the **bar rule** (a
+  candle that touched both the target and the stop was the stop); a candle
+  with no minutes under it still does, and is counted `settled_by_candle`.
 * The first data (replay 36763426504) holds only strategies with **TP wider
   than SL**, so "any TP" there is the same as "TP wider than SL" — the page
   says so. The daily chain's replays write every shape (`tp=any`).

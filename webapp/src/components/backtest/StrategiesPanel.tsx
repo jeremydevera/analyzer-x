@@ -109,6 +109,9 @@ const GROUP_LABEL: Record<string, string> = {
   // the Sep 27 ML models, one decision tree per coin and timeframe (operator,
   // Sep 27, 2026: "use machine learning on what's best strategy")
   sep27ml: "Sep 27 ML",
+  // the Pro Trader families, eight literature rules (operator, Oct 20,
+  // 2026: "i want this new batch as group 'Oct 21'")
+  oct21: "Oct 21",
 };
 
 /** Which order a clicked header stands for. Built FROM STRATEGY_SORTS, so
@@ -455,7 +458,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
     asset: (f.asset || undefined) as StrategyQuery["asset"],
     sizing: f.sizing || undefined, rowId: f.rowId || undefined,
     measuredDays: f.measuredDays || undefined,
-    group: (f.group || undefined) as "preset" | "classic" | "sep25" | "sep27ml" | undefined,
+    group: (f.group || undefined) as "preset" | "classic" | "sep25" | "sep27ml" | "oct21" | undefined,
   });
   // the exact count for the filters it was counted for — never another set's
   // for five minutes: rows are filed while the page stays open, and the
@@ -1434,6 +1437,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                   <option value="classic">{GROUP_LABEL.classic}</option>
                   <option value="sep25">{GROUP_LABEL.sep25}</option>
                   <option value="sep27ml">{GROUP_LABEL.sep27ml}</option>
+                  <option value="oct21">{GROUP_LABEL.oct21}</option>
                 </select>
               </Field>
               <Field label="signal">

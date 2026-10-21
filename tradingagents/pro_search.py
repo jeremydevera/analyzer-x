@@ -6,7 +6,7 @@ module deals the market between BOTH GitHub accounts and starts one run on each
 beside the store, never onto the system drive. Design:
 docs/superpowers/specs/2026-10-20-pro-trader-research-design.md.
 
-    python -m tradingagents.pro_search dispatch [label] [--coins A,B,...]
+    python -m tradingagents.pro_search dispatch [label] [--coins A,B,...] [--store]
     python -m tradingagents.pro_search redo <state-name> <owner/repo> [--coins A,B,...]
     python -m tradingagents.pro_search collect [state-name]
 
@@ -29,6 +29,7 @@ TIMEFRAMES = "15m,30m,1h,4h,1d"
 ARTIFACTS = ("pro-out-*",)
 STATE = "state.json"              # the search
 CHECK_STATE = "check.json"        # the check run
+STORE_STATE = "store.json"        # the store run (the group "Oct 21")
 
 
 def home() -> Path:
@@ -91,7 +92,7 @@ def _start(repo: str, inputs: dict) -> int:
 
 def dispatch(label: str | None = None, *, coins: list | None = None, base: float = 5.0,
              check: str = "", state_name: str | None = None,
-             timeframes: str = TIMEFRAMES) -> dict:
+             timeframes: str = TIMEFRAMES, store: bool = False) -> dict:
     """Deal the board (the whole market, or `coins`) between every account that
     can run now (round robin, cloud_sweep.split_coins) and start one run on
     each. An account that refuses, or cannot be brought up to this code, is
@@ -101,7 +102,9 @@ def dispatch(label: str | None = None, *, coins: list | None = None, base: float
 
     if check and not coins:
         raise ValueError("a check run names its coins (the plan's own)")
-    state_name = state_name or (CHECK_STATE if check else STATE)
+    if check and store:
+        raise ValueError("a run is the check run or the store run, never both")
+    state_name = state_name or (CHECK_STATE if check else STORE_STATE if store else STATE)
     ready, refused = fd.fleets_now()
     if not ready:
         raise RuntimeError("no GitHub account can run the research: " + "; ".join(refused))
@@ -120,6 +123,8 @@ def dispatch(label: str | None = None, *, coins: list | None = None, base: float
                   "label": f"{label} · {k + 1} of {len(ready)}"}
         if check:
             inputs["check"] = check
+        if store:
+            inputs["store"] = "1"
         # every account's share is KEPT, started or not: a share GitHub refused
         # (a 502 on Oct 20, 2026 1:04pm) is started again by itself (`redo`)
         dealt[repo] = inputs
@@ -135,7 +140,7 @@ def dispatch(label: str | None = None, *, coins: list | None = None, base: float
             named.append(f"{repo}: {str(exc)[:160]}")
     state = {"label": label, "started": t0, "started_at": fmt_when(t0), "base": base,
              "coins": len(board), "runs": runs, "refused": named, "dealt": dealt,
-             **({"check": check} if check else {})}
+             **({"check": check} if check else {}), **({"store": True} if store else {})}
     _save_state(state_name, state)
     return state
 
@@ -295,7 +300,9 @@ def collect(state_name: str = STATE) -> dict:
     dealt = state.get("dealt") or {}
     board = (sorted({c for x in dealt.values() for c in str(x.get("coin_list", "")).split(",") if c})
              or [c for r in state["runs"].values() for c in (r.get("coin_list") or [])])
-    report = read_json_parts(roots, "pro-report-*.json", "report")
+    # the store run ("Oct 21") reports in its own files
+    report = read_json_parts(roots, "pro-store-report-*.json" if state.get("store")
+                             else "pro-report-*.json", "report")
     summary = {"label": state.get("label"), "runs": {k: v["run"] for k, v in state["runs"].items()},
                "roots": [str(r) for r in roots],
                "coverage": cpw.coverage(board, report)}
@@ -311,7 +318,10 @@ if __name__ == "__main__":
         if "--coins" in args:
             coins = args[args.index("--coins") + 1].split(",")
             args = args[:args.index("--coins")] + args[args.index("--coins") + 2:]
-        print(json.dumps(dispatch(args[1] if len(args) > 1 else None, coins=coins), indent=2))
+        store = "--store" in args
+        args = [a for a in args if a != "--store"]
+        print(json.dumps(dispatch(args[1] if len(args) > 1 else None, coins=coins, store=store),
+                         indent=2))
     elif args and args[0] == "redo":
         coins = None
         if "--coins" in args:

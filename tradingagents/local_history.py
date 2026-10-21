@@ -175,6 +175,15 @@ def _sig_of(key: str) -> str:
         m = _re.match(r"ml_[^_]+_[^_]+_\d+", str(key))
         if m:
             return m.group(0)
+    # A PRO TRADER setting ("Oct 21"): `pt_<family>_<code>`, read by its own
+    # grammar (signals_pro.parts_of) — `pt_brk_n0g0c0_1h_sl2tp6` is
+    # pt_brk_n0g0c0, never `pt`
+    if str(key).startswith("pt_"):
+        from tradingagents import signals_pro as _sp
+
+        got = _sp.parts_of(key)
+        if got:
+            return f"pt_{got[0]}_{got[1]}"
     if not _UNDERSCORED_SIGNALS:
         from tradingagents.backtest_report import SIGNALS
 

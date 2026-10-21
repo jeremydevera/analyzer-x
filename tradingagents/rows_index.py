@@ -3023,6 +3023,10 @@ GROUPS = {
     # THE SEP 27 ML MODELS (signals_ml, ml_learner). Operator, Sep 27, 2026:
     # "use machine learning on what's best strategy i want tp higher than sl".
     "sep27ml": {"label": "Sep 27 ML"},
+    # THE PRO TRADER FAMILIES (signals_pro, pt_ prefix: eight literature rules,
+    # never the random baseline). Operator, Oct 20, 2026: "okay deploy this i
+    # want this new batch as group 'Oct 21'".
+    "oct21": {"label": "Oct 21"},
 }
 # The group as a RANGE on the signal name, not a LIKE.
 #
@@ -3054,12 +3058,14 @@ PRESET_LO, PRESET_HI = "cf_", "cf`"        # kept: the first range, by name
 LEARNED_PREFIXES = ("lx_",)
 # the Sep 27 ML models: every name starts ml_ (signals_ml)
 ML_PREFIXES = ("ml_",)
+# the Pro Trader families ("Oct 21"): every name starts pt_ (signals_pro)
+PRO_PREFIXES = ("pt_",)
 # EVERY named family, by group. Classic is what belongs to NONE of them — so a
 # family added here leaves Classic by the same line that creates its group.
 # "Classic" answering with an lx_ row would be the false label RCA-2026-09-12
 # paid for with cx_ (see above).
 GROUP_PREFIXES = {"preset": PRESET_PREFIXES, "sep25": LEARNED_PREFIXES,
-                  "sep27ml": ML_PREFIXES}
+                  "sep27ml": ML_PREFIXES, "oct21": PRO_PREFIXES}
 
 
 def _ranges(prefixes) -> list:
@@ -3075,11 +3081,14 @@ LEARNED_TERMS = "(" + " OR ".join(
 ML_TERMS = "(" + " OR ".join(
     f"(signal >= '{lo}' AND signal < '{hi}')"
     for lo, hi in _ranges(ML_PREFIXES)) + ")"
+PRO_TERMS = "(" + " OR ".join(
+    f"(signal >= '{lo}' AND signal < '{hi}')"
+    for lo, hi in _ranges(PRO_PREFIXES)) + ")"
 CLASSIC_TERMS = "(" + " AND ".join(
     f"(signal < '{lo}' OR signal >= '{hi}')"
     for ps in GROUP_PREFIXES.values() for lo, hi in _ranges(ps)) + ")"
 GROUP_TERMS = {"preset": PRESET_TERMS, "classic": CLASSIC_TERMS,
-               "sep25": LEARNED_TERMS, "sep27ml": ML_TERMS}
+               "sep25": LEARNED_TERMS, "sep27ml": ML_TERMS, "oct21": PRO_TERMS}
 
 
 def group_terms(group: str) -> str:
@@ -3136,6 +3145,13 @@ GROUP_INDEXES.update({
 GROUP_INDEXES.update({
     ("sep27ml", k): (f"CREATE INDEX IF NOT EXISTS rows_ml_{k} ON rows "
                      f"({cols}) WHERE {ML_TERMS}")
+    for k, cols in GROUP_SORT_COLS.items()
+})
+# the Pro Trader families ("Oct 21"): the same shape again, so the group
+# ranked by any order is a seek over its own slice, never a walk of the store
+GROUP_INDEXES.update({
+    ("oct21", k): (f"CREATE INDEX IF NOT EXISTS rows_pt_{k} ON rows "
+                   f"({cols}) WHERE {PRO_TERMS}")
     for k, cols in GROUP_SORT_COLS.items()
 })
 # the superseded ones, dropped on sight so the file does not carry a stale

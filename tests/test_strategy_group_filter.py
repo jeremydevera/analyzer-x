@@ -80,7 +80,10 @@ def test_the_group_names_are_the_operators_words():
     # (signals_ml, ml_ prefix) — operator: "use machine learning on what's
     # best strategy"
     assert ri.GROUPS["sep27ml"]["label"] == "Sep 27 ML"
-    assert set(ri.GROUPS) == {"preset", "classic", "sep25", "sep27ml"}
+    # "Oct 21" — the Pro Trader families (operator, Oct 20, 2026: "okay deploy
+    # this i want this new batch as group 'Oct 21'")
+    assert ri.GROUPS["oct21"]["label"] == "Oct 21"
+    assert set(ri.GROUPS) == {"preset", "classic", "sep25", "sep27ml", "oct21"}
 
 
 def test_the_removed_old_data_group_is_gone_everywhere():

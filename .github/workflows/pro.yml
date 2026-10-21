@@ -34,6 +34,9 @@ on:
       check:
         description: "The check run: a gzip JSON plan under research/pro/; empty = the search"
         default: ""
+      store:
+        description: "1 = the STORE run: every setting as Backtest v2 rows for the group Oct 21"
+        default: ""
 
 permissions:
   contents: write        # claims and progress on the sweep-progress branch
@@ -91,7 +94,10 @@ jobs:
           COIN_LIST: ${{ github.event.inputs.coin_list }}
           BASE_MARGIN: ${{ github.event.inputs.base }}
           CHECK: ${{ github.event.inputs.check }}
-        run: python .github/scripts/pro_shard.py
+          STORE: ${{ github.event.inputs.store }}
+        # the STORE run ("Oct 21", Oct 20, 2026) measures Backtest v2 rows;
+        # anything else is the research (the search, or its check run)
+        run: python .github/scripts/${{ github.event.inputs.store == '1' && 'pro_store_shard.py' || 'pro_shard.py' }}
 
       # always(): a machine stopped at the time limit still hands over every
       # coin it finished — the files are rewritten after each coin
@@ -104,5 +110,7 @@ jobs:
             out/pro-coins-*.json
             out/pro-report-*.json
             out/pro-trades-*.jsonl
+            out/pro-rows-*.jsonl
+            out/pro-store-report-*.json
           if-no-files-found: warn
           retention-days: 30

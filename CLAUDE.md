@@ -2147,6 +2147,24 @@ literature behind every family: `docs/research/2026-10-20-pro-trader-survey.md`.
   real ones — the passes are what luck produces. 357 coins (mostly stock
   tokens: the big US names were listed Sep 03, 2026) are too young to judge.
   Nothing was switched on.
+* **The group "Oct 21" in Stored strategies** (operator, Oct 20, 2026: *"okay
+  deploy this i want this new batch as group 'Oct 21'"*): the 58 strategy
+  settings (never `pt_rand`) on every coin and timeframe as Backtest v2 rows
+  — `python -m tradingagents.pro_search dispatch "<label>" --store` (pro.yml
+  `store=1` → `.github/scripts/pro_store_shard.py`: `run_pair` rows-only,
+  Backtest v2's 30 days + 300 lead-in, the research's stop/targets), then
+  `python -m tradingagents.pro_store collect` (learn_collect's landing: pt_
+  rows swapped per pair under its lock, watermarks never moved, streamed).
+  First run Oct 20-21, 2026: 28 minutes on 40 machines, 1,061,323 rows into
+  the pair files, **792,271 listed** (the rest fail 2:1 on their own fees),
+  and **11.5 hours** to file on the spinning G: (every row updates nine sort
+  orders). `rows_index.GROUPS["oct21"]`, prefix `pt_`, partial indexes
+  `rows_pt_*`; a key like `pt_tsm_l3e1s0_15m_sl04tp15` reads whole
+  (`local_history._sig_of` → `signals_pro.parts_of`). NOT re-measured by the
+  nightly update, like Sep 25 Strat and Sep 27 ML. **A family's rows never
+  date a pair** (RCA-2026-10-21-A): the first landing's rows were newer than
+  the nightly run, and a rebuild that let them decide each pair's newest
+  backtest kept 895,520 rows of 12.4 million — held before it swapped in.
 
 ## Backtest v2 keeps only TP > SL (MANDATORY — Oct 06, 2026)
 

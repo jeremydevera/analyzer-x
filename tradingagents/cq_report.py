@@ -194,17 +194,24 @@ def summary(coins: dict, report: list | None = None) -> dict:
                 row["final_payout"][str(fin[3])] = row["final_payout"].get(str(fin[3]), 0) + 1
                 row["test_trades"] += int(fin[6][0])
                 row["test_wins"] += int(fin[6][1])
+    # a pair with a result is searched, whatever another run's line says (one
+    # run skipped a young coin, the next searched it); "cut by the deadline"
+    # is read from the result kept, so a later full redo clears it
+    searched = set()
+    for c, rec in coins.items():
+        for tf, out in (rec.get("tfs") or {}).items():
+            searched.add((c, tf))
+            if (out.get("search") or {}).get("stop") == "deadline":
+                per[tf]["deadline"].append(c)
     for e in report or []:
         tf = e.get("tf")
-        if tf in (None, "*"):
+        if tf in (None, "*") or (str(e.get("coin")), tf) in searched:
             continue
         row = per.setdefault(tf, blank())
         if e.get("error"):
             row["failed"].append(f"{e.get('coin')}: {e['error']}")
         elif e.get("why"):
             row["skipped"].append(f"{e.get('coin')}: {e['why']}")
-        elif e.get("stop") == "deadline":
-            row["deadline"].append(str(e.get("coin")))
     for row in per.values():
         row["test_win_rate"] = (round(100 * row["test_wins"] / row["test_trades"], 1)
                                 if row["test_trades"] else None)

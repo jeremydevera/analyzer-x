@@ -150,11 +150,25 @@ def test_the_report_reads_the_money_the_machines_measured_at(monkeypatch, tmp_pa
 
 
 def test_the_summary_counts_skipped_and_failed_beside_searched():
-    coins = {"BTC": _coin([20, 9, 2.0, 4.6], [20, 6, -3.0, 4.6])}
+    coins = {"BTC": _coin([20, 9, 2.0, 4.6], [20, 6, -3.0, 4.6]),
+             "SOL": {"tfs": {"1h": {"search": {"tried": 40, "stop": "deadline"}}}}}
     report = [{"coin": "BTC", "tf": "1h", "tried": 100, "stop": "patience"},
               {"coin": "NVDA", "tf": "1h", "why": "only 48 days: 30+ tuning days must come first"},
               {"coin": "XAU", "tf": "1h", "error": "RuntimeError: planted"},
               {"coin": "SOL", "tf": "1h", "tried": 40, "stop": "deadline"}]
     got = cr.summary(coins, report)["by_tf"]["1h"]
-    assert got["searched"] == 1 and got["skipped"] == ["NVDA: only 48 days: 30+ tuning days must come first"]
+    assert got["searched"] == 2 and got["skipped"] == ["NVDA: only 48 days: 30+ tuning days must come first"]
     assert got["failed"] == ["XAU: RuntimeError: planted"] and got["deadline"] == ["SOL"]
+
+
+def test_a_pair_skipped_by_one_run_and_searched_by_the_next_is_not_called_skipped():
+    """The full run skipped young coins; the follow-up run searched them on
+    their own history. The report keeps both runs' lines - the searched one
+    wins, and the pair is never listed as skipped or failed beside its result."""
+    coins = {"NVDA": _coin([20, 9, 2.0, 4.6], [20, 6, -3.0, 4.6])}
+    report = [{"coin": "NVDA", "tf": "1h", "why": "only 48 days: 30+ tuning days must come first"},
+              {"coin": "NVDA", "tf": "1h", "tried": 500, "stop": "patience"},
+              {"coin": "NVDA", "tf": "4h", "error": "RuntimeError: planted"}]
+    got = cr.summary(coins, report)["by_tf"]
+    assert got["1h"]["skipped"] == [] and got["1h"]["searched"] == 1
+    assert got["4h"]["failed"] == ["NVDA: RuntimeError: planted"]

@@ -2231,11 +2231,29 @@ file's code, Tasks 1-9): `docs/superpowers/plans/2026-10-21-confluence-research-
   https://claude.ai/artifact/BkwHaSYNdkjoM68hu9JbME. It agrees with the Pro
   Trader result and "fees are the whole loss": the searched picks carry no
   edge over random entries even before fees.
-* **Bought by its review** (RCA-2026-10-22-A/B/C): join results at the grain
+* **Then every coin, on the operator's word** (Oct 22, 2026: *"i want you to
+  run all godamn,"*, then *"Make sure all coins and all timeframe"*): 1,056
+  coins x 5 timeframes = 5,280 coin + timeframes; 4,221 searched (28,717,380
+  candidates + 3,156,820 random on 100 sample coins), 1,059 left out by name
+  - 683 on 137 coins Gate will not let the app hold at 20x (maintenance
+  margin 5%+), 369 where no stop of 2% or less pays 2:1 on that coin's own
+  fees, 6 with one candle, KIMCHI 1d (no daily candles on Gate). A coin too
+  young for the standard test/check days is split in the same proportions of
+  its own history (`cq_shard.windows_for`), never skipped. Main run Oct 22,
+  2026 9:03am (2 h 13 min on 60 machines), young pairs and the 4
+  Chinese-named coins after. **THE FIRST CHECK over 67 coins: +0.033R a trade
+  before fees vs random, 90% range −0.079R to +0.146R: stop. Prompt 2's own
+  check: the search beat its random pick on 23 of 226 coin + timeframes and
+  random beat the search on 24 - luck - so Prompt 2 stops too.** Page (12,861
+  picks, every trade): https://claude.ai/artifact/LjdTJfkfFUKk3Lxw3QT9Nk.
+* **Bought by its review and the full run** (RCA-2026-10-22-A..F): join results at the grain
   they were measured in (coin + timeframe); a candidate must be tradeable by
   the runner that would trade it; count a signal that raises; save each
   timeframe as it finishes; the unit of evidence is the thing that is
-  independent (the coin); a count's label names exactly what it counts.
+  independent (the coin); a count's label names exactly what it counts; a
+  name from the venue is data, never a URL fragment (`progress.ClaimBoard`
+  left every Chinese-named coin unmeasured); a reason names the check that
+  refused; a join across runs keeps one fact per key, the newest.
 
 ## Backtest v2 keeps only TP > SL (MANDATORY — Oct 06, 2026)
 

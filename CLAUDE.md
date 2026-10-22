@@ -2186,6 +2186,57 @@ literature behind every family: `docs/research/2026-10-20-pro-trader-survey.md`.
   the nightly run, and a rebuild that let them decide each pair's newest
   backtest kept 895,520 rows of 12.4 million — held before it swapped in.
 
+## The confluence research (Oct 21-22, 2026) — stopped by its own first check
+
+The operator: *"I want you to reasearch confluence for each coins and each
+time frame, my goal is 2:1R"*, the two prompts they built and approved
+(`research/cq/prompts.md`: Prompt 1, the best confluence entry per coin and
+timeframe at 2:1R or better; Prompt 2, a TP/SL chosen per trade), and *"then
+start the prompt, use superpower for reviewing then if there are any questions
+instead of waiting for me, use supwerpower to decide the recommended"*. Spec:
+`docs/superpowers/specs/2026-10-21-confluence-research-design.md`; plan (every
+file's code, Tasks 1-9): `docs/superpowers/plans/2026-10-21-confluence-research-phase-a.md`.
+
+* **What it is:** building blocks (`signals_cq`, prefix `cq_`, routed in
+  `auto_trader` like `pt_`; fixed-window indicators incl. `pro_indicators.
+  ema_fixed`): 5 triggers x 7 confirmations of other families = 1,116
+  combinations on 15m-1h crypto, + 52 existing `cf_`/`cx_` setups as
+  `cq_ex<NN>` (the 3 that read funding are left out: the runner never passes
+  it) + random entries `cq_rn<seed><rate>`. Two entry rules inside every
+  signal: no entry within 30 minutes of a US CPI/FOMC/jobs release
+  (`research/cq/us_news.json`, Oct 01, 2023 - Dec 31, 2026; outside it no
+  entry at all) and no quiet weekend candle.
+* **The search** (`cq_core`, pure): seeded rounds of up to 500 candidates,
+  scored by the Wilson low end of the TUNING days' win rate (20+ trades),
+  picked on CHECK days per payout (2:1/3:1/4:1/5:1 after the coin's usual
+  round trip), the test days never read (tested). On GitHub:
+  `cq.yml` -> `.github/scripts/cq_shard.py` -> `sweep_shard.run_pair`
+  (the nightly grid's own engine, minute exits, each minute's book for the
+  newest ~45 days), each entry at only its own stop/targets; every pick
+  measured again with its trades. `python -m tradingagents.cq_search
+  dispatch|redo|collect|progress` (every account, never 12:45am-5:00am);
+  `python -m tradingagents.cq_report <state> [<state> ...]` = THE FIRST CHECK.
+  Resume point: `~/.tradingagents/backtest/cq/progress.json`.
+* **THE FIRST CHECK, as approved:** real final pick vs random final pick per
+  coin + timeframe on the test days, BEFORE fees, in R, averaged PER COIN
+  (a coin's timeframes share one price path); go on only if the low end of
+  the 90% range is above zero over 10+ coins.
+* **The pilot (20 coins, 92 coin + timeframes; 4h/1d Oct 21, 2026 11:51pm,
+  15m/30m/1h Oct 22, 2026 5:02am; TQQQX, MSFT, AMD for NVDA, TSLA, COIN, which
+  were 48 days old on Gate):** 679,000 candidates searched + 828,500 random,
+  0 engine errors, every pick's trade list equal to its counts. **STOP:**
+  +0.048R a trade before fees against random's +0.000R, 90% range −0.066R to
+  +0.163R over 20 coins, ahead on 9 of 20. So Prompt 1 and Prompt 2 both
+  stopped, nothing was switched on or filed into Stored strategies. Page:
+  https://claude.ai/artifact/BkwHaSYNdkjoM68hu9JbME. It agrees with the Pro
+  Trader result and "fees are the whole loss": the searched picks carry no
+  edge over random entries even before fees.
+* **Bought by its review** (RCA-2026-10-22-A/B/C): join results at the grain
+  they were measured in (coin + timeframe); a candidate must be tradeable by
+  the runner that would trade it; count a signal that raises; save each
+  timeframe as it finishes; the unit of evidence is the thing that is
+  independent (the coin); a count's label names exactly what it counts.
+
 ## Backtest v2 keeps only TP > SL (MANDATORY — Oct 06, 2026)
 
 The operator, after six rooms lost $889.10 on 4,375 practice trades (average

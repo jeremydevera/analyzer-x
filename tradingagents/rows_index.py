@@ -3035,6 +3035,12 @@ GROUPS = {
     # never the random baseline). Operator, Oct 20, 2026: "okay deploy this i
     # want this new batch as group 'Oct 21'".
     "oct21": {"label": "Oct 21"},
+    # THE CONFLUENCE RESEARCH'S PICKS (signals_cq, cq_ prefix: a trigger with
+    # one or two confirmations, or an existing setup alone, each at the stop
+    # and target the search picked; never a random entry). Operator, Oct 22,
+    # 2026: "Okay deploy them in production, i want t to see then in stored
+    # strategies".
+    "oct22": {"label": "Oct 22"},
 }
 # The group as a RANGE on the signal name, not a LIKE.
 #
@@ -3068,12 +3074,14 @@ LEARNED_PREFIXES = ("lx_",)
 ML_PREFIXES = ("ml_",)
 # the Pro Trader families ("Oct 21"): every name starts pt_ (signals_pro)
 PRO_PREFIXES = ("pt_",)
+# the confluence research's picks ("Oct 22"): every name starts cq_ (signals_cq)
+CQ_PREFIXES = ("cq_",)
 # EVERY named family, by group. Classic is what belongs to NONE of them — so a
 # family added here leaves Classic by the same line that creates its group.
 # "Classic" answering with an lx_ row would be the false label RCA-2026-09-12
 # paid for with cx_ (see above).
 GROUP_PREFIXES = {"preset": PRESET_PREFIXES, "sep25": LEARNED_PREFIXES,
-                  "sep27ml": ML_PREFIXES, "oct21": PRO_PREFIXES}
+                  "sep27ml": ML_PREFIXES, "oct21": PRO_PREFIXES, "oct22": CQ_PREFIXES}
 
 
 def _ranges(prefixes) -> list:
@@ -3092,11 +3100,15 @@ ML_TERMS = "(" + " OR ".join(
 PRO_TERMS = "(" + " OR ".join(
     f"(signal >= '{lo}' AND signal < '{hi}')"
     for lo, hi in _ranges(PRO_PREFIXES)) + ")"
+CQ_TERMS = "(" + " OR ".join(
+    f"(signal >= '{lo}' AND signal < '{hi}')"
+    for lo, hi in _ranges(CQ_PREFIXES)) + ")"
 CLASSIC_TERMS = "(" + " AND ".join(
     f"(signal < '{lo}' OR signal >= '{hi}')"
     for ps in GROUP_PREFIXES.values() for lo, hi in _ranges(ps)) + ")"
 GROUP_TERMS = {"preset": PRESET_TERMS, "classic": CLASSIC_TERMS,
-               "sep25": LEARNED_TERMS, "sep27ml": ML_TERMS, "oct21": PRO_TERMS}
+               "sep25": LEARNED_TERMS, "sep27ml": ML_TERMS, "oct21": PRO_TERMS,
+               "oct22": CQ_TERMS}
 
 
 def group_terms(group: str) -> str:
@@ -3160,6 +3172,13 @@ GROUP_INDEXES.update({
 GROUP_INDEXES.update({
     ("oct21", k): (f"CREATE INDEX IF NOT EXISTS rows_pt_{k} ON rows "
                    f"({cols}) WHERE {PRO_TERMS}")
+    for k, cols in GROUP_SORT_COLS.items()
+})
+# the confluence picks ("Oct 22"): ~12,000 rows among tens of millions, the
+# same partial-index shape again
+GROUP_INDEXES.update({
+    ("oct22", k): (f"CREATE INDEX IF NOT EXISTS rows_cq_{k} ON rows "
+                   f"({cols}) WHERE {CQ_TERMS}")
     for k, cols in GROUP_SORT_COLS.items()
 })
 # the superseded ones, dropped on sight so the file does not carry a stale

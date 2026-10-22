@@ -83,7 +83,11 @@ def test_the_group_names_are_the_operators_words():
     # "Oct 21" — the Pro Trader families (operator, Oct 20, 2026: "okay deploy
     # this i want this new batch as group 'Oct 21'")
     assert ri.GROUPS["oct21"]["label"] == "Oct 21"
-    assert set(ri.GROUPS) == {"preset", "classic", "sep25", "sep27ml", "oct21"}
+    # "Oct 22" — the confluence research's picks (operator, Oct 22, 2026:
+    # "Okay deploy them in production, i want t to see then in stored
+    # strategies")
+    assert ri.GROUPS["oct22"]["label"] == "Oct 22"
+    assert set(ri.GROUPS) == {"preset", "classic", "sep25", "sep27ml", "oct21", "oct22"}
 
 
 def test_the_removed_old_data_group_is_gone_everywhere():

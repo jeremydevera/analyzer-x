@@ -329,7 +329,30 @@ FILE_BATCH = 100
 FILE_CACHE_MB = 1024
 
 
-def file_learned(entries: list, log=print, family: Family | None = None) -> int:
+def filed_pairs(con, family: Family) -> set:
+    """WHICH PAIRS ALREADY HAVE THIS FAMILY'S ROWS FILED — one read of the
+    small slice (its own partial index serves it), instead of a delete per
+    rule that walks each coin's ~13,000 rows to find nothing. A pair not in
+    this set is filed `fresh` (no delete).
+
+    INDEXED BY the partial index: left to itself the planner walked rows_pair
+    — every row's key, 244.6 s on the operator's store — to find 68 pairs.
+    Without that index (a new store, a family filed for the first time) the
+    plain query, which reads the whole table: ask it ONCE per landing."""
+    import sqlite3 as _sq
+
+    from tradingagents import rows_index as ri
+
+    terms = getattr(ri, family.terms_attr)
+    try:
+        return {r[0] for r in con.execute(
+            f"SELECT DISTINCT pair FROM rows INDEXED BY {family.index} WHERE {terms}")}
+    except _sq.OperationalError:
+        return {r[0] for r in con.execute(f"SELECT DISTINCT pair FROM rows WHERE {terms}")}
+
+
+def file_learned(entries: list, log=print, family: Family | None = None,
+                 filed_before: set | None = None) -> int:
     """Re-file the rules of many pairs in the v2 index, FILE_BATCH pairs per
     transaction on one connection with a large page cache.
 
@@ -339,7 +362,11 @@ def file_learned(entries: list, log=print, family: Family | None = None) -> int:
     indexes scattered across the file. Same rows, same deletes by pair and
     signal, same `pairs` bookkeeping: only the commits are grouped. A crash
     mid-way loses at most the open batch, and a re-run re-files it (the
-    files already hold the new rows; the delete-by-signal is idempotent)."""
+    files already hold the new rows; the delete-by-signal is idempotent).
+
+    `filed_before` is `filed_pairs()` asked once by a caller that files in
+    several calls (pro_store.land, a batch at a time): without the family's
+    partial index that question reads the whole table."""
     import time as _t
 
     from tradingagents import rows_index as ri
@@ -352,23 +379,8 @@ def file_learned(entries: list, log=print, family: Family | None = None) -> int:
     t0 = _t.time()
     try:
         con.execute(f"PRAGMA cache_size = -{FILE_CACHE_MB * 1024}")
-        # WHICH PAIRS ALREADY HAVE THIS FAMILY'S ROWS FILED — one read of the
-        # small slice (its own partial index serves it), instead of a delete
-        # per rule that walks each coin's ~13,000 rows to find nothing. A
-        # pair not in this set is filed `fresh` (no delete).
-        # INDEXED BY the partial index: left to itself the planner walked
-        # rows_pair — every row's key, 244.6 s on the operator's store — to
-        # find 68 pairs. Without that index (a new store) the plain query.
-        import sqlite3 as _sq
-
-        terms = getattr(ri, family.terms_attr)
-        try:
-            filed_before = {r[0] for r in con.execute(
-                f"SELECT DISTINCT pair FROM rows INDEXED BY {family.index} "
-                f"WHERE {terms}")}
-        except _sq.OperationalError:
-            filed_before = {r[0] for r in con.execute(
-                f"SELECT DISTINCT pair FROM rows WHERE {terms}")}
+        if filed_before is None:
+            filed_before = filed_pairs(con, family)
         for i, (path, names) in enumerate(entries, 1):
             n += ri.index_pair(path, con, signals=names, commit=False,
                                fresh=path.stem not in filed_before)

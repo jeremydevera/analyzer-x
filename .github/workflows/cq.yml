@@ -11,6 +11,12 @@ run-name: "Confluence research · ${{ inputs.label }}"
 # market grid's pair-done markers, saved positions or the store. Public market
 # data only - no credentials are read. Dealt between every account by
 # tradingagents/cq_search.py (each account gets its own coin_list).
+#
+# store=1 is the STORE run (the group "Oct 22", Oct 22, 2026: "Okay deploy
+# them in production, i want t to see then in stored strategies"): every pick
+# in research/cq/store_plan.json measured as Backtest v2 rows by
+# .github/scripts/cq_store_shard.py, landed on the PC by
+# tradingagents/cq_store.py. It writes no store on GitHub either.
 
 on:
   workflow_dispatch:
@@ -36,6 +42,9 @@ on:
       search:
         description: "round size, most rounds, patience"
         default: "500,100,10"
+      store:
+        description: "1 = measure the research's picks as Backtest v2 rows (the group Oct 22)"
+        default: ""
 
 permissions:
   contents: write        # claims and progress on the sweep-progress branch
@@ -94,7 +103,8 @@ jobs:
           BASE_MARGIN: ${{ github.event.inputs.base }}
           LUCK: ${{ github.event.inputs.luck }}
           SEARCH: ${{ github.event.inputs.search }}
-        run: python .github/scripts/cq_shard.py
+          STORE: ${{ github.event.inputs.store }}
+        run: python .github/scripts/${{ github.event.inputs.store == '1' && 'cq_store_shard.py' || 'cq_shard.py' }}
 
       # always(): a machine stopped at the time limit still hands over every
       # coin it finished - the files are rewritten after each coin
@@ -105,5 +115,7 @@ jobs:
           path: |
             out/cq-*.json.gz
             out/cq-report-*.json
+            out/cq-rows-*.jsonl
+            out/cq-store-report-*.json
           if-no-files-found: warn
           retention-days: 30

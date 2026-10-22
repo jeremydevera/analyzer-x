@@ -133,9 +133,12 @@ def test_the_workflow_takes_exactly_what_the_dispatch_sends():
     block = text.split("inputs:", 1)[1].split("permissions:", 1)[0]
     names = re.findall(r"^      ([a-z_]+):\s*$", block, flags=re.M)
     assert len(names) <= 10                      # GitHub allows exactly ten
-    assert set(names) == {"shards", "timeframes", "coin_list", "base", "label", "luck", "search"}
+    # `store` runs the store machine instead (the group "Oct 22",
+    # tests/test_cq_store.py)
+    assert set(names) == {"shards", "timeframes", "coin_list", "base", "label", "luck", "search",
+                          "store"}
     assert "TA_VENUE: gate" in text and "timeout-minutes: 350" in text
-    assert "python .github/scripts/cq_shard.py" in text and "cq-out-${{ matrix.shard }}" in text
+    assert "'cq_store_shard.py' || 'cq_shard.py' }}" in text and "cq-out-${{ matrix.shard }}" in text
     for env in ("COIN_LIST", "TFS", "LUCK", "SEARCH", "BASE_MARGIN", "SHARD", "SHARDS"):
         assert f"          {env}: " in text, env
 

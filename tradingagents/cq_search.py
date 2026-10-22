@@ -10,9 +10,14 @@ docs/superpowers/specs/2026-10-21-confluence-research-design.md.
 
     python -m tradingagents.cq_search dispatch [label] [--coins A,B] [--luck all|A,B]
                                       [--search 500,100,10] [--state NAME] [--force]
+                                      [--store [--plan FILE]]
     python -m tradingagents.cq_search redo <state-name> <owner/repo>
     python -m tradingagents.cq_search collect [state-name]
     python -m tradingagents.cq_search progress
+
+`--store` is the STORE run (the group "Oct 22", Oct 22, 2026): every pick in
+research/cq/store_plan.json measured as Backtest v2 rows by
+.github/scripts/cq_store_shard.py, landed by tradingagents/cq_store.py.
 
 Never dispatched between 12:45am and 5:00am (this PC's clock): the nightly
 room re-test (1:00am) and backtest update (1:31am) need every machine;
@@ -34,6 +39,7 @@ TIMEFRAMES = "15m,30m,1h,4h,1d"
 SEARCH = "500,100,10"
 ARTIFACTS = ("cq-out-*",)
 STATE = "state.json"
+STORE_STATE = "store.json"        # the store run (the group "Oct 22")
 QUIET = ((0, 45), (5, 0))         # the nightly jobs' hours: no dispatch
 
 
@@ -143,17 +149,29 @@ def progress(stage: str | None = None, *, run: tuple | None = None, **extra) -> 
 
 def dispatch(label: str | None = None, *, coins: list | None = None, luck: str = "",
              search: str = SEARCH, base: float = 5.0, timeframes: str = TIMEFRAMES,
-             state_name: str = STATE, force: bool = False, now: float | None = None) -> dict:
+             state_name: str | None = None, force: bool = False, now: float | None = None,
+             store: bool = False, plan=None) -> dict:
     """Deal the board (the whole market, or `coins`) between every account
     that can run now (round robin, cloud_sweep.split_coins) and start one run
     on each. An account that refuses, or cannot be brought up to this code,
-    is NAMED and the others still run; its share is kept for `redo`."""
+    is NAMED and the others still run; its share is kept for `redo`.
+
+    `store`: the store run - the board is the plan's coins (`plan`, default
+    cq_store.PLAN_FILE), no luck search, its own state file."""
     from tradingagents import cloud_sweep as cs, forecast_v2_daily as fd
     from tradingagents.positions_view import fmt_when
 
     if quiet_hours(now) and not force:
         raise RuntimeError("not dispatched: between 12:45am and 5:00am the nightly room "
                            "re-test and backtest update need every machine")
+    state_name = state_name or (STORE_STATE if store else STATE)
+    if store:
+        from tradingagents import cq_store
+
+        luck = ""
+        if not coins:
+            got = json.loads(Path(plan or cq_store.PLAN_FILE).read_text(encoding="utf-8"))
+            coins = sorted(got["coins"])
     ready, refused = fd.fleets_now()
     if not ready:
         raise RuntimeError("no GitHub account can run the research: " + "; ".join(refused))
@@ -171,6 +189,8 @@ def dispatch(label: str | None = None, *, coins: list | None = None, luck: str =
                   "coin_list": ",".join(pile), "base": f"{base:g}",
                   "label": f"{label} · {k + 1} of {len(ready)}",
                   "luck": _luck_for(luck, pile), "search": search}
+        if store:
+            inputs["store"] = "1"
         dealt[repo] = inputs
         if repo != origin:
             drift = cs.sync_fleet(repo)
@@ -184,7 +204,7 @@ def dispatch(label: str | None = None, *, coins: list | None = None, luck: str =
             named.append(f"{repo}: {str(exc)[:160]}")
     state = {"label": label, "started": t0, "started_at": fmt_when(t0), "base": base,
              "coins": len(board), "luck": luck, "search": search, "timeframes": timeframes,
-             "runs": runs, "refused": named, "dealt": dealt}
+             "runs": runs, "refused": named, "dealt": dealt, **({"store": True} if store else {})}
     _save(state_name, state)
     progress(f"dispatched {state_name}: {len(runs)} run(s), {len(board)} coin(s)",
              run=(Path(state_name).stem, {"state": state_name, "label": label,
@@ -270,18 +290,25 @@ def collect(state_name: str = STATE) -> dict:
     roots = [download(int(r["run"]), repo) for repo, r in state["runs"].items()]
     dealt = state.get("dealt") or {}
     board = sorted({c for x in dealt.values() for c in str(x.get("coin_list", "")).split(",") if c})
-    report = ps.read_json_parts(roots, "cq-report-*.json", "report")
+    # the store run reports in its own files, and MEASURES - it searches nothing
+    store = bool(state.get("store"))
+    report = ps.read_json_parts(roots, "cq-store-report-*.json" if store else "cq-report-*.json",
+                                "report")
+    cov = coverage(board, report)
+    if store:
+        cov["measured"] = cov.pop("searched")
+        cov.pop("deadline", None)
     summary = {"label": state.get("label"),
                "runs": {k: v["run"] for k, v in state["runs"].items()},
-               "roots": [str(r) for r in roots], "coverage": coverage(board, report)}
+               "roots": [str(r) for r in roots], "coverage": cov}
     stem = Path(state_name).stem
     (home() / f"{stem}-collected.json").write_text(json.dumps(summary, indent=1),
                                                     encoding="utf-8")
-    cov = summary["coverage"]
+    done = (f"{cov['measured']} measured" if store else
+            f"{cov['searched']} searched ({len(cov['deadline'])} cut by the deadline)")
     progress(f"collected {state_name}: {cov['reached']} of {cov['board']} coin(s); coin+"
-             f"timeframes: {cov['searched']} searched ({len(cov['deadline'])} cut by the "
-             f"deadline), {len(cov['skipped'])} skipped, {len(cov['pairs_failed'])} failed "
-             f"(each named in {stem}-collected.json)",
+             f"timeframes: {done}, {len(cov['skipped'])} skipped, {len(cov['pairs_failed'])} "
+             f"failed (each named in {stem}-collected.json)",
              run=(stem, {"state": state_name, "label": state.get("label"),
                          "runs": summary["runs"], "collected": f"{stem}-collected.json",
                          "reached": cov["reached"], "board": cov["board"]}))
@@ -303,12 +330,14 @@ if __name__ == "__main__":
         coins = _arg(a, "--coins")
         luck = _arg(a, "--luck", "")
         srch = _arg(a, "--search", SEARCH)
-        state = _arg(a, "--state", STATE)
-        force = "--force" in a
-        a = [x for x in a if x != "--force"]
+        state = _arg(a, "--state")
+        plan = _arg(a, "--plan")
+        force, store = "--force" in a, "--store" in a
+        a = [x for x in a if x not in ("--force", "--store")]
         print(json.dumps(dispatch(a[1] if len(a) > 1 else None,
                                   coins=coins.split(",") if coins else None, luck=luck,
-                                  search=srch, state_name=state, force=force), indent=2))
+                                  search=srch, state_name=state, force=force, store=store,
+                                  plan=plan), indent=2))
     elif a and a[0] == "redo":
         print(json.dumps(redo(a[1], a[2]), indent=2))
     elif a and a[0] == "collect":
@@ -317,5 +346,6 @@ if __name__ == "__main__":
         print((home() / "progress.json").read_text(encoding="utf-8"))
     else:
         print("usage: python -m tradingagents.cq_search dispatch [label] [--coins A,B] "
-              "[--luck all|A,B] [--search 500,100,10] [--state NAME] [--force] | "
+              "[--luck all|A,B] [--search 500,100,10] [--state NAME] [--force] "
+              "[--store [--plan FILE]] | "
               "redo <state-name> <owner/repo> | collect [state-name] | progress")

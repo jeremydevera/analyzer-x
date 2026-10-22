@@ -112,6 +112,9 @@ const GROUP_LABEL: Record<string, string> = {
   // the Pro Trader families, eight literature rules (operator, Oct 20,
   // 2026: "i want this new batch as group 'Oct 21'")
   oct21: "Oct 21",
+  // the confluence research's picks, each at its own stop and target
+  // (operator, Oct 22, 2026: "i want t to see then in stored strategies")
+  oct22: "Oct 22",
 };
 
 /** Which order a clicked header stands for. Built FROM STRATEGY_SORTS, so
@@ -458,7 +461,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
     asset: (f.asset || undefined) as StrategyQuery["asset"],
     sizing: f.sizing || undefined, rowId: f.rowId || undefined,
     measuredDays: f.measuredDays || undefined,
-    group: (f.group || undefined) as "preset" | "classic" | "sep25" | "sep27ml" | "oct21" | undefined,
+    group: (f.group || undefined) as "preset" | "classic" | "sep25" | "sep27ml" | "oct21" | "oct22" | undefined,
   });
   // the exact count for the filters it was counted for — never another set's
   // for five minutes: rows are filed while the page stays open, and the
@@ -1438,6 +1441,7 @@ export default function StrategiesPanel({ store = "v1" }: { store?: StoreName })
                   <option value="sep25">{GROUP_LABEL.sep25}</option>
                   <option value="sep27ml">{GROUP_LABEL.sep27ml}</option>
                   <option value="oct21">{GROUP_LABEL.oct21}</option>
+                  <option value="oct22">{GROUP_LABEL.oct22}</option>
                 </select>
               </Field>
               <Field label="signal">

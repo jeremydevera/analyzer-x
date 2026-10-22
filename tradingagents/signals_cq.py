@@ -590,6 +590,15 @@ def _part(code: str):
 _NAME = re.compile(r"cq_([a-z]{2}\d*)((?:-[a-z]{2}\d*){0,2})(?=_|$)")
 
 
+def name_in(key: str) -> str | None:
+    """The combination's name at the front of a strategy key, by the name's
+    own shape: "cq_fl00-ev-vs1_15m_sl04tp15" -> "cq_fl00-ev-vs1", or None.
+    local_history._sig_of reads keys through this: a cq_ key split on its
+    first underscore would hash an id no store holds (RCA-2026-09-24-G)."""
+    m = _NAME.match(str(key))
+    return m.group(0) if m else None
+
+
 def spec_for(key: str) -> dict | None:
     """The parts a name holds, or None: a trigger with one or two
     confirmations of other families (or a whole entry alone), every code

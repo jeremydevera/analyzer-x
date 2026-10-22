@@ -172,6 +172,80 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-22-G — a family landing kept every pair it rewrote behind the Stored strategies list until the whole landing ended, and the list's safety net rebuilt the list under it all night
+
+**CEO**
+
+* The "Oct 21" strategies took 11.5 hours to reach Stored strategies, and
+  for most of that time the list's own repair job kept rebuilding the whole
+  list underneath the landing - the rebuild that, with the fault of
+  RCA-2026-10-21-A, nearly replaced your list with one fourteenth of it.
+* Why: the landing wrote every coin's file first and only then told the
+  list about them, so thousands of coins looked out of date to the repair
+  job for hours.
+* What stops it now: the landing writes a hundred coins and files those
+  hundred straight away, so no coin waits behind the list longer than one
+  batch.
+
+**DEV**
+
+* `tradingagents/pro_store.py land()` called `msw.rewrite_pair_rows` for
+  every answered pair, then `lc.file_learned(to_file)` once at the end;
+  `rows_index.keep_list_filed` (the supervisor, every 10 min) starts a
+  filing program once a pair file has been newer than the list for
+  `LIST_BEHIND_S` (30 min) and none has moved for `LIST_SETTLE_S` (15 min).
+* Invariant broken: **a writer that puts pairs behind the list brings them
+  current inside the safety net's patience** - a batch rewritten is a batch
+  filed before the next is written (`flush()` every `FILE_BATCH`, the
+  family's filed pairs asked once per landing, `lc.filed_pairs`).
+* Guard: `tests/test_cq_store.py::test_each_batch_is_filed_before_the_next_is_rewritten`
+  for both groups (the old body's events: five rewrites, then one filing of
+  all five - red).
+
+**SAW** - not seen on a screen. Found Oct 22, 2026 ~6:40pm while copying the
+Oct 21 landing for the confluence picks: the landing would have rewritten
+all 3,457 of their pairs (each pair file 9-10 MB) before filing the first,
+and RCA-2026-10-21-A's own timeline shows what that did on Oct 21.
+
+**TIMELINE**
+
+1. `Oct 20, 2026 9:45pm` - the Oct 21 landing starts; by about 10:10pm it
+   has rewritten 4,397 pair files, none of them filed.
+2. Through the night the safety net finds them: "4,197 pair(s) have been
+   newer than the list for 60 min", later 3,709 and 3,009, and starts whole
+   rebuilds of the list; every swap is refused by Windows while the landing
+   holds `rows.db` (WinError 32).
+3. `Oct 21, 2026 8:22am` - the last of those rebuilds is ready with 895,520
+   rows of about 12.4 million (the fault fixed by RCA-2026-10-21-A); held
+   by hand at 9:48am.
+4. `9:40am` - the landing ends: 792,271 rows listed, 11.5 hours after it
+   began.
+5. `Oct 22, 2026` - fixed before the confluence landing: at most
+   `FILE_BATCH` (100) pairs are ever behind the list because of a landing,
+   each for one batch; the guard's five pairs in batches of 2 file after
+   every second rewrite.
+
+**ROOT CAUSE** - `land()` separated writing from filing for the whole run,
+so the time a pair spent behind the list grew with the size of the landing
+(hours for thousands of pairs), while the safety net's patience is fixed at
+30 minutes.
+
+**WHY IT WAS NOT CAUGHT** - `tests/test_pro_store.py` asserts what lands and
+what is filed, never WHEN the list learns of a rewritten pair; and the
+safety net's tests (`test_stored_strategies_keep_up_every_night.py`) feed it
+stale pairs from a nightly collect, never from a landing that is still
+running. The two were never put on one timeline, and RCA-2026-10-21-A fixed
+what the rebuild kept, not why a rebuild was running at all.
+
+**COST** - none in money; on Oct 21, 2026 hours of disk time on whole-list
+rebuilds that could never swap in, under an 11.5-hour landing.
+
+**FIX** - this commit.
+
+**GUARD** - `tests/test_cq_store.py::test_each_batch_is_filed_before_the_next_is_rewritten`.
+
+---
+
 ## RCA-2026-10-22-F — the confluence reader counted a left-out pair once per run that reported it: 1,759 "skipped" for 1,059 pairs
 
 NEVER HAPPENED YET on a page — found by checking the final numbers before

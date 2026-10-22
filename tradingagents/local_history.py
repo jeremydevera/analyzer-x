@@ -184,6 +184,15 @@ def _sig_of(key: str) -> str:
         got = _sp.parts_of(key)
         if got:
             return f"pt_{got[0]}_{got[1]}"
+    # A CONFLUENCE pick ("Oct 22"): `cq_<trigger>[-<confirmation>...]`, read
+    # by its own grammar (signals_cq.name_in) — `cq_fl00-ev_1h_sl1tp3` is
+    # cq_fl00-ev, never `cq`
+    if str(key).startswith("cq_"):
+        from tradingagents import signals_cq as _sq
+
+        got = _sq.name_in(key)
+        if got:
+            return got
     if not _UNDERSCORED_SIGNALS:
         from tradingagents.backtest_report import SIGNALS
 

@@ -1228,8 +1228,14 @@ export type RoomStrategies = {
     break_even: number | null; profit: number; corrected: number | null; worst_day: number | null;
     worst_run: number; worst_run_n: number; still_works: boolean;
     /** trades its newest 15 days held: 0 = "no trades", not "stopped working" */
-    last15_trades?: number }[];
+    last15_trades?: number;
+    /** the rule's own win line, the "70% wins" its words print first (Oct 21, 2026) */
+    rule_wr?: number }[];
   matched: number; kept: number; page: number; pages: number; from: number; to: number;
+  /** every win line the kept rule sets ask, [percent, how many], and how many
+   *  ask a line inside "rule win % between" before the other filters (null
+   *  when it is empty) — Oct 21, 2026 */
+  rule_lines?: [number, number][]; rule_matched?: number | null;
   reality: { took: number | null; gap: number | null }; margin: number; leverage: number;
   /** the reality check is still being worked out (the first minute or two after a restart) */
   reality_pending?: boolean;
@@ -1446,11 +1452,15 @@ export const api = {
   // Forecast -> Backtest a room (Oct 02, 2026): sorted and paged by the server
   roomStrategies: (q: { from_s: number; to_s: number; from_day?: string; to_day?: string;
     min_winrate?: number; min_profit?: number | null;
+    /** the RULE's own win line between these, both included (Oct 21, 2026) */
+    rule_wr_min?: number | null; rule_wr_max?: number | null;
     window?: number; deployable?: string; find?: string; sort?: string; page?: number }) => {
     const p = new URLSearchParams({ from_s: String(Math.floor(q.from_s)), to_s: String(Math.floor(q.to_s)),
       sort: q.sort ?? "profit", page: String(q.page ?? 1) });
     if (q.min_winrate) p.set("min_winrate", String(q.min_winrate));
     if (q.min_profit != null) p.set("min_profit", String(q.min_profit));
+    if (q.rule_wr_min != null) p.set("rule_wr_min", String(q.rule_wr_min));
+    if (q.rule_wr_max != null) p.set("rule_wr_max", String(q.rule_wr_max));
     if (q.window) p.set("window", String(q.window));
     if (q.deployable) p.set("deployable", q.deployable);
     if (q.find) p.set("find", q.find);

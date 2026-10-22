@@ -592,6 +592,10 @@ def _measured(from_s: float, to_s: float, reality: dict) -> list[dict]:
                "found_by": w.get("found_by", "prompt 4"), "run": w.get("run"),
                "deployable": w["deployable"], "deploy_why": w.get("deploy_why", ""),
                "window": int(w["cfg"]["window_days"]), "tp": w["cfg"]["tp_rule"],
+               # the RULE's own win line, the number its words print first
+               # ("70% wins, ..."), which "rule win % between" filters
+               # (Oct 21, 2026) — never the win rate the dates measured
+               "rule_wr": float(w["cfg"]["on_winrate"]),
                "max_sl": float(w["cfg"].get("max_sl") or 0),
                "trades": n, "per_day": round(n / days, 1), "wins": wins, "losses": n - wins,
                "winrate": round(100 * wins / n, 1) if n else None, "break_even": be,
@@ -626,7 +630,8 @@ def span() -> tuple[int | None, int | None]:
 
 def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: float | None = None,
           window: int = 0, deployable: str = "", find: str = "", sort: str = "profit",
-          page: int = 1, per: int = 25, reality: dict | None = None) -> dict:
+          page: int = 1, per: int = 25, reality: dict | None = None,
+          rule_wr_min: float | None = None, rule_wr_max: float | None = None) -> dict:
     """Every kept winner, RE-MEASURED over exactly [from_s, to_s] from its own
     stored trades (never a month scaled up or down), filtered and paged here.
     The measuring is remembered per date range until the store or the reality
@@ -643,7 +648,18 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
     26 of the 992 kept had no trade, and a 90% floor listed 32 rows — those
     26 beside the 6 that really won 90% or more. Over the last 3 days all 992
     have none (every saved trade closes by Oct 02, 2026 8:00am), so the floor
-    would have kept every one. RCA-2026-10-07-N."""
+    would have kept every one. RCA-2026-10-07-N.
+
+    RULE WIN % BETWEEN (operator, Oct 21, 2026: "it will show room strategy
+    that has criteria of 70% or 80% if my filter is between 50-80%"):
+    `rule_wr_min` / `rule_wr_max` keep the rule sets whose OWN switch-on line
+    is inside both ends, both included, either end optional. It is a property
+    of the rule set, so a row with no trade in the dates still passes it."""
+    for end in (rule_wr_min, rule_wr_max):
+        if end is not None and not 0 <= float(end) <= 100:
+            raise ValueError(f"rule win % takes a number from 0 to 100, not {end:g}")
+    if rule_wr_min is not None and rule_wr_max is not None and float(rule_wr_min) > float(rule_wr_max):
+        raise ValueError(f"the rule win % 'from' ({rule_wr_min:g}) is above its 'to' ({rule_wr_max:g})")
     if reality is None:
         from tradingagents import forecast_v2 as f2
 
@@ -673,6 +689,10 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
             continue
         if min_profit is not None and (not row["trades"] or row["profit"] < min_profit):
             continue
+        if rule_wr_min is not None and row["rule_wr"] < float(rule_wr_min):
+            continue
+        if rule_wr_max is not None and row["rule_wr"] > float(rule_wr_max):
+            continue
         if window and row["window"] != int(window):
             continue
         if deployable == "yes" and not row["deployable"] or deployable == "no" and row["deployable"]:
@@ -689,6 +709,15 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
     pages = max(1, -(-len(rows) // per))
     page = min(max(1, int(page)), pages)
     first, last = span()
+    # the win lines the kept rule sets ask, and how many each, over EVERY kept
+    # one: a "rule win % between" that matches none says which lines exist
+    lines: dict = {}
+    for r in measured:
+        lines[r["rule_wr"]] = lines.get(r["rule_wr"], 0) + 1
+    ruled = rule_wr_min is not None or rule_wr_max is not None
+    in_range = (sum(n for wr, n in lines.items()
+                    if (rule_wr_min is None or wr >= float(rule_wr_min))
+                    and (rule_wr_max is None or wr <= float(rule_wr_max))) if ruled else None)
     return {"rows": rows[(page - 1) * per: page * per], "matched": len(rows), "kept": total,
             "page": page, "pages": pages, "from": from_s, "to": to_s,
             # how many of ALL kept have a trade in the dates, before any filter,
@@ -697,6 +726,10 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
             # the store") instead of reading as 992 strategies that did nothing
             "with_trades": sum(1 for r in measured if r["trades"]),
             "data_start": first, "data_end": last,
+            "rule_lines": [[wr, n] for wr, n in sorted(lines.items())],
+            # how many kept rule sets ask a line inside the range, before every
+            # OTHER filter (None without one): 0 means no rule set asks that
+            "rule_matched": in_range,
             "reality": {k: reality.get(k) for k in ("took", "gap")}, "margin": 5.0, "leverage": 20}
 
 

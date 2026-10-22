@@ -1571,12 +1571,16 @@ def room_strategies_route(from_s: float | None = None, to_s: float | None = None
                           min_winrate: float = 0,
                           min_profit: float | None = None, window: int = 0,
                           deployable: str = "", find: str = "", sort: str = "profit",
-                          page: int = 1, from_day: str = "", to_day: str = "") -> dict:
+                          page: int = 1, from_day: str = "", to_day: str = "",
+                          rule_wr_min: float | None = None,
+                          rule_wr_max: float | None = None) -> dict:
     """Forecast -> Room strategies: every winner prompt 4 kept, RE-MEASURED over
     exactly the chosen dates from its own stored trades (operator, Oct 02, 2026:
     "when i run that prompt i want you to look for all kinds of combination
     then add it in room strategy"). Filtered, sorted and paged here, ten a
-    page like every list on the Forecast page (forecast_v2_api.PER_PAGE)."""
+    page like every list on the Forecast page (forecast_v2_api.PER_PAGE).
+    `rule_wr_min`/`rule_wr_max`: the rule sets whose own win line is between
+    them, both included (Oct 21, 2026, "winrate between ... 50-80%")."""
     from tradingagents import forecast_v2_api as _f2a, room_strategies as _rst
 
     from_s, to_s = _rs_span(from_s, to_s, from_day, to_day)
@@ -1595,7 +1599,8 @@ def room_strategies_route(from_s: float | None = None, to_s: float | None = None
         reality = ((have or {}).get("reality") or {}).get("all")
         out = _rst.table(from_s, to_s, min_winrate=min_winrate, min_profit=min_profit,
                          window=window, deployable=deployable, find=find, sort=sort, page=page,
-                         per=_f2a.PER_PAGE, reality=reality if reality is not None else {})
+                         per=_f2a.PER_PAGE, reality=reality if reality is not None else {},
+                         rule_wr_min=rule_wr_min, rule_wr_max=rule_wr_max)
         out["reality_pending"] = reality is None
         # the daily re-test on GitHub (room_strategies_daily): when the numbers
         # were last brought up to date, and where today's is

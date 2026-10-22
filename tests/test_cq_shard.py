@@ -2,7 +2,7 @@
 (.github/scripts/cq_shard.py, Oct 21, 2026), with no network: the search and
 the luck search on one coin + timeframe, every pick measured again with its
 trades, the three stretches cut from the engine's own window counts, the
-stop/targets legal, a coin too young for its windows skipped with why, and
+stop/targets legal, a coin younger than its windows searched on its own history, and
 the run repeating exactly from its seed.
 
 The shard fixes RES/MODE/DAYS and patches br.SHORT_DAYS when it loads, so it
@@ -70,7 +70,10 @@ cs.fx.klines = lambda sym, iv, need: frames[sym].tail(int(need)).reset_index(dro
 pre = {"fee": 0.00075, "liq": 4.5, "fund": [], "slip": 0.0003, "fine": None, "meta": {}}
 rec = {"coin": "TEST", "tfs": {}}
 info = cs.cq_pair("TEST_USDT", "4h", pre, rec)
-young = cs.cq_pair("YOUNG_USDT", "4h", pre, {"coin": "YOUNG", "tfs": {}})
+rec_young = {"coin": "YOUNG", "tfs": {}}
+young = cs.cq_pair("YOUNG_USDT", "4h", pre, rec_young)
+wins = {"4h_400": cs.windows_for("4h", 400), "15m_100": cs.windows_for("15m", 100),
+        "1d_3": cs.windows_for("1d", 3)}
 bars, ks = cs.barriers_for("4h", 0.0021, 4.5)
 fake = {"trades": 9, "recents": {
     240: {"trades": 3, "wins": 1, "profit": -0.5, "rt_sum": 0.6},
@@ -118,7 +121,8 @@ report = []
 cs.measure_coin("SAVE_USDT", report, 0, 1)
 with gzip.open(cs.OUT, "rt", encoding="utf-8") as fh:
     saved = json.load(fh)
-print(json.dumps({"info": info, "rec": rec, "young": young, "stk": stk, "rec_stk": rec_stk,
+print(json.dumps({"info": info, "rec": rec, "young": young, "rec_young": rec_young, "wins": wins,
+                  "stk": stk, "rec_stk": rec_stk,
                   "bars": [[sl, tp, k] for (sl, tp), k in zip(bars, ks)],
                   "split": [list(p) for p in cs.stats_from(fake, "4h")],
                   "errs": errs, "got": [list(k) for k in got],
@@ -191,8 +195,30 @@ def test_the_three_stretches_are_cut_from_the_engines_own_window_counts(runs):
     assert tun == [4, 2, 1.5, 0.8]
 
 
-def test_a_coin_too_young_for_its_windows_is_skipped_and_says_why(runs):
-    assert runs[0]["young"]["why"].startswith("only 249 days")
+def test_a_young_coin_is_searched_on_its_own_history_split_the_same_way(runs):
+    """Operator, Oct 22, 2026: "Make sure all coins and all timeframe". A coin
+    with no room for the standard test and check days (249 days on 4h, 390
+    needed) is split in the standard proportions of the full 730 days -
+    test 82, check 41, tuning 126 - never skipped."""
+    got = runs[0]
+    assert "why" not in got["young"] and "error" not in got["young"], got["young"]
+    out = got["rec_young"]["tfs"]["4h"]
+    assert (out["test_days"], out["check_days"]) == (82, 41) and out["days"] == 249
+    for p in out["search"]["picks"].values():
+        tun, chk, tst = p["cand"][4:7]
+        assert p["trades"]["row"]["trades"] == tun[0] + chk[0] + tst[0]
+
+
+def test_the_windows_are_standard_with_room_and_proportional_without(runs):
+    w = runs[0]["wins"]
+    assert w["4h_400"] == [240, 120]                 # 400 days >= 240 + 120 + 30
+    assert w["15m_100"] == [33, 16]                  # 120 x 100/365, 60 x 100/365
+    assert w["1d_3"] == [1, 1]                       # never zero days
+
+
+def test_a_full_history_coin_keeps_the_standard_windows(runs):
+    out = runs[0]["rec"]["tfs"]["4h"]
+    assert (out["test_days"], out["check_days"]) == (240, 120)
 
 
 def test_a_stock_token_searches_new_yorks_session_under_the_closed_market_rule(runs):

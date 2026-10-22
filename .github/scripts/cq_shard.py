@@ -93,6 +93,19 @@ def whole_days(tf: str) -> int:
     return HISTORY[tf] + 400
 
 
+def windows_for(tf: str, days: int) -> tuple[int, int]:
+    """(test days, check days) for a coin with `days` measured days: the
+    standard stretches when there is room for them and 30+ tuning days
+    before them; a younger coin is split in the standard proportions of the
+    full history instead of being skipped (operator, Oct 22, 2026: "Make sure
+    all coins and all timeframe"; CLAUDE.md: use what's available). Never
+    zero days."""
+    t, c = TEST_DAYS[tf], CHECK_DAYS[tf]
+    if days >= t + c + MIN_TUNE_DAYS:
+        return t, c
+    return max(1, round(t * days / HISTORY[tf])), max(1, round(c * days / HISTORY[tf]))
+
+
 def lucky(coin: str) -> bool:
     return LUCK.lower() == "all" or coin in LUCK_COINS
 
@@ -136,7 +149,8 @@ def barriers_for(tf: str, c: float, liq) -> tuple[list, list]:
     return out, ks
 
 
-def stats_from(r: dict, tf: str, errors: list | None = None) -> cq.Stats:
+def stats_from(r: dict, tf: str, errors: list | None = None,
+               windows: tuple | None = None) -> cq.Stats:
     """The engine's window counts (the trades that CLOSED in the last W days)
     cut into the three stretches: tuning = whole - (test + check), check =
     (test + check) - test, test = the last test days."""
@@ -147,21 +161,23 @@ def stats_from(r: dict, tf: str, errors: list | None = None) -> cq.Stats:
         return cq.Part(int(x.get("trades") or 0), int(x.get("wins") or 0),
                        float(x.get("profit") or 0.0), float(x.get("rt_sum") or 0.0))
 
-    t = part(TEST_DAYS[tf])
-    tc = part(TEST_DAYS[tf] + CHECK_DAYS[tf])
+    tdays, cdays = windows or (TEST_DAYS[tf], CHECK_DAYS[tf])
+    t = part(tdays)
+    tc = part(tdays + cdays)
     w = part(whole_days(tf))
     if errors is not None and w.trades != int(r.get("trades") or 0):
         errors.append(f"the whole window counted {w.trades} trades, the engine {r.get('trades')}")
     return cq.Stats(cq.minus(w, tc), cq.minus(tc, t), t)
 
 
-def measure(sym: str, tf: str, fr, pre: dict, want: dict, errors: list) -> dict:
+def measure(sym: str, tf: str, fr, pre: dict, want: dict, errors: list,
+            windows: tuple | None = None) -> dict:
     """Each name in `want` at ITS OWN stop/targets, through the nightly grid's
     own function: {(name, sl, tp): the engine's result}. run_pair asks
     br.pairs_for(tf) once per name, right after it reads that name's signals
     (at._dirs_for_backtest), which is how the name being measured is known."""
     df, dfw, warm = fr
-    tdays = TEST_DAYS[tf]
+    tdays, cdays = windows or (TEST_DAYS[tf], CHECK_DAYS[tf])
     got: dict = {}
     current: list = [None]
     engine, dirs_fn = at.backtest_strategy, at._dirs_for_backtest
@@ -193,7 +209,7 @@ def measure(sym: str, tf: str, fr, pre: dict, want: dict, errors: list) -> dict:
     br.pairs_for = lambda _tf: list(want.get(current[0], ()))
     at.backtest_strategy = keep
     at._dirs_for_backtest = dirs
-    br.SHORT_DAYS = (tdays, tdays + CHECK_DAYS[tf], whole_days(tf))
+    br.SHORT_DAYS = (tdays, tdays + cdays, whole_days(tf))
     br.RECENT_WINDOWS = br.SHORT_DAYS + (br.RECENT_DAYS,)
     try:
         ss.run_pair(sym, tf, io.StringIO(), signals=list(want), learned={**pre, "df": df})
@@ -203,19 +219,20 @@ def measure(sym: str, tf: str, fr, pre: dict, want: dict, errors: list) -> dict:
     return got
 
 
-def evaluator(sym: str, tf: str, fr, pre: dict, entries: list, bars: list, errors: list):
+def evaluator(sym: str, tf: str, fr, pre: dict, entries: list, bars: list, errors: list,
+              windows: tuple | None = None):
     """The search's `evaluate`: one run_pair call per round, each entry at the
     stop/targets the round asked of it."""
     def evaluate(cands):
         want: dict = {}
         for e, b in cands:
             want.setdefault(entries[e], []).append(bars[b])
-        got = measure(sym, tf, fr, pre, want, errors)
+        got = measure(sym, tf, fr, pre, want, errors, windows)
         out = {}
         for e, b in cands:
             sl, tp = bars[b]
             r = got.get((entries[e], round(sl, 6), round(tp, 6)))
-            out[(e, b)] = stats_from(r, tf, errors) if r and r.get("trades") else None
+            out[(e, b)] = stats_from(r, tf, errors, windows) if r and r.get("trades") else None
         return out
     return evaluate
 
@@ -246,11 +263,11 @@ def picked(sym: str, tf: str, fr, pre: dict, name: str, bar, st: cq.Stats) -> di
 
 
 def run_search(sym: str, tf: str, fr, pre: dict, entries: list, bars: list, ks: list,
-               c_usual: float, seed: int, deadline: float) -> dict:
+               c_usual: float, seed: int, deadline: float, windows: tuple | None = None) -> dict:
     """One search (the real one, or the luck one over random entries) and
     what it found, written by name."""
     errors: list = []
-    evaluate = evaluator(sym, tf, fr, pre, entries, bars, errors)
+    evaluate = evaluator(sym, tf, fr, pre, entries, bars, errors, windows)
     pool = set(entries)
     ix = {n: k for k, n in enumerate(entries)}
     near: dict = {}
@@ -296,28 +313,28 @@ def cq_pair(sym: str, tf: str, pre: dict, rec: dict) -> dict:
     if not len(dfw) or len(dfw) - warm < br.min_bars(tf):
         return {"why": f"only {max(0, len(dfw) - warm)} measurable candles"}
     days = int((dfw["Date"].iloc[-1] - dfw["Date"].iloc[warm]).days)
-    if days < TEST_DAYS[tf] + CHECK_DAYS[tf] + MIN_TUNE_DAYS:
-        return {"why": f"only {days} days: {MIN_TUNE_DAYS}+ tuning days must come before the "
-                       f"{CHECK_DAYS[tf]} check and {TEST_DAYS[tf]} test days"}
+    win = windows_for(tf, days)
     c_usual = br.round_trip_cost(pre["fee"], {"slippage": pre["slip"]})
     bars, ks = barriers_for(tf, c_usual, pre["liq"])
     if not bars:
         return {"why": "no stop/target pays 2:1 at this coin's usual round trip"}
     deadline = T0 + DEADLINE_S
-    out = {"days": days, "first": int(dfw["Date"].iloc[warm].timestamp()),
+    out = {"days": days, "test_days": win[0], "check_days": win[1],
+           "first": int(dfw["Date"].iloc[warm].timestamp()),
            "last": int(dfw["Date"].iloc[-1].timestamp()), "c": round(c_usual * 100, 4),
            "barriers": [[round(sl * 100, 4), round(tp * 100, 4), k]
                         for (sl, tp), k in zip(bars, ks, strict=True)]}
     entries = sq.entries_for(tf, _venue.kind(sym))
     out["search"] = run_search(sym, tf, fr, pre, entries, bars, ks, c_usual,
-                               cq.seed_of(coin, tf, sq.VERSION), deadline)
+                               cq.seed_of(coin, tf, sq.VERSION), deadline, win)
     if lucky(coin):
         out["luck"] = run_search(sym, tf, fr, pre, sq.random_entries(), bars, ks, c_usual,
-                                 cq.seed_of(coin, tf, sq.VERSION, "luck"), deadline)
+                                 cq.seed_of(coin, tf, sq.VERSION, "luck"), deadline, win)
     rec["tfs"][tf] = out
     s = out["search"]
     return {"entries": len(entries), "tried": s["tried"], "rounds": len(s["rounds"]),
-            "stop": s["stop"], "days": days, "last": out["last"],
+            "stop": s["stop"], "days": days, "test_days": win[0], "check_days": win[1],
+            "last": out["last"],
             **({"luck_tried": out["luck"]["tried"]} if "luck" in out else {})}
 
 

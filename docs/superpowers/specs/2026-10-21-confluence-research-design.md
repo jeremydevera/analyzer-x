@@ -95,7 +95,7 @@ it is wrong.
 
 * 300 candles of lead-in; every exit settled by the minute over the whole
   history (`br.fine_bars` from the window's first day; where Gate has no minute,
-  the frame's own candle settles it and the trade is counted `unclear`).
+  the frame's own candle settles it by the engine's bar rule).
 * The per-minute order book exists only for the newest ~45 days: older trades
   pay the coin's usual cost (median of its recorded minutes), counted
   `cost_unmeasured` (the Pro Trader rule).

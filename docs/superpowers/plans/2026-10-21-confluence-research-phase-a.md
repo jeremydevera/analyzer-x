@@ -29,10 +29,10 @@
 ## Review Focus
 
 1. A coin younger than its window: the tuning days shrink; below 30 tuning days the pair is skipped with why, never searched on nothing (test: `test_a_coin_too_young_for_its_windows_is_skipped_and_says_why`, Task 5).
-2. A month of minutes missing from Gate's archive: the candle settles by the candle (counted `unclear`), never a crash (the shard test runs with no minutes at all, Task 5).
+2. A month of minutes missing from Gate's archive: the candle settles by the candle's own rule, never a crash (the shard test runs with no minutes at all, Task 5).
 3. A machine killed at 6 hours: results rewritten after every coin; a search past its deadline stops between rounds and keeps its picks (test: `test_a_deadline_stops_between_rounds`, Task 4).
 4. Stock tokens: New York's session only, and the closed-market rule applies through run_pair (test: `test_stock_tokens_trade_new_yorks_session_and_4h_1d_have_no_session_break`, Task 2).
-5. A first check with too few pairs (young coins, no picks): not evidence, and not evidence is a STOP (test: `test_too_few_pairs_is_not_evidence_and_not_evidence_is_a_stop`, Task 8).
+5. A first check with too few coins (young coins, no picks, thin picks): not evidence, and not evidence is a STOP; a coin's timeframes count once (tests: `test_too_few_pairs_is_not_evidence_and_not_evidence_is_a_stop`, `test_a_coins_timeframes_count_once`, Task 8).
 
 ---
 
@@ -203,7 +203,10 @@ def test_the_space_holds_only_legal_combinations():
     assert len(e15) == len(set(e15))
     combos = [n for n in e15 if not n.startswith("cq_ex")]
     assert len(combos) == 1116           # 18 trigger settings, parts of different families
-    assert sum(n.startswith("cq_ex") for n in e15) == len(sq.EXISTING)
+    from tradingagents.signals_conf import CONF_SIGNALS
+
+    runnable = [r for r in sq.EXISTING if not getattr(CONF_SIGNALS[r], "needs_funding", False)]
+    assert sum(n.startswith("cq_ex") for n in e15) == len(runnable) == 52
     for n in combos:
         fams = sq.families(n)
         assert len(set(fams)) == len(fams) and 2 <= len(fams) <= 3, n
@@ -373,6 +376,32 @@ def test_an_unknown_cq_name_abstains_everywhere():
     o, h, lo, c, v, ts = _frame(n=400, seed=2)
     assert at.signal_for("cq_zz0-ev", h, lo, c, opens=o, volume=v, ts=ts) == 0
     assert not any(at._dirs_for_backtest("cq_fl00_gh_15m", h, lo, c, opens=o, volume=v, ts=ts))
+
+
+def test_an_existing_setup_that_needs_funding_is_not_in_the_space():
+    """The live runner calls signal_for without the funding history
+    (auto_trader.process_symbol), so cf_fundfade* would trade in the backtest
+    and abstain live - never a candidate (review, Oct 22, 2026)."""
+    from tradingagents.signals_conf import CONF_SIGNALS
+
+    for tf in ("15m", "4h"):
+        for n in sq.entries_for(tf, "crypto"):
+            spec = sq.spec_for(n)
+            if spec["trigger"][0] == "ex":
+                rule = sq.EXISTING[spec["trigger"][1][0]]
+                assert not getattr(CONF_SIGNALS[rule], "needs_funding", False), (tf, rule)
+
+
+def test_a_frame_grown_in_place_is_read_again():
+    """The frame is found by identity first; a caller that appends a candle
+    to the same lists must get the new candle's answer, never the cached one."""
+    fresh = _dirs("cq_rn00071", tuple(list(x) for x in _frame(n=901, seed=14)))
+    o, h, lo, c, v, ts = (list(x) for x in _frame(n=900, seed=14))
+    first = _dirs("cq_rn00071", (o, h, lo, c, v, ts))     # the cache now holds THESE lists
+    for lst, val in zip((o, h, lo, c, v, ts), (x[-1] for x in _frame(n=901, seed=14)), strict=True):
+        lst.append(val)
+    grown = _dirs("cq_rn00071", (o, h, lo, c, v, ts))
+    assert len(first) == 900 and grown == fresh
 ```
 
 - [ ] **Step 2: Run them** — `.venv/Scripts/python -m pytest tests/test_cq_signals.py -q` — Expected: FAIL, `ImportError: cannot import name 'signals_cq'`.
@@ -478,12 +507,16 @@ def _ctx(o, h, lo, c, v, ts):
     slow part); anything else is found by its fingerprint, as pt_ does. The
     lists are held, so an id cannot be reused while it is remembered."""
     refs = (o, h, lo, c, v, ts)
+    # the same lists, still the same length and last candle: a caller that
+    # grows a list in place is never answered from the frame it had before
+    mark = (len(c), c[-1] if len(c) else None, ts[-1] if len(ts) else None)
     with _IDENT_LOCK:
-        if _IDENT and all(a is b for a, b in zip(_IDENT[0][0], refs, strict=True)):
-            return _IDENT[0][1]
+        if (_IDENT and _IDENT[0][1] == mark
+                and all(a is b for a, b in zip(_IDENT[0][0], refs, strict=True))):
+            return _IDENT[0][2]
     ctx = sp._ctx(o, h, lo, c, v, ts)
     with _IDENT_LOCK:
-        _IDENT[:] = [(refs, ctx)]
+        _IDENT[:] = [(refs, mark, ctx)]
     return ctx
 
 
@@ -1156,7 +1189,8 @@ def entries_for(tf: str, kind: str = "crypto") -> list[str]:
     (venue.kind): each trigger setting with one confirmation, and with two of
     different families, never a part of the trigger's own family; New York's
     session only for stock tokens and indices; no session break on 4h and 1d
-    (and one VWAP there). Then the existing setups, as whole entries."""
+    (and one VWAP there). Then the existing setups, as whole entries, but
+    never one that reads funding (the runner does not pass it)."""
     from tradingagents.signals_conf import CONF_SIGNALS
 
     intraday = tf in INTRADAY_TFS
@@ -1170,7 +1204,11 @@ def entries_for(tf: str, kind: str = "crypto") -> list[str]:
         out += [name_of(t, [x]) for x in ok]
         out += [name_of(t, [x, y]) for x, y in itertools.combinations(ok, 2)
                 if BLOCKS[x[0]]["family"] != BLOCKS[y[0]]["family"]]
-    out += [name_of(("ex", (k,))) for k, rule in enumerate(EXISTING) if rule in CONF_SIGNALS]
+    # never a setup that reads the funding history: the live runner calls
+    # signal_for without it, so the rule would trade in the backtest and
+    # abstain live (review, Oct 22, 2026)
+    out += [name_of(("ex", (k,))) for k, rule in enumerate(EXISTING)
+            if rule in CONF_SIGNALS and not getattr(CONF_SIGNALS[rule], "needs_funding", False)]
     return out
 
 
@@ -1733,7 +1771,7 @@ sys.path.insert(0, os.path.join(ROOT, ".github", "scripts"))
 sys.path.insert(0, ROOT)
 os.environ.update({"GITHUB_TOKEN": "", "GITHUB_REPOSITORY": "", "INGEST_URL": "",
                    "COIN_LIST": "", "TA_VENUE": "gate", "TFS": "4h", "SHARD": "0",
-                   "SEARCH": "40,3,2", "LUCK": "all", "MIN_TRADES": "5"})
+                   "SEARCH": "40,3,2", "LUCK": "TEST", "MIN_TRADES": "5"})
 import pandas as pd
 import cq_shard as cs
 import sweep_shard as ss
@@ -1744,7 +1782,7 @@ from tradingagents import cost_store
 ss.cost_book = lambda sym: cost_store.empty()
 ss.report = lambda *a, **k: None
 ss.log = lambda *a, **k: None
-cs._venue.kind = lambda sym: "crypto"
+cs._venue.kind = lambda sym: "stocks" if sym.startswith("STK") else "crypto"
 step = 4 * 3_600_000
 end_ms = 1_790_812_800_000            # Oct 01, 2026 00:00 UTC: inside the news calendar
 
@@ -1757,6 +1795,20 @@ def market(n, seed):
 
 
 frames = {"TEST_USDT": market(4800, int(sys.argv[2])), "YOUNG_USDT": market(1500, 3)}
+
+
+def stock_market(n, seed):
+    """A stock token's 1h candles: every 7th candle printed no trade (its home
+    market shut), which the closed-market rule refuses to buy."""
+    hour = 3_600_000
+    o, h, lo, c, v, ts = _frame(n=n, seed=seed, step_s=3600, start_ms=end_ms - (n - 1) * hour,
+                                vol=0.006)
+    v = [0.0 if i % 7 == 0 else x for i, x in enumerate(v)]
+    return pd.DataFrame({"Date": pd.to_datetime(ts, unit="ms"), "Open": o, "High": h,
+                         "Low": lo, "Close": c, "Volume": v})
+
+
+frames["STK_USDT"] = stock_market(365 * 24 + 400, 7)
 cs.fx.klines = lambda sym, iv, need: frames[sym].tail(int(need)).reset_index(drop=True)
 pre = {"fee": 0.00075, "liq": 4.5, "fund": [], "slip": 0.0003, "fine": None, "meta": {}}
 rec = {"coin": "TEST", "tfs": {}}
@@ -1767,9 +1819,55 @@ fake = {"trades": 9, "recents": {
     240: {"trades": 3, "wins": 1, "profit": -0.5, "rt_sum": 0.6},
     360: {"trades": 5, "wins": 2, "profit": 0.25, "rt_sum": 1.0},
     cs.whole_days("4h"): {"trades": 9, "wins": 4, "profit": 1.75, "rt_sum": 1.8}}}
-print(json.dumps({"info": info, "rec": rec, "young": young,
+rec_stk = {"coin": "STK", "tfs": {}}
+stk = cs.cq_pair("STK_USDT", "1h", pre, rec_stk)
+# a signal that raises is COUNTED, never a silent "no trade"
+errs = []
+real_dirs = cs.at._dirs_for_backtest
+
+
+def broken(key, *a, **k):
+    if str(key).startswith("cq_ec0-vo0"):
+        raise ValueError("planted")
+    return real_dirs(key, *a, **k)
+
+
+cs.at._dirs_for_backtest = broken
+got = cs.measure("TEST_USDT", "4h", cs.frame("TEST_USDT", "4h"), pre,
+                 {"cq_ec0-vo0": [bars[0]], "cq_ec0-rs0": [bars[0]]}, errs)
+cs.at._dirs_for_backtest = real_dirs
+# one coin, two timeframes: the first is on disk before the second starts
+import gzip
+import time as _time
+_time.sleep = lambda s: None
+cs.TFS = ["4h", "1d"]
+asked, seen = [], []
+cs.prefetch = lambda sym, days, meta=None: {"fee": 0.00075, "liq": 4.5, "fund": [],
+                                            "slip": 0.0003, "fine": None, "meta": {}}
+cs.coin_stats = lambda sym, pre_, before: asked.append(before) or {"vol": 1.0}
+
+
+def fake_pair(sym, tf, pre_, rec_):
+    if tf == "1d":
+        with gzip.open(cs.OUT, "rt", encoding="utf-8") as fh:
+            seen.append(sorted(json.load(fh)["coins"]["SAVE"]["tfs"]))
+        raise RuntimeError("planted: the machine dies here")
+    rec_["tfs"][tf] = {"days": 1, "search": {"tried": 3}}
+    return {"tried": 3}
+
+
+cs.cq_pair = fake_pair
+report = []
+cs.measure_coin("SAVE_USDT", report, 0, 1)
+with gzip.open(cs.OUT, "rt", encoding="utf-8") as fh:
+    saved = json.load(fh)
+print(json.dumps({"info": info, "rec": rec, "young": young, "stk": stk, "rec_stk": rec_stk,
                   "bars": [[sl, tp, k] for (sl, tp), k in zip(bars, ks)],
-                  "split": [list(p) for p in cs.stats_from(fake, "4h")]}, default=str))
+                  "split": [list(p) for p in cs.stats_from(fake, "4h")],
+                  "errs": errs, "got": [list(k) for k in got],
+                  "asked": asked, "seen": seen, "report": report,
+                  "saved_tfs": sorted(saved["coins"]["SAVE"]["tfs"]),
+                  "saved_money": [saved.get("base"), saved.get("lev")]}, default=str))
 '''
 
 
@@ -1838,6 +1936,45 @@ def test_the_three_stretches_are_cut_from_the_engines_own_window_counts(runs):
 
 def test_a_coin_too_young_for_its_windows_is_skipped_and_says_why(runs):
     assert runs[0]["young"]["why"].startswith("only 249 days")
+
+
+def test_a_stock_token_searches_new_yorks_session_under_the_closed_market_rule(runs):
+    got = runs[0]
+    assert "why" not in got["stk"] and "error" not in got["stk"], got["stk"]
+    s = got["rec_stk"]["tfs"]["1h"]["search"]
+    assert s["entries"] == len(sq.entries_for("1h", "stocks")) and s["n_errors"] == 0
+    names = [r[0] for rd in s["rounds"] for r in rd["best"]] + [p["cand"][0] for p in s["picks"].values()]
+    for n in names:
+        spec = sq.spec_for(n)
+        for b, d in [spec["trigger"], *spec["confirms"]]:
+            if b in ("sb", "vs"):
+                assert sq._settings(b, d)["session"] == "ny", n
+    # the closed-market rule ran on every pick (a stamp only a stock row carries)
+    assert s["picks"] and all(isinstance(p["trades"]["row"]["closed_skipped"], int)
+                              for p in s["picks"].values())
+    assert "luck" not in got["rec_stk"]["tfs"]["1h"]          # LUCK named TEST only
+
+
+def test_a_signal_that_raises_is_counted_never_a_silent_no_trade(runs):
+    got = runs[0]
+    assert any("cq_ec0-vo0" in e and "planted" in e for e in got["errs"]), got["errs"]
+    assert any(k[0] == "cq_ec0-rs0" for k in got["got"])
+
+
+def test_every_finished_timeframe_is_on_disk_before_the_next_starts(runs):
+    got = runs[0]
+    # the failing timeframe is tried 3 times (PAIR_RETRIES redos), and every
+    # try found the finished 4h already on disk
+    assert got["seen"] == [["4h"]] * 3 and got["saved_tfs"] == ["4h"]
+    assert any(e["tf"] == "1d" and "planted" in e.get("error", "") for e in got["report"])
+
+
+def test_the_coin_is_described_on_the_year_before_every_test_window(runs):
+    assert runs[0]["asked"] == [365]                  # max(TEST_DAYS), whatever was dispatched
+
+
+def test_the_results_name_the_money_they_were_measured_at(runs):
+    assert runs[0]["saved_money"] == [5.0, 20]
 ```
 
 - [ ] **Step 2: Run** — `.venv/Scripts/python -m pytest tests/test_cq_shard.py -q` — Expected: FAIL (`No module named 'cq_shard'` in the child's stderr).
@@ -1927,6 +2064,8 @@ COIN_RETRIES = 2
 PAIR_RETRIES = 2                 # a failed coin + timeframe is redone BY ITSELF
 RETRY_CUTOFF_S = 4.8 * 3600      # no retry starts after this (runners die at 6 h)
 DEADLINE_S = 5.6 * 3600          # a search still running stops its rounds here
+STATS_BEFORE_DAYS = max(TEST_DAYS.values())   # a coin's numbers come from before every
+                                              # timeframe's test days, whatever was dispatched
 DAY_MS = 86_400_000
 T0 = time.time()
 STORE: dict = {}
@@ -2023,7 +2162,13 @@ def measure(sym: str, tf: str, fr, pre: dict, want: dict, errors: list) -> dict:
 
     def dirs(key, *a, **kw):
         current[0] = str(key).rsplit("_gh_", 1)[0]
-        return dirs_fn(key, *a, **kw)
+        try:
+            return dirs_fn(key, *a, **kw)
+        except Exception as exc:                               # noqa: BLE001
+            # run_pair skips a name whose signals raise; counted here, so a
+            # broken rule is an error on the page, never a quiet "no trade"
+            errors.append(f"{current[0]} signals: {type(exc).__name__}: {str(exc)[:120]}")
+            raise
 
     saved = (ss.window, br.pairs_for, at.backtest_strategy, at._dirs_for_backtest,
              br.SHORT_DAYS, br.RECENT_WINDOWS)
@@ -2177,8 +2322,8 @@ def prefetch(sym: str, days: int, meta: dict | None = None) -> dict:
     """One coin's fee, liquidation distance, funding (Gate serves 180 days),
     minute order book for the newest BOOK_DAYS, the usual cost every older
     trade pays, and the finest bars for the whole `days` (every exit settled
-    by the minute; a candle with no minute under it settles by the candle and
-    is counted unclear). `meta` replays an earlier run's choices."""
+    by the minute; a candle with no minute under it settles by the candle's
+    own rule). `meta` replays an earlier run's choices."""
     from tradingagents import cost_store
 
     now = int(time.time())
@@ -2269,7 +2414,8 @@ def save_out() -> None:
                    "check": CHECK_DAYS, "test": TEST_DAYS,
                    "search": {"round_size": ROUND_SIZE, "max_rounds": MAX_ROUNDS,
                               "patience": PATIENCE, "min_trades": MIN_TRADES},
-                   "luck": LUCK, "coins": STORE}, fh, separators=(",", ":"), default=str)
+                   "luck": LUCK, "base": ss.BASE_MARGIN, "lev": at.LEVERAGE,
+                   "coins": STORE}, fh, separators=(",", ":"), default=str)
     os.replace(tmp, OUT)
 
 
@@ -2348,24 +2494,34 @@ def each_tf(coin: str, tfs, work, report: list) -> None:
         pending = again
 
 
+def measure_coin(sym: str, report: list, done: int, total: int) -> None:
+    """One coin: its costs, what it is, then every timeframe - each one saved
+    the moment it finishes, so a machine killed in the middle of a coin still
+    hands over the timeframes it finished (review, Oct 22, 2026)."""
+    coin = sym.replace("_USDT", "")
+    pre = prefetch(sym, max(HISTORY[t] for t in TFS))
+    rec = {"coin": coin, "kind": _venue.kind(sym), "pre": pre["meta"], "tfs": {}}
+    try:
+        rec["stats"] = coin_stats(sym, pre, STATS_BEFORE_DAYS)
+    except Exception as exc:                                   # noqa: BLE001
+        rec["stats"] = {"error": f"{type(exc).__name__}: {str(exc)[:160]}"}
+    STORE[coin] = rec
+
+    def work(tf):
+        got = cq_pair(sym, tf, pre, rec)
+        save_out()
+        return got
+
+    each_tf(coin, TFS, work, report)
+    save_out()
+
+
 def search() -> int:
     ss.log(f"confluence research: timeframes {TFS}, rounds of {ROUND_SIZE} up to "
            f"{MAX_ROUNDS}, patience {PATIENCE}, luck "
            f"{'every coin' if LUCK.lower() == 'all' else f'{len(LUCK_COINS)} coin(s)'}")
 
-    def per_coin(sym, report, done, total):
-        coin = sym.replace("_USDT", "")
-        pre = prefetch(sym, max(HISTORY[t] for t in TFS))
-        rec = {"coin": coin, "kind": _venue.kind(sym), "pre": pre["meta"], "tfs": {}}
-        try:
-            rec["stats"] = coin_stats(sym, pre, max(TEST_DAYS[t] for t in TFS))
-        except Exception as exc:                               # noqa: BLE001
-            rec["stats"] = {"error": f"{type(exc).__name__}: {str(exc)[:160]}"}
-        each_tf(coin, TFS, lambda tf: cq_pair(sym, tf, pre, rec), report)
-        STORE[coin] = rec
-        save_out()
-
-    return run(per_coin)
+    return run(measure_coin)
 
 
 def main() -> int:
@@ -2658,6 +2814,34 @@ def test_the_workflow_takes_exactly_what_the_dispatch_sends():
     assert "python .github/scripts/cq_shard.py" in text and "cq-out-${{ matrix.shard }}" in text
     for env in ("COIN_LIST", "TFS", "LUCK", "SEARCH", "BASE_MARGIN", "SHARD", "SHARDS"):
         assert f"          {env}: " in text, env
+
+
+def test_the_collect_counts_searched_skipped_cut_and_failed_apart(monkeypatch, tmp_path):
+    """"40 ok" counted 8 pairs that were never searched (the pilot's first
+    half): searched, skipped with why, cut by the deadline and failed are four
+    different things and each is named."""
+    _fleet(monkeypatch, tmp_path)
+    cqs.dispatch("p", coins=["BTC", "NVDA", "SOL", "XAU"], now=NOON)
+    root = tmp_path / "run-1001"            # each run unpacks into its own folder
+    root.mkdir()
+    (root / "cq-report-0.json").write_text(json.dumps({"report": [
+        {"coin": "BTC", "tf": "4h", "tried": 7000, "stop": "patience"},
+        {"coin": "NVDA", "tf": "4h", "why": "only 48 days: 30+ tuning days must come before the 120 check"},
+        {"coin": "SOL", "tf": "4h", "tried": 900, "stop": "deadline"},
+        {"coin": "XAU", "tf": "4h", "error": "RuntimeError: planted"}]}), encoding="utf-8")
+    monkeypatch.setattr(cqs, "_gh", lambda *a, **k: json.dumps({"status": "completed"}))
+
+    def download(run, repo):
+        (tmp_path / f"run-{run}").mkdir(exist_ok=True)
+        return tmp_path / f"run-{run}"
+
+    monkeypatch.setattr(cqs, "download", download)
+    cov = cqs.collect(cqs.STATE)["coverage"]
+    assert cov["searched"] == 2 and cov["deadline"] == ["SOL 4h"]
+    assert cov["skipped"] == ["NVDA 4h: only 48 days: 30+ tuning days must come before the 120 check"]
+    assert cov["pairs_failed"] == ["XAU 4h: RuntimeError: planted"] and "pairs_ok" not in cov
+    prog = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))
+    assert "2 searched (1 cut by the deadline), 1 skipped, 1 failed" in prog["stage"]
 ```
 
 - [ ] **Step 2: Run** — `.venv/Scripts/python -m pytest tests/test_cq_search.py -q` — Expected: FAIL, `ImportError` (the workflow test passes once Task 6's file exists).
@@ -2900,11 +3084,30 @@ def download(run: int, repo: str) -> Path:
     return root
 
 
+def coverage(board: list, report: list) -> dict:
+    """What the machines did, out loud (CLAUDE.md rule 20): the coins of the
+    board no machine reached, then every coin + timeframe as exactly one of
+    searched (and of those, cut by the deadline), skipped with why (too young,
+    no stop/target paying 2:1) or failed - each skipped, cut and failed one
+    NAMED. "ok" counted the skipped ones as done (review, Oct 22, 2026: 40
+    "ok" in the pilot's first half, 32 searched)."""
+    from tradingagents import cpw_search as cpw
+
+    base = cpw.coverage(board, report)
+    base.pop("pairs_ok", None)
+    pairs = [e for e in report if e.get("tf") not in (None, "*") and not e.get("error")]
+    searched = [e for e in pairs if not e.get("why")]
+    base.update(searched=len(searched),
+                deadline=[f"{e['coin']} {e['tf']}" for e in searched if e.get("stop") == "deadline"],
+                skipped=[f"{e['coin']} {e['tf']}: {e['why']}" for e in pairs if e.get("why")])
+    return base
+
+
 def collect(state_name: str = STATE) -> dict:
     """Bring a run home (every account) and say what it measured: the
     folders, and the coverage - coins no machine reached and every failed
     pair, NAMED (CLAUDE.md rule 20)."""
-    from tradingagents import cpw_search as cpw, pro_search as ps
+    from tradingagents import pro_search as ps
 
     state = json.loads((home() / state_name).read_text(encoding="utf-8"))
     unfinished = []
@@ -2920,13 +3123,15 @@ def collect(state_name: str = STATE) -> dict:
     report = ps.read_json_parts(roots, "cq-report-*.json", "report")
     summary = {"label": state.get("label"),
                "runs": {k: v["run"] for k, v in state["runs"].items()},
-               "roots": [str(r) for r in roots], "coverage": cpw.coverage(board, report)}
+               "roots": [str(r) for r in roots], "coverage": coverage(board, report)}
     stem = Path(state_name).stem
     (home() / f"{stem}-collected.json").write_text(json.dumps(summary, indent=1),
                                                     encoding="utf-8")
     cov = summary["coverage"]
-    progress(f"collected {state_name}: {cov['reached']} of {cov['board']} coin(s), "
-             f"{cov['pairs_ok']} coin+timeframe(s) ok, {len(cov['pairs_failed'])} failed",
+    progress(f"collected {state_name}: {cov['reached']} of {cov['board']} coin(s); coin+"
+             f"timeframes: {cov['searched']} searched ({len(cov['deadline'])} cut by the "
+             f"deadline), {len(cov['skipped'])} skipped, {len(cov['pairs_failed'])} failed "
+             f"(each named in {stem}-collected.json)",
              run=(stem, {"state": state_name, "label": state.get("label"),
                          "runs": summary["runs"], "collected": f"{stem}-collected.json",
                          "reached": cov["reached"], "board": cov["board"]}))
@@ -2976,7 +3181,7 @@ if __name__ == "__main__":
 
 **Interfaces:**
 - Consumes: the out files (Task 5), `pro_search.files`, `cq_search.home/progress/STATE` (Task 7).
-- Produces: `results(roots) -> {"meta", "coins"}`, `prefee_r(part, sl_pct, notional=100)`, `after_fee_r(...)`, `t_quantile(p, df)`, `first_check(coins, notional=100, min_pairs=10) -> {"verdict": "go" | "stop", "why", "pairs", "rows", ...}`, `summary(coins)`.
+- Produces: `results(roots) -> {"meta", "coins"}`, `prefee_r(part, sl_pct, notional=100)`, `after_fee_r(...)`, `t_quantile(p, df)`, `first_check(coins, notional=100, min_coins=10, min_trades=10) -> {"verdict": "go" | "stop", "why", "coins", "pairs", "rows", "thin", "note", ...}`, `summary(coins, report=None)`, `report_states(states)`.
 
 - [ ] **Step 1: Write the failing tests** — `tests/test_cq_report.py`:
 
@@ -3054,6 +3259,93 @@ def test_the_machines_files_are_joined_and_a_coin_measured_twice_keeps_the_fulle
     assert got["meta"]["version"] == "cq1"
     assert got["coins"]["BTC"]["tfs"]["1h"]["search"]["tried"] == 90
     assert set(got["coins"]) == {"BTC", "X", "Y"}
+
+
+def test_the_same_coin_from_two_runs_keeps_every_timeframe(tmp_path):
+    """The pilot ran in two halves (4h+1d, then 15m/30m/1h): one coin arrives
+    from two runs with different timeframes, and both halves must stay."""
+    for k, (tf, tried) in enumerate((("4h", 50), ("1h", 70))):
+        d = tmp_path / f"run{k}"
+        d.mkdir()
+        with gzip.open(d / f"cq-{k}.json.gz", "wt", encoding="utf-8") as fh:
+            json.dump({"version": "cq1", "coins": {"BTC": {"kind": "crypto", "tfs": {
+                tf: {"search": {"tried": tried}}}}}}, fh)
+    got = cr.results([tmp_path / "run0", tmp_path / "run1"])
+    assert set(got["coins"]["BTC"]["tfs"]) == {"4h", "1h"}
+    assert got["coins"]["BTC"]["tfs"]["1h"]["search"]["tried"] == 70
+
+
+def test_a_report_reads_every_run_it_is_given(monkeypatch, tmp_path):
+    from tradingagents import cq_search as cqs
+
+    monkeypatch.setattr(cqs, "home", lambda: tmp_path)
+    for name, tf in (("pilot-a", "4h"), ("pilot-b", "1h")):
+        d = tmp_path / f"run-{name}"
+        d.mkdir()
+        with gzip.open(d / "cq-0.json.gz", "wt", encoding="utf-8") as fh:
+            json.dump({"version": "cq1", "coins": {"ETH": {"tfs": {tf: {"search": {"tried": 9}}}}}}, fh)
+        (tmp_path / f"{name}-collected.json").write_text(json.dumps(
+            {"label": name, "roots": [str(d)], "runs": {}}), encoding="utf-8")
+    rep = cr.report_states(["pilot-a.json", "pilot-b.json"])
+    assert rep["summary"]["coins"] == 1 and set(rep["summary"]["by_tf"]) == {"4h", "1h"}
+    assert (tmp_path / "pilot-a+pilot-b-report.json").exists()
+
+
+def _many(tfs, real_tst, luck_tst, sl=0.5):
+    """One coin measured on several timeframes, the same picks on each."""
+    c = _coin(real_tst, luck_tst, sl)["tfs"]["1h"]
+    return {"tfs": dict.fromkeys(tfs, c)}
+
+
+def test_a_coins_timeframes_count_once(monkeypatch):
+    """15m, 30m and 1h of one coin trade the same price path over the same
+    test days: the coin is the unit of evidence, never the coin + timeframe."""
+    three = {f"C{k}": _many(["15m", "30m", "1h", "4h"], [20, 9, 2.0 + 0.1 * k, 4.6], [20, 6, -3.0, 4.6])
+             for k in range(3)}
+    fc = cr.first_check(three)
+    assert fc["pairs"] == 12 and fc["coins"] == 3
+    assert fc["verdict"] == "stop" and "3 coins" in fc["why"]
+
+
+def test_a_thin_pair_is_left_out_and_named():
+    coins = {f"C{k}": _coin([20, 9, 2.0, 4.6], [20, 6, -3.0, 4.6]) for k in range(11)}
+    coins["THIN"] = _coin([6, 3, 2.0, 1.4], [20, 6, -3.0, 4.6])
+    fc = cr.first_check(coins)
+    assert fc["coins"] == 11 and fc["pairs"] == 11
+    assert fc["thin"] == ["THIN 1h: 6 real / 20 random test trades"]
+
+
+def test_the_first_check_says_what_before_fees_still_pays():
+    fc = cr.first_check({f"C{k}": _coin([20, 9, 2.0, 4.6], [20, 6, -3.0, 4.6]) for k in range(12)})
+    assert "half-spread" in fc["note"]
+
+
+def test_the_report_reads_the_money_the_machines_measured_at(monkeypatch, tmp_path):
+    """$10 x 20x = a $200 position: 10 trades, -$1.00, 5.0% of round trips
+    paid = +$9.00 before fees, a 0.5% stop = $1.00 an R -> 0.4R a trade."""
+    from tradingagents import cq_search as cqs
+
+    monkeypatch.setattr(cqs, "home", lambda: tmp_path)
+    d = tmp_path / "run-x"
+    d.mkdir()
+    with gzip.open(d / "cq-0.json.gz", "wt", encoding="utf-8") as fh:
+        json.dump({"version": "cq1", "base": 10.0, "lev": 20,
+                   "coins": {"ETH": _coin([10, 4, -1.0, 2.5], [10, 4, -1.0, 2.5])}}, fh)
+    (tmp_path / "x-collected.json").write_text(json.dumps({"label": "x", "roots": [str(d)],
+                                                           "runs": {}}), encoding="utf-8")
+    rep = cr.report_states(["x.json"])
+    assert rep["first_check"]["rows"][0]["real"] == pytest.approx(0.4)
+
+
+def test_the_summary_counts_skipped_and_failed_beside_searched():
+    coins = {"BTC": _coin([20, 9, 2.0, 4.6], [20, 6, -3.0, 4.6])}
+    report = [{"coin": "BTC", "tf": "1h", "tried": 100, "stop": "patience"},
+              {"coin": "NVDA", "tf": "1h", "why": "only 48 days: 30+ tuning days must come first"},
+              {"coin": "XAU", "tf": "1h", "error": "RuntimeError: planted"},
+              {"coin": "SOL", "tf": "1h", "tried": 40, "stop": "deadline"}]
+    got = cr.summary(coins, report)["by_tf"]["1h"]
+    assert got["searched"] == 1 and got["skipped"] == ["NVDA: only 48 days: 30+ tuning days must come first"]
+    assert got["failed"] == ["XAU: RuntimeError: planted"] and got["deadline"] == ["SOL"]
 ```
 
 - [ ] **Step 2: Run** — `.venv/Scripts/python -m pytest tests/test_cq_report.py -q` — Expected: FAIL, `ImportError`.
@@ -3069,14 +3361,16 @@ search never read - does the real search's final pick make more per trade
 BEFORE fees than the random search's final pick on the same coin and
 timeframe? Before fees = each trade's whole charged round trip added back
 (both fees and both fills). Per trade in R (one R = the stop), so a coin with
-a 2% stop and one with a 0.4% stop weigh alike. Each coin + timeframe is ONE
-observation - a pick's trades are not independent of each other - and the
-difference real minus random is taken per coin + timeframe; the low end of
-its 90% range (Student t with n - 1 degrees of freedom: Welch's interval for
-one sample of differences) must be above zero. Fewer than MIN_PAIRS pairs is
-not evidence, and not evidence is a stop.
+a 2% stop and one with a 0.4% stop weigh alike. A pick's trades are not
+independent of each other, so a pick's average is the observation; the
+difference real minus random is taken per coin + timeframe and AVERAGED PER
+COIN (a coin's timeframes share its price path over the same test days, so
+the coin is the unit of evidence); the low end of its 90% range (Student t,
+n - 1 degrees of freedom over the coins) must be above zero. Fewer than
+MIN_COINS coins is not evidence, and not evidence is a stop. A pick with
+fewer than MIN_TEST_TRADES test trades is left out and named.
 
-    python -m tradingagents.cq_report [state-name]
+    python -m tradingagents.cq_report [state-name ...]   (several = one result)
 """
 from __future__ import annotations
 
@@ -3087,18 +3381,25 @@ import statistics
 import sys
 from pathlib import Path
 
-MIN_PAIRS = 10
+MIN_COINS = 10            # coins with a real and a random pick: fewer is not evidence
+MIN_TEST_TRADES = 10      # test-day trades a pick needs on each side to count
+HALF_SPREAD_NOTE = ("Before fees adds back every round trip each trade was charged (both fees "
+                    "and both fills), but an entry bought on a minute with a book reading "
+                    "(the newest ~45 days) still pays its half-spread inside the fill price; "
+                    "real and random picks pay it alike.")
 
 
-def _tried(rec: dict) -> int:
-    return sum(int((t.get("search") or {}).get("tried") or 0)
-               for t in (rec.get("tfs") or {}).values())
+def _tried(out: dict) -> int:
+    return int((out.get("search") or {}).get("tried") or 0)
 
 
 def results(roots) -> dict:
     """Every machine's out/cq-*.json.gz joined: {"meta": the run's settings,
-    "coins": {coin: record}}. A coin measured twice (claimed again after a
-    machine died) keeps the copy whose searches tried the most candidates."""
+    "coins": {coin: record}}. Joined per coin AND timeframe: one coin arrives
+    from two runs that measured different timeframes (the pilot ran 4h+1d,
+    then 15m/30m/1h) and keeps both; a coin + timeframe measured twice
+    (claimed again after a machine died) keeps the copy whose search tried the
+    most candidates."""
     from tradingagents import pro_search as ps
 
     meta: dict = {}
@@ -3108,8 +3409,11 @@ def results(roots) -> dict:
             d = json.load(fh)
         meta = meta or {k: v for k, v in d.items() if k != "coins"}
         for coin, rec in (d.get("coins") or {}).items():
-            if coin not in coins or _tried(rec) > _tried(coins[coin]):
-                coins[coin] = rec
+            have = coins.setdefault(coin, {**{k: v for k, v in rec.items() if k != "tfs"},
+                                           "tfs": {}})
+            for tf, out in (rec.get("tfs") or {}).items():
+                if tf not in have["tfs"] or _tried(out) > _tried(have["tfs"][tf]):
+                    have["tfs"][tf] = out
     return {"meta": meta, "coins": coins}
 
 
@@ -3147,62 +3451,93 @@ def _final(search: dict | None):
     return search["picks"][search["final"]]["cand"]
 
 
-def first_check(coins: dict, notional: float = 100.0, min_pairs: int = MIN_PAIRS) -> dict:
+def first_check(coins: dict, notional: float = 100.0, min_coins: int = MIN_COINS,
+                min_trades: int = MIN_TEST_TRADES) -> dict:
     """Real final pick against random final pick, per coin + timeframe, on the
-    test days, before fees: go only when the low end of the 90% range of the
-    difference is above zero over at least `min_pairs` pairs."""
-    rows = []
+    test days, before fees, then AVERAGED PER COIN: a coin's timeframes trade
+    one price path over the same test days, so the coin is the unit of
+    evidence (review, Oct 22, 2026). Go only when the low end of the 90% range
+    of the coins' differences is above zero over at least `min_coins` coins.
+    A pair with fewer than `min_trades` test trades on either side is left
+    out and named (a handful of trades is noise; set before the second half's
+    numbers were seen). The per-pair figures ride beside and never decide."""
+    rows, thin = [], []
     for coin, rec in sorted(coins.items()):
         for tf, out in sorted((rec.get("tfs") or {}).items()):
             real, luck = _final(out.get("search")), _final(out.get("luck"))
             if real is None or luck is None:
                 continue
-            a, b = prefee_r(real[6], real[1], notional), prefee_r(luck[6], luck[1], notional)
-            if a is None or b is None:
+            if int(real[6][0]) < min_trades or int(luck[6][0]) < min_trades:
+                thin.append(f"{coin} {tf}: {real[6][0]} real / {luck[6][0]} random test trades")
                 continue
+            a, b = prefee_r(real[6], real[1], notional), prefee_r(luck[6], luck[1], notional)
             rows.append({"coin": coin, "tf": tf, "real": round(a, 4), "random": round(b, 4),
                          "diff": round(a - b, 4), "real_name": real[0], "random_name": luck[0],
                          "real_trades": real[6][0], "random_trades": luck[6][0],
                          "real_after_fee": round(after_fee_r(real[6], real[1], notional), 4)})
-    n = len(rows)
-    out = {"pairs": n, "rows": rows, "min_pairs": min_pairs}
+    per: dict = {}
+    for x in rows:
+        per.setdefault(x["coin"], []).append(x)
+    by_coin = {c: {"diff": statistics.fmean(v["diff"] for v in xs),
+                   "real": statistics.fmean(v["real"] for v in xs),
+                   "random": statistics.fmean(v["random"] for v in xs), "pairs": len(xs)}
+               for c, xs in per.items()}
+    n = len(by_coin)
+    out = {"coins": n, "pairs": len(rows), "rows": rows, "thin": thin, "min_coins": min_coins,
+           "min_trades": min_trades, "notional": notional, "note": HALF_SPREAD_NOTE,
+           "by_coin": {c: {k: round(v, 4) if isinstance(v, float) else v for k, v in d.items()}
+                       for c, d in by_coin.items()}}
     if n < 2:
-        out.update(verdict="stop", why=f"only {n} coin+timeframe(s) have a real and a random "
-                                       f"pick with test-day trades: not evidence")
+        out.update(verdict="stop", why=f"only {n} coin(s) have a real and a random pick with "
+                                       f"{min_trades}+ test-day trades each: not evidence")
         return out
-    d = [x["diff"] for x in rows]
+    d = [v["diff"] for v in by_coin.values()]
     mean, sd = statistics.fmean(d), statistics.stdev(d)
     t = t_quantile(0.95, n - 1)
     low, high = mean - t * sd / math.sqrt(n), mean + t * sd / math.sqrt(n)
+    pdiff = [x["diff"] for x in rows]
+    pt = t_quantile(0.95, len(pdiff) - 1)
+    pm, psd = statistics.fmean(pdiff), statistics.stdev(pdiff)
     out.update(mean_diff=round(mean, 4), low90=round(low, 4), high90=round(high, 4),
-               real_mean=round(statistics.fmean(x["real"] for x in rows), 4),
-               random_mean=round(statistics.fmean(x["random"] for x in rows), 4),
-               ahead=sum(x["diff"] > 0 for x in rows),
+               real_mean=round(statistics.fmean(v["real"] for v in by_coin.values()), 4),
+               random_mean=round(statistics.fmean(v["random"] for v in by_coin.values()), 4),
+               ahead=sum(v > 0 for v in d),
+               pair_mean_diff=round(pm, 4),
+               pair_low90=round(pm - pt * psd / math.sqrt(len(pdiff)), 4),
+               pair_high90=round(pm + pt * psd / math.sqrt(len(pdiff)), 4),
+               pairs_ahead=sum(x > 0 for x in pdiff),
                by_tf={tf: {"pairs": len(v), "mean_diff": round(statistics.fmean(v), 4)}
                       for tf in sorted({x["tf"] for x in rows})
                       for v in [[x["diff"] for x in rows if x["tf"] == tf]]})
-    if n < min_pairs:
-        out.update(verdict="stop", why=f"not enough evidence: {n} pairs, {min_pairs} needed")
+    if n < min_coins:
+        out.update(verdict="stop", why=f"not enough evidence: {n} coins, {min_coins} needed")
     elif low > 0:
         out.update(verdict="go", why=f"the real picks made {mean:+.3f}R a trade more than "
-                                     f"random before fees; the low end of the 90% range is "
-                                     f"{low:+.3f}R, above zero, over {n} coin+timeframes")
+                                     f"random before fees, averaged per coin; the low end of "
+                                     f"the 90% range is {low:+.3f}R, above zero, over {n} coins "
+                                     f"({len(rows)} coin+timeframes)")
     else:
         out.update(verdict="stop", why=f"the real picks are not clearly ahead of random before "
-                                       f"fees: {mean:+.3f}R a trade, the 90% range runs "
-                                       f"{low:+.3f}R to {high:+.3f}R over {n} coin+timeframes")
+                                       f"fees: {mean:+.3f}R a trade averaged per coin, the 90% "
+                                       f"range runs {low:+.3f}R to {high:+.3f}R over {n} coins "
+                                       f"({len(rows)} coin+timeframes)")
     return out
 
 
-def summary(coins: dict) -> dict:
-    """Per timeframe: coin+timeframes searched and skipped (with why),
-    why the searches stopped, candidates tried, and the final picks' payouts
-    and test-day win rates - for the real search and the luck search."""
+def summary(coins: dict, report: list | None = None) -> dict:
+    """Per timeframe: coin+timeframes searched, skipped (each named with why),
+    cut by the deadline and failed (from the machines' reports), candidates
+    tried, why the searches stopped, and the final picks' payouts and
+    test-day win rates - for the real search and the luck search."""
+    def blank():
+        return {"searched": 0, "skipped": [], "deadline": [], "failed": [], "tried": 0,
+                "stop": {}, "final_payout": {}, "test_trades": 0, "test_wins": 0,
+                "luck_tried": 0}
+
     per: dict = {}
     for rec in coins.values():
         for tf, out in (rec.get("tfs") or {}).items():
-            row = per.setdefault(tf, {"searched": 0, "tried": 0, "stop": {}, "final_payout": {},
-                                      "test_trades": 0, "test_wins": 0, "luck_tried": 0})
+            row = per.setdefault(tf, blank())
             s = out.get("search") or {}
             row["searched"] += 1
             row["tried"] += int(s.get("tried") or 0)
@@ -3213,25 +3548,56 @@ def summary(coins: dict) -> dict:
                 row["final_payout"][str(fin[3])] = row["final_payout"].get(str(fin[3]), 0) + 1
                 row["test_trades"] += int(fin[6][0])
                 row["test_wins"] += int(fin[6][1])
+    for e in report or []:
+        tf = e.get("tf")
+        if tf in (None, "*"):
+            continue
+        row = per.setdefault(tf, blank())
+        if e.get("error"):
+            row["failed"].append(f"{e.get('coin')}: {e['error']}")
+        elif e.get("why"):
+            row["skipped"].append(f"{e.get('coin')}: {e['why']}")
+        elif e.get("stop") == "deadline":
+            row["deadline"].append(str(e.get("coin")))
     for row in per.values():
         row["test_win_rate"] = (round(100 * row["test_wins"] / row["test_trades"], 1)
                                 if row["test_trades"] else None)
     return {"coins": len(coins), "by_tf": dict(sorted(per.items()))}
 
 
+def report_states(states: list) -> dict:
+    """Read every collected run named (`<state>-collected.json` under
+    cq_search.home()) as ONE result - the pilot's two halves together - and
+    write `<stem>+<stem>-report.json` beside them."""
+    from tradingagents import cq_search as cqs
+
+    roots, labels = [], []
+    for state in states:
+        got = json.loads((cqs.home() / f"{Path(state).stem}-collected.json")
+                         .read_text(encoding="utf-8"))
+        roots += list(got["roots"])
+        labels.append(got.get("label"))
+    from tradingagents import pro_search as ps
+
+    res = results(roots)
+    meta = res["meta"]
+    notional = float(meta.get("base") or 5.0) * float(meta.get("lev") or 20)
+    report = ps.read_json_parts(roots, "cq-report-*.json", "report")
+    rep = {"states": list(states), "labels": labels, "summary": summary(res["coins"], report),
+           "first_check": first_check(res["coins"], notional=notional), "meta": meta}
+    stem = "+".join(Path(s).stem for s in states)
+    (cqs.home() / f"{stem}-report.json").write_text(json.dumps(rep, indent=1), encoding="utf-8")
+    return rep
+
+
 if __name__ == "__main__":
     from tradingagents import cq_search as cqs
 
-    state = sys.argv[1] if len(sys.argv) > 1 else cqs.STATE
-    stem = Path(state).stem
-    got = json.loads((cqs.home() / f"{stem}-collected.json").read_text(encoding="utf-8"))
-    res = results(got["roots"])
-    fc = first_check(res["coins"])
-    rep = {"state": state, "summary": summary(res["coins"]), "first_check": fc,
-           "meta": res["meta"]}
-    (cqs.home() / f"{stem}-report.json").write_text(json.dumps(rep, indent=1), encoding="utf-8")
-    cqs.progress(f"first check ({stem}): {fc['verdict']} - {fc['why']}",
-                 first_check={k: v for k, v in fc.items() if k != "rows"})
+    states = sys.argv[1:] or [cqs.STATE]
+    rep = report_states(states)
+    fc = rep["first_check"]
+    cqs.progress(f"first check ({' + '.join(Path(s).stem for s in states)}): {fc['verdict']} "
+                 f"- {fc['why']}", first_check={k: v for k, v in fc.items() if k != "rows"})
     print(json.dumps({k: v for k, v in rep.items() if k != "meta"}
                      | {"first_check": {k: v for k, v in fc.items() if k != "rows"}}, indent=2))
 ```
@@ -3244,9 +3610,9 @@ if __name__ == "__main__":
 No new code; every step is a command and a check.
 
 - [ ] **Step 1: Wait for the window** — no dispatch between 12:45am and 5:00am; check the nightly jobs are not running (`gh run list --workflow research.yml --limit 3` and `--workflow sweep.yml` on each account).
-- [ ] **Step 2: Dispatch** — `.venv/Scripts/python -m tradingagents.cq_search dispatch "pilot" --coins BTC,ETH,SOL,XRP,DOGE,BNB,LINK,AVAX,SUI,LTC,AAVE,PEPE,WIF,TAO,ENA,HYPE,XAU,NVDA,TSLA,COIN --luck all --state pilot.json` — Expected: three runs (one per account), 20 coins dealt 7/7/6, `~/.tradingagents/cq/progress.json` stage "dispatched pilot.json: 3 run(s), 20 coin(s)".
+- [ ] **Step 2: Dispatch, in two halves** (ruled in the ledger: the 4h/1d half fits before the 12:45am cutoff) — 4h+1d: `cq_search.dispatch('pilot 4h-1d', coins=[BTC, ETH, SOL, XRP, DOGE, BNB, LINK, AVAX, SUI, LTC, AAVE, PEPE, WIF, TAO, ENA, HYPE, XAU, NVDA, TSLA, COIN], luck='all', timeframes='1d,4h', state_name='pilot-a.json')`; after 5:00am, 15m/30m/1h with the 3 stock tokens swapped for ones old enough to search (TQQQX, MSFT, AMD): `timeframes='1h,30m,15m', state_name='pilot-b.json'`. Expected: three runs per half (one per account), `~/.tradingagents/backtest/cq/progress.json` stage "dispatched ...: 3 run(s), 20 coin(s)".
 - [ ] **Step 3: Watch** — every 20-30 minutes `gh run view <id> -R <repo>`; a share GitHub refused: `... cq_search redo pilot.json <repo>`.
-- [ ] **Step 4: Collect** — `.venv/Scripts/python -m tradingagents.cq_search collect pilot.json` — Expected: coverage names every coin not reached and every failed pair.
-- [ ] **Step 5: First check** — `.venv/Scripts/python -m tradingagents.cq_report pilot.json` — Expected: a verdict with its numbers; send a PushNotification with it.
+- [ ] **Step 4: Collect** — `.venv/Scripts/python -m tradingagents.cq_search collect pilot-a.json` (and `pilot-b.json`) — Expected: coverage names every coin not reached, and every coin + timeframe as searched (cut by the deadline), skipped with why, or failed.
+- [ ] **Step 5: First check** — `.venv/Scripts/python -m tradingagents.cq_report pilot-a.json pilot-b.json` (both halves as one result) — Expected: a verdict with its numbers; send a PushNotification with it.
 - [ ] **Step 6: The page** — publish the pilot results as an artifact meeting CLAUDE.md's kit (items 1-8, A-H; the trade logs come from each pick's `trades`); verify every item before publishing.
 - [ ] **Step 7: Next** — go: Phase B (second stage, Prompt 2's exit walk, the full market in waves within 48 hours). Stop: report it, and both prompts stop.

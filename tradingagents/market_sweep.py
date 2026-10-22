@@ -2203,7 +2203,12 @@ def trades_for(coin: str, tf: str, *, signal: str, th: float, sl: float,
     # (UNIS_USDT 15m trend50, Oct 18, 2026: 30 trades listed, 58 stored)
     if _gate_said and want_bars and not whole:
         full = full.iloc[shard_history_start(len(full), want_bars):].reset_index(drop=True)
-    if not (60 <= want_bars < len(full)):
+    # THE ROW'S OWN CANDLE COUNT, down to the backtest's own floor
+    # (br.min_bars, 2: "THERE IS NO BAR FLOOR"). It was 60, so every 30-day
+    # row on DAILY candles (30 of them) walked every candle up to its end
+    # with signals worked out on its 330: #AYWGYUEG MINA 1d listed 88 trades,
+    # -$62.70, against its row's 20, +$21.30 (RCA-2026-10-22-H)
+    if not (br.min_bars(tf) <= want_bars < len(full)):
         want_bars = 0
     # AN ml_ ROW NEEDS ITS 200 BARS OF CLUES BEFORE THE WINDOW: without them
     # the replay is a quieter strategy under the stored row's name, so it is

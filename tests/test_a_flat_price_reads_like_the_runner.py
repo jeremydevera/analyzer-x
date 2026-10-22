@@ -118,7 +118,12 @@ def _read_lengths(monkeypatch) -> list:
 
 
 @pytest.mark.parametrize("n, bars, lead", [(1000, 200, 300),   # the shard's 300
-                                           (400, 300, 99)])    # all there was
+                                           (400, 300, 99),     # all there was
+                                           # a 30-day row on DAILY candles has
+                                           # 30 (RCA-2026-10-22-H: #AYWGYUEG
+                                           # MINA 1d, 20 trades in the row, 88
+                                           # listed - every saved day walked)
+                                           (400, 30, 300)])
 def test_a_gate_rows_trade_list_reads_the_history_github_read(tmp_path, monkeypatch,
                                                               n, bars, lead):
     """`sweep_shard.window`: the row's own candles and up to GATE_WARMUP_BARS

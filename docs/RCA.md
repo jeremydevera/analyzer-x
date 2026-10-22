@@ -172,6 +172,71 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-22-H — a click on a 30-day strategy on daily candles listed another stretch of days: #AYWGYUEG MINA 1d, 20 trades in its row, 88 in its list
+
+**CEO**
+
+* Clicking a daily-candle strategy in Stored strategies showed trades from
+  the wrong days: #AYWGYUEG (MINA 1d) has 20 trades, 10 wins and +$21.30 in
+  its row, and its list showed 88 trades, 15 wins and -$62.70.
+* Why: the list only used a strategy's own number of candles when it was at
+  least 60, and a 30-day strategy on daily candles has 30, so it walked every
+  saved day instead - and since Oct 18 with its signals shifted onto other
+  days.
+* What stops it now: the list uses the strategy's own candle count down to
+  2, the same floor the backtest itself uses.
+
+**DEV**
+
+* `tradingagents/market_sweep.py:2206 trades_for`: `if not (60 <= want_bars <
+  len(full)): want_bars = 0` - the walk then covered `df` (every candle to the
+  row's end, 399 in the guard) while a Gate row's `dirs` came from `full` cut
+  by `shard_history_start` (330): two lengths, the signals on other candles.
+* Invariant broken: **a replay's floor is the measurement's floor**
+  (`backtest_report.min_bars`, 2 - "THERE IS NO BAR FLOOR"), never a number
+  carried over from a different window.
+* Guard: `tests/test_a_flat_price_reads_like_the_runner.py::test_a_gate_rows_trade_list_reads_the_history_github_read[400-30-300]`
+  (red before: 399 candles walked for a 30-candle row).
+
+**SAW** - not on the operator's screen first: found Oct 22, 2026 ~7:00pm
+checking eight rows of the new group "Oct 22" through the site's own trade
+list (`POST /api/v2/strategies/trades`): seven matched their rows' trades
+and wins, the only daily one listed 88 trades for a 20-trade row.
+
+**TIMELINE**
+
+1. `Sep 02, 2026` (`1b8b2c6`) - the trade list keeps a row's own candle
+   count only from 60 up; every row then covered a year.
+2. `Sep 17, 2026` - Backtest v2: 30-day rows, so a 1d row holds about 30
+   candles; from here every 1d click walks every saved day to the row's end.
+3. `Oct 18, 2026` (RCA-2026-10-18-A) - a Gate row's signals are worked out on
+   its own candles and 300 before them; with the floor dropping the count,
+   a 1d list walks 399 candles against 330 signals.
+4. `Oct 22, 2026` ~7:00pm - #AYWGYUEG MINA 1d `cq_ex24` 1.5% / 4%: row 20
+   trades, 10W, +$21.30; list 88 trades, 15W, -$62.70.
+5. After the fix (this checkout, not yet the running site): 20 trades, 10W,
+   +$21.22. The $0.08 left is the click's saved funding list, which for MINA
+   ends Oct 10, 2026 4:00am - a separate, older gap the nightly rows share
+   (0G 4h `cx_first`: lists $0.07-$0.09 under their rows, same trades).
+
+**ROOT CAUSE** - a floor of 60 candles in `trades_for`, written for
+year-long rows, that the 30-day Backtest v2 never revisited.
+
+**WHY IT WAS NOT CAUGHT** - the replay-window tests use rows of 200 and 300
+candles, never one under 60; and the nightly v2 update measures 15m-4h only,
+so daily rows are few in the list (the Oct 21 and Oct 22 groups added them)
+and none had been checked trade by trade.
+
+**COST** - none in money: rooms switch on by a row's numbers, and Backtest
+a room replays whole (`whole=True`, no window). Every click on a v2 daily row
+since Sep 17, 2026 showed a list that was not its row's.
+
+**FIX** - this commit.
+
+**GUARD** - `tests/test_a_flat_price_reads_like_the_runner.py::test_a_gate_rows_trade_list_reads_the_history_github_read[400-30-300]`.
+
+---
+
 ## RCA-2026-10-22-G — a family landing kept every pair it rewrote behind the Stored strategies list until the whole landing ended, and the list's safety net rebuilt the list under it all night
 
 **CEO**

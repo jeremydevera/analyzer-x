@@ -81,6 +81,8 @@ COIN_RETRIES = 2
 PAIR_RETRIES = 2                 # a failed coin + timeframe is redone BY ITSELF
 RETRY_CUTOFF_S = 4.8 * 3600      # no retry starts after this (runners die at 6 h)
 DEADLINE_S = 5.6 * 3600          # a search still running stops its rounds here
+STATS_BEFORE_DAYS = max(TEST_DAYS.values())   # a coin's numbers come from before every
+                                              # timeframe's test days, whatever was dispatched
 DAY_MS = 86_400_000
 T0 = time.time()
 STORE: dict = {}
@@ -177,7 +179,13 @@ def measure(sym: str, tf: str, fr, pre: dict, want: dict, errors: list) -> dict:
 
     def dirs(key, *a, **kw):
         current[0] = str(key).rsplit("_gh_", 1)[0]
-        return dirs_fn(key, *a, **kw)
+        try:
+            return dirs_fn(key, *a, **kw)
+        except Exception as exc:                               # noqa: BLE001
+            # run_pair skips a name whose signals raise; counted here, so a
+            # broken rule is an error on the page, never a quiet "no trade"
+            errors.append(f"{current[0]} signals: {type(exc).__name__}: {str(exc)[:120]}")
+            raise
 
     saved = (ss.window, br.pairs_for, at.backtest_strategy, at._dirs_for_backtest,
              br.SHORT_DAYS, br.RECENT_WINDOWS)
@@ -331,8 +339,8 @@ def prefetch(sym: str, days: int, meta: dict | None = None) -> dict:
     """One coin's fee, liquidation distance, funding (Gate serves 180 days),
     minute order book for the newest BOOK_DAYS, the usual cost every older
     trade pays, and the finest bars for the whole `days` (every exit settled
-    by the minute; a candle with no minute under it settles by the candle and
-    is counted unclear). `meta` replays an earlier run's choices."""
+    by the minute; a candle with no minute under it settles by the candle's
+    own rule). `meta` replays an earlier run's choices."""
     from tradingagents import cost_store
 
     now = int(time.time())
@@ -423,7 +431,8 @@ def save_out() -> None:
                    "check": CHECK_DAYS, "test": TEST_DAYS,
                    "search": {"round_size": ROUND_SIZE, "max_rounds": MAX_ROUNDS,
                               "patience": PATIENCE, "min_trades": MIN_TRADES},
-                   "luck": LUCK, "coins": STORE}, fh, separators=(",", ":"), default=str)
+                   "luck": LUCK, "base": ss.BASE_MARGIN, "lev": at.LEVERAGE,
+                   "coins": STORE}, fh, separators=(",", ":"), default=str)
     os.replace(tmp, OUT)
 
 
@@ -502,24 +511,34 @@ def each_tf(coin: str, tfs, work, report: list) -> None:
         pending = again
 
 
+def measure_coin(sym: str, report: list, done: int, total: int) -> None:
+    """One coin: its costs, what it is, then every timeframe - each one saved
+    the moment it finishes, so a machine killed in the middle of a coin still
+    hands over the timeframes it finished (review, Oct 22, 2026)."""
+    coin = sym.replace("_USDT", "")
+    pre = prefetch(sym, max(HISTORY[t] for t in TFS))
+    rec = {"coin": coin, "kind": _venue.kind(sym), "pre": pre["meta"], "tfs": {}}
+    try:
+        rec["stats"] = coin_stats(sym, pre, STATS_BEFORE_DAYS)
+    except Exception as exc:                                   # noqa: BLE001
+        rec["stats"] = {"error": f"{type(exc).__name__}: {str(exc)[:160]}"}
+    STORE[coin] = rec
+
+    def work(tf):
+        got = cq_pair(sym, tf, pre, rec)
+        save_out()
+        return got
+
+    each_tf(coin, TFS, work, report)
+    save_out()
+
+
 def search() -> int:
     ss.log(f"confluence research: timeframes {TFS}, rounds of {ROUND_SIZE} up to "
            f"{MAX_ROUNDS}, patience {PATIENCE}, luck "
            f"{'every coin' if LUCK.lower() == 'all' else f'{len(LUCK_COINS)} coin(s)'}")
 
-    def per_coin(sym, report, done, total):
-        coin = sym.replace("_USDT", "")
-        pre = prefetch(sym, max(HISTORY[t] for t in TFS))
-        rec = {"coin": coin, "kind": _venue.kind(sym), "pre": pre["meta"], "tfs": {}}
-        try:
-            rec["stats"] = coin_stats(sym, pre, max(TEST_DAYS[t] for t in TFS))
-        except Exception as exc:                               # noqa: BLE001
-            rec["stats"] = {"error": f"{type(exc).__name__}: {str(exc)[:160]}"}
-        each_tf(coin, TFS, lambda tf: cq_pair(sym, tf, pre, rec), report)
-        STORE[coin] = rec
-        save_out()
-
-    return run(per_coin)
+    return run(measure_coin)
 
 
 def main() -> int:

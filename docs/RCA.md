@@ -172,6 +172,78 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-22-B — a code review of the confluence research found five machine-side faults before the pilot's second half: unrunnable setups, a stale frame, uncounted signal errors, one save per coin, and a coin described on the wrong year
+
+NEVER HAPPENED YET — found by the final review of the build (Oct 22, 2026,
+about 12:20am), fixed before the 15m/30m/1h half of the pilot was sent.
+
+**CEO**
+
+* Five small faults in the GitHub side of the confluence research could have
+  wasted machine time or put a quiet error in the results: three ready-made
+  setups that can never trade live were being tested, a broken rule would
+  have looked like "no trades", and a machine stopped mid-coin would have
+  lost everything it had finished on that coin.
+* Why: each was a corner the first version's tests did not visit.
+* What stops it now: each has its own test, and every one was seen failing
+  before its fix.
+
+**DEV**
+
+* `tradingagents/signals_cq.py` `entries_for` offered `cf_fundfade*`
+  (`needs_funding`), but `auto_trader.process_symbol` calls `signal_for`
+  without funding, so the rule abstains live; `_ctx` answered from its
+  identity cache for lists grown in place. `.github/scripts/cq_shard.py`
+  `measure`'s signal wrapper let `run_pair` swallow a signal exception
+  uncounted; `per_coin` saved once per coin; `coin_stats` took
+  `max(TEST_DAYS[t] for t in TFS)`, so the 15m/30m/1h half would have
+  described each coin on a year overlapping the 4h/1d test days; the results
+  did not say the base margin and leverage the reader assumed.
+* Invariant broken: **a candidate must be tradeable by the runner that would
+  trade it**, **a failure is counted where it happens**, and **work is saved
+  at the grain it finishes**.
+* Guard: `tests/test_cq_signals.py::test_an_existing_setup_that_needs_funding_is_not_in_the_space`,
+  `::test_a_frame_grown_in_place_is_read_again`;
+  `tests/test_cq_shard.py::test_a_signal_that_raises_is_counted_never_a_silent_no_trade`,
+  `::test_every_finished_timeframe_is_on_disk_before_the_next_starts`,
+  `::test_the_coin_is_described_on_the_year_before_every_test_window`,
+  `::test_the_results_name_the_money_they_were_measured_at`,
+  `::test_a_stock_token_searches_new_yorks_session_under_the_closed_market_rule`.
+
+**SAW** — nothing on screen; the reviewer's report.
+
+**TIMELINE**
+
+1. `Oct 21, 2026 11:34pm` — the build pushed (ecbd98d..ed5be13).
+2. `11:51pm` — the pilot's 4h/1d half sent: 20 coins, 32 coin + timeframes
+   searched, 0 engine errors, 0 re-measure drift, done at `11:59pm`.
+3. `Oct 22, 2026 ~12:20am` — the review: no critical fault, 3 important, 11
+   minor; the machine-side five are this entry (the pilot's 3 stock tokens,
+   NVDA/TSLA/COIN, were 48 days old on Gate and are swapped for TQQQX 361
+   days, MSFT 265, AMD 264 in the second half).
+4. Each fault's test written, seen red, fixed, green (signals 107/107,
+   machine 11/11).
+
+**ROOT CAUSE** — the first version's tests used a crypto coin on one
+timeframe with no failing rule and one coin per machine, so none of these
+paths ran.
+
+**WHY IT WAS NOT CAUGHT** — the shard test drove one crypto coin through
+`cq_pair` directly, never `measure_coin` with two timeframes, never a stock
+token, never a rule that raises; and no test compared the pool with what
+`process_symbol` passes to `signal_for`.
+
+**COST** — none in money; the 4h/1d half searched the 3 funding setups
+(wasted walks only) and is otherwise unaffected.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_cq_signals.py::test_an_existing_setup_that_needs_funding_is_not_in_the_space`,
+`::test_a_frame_grown_in_place_is_read_again`, and the five `tests/test_cq_shard.py`
+tests named under DEV (`test_a_signal_that_raises_is_counted_never_a_silent_no_trade` first).
+
+---
+
 ## RCA-2026-10-22-A — the confluence research's reader kept ONE copy per coin, so the pilot's second half would have replaced its first half's timeframes in the first check
 
 NEVER HAPPENED YET — found an hour after the reader shipped, before it read
@@ -200,7 +272,7 @@ both halves of the pilot.
   `::test_a_report_reads_every_run_it_is_given` (both red on the code before
   this commit).
 
-**SAW** — nothing yet; the first half's report (Oct 22, 2026 12:05am) was
+**SAW** — nothing yet; the first half's report (Oct 22, 2026 12:01am) was
 read alone and labelled a partial read in `~/.tradingagents/backtest/cq/progress.json`.
 
 **TIMELINE**
@@ -211,7 +283,7 @@ read alone and labelled a partial read in `~/.tradingagents/backtest/cq/progress
    15m/30m/1h half waits for 5:01am (the nightly jobs' window).
 3. `Oct 22, 2026 12:00am` — the first half collected: 20 coins, 32 coin +
    timeframes searched, 30 pairs read alone.
-4. `12:15am` — reading ahead to the join of the two halves found the
+4. `12:02am` — reading ahead to the join of the two halves found the
    per-coin replace; fixed before the second half exists.
 
 **ROOT CAUSE** — `if coin not in coins or _tried(rec) > _tried(coins[coin]):

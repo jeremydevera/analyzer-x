@@ -96,12 +96,16 @@ def _ctx(o, h, lo, c, v, ts):
     slow part); anything else is found by its fingerprint, as pt_ does. The
     lists are held, so an id cannot be reused while it is remembered."""
     refs = (o, h, lo, c, v, ts)
+    # the same lists, still the same length and last candle: a caller that
+    # grows a list in place is never answered from the frame it had before
+    mark = (len(c), c[-1] if len(c) else None, ts[-1] if len(ts) else None)
     with _IDENT_LOCK:
-        if _IDENT and all(a is b for a, b in zip(_IDENT[0][0], refs, strict=True)):
-            return _IDENT[0][1]
+        if (_IDENT and _IDENT[0][1] == mark
+                and all(a is b for a, b in zip(_IDENT[0][0], refs, strict=True))):
+            return _IDENT[0][2]
     ctx = sp._ctx(o, h, lo, c, v, ts)
     with _IDENT_LOCK:
-        _IDENT[:] = [(refs, ctx)]
+        _IDENT[:] = [(refs, mark, ctx)]
     return ctx
 
 
@@ -774,7 +778,8 @@ def entries_for(tf: str, kind: str = "crypto") -> list[str]:
     (venue.kind): each trigger setting with one confirmation, and with two of
     different families, never a part of the trigger's own family; New York's
     session only for stock tokens and indices; no session break on 4h and 1d
-    (and one VWAP there). Then the existing setups, as whole entries."""
+    (and one VWAP there). Then the existing setups, as whole entries, but
+    never one that reads funding (the runner does not pass it)."""
     from tradingagents.signals_conf import CONF_SIGNALS
 
     intraday = tf in INTRADAY_TFS
@@ -788,7 +793,11 @@ def entries_for(tf: str, kind: str = "crypto") -> list[str]:
         out += [name_of(t, [x]) for x in ok]
         out += [name_of(t, [x, y]) for x, y in itertools.combinations(ok, 2)
                 if BLOCKS[x[0]]["family"] != BLOCKS[y[0]]["family"]]
-    out += [name_of(("ex", (k,))) for k, rule in enumerate(EXISTING) if rule in CONF_SIGNALS]
+    # never a setup that reads the funding history: the live runner calls
+    # signal_for without it, so the rule would trade in the backtest and
+    # abstain live (review, Oct 22, 2026)
+    out += [name_of(("ex", (k,))) for k, rule in enumerate(EXISTING)
+            if rule in CONF_SIGNALS and not getattr(CONF_SIGNALS[rule], "needs_funding", False)]
     return out
 
 

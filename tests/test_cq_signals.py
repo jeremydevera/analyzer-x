@@ -91,7 +91,10 @@ def test_the_space_holds_only_legal_combinations():
     assert len(e15) == len(set(e15))
     combos = [n for n in e15 if not n.startswith("cq_ex")]
     assert len(combos) == 1116           # 18 trigger settings, parts of different families
-    assert sum(n.startswith("cq_ex") for n in e15) == len(sq.EXISTING)
+    from tradingagents.signals_conf import CONF_SIGNALS
+
+    runnable = [r for r in sq.EXISTING if not getattr(CONF_SIGNALS[r], "needs_funding", False)]
+    assert sum(n.startswith("cq_ex") for n in e15) == len(runnable) == 52
     for n in combos:
         fams = sq.families(n)
         assert len(set(fams)) == len(fams) and 2 <= len(fams) <= 3, n
@@ -261,3 +264,29 @@ def test_an_unknown_cq_name_abstains_everywhere():
     o, h, lo, c, v, ts = _frame(n=400, seed=2)
     assert at.signal_for("cq_zz0-ev", h, lo, c, opens=o, volume=v, ts=ts) == 0
     assert not any(at._dirs_for_backtest("cq_fl00_gh_15m", h, lo, c, opens=o, volume=v, ts=ts))
+
+
+def test_an_existing_setup_that_needs_funding_is_not_in_the_space():
+    """The live runner calls signal_for without the funding history
+    (auto_trader.process_symbol), so cf_fundfade* would trade in the backtest
+    and abstain live - never a candidate (review, Oct 22, 2026)."""
+    from tradingagents.signals_conf import CONF_SIGNALS
+
+    for tf in ("15m", "4h"):
+        for n in sq.entries_for(tf, "crypto"):
+            spec = sq.spec_for(n)
+            if spec["trigger"][0] == "ex":
+                rule = sq.EXISTING[spec["trigger"][1][0]]
+                assert not getattr(CONF_SIGNALS[rule], "needs_funding", False), (tf, rule)
+
+
+def test_a_frame_grown_in_place_is_read_again():
+    """The frame is found by identity first; a caller that appends a candle
+    to the same lists must get the new candle's answer, never the cached one."""
+    fresh = _dirs("cq_rn00071", tuple(list(x) for x in _frame(n=901, seed=14)))
+    o, h, lo, c, v, ts = (list(x) for x in _frame(n=900, seed=14))
+    first = _dirs("cq_rn00071", (o, h, lo, c, v, ts))     # the cache now holds THESE lists
+    for lst, val in zip((o, h, lo, c, v, ts), (x[-1] for x in _frame(n=901, seed=14)), strict=True):
+        lst.append(val)
+    grown = _dirs("cq_rn00071", (o, h, lo, c, v, ts))
+    assert len(first) == 900 and grown == fresh

@@ -138,3 +138,31 @@ def test_the_workflow_takes_exactly_what_the_dispatch_sends():
     assert "python .github/scripts/cq_shard.py" in text and "cq-out-${{ matrix.shard }}" in text
     for env in ("COIN_LIST", "TFS", "LUCK", "SEARCH", "BASE_MARGIN", "SHARD", "SHARDS"):
         assert f"          {env}: " in text, env
+
+
+def test_the_collect_counts_searched_skipped_cut_and_failed_apart(monkeypatch, tmp_path):
+    """"40 ok" counted 8 pairs that were never searched (the pilot's first
+    half): searched, skipped with why, cut by the deadline and failed are four
+    different things and each is named."""
+    _fleet(monkeypatch, tmp_path)
+    cqs.dispatch("p", coins=["BTC", "NVDA", "SOL", "XAU"], now=NOON)
+    root = tmp_path / "run-1001"            # each run unpacks into its own folder
+    root.mkdir()
+    (root / "cq-report-0.json").write_text(json.dumps({"report": [
+        {"coin": "BTC", "tf": "4h", "tried": 7000, "stop": "patience"},
+        {"coin": "NVDA", "tf": "4h", "why": "only 48 days: 30+ tuning days must come before the 120 check"},
+        {"coin": "SOL", "tf": "4h", "tried": 900, "stop": "deadline"},
+        {"coin": "XAU", "tf": "4h", "error": "RuntimeError: planted"}]}), encoding="utf-8")
+    monkeypatch.setattr(cqs, "_gh", lambda *a, **k: json.dumps({"status": "completed"}))
+
+    def download(run, repo):
+        (tmp_path / f"run-{run}").mkdir(exist_ok=True)
+        return tmp_path / f"run-{run}"
+
+    monkeypatch.setattr(cqs, "download", download)
+    cov = cqs.collect(cqs.STATE)["coverage"]
+    assert cov["searched"] == 2 and cov["deadline"] == ["SOL 4h"]
+    assert cov["skipped"] == ["NVDA 4h: only 48 days: 30+ tuning days must come before the 120 check"]
+    assert cov["pairs_failed"] == ["XAU 4h: RuntimeError: planted"] and "pairs_ok" not in cov
+    prog = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))
+    assert "2 searched (1 cut by the deadline), 1 skipped, 1 failed" in prog["stage"]

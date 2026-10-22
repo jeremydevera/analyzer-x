@@ -172,6 +172,72 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-22-C — the confluence research's first check counted each coin + timeframe as separate evidence, and the progress file called 40 pairs "ok" when 32 had been searched
+
+**CEO**
+
+* The progress file said the pilot's first half finished "40 coin+timeframe(s)
+  ok" when only 32 were searched: 8 were skipped because the coins were too
+  young (the 3 stock tokens and gold).
+* And the test that decides whether the research goes on would have counted
+  BTC on 15m, 30m and 1h as three separate pieces of proof, although all
+  three trade the same BTC price over the same days, so a borderline result
+  could have looked surer than it was.
+* What stops it now: each coin counts once, picks with fewer than 10 test
+  trades are left out by name, and the collect line names searched, skipped,
+  cut short and failed separately.
+
+**DEV**
+
+* `tradingagents/cq_search.py` `collect` printed `cpw_search.coverage`'s
+  `pairs_ok`, which counts every report entry without an error - skipped ones
+  included; `tradingagents/cq_report.py` `first_check` took the t interval over
+  coin + timeframe pairs, and assumed a $100 position instead of reading the
+  run's base margin and leverage.
+* Invariant broken: **the unit of evidence is the thing that is independent**
+  (a coin's timeframes share its price path over the same test days), and
+  **a count's label names exactly what it counts**.
+* Guard: `tests/test_cq_report.py::test_a_coins_timeframes_count_once`,
+  `::test_a_thin_pair_is_left_out_and_named`,
+  `::test_the_first_check_says_what_before_fees_still_pays`,
+  `::test_the_report_reads_the_money_the_machines_measured_at`,
+  `::test_the_summary_counts_skipped_and_failed_beside_searched`;
+  `tests/test_cq_search.py::test_the_collect_counts_searched_skipped_cut_and_failed_apart`.
+
+**SAW** — `~/.tradingagents/backtest/cq/progress.json`, Oct 22, 2026
+12:00am: "collected pilot-a.json: 20 of 20 coin(s), 40 coin+timeframe(s) ok,
+0 failed"; the machines' own reports: 32 searched, 8 "only 48 days" / "only
+280 days".
+
+**TIMELINE**
+
+1. `Oct 21, 2026 11:51pm` — the pilot's 4h/1d half sent; done `11:59pm`.
+2. `Oct 22, 2026 12:00am` — collected; the progress line says 40 ok.
+3. `12:01am` — the first check on that half alone: 30 pairs, +0.115R, 90%
+   range -0.160R to +0.389R (labelled a partial read, not the decision).
+4. `~12:20am` — the review: per coin + timeframe the range is -0.160R to
+   +0.389R; averaged per coin first it is -0.154R to +0.432R over 16 coins -
+   small with 2 timeframes a coin, growing with 5 (as 1 + 4 x their
+   correlation); and 11 of 30 pairs had a side under 10 test trades.
+5. Fixed before the second half's numbers exist.
+
+**ROOT CAUSE** — `first_check` treated `rows` (coin + timeframe) as the
+sample, and `collect` reused a coverage helper whose "ok" meant "no error".
+
+**WHY IT WAS NOT CAUGHT** — every first-check test gave each coin ONE
+timeframe, where a pair and a coin are the same thing; and the collect test's
+report held only searched pairs, so "ok" and "searched" were equal there.
+
+**COST** — none: no verdict has been made on these numbers; the misleading
+line sat in the progress file for about 50 minutes.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_cq_report.py::test_a_coins_timeframes_count_once` and
+the five other tests named under DEV.
+
+---
+
 ## RCA-2026-10-22-B — a code review of the confluence research found five machine-side faults before the pilot's second half: unrunnable setups, a stale frame, uncounted signal errors, one save per coin, and a coin described on the wrong year
 
 NEVER HAPPENED YET — found by the final review of the build (Oct 22, 2026,

@@ -234,11 +234,30 @@ def download(run: int, repo: str) -> Path:
     return root
 
 
+def coverage(board: list, report: list) -> dict:
+    """What the machines did, out loud (CLAUDE.md rule 20): the coins of the
+    board no machine reached, then every coin + timeframe as exactly one of
+    searched (and of those, cut by the deadline), skipped with why (too young,
+    no stop/target paying 2:1) or failed - each skipped, cut and failed one
+    NAMED. "ok" counted the skipped ones as done (review, Oct 22, 2026: 40
+    "ok" in the pilot's first half, 32 searched)."""
+    from tradingagents import cpw_search as cpw
+
+    base = cpw.coverage(board, report)
+    base.pop("pairs_ok", None)
+    pairs = [e for e in report if e.get("tf") not in (None, "*") and not e.get("error")]
+    searched = [e for e in pairs if not e.get("why")]
+    base.update(searched=len(searched),
+                deadline=[f"{e['coin']} {e['tf']}" for e in searched if e.get("stop") == "deadline"],
+                skipped=[f"{e['coin']} {e['tf']}: {e['why']}" for e in pairs if e.get("why")])
+    return base
+
+
 def collect(state_name: str = STATE) -> dict:
     """Bring a run home (every account) and say what it measured: the
     folders, and the coverage - coins no machine reached and every failed
     pair, NAMED (CLAUDE.md rule 20)."""
-    from tradingagents import cpw_search as cpw, pro_search as ps
+    from tradingagents import pro_search as ps
 
     state = json.loads((home() / state_name).read_text(encoding="utf-8"))
     unfinished = []
@@ -254,13 +273,15 @@ def collect(state_name: str = STATE) -> dict:
     report = ps.read_json_parts(roots, "cq-report-*.json", "report")
     summary = {"label": state.get("label"),
                "runs": {k: v["run"] for k, v in state["runs"].items()},
-               "roots": [str(r) for r in roots], "coverage": cpw.coverage(board, report)}
+               "roots": [str(r) for r in roots], "coverage": coverage(board, report)}
     stem = Path(state_name).stem
     (home() / f"{stem}-collected.json").write_text(json.dumps(summary, indent=1),
                                                     encoding="utf-8")
     cov = summary["coverage"]
-    progress(f"collected {state_name}: {cov['reached']} of {cov['board']} coin(s), "
-             f"{cov['pairs_ok']} coin+timeframe(s) ok, {len(cov['pairs_failed'])} failed",
+    progress(f"collected {state_name}: {cov['reached']} of {cov['board']} coin(s); coin+"
+             f"timeframes: {cov['searched']} searched ({len(cov['deadline'])} cut by the "
+             f"deadline), {len(cov['skipped'])} skipped, {len(cov['pairs_failed'])} failed "
+             f"(each named in {stem}-collected.json)",
              run=(stem, {"state": state_name, "label": state.get("label"),
                          "runs": summary["runs"], "collected": f"{stem}-collected.json",
                          "reached": cov["reached"], "board": cov["board"]}))

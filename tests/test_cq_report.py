@@ -101,3 +101,60 @@ def test_a_report_reads_every_run_it_is_given(monkeypatch, tmp_path):
     rep = cr.report_states(["pilot-a.json", "pilot-b.json"])
     assert rep["summary"]["coins"] == 1 and set(rep["summary"]["by_tf"]) == {"4h", "1h"}
     assert (tmp_path / "pilot-a+pilot-b-report.json").exists()
+
+
+def _many(tfs, real_tst, luck_tst, sl=0.5):
+    """One coin measured on several timeframes, the same picks on each."""
+    c = _coin(real_tst, luck_tst, sl)["tfs"]["1h"]
+    return {"tfs": dict.fromkeys(tfs, c)}
+
+
+def test_a_coins_timeframes_count_once(monkeypatch):
+    """15m, 30m and 1h of one coin trade the same price path over the same
+    test days: the coin is the unit of evidence, never the coin + timeframe."""
+    three = {f"C{k}": _many(["15m", "30m", "1h", "4h"], [20, 9, 2.0 + 0.1 * k, 4.6], [20, 6, -3.0, 4.6])
+             for k in range(3)}
+    fc = cr.first_check(three)
+    assert fc["pairs"] == 12 and fc["coins"] == 3
+    assert fc["verdict"] == "stop" and "3 coins" in fc["why"]
+
+
+def test_a_thin_pair_is_left_out_and_named():
+    coins = {f"C{k}": _coin([20, 9, 2.0, 4.6], [20, 6, -3.0, 4.6]) for k in range(11)}
+    coins["THIN"] = _coin([6, 3, 2.0, 1.4], [20, 6, -3.0, 4.6])
+    fc = cr.first_check(coins)
+    assert fc["coins"] == 11 and fc["pairs"] == 11
+    assert fc["thin"] == ["THIN 1h: 6 real / 20 random test trades"]
+
+
+def test_the_first_check_says_what_before_fees_still_pays():
+    fc = cr.first_check({f"C{k}": _coin([20, 9, 2.0, 4.6], [20, 6, -3.0, 4.6]) for k in range(12)})
+    assert "half-spread" in fc["note"]
+
+
+def test_the_report_reads_the_money_the_machines_measured_at(monkeypatch, tmp_path):
+    """$10 x 20x = a $200 position: 10 trades, -$1.00, 5.0% of round trips
+    paid = +$9.00 before fees, a 0.5% stop = $1.00 an R -> 0.4R a trade."""
+    from tradingagents import cq_search as cqs
+
+    monkeypatch.setattr(cqs, "home", lambda: tmp_path)
+    d = tmp_path / "run-x"
+    d.mkdir()
+    with gzip.open(d / "cq-0.json.gz", "wt", encoding="utf-8") as fh:
+        json.dump({"version": "cq1", "base": 10.0, "lev": 20,
+                   "coins": {"ETH": _coin([10, 4, -1.0, 2.5], [10, 4, -1.0, 2.5])}}, fh)
+    (tmp_path / "x-collected.json").write_text(json.dumps({"label": "x", "roots": [str(d)],
+                                                           "runs": {}}), encoding="utf-8")
+    rep = cr.report_states(["x.json"])
+    assert rep["first_check"]["rows"][0]["real"] == pytest.approx(0.4)
+
+
+def test_the_summary_counts_skipped_and_failed_beside_searched():
+    coins = {"BTC": _coin([20, 9, 2.0, 4.6], [20, 6, -3.0, 4.6])}
+    report = [{"coin": "BTC", "tf": "1h", "tried": 100, "stop": "patience"},
+              {"coin": "NVDA", "tf": "1h", "why": "only 48 days: 30+ tuning days must come first"},
+              {"coin": "XAU", "tf": "1h", "error": "RuntimeError: planted"},
+              {"coin": "SOL", "tf": "1h", "tried": 40, "stop": "deadline"}]
+    got = cr.summary(coins, report)["by_tf"]["1h"]
+    assert got["searched"] == 1 and got["skipped"] == ["NVDA: only 48 days: 30+ tuning days must come first"]
+    assert got["failed"] == ["XAU: RuntimeError: planted"] and got["deadline"] == ["SOL"]

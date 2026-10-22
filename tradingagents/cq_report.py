@@ -7,12 +7,14 @@ search never read - does the real search's final pick make more per trade
 BEFORE fees than the random search's final pick on the same coin and
 timeframe? Before fees = each trade's whole charged round trip added back
 (both fees and both fills). Per trade in R (one R = the stop), so a coin with
-a 2% stop and one with a 0.4% stop weigh alike. Each coin + timeframe is ONE
-observation - a pick's trades are not independent of each other - and the
-difference real minus random is taken per coin + timeframe; the low end of
-its 90% range (Student t with n - 1 degrees of freedom: Welch's interval for
-one sample of differences) must be above zero. Fewer than MIN_PAIRS pairs is
-not evidence, and not evidence is a stop.
+a 2% stop and one with a 0.4% stop weigh alike. A pick's trades are not
+independent of each other, so a pick's average is the observation; the
+difference real minus random is taken per coin + timeframe and AVERAGED PER
+COIN (a coin's timeframes share its price path over the same test days, so
+the coin is the unit of evidence); the low end of its 90% range (Student t,
+n - 1 degrees of freedom over the coins) must be above zero. Fewer than
+MIN_COINS coins is not evidence, and not evidence is a stop. A pick with
+fewer than MIN_TEST_TRADES test trades is left out and named.
 
     python -m tradingagents.cq_report [state-name ...]   (several = one result)
 """
@@ -25,7 +27,12 @@ import statistics
 import sys
 from pathlib import Path
 
-MIN_PAIRS = 10
+MIN_COINS = 10            # coins with a real and a random pick: fewer is not evidence
+MIN_TEST_TRADES = 10      # test-day trades a pick needs on each side to count
+HALF_SPREAD_NOTE = ("Before fees adds back every round trip each trade was charged (both fees "
+                    "and both fills), but an entry bought on a minute with a book reading "
+                    "(the newest ~45 days) still pays its half-spread inside the fill price; "
+                    "real and random picks pay it alike.")
 
 
 def _tried(out: dict) -> int:
@@ -90,62 +97,93 @@ def _final(search: dict | None):
     return search["picks"][search["final"]]["cand"]
 
 
-def first_check(coins: dict, notional: float = 100.0, min_pairs: int = MIN_PAIRS) -> dict:
+def first_check(coins: dict, notional: float = 100.0, min_coins: int = MIN_COINS,
+                min_trades: int = MIN_TEST_TRADES) -> dict:
     """Real final pick against random final pick, per coin + timeframe, on the
-    test days, before fees: go only when the low end of the 90% range of the
-    difference is above zero over at least `min_pairs` pairs."""
-    rows = []
+    test days, before fees, then AVERAGED PER COIN: a coin's timeframes trade
+    one price path over the same test days, so the coin is the unit of
+    evidence (review, Oct 22, 2026). Go only when the low end of the 90% range
+    of the coins' differences is above zero over at least `min_coins` coins.
+    A pair with fewer than `min_trades` test trades on either side is left
+    out and named (a handful of trades is noise; set before the second half's
+    numbers were seen). The per-pair figures ride beside and never decide."""
+    rows, thin = [], []
     for coin, rec in sorted(coins.items()):
         for tf, out in sorted((rec.get("tfs") or {}).items()):
             real, luck = _final(out.get("search")), _final(out.get("luck"))
             if real is None or luck is None:
                 continue
-            a, b = prefee_r(real[6], real[1], notional), prefee_r(luck[6], luck[1], notional)
-            if a is None or b is None:
+            if int(real[6][0]) < min_trades or int(luck[6][0]) < min_trades:
+                thin.append(f"{coin} {tf}: {real[6][0]} real / {luck[6][0]} random test trades")
                 continue
+            a, b = prefee_r(real[6], real[1], notional), prefee_r(luck[6], luck[1], notional)
             rows.append({"coin": coin, "tf": tf, "real": round(a, 4), "random": round(b, 4),
                          "diff": round(a - b, 4), "real_name": real[0], "random_name": luck[0],
                          "real_trades": real[6][0], "random_trades": luck[6][0],
                          "real_after_fee": round(after_fee_r(real[6], real[1], notional), 4)})
-    n = len(rows)
-    out = {"pairs": n, "rows": rows, "min_pairs": min_pairs}
+    per: dict = {}
+    for x in rows:
+        per.setdefault(x["coin"], []).append(x)
+    by_coin = {c: {"diff": statistics.fmean(v["diff"] for v in xs),
+                   "real": statistics.fmean(v["real"] for v in xs),
+                   "random": statistics.fmean(v["random"] for v in xs), "pairs": len(xs)}
+               for c, xs in per.items()}
+    n = len(by_coin)
+    out = {"coins": n, "pairs": len(rows), "rows": rows, "thin": thin, "min_coins": min_coins,
+           "min_trades": min_trades, "notional": notional, "note": HALF_SPREAD_NOTE,
+           "by_coin": {c: {k: round(v, 4) if isinstance(v, float) else v for k, v in d.items()}
+                       for c, d in by_coin.items()}}
     if n < 2:
-        out.update(verdict="stop", why=f"only {n} coin+timeframe(s) have a real and a random "
-                                       f"pick with test-day trades: not evidence")
+        out.update(verdict="stop", why=f"only {n} coin(s) have a real and a random pick with "
+                                       f"{min_trades}+ test-day trades each: not evidence")
         return out
-    d = [x["diff"] for x in rows]
+    d = [v["diff"] for v in by_coin.values()]
     mean, sd = statistics.fmean(d), statistics.stdev(d)
     t = t_quantile(0.95, n - 1)
     low, high = mean - t * sd / math.sqrt(n), mean + t * sd / math.sqrt(n)
+    pdiff = [x["diff"] for x in rows]
+    pt = t_quantile(0.95, len(pdiff) - 1)
+    pm, psd = statistics.fmean(pdiff), statistics.stdev(pdiff)
     out.update(mean_diff=round(mean, 4), low90=round(low, 4), high90=round(high, 4),
-               real_mean=round(statistics.fmean(x["real"] for x in rows), 4),
-               random_mean=round(statistics.fmean(x["random"] for x in rows), 4),
-               ahead=sum(x["diff"] > 0 for x in rows),
+               real_mean=round(statistics.fmean(v["real"] for v in by_coin.values()), 4),
+               random_mean=round(statistics.fmean(v["random"] for v in by_coin.values()), 4),
+               ahead=sum(v > 0 for v in d),
+               pair_mean_diff=round(pm, 4),
+               pair_low90=round(pm - pt * psd / math.sqrt(len(pdiff)), 4),
+               pair_high90=round(pm + pt * psd / math.sqrt(len(pdiff)), 4),
+               pairs_ahead=sum(x > 0 for x in pdiff),
                by_tf={tf: {"pairs": len(v), "mean_diff": round(statistics.fmean(v), 4)}
                       for tf in sorted({x["tf"] for x in rows})
                       for v in [[x["diff"] for x in rows if x["tf"] == tf]]})
-    if n < min_pairs:
-        out.update(verdict="stop", why=f"not enough evidence: {n} pairs, {min_pairs} needed")
+    if n < min_coins:
+        out.update(verdict="stop", why=f"not enough evidence: {n} coins, {min_coins} needed")
     elif low > 0:
         out.update(verdict="go", why=f"the real picks made {mean:+.3f}R a trade more than "
-                                     f"random before fees; the low end of the 90% range is "
-                                     f"{low:+.3f}R, above zero, over {n} coin+timeframes")
+                                     f"random before fees, averaged per coin; the low end of "
+                                     f"the 90% range is {low:+.3f}R, above zero, over {n} coins "
+                                     f"({len(rows)} coin+timeframes)")
     else:
         out.update(verdict="stop", why=f"the real picks are not clearly ahead of random before "
-                                       f"fees: {mean:+.3f}R a trade, the 90% range runs "
-                                       f"{low:+.3f}R to {high:+.3f}R over {n} coin+timeframes")
+                                       f"fees: {mean:+.3f}R a trade averaged per coin, the 90% "
+                                       f"range runs {low:+.3f}R to {high:+.3f}R over {n} coins "
+                                       f"({len(rows)} coin+timeframes)")
     return out
 
 
-def summary(coins: dict) -> dict:
-    """Per timeframe: coin+timeframes searched and skipped (with why),
-    why the searches stopped, candidates tried, and the final picks' payouts
-    and test-day win rates - for the real search and the luck search."""
+def summary(coins: dict, report: list | None = None) -> dict:
+    """Per timeframe: coin+timeframes searched, skipped (each named with why),
+    cut by the deadline and failed (from the machines' reports), candidates
+    tried, why the searches stopped, and the final picks' payouts and
+    test-day win rates - for the real search and the luck search."""
+    def blank():
+        return {"searched": 0, "skipped": [], "deadline": [], "failed": [], "tried": 0,
+                "stop": {}, "final_payout": {}, "test_trades": 0, "test_wins": 0,
+                "luck_tried": 0}
+
     per: dict = {}
     for rec in coins.values():
         for tf, out in (rec.get("tfs") or {}).items():
-            row = per.setdefault(tf, {"searched": 0, "tried": 0, "stop": {}, "final_payout": {},
-                                      "test_trades": 0, "test_wins": 0, "luck_tried": 0})
+            row = per.setdefault(tf, blank())
             s = out.get("search") or {}
             row["searched"] += 1
             row["tried"] += int(s.get("tried") or 0)
@@ -156,6 +194,17 @@ def summary(coins: dict) -> dict:
                 row["final_payout"][str(fin[3])] = row["final_payout"].get(str(fin[3]), 0) + 1
                 row["test_trades"] += int(fin[6][0])
                 row["test_wins"] += int(fin[6][1])
+    for e in report or []:
+        tf = e.get("tf")
+        if tf in (None, "*"):
+            continue
+        row = per.setdefault(tf, blank())
+        if e.get("error"):
+            row["failed"].append(f"{e.get('coin')}: {e['error']}")
+        elif e.get("why"):
+            row["skipped"].append(f"{e.get('coin')}: {e['why']}")
+        elif e.get("stop") == "deadline":
+            row["deadline"].append(str(e.get("coin")))
     for row in per.values():
         row["test_win_rate"] = (round(100 * row["test_wins"] / row["test_trades"], 1)
                                 if row["test_trades"] else None)
@@ -174,9 +223,14 @@ def report_states(states: list) -> dict:
                          .read_text(encoding="utf-8"))
         roots += list(got["roots"])
         labels.append(got.get("label"))
+    from tradingagents import pro_search as ps
+
     res = results(roots)
-    rep = {"states": list(states), "labels": labels, "summary": summary(res["coins"]),
-           "first_check": first_check(res["coins"]), "meta": res["meta"]}
+    meta = res["meta"]
+    notional = float(meta.get("base") or 5.0) * float(meta.get("lev") or 20)
+    report = ps.read_json_parts(roots, "cq-report-*.json", "report")
+    rep = {"states": list(states), "labels": labels, "summary": summary(res["coins"], report),
+           "first_check": first_check(res["coins"], notional=notional), "meta": meta}
     stem = "+".join(Path(s).stem for s in states)
     (cqs.home() / f"{stem}-report.json").write_text(json.dumps(rep, indent=1), encoding="utf-8")
     return rep

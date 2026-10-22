@@ -1870,6 +1870,18 @@ def signal_for(key: str, high: list, low: list, close: list,
         dirs = _sp.dirs_for(_spec, opens or [], high, low, close, volume or [],
                             ts or [], funding or [])
         return dirs[-1] if dirs else 0
+    # A CONFLUENCE RESEARCH combination (signals_cq, Oct 21, 2026): the same
+    # `dirs_for` the research measured it with, last candle only. An unknown
+    # cq_ name abstains.
+    if str(key).startswith("cq_"):
+        from tradingagents import signals_cq as _sq
+
+        _spec = _sq.spec_for(key)
+        if _spec is None:
+            return 0
+        dirs = _sq.dirs_for(_spec, opens or [], high, low, close, volume or [],
+                            ts or [], funding or [])
+        return dirs[-1] if dirs else 0
     # A SEP 27 ML model (signals_ml): the same `dirs_for` the grid measured
     # it with, last bar only. An unknown ml_ name abstains.
     if str(key).startswith("ml_"):
@@ -4065,6 +4077,16 @@ def _dirs_for_backtest(key: str, high: list, low: list,
         if _spec is None:
             return out
         return _sp.dirs_for(_spec, opens or [], high, low, close, volume or [],
+                            ts or [], funding or [])
+    # A CONFLUENCE RESEARCH combination (signals_cq, Oct 21, 2026), checked
+    # before every registry like pt_: an unknown cq_ name abstains.
+    if str(key).startswith("cq_"):
+        from tradingagents import signals_cq as _sq
+
+        _spec = _sq.spec_for(key)
+        if _spec is None:
+            return out
+        return _sq.dirs_for(_spec, opens or [], high, low, close, volume or [],
                             ts or [], funding or [])
     # A SEP 27 ML model (signals_ml), checked before every registry for the
     # same reason as lx_: an unknown ml_ name abstains rather than guessing.

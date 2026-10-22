@@ -1,0 +1,722 @@
+{
+ "about": "Release times (New York) of US CPI, FOMC rate-decision statements and the Employment Situation (nonfarm payrolls) report from Oct 01, 2023 through Dec 31, 2026: every past release is read from its own bls.gov news release (embargo line) or federalreserve.gov FOMC statement press release, and the six not yet held (Oct 28 - Dec 10, 2026) come from the official BLS release schedules and the Fed's FOMC calendar; the October 2025 CPI and jobs reports were never published (Oct 01 - Nov 12, 2025 shutdown), so they have no entry.",
+ "timezone": "America/New_York",
+ "from": "2023-10-01",
+ "through": "2026-12-31",
+ "events": [
+  {
+   "date": "2023-10-06",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_10062023 (Sep 2023 jobs)"
+  },
+  {
+   "date": "2023-10-12",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_10122023 (Sep 2023 CPI)"
+  },
+  {
+   "date": "2023-11-01",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20231101a"
+  },
+  {
+   "date": "2023-11-03",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_11032023 (Oct 2023 jobs)"
+  },
+  {
+   "date": "2023-11-14",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_11142023 (Oct 2023 CPI)"
+  },
+  {
+   "date": "2023-12-08",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_12082023 (Nov 2023 jobs)"
+  },
+  {
+   "date": "2023-12-12",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_12122023 (Nov 2023 CPI)"
+  },
+  {
+   "date": "2023-12-13",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20231213a"
+  },
+  {
+   "date": "2024-01-05",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_01052024 (Dec 2023 jobs)"
+  },
+  {
+   "date": "2024-01-11",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_01112024 (Dec 2023 CPI)"
+  },
+  {
+   "date": "2024-01-31",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20240131a"
+  },
+  {
+   "date": "2024-02-02",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_02022024 (Jan 2024 jobs)"
+  },
+  {
+   "date": "2024-02-13",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_02132024 (Jan 2024 CPI)"
+  },
+  {
+   "date": "2024-03-08",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_03082024 (Feb 2024 jobs)"
+  },
+  {
+   "date": "2024-03-12",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_03122024 (Feb 2024 CPI)"
+  },
+  {
+   "date": "2024-03-20",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20240320a"
+  },
+  {
+   "date": "2024-04-05",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_04052024 (Mar 2024 jobs)"
+  },
+  {
+   "date": "2024-04-10",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_04102024 (Mar 2024 CPI)"
+  },
+  {
+   "date": "2024-05-01",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20240501a"
+  },
+  {
+   "date": "2024-05-03",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_05032024 (Apr 2024 jobs)"
+  },
+  {
+   "date": "2024-05-15",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_05152024 (Apr 2024 CPI)"
+  },
+  {
+   "date": "2024-06-07",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_06072024 (May 2024 jobs)"
+  },
+  {
+   "date": "2024-06-12",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_06122024 (May 2024 CPI)"
+  },
+  {
+   "date": "2024-06-12",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20240612a"
+  },
+  {
+   "date": "2024-07-05",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_07052024 (Jun 2024 jobs)"
+  },
+  {
+   "date": "2024-07-11",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_07112024 (Jun 2024 CPI)"
+  },
+  {
+   "date": "2024-07-31",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20240731a"
+  },
+  {
+   "date": "2024-08-02",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_08022024 (Jul 2024 jobs)"
+  },
+  {
+   "date": "2024-08-14",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_08142024 (Jul 2024 CPI)"
+  },
+  {
+   "date": "2024-09-06",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_09062024 (Aug 2024 jobs)"
+  },
+  {
+   "date": "2024-09-11",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_09112024 (Aug 2024 CPI)"
+  },
+  {
+   "date": "2024-09-18",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20240918a"
+  },
+  {
+   "date": "2024-10-04",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_10042024 (Sep 2024 jobs)"
+  },
+  {
+   "date": "2024-10-10",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_10102024 (Sep 2024 CPI)"
+  },
+  {
+   "date": "2024-11-01",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_11012024 (Oct 2024 jobs)"
+  },
+  {
+   "date": "2024-11-07",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20241107a"
+  },
+  {
+   "date": "2024-11-13",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_11132024 (Oct 2024 CPI)"
+  },
+  {
+   "date": "2024-12-06",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_12062024 (Nov 2024 jobs)"
+  },
+  {
+   "date": "2024-12-11",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_12112024 (Nov 2024 CPI)"
+  },
+  {
+   "date": "2024-12-18",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20241218a"
+  },
+  {
+   "date": "2025-01-10",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_01102025 (Dec 2024 jobs)"
+  },
+  {
+   "date": "2025-01-15",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_01152025 (Dec 2024 CPI)"
+  },
+  {
+   "date": "2025-01-29",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20250129a"
+  },
+  {
+   "date": "2025-02-07",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_02072025 (Jan 2025 jobs)"
+  },
+  {
+   "date": "2025-02-12",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_02122025 (Jan 2025 CPI)"
+  },
+  {
+   "date": "2025-03-07",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_03072025 (Feb 2025 jobs)"
+  },
+  {
+   "date": "2025-03-12",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_03122025 (Feb 2025 CPI)"
+  },
+  {
+   "date": "2025-03-19",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20250319a"
+  },
+  {
+   "date": "2025-04-04",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_04042025 (Mar 2025 jobs)"
+  },
+  {
+   "date": "2025-04-10",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_04102025 (Mar 2025 CPI)"
+  },
+  {
+   "date": "2025-05-02",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_05022025 (Apr 2025 jobs)"
+  },
+  {
+   "date": "2025-05-07",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20250507a"
+  },
+  {
+   "date": "2025-05-13",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_05132025 (Apr 2025 CPI)"
+  },
+  {
+   "date": "2025-06-06",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_06062025 (May 2025 jobs)"
+  },
+  {
+   "date": "2025-06-11",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_06112025 (May 2025 CPI)"
+  },
+  {
+   "date": "2025-06-18",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20250618a"
+  },
+  {
+   "date": "2025-07-03",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_07032025 (Jun 2025 jobs)"
+  },
+  {
+   "date": "2025-07-15",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_07152025 (Jun 2025 CPI)"
+  },
+  {
+   "date": "2025-07-30",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20250730a"
+  },
+  {
+   "date": "2025-08-01",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_08012025 (Jul 2025 jobs)"
+  },
+  {
+   "date": "2025-08-12",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_08122025 (Jul 2025 CPI)"
+  },
+  {
+   "date": "2025-09-05",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_09052025 (Aug 2025 jobs)"
+  },
+  {
+   "date": "2025-09-11",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_09112025 (Aug 2025 CPI)"
+  },
+  {
+   "date": "2025-09-17",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20250917a"
+  },
+  {
+   "date": "2025-10-24",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_10242025 (Sep 2025 CPI)"
+  },
+  {
+   "date": "2025-10-29",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20251029a"
+  },
+  {
+   "date": "2025-11-20",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_11202025 (Sep 2025 jobs)"
+  },
+  {
+   "date": "2025-12-10",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20251210a"
+  },
+  {
+   "date": "2025-12-16",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_12162025 (Nov 2025 jobs, first Oct 2025 payrolls)"
+  },
+  {
+   "date": "2025-12-18",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_12182025 (Nov 2025 CPI)"
+  },
+  {
+   "date": "2026-01-09",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_01092026 (Dec 2025 jobs)"
+  },
+  {
+   "date": "2026-01-13",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_01132026 (Dec 2025 CPI)"
+  },
+  {
+   "date": "2026-01-28",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20260128a"
+  },
+  {
+   "date": "2026-02-11",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_02112026 (Jan 2026 jobs)"
+  },
+  {
+   "date": "2026-02-13",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_02132026 (Jan 2026 CPI)"
+  },
+  {
+   "date": "2026-03-06",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_03062026 (Feb 2026 jobs)"
+  },
+  {
+   "date": "2026-03-11",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_03112026 (Feb 2026 CPI)"
+  },
+  {
+   "date": "2026-03-18",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20260318a"
+  },
+  {
+   "date": "2026-04-03",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_04032026 (Mar 2026 jobs)"
+  },
+  {
+   "date": "2026-04-10",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_04102026 (Mar 2026 CPI)"
+  },
+  {
+   "date": "2026-04-29",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20260429a"
+  },
+  {
+   "date": "2026-05-08",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_05082026 (Apr 2026 jobs)"
+  },
+  {
+   "date": "2026-05-12",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_05122026 (Apr 2026 CPI)"
+  },
+  {
+   "date": "2026-06-05",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_06052026 (May 2026 jobs)"
+  },
+  {
+   "date": "2026-06-10",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_06102026 (May 2026 CPI)"
+  },
+  {
+   "date": "2026-06-17",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20260617a"
+  },
+  {
+   "date": "2026-07-02",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_07022026 (Jun 2026 jobs)"
+  },
+  {
+   "date": "2026-07-14",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_07142026 (Jun 2026 CPI)"
+  },
+  {
+   "date": "2026-07-29",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20260729a"
+  },
+  {
+   "date": "2026-08-07",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_08072026 (Jul 2026 jobs)"
+  },
+  {
+   "date": "2026-08-12",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_08122026 (Jul 2026 CPI)"
+  },
+  {
+   "date": "2026-09-04",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_09042026 (Aug 2026 jobs)"
+  },
+  {
+   "date": "2026-09-11",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_09112026 (Aug 2026 CPI)"
+  },
+  {
+   "date": "2026-09-16",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed statement monetary20260916a"
+  },
+  {
+   "date": "2026-10-02",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS release empsit_10022026 (Sep 2026 jobs)"
+  },
+  {
+   "date": "2026-10-14",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS release cpi_10142026 (Sep 2026 CPI)"
+  },
+  {
+   "date": "2026-10-28",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed FOMC calendar (October 27-28 meeting, upcoming)"
+  },
+  {
+   "date": "2026-11-06",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS schedule (Oct 2026 jobs, upcoming)"
+  },
+  {
+   "date": "2026-11-10",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS schedule (Oct 2026 CPI, upcoming)"
+  },
+  {
+   "date": "2026-12-04",
+   "time": "08:30",
+   "kind": "nfp",
+   "confirmed": true,
+   "source": "BLS schedule (Nov 2026 jobs, upcoming)"
+  },
+  {
+   "date": "2026-12-09",
+   "time": "14:00",
+   "kind": "fomc",
+   "confirmed": true,
+   "source": "Fed FOMC calendar (December 8-9 meeting, upcoming)"
+  },
+  {
+   "date": "2026-12-10",
+   "time": "08:30",
+   "kind": "cpi",
+   "confirmed": true,
+   "source": "BLS schedule (Nov 2026 CPI, upcoming)"
+  }
+ ]
+}

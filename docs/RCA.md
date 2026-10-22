@@ -172,6 +172,66 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-22-A — the confluence research's reader kept ONE copy per coin, so the pilot's second half would have replaced its first half's timeframes in the first check
+
+NEVER HAPPENED YET — found an hour after the reader shipped, before it read
+both halves of the pilot.
+
+**CEO**
+
+* The 20-coin test of the confluence research runs in two halves (4h and 1d
+  first, 15m/30m/1h after 5:00am), and the reader that judges it would have
+  kept only one half for each coin: BTC's 4h and 1d results thrown away the
+  moment its 15m/30m/1h results arrived.
+* Why: it was written for one run, where a coin found twice means a machine
+  measured it again, so it kept the fuller copy of the whole coin.
+* What stops it now: it keeps the best copy of every coin AND timeframe, and
+  one report reads both halves as one result.
+
+**DEV**
+
+* `tradingagents/cq_report.py` `results()` replaced `coins[coin]` whole when a
+  later file's `_tried(rec)` (summed over its timeframes) was bigger, so two
+  runs of one coin over disjoint timeframes kept only the run with more
+  candidates; the CLI also read one state only.
+* Invariant broken: **a result is joined at the grain it was measured in** -
+  the search's unit is a coin + timeframe, never a coin.
+* Guard: `tests/test_cq_report.py::test_the_same_coin_from_two_runs_keeps_every_timeframe`,
+  `::test_a_report_reads_every_run_it_is_given` (both red on the code before
+  this commit).
+
+**SAW** — nothing yet; the first half's report (Oct 22, 2026 12:05am) was
+read alone and labelled a partial read in `~/.tradingagents/backtest/cq/progress.json`.
+
+**TIMELINE**
+
+1. `Oct 21, 2026 11:34pm` — `cq_report` pushed (ed5be13), its join written
+   for one run.
+2. `11:51pm` — the pilot's 4h/1d half dispatched on all three accounts; the
+   15m/30m/1h half waits for 5:01am (the nightly jobs' window).
+3. `Oct 22, 2026 12:00am` — the first half collected: 20 coins, 32 coin +
+   timeframes searched, 30 pairs read alone.
+4. `12:15am` — reading ahead to the join of the two halves found the
+   per-coin replace; fixed before the second half exists.
+
+**ROOT CAUSE** — `if coin not in coins or _tried(rec) > _tried(coins[coin]):
+coins[coin] = rec` joined at the coin, one level coarser than the
+measurement.
+
+**WHY IT WAS NOT CAUGHT** — its only join test had the same coin with the
+same timeframe on two machines (the retry case it was written for); no test
+gave it one coin from two runs with different timeframes, which the two-half
+pilot - decided after the reader was written - creates.
+
+**COST** — none: the second half had not run.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_cq_report.py::test_the_same_coin_from_two_runs_keeps_every_timeframe`,
+`::test_a_report_reads_every_run_it_is_given`.
+
+---
+
 ## RCA-2026-10-21-D — a third GitHub account would have had its cost files ignored and its Forecast replay deleted while still in use
 
 NEVER HAPPENED YET — found while connecting the third account, before its

@@ -14,7 +14,7 @@ its 90% range (Student t with n - 1 degrees of freedom: Welch's interval for
 one sample of differences) must be above zero. Fewer than MIN_PAIRS pairs is
 not evidence, and not evidence is a stop.
 
-    python -m tradingagents.cq_report [state-name]
+    python -m tradingagents.cq_report [state-name ...]   (several = one result)
 """
 from __future__ import annotations
 
@@ -28,15 +28,17 @@ from pathlib import Path
 MIN_PAIRS = 10
 
 
-def _tried(rec: dict) -> int:
-    return sum(int((t.get("search") or {}).get("tried") or 0)
-               for t in (rec.get("tfs") or {}).values())
+def _tried(out: dict) -> int:
+    return int((out.get("search") or {}).get("tried") or 0)
 
 
 def results(roots) -> dict:
     """Every machine's out/cq-*.json.gz joined: {"meta": the run's settings,
-    "coins": {coin: record}}. A coin measured twice (claimed again after a
-    machine died) keeps the copy whose searches tried the most candidates."""
+    "coins": {coin: record}}. Joined per coin AND timeframe: one coin arrives
+    from two runs that measured different timeframes (the pilot ran 4h+1d,
+    then 15m/30m/1h) and keeps both; a coin + timeframe measured twice
+    (claimed again after a machine died) keeps the copy whose search tried the
+    most candidates."""
     from tradingagents import pro_search as ps
 
     meta: dict = {}
@@ -46,8 +48,11 @@ def results(roots) -> dict:
             d = json.load(fh)
         meta = meta or {k: v for k, v in d.items() if k != "coins"}
         for coin, rec in (d.get("coins") or {}).items():
-            if coin not in coins or _tried(rec) > _tried(coins[coin]):
-                coins[coin] = rec
+            have = coins.setdefault(coin, {**{k: v for k, v in rec.items() if k != "tfs"},
+                                           "tfs": {}})
+            for tf, out in (rec.get("tfs") or {}).items():
+                if tf not in have["tfs"] or _tried(out) > _tried(have["tfs"][tf]):
+                    have["tfs"][tf] = out
     return {"meta": meta, "coins": coins}
 
 
@@ -157,18 +162,33 @@ def summary(coins: dict) -> dict:
     return {"coins": len(coins), "by_tf": dict(sorted(per.items()))}
 
 
+def report_states(states: list) -> dict:
+    """Read every collected run named (`<state>-collected.json` under
+    cq_search.home()) as ONE result - the pilot's two halves together - and
+    write `<stem>+<stem>-report.json` beside them."""
+    from tradingagents import cq_search as cqs
+
+    roots, labels = [], []
+    for state in states:
+        got = json.loads((cqs.home() / f"{Path(state).stem}-collected.json")
+                         .read_text(encoding="utf-8"))
+        roots += list(got["roots"])
+        labels.append(got.get("label"))
+    res = results(roots)
+    rep = {"states": list(states), "labels": labels, "summary": summary(res["coins"]),
+           "first_check": first_check(res["coins"]), "meta": res["meta"]}
+    stem = "+".join(Path(s).stem for s in states)
+    (cqs.home() / f"{stem}-report.json").write_text(json.dumps(rep, indent=1), encoding="utf-8")
+    return rep
+
+
 if __name__ == "__main__":
     from tradingagents import cq_search as cqs
 
-    state = sys.argv[1] if len(sys.argv) > 1 else cqs.STATE
-    stem = Path(state).stem
-    got = json.loads((cqs.home() / f"{stem}-collected.json").read_text(encoding="utf-8"))
-    res = results(got["roots"])
-    fc = first_check(res["coins"])
-    rep = {"state": state, "summary": summary(res["coins"]), "first_check": fc,
-           "meta": res["meta"]}
-    (cqs.home() / f"{stem}-report.json").write_text(json.dumps(rep, indent=1), encoding="utf-8")
-    cqs.progress(f"first check ({stem}): {fc['verdict']} - {fc['why']}",
-                 first_check={k: v for k, v in fc.items() if k != "rows"})
+    states = sys.argv[1:] or [cqs.STATE]
+    rep = report_states(states)
+    fc = rep["first_check"]
+    cqs.progress(f"first check ({' + '.join(Path(s).stem for s in states)}): {fc['verdict']} "
+                 f"- {fc['why']}", first_check={k: v for k, v in fc.items() if k != "rows"})
     print(json.dumps({k: v for k, v in rep.items() if k != "meta"}
                      | {"first_check": {k: v for k, v in fc.items() if k != "rows"}}, indent=2))

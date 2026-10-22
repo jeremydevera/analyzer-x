@@ -71,3 +71,33 @@ def test_the_machines_files_are_joined_and_a_coin_measured_twice_keeps_the_fulle
     assert got["meta"]["version"] == "cq1"
     assert got["coins"]["BTC"]["tfs"]["1h"]["search"]["tried"] == 90
     assert set(got["coins"]) == {"BTC", "X", "Y"}
+
+
+def test_the_same_coin_from_two_runs_keeps_every_timeframe(tmp_path):
+    """The pilot ran in two halves (4h+1d, then 15m/30m/1h): one coin arrives
+    from two runs with different timeframes, and both halves must stay."""
+    for k, (tf, tried) in enumerate((("4h", 50), ("1h", 70))):
+        d = tmp_path / f"run{k}"
+        d.mkdir()
+        with gzip.open(d / f"cq-{k}.json.gz", "wt", encoding="utf-8") as fh:
+            json.dump({"version": "cq1", "coins": {"BTC": {"kind": "crypto", "tfs": {
+                tf: {"search": {"tried": tried}}}}}}, fh)
+    got = cr.results([tmp_path / "run0", tmp_path / "run1"])
+    assert set(got["coins"]["BTC"]["tfs"]) == {"4h", "1h"}
+    assert got["coins"]["BTC"]["tfs"]["1h"]["search"]["tried"] == 70
+
+
+def test_a_report_reads_every_run_it_is_given(monkeypatch, tmp_path):
+    from tradingagents import cq_search as cqs
+
+    monkeypatch.setattr(cqs, "home", lambda: tmp_path)
+    for name, tf in (("pilot-a", "4h"), ("pilot-b", "1h")):
+        d = tmp_path / f"run-{name}"
+        d.mkdir()
+        with gzip.open(d / "cq-0.json.gz", "wt", encoding="utf-8") as fh:
+            json.dump({"version": "cq1", "coins": {"ETH": {"tfs": {tf: {"search": {"tried": 9}}}}}}, fh)
+        (tmp_path / f"{name}-collected.json").write_text(json.dumps(
+            {"label": name, "roots": [str(d)], "runs": {}}), encoding="utf-8")
+    rep = cr.report_states(["pilot-a.json", "pilot-b.json"])
+    assert rep["summary"]["coins"] == 1 and set(rep["summary"]["by_tf"]) == {"4h", "1h"}
+    assert (tmp_path / "pilot-a+pilot-b-report.json").exists()

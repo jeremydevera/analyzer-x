@@ -672,6 +672,45 @@ has an entry point.
     8,000 bars (83 days) when 34,636 were available, which silently made its results
     meaningless.
 
+## Every backtest LOOKS AT THE COSTS of every minute it tests (MANDATORY — Oct 22, 2026)
+
+The operator, Oct 22, 2026: *"Can you document that when backtesting i need
+you to look at the costs always"* — after asking *"did you include real fees /
+costs for every minute you backtested it ?"* and learning that of the
+confluence research's 1,860,286 trades only 230,972 (12.4%, the last 47 days)
+paid their own minute's order book, while 1,629,314 (87.6%) paid each coin's
+typical cost, and that Gate DOES keep the older books (*"I thought gate
+provides costs for past 2 years"* — it does; the claim that it keeps none was
+wrong).
+
+What "look at the costs" means, every time, for every backtest, research run
+or replay:
+
+* **Every trade pays all of it, on wins AND losses:** Gate's 0.075% fee each
+  way, the buy-sell gap of ITS OWN entry and exit minutes (Gate's historical
+  order book, `cost_store` / `book_history`), and funding over the hold. A
+  loss is the stop PLUS the costs (#JC524A34 USAR 4h, Oct 01, 2026 12:00pm: the
+  1.5% stop lost $1.50 plus $0.22 = −$1.72); a win is the target MINUS them
+  ($8.00 − $0.22 = +$7.78).
+* **Every entry asks the runner's own cost check at its minute**
+  (`auto_trader.entry_refusal` / `cost_verdict`) and skips what practice
+  would skip (`gate_blocked`, `chase_skip`), as the rules above say.
+* **COVERAGE FIRST.** Before a backtest starts, check that the per-minute
+  costs cover its WHOLE window. The cost store holds only what `costs.yml`
+  has replayed — `costs_daily.BACKFILL_DAYS` (61 days on Oct 22, 2026) — while
+  Gate's archive (`download.gatedata.org/futures_usdt/orderbooks/`, one file
+  per coin per hour) has every hour back to at least June 2024 (checked
+  Oct 22, 2026 on BTC and SOL: 6-33 MB per hour file). A window the costs do
+  not cover is FILLED first. When filling would take too long to wait for
+  (2 years of every coin ≈ 3-4 days of all 60 machines, estimated from the
+  daily job's speed), say so BEFORE running, and print beside every result the
+  share of its trades that paid a typical cost instead of their minute's own
+  (`cost_unmeasured`) — never a result whose costs were partly estimated
+  without that number next to it.
+* **Never say the exchange has no record without checking it.** Probe the
+  archive (an HTTP HEAD of one hour file per month) before telling the
+  operator what exists.
+
 ## Every cost the BACKTEST charges, the GATE charges (MANDATORY — 2026-09-15)
 
 The operator, asking for a review before trading size: *"you will need a guard

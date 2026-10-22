@@ -152,3 +152,23 @@ def vol_ratio(v, n: int) -> np.ndarray:
     base = shift(sma(v, n), 1)
     with np.errstate(invalid="ignore", divide="ignore"):
         return np.where(base > 0, v / base, np.nan)
+
+
+def ema_fixed(x, n: int, window: int | None = None) -> np.ndarray:
+    """The exponential average with weight 2/(n+1) as a FIXED-WINDOW sum: the
+    last `window` values (default min(MAX_LOOKBACK, 10 x n)), weights
+    normalised to 1. The recursion every chart uses depends on where its
+    history starts; this reads the same bars from any frame, so the runner's
+    299 candles and the backtest's year agree to the last bit (the weight
+    beyond 10 x n is 2e-9 of the whole for n 9, 4.5e-5 for n 50). Elementwise
+    multiply and a row sum, never a matrix product: BLAS blocks a product by
+    the matrix's size, so two frames could round differently."""
+    w = int(window or min(MAX_LOOKBACK, 10 * int(n)))
+    win, a = _windows(x, w)
+    out = np.full(len(a), np.nan)
+    if win is None:
+        return out
+    alpha = 2.0 / (int(n) + 1.0)
+    wts = alpha * (1.0 - alpha) ** np.arange(w - 1, -1, -1, dtype=float)
+    out[w - 1:] = (win * (wts / wts.sum())).sum(axis=1)
+    return out

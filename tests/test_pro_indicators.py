@@ -47,6 +47,8 @@ CASES = {
     "zscore": lambda o, h, lo, c, v: pi.zscore(c, 50),
     "rolling_vwap": lambda o, h, lo, c, v: pi.rolling_vwap(h, lo, c, v, 48),
     "vol_ratio": lambda o, h, lo, c, v: pi.vol_ratio(v, 20),
+    "ema_fixed_9": lambda o, h, lo, c, v: pi.ema_fixed(c, 9),
+    "ema_fixed_50": lambda o, h, lo, c, v: pi.ema_fixed(c, 50),
 }
 
 
@@ -84,3 +86,17 @@ def test_the_windows_are_what_they_say():
     assert pi.rsi(c, 5)[-1] == 100.0
     # bar 0 has no change: the first full window of 5 changes ends at bar 5
     assert np.isnan(pi.rsi(c, 5)[4]) and pi.rsi(c, 5)[5] == 100.0
+
+
+def test_the_fixed_ema_is_an_ema():
+    """Weights 2/(n+1) over a fixed window: on a long series it reads what the
+    recursive EMA reads, to within its truncated tail."""
+    import pandas as pd
+
+    _o, _h, _lo, c, _v = _ohlcv(n=1000, seed=9)
+    for n in (9, 21, 50):
+        got = pi.ema_fixed(c, n)
+        ref = pd.Series(c).ewm(span=n, adjust=False).mean().to_numpy()
+        w = min(pi.MAX_LOOKBACK, 10 * n)
+        assert np.isnan(got[w - 2]) and not np.isnan(got[w - 1])
+        assert np.max(np.abs(got[400:] - ref[400:]) / ref[400:]) < 1e-3

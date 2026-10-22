@@ -274,3 +274,55 @@ def test_a_board_that_never_answers_returns_none(monkeypatch):
 
     _mod, b = _board(monkeypatch, transport)
     assert b.claim("BTC_USDT") is None
+
+
+CHINESE = "币安人生_USDT"          # a Gate contract named in Chinese
+
+
+def test_a_coin_named_in_chinese_can_be_claimed(monkeypatch):
+    """Four Gate contracts are named in Chinese characters. The claim put the
+    name raw into the contents-API address, urllib refuses a non-ASCII
+    address, every one of the six tries raised, and the coin was never
+    measured by any GitHub run (Pro Trader, Oct 20, 2026; the confluence
+    full market, Oct 22, 2026). The address carries the name percent-encoded;
+    an ASCII name is unchanged."""
+    import urllib.parse
+
+    seen = []
+
+    def transport(method, url, token, body=None):
+        seen.append(url)
+        url.encode("ascii")                  # what http.client demands
+        return {}
+
+    _mod, b = _board(monkeypatch, transport)
+    assert b.claim(CHINESE) is True
+    assert urllib.parse.unquote(seen[-1]).endswith(f"claims/run-77/{CHINESE}.json")
+    assert b.claim("BTC_USDT") is True and seen[-1].endswith("claims/run-77/BTC_USDT.json")
+
+
+def test_a_claimed_chinese_name_reads_back_as_taken(monkeypatch, tmp_path):
+    """git prints a non-ASCII path quoted and escaped unless told not to, so
+    the board never saw such a coin as taken."""
+    import subprocess
+
+    def git(*a, cwd):
+        subprocess.run(["git", *a], cwd=cwd, check=True, capture_output=True)
+
+    src = tmp_path / "src"
+    src.mkdir()
+    git("init", "-q", "-b", "sweep-progress", cwd=src)
+    git("config", "user.email", "t@t", cwd=src)
+    git("config", "user.name", "t", cwd=src)
+    (src / "claims" / "run-77").mkdir(parents=True)
+    (src / "claims" / "run-77" / f"{CHINESE}.json").write_text("{}", encoding="utf-8")
+    (src / "claims" / "run-77" / "BTC_USDT.json").write_text("{}", encoding="utf-8")
+    git("add", "-A", cwd=src)
+    git("commit", "-q", "-m", "claims", cwd=src)
+    work = tmp_path / "work"
+    work.mkdir()
+    git("init", "-q", cwd=work)
+    git("remote", "add", "origin", str(src), cwd=work)
+    monkeypatch.chdir(work)
+    _mod, b = _board(monkeypatch, lambda *a, **k: {})
+    assert b.taken() == {CHINESE, "BTC_USDT"}

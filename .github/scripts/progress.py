@@ -76,10 +76,12 @@ class ClaimBoard:
         try:
             subprocess.run(["git", "fetch", "--quiet", "--depth=1", "origin",
                             BRANCH], capture_output=True, timeout=60)
+            # core.quotepath=off: a coin named in Chinese characters comes out
+            # as its name, not quoted octal escapes that match nothing
             out = subprocess.run(
-                ["git", "ls-tree", "-r", "--name-only", "FETCH_HEAD",
-                 "--", self.dir], capture_output=True, text=True,
-                timeout=30).stdout
+                ["git", "-c", "core.quotepath=off", "ls-tree", "-r", "--name-only",
+                 "FETCH_HEAD", "--", self.dir], capture_output=True, text=True,
+                encoding="utf-8", timeout=30).stdout
         except Exception:
             return set()
         got = set()
@@ -94,7 +96,13 @@ class ClaimBoard:
         None = the BOARD is unreachable — the caller must stop claiming, never
         guess: measuring an unclaimed-looking coin twice writes duplicate rows.
         """
-        url = (f"{API}/repos/{self.repo}/contents/{self.dir}/{coin}.json")
+        # the name percent-encoded: urllib refuses a non-ASCII address, so a
+        # coin named in Chinese characters raised on all six tries and was
+        # never measured (RCA-2026-10-22-D); an ASCII name is unchanged
+        import urllib.parse
+
+        url = (f"{API}/repos/{self.repo}/contents/{self.dir}/"
+               f"{urllib.parse.quote(coin, safe='')}.json")
         payload = {"shard": self.shard, "attempt": self.attempt,
                    "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
         body = {"message": f"claim: shard {self.shard} takes {coin}",

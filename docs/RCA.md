@@ -172,6 +172,68 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-22-D — four Gate contracts named in Chinese characters were never measured by any GitHub run, because their claim address was not encoded
+
+**CEO**
+
+* Four of Gate's 1,056 contracts have Chinese names, and no GitHub run has
+  ever measured them: the Pro Trader research (Oct 20, 2026) and the
+  confluence research on every coin (Oct 22, 2026) both ended "4 not
+  reached".
+* Why: a machine claims a coin by writing a small file named after it on
+  GitHub, and the web address with Chinese letters in it was refused, so
+  every machine skipped those four.
+* What stops it now: the name is encoded the way web addresses require, and
+  a test claims a Chinese-named coin.
+
+**DEV**
+
+* `.github/scripts/progress.py` `ClaimBoard.claim` built
+  `.../contents/claims/run-<id>/<coin>.json` with the raw name; `urllib`
+  refuses a non-ASCII URL, each of the 6 tries raised into the generic
+  `except`, `claim` returned None, and `sweep_shard.coin_stream` logged "got
+  no answer — skipping it" for every shard. `taken()` read `git ls-tree`
+  with `core.quotepath` on, so such a name came back as quoted octal escapes.
+* Invariant broken: **a name from the venue is data, never a URL fragment** -
+  encode it where it enters an address.
+* Guard: `tests/test_shard_claims_work.py::test_a_coin_named_in_chinese_can_be_claimed`,
+  `::test_a_claimed_chinese_name_reads_back_as_taken` (both red before this
+  commit).
+
+**SAW** — the confluence full-market collect, Oct 22, 2026 11:18am: "board
+1056, reached 1052, not reached 4" (哈基米, 币安人生, 牛来, 龙虾); the Pro Trader
+whole-market page said the same 4 on Oct 20, 2026.
+
+**TIMELINE**
+
+1. `Oct 20, 2026` — Pro Trader, whole market: 1,045 of 1,049 coins, "the 4
+   Chinese-character names not reached", taken as a venue quirk.
+2. `Oct 22, 2026 9:03am` — the confluence full market dealt one or two of
+   them to each account; every shard that reached one spent its 6 tries
+   (about 21 s of sleeps) and skipped it.
+3. `11:18am` — collected: 1,052 of 1,056; the operator had asked at ~9:15am
+   "Make sure all coins and all timeframe".
+4. `~11:30am` — the shard log showed the board naming the coin and no claim;
+   the claim code put the raw name in the address. Fixed, both tests red
+   then green, and the 4 coins sent again on their own.
+
+**ROOT CAUSE** — `url = f"{API}/repos/{self.repo}/contents/{self.dir}/{coin}.json"`
+with `coin` unencoded.
+
+**WHY IT WAS NOT CAUGHT** — every claim test used ASCII names (`BTC_USDT`),
+and the fake transport accepted any string, so nothing checked that the
+address could actually be sent; the one place a non-ASCII name appeared - a
+results page - read "not reached" as the venue's doing.
+
+**COST** — none in money; 4 contracts missing from two research runs.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_shard_claims_work.py::test_a_coin_named_in_chinese_can_be_claimed`,
+`::test_a_claimed_chinese_name_reads_back_as_taken`.
+
+---
+
 ## RCA-2026-10-22-C — the confluence research's first check counted each coin + timeframe as separate evidence, and the progress file called 40 pairs "ok" when 32 had been searched
 
 **CEO**

@@ -314,6 +314,11 @@ def cq_pair(sym: str, tf: str, pre: dict, rec: dict) -> dict:
         return {"why": f"only {max(0, len(dfw) - warm)} measurable candles"}
     days = int((dfw["Date"].iloc[-1] - dfw["Date"].iloc[warm]).days)
     win = windows_for(tf, days)
+    if pre["liq"] is not None and float(pre["liq"]) <= 0:
+        # Gate's maintenance margin is 5% or more: at 20x the position is
+        # liquidated at once, so the app cannot hold it (RCA-2026-10-22-E)
+        return {"why": f"Gate's maintenance margin leaves no room at {at.LEVERAGE:g}x: "
+                       f"the app cannot hold this coin at its leverage"}
     c_usual = br.round_trip_cost(pre["fee"], {"slippage": pre["slip"]})
     bars, ks = barriers_for(tf, c_usual, pre["liq"])
     if not bars:

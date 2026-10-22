@@ -172,6 +172,63 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-22-E — 683 coin + timeframes were reported as "no stop/target pays 2:1" when the real cause was that the app cannot hold those 137 coins at 20x
+
+**CEO**
+
+* The confluence research on every coin left out 1,052 coin + timeframes
+  with the reason "no stop/target pays 2:1 at this coin's usual round trip".
+  For 683 of them (137 coins) that reason was wrong.
+* Why: on those coins Gate keeps 5% or more of a position as its safety
+  margin, so at the app's 20x a trade is closed by the exchange the moment
+  it opens; the research rejected every stop for that, then printed the
+  reason for a different case.
+* What stops it now: those coins are named as "the app cannot hold this coin
+  at its leverage", and a test holds the wording.
+
+**DEV**
+
+* `.github/scripts/cq_shard.py` `cq_pair` -> `barriers_for(tf, c, liq)` refused
+  every stop by `sl * 100 >= 0.8 * abs(liq)` when
+  `gate_futures.liquidation_move_pct` returned `max(0, (1/20 - mmr) * 100)`
+  = 0.0 (mmr >= 0.05), and the empty list was reported with the 2:1 message.
+* Invariant broken: **a reason names the check that refused, never the last
+  one in the list** (label-must-match-data).
+* Guard: `tests/test_cq_shard.py::test_a_coin_the_app_cannot_hold_at_20x_says_so`
+  (red before this commit).
+
+**SAW** — the full market's collects, Oct 22, 2026 11:18am and ~2:00pm:
+1,052 skips all reading "no stop/target pays 2:1"; the cheapest of them, BTW
+on every timeframe, had a usual round trip of 0.185%, which pays 2:1 on 27-44
+of the grid's stop/targets.
+
+**TIMELINE**
+
+1. `Oct 22, 2026 9:03am` — the full market sent (1,056 coins).
+2. `11:18am` — collected: 341 pairs skipped as "no 2:1".
+3. `11:18am` — the follow-up for young coins sent; `~2:00pm` collected: 711
+   more "no 2:1".
+4. `~2:10pm` — checking the cheapest skipped coin: BTW 0.185% round trip,
+   liquidation distance 0.0 at 20x; 683 of the 1,052 have that distance (137
+   coins), 369 really are too expensive (median round trip 1.24%).
+
+**ROOT CAUSE** — `cq_pair` had no check of its own for a zero liquidation
+distance; the liquidation filter inside `barriers_for` emptied the list and
+the only message for an empty list was the 2:1 one.
+
+**WHY IT WAS NOT CAUGHT** — the shard test's coin always had a 4.5%
+liquidation distance; no test gave a coin Gate will not let the app hold.
+
+**COST** — none in money: those coins cannot be traded at 20x either way;
+the results named the wrong reason for about 3 hours.
+
+**FIX** — this commit; the results page derives the reason from each coin's
+own liquidation distance for the reports already written.
+
+**GUARD** — `tests/test_cq_shard.py::test_a_coin_the_app_cannot_hold_at_20x_says_so`.
+
+---
+
 ## RCA-2026-10-22-D — four Gate contracts named in Chinese characters were never measured by any GitHub run, because their claim address was not encoded
 
 **CEO**

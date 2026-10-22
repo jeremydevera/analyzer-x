@@ -75,6 +75,8 @@ young = cs.cq_pair("YOUNG_USDT", "4h", pre, rec_young)
 wins = {"4h_400": cs.windows_for("4h", 400), "15m_100": cs.windows_for("15m", 100),
         "1d_3": cs.windows_for("1d", 3)}
 bars, ks = cs.barriers_for("4h", 0.0021, 4.5)
+# Gate's maintenance margin at or above 5%: no room at all at 20x
+no_room = cs.cq_pair("TEST_USDT", "4h", {**pre, "liq": 0.0}, {"coin": "TEST", "tfs": {}})
 fake = {"trades": 9, "recents": {
     240: {"trades": 3, "wins": 1, "profit": -0.5, "rt_sum": 0.6},
     360: {"trades": 5, "wins": 2, "profit": 0.25, "rt_sum": 1.0},
@@ -122,6 +124,7 @@ cs.measure_coin("SAVE_USDT", report, 0, 1)
 with gzip.open(cs.OUT, "rt", encoding="utf-8") as fh:
     saved = json.load(fh)
 print(json.dumps({"info": info, "rec": rec, "young": young, "rec_young": rec_young, "wins": wins,
+                  "no_room": no_room,
                   "stk": stk, "rec_stk": rec_stk,
                   "bars": [[sl, tp, k] for (sl, tp), k in zip(bars, ks)],
                   "split": [list(p) for p in cs.stats_from(fake, "4h")],
@@ -258,3 +261,12 @@ def test_the_coin_is_described_on_the_year_before_every_test_window(runs):
 
 def test_the_results_name_the_money_they_were_measured_at(runs):
     assert runs[0]["saved_money"] == [5.0, 20]
+
+
+def test_a_coin_the_app_cannot_hold_at_20x_says_so(runs):
+    """137 coins have a maintenance margin of 5% or more on Gate, so at the
+    app's 20x a position is liquidated at once; the full market's reports
+    called them "no stop/target pays 2:1" (683 coin + timeframes), which
+    names the wrong cause (RCA-2026-10-22-E)."""
+    why = runs[0]["no_room"]["why"]
+    assert "20x" in why and "2:1" not in why, why

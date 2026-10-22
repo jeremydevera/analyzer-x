@@ -25,8 +25,16 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+# EVERY account the costs job may deal a coin to (load_month merges them): a
+# coin-month written by an account missing here reads as no recording, and
+# the costs job, which reads before it uploads, would overwrite its own
+# earlier days. The third account joined Oct 21, 2026 (operator: "i have a
+# new temamate and i want to add his github for machine"). The GitHub
+# machines import this from their own checkout, so the list travels with
+# the code, never with this PC's git remotes.
 REPOS = tuple(r for r in os.environ.get(
-    "COST_REPOS", "jeremydevera/analyzer-x,jeremydvera/analyzer-x").split(",") if r)
+    "COST_REPOS", "jeremydevera/analyzer-x,jeremydvera/analyzer-x,"
+                  "jeremydevera0903-gif/analyzer-x").split(",") if r)
 CACHE = Path(os.path.expanduser("~/.tradingagents")) / "cost_cache"
 CURRENT_TTL_S = 6 * 3600
 # a month is FINAL only once it ended this long ago: Sep 30 is written on

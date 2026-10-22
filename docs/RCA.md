@@ -172,6 +172,69 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-21-D — a third GitHub account would have had its cost files ignored and its Forecast replay deleted while still in use
+
+NEVER HAPPENED YET — found while connecting the third account, before its
+first night of work.
+
+**CEO**
+
+* Adding your teammate's GitHub account gives the nightly jobs 60 machines
+  instead of 40, but two places only knew about the first two accounts.
+* Why: the list of accounts that hold the per-minute trading costs was
+  typed in by hand, and the Forecast's tidy-up kept only three downloaded
+  folders, which three accounts' replays alone fill.
+* What stops it now: the new account is on the costs list, and the tidy-up
+  never deletes a folder the day's Forecast is still reading.
+
+**DEV**
+
+* `tradingagents/cost_store.py:28` `REPOS` defaulted to the two slugs;
+  `costs_daily` deals Gate's coins over `cloud_sweep.fleets()` (now three),
+  so a coin-month uploaded by the third account was never read, and
+  `costs_shard` (which reads before it uploads with `--clobber`) would have
+  rewritten it without its earlier days. `forecast_v2_daily._prune_runs`
+  protected base/options runs but not `replay_runs`, with `KEEP_RUNS = 3`.
+* Invariant broken: **a list of accounts that the machines read from their
+  own checkout must name every account the dealers deal to** — `fleets()`
+  grows with a git remote, a hardcoded tuple does not; and **a folder the
+  chain still reads is never pruned**.
+* Guard: `tests/test_a_third_github_account.py` (3 of its 4 tests red on the
+  code before this commit).
+
+**SAW** — *"i have a new temamate and i want to add his github for machine
+can you add it and prmopt in my browser to authenticazte"*, then *"yes it is
+my team mate account"* (Oct 21, 2026).
+
+**TIMELINE**
+
+1. `Oct 21, 2026 ~10:05pm` — `jeremydevera0903-gif` signs in on this PC
+   (gh device login, then the `workflow` scope).
+2. `~10:12pm` — fork `jeremydevera0903-gif/analyzer-x` made with every
+   branch; Actions on (14 workflows active); `jeremydvera` given write and
+   accepted; `INGEST_TOKEN` set with the owner's token.
+3. `~10:20pm` — remote `teammate` added: `usable_fleets()` answers three
+   ready, `repo_slug()` still `jeremydvera`; `sync_fleet` brought the fork
+   to 211e8c83ef7f. A read of every two-account assumption found these two.
+4. Fixed before the first three-account dispatch.
+
+**ROOT CAUSE** — two account lists that were not `fleets()`: a hardcoded
+`COST_REPOS` default and a prune that protected only part of the chain.
+
+**WHY IT WAS NOT CAUGHT** — every test of the dealers uses a fixture with
+its own accounts (`test_forty_machines_across_two_accounts`), so none ever
+compared the dealers' account list with the readers' one; and the prune
+test kept base and options runs, never three accounts' replays at once.
+
+**COST** — none: no three-account run had happened.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_a_third_github_account.py::test_the_cost_files_are_read_from_every_account`,
+`::test_the_forecast_keeps_every_accounts_replay_while_it_is_read`.
+
+---
+
 ## RCA-2026-10-21-C — Room strategies settled every trade by its candle while Stored strategies settle it minute by minute, so one trade could be a loss in one and a win in the other
 
 **CEO**

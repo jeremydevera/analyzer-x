@@ -304,8 +304,12 @@ def _prune_runs(keep: set) -> None:
     st = read()
     # EVERY ACCOUNT'S base and options runs of the chain under way: the
     # options merge reads every account's base folder
+    # (and their REPLAY runs: with three accounts, Oct 21, 2026, the three
+    # replay folders alone fill KEEP_RUNS, so the first account's was the
+    # next to go while it could still be read)
     keep = set(keep) | {str(st.get(k)) for k in ("base_run", "options_run") if st.get(k)} \
-        | {str(r) for k in ("base_runs", "options_runs") for r in (st.get(k) or {}).values()}
+        | {str(r) for k in ("replay_runs", "base_runs", "options_runs")
+           for r in (st.get(k) or {}).values()}
     dirs = sorted((d for d in root.iterdir() if d.is_dir()), key=lambda d: d.stat().st_mtime,
                   reverse=True)
     for d in dirs[KEEP_RUNS:]:

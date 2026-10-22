@@ -383,6 +383,26 @@ machines were idle. First asked `Sep 21, 2026`: *"i want 40"*.
   `origin`) and `jeremydvera/analyzer-x` (remote `colleague`, a fork that
   runs its own copy of every workflow — push every commit to BOTH).
   `cloud_sweep.fleets()` / `usable_fleets()` name them.
+* **A THIRD ACCOUNT, 60 machines (Oct 21, 2026).** The operator: *"i have a
+  new temamate and i want to add his github for machine"*, and, asked whose
+  account it is, *"yes it is my team mate account"*.
+  `jeremydevera0903-gif/analyzer-x` (remote `teammate`, a fork with every
+  branch, `sweep-progress` included). `fleets()` reads the git remotes, so
+  every splitter above deals to it with no further change. What it needed,
+  and what a FOURTH account will need too:
+  * the account signed in to gh on this PC (`gh auth login --web`, with the
+    `workflow` scope: `gh auth refresh -s workflow`), then `gh auth switch -u
+    jeremydvera` straight after — every dispatch runs as the ACTIVE account;
+  * `jeremydvera` a WRITE collaborator on the fork (dispatch and `gh repo
+    sync` run as it) — the fork's owner invites, jeremydvera accepts;
+  * Actions enabled on the fork, and `INGEST_TOKEN` set with the OWNER's
+    token (`live_ingest.sync_secret` under that account's `GH_TOKEN`);
+  * the remote NAME sorting after `colleague` (`repo_slug()` takes the first
+    non-origin remote alphabetically, and it gates every press);
+  * its slug in `cost_store.REPOS` (the costs job deals coins to it, and a
+    coin-month missing from that list is a cost never read);
+  * push every commit to EVERY remote (`git push teammate main` too); the
+    dispatchers also `sync_fleet` a fork before they start it.
 * **Never dispatch to one account while the other can run it.** Split the work
   and send each account its share. An account that refuses (no workflow, no
   access) is named, and the other still runs.

@@ -70,7 +70,7 @@ export default function GithubMachinesErrors() {
         <>
           <div className="mt-4 flex flex-wrap items-center gap-2 text-theme-xs text-gray-500 dark:text-gray-400">
             <select aria-label="Account" className={sel} value={account} onChange={(e) => pick(() => setAccount(e.target.value))}>
-              <option value="">both accounts</option>
+              <option value="">{d.accounts.length === 2 ? "both accounts" : `all ${d.accounts.length} accounts`}</option>
               {d.accounts.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
             <select aria-label="Workflow" className={sel} value={workflow} onChange={(e) => pick(() => setWorkflow(e.target.value))}>
@@ -83,14 +83,14 @@ export default function GithubMachinesErrors() {
             <span className="ml-auto">
               {d.matched.toLocaleString()} red run{d.matched === 1 ? "" : "s"}
               {account || workflow ? ` of ${d.total.toLocaleString()}` : ""}
-              {account ? ` · ${account}` : " · both accounts"}{workflow ? ` · ${workflow}` : ""}
+              {account ? ` · ${account}` : d.accounts.length === 2 ? " · both accounts" : ` · all ${d.accounts.length} accounts`}{workflow ? ` · ${workflow}` : ""}
             </span>
           </div>
 
           {d.rows.length === 0 ? (
             <p className="mt-4 text-theme-xs text-gray-500 dark:text-gray-400">
               {d.last_ok
-                ? `No red machine on ${account || "either account"}${workflow ? ` in ${workflow}` : ""} in the last ${d.since_days} days looked at.`
+                ? `No red machine on ${account || (d.accounts.length === 2 ? "either account" : `any of ${d.accounts.length} accounts`)}${workflow ? ` in ${workflow}` : ""} in the last ${d.since_days} days looked at.`
                 : "The first look at GitHub has not run yet; it runs within 10 minutes of the site starting."}
             </p>
           ) : (

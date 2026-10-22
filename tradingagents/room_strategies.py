@@ -650,11 +650,14 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
     have none (every saved trade closes by Oct 02, 2026 8:00am), so the floor
     would have kept every one. RCA-2026-10-07-N.
 
-    RULE WIN % BETWEEN (operator, Oct 21, 2026: "it will show room strategy
-    that has criteria of 70% or 80% if my filter is between 50-80%"):
-    `rule_wr_min` / `rule_wr_max` keep the rule sets whose OWN switch-on line
-    is inside both ends, both included, either end optional. It is a property
-    of the rule set, so a row with no trade in the dates still passes it."""
+    WIN % BETWEEN (operator, Oct 21, 2026: "it will show room strategy that
+    has criteria of 70% or 80% if my filter is between 50-80%"; then, Oct 22,
+    2026, seeing #83007877 at 33.3% under 60-90: "if i typed 60-90 show only
+    60-90, fix it"): `rule_wr_min` / `rule_wr_max` keep the rule sets whose
+    OWN switch-on line is inside both ends AND whose win rate in the dates is
+    inside them too — both ends included, either end optional. A row with no
+    trade in the dates has no win rate, so it is not inside any range
+    (RCA-2026-10-07-N's rule for the other floors)."""
     for end in (rule_wr_min, rule_wr_max):
         if end is not None and not 0 <= float(end) <= 100:
             raise ValueError(f"rule win % takes a number from 0 to 100, not {end:g}")
@@ -693,6 +696,8 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
             continue
         if rule_wr_max is not None and row["rule_wr"] > float(rule_wr_max):
             continue
+        if not _won_inside(row, rule_wr_min, rule_wr_max):
+            continue
         if window and row["window"] != int(window):
             continue
         if deployable == "yes" and not row["deployable"] or deployable == "no" and row["deployable"]:
@@ -718,6 +723,13 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
     in_range = (sum(n for wr, n in lines.items()
                     if (rule_wr_min is None or wr >= float(rule_wr_min))
                     and (rule_wr_max is None or wr <= float(rule_wr_max))) if ruled else None)
+    # of those, how many ALSO won inside the range in these dates, before
+    # every other filter (Oct 22, 2026): an empty page then says whether no
+    # rule set asks that range or none of them won it
+    won_in_range = (sum(1 for r in measured
+                        if (rule_wr_min is None or r["rule_wr"] >= float(rule_wr_min))
+                        and (rule_wr_max is None or r["rule_wr"] <= float(rule_wr_max))
+                        and _won_inside(r, rule_wr_min, rule_wr_max)) if ruled else None)
     return {"rows": rows[(page - 1) * per: page * per], "matched": len(rows), "kept": total,
             "page": page, "pages": pages, "from": from_s, "to": to_s,
             # how many of ALL kept have a trade in the dates, before any filter,
@@ -730,7 +742,19 @@ def table(from_s: float, to_s: float, *, min_winrate: float = 0, min_profit: flo
             # how many kept rule sets ask a line inside the range, before every
             # OTHER filter (None without one): 0 means no rule set asks that
             "rule_matched": in_range,
+            "rule_won": won_in_range,
             "reality": {k: reality.get(k) for k in ("took", "gap")}, "margin": 5.0, "leverage": 20}
+
+
+def _won_inside(row: dict, lo: float | None, hi: float | None) -> bool:
+    """Did this row's win rate IN THE DATES land inside [lo, hi] (either end
+    optional)? No range = yes; no trade = no win rate = never inside one."""
+    if lo is None and hi is None:
+        return True
+    wr = row.get("winrate")
+    if wr is None:
+        return False
+    return (lo is None or wr >= float(lo)) and (hi is None or wr <= float(hi))
 
 
 def _worst_run(p) -> tuple[float, int]:

@@ -1236,6 +1236,9 @@ export type RoomStrategies = {
    *  ask a line inside "rule win % between" before the other filters (null
    *  when it is empty) — Oct 21, 2026 */
   rule_lines?: [number, number][]; rule_matched?: number | null;
+  /** of `rule_matched`, how many also WON inside the range in these dates
+   *  (Oct 22, 2026: "if i typed 60-90 show only 60-90") */
+  rule_won?: number | null;
   reality: { took: number | null; gap: number | null }; margin: number; leverage: number;
   /** the reality check is still being worked out (the first minute or two after a restart) */
   reality_pending?: boolean;

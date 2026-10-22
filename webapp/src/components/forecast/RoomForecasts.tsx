@@ -1059,11 +1059,11 @@ export function RoomsAndBacktest() {
  *  Loading... and cannot be pressed until its answer lands ("when i click
  *  apply, i want to see loading, then make apply button disabled"). */
 type RsDraft = { from: string; to: string; days: string; minWin: string; minProfit: string; find: string;
-  /** "rule win % between" (operator, Oct 21, 2026: "it will show room strategy
-   *  that has criteria of 70% or 80% if my filter is between 50-80%"): the
-   *  RULE's own win line — the "70% wins" its Rules start with — both ends
-   *  included, either one may stay empty. Not "min win %", which filters the
-   *  win rate the dates measured. */
+  /** "win % between" (operator, Oct 21, 2026: "it will show room strategy
+   *  that has criteria of 70% or 80% if my filter is between 50-80%"; Oct 22,
+   *  2026: "if i typed 60-90 show only 60-90, fix it"): the RULE's own win
+   *  line — the "70% wins" its Rules start with — AND the win rate the dates
+   *  measured, both inside, both ends included, either one may stay empty. */
   ruleMin: string; ruleMax: string };
 type RsAsk = { from_s: number; to_s: number;
   /** the date boxes as DAYS ("2026-09-18"), "" with "last N days": the server
@@ -1100,8 +1100,8 @@ function rsProblem(f: RsDraft): string | null {
   if (f.minWin.trim() !== "" && !Number.isFinite(Number(f.minWin))) return "min win % takes a number, like 90";
   if (f.minProfit.trim() !== "" && !Number.isFinite(Number(f.minProfit))) return "min profit $ takes a number, like 5";
   const rMin = ruleWrOf(f.ruleMin), rMax = ruleWrOf(f.ruleMax);
-  if (Number.isNaN(rMin) || Number.isNaN(rMax)) return "rule win % takes a number from 0 to 100, like 50";
-  if (rMin !== null && rMax !== null && rMin > rMax) return "the rule win % 'from' is above its 'to'";
+  if (Number.isNaN(rMin) || Number.isNaN(rMax)) return "win % between takes a number from 0 to 100, like 50";
+  if (rMin !== null && rMax !== null && rMin > rMax) return "the win % 'from' is above its 'to'";
   if (daysOf(f.days) === null && (!f.from || !f.to)) return "pick both dates, or type a number of days";
   if (daysOf(f.days) === null && f.from > f.to) return "the 'from' date is after the 'to' date";
   return null;
@@ -1130,9 +1130,11 @@ function rsFilterWords(a: RsAsk): string[] {
   if (a.find) out.push(`id #${a.find.replace(/^#/, "").toUpperCase()}`);
   if (a.min_winrate) out.push(`win rate ${a.min_winrate}% or better`);
   if (a.min_profit != null) out.push(`profit ${fmtMoney(a.min_profit)} or more`);
-  if (a.rule_wr_min != null && a.rule_wr_max != null) out.push(`rules that need ${a.rule_wr_min}% to ${a.rule_wr_max}% wins`);
-  else if (a.rule_wr_min != null) out.push(`rules that need ${a.rule_wr_min}% wins or more`);
-  else if (a.rule_wr_max != null) out.push(`rules that need up to ${a.rule_wr_max}% wins`);
+  // both halves of "win % between", in its own words (Oct 22, 2026)
+  if (a.rule_wr_min != null && a.rule_wr_max != null)
+    out.push(`rules that need ${a.rule_wr_min}% to ${a.rule_wr_max}% wins and won ${a.rule_wr_min}% to ${a.rule_wr_max}% in these dates`);
+  else if (a.rule_wr_min != null) out.push(`rules that need ${a.rule_wr_min}% wins or more and won ${a.rule_wr_min}% or more in these dates`);
+  else if (a.rule_wr_max != null) out.push(`rules that need up to ${a.rule_wr_max}% wins and won up to ${a.rule_wr_max}% in these dates`);
   return out;
 }
 
@@ -1235,14 +1237,15 @@ export function RoomStrategiesSection() {
         <label className="flex flex-col gap-1">or last N days<input className={`${sel} w-24`} inputMode="decimal" placeholder="e.g. 3" value={draft.days} onChange={(e) => setDays(e.target.value)} /></label>
         <label className="flex flex-col gap-1">min win %<input className={`${sel} w-20`} inputMode="decimal" value={draft.minWin} onChange={(e) => set({ minWin: e.target.value })} /></label>
         <label className="flex flex-col gap-1">min profit $<input className={`${sel} w-20`} inputMode="decimal" value={draft.minProfit} onChange={(e) => set({ minProfit: e.target.value })} /></label>
-        {/* the RULE's own win line (the "70% wins" its Rules start with),
-            both ends included — Oct 21, 2026 */}
-        <div className="flex flex-col gap-1" title="the win % each rule set asks for — the '70% wins' its Rules start with; both ends included">
-          <span>rule win % between</span>
+        {/* the RULE's own win line (the "70% wins" its Rules start with)
+            AND the win rate in these dates, both inside, both ends included
+            — Oct 21 and Oct 22, 2026 */}
+        <div className="flex flex-col gap-1" title="keeps a rule set when the win % it asks for (the '70% wins' its Rules start with) AND the win rate it got in these dates are both inside; both ends included">
+          <span>win % between</span>
           <span className="flex items-center gap-1">
-            <input aria-label="rule win % from" className={`${sel} w-14`} inputMode="decimal" placeholder="from" value={draft.ruleMin} onChange={(e) => set({ ruleMin: e.target.value })} />
+            <input aria-label="win % from" className={`${sel} w-14`} inputMode="decimal" placeholder="from" value={draft.ruleMin} onChange={(e) => set({ ruleMin: e.target.value })} />
             <span className="text-gray-400">–</span>
-            <input aria-label="rule win % to" className={`${sel} w-14`} inputMode="decimal" placeholder="to" value={draft.ruleMax} onChange={(e) => set({ ruleMax: e.target.value })} />
+            <input aria-label="win % to" className={`${sel} w-14`} inputMode="decimal" placeholder="to" value={draft.ruleMax} onChange={(e) => set({ ruleMax: e.target.value })} />
           </span>
         </div>
         <label className="flex flex-col gap-1">find by id<input className={`${sel} w-28`} value={draft.find} placeholder="#ID" onChange={(e) => set({ find: e.target.value })} /></label>
@@ -1277,7 +1280,8 @@ export function RoomStrategiesSection() {
               {d.retest?.made_at
                 ? "The daily re-test measured them up to then; the next one brings them up to last night."
                 : "Prompt 4 measured them up to then; the first daily re-test brings them up to last night."}
-              {(asked.min_winrate > 0 || asked.min_profit != null) && " A row with no trade in these dates passes no win % or profit floor."}
+              {(asked.min_winrate > 0 || asked.min_profit != null || asked.rule_wr_min != null || asked.rule_wr_max != null)
+                && " A row with no trade in these dates passes no win % or profit floor."}
             </p>
           )}
           {/* A BACK END THAT DOES NOT KNOW THE BOXES IGNORES THEM: the line
@@ -1286,7 +1290,7 @@ export function RoomStrategiesSection() {
               rows were NOT cut by it rather than let the label stand alone */}
           {(asked.rule_wr_min != null || asked.rule_wr_max != null) && d.rule_matched == null && (
             <p className="mt-2 text-theme-xs text-warning-700 dark:text-warning-400">
-              The back end has not applied &quot;rule win % between&quot; yet (it needs a restart), so these rows are not cut by it.
+              The back end has not applied &quot;win % between&quot; yet (it needs a restart), so these rows are not cut by it.
             </p>
           )}
           {/* a "rule win % between" no kept rule set asks names the lines
@@ -1295,6 +1299,13 @@ export function RoomStrategiesSection() {
             <p className="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
               No kept rule set asks for those win rates. The {d.kept.toLocaleString()} kept ask{" "}
               {d.rule_lines.map(([wr, n]) => `${wr}% (${n.toLocaleString()})`).join(", ")}.
+            </p>
+          )}
+          {/* the range's other half: rule sets ask it, none WON it in these
+              dates (Oct 22, 2026) — never an unexplained empty table */}
+          {d.kept > 0 && (d.rule_matched ?? 0) > 0 && d.rule_won === 0 && (
+            <p className="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
+              {(d.rule_matched ?? 0).toLocaleString()} kept rule set{d.rule_matched === 1 ? " asks" : "s ask"} for those win rates, but none of them won inside that range in these dates.
             </p>
           )}
           {d.kept === 0 ? (

@@ -203,15 +203,22 @@ def summary(coins: dict, report: list | None = None) -> dict:
             searched.add((c, tf))
             if (out.get("search") or {}).get("stop") == "deadline":
                 per[tf]["deadline"].append(c)
+    # one line per pair, the LATEST run's: a follow-up that measured a pair
+    # the first run skipped gives the pair's real reason (and two runs that
+    # both skipped it never count it twice)
+    latest: dict = {}
     for e in report or []:
         tf = e.get("tf")
         if tf in (None, "*") or (str(e.get("coin")), tf) in searched:
             continue
+        if e.get("error") or e.get("why"):
+            latest[(str(e.get("coin")), tf)] = e
+    for (coin, tf), e in latest.items():
         row = per.setdefault(tf, blank())
         if e.get("error"):
-            row["failed"].append(f"{e.get('coin')}: {e['error']}")
-        elif e.get("why"):
-            row["skipped"].append(f"{e.get('coin')}: {e['why']}")
+            row["failed"].append(f"{coin}: {e['error']}")
+        else:
+            row["skipped"].append(f"{coin}: {e['why']}")
     for row in per.values():
         row["test_win_rate"] = (round(100 * row["test_wins"] / row["test_trades"], 1)
                                 if row["test_trades"] else None)

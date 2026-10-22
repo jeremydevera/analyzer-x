@@ -172,3 +172,16 @@ def test_a_pair_skipped_by_one_run_and_searched_by_the_next_is_not_called_skippe
     got = cr.summary(coins, report)["by_tf"]
     assert got["1h"]["skipped"] == [] and got["1h"]["searched"] == 1
     assert got["4h"]["failed"] == ["NVDA: RuntimeError: planted"]
+
+
+def test_a_pair_two_runs_both_left_out_is_counted_once_with_its_latest_reason():
+    """The full market skipped a young pair ("only 48 days"); the follow-up
+    measured it on its own history and found no stop/target paying 2:1. The
+    pair is one line, carrying the follow-up's reason - never two."""
+    report = [{"coin": "NVDA", "tf": "1d", "why": "only 48 days: 30+ tuning days must come first"},
+              {"coin": "KIMCHI", "tf": "1d", "error": "GateFuturesError: no Day1 candles"},
+              {"coin": "NVDA", "tf": "1d", "why": "no stop/target pays 2:1 at this coin's usual round trip"},
+              {"coin": "KIMCHI", "tf": "1d", "error": "GateFuturesError: no Day1 candles"}]
+    got = cr.summary({}, report)["by_tf"]["1d"]
+    assert got["skipped"] == ["NVDA: no stop/target pays 2:1 at this coin's usual round trip"]
+    assert got["failed"] == ["KIMCHI: GateFuturesError: no Day1 candles"]

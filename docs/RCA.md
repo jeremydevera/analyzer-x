@@ -172,6 +172,55 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-22-F — the confluence reader counted a left-out pair once per run that reported it: 1,759 "skipped" for 1,059 pairs
+
+NEVER HAPPENED YET on a page — found by checking the final numbers before
+publishing them.
+
+**CEO**
+
+* Joining the full market's main run and its follow-ups, the summary said
+  1,759 coin + timeframes were left out when the true number is 1,059.
+* Why: a pair the main run skipped and the follow-up skipped again (with its
+  real reason) was listed by both.
+* What stops it now: one line per pair, carrying the latest run's reason.
+
+**DEV**
+
+* `tradingagents/cq_report.py` `summary(coins, report)` appended every report
+  line with `why`/`error` for a pair with no kept result, without
+  de-duplicating across runs (the results page's own list kept the FIRST
+  line instead - the main run's out-of-date "only N days").
+* Invariant broken: **a join across runs keeps one fact per key - the
+  newest** (the same rule `results()` follows for kept results).
+* Guard: `tests/test_cq_report.py::test_a_pair_two_runs_both_left_out_is_counted_once_with_its_latest_reason`
+  (red before this commit).
+
+**SAW** — `cq_report` over the 8 runs, Oct 22, 2026 ~1:58pm: skipped 614 +
+309 + 235 + 352 + 249 = 1,759 by timeframe, against 1,052 "no 2:1" + 6 one-candle
++ 1 failed counted by hand.
+
+**TIMELINE**
+
+1. `Oct 22, 2026 9:03am` — the full market; `11:18am` its young pairs sent
+   again (8 runs in all with the Chinese-named coins).
+2. `~1:58pm` — the joined summary: 1,759 skipped; the hand count: 1,059.
+3. Fixed before the page or any message carried the number.
+
+**ROOT CAUSE** — no key in `summary()`'s report loop.
+
+**WHY IT WAS NOT CAUGHT** — `test_a_pair_skipped_by_one_run_and_searched_by_the_next_is_not_called_skipped`
+covered a pair one run skipped and another SEARCHED, never one both runs
+skipped.
+
+**COST** — none.
+
+**FIX** — this commit.
+
+**GUARD** — `tests/test_cq_report.py::test_a_pair_two_runs_both_left_out_is_counted_once_with_its_latest_reason`.
+
+---
+
 ## RCA-2026-10-22-E — 683 coin + timeframes were reported as "no stop/target pays 2:1" when the real cause was that the app cannot hold those 137 coins at 20x
 
 **CEO**
@@ -197,7 +246,7 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 * Guard: `tests/test_cq_shard.py::test_a_coin_the_app_cannot_hold_at_20x_says_so`
   (red before this commit).
 
-**SAW** — the full market's collects, Oct 22, 2026 11:18am and ~2:00pm:
+**SAW** — the full market's collects, Oct 22, 2026 11:18am and ~1:45pm:
 1,052 skips all reading "no stop/target pays 2:1"; the cheapest of them, BTW
 on every timeframe, had a usual round trip of 0.185%, which pays 2:1 on 27-44
 of the grid's stop/targets.
@@ -206,9 +255,9 @@ of the grid's stop/targets.
 
 1. `Oct 22, 2026 9:03am` — the full market sent (1,056 coins).
 2. `11:18am` — collected: 341 pairs skipped as "no 2:1".
-3. `11:18am` — the follow-up for young coins sent; `~2:00pm` collected: 711
+3. `11:18am` — the follow-up for young coins sent; `~1:45pm` collected: 711
    more "no 2:1".
-4. `~2:10pm` — checking the cheapest skipped coin: BTW 0.185% round trip,
+4. `~1:50pm` — checking the cheapest skipped coin: BTW 0.185% round trip,
    liquidation distance 0.0 at 20x; 683 of the 1,052 have that distance (137
    coins), 369 really are too expensive (median round trip 1.24%).
 

@@ -1,0 +1,109 @@
+name: Confluence research
+run-name: "Confluence research · ${{ inputs.label }}"
+
+# The operator, Oct 21, 2026: "I want you to reasearch confluence for each
+# coins and each time frame, my goal is 2:1R", their approved Prompt 1
+# (research/cq/prompts.md) and "then start the prompt ... use supwerpower to
+# decide the recommended". Design:
+# docs/superpowers/specs/2026-10-21-confluence-research-design.md.
+#
+# Its own workflow, never sweep.yml: a research run must never write the
+# market grid's pair-done markers, saved positions or the store. Public market
+# data only - no credentials are read. Dealt between every account by
+# tradingagents/cq_search.py (each account gets its own coin_list).
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "How many runners to split the work across"
+        default: "20"
+      timeframes:
+        description: "Comma-separated timeframes"
+        default: "15m,30m,1h,4h,1d"
+      coin_list:
+        description: "Comma-separated symbols (BTC_USDT,ETH_USDT); empty = the whole market"
+        default: ""
+      base:
+        description: "Base margin $ per trade"
+        default: "5"
+      label:
+        description: "A name for this run (its title)"
+        default: "manual"
+      luck:
+        description: "The luck search (random entries): all, or comma-separated coins, or empty"
+        default: ""
+      search:
+        description: "round size, most rounds, patience"
+        default: "500,100,10"
+
+permissions:
+  contents: write        # claims and progress on the sweep-progress branch
+  actions: read
+
+# THE EXCHANGE (Oct 10, 2026, the move to Gate)
+env:
+  TA_VENUE: gate
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.mk.outputs.shards }}
+    steps:
+      - id: mk
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          n = int(os.environ["N"])
+          print("shards=" + json.dumps(list(range(n))))
+          PY
+        env:
+          N: ${{ github.event.inputs.shards }}
+
+  research:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 350          # runners are killed at 6h; stop before that
+    strategy:
+      fail-fast: false            # one bad machine must not bin the others
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          # the PC's own versions: the runner and the backtest must compute
+          # the same indicator values to the last bit (pro_indicators)
+          pip install "pandas==3.0.5" "numpy==2.5.2" requests
+
+      - name: Research shard ${{ matrix.shard }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ github.event.inputs.shards }}
+          TFS: ${{ github.event.inputs.timeframes }}
+          COIN_LIST: ${{ github.event.inputs.coin_list }}
+          BASE_MARGIN: ${{ github.event.inputs.base }}
+          LUCK: ${{ github.event.inputs.luck }}
+          SEARCH: ${{ github.event.inputs.search }}
+        run: python .github/scripts/cq_shard.py
+
+      # always(): a machine stopped at the time limit still hands over every
+      # coin it finished - the files are rewritten after each coin
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cq-out-${{ matrix.shard }}
+          path: |
+            out/cq-*.json.gz
+            out/cq-report-*.json
+          if-no-files-found: warn
+          retention-days: 30

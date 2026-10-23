@@ -197,14 +197,17 @@ def _target_frac(levels: dict, entry: float) -> float:
 
 
 def _size(entry: float, stop: float, ctx: dict) -> tuple[dict | None, str]:
-    """The size that risks `risk_usd`, or (None, the count that says why not)."""
+    """The size that risks `risk_usd`, or (None, the count that says why not).
+    Leverage is the highest safe one, never above `v3_rules.LEVERAGE_CAP` (the
+    rooms' own 20x) whatever the contract allows."""
     c = ctx["contract"]
-    if vr.safe_leverage(abs(entry - stop) / entry, float(c["mmr"]), int(c["max_lev"]),
+    max_lev = min(int(c["max_lev"]), vr.LEVERAGE_CAP)
+    if vr.safe_leverage(abs(entry - stop) / entry, float(c["mmr"]), max_lev,
                         int(c.get("min_lev", 1))) is None:
         return None, "unsafe_stop"
     size = vr.risk_size(ctx["risk_usd"], entry, stop,
                         contract_size=float(c["contract_size"]), min_vol=int(c["min_vol"]),
-                        mmr=float(c["mmr"]), max_lev=int(c["max_lev"]),
+                        mmr=float(c["mmr"]), max_lev=max_lev,
                         min_lev=int(c.get("min_lev", 1)))
     return (size, "") if size is not None else (None, "too_small")
 

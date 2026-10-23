@@ -63,7 +63,9 @@ const sel = "h-10 w-full rounded-lg border border-gray-300 bg-transparent px-3 t
   + "dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300";
 const lab = "mb-1 block text-theme-xs text-gray-500 dark:text-gray-400";
 const th = "px-3 py-2 text-left text-theme-xs font-medium text-gray-500 dark:text-gray-400";
-const td = "px-3 py-2 text-theme-sm tabular-nums text-gray-700 dark:text-gray-300";
+// one line per row: a date that wraps onto three lines made every trade three
+// rows tall; the table scrolls sideways inside its box instead
+const td = "whitespace-nowrap px-3 py-2 text-theme-sm tabular-nums text-gray-700 dark:text-gray-300";
 
 // what each count means, in plain words (v3_engine.COUNT_KEYS)
 const COUNT_WORDS: Record<string, string> = {
@@ -282,7 +284,8 @@ export default function V3Runner() {
         {running && (
           <p className="mt-3 text-theme-xs text-gray-500 dark:text-gray-400">
             Reading {sym.trim().toUpperCase()}&apos;s candles, minutes, order books and funding from {venue}
-            {" "}and walking every signal — about 10 seconds for 30 days, longer for bigger windows.
+            {" "}and walking every signal — from about 10 seconds to a minute for 30 days (the first
+            {" "}run after the site starts is the slow one), longer for bigger windows.
           </p>
         )}
         {runErr && <p className="mt-3 text-theme-xs text-error-600 dark:text-error-400">The run was refused: {runErr}</p>}

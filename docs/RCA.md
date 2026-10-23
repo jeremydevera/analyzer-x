@@ -172,6 +172,74 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-23-C — the first Backtest v3 tab run traded BTC at 64x, where the operator had chosen "Same risk, lower leverage" and the rooms trade at 20x
+
+**CEO**
+
+* The new Backtest v3 tab's first BTC run put every trade at 64x leverage:
+  $1.44-$1.55 of margin for $92-$100 of coin. The operator had chosen "Same
+  risk, lower leverage", and their rooms trade at 20x.
+* Why: the engine took the highest leverage the coin allows that keeps the
+  stop before liquidation, and Gate lets BTC go to 100x.
+* What stops it now: no v3 trade goes above 20x, and a wide stop still goes
+  lower; the dollars lost at a stop are the same as before ($1 at $1 risk).
+
+**DEV**
+
+* `tradingagents/v3_engine.py:199-209 _size` (at `8d0ca85`) passed the
+  contract's own `max_lev` (Gate's `leverage_max`, 100 on BTC_USDT) to
+  `v3_rules.safe_leverage` / `risk_size`, which count down from it.
+* Invariant broken: **v3 leverage = the highest safe leverage, never above
+  the rooms' own** — `v3_rules.LEVERAGE_CAP`, held equal to
+  `auto_trader.LEVERAGE` (20).
+* Guard: `tests/test_v3_engine.py::test_no_trade_goes_above_the_rooms_own_20x_and_a_wide_stop_goes_lower`,
+  `tests/test_v3_rules.py::test_the_leverage_cap_is_the_rooms_own`.
+
+**SAW** - found in the browser check of the new tab, Oct 23, 2026 12:40pm,
+before the operator ran it: "BTC_USDT 1h · idea bb20 · closes by target 2%
+and stop 1% · ... leverage 64x · $92.14-$99.62 of coin a trade", and 64x on
+all 18 trade rows.
+
+**TIMELINE**
+
+1. `Oct 22, 2026` - the design session: on money per trade the operator
+   chose **"Same risk, lower leverage"**. The spec wrote it as "Leverage is
+   chosen per trade so the stop sits inside 80% of the liquidation distance"
+   — a ceiling against liquidation, and no limit on leverage.
+2. `Oct 22, 2026 11:04pm` (`2da919d`) - `v3_rules.safe_leverage` ships,
+   counting down from whatever `max_lev` it is handed; `v3_engine._size`
+   hands it the contract's own maximum (`89c05b5`).
+3. `Oct 23, 2026 12:40pm` - the tab's first real run, BTC_USDT 1h bb20, 2% /
+   1%, the 30 days to Oct 23, 2026 12:00pm: 18 trades, all 64x, margin
+   $1.44-$1.55 (BTC's maintenance rate leaves a 1% stop safe up to 64x).
+4. After the fix: the same trades at 20x, margin $4.61-$4.98; a 2% stop at
+   maintenance 0.5% (safe to 33x) trades at 20x; an 8% stop trades at 9x.
+
+**ROOT CAUSE** - the spec turned the operator's two words "lower leverage"
+into a liquidation ceiling only, and the plan passed the coin's own maximum,
+so "safe" meant "as high as the exchange allows".
+
+**WHY IT WAS NOT CAUGHT** - every engine test used one contract,
+`CONTRACT = {..., "max_lev": 20}`, where "the highest safe leverage" and
+"20x, lower when a stop needs it" give the same answer; only a coin whose
+maximum is above 20 (BTC 100x) tells them apart, and none of the 59 engine
+tests had one. The 3 real smoke runs did use BTC, but they printed trades,
+wins and profit — the leverage was never printed until the tab showed it.
+
+**COST** - none: no order, nothing stored, and the dollars at risk per trade
+were unchanged; only the margin and the room before liquidation shown on
+screen were wrong, for about ten minutes, before the operator ran it.
+
+**FIX** - this commit: `v3_rules.LEVERAGE_CAP = 20`, applied in
+`v3_engine._size` (`min(contract max, cap)`); CLAUDE.md's v3 section says so.
+
+**GUARD** - `tests/test_v3_engine.py::test_no_trade_goes_above_the_rooms_own_20x_and_a_wide_stop_goes_lower`
+(a 100x contract trades a 2% stop at 20x and an 8% stop at 9x) and
+`tests/test_v3_rules.py::test_the_leverage_cap_is_the_rooms_own` (the cap
+equals `auto_trader.LEVERAGE`).
+
+---
+
 ## RCA-2026-10-23-B — Backtest v3 charged no funding for the part of a hold after a saved funding list stopped, and called it measured: a 41-hour long paid $0.00 where its payments were $0.25
 
 **CEO**

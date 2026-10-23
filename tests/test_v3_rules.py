@@ -235,3 +235,11 @@ def test_an_order_the_book_already_crosses_is_marketable():
     assert not vr.marketable(1, 100.0, 99.95, 100.05)
     assert vr.marketable(-1, 100.0, 100.0, 100.1) and vr.marketable(-1, 100.0, 100.1, 100.2)
     assert not vr.marketable(-1, 100.0, 99.95, 100.05)
+
+
+def test_the_leverage_cap_is_the_rooms_own():
+    """v3 never trades above the leverage the rooms trade at (operator, Oct 22,
+    2026: "Same risk, lower leverage"; RCA-2026-10-23-C)."""
+    import tradingagents.auto_trader as at
+
+    assert vr.LEVERAGE_CAP == at.LEVERAGE == 20

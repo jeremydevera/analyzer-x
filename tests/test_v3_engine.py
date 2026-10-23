@@ -1002,3 +1002,21 @@ def test_a_stop_the_candle_rule_decides_fills_at_the_open_when_the_candle_opened
     (tr,) = got["trades"]
     assert tr["exit_ms"] == T0 + 23 * H and tr["exit"] == pytest.approx(99.0)
     assert got["counts"]["settled_by_candle"] == 1
+
+
+def test_no_trade_goes_above_the_rooms_own_20x_and_a_wide_stop_goes_lower():
+    """Operator, Oct 22, 2026, on money per trade: "Same risk, lower leverage".
+    The first tab run (Oct 23, 2026) traded BTC at 64x because Gate lets BTC go
+    to 100x; v3 now stops at the leverage the rooms trade at (20x) and goes
+    lower only when a wide stop needs it (RCA-2026-10-23-C)."""
+    big = {**CONTRACT, "max_lev": 100}
+    bars, fine = _fixed_world([(100.1, 99.0)] * 60, [(101.5, 100.5)] * 60)
+    # a 2% stop at maintenance 0.5%: 0.8 x (1/L - 0.005) > 0.02 needs 1/L > 0.03,
+    # so the highest safe leverage is 33x — and the rooms' 20x is the cap
+    (tr,) = _walk(bars, [1, 0, 0], fine=fine, contract=big)["trades"]
+    assert tr["leverage"] == 20
+    assert tr["margin"] == pytest.approx(tr["notional"] / 20)
+    # an 8% stop: 0.8 x (1/L - 0.005) > 0.08 needs 1/L > 0.105, so L = 9
+    wide = {"kind": "fixed", "tp": 0.16, "sl": 0.08}
+    (tr,) = _walk(bars, [1, 0, 0], wide, fine=fine, contract=big)["trades"]
+    assert tr["leverage"] == 9

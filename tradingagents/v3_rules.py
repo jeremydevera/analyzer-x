@@ -18,6 +18,12 @@ RISK_USD = 1.0      # lost when a stop is hit; the v3 page's risk box rescales i
 ATR_N = 20
 TRAIL_ATR = 3.0     # trailing stop = 3 x ATR(20) of the strategy's timeframe
 LIQ_CEILING = 0.8   # auto_trader.STOP_LIQ_CEILING, held equal by a test
+# never above the leverage the rooms trade at — auto_trader.LEVERAGE, held equal
+# by a test (operator, Oct 22, 2026: "Same risk, lower leverage"): a wide stop
+# goes lower, a tight one never higher, whatever the coin allows (Gate lets BTC
+# reach 100x, and the first Backtest v3 tab run traded it at 64x,
+# RCA-2026-10-23-C)
+LEVERAGE_CAP = 20
 
 
 def atr(high, low, close, n: int = ATR_N) -> list:

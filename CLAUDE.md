@@ -2395,7 +2395,9 @@ for the research you made"*. Spec:
   - a touch STOPS: `stop_reached`, one rule for the trail, the fixed stop
     and a candle that proves a stop;
   - $1 risk, at the highest leverage whose stop sits inside 80% of
-    liquidation;
+    liquidation — never above the rooms' own 20x (`LEVERAGE_CAP`, held
+    equal to `auto_trader.LEVERAGE`; the operator chose "Same risk, lower
+    leverage", and Gate lets BTC reach 100x, RCA-2026-10-23-C);
   - a trailing stop is checked before it moves, and never loosened;
   - a stop the price jumped past fills where the price was;
   - funding outside Gate's history — before its first settlement, or more

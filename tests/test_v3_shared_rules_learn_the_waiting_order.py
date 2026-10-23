@@ -72,3 +72,20 @@ def test_a_waiting_entry_is_never_refused_as_a_chase():
     assert at.entry_refusal(ran, side=1, signal_close=100.0, tp=0.02, sl=0.01,
                             fee=0.00075, hold_s=3600, liq=0.036, fund_day=0.0,
                             entry="limit", maker_fee=0.0002)[0] == ""
+
+
+def test_the_fixed_stop_reads_a_touch_exactly_as_stop_reached_does():
+    """One touch rule kept in two places (parked at the final review of Backtest v3 Part 1):
+    `settle_in_minutes` reads a fixed stop at a minute the archive holds (the shared v2 settle,
+    `lw <= sl_px`), `v3_rules.stop_reached` everything else. A long's low AT its stop stops it in
+    both, a low a hair above it in neither - and a short mirrors it."""
+    from tradingagents import v3_rules as vr
+
+    for s, stop, tp, touch, miss in ((1, 98.0, 110.0, (99.0, 98.0), (99.0, 98.01)),
+                                     (-1, 102.0, 90.0, (102.0, 101.0), (101.99, 101.0))):
+        for (hi, lo), hit in ((touch, True), (miss, False)):
+            t, h, lw = _minutes([(hi, lo)])
+            got = at.settle_in_minutes(t, h, lw, T0, 3600, s, tp, stop, None, liq=None,
+                                       sl=0.02, tp_through=True)
+            assert (got[0] == "SL") is hit, (s, hi, lo)
+            assert vr.stop_reached(s, stop, hi, lo) is hit, (s, hi, lo)

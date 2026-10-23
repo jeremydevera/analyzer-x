@@ -1020,3 +1020,52 @@ def test_no_trade_goes_above_the_rooms_own_20x_and_a_wide_stop_goes_lower():
     wide = {"kind": "fixed", "tp": 0.16, "sl": 0.08}
     (tr,) = _walk(bars, [1, 0, 0], wide, fine=fine, contract=big)["trades"]
     assert tr["leverage"] == 9
+
+
+# ---- parked at the final review of Part 1, added in Part 2a's first commit: a SHORT trail's -----
+# ---- stop that a hole hides, (a) in the rest of the fill candle and (b) in a whole candle --------
+
+SHORT_TRAIL_FILL = [(100.2, 99.95)] + [(100.1, 99.9)] * 59   # sells at 100.0 in minute 0
+
+
+def test_a_short_trails_hidden_stop_in_the_rest_of_the_fill_candle_is_proven_by_its_high():
+    # (a) the short sells at minute 0 (its 100.2 high is over the 100.0 limit); the trail starts
+    # 3 x 0.205 = 0.615 over the entry, 100.615. Minutes 1-29 pull it down to 99.9 + 0.615 =
+    # 100.515 and minute 30 trades up to 101.0: with every minute, out at minute 30 at 100.515
+    fill_hour = SHORT_TRAIL_FILL[:30] + [(101.0, 99.9)] + SHORT_TRAIL_FILL[31:]
+    bars, fine = _world([FLAT] * 21 + [SIGNAL, fill_hour, FLAT])
+    dirs = [0] * 21 + [-1, 0, 0]
+    (tr,) = _walk(bars, dirs, TRAIL, fine=fine)["trades"]
+    assert (tr["why"], tr["exit_ms"]) == ("TRAIL", T0 + 22 * H + 30 * M)
+    assert tr["exit"] == pytest.approx(100.515)
+    # minute 30 missing: a short trades through its limit before it can rise to a stop over it,
+    # so the hour's own 101.0 high came after the fill and is over the 100.615 the trail BEGAN
+    # with - the stop was hit. Whether minutes 1-29 pulled it down first is unknowable: out at
+    # 100.615, stamped at minute 1, the first point after the fill
+    got = _walk(bars, dirs, TRAIL, fine=_without(fine, T0 + 22 * H + 30 * M, T0 + 22 * H + 31 * M))
+    (tr,) = got["trades"]
+    assert (tr["why"], tr["exit_ms"]) == ("TRAIL", T0 + 22 * H + M)
+    assert tr["exit"] == pytest.approx(100.615)
+    assert got["counts"]["settled_by_candle"] == 1 and got["counts"]["unclear"] == 0
+
+
+def test_a_short_trails_hidden_stop_in_a_whole_candle_cannot_ride_on_to_a_later_exit():
+    # (b) the mirror of the long test above. Hour 23 begins with the short's trail at 100.515.
+    # Minute 10 trades up to 101.0, over it; minute 20 down to 99.0 (which would pull the stop to
+    # 99.615) and minute 30 up to 99.7. Every minute: out at minute 10, at 100.515
+    hour = ([(100.1, 99.9)] * 10 + [(101.0, 100.0)] + [(100.1, 99.9)] * 9 + [(99.6, 99.0)]
+            + [(99.5, 99.0)] * 9 + [(99.7, 99.4)] + [(99.7, 99.5)] * 29)
+    bars, fine = _world([FLAT] * 21 + [SIGNAL, SHORT_TRAIL_FILL, hour, FLAT])
+    dirs = [0] * 21 + [-1, 0, 0, 0]
+    (tr,) = _walk(bars, dirs, TRAIL, fine=fine)["trades"]
+    assert (tr["why"], tr["exit_ms"]) == ("TRAIL", T0 + 23 * H + 10 * M)
+    assert tr["exit"] == pytest.approx(100.515)
+    # minute 10 missing: the minutes left would exit at 99.615 at minute 30 (a WIN for the short),
+    # but the hour's own 101.0 high is over the 100.515 it began with (a trail only tightens inside
+    # an hour): the stop was hit in a hidden minute, in an order nothing shows - out at 100.515 at
+    # the hour's open (it opened at 100.0, under the stop), counted settled_by_candle and unclear
+    got = _walk(bars, dirs, TRAIL, fine=_without(fine, T0 + 23 * H + 10 * M, T0 + 23 * H + 11 * M))
+    (tr,) = got["trades"]
+    assert (tr["why"], tr["exit_ms"]) == ("TRAIL", T0 + 23 * H)
+    assert tr["exit"] == pytest.approx(100.515)
+    assert got["counts"]["settled_by_candle"] == 1 and got["counts"]["unclear"] == 1

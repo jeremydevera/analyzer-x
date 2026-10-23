@@ -2392,18 +2392,20 @@ for the research you made"*. Spec:
   - a waiting order fills only when the price trades THROUGH it (a touch is
     not a fill), inside the next candle;
   - an order the book already crosses when it goes in is `marketable`;
-  - a touch STOPS: `stop_reached`, one rule for the trail, the fixed stop
-    and a candle that proves a stop;
+  - a touch STOPS: `stop_reached` for the trail and for a candle that
+    proves a stop; a fixed stop at a minute the archive holds is read by
+    `settle_in_minutes` (`lw <= sl_px`), the same touch rule kept in the
+    shared v2 settle and held equal to `stop_reached` by a test;
   - $1 risk, at the highest leverage whose stop sits inside 80% of
     liquidation — never above the rooms' own 20x (`LEVERAGE_CAP`, held
     equal to `auto_trader.LEVERAGE`; the operator chose "Same risk, lower
     leverage", and Gate lets BTC reach 100x, RCA-2026-10-23-C);
   - a trailing stop is checked before it moves, and never loosened;
   - a stop the price jumped past fills where the price was;
-  - funding outside Gate's history — before its first settlement, or more
-    than one cycle (the last settlement's own) after its last, a saved list
-    that stopped — pays the average known rate and is counted
-    (RCA-2026-10-23-B); the cycle not settled yet is free.
+  - funding outside Gate's history — more than one cycle before its first
+    settlement, or more than one cycle (the last settlement's own) after its
+    last, a saved list that stopped — pays the average known rate and is
+    counted (RCA-2026-10-23-B); the cycle not settled yet is free.
 * **The waiting order is POST-ONLY** (Gate's `poc`; ruled Oct 23, 2026: of
   139,634 orders placed at the signal close on 63 coins, 59,385 — 42.5% —
   were marketable the minute they went in, which Gate fills as a taker).

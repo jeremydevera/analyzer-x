@@ -283,10 +283,13 @@ both logged it as a deferred minor.
    stale list) pays 0 with estimated=False" as a deferred minor; on
    `Oct 23, 2026` Task 7's review lists it as a fifth case the engine does
    not count.
-3. `Oct 23, 2026 ~1:45am` - the final review's probe: a list whose last
-   settlement is an hour before the entry (0.1% every 8 hours), a long held
-   41 hours on $50 of coin: $0.00, `estimated=False`. Settled every 8 hours
-   it pays 5 x 0.1% = $0.25, so +$0.23 read as +$0.48.
+3. `Oct 23, 2026 ~1:45am` - the final review names the case: a list whose
+   last settlement is an hour before the entry (0.1% every 8 hours), a long
+   held 41 hours on $50 of coin. Its probe script passed NO list, so it ran
+   the no-history path and printed `estimated=True`; called with the list,
+   as the case reads, the `d8b2f00` code returns `(0, False)` - $0.00,
+   marked measured (run again Oct 23, 2026 for Part 2a's first commit).
+   Settled every 8 hours it pays 5 x 0.1% = $0.25, so +$0.23 read as +$0.48.
 4. After the fix (this commit): the same hold pays for the 34 hours past
    one cycle after the last settlement, 34 / 8 x 0.1% = 0.425% = $0.2125,
    estimated and counted (+$0.2675); a hold ending inside the cycle after the

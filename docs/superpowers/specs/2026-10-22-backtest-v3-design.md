@@ -122,6 +122,7 @@ the engine both read (BTC's mood, the weekly ranking), written once a day
     the limit price and what a market entry would have made, so the cost of
     waiting is a number on the page (`missed`, `missed_pnl`).
   - The fill price is the limit price (no gap paid on entry).
+  - Ruling, Oct 23, 2026 (final review of Part 1): the waiting order is post-only — an order marketable when placed (fresh book) is rejected and recorded as a missed trade with its market twin, so the maker fee is true by construction.
 * **Exits, by idea:**
   - Trend ideas (#1-#3): a trailing stop 3 × ATR(20) of the strategy's
     timeframe, updated each closed minute, never loosened; closed at the market

@@ -15,7 +15,10 @@ import argparse
 import time
 
 LEAD_BARS = 300       # the lookback every stored rule reads before it can signal
-FLAT_SLIP = 0.0003    # the engine's default gap a side where no book was recorded
+# a copy of auto_trader.PAPER_SLIPPAGE: ONE figure for every coin, paid a side
+# where no book was recorded. The engine has no default gap (walk's flat_slip
+# is required); Part 2 passes each coin's own (CLAUDE.md rule 10)
+FLAT_SLIP = 0.0003
 
 
 def exit_spec(text: str) -> dict:

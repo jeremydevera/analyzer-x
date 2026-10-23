@@ -2391,14 +2391,39 @@ for the research you made"*. Spec:
   v3 practice rooms later:
   - a waiting order fills only when the price trades THROUGH it (a touch is
     not a fill), inside the next candle;
-  - an unfilled order is a missed trade, kept with its market twin;
+  - an order the book already crosses when it goes in is `marketable`;
+  - a touch STOPS: `stop_reached`, one rule for the trail, the fixed stop
+    and a candle that proves a stop;
   - $1 risk, at the highest leverage whose stop sits inside 80% of
     liquidation;
   - a trailing stop is checked before it moves, and never loosened;
   - a stop the price jumped past fills where the price was;
-  - funding before Gate's history is estimated and counted.
+  - funding outside Gate's history — before its first settlement, or more
+    than one cycle (the last settlement's own) after its last, a saved list
+    that stopped — pays the average known rate and is counted
+    (RCA-2026-10-23-B); the cycle not settled yet is free.
+* **The waiting order is POST-ONLY** (Gate's `poc`; ruled Oct 23, 2026: of
+  139,634 orders placed at the signal close on 63 coins, 59,385 — 42.5% —
+  were marketable the minute they went in, which Gate fills as a taker).
+  `v3_engine.walk` reads that minute's book (at most 59 s old by
+  `book_age_s`): a book that crosses the order rejects it
+  (`post_only_reject`); no such book lets it rest unchecked
+  (`placement_unmeasured`). Checks in order: sizing, the runner's cost
+  check, post-only, the fill. A rejected or never-filled order is a missed
+  trade kept with its market twin (`walk` / `_market_twin`), its record
+  saying why — so a waiting fill pays the maker fee by construction.
 * **The point an order fills in can stop the trade, never win it.** Its high
   may have come before the fill.
+* **A stop the candle proves is a stop, even where its minute is missing**
+  (RCA-2026-10-23-A). A long trades through its limit before it can fall to
+  a stop under it (a short mirrors this), so a candle's own low at or under
+  the stop proves the stop was hit after the fill — inside the fill candle
+  too, whose HIGH alone may predate the fill. In the rest of a fill candle
+  it is booked at the stop, stamped at the first point after the fill; on a
+  whole candle by the candle rule. When the minutes left show the target, or
+  a trail exit at a stop they moved, nothing says which came first: the
+  stop, counted `unclear` as well. A stop the candle rule decides fills at
+  the stop, or at the candle's open when it opened past the stop.
 * **Shared, not copied:**
   - a resting target is `settle_in_minutes(tp_through=True)`;
   - a waiting entry's cost check is `entry_refusal(entry="limit")` (maker
@@ -2408,27 +2433,35 @@ for the research you made"*. Spec:
 
   Every default is the rule of before, byte for byte.
 * **What the engine knows it could not measure is counted.** Every walk
-  returns its `COUNT_KEYS`, and every v3 run prints `cost_store.coverage`
-  first. NOT counted yet: the rest of a fill candle after the fill (never
-  re-read), a hole inside a candle that still has minutes (the first event
-  its surviving minutes show wins — 40 of 5,164 simulated trades, 0.8%,
-  differed from the all-minutes answer), a missed order's market-twin
-  counts, and an entry cost check made with no recorded book (only the
-  coverage line shows those).
+  returns its `COUNT_KEYS` — among them `post_only_reject`,
+  `placement_unmeasured`, `settled_by_candle`, `fill_by_candle` (every fill
+  DECISION the candle rule made, filled or missed), `unclear`, and
+  `no_points` / `partial_points` (each candle a trade lived through with no
+  minutes, or with minutes that miss its own high or low) — and every v3 run
+  prints `cost_store.coverage` first. NOT counted yet: a missed order's
+  market-twin counts, and an entry cost check made with no recorded book
+  (only the coverage line shows those).
 * **A candle the minutes cannot settle keeps the candle rule, counted.**
   A whole candle whose minutes miss what the candle itself shows — a stop
   it crossed, a target it reached, a price that traded through a waiting
   order — is settled by the candle rule and counted (`settled_by_candle`,
   `fill_by_candle`), as Backtest v2 keeps the bar rule when the minutes
-  answer "NONE"; the part of a fill candle after the fill is never re-read
-  by the candle rule.
+  answer "NONE".
 * **The flat gap is always named.** `v3_engine.walk(flat_slip=)` has no
   default: a market exit with no recorded book pays the coin's flat gap,
   never a free 0 (rule 9), and is counted `cost_unmeasured`.
+* **A contract that cannot be measured is refused by name.** `walk` raises
+  `ValueError` naming `contract_size` or `mmr` at 0 or less, or `max_lev`
+  under 1: a missing maintenance rate read as 0 gives a 3% stop 20x where
+  Gate's 5% allows 11x (unknown is not zero, rule 12's shape). The closed
+  flag holds with or without the cost check.
 * **v3 never writes v1 or v2.** It uses `stores.V3` and ids
-  `row_code(..., res="v3")`. No job runs with `V3.env_for()` until every
-  reader of `market_sweep.FINE_TF` has been checked: "v3" is set, and several
-  readers take a set value to mean v2.
+  `row_code(..., res="v3")`. No job runs with `V3.env_for()` until the 16
+  job-kind gates that test `endswith("_v2")`, the readers that use
+  `store.fine_tf` as a candle frame and every reader of
+  `market_sweep.FINE_TF` have been checked (listed beside `stores.V3`):
+  `db_jobs` gives a kind that does not end in `_v2` no store environment,
+  "v3" is set, and several readers take a set value to mean v2.
 
 Guards: `tests/test_v3_rules.py`, `tests/test_v3_engine.py`,
 `tests/test_v3_shared_rules_learn_the_waiting_order.py`,

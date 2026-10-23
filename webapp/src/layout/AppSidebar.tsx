@@ -9,6 +9,7 @@ import {
   DollarLineIcon,
   DownloadIcon,
   HorizontaLDots,
+  PieChartIcon,
   TableIcon,
 } from "../icons/index";
 
@@ -68,6 +69,15 @@ const navItems: NavItem[] = [
     icon: <TableIcon />,
     name: "Backtest",
     path: "/backtest-v2",
+  },
+  // BACKTEST V3 (operator, Oct 23, 2026: "i dont see it in ui where is it i
+  // said to create backtest v3 tab", then "Tab now, fill it later"): one coin
+  // and one idea run the v3 way on request; its tested-ideas list fills when
+  // the GitHub test of every idea on every coin has run.
+  {
+    icon: <PieChartIcon />,
+    name: "Backtest v3",
+    path: "/backtest-v3",
   },
   // CLAUDE SKILLS (operator, Oct 15, 2026: "can you create a tab called
   // 'Claude skills' then categorize them for their function and what do

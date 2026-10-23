@@ -35,12 +35,14 @@ def exit_spec(text: str) -> dict:
     raise ValueError(f"exit {text!r}: use fixed:TP:SL, trail:ATR[:MA] or snap:ATR:BARS")
 
 
-def run(sym: str, tf: str, signal: str, spec: dict, *, days: int = 120,
-        th: float | None = None, fx=None) -> dict:
-    """One stored signal on one coin over its last `days`, the v3 way."""
+def measure(sym: str, tf: str, signal: str, spec: dict, *, days: int = 120,
+            th: float | None = None, risk_usd: float | None = None, fx=None) -> dict:
+    """One stored signal on one coin over its last `days`, the v3 way — the
+    walk itself and what it was measured on. ONE body for the command line
+    (`run`) and the Backtest v3 tab (`v3_page.run`), so the two can never
+    disagree. `risk_usd` None is v3_rules.RISK_USD."""
     import tradingagents.auto_trader as at
-    from tradingagents import backtest_report as br, cost_store, v3_engine
-    from tradingagents.positions_view import fmt_when
+    from tradingagents import backtest_report as br, cost_store, v3_engine, v3_rules as vr
 
     if fx is None:
         from tradingagents.dataflows import exchange as fx
@@ -60,14 +62,16 @@ def run(sym: str, tf: str, signal: str, spec: dict, *, days: int = 120,
     fund = fx.funding_history(sym, since_ms=(from_s - 86400) * 1000)
     c = fx.contract_spec(sym)
     key = f"{signal}_v3_{tf}"
-    at.STRATEGY_SPECS[key] = {"interval": iv, "bar_seconds": bar_s, "tp": .02, "sl": .01,
-                              "threshold": .003 if th is None else th}
-    try:
+    spec_now = {"interval": iv, "bar_seconds": bar_s, "tp": .02, "sl": .01,
+                "threshold": .003 if th is None else th}
+    # held under the key's own lock (auto_trader.temp_spec, RCA-2026-10-14-N):
+    # the site runs one of these per tab press, and two presses on one signal
+    # and timeframe must never read each other's threshold
+    with at.temp_spec(key, spec_now):
         dk = "rsi14_1h" if signal == "rsi14" else key
         dirs = at._dirs_for_backtest(dk, bars["h"], bars["l"], bars["c"], opens=bars["o"],
                                      volume=vol, ts=t, funding=fund)
-    finally:
-        at.STRATEGY_SPECS.pop(key, None)
+    fees = {"maker": at.maker_fee_floor(), "taker": at.fee_floor()}
     got = v3_engine.walk(
         bars, dirs, spec, bar_s=bar_s,
         contract={"contract_size": float(c.get("contractSize") or 0.0),
@@ -75,13 +79,26 @@ def run(sym: str, tf: str, signal: str, spec: dict, *, days: int = 120,
                   "mmr": float(c.get("maintenanceMarginRate") or 0.0),
                   "max_lev": int(c.get("maxLeverage") or 1),
                   "min_lev": int(c.get("minLeverage") or 1)},
-        fees={"maker": at.maker_fee_floor(), "taker": at.fee_floor()},
-        fine=fine, book=book, flat_slip=FLAT_SLIP, funding=fund, start=lead)
+        fees=fees, fine=fine, book=book, flat_slip=FLAT_SLIP, funding=fund, start=lead,
+        risk_usd=vr.RISK_USD if risk_usd is None else float(risk_usd))
+    return {"walk": got, "t": t, "lead": lead, "from_s": from_s, "end_s": end_s,
+            "coverage": cost_store.coverage(book, from_s, end_s), "fees": fees,
+            "flat_slip": FLAT_SLIP, "points": len(fine[0]) if fine else 0}
+
+
+def run(sym: str, tf: str, signal: str, spec: dict, *, days: int = 120,
+        th: float | None = None, fx=None) -> dict:
+    """One stored signal on one coin over its last `days`, the v3 way, summed
+    for the command line."""
+    from tradingagents.positions_view import fmt_when
+
+    m = measure(sym, tf, signal, spec, days=days, th=th, fx=fx)
+    got, from_s, end_s = m["walk"], m["from_s"], m["end_s"]
     trades = got["trades"]
     twins = [m["market"] for m in got["missed"] if "pnl" in m["market"]]
     return {"sym": sym, "tf": tf, "signal": signal, "exit": spec,
             "start": fmt_when(from_s), "end": fmt_when(end_s),
-            "coverage": cost_store.coverage(book, from_s, end_s),
+            "coverage": m["coverage"],
             "trades": len(trades), "wins": sum(1 for x in trades if x["pnl"] > 0),
             "losses": sum(1 for x in trades if x["pnl"] <= 0),
             "profit": round(sum(x["pnl"] for x in trades), 2),

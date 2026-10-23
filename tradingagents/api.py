@@ -726,6 +726,36 @@ def claude_skill_doc(name: str) -> dict:
     return got
 
 
+# -------------------------------------------------------------- backtest v3
+@app.get("/api/v3/options")
+def v3_options() -> dict:
+    """What the Backtest v3 tab's boxes offer (operator, Oct 23, 2026: "Tab
+    now, fill it later"): the exchange's coins, the five timeframes, every
+    stored signal, the three v3 exits, the windows and the risk box — and
+    what its tested-ideas section can say today (tradingagents/v3_page.py)."""
+    from tradingagents import v3_page
+
+    return v3_page.options()
+
+
+@app.post("/api/v3/run")
+def v3_run(body: dict) -> dict:
+    """One coin and one idea, run the v3 way on Gate's own data: waiting
+    orders, the idea's own exit, $1 risk a trade (the risk box), every cost.
+    The same walk as `python -m tradingagents.v3_smoke`. Reads only — no
+    order, no store. A bad pick answers 400 naming the box; an exchange that
+    cannot be read answers 502 naming why."""
+    from tradingagents import v3_page
+    from tradingagents.dataflows.exchange_errors import VenueError
+
+    try:
+        return v3_page.run(body)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except VenueError as exc:
+        raise HTTPException(502, f"{type(exc).__name__}: {exc}") from exc
+
+
 # -------------------------------------------------------------- strategies
 @app.get("/api/strategies")
 def strategies(coin: str | None = None, tf: str | None = None,

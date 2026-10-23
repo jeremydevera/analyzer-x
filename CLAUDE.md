@@ -2293,6 +2293,41 @@ file's code, Tasks 1-9): `docs/superpowers/plans/2026-10-21-confluence-research-
   name from the venue is data, never a URL fragment (`progress.ClaimBoard`
   left every Chinese-named coin unmeasured); a reason names the check that
   refused; a join across runs keeps one fact per key, the newest.
+* **The group "Oct 22" in Stored strategies** (operator, Oct 22, 2026, after
+  the stop: *"Okay deploy them in production, i want t to see then in stored
+  strategies"*): every pick of the all-coins page as a Backtest v2 row, each
+  at ITS OWN stop and target (never every name at every pick's stop and
+  target; never a random entry). `python -m tradingagents.cq_store plan`
+  writes `research/cq/store_plan.json` (12,861 picks on 3,457 coin +
+  timeframes of 862 coins, 1,103 names, each with its plain words - a machine
+  refuses a name whose words differ in its code); `python -m
+  tradingagents.cq_search dispatch "<label>" --store` (cq.yml `store=1` →
+  `.github/scripts/cq_store_shard.py`: `run_pair` rows-only, Backtest v2's 30
+  days + 300 lead-in, minute exits, each minute's order book and the runner's
+  cost check); `python -m tradingagents.cq_store collect` lands them through
+  `pro_store.land` - ONE body for "Oct 21" and "Oct 22" (`pro_store.Group`),
+  each hundred pairs filed as soon as it is rewritten (RCA-2026-10-22-G). A
+  pick with no row is named with why and how many (`missing`: no signal in
+  the 30 days, every signal refused - by the cost check, the price having run
+  away or a closed market, counted -, a signal error, a stop past 80% of
+  liquidation). First run Oct 22, 2026 6:32pm (runs 39865768523,
+  39865785980, 39865802107; 16 minutes on 60 machines, all green; 862 of 862
+  coins, 3,457 of 3,457 coin + timeframes): 12,090 rows of 12,861 picks,
+  **11,934 listed** on 3,357 coin + timeframes of 856 coins (the other 156
+  fail 2:1 on what their own trades paid); the 771 picks with no row are 400
+  whose every signal the runner's own checks refused and 371 with no signal
+  in the 30 days; 158,821 trades, 3.9% (6,166) of them paid a coin's usual
+  cost (no order-book reading yet for their minute: the costs reached Oct 22,
+  2026 12:59am on every sampled coin) - the rest their own minute's book.
+  Landed in 72 minutes, 34 batches. Checked through the site: 10 rows' trade
+  lists all hold their rows' trades and wins, 3 a few cents under their rows
+  (the click's saved funding list is never refreshed - 0G's ends Oct 10, 2026
+  - older than this group, open). `rows_index.GROUPS["oct22"]`, prefix `cq_`,
+  partial indexes `rows_cq_*`; a key like `cq_fl00-ev-vs1_15m_sl04tp15`
+  reads whole (`local_history._sig_of` → `signals_cq.name_in`), so a row's id
+  is the research page's id (#JC524A34 is USAR 4h `cq_ex25` TP 8% / SL 1.5%
+  in both). Nothing is switched on, and like "Oct 21" the nightly update does
+  not measure them again: the rows are the last 30 days as of the store run.
 
 ## Backtest v2 keeps only TP > SL (MANDATORY — Oct 06, 2026)
 

@@ -2402,12 +2402,19 @@ for the research you made"*. Spec:
 * **Shared, not copied:**
   - a resting target is `settle_in_minutes(tp_through=True)`;
   - a waiting entry's cost check is `entry_refusal(entry="limit")` (maker
-    fee in, taker fee + the exit minute's gap out, never a chase);
+    fee in, taker fee + the far side's gap out, both read from the book of
+    the minute the order goes in, never a chase);
   - the maker fee is `maker_fee_floor()`, beside `fee_floor()`.
 
   Every default is the rule of before, byte for byte.
-* **Nothing unmeasured is hidden.** Every walk returns its `COUNT_KEYS`, and
-  every v3 run prints `cost_store.coverage` first.
+* **What the engine knows it could not measure is counted.** Every walk
+  returns its `COUNT_KEYS`, and every v3 run prints `cost_store.coverage`
+  first. NOT counted yet: the rest of a fill candle after the fill (never
+  re-read), a hole inside a candle that still has minutes (the first event
+  its surviving minutes show wins — 40 of 5,164 simulated trades, 0.8%,
+  differed from the all-minutes answer), a missed order's market-twin
+  counts, and an entry cost check made with no recorded book (only the
+  coverage line shows those).
 * **A candle the minutes cannot settle keeps the candle rule, counted.**
   A whole candle whose minutes miss what the candle itself shows — a stop
   it crossed, a target it reached, a price that traded through a waiting

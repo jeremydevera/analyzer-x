@@ -92,7 +92,7 @@ def test_the_two_stores_never_share_a_path():
     assert stores.by_name("v2") is b and stores.by_name("v1") is a
     assert stores.for_kind("download_v2") is b and stores.for_kind("download") is a
     with pytest.raises(KeyError):
-        stores.by_name("v3")
+        stores.by_name("v9")
     env = b.env_for()
     assert env["TRADINGAGENTS_FINE_TF"] == "1m"
     assert env["TA_ROWS_DB"] == str(b.rows_db)

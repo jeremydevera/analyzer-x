@@ -44,8 +44,9 @@ class Store:
 
     @property
     def tfs(self) -> tuple[str, ...]:
-        """What the DOWNLOAD fetches here: 1m alone for v2, the five for v1."""
-        return (self.fine_tf,) if self.fine_tf else FIVE
+        """What the DOWNLOAD fetches here: 1m alone for v2, the five for v1 and
+        v3 (v3 reads its minutes on GitHub, never a 1m download here)."""
+        return ("1m",) if self.fine_tf == "1m" else FIVE
 
 
 V1 = Store(name="v1", home=_HOME / "backtest",
@@ -57,7 +58,18 @@ V2 = Store(name="v2", home=_HOME / "v2", candles=_HOME / "v2" / "candles",
            fine_tf="1m", download_kind="download_v2",
            backtest_kind="backtest_v2")
 
-_BY_NAME = {"v1": V1, "v2": V2}
+# BACKTEST V3 (Oct 22, 2026; spec docs/superpowers/specs/2026-10-22-backtest-
+# v3-design.md): research-backed ideas with waiting-order entries, their own
+# exits and $1 risk a trade, in folders of their own so v1 and v2 are never
+# written. `fine_tf` "v3" is the RESOLUTION a v3 row is stamped with (its id
+# hashes res="v3"), never a timeframe. NO job runs with V3.env_for() until
+# Part 2 has checked every reader of market_sweep.FINE_TF (30 references in
+# 9 files on Oct 22, 2026): several read "set" as "this is v2".
+V3 = Store(name="v3", home=_HOME / "v3", candles=_HOME / "v3" / "candles",
+           rows_db=_HOME / "v3" / "rows.db", parquet=_HOME / "parquet-v3",
+           fine_tf="v3", download_kind="", backtest_kind="backtest_v3")
+
+_BY_NAME = {"v1": V1, "v2": V2, "v3": V3}
 
 
 def by_name(name: str) -> Store:
@@ -65,5 +77,6 @@ def by_name(name: str) -> Store:
 
 
 def for_kind(kind: str) -> Store:
-    """The store a job KIND works in (`download_v2` → V2, everything else V1)."""
-    return V2 if str(kind).endswith("_v2") else V1
+    """The store a job KIND works in (`..._v2` → V2, `..._v3` → V3, else V1)."""
+    k = str(kind)
+    return V3 if k.endswith("_v3") else V2 if k.endswith("_v2") else V1

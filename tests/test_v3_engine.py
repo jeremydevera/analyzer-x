@@ -1093,6 +1093,19 @@ def test_a_forced_candle_closes_the_trade_at_its_close_at_the_market():
     # no flags: the rule of before - still open when the data ends, out at hour 24's close
     (tr,) = _walk(bars, dirs, TRAIL, fine=fine, book=book)["trades"]
     assert (tr["why"], tr["exit_ms"]) == ("END", T0 + 25 * H)
+    # the PRICE it leaves at is the candle's CLOSE. The flagged hour above is flat - it opens and
+    # closes 100.0 - which cannot tell the close from the open, or from the hour before's close.
+    # This one OPENS 100.2 and CLOSES 100.1 (high 100.3, low 100.0; the hour before closed 100.0
+    # and the hour after opens 100.0). Its highs lift the trail to 100.3 - 0.615 = 99.685, which
+    # its 100.0 low never reaches: it leaves at the close, +0.1% of $162 = +0.162, less 0.02% in
+    # and the taker 0.075% plus the recorded 0.04% out (-0.2187) = -0.0567
+    hour = [(100.3, 100.1)] * 30 + [(100.2, 100.0)] * 30
+    bars, fine, dirs = _trail_world(hour, FLAT)
+    (tr,) = _walk(bars, dirs, TRAIL, fine=fine, book=book, forced=_forced_at(25, 23))["trades"]
+    assert (tr["why"], tr["exit_ms"], tr["exit_bar"]) == ("RANK", T0 + 24 * H, 23)
+    assert tr["exit"] == pytest.approx(100.1)               # the close, not the 100.2 open
+    assert tr["slip_out"] == pytest.approx(0.0004)
+    assert tr["pnl"] == pytest.approx(162.0 * (100.1 / 100.0 - 1 - 0.0002 - 0.00075 - 0.0004))
 
 
 def test_a_stop_inside_the_forced_candle_comes_first():
@@ -1123,6 +1136,18 @@ def test_a_forced_exit_holds_for_a_short_and_for_a_missed_orders_twin():
     twin = got["missed"][0]["market"]
     assert twin["entry"] == pytest.approx(100.1)
     assert (twin["why"], twin["exit_ms"]) == ("RANK", T0 + 24 * H)
+
+
+def test_a_fixed_exit_is_forced_out_too():
+    # walk's docs say any of the three exit kinds can be forced and the tests above all use the
+    # trail. A long with a 1% target (101.0) and a 2% stop (98.0) fills at minute 0 of hour 1, at
+    # 100.0; hour 1 trades 99.9-100.2 and hour 2 99.9-100.1, so neither is reached and the trade
+    # is open at the close of the flagged hour 2: out there as RANK (the data ends there too, so
+    # with no flag the same trade would be END)
+    fill_hour = [(100.1, 99.9)] * 10 + [(100.0, 99.95)] + [(100.2, 100.0)] * 49
+    bars, fine = _fixed_world(fill_hour, FLAT)
+    (tr,) = _walk(bars, [1, 0, 0], FIXED, fine=fine, forced=_forced_at(3, 2))["trades"]
+    assert (tr["why"], tr["exit_ms"], tr["exit_bar"]) == ("RANK", T0 + 3 * H, 2)
 
 
 def test_the_contract_is_read_from_the_listing_one_way_and_a_missing_field_is_named():

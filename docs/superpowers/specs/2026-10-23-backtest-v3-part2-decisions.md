@@ -30,6 +30,13 @@ These are the choices the spec leaves open, made before any test, so nothing is 
   a day = `Volume × contractSize × Close` of its daily candle (today's contract size: said).
 * **Calm contracts** = kinds `metals`, `indices`, `forex`, plus liquid crypto in the calmest third by 60-day
   realized volatility (std of daily log returns) at each month start.
+* **Never calm: a volatility index; never calm or liquid: a stablecoin** (ruled Oct 23, 2026, before any code
+  of this part, when the first real plan put BVOL_USDT, EVOL_USDT, GVZ_USDT and VOLX_USDT — volatility
+  indices, which jump by design — and USDC_USDT — a stablecoin Gate files as forex, which barely moves — in
+  October's calm group by their kind). A stablecoin Gate filed as crypto would also top the liquid list by
+  traded value and, on a falling week, rank first by its ~0% 14-day return, so it is never liquid either.
+  Stablecoins are named by their base (USDC, USD1 and the other dollar stablecoins; never FRAX, which on Gate
+  is the governance token at $0.26), and every contract left out is named in the plan's `left_out` with why.
 * Membership is **per month**: a coin's signals count only in the months it is a member (a per-candle mask on the
   signal, never a filter on trades afterwards); a trade opened in a member month may run into the next.
 * The plan file `research/v3/plan.json` carries every coin's monthly membership, BTC's daily mood and the weekly
@@ -41,11 +48,16 @@ These are the choices the spec leaves open, made before any test, so nothing is 
 |---|---|---|---|---|
 | `v3_trend` | n = 20, 50, 100 (days; on 4h = 6n candles) | 1d, 4h | long every candle while close > SMA(n) and SMA(n) > its value 5 days earlier; calm contracts also short on the mirror | trail 3 × ATR(20) + out on a close past SMA(n) |
 | `v3_breakout` | N = 20, 50 (days) | 1d | long when close > the highest high of the N days before it, while SMA(100 days) > its value 5 days earlier; calm contracts mirror short | trail 3 × ATR(20) |
-| `v3_strength` | K = 3, 5 | 1d | long on each Monday's candle (the one opening 00:00 UTC) when the coin is in the top K of liquid crypto by 14-day return | trail 3 × ATR(20), or out at the close of a Monday candle where it is no longer in the top 2K (a FORCED exit, `why = "RANK"`) |
+| `v3_strength` | K = 3, 5 | 1d | long at each Monday 00:00 UTC rank when the coin is in the top K of liquid crypto by 14-day return: the signal candle is the daily candle CLOSING at that Monday 00:00 (Sunday's), so the order goes in at the rank | trail 3 × ATR(20), or out at the close of a later candle ending at a Monday 00:00 whose rank no longer has it in the top 2K (a FORCED exit, `why = "RANK"`) |
 | `v3_snap` | k = 1.5, 2.0 | 1h, 4h | long when close ≤ SMA(20) − k × ATR(20), short when ≥ SMA(20) + k × ATR(20) | snap: the SMA(20) at the signal as a resting target, emergency stop 3 × ATR(20), out after 24 candles |
 
 Signals are "every candle while it holds", so after an exit the engine's re-entry rule takes the next candle that
 still signals — what a trend follower does.
+
+The `v3_strength` row was corrected on Oct 23, 2026, before any of its code was written: the first text put the
+signal on the candle OPENING on Monday, whose order goes in at Tuesday 00:00 — a day after the rank, on a price
+the rank never saw. The spec says *"Each Monday 00:00 UTC rank liquid crypto by 14-day return; long the top K"*,
+and the rank of Monday 00:00 reads the closes at that instant, so the order goes in right then.
 
 ## The filters (spec #5-#9), each on top of every family, as a mask on the signal
 

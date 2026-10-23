@@ -16,8 +16,8 @@ machine reads the same universe.
   standard deviation of daily log returns) at each month start.
 * LEFT OUT: a volatility index (BVOL, EVOL, GVZ, VOLX) is never calm — it
   jumps by design — and a stablecoin is never calm or liquid — it barely
-  moves (Ruling A in the Part 2a build ledger). Each is named in the plan's
-  `left_out` with why.
+  moves (the decisions doc, "The universe", ruled Oct 23, 2026). Each is
+  named in the plan's `left_out` with why.
 * BTC's MOOD: each daily close against its 50-day average, known only once
   that day's candle has closed.
 * STRENGTH ranks: each Monday 00:00 UTC, that month's liquid crypto by 14-day
@@ -177,9 +177,9 @@ def mood_of(daily: dict, from_ms: int) -> dict:
 
 
 def left_out_why(sym: str) -> str:
-    """Why a contract may never be in a group, or "" (Ruling A): a
-    volatility index is never calm, a stablecoin (by its base) never calm or
-    liquid."""
+    """Why a contract may never be in a group, or "" (the decisions doc,
+    "The universe"): a volatility index is never calm, a stablecoin (by its
+    base) never calm or liquid."""
     if sym in VOL_INDICES:
         return "a volatility index: it jumps by design, so it is never calm"
     if sym.split("_")[0] in STABLECOINS:

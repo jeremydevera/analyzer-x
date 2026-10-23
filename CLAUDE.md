@@ -2380,6 +2380,54 @@ win will break even 2 loss"* in dollars after fees; the build compared prices.
   (`missing_row` state `not_two_to_one`, with the win and loss after fees).
 * Guard: `tests/test_two_to_one_after_fees.py`.
 
+## Backtest v3 — the engine's rules (MANDATORY — Oct 22, 2026)
+
+The operator: *"i want to do backtest v3 where you will create the strategy
+for the research you made"*. Spec:
+`docs/superpowers/specs/2026-10-22-backtest-v3-design.md`; plan:
+`docs/superpowers/plans/2026-10-22-backtest-v3-part1-engine.md`.
+
+* **One set of rules, `v3_rules`**, for the engine now and for the runner's
+  v3 practice rooms later:
+  - a waiting order fills only when the price trades THROUGH it (a touch is
+    not a fill), inside the next candle;
+  - an unfilled order is a missed trade, kept with its market twin;
+  - $1 risk, at the highest leverage whose stop sits inside 80% of
+    liquidation;
+  - a trailing stop is checked before it moves, and never loosened;
+  - a stop the price jumped past fills where the price was;
+  - funding before Gate's history is estimated and counted.
+* **The point an order fills in can stop the trade, never win it.** Its high
+  may have come before the fill.
+* **Shared, not copied:**
+  - a resting target is `settle_in_minutes(tp_through=True)`;
+  - a waiting entry's cost check is `entry_refusal(entry="limit")` (maker
+    fee in, taker fee + the exit minute's gap out, never a chase);
+  - the maker fee is `maker_fee_floor()`, beside `fee_floor()`.
+
+  Every default is the rule of before, byte for byte.
+* **Nothing unmeasured is hidden.** Every walk returns its `COUNT_KEYS`, and
+  every v3 run prints `cost_store.coverage` first.
+* **A candle the minutes cannot settle keeps the candle rule, counted.**
+  A whole candle whose minutes miss what the candle itself shows — a stop
+  it crossed, a target it reached, a price that traded through a waiting
+  order — is settled by the candle rule and counted (`settled_by_candle`,
+  `fill_by_candle`), as Backtest v2 keeps the bar rule when the minutes
+  answer "NONE"; the part of a fill candle after the fill is never re-read
+  by the candle rule.
+* **The flat gap is always named.** `v3_engine.walk(flat_slip=)` has no
+  default: a market exit with no recorded book pays the coin's flat gap,
+  never a free 0 (rule 9), and is counted `cost_unmeasured`.
+* **v3 never writes v1 or v2.** It uses `stores.V3` and ids
+  `row_code(..., res="v3")`. No job runs with `V3.env_for()` until every
+  reader of `market_sweep.FINE_TF` has been checked: "v3" is set, and several
+  readers take a set value to mean v2.
+
+Guards: `tests/test_v3_rules.py`, `tests/test_v3_engine.py`,
+`tests/test_v3_shared_rules_learn_the_waiting_order.py`,
+`tests/test_backtest_v3_store.py`, `tests/test_cost_coverage.py`,
+`tests/test_v3_smoke.py`.
+
 ## The daytime rule (MANDATORY — Oct 07, 2026; trial on #4FC03172)
 
 The operator: *"so what do you think is the correct, because its seems like i

@@ -1,6 +1,6 @@
 # Backtest v3 — research-backed ideas, proven against random, then practice
 
-**Date:** Oct 22, 2026 · **Status:** design approved in chat, written for review
+**Date:** Oct 22, 2026 · **Status:** approved Oct 22, 2026 ("ok go ahead"); Part 1, the engine, is built (plan docs/superpowers/plans/2026-10-22-backtest-v3-part1-engine.md)
 
 ## The operator's words
 

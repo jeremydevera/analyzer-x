@@ -318,3 +318,24 @@ def with_app_books(sym: str, book: dict, start_s: int, end_s: int) -> dict:
         pass
     return book
 
+
+def coverage(packed: dict | None, start_s: int, end_s: int,
+             max_age_s: int | None = None) -> float:
+    """The share of the minutes in [start_s, end_s) that have a recorded
+    reading at most `max_age_s` old (book_history.MAX_AGE_S by default) —
+    what a backtest of that window pays at its own minute rather than the
+    coin's typical cost (CLAUDE.md "COVERAGE FIRST"; Backtest v3 spec). No
+    book (None, or not on Gate) covers nothing."""
+    import numpy as np
+
+    from tradingagents import book_history as bh
+
+    age = bh.MAX_AGE_S if max_age_s is None else int(max_age_s)
+    t = np.asarray(packed["t"] if packed else [], dtype="int64")
+    minutes = np.arange(int(start_s), int(end_s), 60, dtype="int64")
+    if not len(minutes) or not len(t):
+        return 0.0
+    j = np.searchsorted(t, minutes, side="right") - 1
+    ok = j >= 0
+    ok[ok] = (minutes[ok] - t[j[ok]]) <= age
+    return float(ok.mean())

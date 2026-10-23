@@ -2702,6 +2702,27 @@ def fee_floor(venue_name: str | None = None) -> float:
 
         venue_name = _venue.current()
     return FEE_FLOORS.get(venue_name, FEE_FALLBACK)
+
+
+# A WAITING ORDER'S FEE (Backtest v3, Oct 22, 2026; spec
+# 2026-10-22-backtest-v3-design.md, "Costs"): Gate's fee guide lists +0.02%
+# maker at the base tier while its contract listing shows a -0.01% rebate,
+# and the worse is believed until the account's own rate is read with a Gate
+# key. No other exchange's maker fill was ever measured, so it pays its
+# taker floor: a guess below it would flatter every v3 number.
+MAKER_FEE_FLOORS = {"gate": 0.0002}
+
+
+def maker_fee_floor(venue_name: str | None = None) -> float:
+    """The fee per side a WAITING (maker) order is believed to pay — the
+    sibling of `fee_floor`, for the exchange this app trades."""
+    if venue_name is None:
+        from tradingagents import venue as _venue  # noqa: PLC0415
+
+        venue_name = _venue.current()
+    return MAKER_FEE_FLOORS.get(venue_name, fee_floor(venue_name))
+
+
 # Charged on PAPER fills only. A real order's price already contains its
 # slippage; a simulated one is filled at the exact barrier, so without this
 # the demo reports better results than the backtest that justified it.
@@ -3420,7 +3441,8 @@ def funding_day_at(f_ms, f_rate, f_cyc, ms: int, side: int) -> float:
 
 def minute_verdict(reading: dict | None, *, side: int, tp: float, sl: float,
                    fee: float, hold_s: float, liq, fund_day: float,
-                   flat_slip: float = 0.0) -> dict:
+                   flat_slip: float = 0.0, entry: str = "market",
+                   maker_fee: float | None = None) -> dict:
     """The runner's cost check asked of ONE recorded minute of the order book
     (tradingagents.book_history) — what `edge_check` would have said had the
     signal fired then. One function for the engine and the replay, so the
@@ -3431,12 +3453,27 @@ def minute_verdict(reading: dict | None, *, side: int, tp: float, sl: float,
     a stop past liquidation and funding that eats the target are refused by
     the runner whatever the book says, so they are refused here too, on the
     coin's flat cost (`flat_slip`); only the gap and an exhausted book wait
-    for a reading. `measured` says which it was."""
+    for a reading. `measured` says which it was.
+
+    ``entry="limit"`` is a WAITING ORDER (Backtest v3, Oct 22, 2026): the
+    entry pays `maker_fee` and no gap, the exit the taker `fee` plus the
+    book's other side (`sell` for a long, `buy` for a short). `cost_verdict`
+    prices a round trip as 2 x (slippage + fee), so it is handed the halves
+    that sum to exactly that; the result's `slippage` is the fill's, 0."""
     if reading is None:
-        slip, spread, exhausted = float(flat_slip), 0.0, False
+        slip, slip_out, spread, exhausted = float(flat_slip), float(flat_slip), 0.0, False
     else:
         slip = float(reading["buy"] if side == 1 else reading["sell"])
+        slip_out = float(reading["sell"] if side == 1 else reading["buy"])
         spread, exhausted = float(reading["spread"]), bool(reading["exhausted"])
+    if entry == "limit":
+        in_fee = float(maker_fee if maker_fee is not None else fee)
+        out = cost_verdict(tp=tp, sl=sl, spread=spread, slippage=slip_out / 2.0,
+                           fee=(in_fee + fee) / 2.0,
+                           fund_cost=fund_day * hold_s / 86400.0,
+                           fund_per_day=fund_day, fund_known=True, hold_s=hold_s,
+                           liq=liq, exhausted=exhausted)
+        return {**out, "slippage": 0.0, "measured": reading is not None}
     out = cost_verdict(tp=tp, sl=sl, spread=spread,
                        slippage=slip, fee=fee, fund_cost=fund_day * hold_s / 86400.0,
                        fund_per_day=fund_day, fund_known=True, hold_s=hold_s,
@@ -3472,7 +3509,8 @@ def closed_market(reading: dict | None, *, stock: bool, signal_volume) -> bool:
 def entry_refusal(reading: dict | None, *, side: int, signal_close: float,
                   tp: float, sl: float, fee: float, hold_s: float, liq,
                   fund_day: float, flat_slip: float = 0.0,
-                  closed: bool = False) -> tuple[str, dict]:
+                  closed: bool = False, entry: str = "market",
+                  maker_fee: float | None = None) -> tuple[str, dict]:
     """What the runner answers at ONE recorded entry minute, in its own
     order: the cost check (`minute_verdict`, "gate_blocked"), then "the
     price already ran away" (`chase_ok` on the minute's best price - the ask
@@ -3488,18 +3526,22 @@ def entry_refusal(reading: dict | None, *, side: int, signal_close: float,
     know wether to skip a trade or not"). The price is judged only on a BOOK
     at most CHASE_READING_MAX_AGE_S old - the close minute's own, never a
     snapshot-only hour's later minutes (`book_history.book_age_s`): an older
-    book says nothing about where the market was when the runner looked."""
+    book says nothing about where the market was when the runner looked.
+
+    A waiting order (entry="limit", Backtest v3, Oct 22, 2026) is never a chase: it fills at its own price or is missed."""
     from tradingagents.book_history import book_age_s
 
     cv = minute_verdict(reading, side=side, tp=tp, sl=sl, fee=fee, hold_s=hold_s,
-                        liq=liq, fund_day=fund_day, flat_slip=flat_slip)
+                        liq=liq, fund_day=fund_day, flat_slip=flat_slip,
+                        entry=entry, maker_fee=maker_fee)
     # a stock token's dead candle with no app book (`closed_market`): the
     # wide live book practice would read there is not in Gate's record
     if closed:
         return "closed_skip", cv
     if cv["verdict"] == "block":
         return "gate_blocked", cv
-    if (reading is not None
+    if (entry != "limit"
+            and reading is not None
             and book_age_s(reading) <= CHASE_READING_MAX_AGE_S
             and not chase_ok(side, float(signal_close),
                              float(reading["ask"] if side == 1 else reading["bid"]),
@@ -4199,7 +4241,8 @@ def _dirs_for_backtest(key: str, high: list, low: list,
 def settle_in_minutes(fine_t, fine_h, fine_l, bar_open_ms: int, bar_s: int,
                       s: int, tp_px: float, sl_px: float, liq_px: float | None,
                       *, liq: float | None, sl: float,
-                      span: tuple[int, int] | None = None):
+                      span: tuple[int, int] | None = None,
+                      tp_through: bool = False):
     """Which barrier ONE exit bar reached first, read from its minutes in
     order — Backtest v2's whole difference from v1 (`backtest_strategy(
     fine=)`), and since Oct 21, 2026 the room strategy replay's too
@@ -4217,6 +4260,10 @@ def settle_in_minutes(fine_t, fine_h, fine_l, bar_open_ms: int, bar_s: int,
     when it is nearer than the stop, the bar rule's own precedence.
     ``span`` is the bar's ``[a, b)`` slice of the minutes when the caller has
     worked every bar's out once (the replay does); None finds it here.
+    ``tp_through=True`` is a target that RESTS as a waiting order (Backtest
+    v3, Oct 22, 2026): it is reached only when a minute trades through it —
+    a long's high strictly above, a short's low strictly below. False is the
+    rule of before, byte for byte.
     """
     if span is None:
         import numpy as _np
@@ -4235,10 +4282,12 @@ def settle_in_minutes(fine_t, fine_h, fine_l, bar_open_ms: int, bar_s: int,
     for k in range(a, b):
         h, lw = fine_h[k], fine_l[k]
         if s == 1:
-            t_, s_ = h >= tp_px, lw <= sl_px
+            t_ = h > tp_px if tp_through else h >= tp_px
+            s_ = lw <= sl_px
             q_ = liq_px is not None and lw <= liq_px
         else:
-            t_, s_ = lw <= tp_px, h >= sl_px
+            t_ = lw < tp_px if tp_through else lw <= tp_px
+            s_ = h >= sl_px
             q_ = liq_px is not None and h >= liq_px
         if not (t_ or s_ or q_):
             continue

@@ -49,8 +49,11 @@ STRENGTH_DAYS = 14
 MOOD_DAYS = 50
 CALM_KINDS = ("metals", "indices", "forex")
 VOL_INDICES = ("BVOL_USDT", "EVOL_USDT", "GVZ_USDT", "VOLX_USDT")
+# Dollar stablecoins, by their base. Checked against the exchange's own list on Oct 23, 2026:
+# USDC and USD1 have contracts and both trade at 1.00; the other 13 have none yet and wait here
+# for the day one is listed. NOT FRAX: there it is the governance token (0.26, 2.5% maintenance).
 STABLECOINS = ("USDC", "USDT", "FDUSD", "TUSD", "DAI", "USDE", "PYUSD", "USDD", "BUSD", "USD1",
-               "RLUSD", "USDP", "FRAX", "GUSD", "USDS", "USDG")
+               "RLUSD", "USDP", "GUSD", "USDS", "USDG")
 BTC = "BTC_USDT"
 VERSION = 1
 PLAN_FILE = Path(__file__).resolve().parent.parent / "research" / "v3" / "plan.json"
@@ -189,7 +192,9 @@ def build(dailies: dict, kinds: dict, sizes: dict, end_ms: int, *, skipped=None,
     """The plan: membership per month, BTC's mood and the Monday ranks over
     the WINDOW_DAYS before `end_ms` (a UTC midnight: every daily candle used
     closed by then). `dailies` {symbol: daily_of(...)}, `kinds` {symbol:
-    venue kind} for every candidate, `sizes` {symbol: contract size}."""
+    venue kind} for every candidate, `sizes` {symbol: contract size}. `skipped`
+    {symbol: why it could not be read} goes into the plan, and a BTC found there
+    is quoted in the error that refuses a plan with no mood."""
     from tradingagents.positions_view import fmt_when
 
     end_ms = int(end_ms)
@@ -222,7 +227,8 @@ def build(dailies: dict, kinds: dict, sizes: dict, end_ms: int, *, skipped=None,
         strength[str(monday)] = [s for r, s in sorted(((r, s) for r, s in rets if r is not None),
                                                       key=lambda x: (-x[0], x[1]))]
     if BTC not in dailies:
-        raise ValueError(f"{BTC} has no daily candles: its mood cannot be worked out")
+        raise ValueError(f"{BTC} has no daily candles: its mood cannot be worked out"
+                         + (f" ({skipped[BTC]})" if skipped and BTC in skipped else ""))
     coins = sorted({s for g in (liquid, calm) for members in g.values() for s in members})
     built = time.time() if built_s is None else float(built_s)
     return {"version": VERSION, "venue": venue_name, "built": fmt_when(built),

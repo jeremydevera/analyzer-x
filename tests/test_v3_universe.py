@@ -6,6 +6,8 @@ opens at FIRST + k days (Jul 01, 2026 is day 0, Sep 01 day 62, Oct 01 day 92,
 the window ends Nov 01, 2026 00:00 UTC, after day 122)."""
 import calendar
 import math
+import time
+import types
 
 import pandas as pd
 import pytest
@@ -72,12 +74,31 @@ def test_realized_vol_needs_all_60_returns_and_unknown_is_never_calm():
     assert vu.realized_vol(hole, OCT1) is None
 
 
+def test_a_close_of_zero_makes_the_volatility_unknown_not_a_crash():
+    # the same 61 closes before Oct 01 (days 31-91), but day 70 (Sep 09) closed at 0: the return
+    # into it is a log of 0 and the return out of it a division by 0 - no 60-day figure, as for a
+    # missing day
+    closes = _alt(100.0, 102.0, 92)
+    closes[70] = 0.0
+    assert vu.realized_vol(_daily(0, closes, [1.0] * 92), OCT1) is None
+
+
 def test_the_14_day_return_reads_the_close_at_the_instant_and_14_days_before():
     # NEW closes 100 + (k - 71); at Oct 05 00:00 the candle that just closed is day 95 (124),
     # 14 days earlier day 81 (110): 124 / 110 - 1
     d, _kinds, _sizes = _world()
     assert vu.return_14(d["NEW_USDT"], OCT5) == pytest.approx(124 / 110 - 1)
     assert vu.return_14(d["NEW_USDT"], SEP7) is None, "day 67 is before NEW's first, day 71"
+
+
+def test_the_months_roll_over_a_year_end():
+    # END is Nov 01, 2026, so Dec 01 is 30 days on and Jan 01, 2027 is 61. December must carry the
+    # year, or the month after it is Jan 2026 and months_between never ends - so the one step is
+    # asked first
+    nov, dec, jan = END, END + 30 * DAY, END + 61 * DAY
+    assert vu._next_month(dec) == jan
+    assert vu.months_between(nov + 10 * DAY, jan + 30 * DAY) == [nov, dec, jan]
+    assert [vu.month_key(m) for m in (nov, dec, jan)] == ["2026-11", "2026-12", "2027-01"]
 
 
 def test_the_liquid_list_is_the_top_by_value_at_each_month_start(plan):
@@ -126,6 +147,16 @@ def test_volatility_indices_and_stablecoins_are_named_and_never_in_a_group(monke
     assert vu.LEFT_OUT_NOTE in plan["notes"]
 
 
+def test_a_coin_that_is_no_dollar_stablecoin_is_never_left_out():
+    # FRAX_USDT is Frax's governance token: on Oct 23, 2026 the exchange listed it at 0.2593
+    # (index 0.2595) with a 2.5% maintenance rate, like any small volatile coin, while USD1 (0.9985)
+    # and USDC (1.0000) trade at a dollar with 1%. A list of names says what a coin is only while
+    # every name is checked against the exchange's own listing
+    assert vu.left_out_why("FRAX_USDT") == ""
+    assert vu.left_out_why("USD1_USDT").startswith("a stablecoin")
+    assert vu.left_out_why("USDC_USDT").startswith("a stablecoin")
+
+
 def test_membership_is_by_the_month_an_instant_falls_in(plan):
     mid_sep, mid_oct, mid_nov = SEP1 + 14 * DAY, OCT1 + 14 * DAY, END + 14 * DAY
     assert vu.member_mask(plan, ("liquid",), "BBB_USDT", [mid_sep, mid_oct]) == [True, False]
@@ -154,6 +185,16 @@ def test_btcs_mood_is_known_only_once_its_day_has_closed(plan):
     assert vu.mood_at(plan, [END + 2 * DAY]) == [None], "no close of the last day: unknown"
 
 
+def test_the_mood_averages_50_closes_and_a_close_equal_to_its_average_is_not_up():
+    # day 0 (Jul 01) closes 50 and days 1-50 close 100. Day 49 closes at FIRST + 50 days and its 50
+    # closes (days 0-49) average (50 + 49 x 100) / 50 = 99, so its 100 is up. Day 50 closes a day
+    # later and its 50 closes (days 1-50) are all 100: a close equal to its average is not up
+    daily = _daily(0, [50.0] + [100.0] * 50, [1.0] * 51)
+    assert vu.mood_of(daily, 0) == {"t": [FIRST + 50 * DAY, FIRST + 51 * DAY], "up": [1, 0]}
+    # 49 closes are not 50 days of history: no mood yet
+    assert vu.mood_of(_daily(0, [100.0] * 49, [1.0] * 49), 0) == {"t": [], "up": []}
+
+
 def test_the_plan_round_trips_and_an_old_version_is_refused(plan, tmp_path):
     p = vu.save(plan, tmp_path / "v3" / "plan.json")
     assert vu.load(p) == plan
@@ -169,6 +210,17 @@ def test_the_plan_names_its_window_and_its_limits(plan):
     assert any("survivorship" in n for n in plan["notes"])
     assert any("TODAY's contract size" in n for n in plan["notes"])
     assert plan["left_out"] == {}, "the test world lists no index or stablecoin"
+
+
+def test_a_plan_without_btc_is_refused_by_name(monkeypatch):
+    # no BTC candles, no mood: refused by name, not by a KeyError from the middle of the build - and
+    # with no reason recorded for it, nothing is appended to the message
+    monkeypatch.setattr(vu, "WINDOW_DAYS", 61)
+    d, kinds, sizes = _world()
+    del d["BTC_USDT"]
+    with pytest.raises(ValueError) as refused:
+        vu.build(d, kinds, sizes, END, built_s=END / 1000)
+    assert str(refused.value) == "BTC_USDT has no daily candles: its mood cannot be worked out"
 
 
 class FakeFx:
@@ -203,3 +255,58 @@ def test_collect_cuts_the_forming_day_and_names_every_coin_it_could_not_read(mon
     assert got["mood"]["t"][-1] == END
     assert got["liquid"]["2026-10"] == ["BTC_USDT", "AAA_USDT"]
     assert got["calm"]["2026-10"] == ["XAU_USDT", "AAA_USDT"]
+
+
+# what the venue says of FakeFx's five contracts
+FX_KINDS = {"AAA_USDT": "crypto", "BAD_USDT": "crypto", "BTC_USDT": "crypto",
+            "NIL_USDT": "crypto", "XAU_USDT": "metals"}
+
+
+class AskingFx(FakeFx):
+    """FakeFx that keeps what each candle read asked for."""
+
+    def __init__(self):
+        super().__init__()
+        self.asked = []
+
+    def klines(self, sym, iv, limit):
+        self.asked.append((iv, limit))
+        return super().klines(sym, iv, limit)
+
+
+class BtcDownFx(FakeFx):
+    """FakeFx whose BTC candle read is refused, for the reason it is given."""
+
+    def __init__(self, reason):
+        super().__init__()
+        self.reason = reason
+
+    def klines(self, sym, iv, limit):
+        if sym == "BTC_USDT":
+            raise RuntimeError(self.reason)
+        return super().klines(sym, iv, limit)
+
+
+def test_collect_ends_at_the_last_midnight_and_reaches_back_over_the_lead_in(monkeypatch):
+    # the clock reads Nov 01, 2026 5:00am UTC, so the plan ends at the midnight before it, END. The
+    # 61-day window opens Sep 01 (day 62) and the volatility reads the 62 days before that month
+    # start, back to Jul 01 (day 0): 123 days before END, so every read must ask for at least 123
+    monkeypatch.setattr(vu, "WINDOW_DAYS", 61)
+    clock = END / 1000 + 5 * 3600
+    monkeypatch.setattr(vu, "time", types.SimpleNamespace(time=lambda: clock, gmtime=time.gmtime))
+    fx = AskingFx()
+    # no end_ms: the clock gives it
+    got = vu.collect(fx=fx, kind_of=FX_KINDS.get, log=lambda *a: None)
+    assert got["end_ms"] == END
+    assert fx.asked and all(iv == "Day1" and limit >= 123 for iv, limit in fx.asked)
+
+
+def test_a_btc_that_could_not_be_read_says_why_in_the_refusal(monkeypatch):
+    # a throttled read and a refused one must not read the same: the reason collect recorded for
+    # BTC_USDT follows the unchanged first part of the message
+    monkeypatch.setattr(vu, "WINDOW_DAYS", 61)
+    for reason in ("429 TOO_MANY_REQUESTS", "400 INVALID_PARAM"):
+        with pytest.raises(ValueError) as refused:
+            vu.collect(fx=BtcDownFx(reason), end_ms=END, kind_of=FX_KINDS.get, log=lambda *a: None)
+        assert str(refused.value) == ("BTC_USDT has no daily candles: its mood cannot be worked out"
+                                      f" (RuntimeError: {reason})")

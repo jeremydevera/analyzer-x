@@ -172,6 +172,97 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-23-D — the Backtest v3 universe's list of stablecoins named FRAX, which Gate trades at 26 cents: the plan would have called a volatile coin "a stablecoin that barely moves" and kept it out of both groups
+
+**CEO**
+
+* Nothing was lost and nothing has been shown yet (it NEVER HAPPENED YET): the
+  list of dollar coins that Backtest v3 keeps out of the coins its strategies
+  may trade held one coin that is not a dollar coin. FRAX trades at 26 cents on
+  Gate and moves like any small coin.
+* Why: the list was written from the names of dollar tokens and never checked
+  against the exchange's own list of contracts and prices; on Gate, FRAX is the
+  governance token.
+* What stops it now: FRAX is off the list, each of the 15 names left was
+  checked against the exchange's list the same hour (only USDC and USD1 have a
+  contract, both at $1.00; the other 13 have none yet), and a test says FRAX is
+  never left out.
+
+**DEV**
+
+* `tradingagents/v3_universe.py:52-53` (at `6c6398fa0f16`): `STABLECOINS` held
+  "FRAX", so `left_out_why("FRAX_USDT")` (`:176-185`) answered "a stablecoin:
+  it barely moves ...", and `build` (`:197-201`) kept the contract out of
+  `crypto` (so out of liquid and calm) and wrote it into the plan's `left_out`.
+* Invariant broken: **every name on the stablecoin list that has a contract on
+  the exchange trades within 2% of $1.00.** On the saved listing: USDC 1.0000,
+  USD1 0.9985, FRAX 0.2593 (index 0.2595, 74.07% off; maintenance rate 2.5%
+  where USDC and USD1 carry 1.0%).
+* Guard: `tests/test_v3_universe.py::test_a_coin_that_is_no_dollar_stablecoin_is_never_left_out`
+  (FRAX_USDT is never named; USD1_USDT and USDC_USDT still are).
+
+**SAW** - nothing on a screen, and no plan from the real exchange yet: **NEVER
+HAPPENED YET**. Found by the review hunt of the universe minutes after its
+commit, on `Oct 23, 2026 6:35pm`: the plan's `left_out` would have read
+"FRAX_USDT: a stablecoin: it barely moves, so it is never calm or liquid" for a
+coin quoted at 0.2593.
+
+**TIMELINE** (steps 1-3 happened; step 4 is what the plan would have said)
+
+1. `Oct 23, 2026` - Ruling A names 16 base names as stablecoins, written from
+   knowledge of dollar tokens; its four volatility indices and USDC came from
+   the real plan's October calm group.
+2. `Oct 23, 2026 6:33pm` (`6c6398fa0f16`) - the universe is committed with the
+   list as ruled; its 12 tests pass (a made-up world with USDC, USDE and BVOL;
+   none reads a real price).
+3. `Oct 23, 2026 6:35pm` - the hunt prices every name on the saved listing
+   (1,061 contracts): 3 of the 16 names have a contract. USDC 1.0000 (index
+   1.0010), USD1 0.9985 (index 0.9999), FRAX **0.2593** (index 0.2595; 0.2608
+   at the first read; 74.07% off $1.00; maintenance 2.5% like USTC and MOVE).
+   The other 13 names have no contract. On that listing the committed module
+   named 7 contracts, FRAX among them.
+4. Had it shipped: the real plan's `left_out` would have named FRAX, and if it
+   ever reached the top 50 by traded value it would have been missing from
+   `liquid` and `calm` while trading like any small coin.
+5. After the fix: 15 names, and 6 contracts named on the same listing (BVOL,
+   EVOL, GVZ, VOLX, USDC, USD1). Looked at the other way, one contract of a
+   kind a group could hold sits within 2% of $1.00 and is not named: AXS_USDT
+   at 0.9893, a volatile token - so the check stays a list of names, each
+   priced against the listing, and never a price rule.
+
+**ROOT CAUSE** - `STABLECOINS` is a list of names, and a name is not what the
+exchange says a contract is: "FRAX" was typed in as a dollar coin and never
+compared with the exchange's own list of contracts and prices.
+
+**WHY IT WAS NOT CAUGHT** - every test of the left-out rule builds a made-up
+world (USDE, USDC, BVOL) and asserts the rule's mechanics - named, never in a
+group, a stock never named - and a list of names is data: no assertion over an
+invented world can tell a true name from a false one, because the truth is in
+the exchange's listing. All 12 tests passed with FRAX on the list, and a
+43-break mutation check could not see it either (a name in a tuple is not a
+branch). It was found only because the hunt priced every name on the
+1,061-contract saved listing. It is the same shape as "what a coin IS comes
+from the venue's list, never its name" (CLAUDE.md, Oct 10, 2026: Gate names
+stocks by ticker, so a `STOCK` suffix test found none): a ticker standing in
+for what the venue says. Pattern 7 below.
+
+**COST** - none: NEVER HAPPENED YET. No plan was built from the real exchange,
+no room reads the universe, and the commit was minutes old.
+
+**FIX** - this commit: `FRAX` out of `STABLECOINS` (15 names left), a comment
+above the tuple that says why, and every remaining name priced against the
+saved listing (USDC and USD1 kept at 1.00; the 13 names with no contract stay
+for the day one is listed). The same commit pins five behaviours the universe's
+tests missed and makes a plan with no BTC say why it has none.
+
+**GUARD** - `tests/test_v3_universe.py::test_a_coin_that_is_no_dollar_stablecoin_is_never_left_out`
+(FRAX_USDT is never named, USD1_USDT and USDC_USDT still are), proved red by
+putting FRAX back in memory. A test cannot price the list without reading the
+operator's saved listing, so the check that remains is the one done here: price
+every name against the exchange's listing whenever one is added.
+
+---
+
 ## RCA-2026-10-23-C — the first Backtest v3 tab run traded BTC at 64x, where the operator had chosen "Same risk, lower leverage" and the rooms trade at 20x
 
 **CEO**
@@ -21201,6 +21292,13 @@ needs to be written differently:
    treats a missing record as a fact, list every path the writer takes and
    check each one writes; a rate limit goes on the LINE, never on the COUNT.
    Test what a limit KEPT, not only the noise it took away.
+7. **A name is not what the venue says it is.** Twice now a coin's NAME stood
+   in for the exchange's own list: Gate names stocks by ticker, so a `STOCK`
+   suffix test found none of its stock tokens (Oct 10, 2026, CLAUDE.md), and a
+   list of "dollar coins" held FRAX, which Gate lists at 0.26
+   (RCA-2026-10-23-D). A list of names is a claim about the exchange: price
+   and kind every name against its listing when the list is written, and test
+   the rule with a name that has a contract, not only invented ones.
 
 ---
 

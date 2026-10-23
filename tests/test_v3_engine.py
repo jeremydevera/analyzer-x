@@ -19,16 +19,17 @@ SIGNAL = [(100.1, 99.8)] + [(100.1, 99.9)] * 59        # closes at 100.0; ATR(20
 TRAIL_FILL = [(100.05, 99.8)] + [(100.1, 99.9)] * 59   # buys at minute 0; the trail ends at 99.485
 
 
-def _world(hours):
-    """hours: one list of 60 (high, low) minutes per hour -> (bars, fine)."""
+def _world(hours, bar_ms=H):
+    """hours: one list of (high, low) minutes per candle of `bar_ms` (60 a hour) -> (bars,
+    fine)."""
     t, hi, lo = [], [], []
     bars = {"t": [], "o": [], "h": [], "l": [], "c": []}
     for k, minutes in enumerate(hours):
         for m, (h_, l_) in enumerate(minutes):
-            t.append(T0 + k * H + m * M)
+            t.append(T0 + k * bar_ms + m * M)
             hi.append(h_)
             lo.append(l_)
-        bars["t"].append(T0 + k * H)
+        bars["t"].append(T0 + k * bar_ms)
         bars["o"].append(sum(minutes[0]) / 2)
         bars["h"].append(max(x[0] for x in minutes))
         bars["l"].append(min(x[1] for x in minutes))
@@ -55,14 +56,14 @@ def _without(fine, from_ms, to_ms):
     return [t[k] for k in keep], [hi[k] for k in keep], [lo[k] for k in keep]
 
 
-def _book(*rows):
+def _book(*rows, source="full"):
     """book_history's packed readings from (minute ms, bid, ask, buy, sell): the best prices of
     that minute and what buying / selling the runner's $100 cost there."""
     from tradingagents import book_history as bh
 
     return bh.pack([{"t": ms // 1000, "bid": bid, "ask": ask,
                      "spread": (ask - bid) / ((ask + bid) / 2), "buy": buy, "sell": sell,
-                     "exhausted": False, "source": "full"} for ms, bid, ask, buy, sell in rows])
+                     "exhausted": False, "source": source} for ms, bid, ask, buy, sell in rows])
 
 
 def _trail_world(*after):
@@ -239,27 +240,41 @@ def test_a_candle_the_minutes_only_part_cover_keeps_the_candle_rule_for_its_exit
     assert got["counts"]["settled_by_candle"] == 1 and got["counts"]["unclear"] == 1
 
 
-def test_the_rest_of_the_fill_candle_is_not_a_whole_candle_and_its_hole_decides_nothing():
-    # the order fills at minute 0, and minute 30 of the same hour trades down to 97.5, under the
-    # stop - but that minute is missing. The candle's low may predate the fill, so nothing is
-    # booked on it (only a candle walked from its open is a whole one) and the trade goes on to
-    # hour 2's target
+def test_a_stop_hidden_in_the_rest_of_the_fill_candle_is_proven_by_the_candles_low():
+    # FLIPPED by the final review of Part 1 (Oct 23, 2026, I2). The order fills at minute 0, and
+    # minute 30 of the same hour trades down to 97.5, under the 98.0 stop. With every minute: SL
+    # at minute 30, -2% of $50 less 0.02% in and 0.075% out = -1.0475
     fill_hour = [(100.1, 99.9)] * 30 + [(99.0, 97.5)] + [(100.1, 99.9)] * 29
     bars, fine = _fixed_world(fill_hour, [(101.5, 100.5)] * 60)
+    (tr,) = _walk(bars, [1, 0, 0], fine=fine)["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + H + 30 * M
+    assert tr["pnl"] == pytest.approx(-1.0 - 50.0 * (0.0002 + 0.00075))
+    # minute 30 missing. A long trades through its 100.0 limit before it can fall to a stop under
+    # it, so the hour's own 97.5 low came AFTER the fill: the stop was hit in a minute the points
+    # do not show. The stop, at 98.0 (the price came down from the limit through it), stamped at
+    # the first point after the fill (minute 1) - never the hour's open, before the order existed.
+    # Before this fix the trade went on to hour 2's target, +0.48, and nothing was counted
     got = _walk(bars, [1, 0, 0], fine=_without(fine, T0 + H + 30 * M, T0 + H + 31 * M))
     (tr,) = got["trades"]
-    assert tr["entry_ms"] == T0 + H and tr["why"] == "TP" and tr["exit_ms"] == T0 + 2 * H
-    assert got["counts"]["settled_by_candle"] == 0
-    # the same for a trail: the fill hour's minute 30 (missing) trades down to 99.0, under the
-    # 99.385 the trail began with. It is the fill hour's rest, so nothing is booked on that low; the
-    # points carry the stop on to 99.485 and the next hour's 99.4 low leaves at it
+    assert tr["entry_ms"] == T0 + H and tr["why"] == "SL" and tr["exit_ms"] == T0 + H + M
+    assert tr["exit"] == pytest.approx(98.0)
+    assert tr["pnl"] == pytest.approx(-1.0 - 50.0 * (0.0002 + 0.00075))
+    assert got["counts"]["settled_by_candle"] == 1 and got["counts"]["unclear"] == 0
+    # the same for a trail. With every minute: minutes 1-29 lift the 99.385 it began with to
+    # 100.1 - 0.615 = 99.485, and minute 30's 99.0 low leaves at it
     fill_hour = [(100.05, 99.8)] + [(100.1, 99.9)] * 29 + [(100.1, 99.0)] + [(100.1, 99.9)] * 29
     bars, fine = _world([FLAT] * 21 + [SIGNAL, fill_hour, [(100.1, 99.4)] + [(100.1, 99.9)] * 59])
+    (tr,) = _walk(bars, [0] * 21 + [1, 0, 0], TRAIL, fine=fine)["trades"]
+    assert tr["why"] == "TRAIL" and tr["exit_ms"] == T0 + 22 * H + 30 * M
+    assert tr["exit"] == pytest.approx(99.485)
+    # minute 30 missing: the hour's 99.0 low is under the 99.385 the trail began with, so the
+    # trail was hit after the fill. Whether minutes 1-29 had lifted it first is unknowable, so it
+    # leaves at the stop it began with, 99.385 - not at 99.485 an hour later, as before the fix
     got = _walk(bars, [0] * 21 + [1, 0, 0], TRAIL,
                 fine=_without(fine, T0 + 22 * H + 30 * M, T0 + 22 * H + 31 * M))
     (tr,) = got["trades"]
-    assert tr["why"] == "TRAIL" and tr["exit_ms"] == T0 + 23 * H
-    assert tr["exit"] == pytest.approx(99.485) and got["counts"]["settled_by_candle"] == 0
+    assert tr["why"] == "TRAIL" and tr["exit_ms"] == T0 + 22 * H + M
+    assert tr["exit"] == pytest.approx(99.385) and got["counts"]["settled_by_candle"] == 1
 
 
 def test_a_trail_the_minutes_cannot_walk_to_its_end_leaves_when_the_candle_proves_the_hit():
@@ -496,7 +511,10 @@ def test_a_missed_orders_twin_leaves_the_real_counts_alone():
     assert m["market"]["why"] == "SL" and m["market"]["measured_exit"] is False
     assert m["market"]["slip_out"] == pytest.approx(0.0005)
     assert m["market"]["funding_estimated"] is True
-    assert got["counts"] == {**dict.fromkeys(ve.COUNT_KEYS, 0), "missed": 1}
+    # the real order's own counts only: it rested and never traded through, and it went in with
+    # no recorded book to say whether Gate would have taken it as post-only (Oct 23, 2026)
+    assert got["counts"] == {**dict.fromkeys(ve.COUNT_KEYS, 0), "missed": 1,
+                             "placement_unmeasured": 1}
 
 
 def test_a_candle_flagged_closed_places_no_order_and_is_counted():
@@ -588,3 +606,399 @@ def test_a_short_orders_market_twin_trails_from_above_its_entry():
     assert twin["entry"] == pytest.approx(99.8)
     assert twin["why"] == "TRAIL" and twin["exit"] == pytest.approx(100.215)
     assert twin["exit_ms"] == T0 + 23 * H
+
+
+# ---- the final review of Part 1 (Oct 23, 2026) ----------------------------------------------
+# F1: the waiting order is POST-ONLY (Gate's `poc`): an order the book of its own minute already
+# crosses is rejected - a missed trade kept with its market twin - so a waiting fill always pays
+# the maker fee. Measured over 63 coins' recorded books: 59,385 of 139,634 orders (42.5%) were
+# marketable the minute they were placed
+
+
+def test_a_waiting_buy_the_book_already_crosses_is_rejected_and_kept_with_its_twin():
+    # the signal closes at 100.0. 3 s into the next hour the recorded book is bid 99.9 / ask 100.0:
+    # a buy at 100.0 matches that ask at once, which Gate fills as a TAKER - so the post-only order
+    # is rejected, although minute 0 trades down to 99.9 and would otherwise fill it there
+    bars, fine = _fixed_world(FLAT, [(101.5, 100.5)] * 60)
+    book = _book((T0 + H, 99.9, 100.0, 0.0001, 0.0001))
+    got = _walk(bars, [1, 0, 0], fine=fine, book=book)
+    assert got["trades"] == [] and got["counts"]["post_only_reject"] == 1
+    assert got["counts"]["missed"] == 0 and got["counts"]["placement_unmeasured"] == 0
+    (m,) = got["missed"]
+    assert m["why"] == "post_only_reject" and m["limit"] == pytest.approx(100.0)
+    # its market twin buys at that minute's ask, 100.0, and the next hour's 101.5 trades through
+    # its 101.0 target: +1% of $50 less the taker fee in and the maker fee out = +0.4525
+    twin = m["market"]
+    assert twin["entry"] == pytest.approx(100.0) and twin["why"] == "TP"
+    assert twin["pnl"] == pytest.approx(0.50 - 50.0 * (0.00075 + 0.0002))
+    # the same hours with no book: the order rests, and minute 0 fills it
+    (tr,) = _walk(bars, [1, 0, 0], fine=fine)["trades"]
+    assert tr["entry_ms"] == T0 + H
+
+
+def test_a_waiting_sell_the_book_already_crosses_is_rejected():
+    # a short sells at 100.0 and the book's best BID is 100.0: selling there matches at once, so
+    # the order is rejected, though minute 0's 100.1 high would fill it. The twin sells at that
+    # bid, and 1% under it, 99.0, is traded through by the next hour's 98.5 low
+    bars, fine = _world([FLAT, FLAT, [(99.5, 98.5)] * 60])
+    book = _book((T0 + H, 100.0, 100.1, 0.0001, 0.0001))
+    got = _walk(bars, [-1, 0, 0], fine=fine, book=book)
+    assert got["trades"] == [] and got["counts"]["post_only_reject"] == 1
+    (m,) = got["missed"]
+    assert m["why"] == "post_only_reject" and m["market"]["entry"] == pytest.approx(100.0)
+    assert m["market"]["why"] == "TP" and m["market"]["exit"] == pytest.approx(99.0)
+
+
+def test_a_book_that_does_not_cross_the_order_lets_it_rest_and_fill_as_before():
+    # ask 100.05 is over a buy's 100.0 limit, bid 99.95 under a sell's: nothing matches, so each
+    # order rests and minute 0 trades through it - the trades of before, now measured
+    book = _book((T0 + H, 99.95, 100.05, 0.0001, 0.0001))
+    bars, fine = _fixed_world(FLAT, [(101.5, 100.5)] * 60)
+    got = _walk(bars, [1, 0, 0], fine=fine, book=book)
+    (tr,) = got["trades"]
+    assert tr["entry_ms"] == T0 + H and tr["why"] == "TP" and tr["fee_in"] == pytest.approx(0.0002)
+    assert got["counts"]["post_only_reject"] == 0 and got["counts"]["placement_unmeasured"] == 0
+    assert got["missed"] == []
+    bars, fine = _world([FLAT, FLAT, [(99.5, 98.5)] * 60])
+    got = _walk(bars, [-1, 0, 0], fine=fine, book=book)
+    (tr,) = got["trades"]
+    assert tr["entry_ms"] == T0 + H and tr["why"] == "TP"
+    assert got["counts"]["post_only_reject"] == 0 and got["counts"]["placement_unmeasured"] == 0
+
+
+def test_an_order_with_no_fresh_book_rests_and_is_counted():
+    # the only reading is 60 s older than the minute the order goes in - past the chase guard's
+    # 59 s, it is not that minute's book. The order rests on what the minutes show (minute 0 fills
+    # it) and is counted placement_unmeasured, though that old book crossed it
+    bars, fine = _fixed_world(FLAT, [(101.5, 100.5)] * 60)
+    stale = _book((T0 + H - 60_000, 99.9, 100.0, 0.0001, 0.0001))
+    got = _walk(bars, [1, 0, 0], fine=fine, book=stale)
+    assert len(got["trades"]) == 1 and got["counts"]["placement_unmeasured"] == 1
+    assert got["counts"]["post_only_reject"] == 0
+    # 59 s old it is the minute's own book (the chase guard's line), and it rejects the order
+    fresh = _book((T0 + H - 59_000, 99.9, 100.0, 0.0001, 0.0001))
+    got = _walk(bars, [1, 0, 0], fine=fine, book=fresh)
+    assert got["trades"] == [] and got["counts"]["post_only_reject"] == 1
+    # no book at all: it rests, counted
+    got = _walk(bars, [1, 0, 0], fine=fine)
+    assert len(got["trades"]) == 1 and got["counts"]["placement_unmeasured"] == 1
+
+
+def test_a_snapshot_only_hours_book_is_as_old_as_its_hour():
+    # 15-minute candles. An hour Gate published only as a snapshot stamps its one hour-start book
+    # on every minute (`book_history.book_age_s`): at 0:15 that book is 15 minutes old, so it
+    # cannot reject an order placed then - the order rests, counted - while the same prices from
+    # that minute's own full replay do reject it
+    bars, fine = _world([[(100.1, 99.9)] * 15, [(100.1, 99.9)] * 15, [(101.5, 100.5)] * 15],
+                        bar_ms=15 * M)
+    kw = {"contract": CONTRACT, "fees": FEES, "cost_check": False, "flat_slip": 0.0, "fine": fine}
+    snap = _book((T0 + 15 * M, 99.9, 100.0, 0.0001, 0.0001), source="snapshot")
+    got = ve.walk(bars, [1, 0, 0], FIXED, bar_s=900, book=snap, **kw)
+    assert len(got["trades"]) == 1 and got["counts"]["placement_unmeasured"] == 1
+    full = _book((T0 + 15 * M, 99.9, 100.0, 0.0001, 0.0001))
+    got = ve.walk(bars, [1, 0, 0], FIXED, bar_s=900, book=full, **kw)
+    assert got["trades"] == [] and got["counts"]["post_only_reject"] == 1
+
+
+def test_the_runners_cost_check_answers_before_the_post_only_check():
+    # a book that crosses the order AND charges 0.5% to sell out: the runner's cost check refuses
+    # it first (0.02% in + 0.075% + 0.5% out = 0.595% of a 1% target, past its 50% line), so no
+    # order goes in at all - no rejected order, no twin
+    bars, fine = _fixed_world(FLAT, [(101.5, 100.5)] * 60)
+    book = _book((T0 + H, 99.9, 100.0, 0.005, 0.005))
+    got = _walk(bars, [1, 0, 0], fine=fine, book=book, cost_check=True)
+    assert got["counts"]["gate_blocked"] == 1 and got["counts"]["post_only_reject"] == 0
+    assert got["missed"] == [] and got["trades"] == []
+
+
+# F2 (review I2): a stop the points do not show is proven by the candle's own LOSING-side extreme.
+# A long trades through its limit before it can fall to a stop under it (a short mirrors this),
+# so the fill candle's own low at or under the stop came after the fill
+
+
+def test_a_stop_hidden_after_a_fill_point_with_no_point_after_it_is_stamped_at_the_fill():
+    # only minute 0 of the fill hour (the fill) is in the archive; one of the missing minutes
+    # traded down to 97.5. No point follows the fill inside the hour, so the stop, 98.0, is stamped
+    # at the fill point itself
+    fill_hour = [(100.1, 99.9)] * 30 + [(99.0, 97.5)] + [(100.1, 99.9)] * 29
+    bars, fine = _fixed_world(fill_hour, [(101.5, 100.5)] * 60)
+    got = _walk(bars, [1, 0, 0], fine=_without(fine, T0 + H + M, T0 + 2 * H))
+    (tr,) = got["trades"]
+    assert tr["why"] == "SL" and tr["entry_ms"] == T0 + H and tr["exit_ms"] == T0 + H
+    assert tr["exit"] == pytest.approx(98.0) and got["counts"]["settled_by_candle"] == 1
+
+
+def test_a_short_stop_hidden_after_the_fill_point_is_proven_by_the_candles_high():
+    # a short sells at minute 0 (its 100.1 high is over the 100.0 limit); minute 30 trades up to
+    # 102.5, over the 102.0 stop. Every minute: out at minute 30
+    fill_hour = [(100.1, 99.9)] * 30 + [(102.5, 101.0)] + [(100.1, 99.9)] * 29
+    bars, fine = _world([FLAT, fill_hour, [(99.5, 98.5)] * 60])
+    (tr,) = _walk(bars, [-1, 0, 0], fine=fine)["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + H + 30 * M
+    # minute 30 missing: the hour's own 102.5 high came after the fill, so the stop was hit -
+    # out at 102.0 at minute 1, -2% of $50 less the fees = -1.0475; before the fix the trade went
+    # on to hour 2's 99.0 target
+    got = _walk(bars, [-1, 0, 0], fine=_without(fine, T0 + H + 30 * M, T0 + H + 31 * M))
+    (tr,) = got["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + H + M and tr["exit"] == pytest.approx(102.0)
+    assert tr["pnl"] == pytest.approx(-1.0 - 50.0 * (0.0002 + 0.00075))
+    assert got["counts"]["settled_by_candle"] == 1
+
+
+def test_a_target_the_rest_of_the_fill_candle_shows_cannot_outrun_a_hidden_stop():
+    # minute 0 fills; minute 20 trades down to 97.5 (the stop); minute 40 up to 101.5 (the 101.0
+    # target). Every minute: the stop came first
+    fill_hour = ([(100.1, 99.9)] * 20 + [(99.0, 97.5)] + [(100.1, 99.9)] * 19
+                 + [(101.5, 100.5)] + [(100.1, 99.9)] * 19)
+    bars, fine = _fixed_world(fill_hour, FLAT)
+    (tr,) = _walk(bars, [1, 0, 0], fine=fine)["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + H + 20 * M
+    # minute 20 missing: the points show only the target, but the hour's low proves the stop and
+    # nothing says which came first - the stop, counted unclear (the repo's worst case). Before
+    # the fix: TP at minute 40, +0.48
+    got = _walk(bars, [1, 0, 0], fine=_without(fine, T0 + H + 20 * M, T0 + H + 21 * M))
+    (tr,) = got["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + H + M and tr["exit"] == pytest.approx(98.0)
+    assert got["counts"]["settled_by_candle"] == 1 and got["counts"]["unclear"] == 1
+
+
+def test_a_whole_hour_whose_hidden_minute_holds_the_stop_cannot_book_its_visible_target():
+    # the final review's probe 2. Hour 2: minute 10 trades down to 97.5 (the stop), minute 40 up
+    # to 101.5 (the target). Every minute: SL at minute 10
+    late = ([(100.3, 99.5)] * 10 + [(99.0, 97.5)] + [(100.3, 99.5)] * 29 + [(101.5, 100.5)]
+            + [(100.3, 99.5)] * 19)
+    bars, fine = _fixed_world(FLAT, late)
+    (tr,) = _walk(bars, [1, 0, 0], fine=fine)["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + 2 * H + 10 * M
+    # minute 10 missing: the minutes left show the target at 40, while the hour's own low proves
+    # the stop, in an order nothing shows. Worst case: the stop by the candle rule, at the hour's
+    # open - which is 99.9, over 98.0, so at 98.0 - counted settled_by_candle and unclear, and the
+    # hour is one whose points miss its low (partial_points). Before the fix: TP, +0.48
+    got = _walk(bars, [1, 0, 0], fine=_without(fine, T0 + 2 * H + 10 * M, T0 + 2 * H + 11 * M))
+    (tr,) = got["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + 2 * H and tr["exit"] == pytest.approx(98.0)
+    assert tr["pnl"] == pytest.approx(-1.0 - 50.0 * (0.0002 + 0.00075))
+    assert got["counts"]["settled_by_candle"] == 1 and got["counts"]["unclear"] == 1
+    assert got["counts"]["partial_points"] == 1
+    # a short mirrors it: minute 10 trades up to 102.5, over the 102.0 stop; minute 40 down to
+    # 98.5, under the 99.0 target; the hour opens at 100.1, so the stop fills at 102.0
+    late = ([(100.5, 99.7)] * 10 + [(102.5, 101.0)] + [(100.5, 99.7)] * 29 + [(99.5, 98.5)]
+            + [(100.5, 99.7)] * 19)
+    bars, fine = _world([FLAT, FLAT, late])
+    (tr,) = _walk(bars, [-1, 0, 0], fine=fine)["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + 2 * H + 10 * M
+    got = _walk(bars, [-1, 0, 0], fine=_without(fine, T0 + 2 * H + 10 * M, T0 + 2 * H + 11 * M))
+    (tr,) = got["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + 2 * H and tr["exit"] == pytest.approx(102.0)
+    assert got["counts"]["settled_by_candle"] == 1 and got["counts"]["unclear"] == 1
+
+
+def test_a_trail_whose_hidden_minute_hits_its_stop_cannot_ride_on_to_a_later_exit():
+    # hour 23 begins with the trail at 99.485 (the fill hour lifted it). Minute 10 trades down to
+    # 99.0, under it; minute 20 up to 101.0; minute 30's low is 100.3. Every minute: out at
+    # minute 10, at 99.485
+    hour = ([(100.1, 99.9)] * 10 + [(100.0, 99.0)] + [(100.1, 99.9)] * 9 + [(101.0, 100.4)]
+            + [(101.0, 100.5)] * 9 + [(100.6, 100.3)] + [(100.5, 100.3)] * 29)
+    bars, fine, dirs = _trail_world(hour, FLAT)
+    (tr,) = _walk(bars, dirs, TRAIL, fine=fine)["trades"]
+    assert tr["why"] == "TRAIL" and tr["exit_ms"] == T0 + 23 * H + 10 * M
+    assert tr["exit"] == pytest.approx(99.485)
+    # minute 10 missing: minute 20 would lift the trail to 101.0 - 0.615 = 100.385 and minute 30
+    # leave there, a WIN of 0.385% where every minute gave a loss. But the hour's own 99.0 low is
+    # under the 99.485 it BEGAN with (a trail only tightens inside an hour): the stop was hit in a
+    # hidden minute, and which came first is unknowable - out at 99.485 at the hour's open,
+    # counted settled_by_candle and unclear
+    got = _walk(bars, dirs, TRAIL, fine=_without(fine, T0 + 23 * H + 10 * M, T0 + 23 * H + 11 * M))
+    (tr,) = got["trades"]
+    assert tr["why"] == "TRAIL" and tr["exit_ms"] == T0 + 23 * H
+    assert tr["exit"] == pytest.approx(99.485)
+    assert got["counts"]["settled_by_candle"] == 1 and got["counts"]["unclear"] == 1
+
+
+def test_every_candle_a_trade_lives_through_on_missing_points_is_counted():
+    # F2(c) and F5. Hour 1 (the fill) has every minute. Hour 2 lacks minute 30, whose 100.6 is the
+    # hour's high: its other minutes show 100.4 at most - partial_points. Hour 3 lacks minute 5,
+    # which lies inside what its other minutes show: nothing hidden, nothing counted. Hour 4 has
+    # no minutes at all and decides nothing - no_points all the same. Hour 5's minute 0 trades
+    # through the 101.0 target
+    quiet = [(100.4, 99.6)] * 60
+    peak = [(100.4, 99.6)] * 30 + [(100.6, 99.8)] + [(100.4, 99.6)] * 29
+    bars, fine = _fixed_world(FLAT, peak, quiet, quiet, [(101.5, 100.5)] * 60)
+    holes = _without(fine, T0 + 2 * H + 30 * M, T0 + 2 * H + 31 * M)
+    holes = _without(holes, T0 + 3 * H + 5 * M, T0 + 3 * H + 6 * M)
+    holes = _without(holes, T0 + 4 * H, T0 + 5 * H)
+    got = _walk(bars, [1, 0, 0, 0, 0, 0], fine=holes)
+    (tr,) = got["trades"]
+    assert tr["why"] == "TP" and tr["exit_ms"] == T0 + 5 * H
+    assert got["counts"]["partial_points"] == 1 and got["counts"]["no_points"] == 1
+    # with no minutes at all, all five hours the trade lives through, fill to exit, are counted
+    got = _walk(bars, [1, 0, 0, 0, 0, 0], fine=None)
+    assert got["counts"]["no_points"] == 5 and got["counts"]["partial_points"] == 0
+
+
+# F3 (review I3): a hold past a funding list that stopped is estimated, never a measured zero
+
+
+def test_a_long_hold_past_a_stale_funding_list_pays_the_average_rate_and_is_counted():
+    # the final review's probe. The saved list ends at T0 (0.1% every 8 hours) while a long is
+    # held 41 hours, T0 + 1h to T0 + 42h. The list answers to one cycle past its last settlement
+    # (T0 + 8h); the 34 hours after it pay 34 / 8 x 0.1% = 0.425% of $50 = $0.2125, estimated
+    # and counted. Before the fix they paid $0.00 as if measured: +0.48 instead of +0.2675
+    fund = [{"settle_ms": T0 - 8 * H, "rate": 0.001, "cycle_h": 8},
+            {"settle_ms": T0, "rate": 0.001, "cycle_h": 8}]
+    quiet = [(100.3, 99.7)] * 60
+    bars, fine = _world([FLAT, FLAT] + [quiet] * 40 + [[(101.5, 100.5)] * 60])
+    got = _walk(bars, [1] + [0] * 42, fine=fine, funding=fund)
+    (tr,) = got["trades"]
+    assert (tr["entry_ms"], tr["exit_ms"], tr["why"]) == (T0 + H, T0 + 42 * H, "TP")
+    assert tr["funding"] == pytest.approx(-0.2125) and tr["funding_estimated"] is True
+    assert tr["pnl"] == pytest.approx(0.50 - 50.0 * 0.0004 - 0.2125)
+    assert got["counts"]["funding_estimated"] == 1
+
+
+# F4 (review I4): one "a touch stops" rule, and what each kind of exit pays
+
+
+def test_a_touch_stops_the_engines_trades_on_both_sides():
+    # the fixed long's hour 2 trades down to exactly 98.0, its stop, and no lower
+    bars, fine = _fixed_world(FLAT, [(100.3, 98.0)] * 60)
+    (tr,) = _walk(bars, [1, 0, 0], fine=fine)["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + 2 * H and tr["exit"] == pytest.approx(98.0)
+    # the short's hour 2 trades up to exactly 102.0
+    bars, fine = _world([FLAT, FLAT, [(102.0, 99.7)] * 60])
+    (tr,) = _walk(bars, [-1, 0, 0], fine=fine)["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + 2 * H and tr["exit"] == pytest.approx(102.0)
+    # the minute an order fills in touches its stop: out in that minute, long and short
+    bars, fine = _fixed_world([(100.1, 98.0)] + [(100.1, 99.9)] * 59, [(101.5, 100.5)] * 60)
+    (tr,) = _walk(bars, [1, 0, 0], fine=fine)["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + H
+    bars, fine = _world([FLAT, [(102.0, 99.9)] + [(100.1, 99.9)] * 59, [(99.5, 98.5)] * 60])
+    (tr,) = _walk(bars, [-1, 0, 0], fine=fine)["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + H
+    # a hidden minute that only touches the stop, shown by the hour's own low of exactly 98.0
+    late = [(100.3, 99.5)] * 30 + [(100.3, 98.0)] + [(100.3, 99.5)] * 29
+    bars, fine = _fixed_world(FLAT, late)
+    got = _walk(bars, [1, 0, 0], fine=_without(fine, T0 + 2 * H + 30 * M, T0 + 2 * H + 31 * M))
+    (tr,) = got["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + 2 * H
+    assert got["counts"]["settled_by_candle"] == 1
+    # a trail: after the fill hour its stop is 100.1 - 3 x ATR(20), worked out here exactly as the
+    # engine works it out (~99.485); a minute of hour 23 whose low is exactly that leaves at it
+    from tradingagents import v3_rules as vr
+
+    probe, _fine, _dirs = _trail_world()
+    stop = 100.1 - 3.0 * vr.atr(probe["h"], probe["l"], probe["c"], vr.ATR_N)[21]
+    bars, fine, dirs = _trail_world([(100.1, 99.9)] * 10 + [(100.1, stop)] + [(100.1, 99.9)] * 49)
+    (tr,) = _walk(bars, dirs, TRAIL, fine=fine)["trades"]
+    assert tr["why"] == "TRAIL" and tr["exit_ms"] == T0 + 23 * H + 10 * M and tr["exit"] == stop
+    # ... and when that minute is missing, the hour's own low touching the stop proves the hit
+    got = _walk(bars, dirs, TRAIL, fine=_without(fine, T0 + 23 * H + 10 * M, T0 + 23 * H + 11 * M))
+    (tr,) = got["trades"]
+    assert tr["why"] == "TRAIL" and tr["exit_ms"] == T0 + 23 * H
+    assert got["counts"]["settled_by_candle"] == 1
+
+
+def test_only_a_resting_target_pays_the_maker_fee_every_market_exit_pays_the_taker_and_its_gap():
+    # a book is recorded at each exit minute: buying there costs 0.09%, selling 0.04%. A long
+    # leaves by selling. Every exit that is not a resting target - the trail, the average, the end
+    # of the data, the time limit - pays the taker fee and that minute's `sell`; a target that
+    # rests and is traded through pays the maker fee and no gap, even with a book recorded
+    def at_exit(ms):
+        return _book((ms, 99.0, 99.1, 0.0009, 0.0004))
+
+    # TRAIL: out at 105.335 at hour 23's open (the trailing stop test's world)
+    up = [(100.05 + 0.1 * m, 99.8 + 0.1 * m) for m in range(60)]
+    drop = [(105.9, 104.0)] + [(104.5, 98.0)] * 59
+    bars, fine = _world([FLAT] * 21 + [SIGNAL, up, drop])
+    (tr,) = _walk(bars, [0] * 21 + [1, 0, 0], TRAIL, fine=fine,
+                  book=at_exit(T0 + 23 * H))["trades"]
+    assert tr["why"] == "TRAIL" and tr["fee_out"] == 0.00075 and tr["measured_exit"] is True
+    assert tr["slip_out"] == pytest.approx(0.0004)
+    # $162 of coin (a 0.615 stop from 100.0 at $1 risk is 162 lots of 0.01), +5.335% of it, less
+    # 0.02% in and 0.075% + 0.04% out
+    assert tr["pnl"] == pytest.approx(162.0 * (0.05335 - 0.0002 - 0.00075 - 0.0004))
+    # MA: out at hour 22's close, 99.7, under its 3-candle average (the average test's world)
+    sag = [(100.1, 99.8)] + [(99.8, 99.6)] * 59
+    bars, fine = _world([FLAT] * 21 + [SIGNAL, sag])
+    (tr,) = _walk(bars, [0] * 21 + [1, 0], {"kind": "trail", "atr_mult": 3.0, "ma_n": 3},
+                  fine=fine, book=at_exit(T0 + 23 * H))["trades"]
+    assert tr["why"] == "MA" and tr["fee_out"] == 0.00075
+    assert tr["slip_out"] == pytest.approx(0.0004)
+    # END: still open when the data ends, out at the last close, an hour after the fill
+    bars, fine = _fixed_world(FLAT)
+    (tr,) = _walk(bars, [1, 0], fine=fine, book=at_exit(T0 + 2 * H))["trades"]
+    assert tr["why"] == "END" and tr["fee_out"] == 0.00075
+    assert tr["slip_out"] == pytest.approx(0.0004)
+    # TIME: the snap-back's time limit, out at the close of its second candle (the snap test)
+    dip = [(100.0, 96.9)] + [(97.2, 96.9)] * 59
+    fill = [(97.2, 97.0)] + [(97.3, 97.1)] * 59
+    bars, fine = _world([FLAT] * 20 + [dip, fill, [(97.5, 97.2)] * 60])
+    (tr,) = _walk(bars, [0] * 20 + [1, 0, 0], SNAP, fine=fine,
+                  book=at_exit(T0 + 23 * H))["trades"]
+    assert tr["why"] == "TIME" and tr["fee_out"] == 0.00075
+    assert tr["slip_out"] == pytest.approx(0.0004)
+    # TP: the resting target, traded through at hour 2's open: maker, no gap
+    bars, fine = _fixed_world(FLAT, [(101.5, 100.5)] * 60)
+    (tr,) = _walk(bars, [1, 0, 0], fine=fine, book=at_exit(T0 + 2 * H))["trades"]
+    assert tr["why"] == "TP" and tr["fee_out"] == 0.0002 and tr["slip_out"] == 0.0
+
+
+# F5: the review's "fix before Part 2 builds on it" list
+
+
+@pytest.mark.parametrize("field, value", [("contract_size", 0.0), ("contract_size", -0.01),
+                                          ("mmr", 0.0), ("mmr", -0.005), ("max_lev", 0)])
+def test_a_contract_that_cannot_be_measured_is_refused_by_name(field, value):
+    # unknown is not zero: a listing with no maintenance rate reads 0.0, and at 0 a 3% stop gets
+    # 20x where Gate's real 5% allows 11x (at 20x, 1/20 - 5% = 0: liquidated at the entry). A lot
+    # of no coin, or no leverage at all, cannot be sized either
+    bars, fine = _fixed_world(FLAT, [(101.5, 100.5)] * 60)
+    with pytest.raises(ValueError, match=f"contract {field}"):
+        _walk(bars, [1, 0, 0], fine=fine, contract={**CONTRACT, field: value})
+
+
+def test_a_candle_flagged_closed_places_no_order_even_without_the_cost_check():
+    # the closed flag is the runner's own rule for a stock token's dead candle: it holds whether
+    # or not the cost check is asked
+    bars, fine = _fixed_world([(100.1, 99.0)] * 60, [(101.5, 100.5)] * 60)
+    got = _walk(bars, [1, 0, 0], fine=fine, cost_check=False, closed=[True, False, False])
+    assert got["trades"] == [] and got["missed"] == [] and got["counts"]["closed_skip"] == 1
+    got = _walk(bars, [1, 0, 0], fine=fine, cost_check=False, closed=[False, False, False])
+    assert len(got["trades"]) == 1 and got["counts"]["closed_skip"] == 0
+
+
+def test_a_stop_the_candle_rule_decides_fills_at_the_open_when_the_candle_opened_past_it():
+    # review M1. No minutes anywhere. The long fills by the candle (hour 1 trades down to 99.5);
+    # hour 2 OPENS at 96.0, under the 98.0 stop, then trades up to 97.0 and down to 95.0. The stop
+    # was marketable from the first trade: out at 96.0, not at the hour's best price, 97.0, which
+    # may have come at its end. -4% of $50 = -2.00, less 0.02% in and 0.075% out = -2.0475
+    gap = [(96.5, 95.5)] + [(97.0, 95.0)] * 59                   # opens at (96.5 + 95.5) / 2
+    bars, _fine = _fixed_world([(100.2, 99.5)] * 60, gap)
+    (tr,) = _walk(bars, [1, 0, 0], fine=None)["trades"]
+    assert tr["why"] == "SL" and tr["exit_ms"] == T0 + 2 * H and tr["exit"] == pytest.approx(96.0)
+    assert tr["pnl"] == pytest.approx(-2.0 - 50.0 * (0.0002 + 0.00075))
+    # a short: hour 2 opens at 104.0, over the 102.0 stop, and trades 103.0-105.0: out at 104.0
+    bars, _fine = _world([FLAT, [(100.5, 99.8)] * 60, [(104.5, 103.5)] + [(105.0, 103.0)] * 59])
+    (tr,) = _walk(bars, [-1, 0, 0], fine=None)["trades"]
+    assert tr["why"] == "SL" and tr["exit"] == pytest.approx(104.0)
+    # the hour the order fills in opens past the stop (both decided by the candle): the order
+    # fills at its 100.0 limit, and the stop at the open, 96.0, in that same hour
+    bars, _fine = _fixed_world(gap, FLAT)
+    (tr,) = _walk(bars, [1, 0, 0], fine=None)["trades"]
+    assert tr["entry_ms"] == T0 + H and tr["exit_ms"] == T0 + H and tr["exit"] == pytest.approx(96.0)
+    # a trail: the hour after the fill opens at 98.0, under the 99.385 trail (with no minutes, the
+    # fill hour's high never lifted it), and trades 97.0-99.0: out at 98.0, not at 99.0
+    bars, _fine, dirs = _trail_world([(98.5, 97.5)] + [(99.0, 97.0)] * 59)
+    (tr,) = _walk(bars, dirs, TRAIL, fine=None)["trades"]
+    assert tr["why"] == "TRAIL" and tr["exit_ms"] == T0 + 23 * H
+    assert tr["exit"] == pytest.approx(98.0)
+    # a trail whose hour 23 has minutes but not minute 0: it opened at 99.0, under the 99.485 the
+    # hour began with - out at the open, 99.0. With every minute, minute 0's whole range (98.8 to
+    # 99.2) is under the stop, so it fills at that minute's best price, 99.2
+    bars, fine, dirs = _trail_world([(99.2, 98.8)] + [(100.1, 99.9)] * 59)
+    (tr,) = _walk(bars, dirs, TRAIL, fine=fine)["trades"]
+    assert tr["exit_ms"] == T0 + 23 * H and tr["exit"] == pytest.approx(99.2)
+    got = _walk(bars, dirs, TRAIL, fine=_without(fine, T0 + 23 * H, T0 + 23 * H + M))
+    (tr,) = got["trades"]
+    assert tr["exit_ms"] == T0 + 23 * H and tr["exit"] == pytest.approx(99.0)
+    assert got["counts"]["settled_by_candle"] == 1

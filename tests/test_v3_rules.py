@@ -167,3 +167,71 @@ def test_a_settlement_at_entry_is_not_paid_and_one_at_exit_is():
     f_ms, f_rate, f_cyc = [T0 + 8 * H, T0 + 16 * H], [0.0001, 0.0003], [8.0, 8.0]
     paid, est = vr.funding_paid(f_ms, f_rate, f_cyc, 1, T0 + 8 * H, T0 + 16 * H)
     assert paid == pytest.approx(0.0003) and est is False
+
+
+# ---- final review of Part 1 (Oct 23, 2026) --------------------------------------------------
+
+
+def test_a_hold_past_a_list_that_stopped_is_estimated_never_a_measured_zero():
+    # I3: the saved list's last settlement is at T0 (0.1% every 8 h) and a long is held from
+    # T0 + 1h to T0 + 42h. The list answers to one cycle after its last settlement, T0 + 8h: the
+    # 34 hours after that pay the average known rate, 34 / 8 x 0.001 = 0.00425 (on $50, $0.2125),
+    # flagged estimated. Before the fix it paid 0.0 with estimated=False; settled every 8 h it
+    # would have been 5 x 0.001 (T0 + 8h ... T0 + 40h)
+    f_ms, f_rate, f_cyc = [T0 - 8 * H, T0], [0.001, 0.001], [8.0, 8.0]
+    paid, est = vr.funding_paid(f_ms, f_rate, f_cyc, 1, T0 + H, T0 + 42 * H)
+    assert paid == pytest.approx(0.00425) and est is True
+    paid, est = vr.funding_paid(f_ms, f_rate, f_cyc, -1, T0 + H, T0 + 42 * H)
+    assert paid == pytest.approx(-0.00425) and est is True, "a short receives the estimate"
+
+
+def test_the_cycle_not_settled_yet_is_free_so_a_fresh_list_is_unchanged():
+    # a list fetched now ends with the last settlement that HAS happened: a hold ending within
+    # one cycle of it (T0 + 8h here) owes nothing more, and nothing is estimated
+    f_ms, f_rate, f_cyc = [T0 - 8 * H, T0], [0.001, 0.001], [8.0, 8.0]
+    assert vr.funding_paid(f_ms, f_rate, f_cyc, 1, T0 + H, T0 + 8 * H) == (0.0, False)
+    assert vr.funding_paid(f_ms, f_rate, f_cyc, 1, T0 - H, T0 + 7 * H) == \
+        (pytest.approx(0.001), False), "the T0 settlement is paid, the next is not due yet"
+    # one hour past the cycle: 1 / 8 of the average rate, estimated
+    paid, est = vr.funding_paid(f_ms, f_rate, f_cyc, 1, T0 + H, T0 + 9 * H)
+    assert paid == pytest.approx(0.001 / 8) and est is True
+
+
+def test_the_next_settlement_is_due_one_of_the_last_settlements_own_cycles_later():
+    # the coin moved to hourly funding at its last settlement (T0): the next was due at T0 + 1h,
+    # so a hold from T0 + 1h to T0 + 3h is 2 hourly cycles past the list - 2 x the average known
+    # rate, 0.001 - not a free 8-hour cycle
+    f_ms, f_rate, f_cyc = [T0 - 8 * H, T0], [0.001, 0.001], [8.0, 1.0]
+    paid, est = vr.funding_paid(f_ms, f_rate, f_cyc, 1, T0 + H, T0 + 3 * H)
+    assert paid == pytest.approx(0.002) and est is True
+
+
+def test_a_touch_stops_a_trail_on_both_sides():
+    # the stop is reached when a low TOUCHES it (a short: a high), as `settle_in_minutes` reads a
+    # stop: a long stopped at 99.0 by a low of exactly 99.0, a short at 101.0 by a high of 101.0
+    assert vr.trail_walk(1, 99.0, 1.0, [T0], [99.5], [99.0], T0, T0 + M) == (T0, 99.0)
+    assert vr.trail_walk(-1, 101.0, 1.0, [T0], [101.0], [100.5], T0, T0 + M) == (T0, 101.0)
+    assert vr.stop_reached(1, 98.0, 99.0, 98.0) and not vr.stop_reached(1, 98.0, 99.0, 98.01)
+    assert vr.stop_reached(-1, 102.0, 102.0, 101.0) and not vr.stop_reached(-1, 102.0, 101.99, 101.0)
+
+
+def test_a_short_trail_the_price_jumped_past_exits_at_the_best_price_traded():
+    # minute 0 pulls a short's stop down to 99.5 + 1.0 = 100.5; minute 1 trades only 102.0-103.0,
+    # all above it: the stop fills at 102.0, the best price that minute traded, never 100.5
+    assert vr.trail_walk(-1, 101.0, 1.0, [T0, T0 + M], [100.2, 103.0], [99.5, 102.0],
+                         T0, T0 + 2 * M) == (T0 + M, 102.0)
+
+
+def test_atr_counts_a_downward_gap_from_the_previous_close():
+    # bar 1 trades 9-11 but bar 0 closed at 20: its true range is 20 - 9 = 11, so ATR(2) is
+    # (2 + 11) / 2 = 6.5 (a plain high-low average would give 2.0)
+    assert vr.atr([21.0, 11.0], [19.0, 9.0], [20.0, 10.0], 2) == [None, 6.5]
+
+
+def test_an_order_the_book_already_crosses_is_marketable():
+    # a waiting buy at 100.0 matches an ask at or under 100.0 the moment it goes in (Gate would
+    # fill it as a taker); a sell at 100.0 matches a bid at or over it
+    assert vr.marketable(1, 100.0, 99.9, 100.0) and vr.marketable(1, 100.0, 99.8, 99.9)
+    assert not vr.marketable(1, 100.0, 99.95, 100.05)
+    assert vr.marketable(-1, 100.0, 100.0, 100.1) and vr.marketable(-1, 100.0, 100.1, 100.2)
+    assert not vr.marketable(-1, 100.0, 99.95, 100.05)

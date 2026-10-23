@@ -172,6 +172,179 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-23-B — Backtest v3 charged no funding for the part of a hold after a saved funding list stopped, and called it measured: a 41-hour long paid $0.00 where its payments were $0.25
+
+**CEO**
+
+* A long Backtest v3 trade held 41 hours paid no funding at all, marked as
+  measured, because the saved list of funding payments ended before the
+  trade began; with every payment it would have paid $0.25, so its +$0.23
+  read as +$0.48.
+* Why: the engine estimated funding only for the time before the list's
+  first payment, never for the time after its last one.
+* What stops it now: any part of a hold more than one payment cycle after
+  the list's last payment pays the average known rate and is counted as
+  estimated; a list fetched fresh charges exactly what it did before.
+
+**DEV**
+
+* `tradingagents/v3_rules.py:140-148 funding_paid` (at `d8b2f00`) charged the
+  settlements in (entry, exit] and estimated only a hold that began before
+  `f_ms[0] - cycle`; a hold after `f_ms[-1]` found no settlement and returned
+  `(0.0, False)`, which `v3_engine._close` booked as `funding` 0 with
+  `funding_estimated` False.
+* Invariant broken: **unknown is not zero** - a funding history answers only
+  from one cycle before its first settlement to one cycle (the last
+  settlement's own) after its last; outside that span the charge is an
+  estimate, and says so.
+* Guard: `tests/test_v3_rules.py::test_a_hold_past_a_list_that_stopped_is_estimated_never_a_measured_zero`,
+  `::test_the_cycle_not_settled_yet_is_free_so_a_fresh_list_is_unchanged`,
+  `::test_the_next_settlement_is_due_one_of_the_last_settlements_own_cycles_later`,
+  `tests/test_v3_engine.py::test_a_long_hold_past_a_stale_funding_list_pays_the_average_rate_and_is_counted`.
+
+**SAW** - not on the operator's screen: found by the final whole-branch
+review of Backtest v3 Part 1, Oct 23, 2026 ~1:45am, before any v3 result
+was used. Task 2's reviewer (Oct 22, 2026) and Task 7's (Oct 23, 2026) had
+both logged it as a deferred minor.
+
+**TIMELINE**
+
+1. `Oct 22, 2026 11:04pm` (`2da919d`) - `v3_rules.funding_paid` ships:
+   settlement by settlement, the part of a hold BEFORE the history estimated.
+2. `Oct 22, 2026` - Task 2's review logs "a hold past the last settlement (a
+   stale list) pays 0 with estimated=False" as a deferred minor; on
+   `Oct 23, 2026` Task 7's review lists it as a fifth case the engine does
+   not count.
+3. `Oct 23, 2026 ~1:45am` - the final review's probe: a list whose last
+   settlement is an hour before the entry (0.1% every 8 hours), a long held
+   41 hours on $50 of coin: $0.00, `estimated=False`. Settled every 8 hours
+   it pays 5 x 0.1% = $0.25, so +$0.23 read as +$0.48.
+4. After the fix (this commit): the same hold pays for the 34 hours past
+   one cycle after the last settlement, 34 / 8 x 0.1% = 0.425% = $0.2125,
+   estimated and counted (+$0.2675); a hold ending inside the cycle after the
+   last settlement is unchanged, `estimated=False`. Saved lists do stop: the
+   trade-list click's saved funding list for MINA ended Oct 10, 2026 4:00am
+   (RCA-2026-10-22-H).
+
+**ROOT CAUSE** - `funding_paid` bounded the history's coverage at its first
+settlement only; where its coverage ENDS (one cycle after the last
+settlement) was never worked out.
+
+**WHY IT WAS NOT CAUGHT** - every funding test put the hold inside or before
+the history: the head estimate was tested and the tail never was. The smoke
+run fetches a fresh list from Gate, so no run ever met a stale one, and two
+reviews filed the gap as a deferred minor because no v3 result was in use
+yet - a missing cost term makes no assertion fail, it only makes a number
+smaller (the lesson of RCA-2026-09-15-C, again).
+
+**COST** - none - found in review before any v3 result was used.
+
+**FIX** - this commit.
+
+**GUARD** - `tests/test_v3_rules.py::test_a_hold_past_a_list_that_stopped_is_estimated_never_a_measured_zero`,
+`::test_the_cycle_not_settled_yet_is_free_so_a_fresh_list_is_unchanged`,
+`::test_the_next_settlement_is_due_one_of_the_last_settlements_own_cycles_later`,
+`tests/test_v3_engine.py::test_a_long_hold_past_a_stale_funding_list_pays_the_average_rate_and_is_counted`.
+In-memory breaks of the new rule - the tail never estimated, the unsettled
+cycle charged, the tail flagged but not charged, the first settlement's
+cycle used for the tail - each fail one of them.
+
+---
+
+## RCA-2026-10-23-A — Backtest v3 booked a stop-out as a win when a hole in Gate's minute record hid the minute that hit the stop: -$1.05 read as +$0.48
+
+**CEO**
+
+* A Backtest v3 trade could show a win where the market had stopped it
+  out: on an hour with one minute missing from the record, a $1-risk trade
+  read +$0.48 instead of -$1.05, and nothing on the result said a minute was
+  missing.
+* Why: where minutes were missing, the engine trusted only what the minutes
+  left showed, although the hour's own lowest price proved the stop price
+  had traded after the order filled.
+* What stops it now: a stop the hour's own low (a short's: high) proves is
+  booked as a loss even when its minute is missing; when the minutes left
+  show a win but cannot say which came first, the loss is booked; and every
+  hour a trade lives through on missing minutes is counted on the result.
+
+**DEV**
+
+* `tradingagents/v3_engine.py:213 _fixed_bar` (at `d8b2f00`) returned `None`
+  ("spent") for the rest of a fill candle whose points showed nothing, and
+  `:207-210` returned a visible TP on a whole candle before asking whether
+  the candle's own low proved a stop no point showed; `_trail_bar:237`
+  proved a hit only when the points found no exit of their own.
+* Invariant broken: **a candle's own losing-side extreme past the stop
+  proves a stop-out after the fill** - a long trades through its limit
+  before it can reach a stop under it - so only the TARGET side of a fill
+  candle is unproven; when the points show the target and the candle proves
+  the stop, the repo's worst case books the stop (`unclear`).
+* Guard: `tests/test_v3_engine.py::test_a_stop_hidden_in_the_rest_of_the_fill_candle_is_proven_by_the_candles_low`
+  (flipped: it had asserted the TP),
+  `::test_a_whole_hour_whose_hidden_minute_holds_the_stop_cannot_book_its_visible_target`,
+  `::test_a_trail_whose_hidden_minute_hits_its_stop_cannot_ride_on_to_a_later_exit`,
+  `::test_every_candle_a_trade_lives_through_on_missing_points_is_counted`.
+
+**SAW** - not on the operator's screen: found by the final whole-branch
+review of Backtest v3 Part 1, Oct 23, 2026 ~1:45am, before any v3 result
+was used (Part 1 has no caller but the one-coin smoke command).
+
+**TIMELINE**
+
+1. `Oct 22, 2026 11:37pm` (`89c05b5`) - the v3 engine ships: the minute an
+   order fills in can stop a trade but never win it; a candle with no
+   minutes keeps the candle rule.
+2. `Oct 23, 2026 12:27am` (`9e94489`, fix round 1) - a WHOLE candle the
+   minutes cannot settle keeps the candle rule, counted; the rest of a fill
+   candle is "spent, never re-read" because "its own high/low may predate
+   the fill" - and a test asserts that a fill hour whose missing minute 30
+   trades to 97.5, under the 98.0 stop, goes on to hour 2's target. The fix
+   report records 40 of 5,164 simulated trades (0.8%) still unlike the
+   all-minutes answer.
+3. `Oct 23, 2026 ~1:45am` - the final review's probe 1, in that test's own
+   world: every minute gives SL at minute 30, -$1.0475; minute 30 missing
+   gives TP, +$0.48, nothing counted. Probe 2: a whole hour whose missing
+   minute 10 holds the stop while minute 40 (present) holds the target books
+   TP +$0.48 where every minute gives SL -$1.0475.
+4. After the fix (this commit): probe 1 books SL at 98.0 stamped at minute 1,
+   the first point after the fill, -$1.0475, `settled_by_candle` 1; probe 2
+   books SL at 98.0 at the hour's open, -$1.0475, `settled_by_candle` 1 and
+   `unclear` 1; a trail that rode on to a +0.385% exit after a hidden
+   stop-out leaves at the 99.485 the hour began with.
+5. 1,800 random worlds (6,061 trades) with every minute present: 0 changed.
+   With random holes, trades that match the all-minutes answer went 99.2% ->
+   99.6%, 99.5% -> 99.7%, 99.3% -> 99.8% (seeds 7, 11, 23), and trades booked
+   BETTER than the all-minutes answer 4 -> 2 - both on a trail stop a
+   present minute had already moved, which no candle can prove, now counted
+   `partial_points`.
+
+**ROOT CAUSE** - the round-1 ruling treated the fill candle's extremes as
+unproven on BOTH sides when only the high (a short's: low) can predate the
+fill; and on a whole candle `_fixed_bar` returned the points' TP before
+checking whether the candle's own low proved a stop the points did not show.
+
+**WHY IT WAS NOT CAUGHT** - the test written for this exact case encoded the
+wrong rule: it asserted the TP, so the suite defended the defect. The fix
+round's differential reported 99.2% agreement with the all-minutes answer
+and accepted the other 0.8% as residual without asking in which DIRECTION
+those trades erred - an agreement percentage cannot tell a conservative miss
+from a stop-out turned into a win. And no count existed for candles walked
+on partial minutes, so the residual was invisible in every result.
+
+**COST** - none - found in review before any v3 result was used.
+
+**FIX** - this commit.
+
+**GUARD** - the tests above, plus
+`::test_a_stop_hidden_after_a_fill_point_with_no_point_after_it_is_stamped_at_the_fill`,
+`::test_a_short_stop_hidden_after_the_fill_point_is_proven_by_the_candles_high`
+and `::test_a_target_the_rest_of_the_fill_candle_shows_cannot_outrun_a_hidden_stop`.
+13 in-memory breaks of these rules: 12 fail a test; the 13th (pricing the
+fill candle's hidden stop by the candle's open rule instead of at the stop)
+gives the same price whenever the fill candle opened above the stop.
+
+---
+
 ## RCA-2026-10-22-H — a click on a 30-day strategy on daily candles listed another stretch of days: #AYWGYUEG MINA 1d, 20 trades in its row, 88 in its list
 
 **CEO**

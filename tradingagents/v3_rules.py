@@ -67,6 +67,24 @@ def limit_fill(side: int, limit_px: float, t_ms, hi, lo,
     return None
 
 
+def marketable(side: int, limit_px: float, bid: float, ask: float) -> bool:
+    """Whether a waiting order would match the book the moment it goes in: a
+    buy when the best ask is at or under its limit, a sell when the best bid
+    is at or over it. Gate fills such an order at once as a TAKER, so a
+    POST-ONLY order (Gate's `poc`, the v3 waiting order) is rejected instead
+    (final review of Backtest v3 Part 1, Oct 23, 2026: 59,385 of 139,634
+    orders placed at the signal close, 42.5%, over 63 coins' recorded books)."""
+    return ask <= limit_px if side == 1 else bid >= limit_px
+
+
+def stop_reached(side: int, stop: float, hi: float, lo: float) -> bool:
+    """A TOUCH STOPS: a long's stop is reached when a low is at or under it, a
+    short's when a high is at or over it (as `settle_in_minutes` reads a
+    stop). ONE rule for the trail, the fixed stop and the candle that proves a
+    stop its points do not show — the engine now, the runner later."""
+    return lo <= stop if side == 1 else hi >= stop
+
+
 def stop_fill(side: int, stop: float, hi: float, lo: float) -> float:
     """Where a stop fills in a point that reached it: at the stop, or — when
     the whole point traded beyond it (the price jumped past) — at the best
@@ -111,20 +129,18 @@ def risk_size(risk_usd: float, entry_px: float, stop_px: float, *, contract_size
 def trail_walk(side: int, stop: float, dist: float, t_ms, hi, lo,
                start_ms: int, end_ms: int) -> tuple[int | None, float]:
     """Walk the points in [start_ms, end_ms) with a trailing stop: each point
-    is checked against the stop FIRST (its high and low have no order, so the
-    worse is assumed), then the stop moves `dist` behind that point's extreme
-    and is never loosened. Returns (the exit point and its fill price,
-    `stop_fill`) or (None, the stop carried forward)."""
+    is checked against the stop FIRST (`stop_reached`: a touch stops), then
+    the stop moves `dist` behind that point's extreme and is never loosened.
+    A point's high and low have no order, and check-first is the KINDER
+    reading of a point wider than the trail: its own high cannot lift the
+    stop before its own low is tested against the stop it began with.
+    Returns (the exit point and its fill price, `stop_fill`) or (None, the
+    stop carried forward)."""
     a, b = _span(t_ms, start_ms, end_ms)
     for k in range(a, b):
-        if side == 1:
-            if lo[k] <= stop:
-                return int(t_ms[k]), stop_fill(1, stop, hi[k], lo[k])
-            stop = max(stop, hi[k] - dist)
-        else:
-            if hi[k] >= stop:
-                return int(t_ms[k]), stop_fill(-1, stop, hi[k], lo[k])
-            stop = min(stop, lo[k] + dist)
+        if stop_reached(side, stop, hi[k], lo[k]):
+            return int(t_ms[k]), stop_fill(side, stop, hi[k], lo[k])
+        stop = max(stop, hi[k] - dist) if side == 1 else min(stop, lo[k] + dist)
     return None, stop
 
 
@@ -134,18 +150,25 @@ def funding_paid(f_ms, f_rate, f_cyc, side: int, entry_ms: int,
     negative; a positive rate means longs pay): every settlement in
     (entry_ms, exit_ms] at its own rate. `f_ms`/`f_rate`/`f_cyc` are the
     settlement history oldest first, in the arrays `auto_trader.funding_day_at`
-    reads. The history answers from one cycle before its first settlement;
-    any part of the hold before that pays the average known rate per cycle,
-    and says so (`estimated`). No history is never a measured zero."""
+    reads. The history answers from one cycle before its first settlement to
+    one cycle after its last: the cycle after the last settlement has not
+    settled yet in a list fetched now, so it is free, and a fresh list
+    charges exactly what was settled. Any part of the hold outside that span
+    — before the history, or past a saved list that stopped (final review of
+    Part 1, Oct 23, 2026: a 41-hour long hold on a list that ended an hour
+    before its entry paid $0.00 as if measured, where settled it pays $0.25
+    on $50; RCA-2026-10-23-B) — pays the average known rate per cycle, and
+    says so (`estimated`). No history is never a measured zero."""
     if not len(f_ms):
         return 0.0, True
     a = bisect.bisect_right(f_ms, int(entry_ms))
     b = bisect.bisect_right(f_ms, int(exit_ms))
-    paid = side * sum(float(x) for x in f_rate[a:b])
-    cycle_ms = (float(f_cyc[0]) or 8.0) * 3_600_000
-    covered_from = int(f_ms[0]) - cycle_ms
-    if int(entry_ms) >= covered_from:
+    paid = side * sum((float(x) for x in f_rate[a:b]), 0.0)
+    head_ms = (float(f_cyc[0]) or 8.0) * 3_600_000
+    tail_ms = (float(f_cyc[-1]) or 8.0) * 3_600_000
+    before = max(0.0, min(int(exit_ms), int(f_ms[0]) - head_ms) - int(entry_ms))
+    after = max(0.0, int(exit_ms) - max(int(entry_ms), int(f_ms[-1]) + tail_ms))
+    if not (before or after):
         return paid, False
     avg = sum(float(x) for x in f_rate) / len(f_rate)
-    uncovered = min(int(exit_ms), covered_from) - int(entry_ms)
-    return paid + side * avg * (uncovered / cycle_ms), True
+    return paid + side * avg * (before / head_ms + after / tail_ms), True

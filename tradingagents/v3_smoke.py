@@ -73,12 +73,7 @@ def measure(sym: str, tf: str, signal: str, spec: dict, *, days: int = 120,
                                      volume=vol, ts=t, funding=fund)
     fees = {"maker": at.maker_fee_floor(), "taker": at.fee_floor()}
     got = v3_engine.walk(
-        bars, dirs, spec, bar_s=bar_s,
-        contract={"contract_size": float(c.get("contractSize") or 0.0),
-                  "min_vol": int(c.get("minVol") or 1),
-                  "mmr": float(c.get("maintenanceMarginRate") or 0.0),
-                  "max_lev": int(c.get("maxLeverage") or 1),
-                  "min_lev": int(c.get("minLeverage") or 1)},
+        bars, dirs, spec, bar_s=bar_s, contract=v3_engine.contract_of(c),
         fees=fees, fine=fine, book=book, flat_slip=FLAT_SLIP, funding=fund, start=lead,
         risk_usd=vr.RISK_USD if risk_usd is None else float(risk_usd))
     return {"walk": got, "t": t, "lead": lead, "from_s": from_s, "end_s": end_s,

@@ -1069,3 +1069,77 @@ def test_a_short_trails_hidden_stop_in_a_whole_candle_cannot_ride_on_to_a_later_
     assert (tr["why"], tr["exit_ms"]) == ("TRAIL", T0 + 23 * H)
     assert tr["exit"] == pytest.approx(100.515)
     assert got["counts"]["settled_by_candle"] == 1 and got["counts"]["unclear"] == 1
+
+
+# ---- Backtest v3 Part 2a: the forced exit (v3_strength's weekly rank) and the contract read --------
+
+
+def _forced_at(n, *flagged):
+    return [k in flagged for k in range(n)]
+
+
+def test_a_forced_candle_closes_the_trade_at_its_close_at_the_market():
+    # the trail world: the fill hour (22) lifts the trail to 100.1 - 0.615 = 99.485, and hours 23
+    # and 24 trade 99.9-100.1, never down to it. Flagged at hour 23, the trade leaves at that hour's
+    # close, 100.0, at T0 + 24h, at the market. $162 of coin (a 0.615 stop from 100.0 at $1 risk),
+    # +0% of it, less 0.02% in and the taker 0.075% plus the recorded 0.04% out = -0.2187
+    bars, fine, dirs = _trail_world(FLAT, FLAT)
+    book = _book((T0 + 24 * H, 99.95, 100.05, 0.0009, 0.0004))
+    (tr,) = _walk(bars, dirs, TRAIL, fine=fine, book=book, forced=_forced_at(25, 23))["trades"]
+    assert (tr["why"], tr["exit_ms"], tr["exit_bar"]) == ("RANK", T0 + 24 * H, 23)
+    assert tr["exit"] == pytest.approx(100.0) and tr["fee_out"] == 0.00075
+    assert tr["slip_out"] == pytest.approx(0.0004)
+    assert tr["pnl"] == pytest.approx(-162.0 * (0.0002 + 0.00075 + 0.0004))
+    # no flags: the rule of before - still open when the data ends, out at hour 24's close
+    (tr,) = _walk(bars, dirs, TRAIL, fine=fine, book=book)["trades"]
+    assert (tr["why"], tr["exit_ms"]) == ("END", T0 + 25 * H)
+
+
+def test_a_stop_inside_the_forced_candle_comes_first():
+    # minute 10 of the flagged hour trades down to 99.0, under the 99.485 trail: the stop was hit
+    # before the hour closed, so it is the trail's exit, at 99.485, never the forced one
+    hour = [(100.1, 99.9)] * 10 + [(100.0, 99.0)] + [(100.1, 99.9)] * 49
+    bars, fine, dirs = _trail_world(hour, FLAT)
+    (tr,) = _walk(bars, dirs, TRAIL, fine=fine, forced=_forced_at(25, 23))["trades"]
+    assert (tr["why"], tr["exit_ms"]) == ("TRAIL", T0 + 23 * H + 10 * M)
+    assert tr["exit"] == pytest.approx(99.485)
+
+
+def test_a_forced_exit_holds_for_a_short_and_for_a_missed_orders_twin():
+    # a short sells at 100.0 in minute 0; the fill hour's 99.9 lows pull its trail down to 100.515,
+    # and hour 23's 100.1 highs never reach it: flagged, it buys back at hour 23's close, 100.0.
+    # +0% of $162 less 0.02% in and 0.075% out, no gap recorded here: -0.1539
+    bars, fine = _world([FLAT] * 21 + [SIGNAL, SHORT_TRAIL_FILL, FLAT, FLAT])
+    (tr,) = _walk(bars, [0] * 21 + [-1, 0, 0, 0], TRAIL, fine=fine,
+                  forced=_forced_at(25, 23))["trades"]
+    assert (tr["side"], tr["why"], tr["exit_ms"]) == (-1, "RANK", T0 + 24 * H)
+    assert tr["pnl"] == pytest.approx(-162.0 * (0.0002 + 0.00075))
+    # a long whose hour 22 only touches its 100.0 limit is missed; its twin buys at that hour's
+    # open, 100.1, with the same 0.615 trail (99.485, lifted to 100.2 - 0.615 = 99.585 by the
+    # hour's highs) and leaves where the real trade would have: at the flagged hour's close
+    bars, fine = _world([FLAT] * 21 + [SIGNAL, [(100.2, 100.0)] * 60, FLAT, FLAT])
+    got = _walk(bars, [0] * 21 + [1, 0, 0, 0], TRAIL, fine=fine, forced=_forced_at(25, 23))
+    assert got["trades"] == [] and got["counts"]["missed"] == 1
+    twin = got["missed"][0]["market"]
+    assert twin["entry"] == pytest.approx(100.1)
+    assert (twin["why"], twin["exit_ms"]) == ("RANK", T0 + 24 * H)
+
+
+def test_the_contract_is_read_from_the_listing_one_way_and_a_missing_field_is_named():
+    # Gate's BTC_USDT listing as `fx.contract_spec` gives it (Oct 23, 2026)
+    spec = {"contractSize": 0.0001, "minVol": 1, "maintenanceMarginRate": 0.003,
+            "maxLeverage": 200, "minLeverage": 1, "takerFeeRate": 0.00075}
+    assert ve.contract_of(spec) == {"contract_size": 0.0001, "min_vol": 1, "mmr": 0.003,
+                                    "max_lev": 200, "min_lev": 1}
+    bare = {k: v for k, v in spec.items() if k not in ("minVol", "minLeverage")}
+    assert (ve.contract_of(bare)["min_vol"], ve.contract_of(bare)["min_lev"]) == (1, 1)
+    for key in ("contractSize", "maintenanceMarginRate", "maxLeverage"):
+        with pytest.raises(ValueError, match=f"contract {key} is missing"):
+            ve.contract_of({k: v for k, v in spec.items() if k != key})
+    with pytest.raises(ValueError, match="maintenanceMarginRate = 'n/a' is not a number"):
+        ve.contract_of({**spec, "maintenanceMarginRate": "n/a"})
+    with pytest.raises(ValueError, match="minLeverage = 0"):
+        ve.contract_of({**spec, "minLeverage": 0})
+    # a rate READ as 0 passes the reading and is refused by the engine's own check, by name
+    with pytest.raises(ValueError, match="contract mmr = 0.0"):
+        ve.contract_of({**spec, "maintenanceMarginRate": 0.0})

@@ -25,6 +25,11 @@ size or no leverage is refused by name) and exits by its idea's own rule:
   an emergency stop `stop_atr` x ATR, and out at the close of the
   `max_bars`-th candle.
 
+Any of the three can also be FORCED out (`walk(forced=)`, Backtest v3 Part
+2a): an open trade leaves at the close of a flagged candle, at the market,
+`why` "RANK" — the strength family's weekly rank exit. A stop or target the
+candle reached first still comes first.
+
 POINTS are Gate's minutes, or its 5-minute bars where the archive has a hole
 (`backtest_report.fine_bars`). A touch stops (`v3_rules.stop_reached`). The
 point an order fills in can stop the trade but can neither win it nor move
@@ -101,6 +106,37 @@ def _check_contract(c: dict) -> None:
             ("max_lev", int(c["max_lev"]) >= 1, "no leverage at all is allowed")):
         if not ok:
             raise ValueError(f"contract {field} = {c[field]!r}: {why} (unknown is not zero)")
+
+
+def contract_of(spec: dict) -> dict:
+    """The engine's contract from the exchange's listing (`fx.contract_spec`):
+    ONE mapping for every v3 caller — the smoke run and the tab
+    (`v3_smoke.measure`) and one coin's whole measurement (`v3_measure`). A
+    lot size, maintenance rate or maximum leverage that is missing or not a
+    number is refused BY NAME, as `_check_contract` refuses one at 0 or less
+    (unknown is not zero). The smallest order and the lowest leverage default
+    to 1; a lowest leverage under 1 is refused (no position exists under 1x,
+    and `v3_rules.safe_leverage` would divide by it)."""
+    def field(key: str, cast, default=None):
+        raw = spec.get(key)
+        if raw is None or raw == "":
+            if default is None:
+                raise ValueError(f"contract {key} is missing: the listing cannot size a "
+                                 "trade (unknown is not zero)")
+            return default
+        try:
+            return cast(float(raw))
+        except (TypeError, ValueError):
+            raise ValueError(f"contract {key} = {raw!r} is not a number") from None
+
+    c = {"contract_size": field("contractSize", float), "min_vol": field("minVol", int, 1),
+         "mmr": field("maintenanceMarginRate", float), "max_lev": field("maxLeverage", int),
+         "min_lev": field("minLeverage", int, 1)}
+    if c["min_lev"] < 1:
+        raise ValueError(f"contract minLeverage = {spec.get('minLeverage')!r}: no position "
+                         "exists under 1x")
+    _check_contract(c)
+    return c
 
 
 def _span(fine, a_ms: int, b_ms: int) -> tuple[int, int]:
@@ -415,7 +451,7 @@ def _trade(s: int, entry: float, entry_ms: int, entry_bar: int, levels: dict, si
     entry at a candle's open is exposed to all of it. Every candle it lives
     through is noted once (`_note_points`)."""
     t, c, n, bar_ms = ctx["t"], ctx["c"], len(ctx["c"]), ctx["bar_ms"]
-    kind, spec, ma = ctx["kind"], ctx["spec"], ctx["ma"]
+    kind, spec, ma, forced = ctx["kind"], ctx["spec"], ctx["ma"], ctx["forced"]
     stop, walk_from = levels["stop"], int(entry_ms)
 
     def done(hit, j):
@@ -445,6 +481,8 @@ def _trade(s: int, entry: float, entry_ms: int, entry_bar: int, levels: dict, si
         if (hit is None and kind == "trail" and ma is not None and ma[j] is not None
                 and s * (c[j] - ma[j]) < 0):
             hit = (b_ms, c[j], "MA")
+        if hit is None and forced is not None and j < len(forced) and forced[j]:
+            hit = (b_ms, c[j], "RANK")
         if hit is None and kind == "snap" and j - entry_bar + 1 >= int(spec.get("max_bars", 24)):
             hit = (b_ms, c[j], "TIME")
         if hit is not None:
@@ -494,7 +532,8 @@ def _market_twin(s: int, i: int, levels: dict, ctx: dict) -> dict:
 
 def walk(bars: dict, dirs, exit_spec: dict, *, bar_s: int, contract: dict, fees: dict,
          flat_slip: float, fine=None, risk_usd: float = vr.RISK_USD, book=None,
-         funding=None, start: int = 0, closed=None, cost_check: bool = True) -> dict:
+         funding=None, start: int = 0, closed=None, cost_check: bool = True,
+         forced=None) -> dict:
     """Every trade of one strategy the v3 way (see the module doc).
 
     bars: {"t" (candle opens, ms), "o", "h", "l", "c"} · dirs: +1/-1/0 per
@@ -509,7 +548,10 @@ def walk(bars: dict, dirs, exit_spec: dict, *, bar_s: int, contract: dict, fees:
     [{"settle_ms", "rate", "cycle_h"}] oldest first · start: the first candle
     whose signal may trade · closed: per-candle "the market was closed" flags
     (the runner's rule, worked out by the caller; honoured with or without
-    the cost check) or None.
+    the cost check) or None · forced: per-candle flags — an open trade, the
+    market twins' too, leaves at the close of a flagged candle at the market,
+    `why` "RANK" (v3_strength's weekly rank exit) — or None, the rule of
+    before.
     Checks in order, per signal: sizing, the runner's cost check (or the
     closed flag alone), the post-only check, the fill.
     Returns {"trades": [...], "missed": [... each with "why":
@@ -526,7 +568,7 @@ def walk(bars: dict, dirs, exit_spec: dict, *, bar_s: int, contract: dict, fees:
            "f_ms": [int(x["settle_ms"]) for x in f], "f_rate": [float(x["rate"]) for x in f],
            "f_cyc": [float(x.get("cycle_h") or 8) for x in f], "counts": counts,
            "contract": contract, "closed": closed, "cost_check": bool(cost_check),
-           "risk_usd": float(risk_usd), "cover": {},
+           "risk_usd": float(risk_usd), "cover": {}, "forced": forced,
            "ma": vr.sma(c, int(exit_spec["ma_n"])) if exit_spec.get("ma_n") else None}
     atr_ = vr.atr(hi, lo, c, vr.ATR_N)
     mean = vr.sma(c, int(exit_spec.get("mean_n", 20))) if kind == "snap" else None

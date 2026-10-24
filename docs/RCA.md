@@ -172,6 +172,92 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-23-E — a Backtest v3 strength trade still open when a window ends on a Monday would have been booked RANK ("left the top 2K") on a ranking nobody took: the plan holds none for its own end
+
+**CEO**
+
+* Nothing was lost and nothing has been shown yet (it NEVER HAPPENED YET): Backtest v3's "weekly leaders"
+  strategy would have written *"sold because it fell out of the weekly top list"* on a trade that was simply
+  still open when the test window ended, on every run built on a Monday.
+* Why: a run ends at the last midnight, and on a Monday that is the very moment of a weekly top list that had
+  not been made yet; the code read "no list for that Monday" the same as "the coin dropped out of the list".
+* What stops it now: the exit looks only at a Monday that really has a list (a coin missing from a real list
+  still goes), a test holds both halves, and the same commit makes the strategy code say by name when it is
+  handed a strategy it does not know or no weekly lists at all.
+
+**DEV**
+
+* `tradingagents/v3_families.py:190-203` (at `90b6ff502b55`, the loop at `:198-202`): `forced` set
+  `out[i] = r is None or r > 2 * k` on every candle closing at a Monday 00:00. `v3_universe.rank_at`
+  (`:314-320`) answers None both for "the coin is not in that Monday's list" and for "no list that Monday", and
+  `build` makes lists for `mondays_between(start - 7 days, end)` (`:225`, end excluded), so the Monday AT
+  `end_ms` has none; `collect()` ends a plan at today's UTC midnight (`:256`), a Monday for any plan built on one.
+* Invariant broken: **a forced exit may be decided only by a ranking that was taken** - an absent ranking is not
+  a fact about the coin. Measured on a plan ending Mon Nov 02, 2026 00:00 UTC (the real builder, the real
+  engine): the window's last candle was flagged, and 9 of 102 whole-plan walks booked their last trade RANK
+  where the fixed code books END.
+* Guard: `tests/test_v3_families.py::test_forced_reads_only_a_monday_the_plan_ranked` (a Monday the plan never
+  ranked forces nothing; an empty ranking, and a ranking without the coin, still force).
+
+**SAW** - nothing on a screen, and no run yet: **NEVER HAPPENED YET**. Found by Task 4's own hunt minutes after
+the families were committed (`Oct 23, 2026 7:42pm`), written up as an observation at `7:46pm` and ruled a defect
+by the coordinator. What a trade list would have shown: a `why` of RANK, "left the top 2K at a Monday rank", on a
+trade that was only open at the end of the window.
+
+**TIMELINE** (steps 1-4 happened; step 5 is what the trade list would have said)
+
+1. `Oct 23, 2026` - the plan's text says a strength trade leaves when its coin is out of the top 2K "or does not
+   rank it at all"; the code took "no ranking at all" to include a Monday the plan never ranked.
+2. `Oct 23, 2026 7:42pm` (`90b6ff502b55`) - the families are committed; their tests pass on a made-up plan of four
+   ranked Mondays and 28 candles (Oct 01 - Oct 28): no candle there closes at a Monday after the last ranking, and
+   "unranked" is tested only as "D is missing from a ranking that exists" (Oct 26).
+3. `Oct 23, 2026` (before `7:46pm`) - the hunt builds a plan with the real builder that ends on Monday
+   `Nov 02, 2026 00:00 UTC` (this PC prints it `Nov 01, 2026 7:00pm`, its local time): the plan holds no
+   ranking for Nov 02 (`str(end) in plan["strength"]` is False; its last ranking is Oct 26), and `forced` is True
+   on the window's last candle, the one that opens Nov 01 and closes at Nov 02 00:00.
+4. After the ruling, the same walks measured before and after the fix, 102 of them (51 coins the family applies
+   to, K = 3 and K = 5, 300 lead-in candles and 365 days, the real engine): 287 trades before and 287 after;
+   93 walks identical; 9 walks differ ONLY in the last trade's label - RANK before, END after, same entry, exit and
+   pnl (-$0.0152 on the flat test candles); 0 differ in anything else. Controls: a plan ending on a Thursday is
+   identical, and a plan that DID rank Nov 02 books RANK at Nov 02 00:00 in both (C51_USDT: 1st on Oct 26, 23rd on
+   Nov 02).
+5. Had it shipped: a plan built on any Monday ends at that Monday 00:00 (`collect()` ends a plan at today's UTC
+   midnight), and every strength trade open at the window's end would have read RANK on a Monday that was never
+   ranked.
+
+**ROOT CAUSE** - `forced` treated "the plan holds no ranking for that Monday" as "the coin is not in that
+Monday's ranking": `rank_at` answers None to both, and the loop asked `r is None` on every Monday-closing candle
+without asking whether the Monday was ranked.
+
+**WHY IT WAS NOT CAUGHT** - the only test of the forced exit built a plan whose last candle sits inside its
+rankings, so the one kind of "None" it could produce was the coin missing from a ranking; no fixture put a candle
+past the plan's last ranking, which is where a window that ends on a Monday lives. The brief's hunt (one average,
+no future, sides, a flat market) had no "edge of the window" item, and the plan's own checks (Task 3) cover how
+the ranks are built, not what a consumer does at the last one. `rank_at`'s docstring ("None when it is not ranked
+there") hides the two meanings, and the 50-break check of the first tests could not see this either: no break
+restored the missing-ranking reading, so its list of survivors was silent about it - it was found by running the
+walk on a plan that ends on a Monday. It is pattern 6's shape (a missing record read as a fact: a Monday's absent
+ranking read as the coin's absence from it) met at the edge of a window.
+
+**COST** - none: NEVER HAPPENED YET. Nothing reads `v3_families` yet (the measuring code is not written) and no
+run used the exit.
+
+**FIX** - this commit: `forced` flags only a Monday the plan holds a ranking for (its docstring says so);
+`lookback` (so `lead`) refuses an unknown family by name; the strength rule and `forced` refuse a missing plan by
+name (`v3_strength needs the plan's Monday ranks`) instead of an unnamed TypeError; and seven pins for what the
+first tests did not hold - the trend's rising or falling average, the breakout's falling-average short and its
+strict "over", the snap band at the band and `k` as written, the K-th and 2K-th places, the strength candle on 4h
+and only at midnight, a verdict id against v1 and v2, and the 20-candle lookbacks with the breakout's sides.
+Before: 16 of 50 deliberate breaks of the module survived the tests; after: 57 of 59 are caught, and the 2 left
+are equivalent (`applies` reading longs only, and the order of `combos()`).
+
+**GUARD** - `tests/test_v3_families.py::test_forced_reads_only_a_monday_the_plan_ranked`, proved red by putting the
+old loop back in memory (and red for an empty ranking read as no ranking, and for a Monday looked up by its
+integer); `tests/test_v3_families.py::test_an_unknown_family_is_refused_by_name` for the refusals, each proved red
+by removing it in memory.
+
+---
+
 ## RCA-2026-10-23-D — the Backtest v3 universe's list of stablecoins named FRAX, which Gate trades at 26 cents: the plan would have called a volatile coin "a stablecoin that barely moves" and kept it out of both groups
 
 **CEO**

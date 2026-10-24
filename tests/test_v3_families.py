@@ -33,6 +33,17 @@ def test_seventy_combinations_and_thirty_verdicts_are_counted_whether_or_not_the
     assert len(ids) == 30, "every verdict its own id"
 
 
+def test_a_verdict_id_can_never_equal_a_v1_or_v2_id():
+    from tradingagents import backtest_report as br
+
+    for fam, tf, filt in vf.judged():
+        mine = vf.verdict_id(fam, tf, filt)
+        # the same combination hashed with no resolution (v1) or with v2's "1m" is another id
+        assert mine != br.row_code("ALL", tf, fam, 0.0, 0.0, 0.0, "flat", plan=f"judged|{filt}")
+        assert mine != br.row_code("ALL", tf, fam, 0.0, 0.0, 0.0, "flat", plan=f"judged|{filt}",
+                                   res="1m")
+
+
 def test_a_trend_longs_above_a_rising_average_and_calm_coins_short_the_mirror():
     # n = 3 on daily candles closing 1, 2, ... 10: the 3-day average at candle i is i, under the
     # close i + 1, and 5 days earlier it was i - 5 - but it exists only from candle 2, so the
@@ -48,6 +59,17 @@ def test_a_trend_on_4h_reads_six_candles_a_day():
     # rising closes the first candle with both is 5 + 30 = 35
     assert vf.rule("v3_trend", 1, "4h", _bars(range(1, 41), bar=4 * 3_600_000)) == \
         [0] * 35 + [1] * 5
+
+
+def test_a_trend_needs_its_average_to_be_moving_the_same_way_as_the_close():
+    # n = 3, 5 days back. Closing 10 x7 then 4, 4, 6: the 3-day average is 10, then 8, 6 and 4.67.
+    # Candles 7 and 8 sit under a FALLING average (8 and 6, each under its value 5 days earlier,
+    # 10) - shorts. Candle 9's close 6 is above its average 4.67, but that average has fallen
+    # from 10: not a long
+    assert vf.rule("v3_trend", 3, "1d", _bars([10] * 7 + [4, 4, 6])) == [0] * 7 + [-1, -1, 0]
+    # the mirror: closing 1 x7 then 7, 7, 5: the averages are 3, 5 and 6.33 over a 1 - longs at
+    # candles 7 and 8; candle 9's close 5 is under its average, which has RISEN: not a short
+    assert vf.rule("v3_trend", 3, "1d", _bars([1] * 7 + [7, 7, 5])) == [0] * 7 + [1, 1, 0]
 
 
 def _drift(step, jump):
@@ -69,6 +91,19 @@ def test_a_breakout_closes_over_the_last_n_days_highs_only_while_the_100_day_ave
     # the mirror: a falling drift whose candle 108 drops to 85.0, under the last 3 days' lows
     # (88.8 at the lowest), while the average falls by 0.542: a calm contract's short
     assert vf.rule("v3_breakout", 3, "1d", _drift(-0.1, 85.0)) == [0] * 108 + [-1, 0]
+
+
+def test_a_breakout_shorts_only_under_a_falling_average_and_a_tie_is_no_breakout():
+    # candle 108 drops to 85.0, under the last 3 days' lows, while the 100-day average RISES:
+    # (110.4 + 110.5 + 110.6 + 110.7 + 85.0 - 100.4 - 100.5 - 100.6 - 100.7 - 100.8) / 100 =
+    # +0.242 - no short
+    assert vf.rule("v3_breakout", 3, "1d", _drift(0.1, 85.0)) == [0] * 110
+    # a close exactly ON the highest high of the last 3 days (candle 107's, 110.7 + 0.5 = 111.2)
+    # is not over it ...
+    top = 100 + 0.1 * 107 + 0.5
+    assert vf.rule("v3_breakout", 3, "1d", _drift(0.1, top)) == [0] * 110
+    # ... and a hundredth above it is
+    assert vf.rule("v3_breakout", 3, "1d", _drift(0.1, top + 0.01)) == [0] * 108 + [1, 0]
 
 
 def _ranked_plan():
@@ -103,6 +138,56 @@ def test_strength_longs_a_top_k_coin_at_its_monday_rank_and_forces_it_out_past_t
     assert vf.entry_days("v3_trend", bars, "1d") == [True] * 28
 
 
+def _d_at(place):
+    """A ranking of the coins A-G with D in the given place (1 = best)."""
+    others = ["A_USDT", "B_USDT", "C_USDT", "E_USDT", "F_USDT", "G_USDT"]
+    return others[:place - 1] + ["D_USDT"] + others[place - 1:]
+
+
+def test_strength_takes_the_kth_place_and_keeps_the_2kth_but_not_the_one_after():
+    a_to_g = [f"{x}_USDT" for x in "ABCDEFG"]
+    plan = {"months": ["2026-10"], "liquid": {"2026-10": a_to_g}, "calm": {"2026-10": []},
+            "strength": {str(MONDAYS[0]): _d_at(3), str(MONDAYS[1]): _d_at(6),
+                         str(MONDAYS[2]): _d_at(7)}}              # D is 3rd, 6th and 7th
+    bars, sundays = _bars([100.0] * 28), [3, 10, 17]
+    # K = 3: the 3rd place (Oct 05) is in; the 6th (Oct 12) and the 7th (Oct 19) are not
+    got = vf.rule("v3_strength", 3, "1d", bars, sym="D_USDT", plan=plan)
+    assert [got[i] for i in sundays] == [1, 0, 0]
+    # 2K = 6: the 6th place is kept, the 7th goes
+    out = vf.forced("v3_strength", 3, "1d", bars, sym="D_USDT", plan=plan)
+    assert [out[i] for i in sundays] == [False, False, True]
+
+
+def test_forced_reads_only_a_monday_the_plan_ranked():
+    # 35 daily candles, Oct 01 - Nov 04. Candle 24 (Sunday Oct 25) closes at Monday Oct 26, which
+    # the plan ranked without D: a ranking that no longer holds the coin forces it out. Candle 31
+    # (Sunday Nov 01) closes at Monday Nov 02, which the plan never ranked (its last ranking is
+    # Oct 26's - a window that ends on a Monday has none for its own end): no rank was taken
+    # there, so nothing is forced, and a trade still open books END, not RANK
+    plan, bars = _ranked_plan(), _bars([100.0] * 35)
+    out = vf.forced("v3_strength", 3, "1d", bars, sym="D_USDT", plan=plan)
+    assert out[24] is True and out[31] is False
+    # Oct 19 (D 7th, past 2K = 6) and Oct 26 (D missing) - and nothing else
+    assert [i for i, x in enumerate(out) if x] == [17, 24]
+    # a ranking with nobody in it still forces: the coin is out of it
+    empty = {**plan, "strength": {**plan["strength"], str(MONDAYS[3]): []}}
+    assert vf.forced("v3_strength", 3, "1d", bars, sym="D_USDT", plan=empty)[24] is True
+    # and a plan that ranked no Monday at all forces nothing
+    assert not any(vf.forced("v3_strength", 3, "1d", bars, sym="D_USDT",
+                             plan={**plan, "strength": {}}))
+
+
+def test_the_strength_candle_is_the_one_closing_at_midnight_on_whatever_timeframe_it_is_asked():
+    h4 = 4 * 3_600_000
+    # 4h candles from Sat Oct 03 00:00: the one closing at Mon Oct 05 00:00 opens Sunday 20:00,
+    # 44 hours in - candle 11
+    four = _bars([100.0] * 18, t0=MONDAYS[0] - 12 * h4, bar=h4)
+    assert [i for i, x in enumerate(vf.entry_days("v3_strength", four, "4h")) if x] == [11]
+    # daily candles opening at 03:00 UTC close at Monday 03:00, which is no rank instant
+    odd = _bars([100.0] * 4, t0=MONDAYS[0] - 2 * DAY + 3 * 3_600_000)
+    assert not any(vf.entry_days("v3_strength", odd, "1d"))
+
+
 def test_a_snap_back_signals_a_close_k_atrs_past_its_20_candle_average():
     # 20 flat candles (high 100.5, low 99.5, close 100: a true range of 1.0), then candle 20 with
     # high 100.0, low 98.0, close 98.3 (true range 2.0). Its 20-candle average is
@@ -118,6 +203,25 @@ def test_a_snap_back_signals_a_close_k_atrs_past_its_20_candle_average():
     assert vf.rule("v3_snap", 1.5, "1h", pop) == [0] * 20 + [-1]
     # a market that never moved has no range to measure a snap by
     assert vf.rule("v3_snap", 1.5, "1h", _bars([100.0] * 21, bar=3_600_000)) == [0] * 21
+
+
+def _snap_tape(last_h, last_lo, last_c):
+    """20 flat candles (high 100.5, low 99.5, close 100: a true range of 1.0), then one more."""
+    return _bars([100.0] * 20 + [last_c], [100.5] * 20 + [last_h], [99.5] * 20 + [last_lo],
+                 bar=3_600_000)
+
+
+def test_a_snap_is_a_close_at_or_past_the_band_and_k_is_read_as_written():
+    # every number here is exact in binary. Candle 20: high 100.0, low 95.25, close 97.5 (a true
+    # range of 4.75): the 20-candle average is (19 x 100 + 97.5) / 20 = 99.875, ATR(20) is
+    # (19 x 1.0 + 4.75) / 20 = 1.1875, and k = 2.0 puts the band at 99.875 - 2.375 = 97.5 - the
+    # close is ON it, which counts
+    assert vf.rule("v3_snap", 2.0, "1h", _snap_tape(100.0, 95.25, 97.5)) == [0] * 20 + [1]
+    # the mirror: high 104.75, low 100.0, close 102.5 - average 100.125, band 100.125 + 2.375
+    assert vf.rule("v3_snap", 2.0, "1h", _snap_tape(104.75, 100.0, 102.5)) == [0] * 20 + [-1]
+    # k = 1.5 is not k = 1: high 100.0, low 98.0, close 98.5 (a true range of 2.0) - average
+    # 99.925, ATR 1.05: under the k = 1 band (98.875) but not under the k = 1.5 band (98.35)
+    assert vf.rule("v3_snap", 1.5, "1h", _snap_tape(100.0, 98.0, 98.5)) == [0] * 21
 
 
 def test_each_family_exits_by_its_own_rule():
@@ -152,8 +256,32 @@ def test_each_family_trades_only_the_sides_its_universe_allows_in_each_month():
     assert not vf.applies({**plan, "calm": {"2026-09": [], "2026-10": []}}, "v3_snap", "X_USDT")
 
 
+def test_the_atr_families_read_20_candles_and_a_breakout_trades_the_sides_a_trend_does():
+    # snap reads its 20-candle average and ATR(20); strength reads only the plan, and its trail
+    # needs ATR(20)'s 20 candles
+    assert vf.lookback("v3_snap", 1.5, "1h") == vf.lookback("v3_snap", 2.0, "4h") == 20
+    assert vf.lookback("v3_strength", 3, "1d") == 20
+    sep, octo = calendar.timegm((2026, 9, 15, 0, 0, 0)) * 1000, OCT1 + 14 * DAY
+    plan = {"months": ["2026-09", "2026-10"], "liquid": {"2026-09": ["X_USDT"], "2026-10": []},
+            "calm": {"2026-09": [], "2026-10": ["X_USDT"]}}
+    # liquid in September (longs), calm in October (both sides) - the trend's own row
+    assert vf.sides_allowed("v3_breakout", "X_USDT", plan, [sep, octo]) == ([True, True],
+                                                                            [False, True])
+
+
 def test_an_unknown_family_is_refused_by_name():
     with pytest.raises(ValueError, match="v3_nope"):
         vf.exit_spec("v3_nope", 1, "1d")
     with pytest.raises(ValueError, match="v3_nope"):
         vf.rule("v3_nope", 1, "1d", _bars([1.0]))
+    with pytest.raises(ValueError, match="v3_nope"):
+        vf.lookback("v3_nope", 1, "1d")
+    with pytest.raises(ValueError, match="v3_nope"):
+        vf.lead("v3_nope", 1, "1d")
+    # v3_strength is decided by the plan's Monday ranks and nothing else: without them it says so
+    bars = _bars([100.0] * 28)
+    for plan in (None, {}, {"months": ["2026-10"]}):
+        with pytest.raises(ValueError, match="needs the plan's Monday ranks"):
+            vf.rule("v3_strength", 3, "1d", bars, sym="D_USDT", plan=plan)
+        with pytest.raises(ValueError, match="needs the plan's Monday ranks"):
+            vf.forced("v3_strength", 3, "1d", bars, sym="D_USDT", plan=plan)

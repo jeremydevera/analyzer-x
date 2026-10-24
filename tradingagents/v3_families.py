@@ -84,7 +84,11 @@ def lookback(family: str, value, tf: str) -> int:
         return int(value) * d + TREND_LAG_DAYS * d
     if family == "v3_breakout":
         return max(int(value) * d + 1, (BREAKOUT_MA_DAYS + TREND_LAG_DAYS) * d)
-    return max(SNAP_N, vr.ATR_N)
+    if family in ("v3_strength", "v3_snap"):
+        # snap: its 20-candle average and ATR(20); strength reads only the plan, and its trail
+        # needs ATR(20)'s 20 candles
+        return max(SNAP_N, vr.ATR_N)
+    raise ValueError(f"unknown family {family!r}")
 
 
 def lead(family: str, value, tf: str) -> int:
@@ -146,7 +150,15 @@ def _monday_close(ms: int, tf: str) -> int | None:
     return close if close % vu.DAY_MS == 0 and vu.weekday(close) == 0 else None
 
 
+def _need_ranks(plan) -> None:
+    """v3_strength is decided by the plan's Monday ranks and by nothing else:
+    without them, say so by name."""
+    if plan is None or "strength" not in plan:
+        raise ValueError("v3_strength needs the plan's Monday ranks")
+
+
 def _strength(t, tf: str, sym: str, plan: dict, k: int) -> list[int]:
+    _need_ranks(plan)
     out = [0] * len(t)
     for i, ms in enumerate(t):
         monday = _monday_close(ms, tf)
@@ -190,14 +202,17 @@ def rule(family: str, value, tf: str, bars: dict, *, sym: str = "", plan=None) -
 def forced(family: str, value, tf: str, bars: dict, *, sym: str = "", plan=None):
     """v3_strength's forced exit, as `walk(forced=)` flags: out at the close
     of a candle ending at a Monday 00:00 UTC whose rank no longer has the coin
-    in the top 2K (or does not rank it at all). None for every other family."""
+    in the top 2K (or does not rank it at all). A Monday the plan holds no
+    ranking for (past its end) forces nothing: no rank was taken there. None
+    for every other family."""
     if family != "v3_strength":
         return None
+    _need_ranks(plan)
     k = int(value)
     out = [False] * len(bars["t"])
     for i, ms in enumerate(bars["t"]):
         monday = _monday_close(ms, tf)
-        if monday is not None:
+        if monday is not None and str(monday) in plan["strength"]:
             r = vu.rank_at(plan, sym, monday)
             out[i] = r is None or r > 2 * k
     return out

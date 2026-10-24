@@ -219,17 +219,17 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 **DEV**
 
 * `tradingagents/v3_proof.py` at `d5c9e14ba719` (`verdict`, the `window =` line, which took `next((c["windows"][tf] for c in used ...), None)`): the label was the first coin's own record object, so its `start`, `older_candles`, `unseen_candles` and `seconds` described one coin. After the fix (this commit) the label is a new dict of the shared `split` and `end`, with the two candle counts summed over the group's coins, and a group whose coins disagree on the split or the end is refused.
-* Invariant broken: **a verdict's window describes the group it judges: every field is the group's, never one coin's.** Measured on the committed code with two made-up coins in the record shape Task 8 writes, the young one listed first: the group's window is that coin's own record (start `Aug 10, 2026 12:00am`, 360 older candles, 4.1 seconds), and `v["window"] is` that coin's dict.
+* Invariant broken: **a verdict's window describes the group it judges: every field is the group's, never one coin's.** Measured on the committed code with two made-up coins in the record shape Task 8 writes, the young one listed first: the group's window is that coin's own record (start `Jun 10, 2026 12:00am`, 1,080 older candles, 4.1 seconds), and `v["window"] is` that coin's dict.
 * Guard: `tests/test_v3_proof.py::test_a_pooled_window_is_the_groups_split_and_end_with_the_candle_counts_summed`; the refusal of coins on different splits is `tests/test_v3_proof.py::test_coins_measured_on_different_splits_are_refused_by_name`.
 
 **SAW** — NEVER HAPPENED YET: nothing reached a screen, and no pooled verdict has been written from real coin records. Found by the task review of Task 7 (`Oct 23, 2026`), read against the coin record that Task 8 committed as `0ca02b6858ff`. What a page would have shown: one group's start reading as the youngest coin's listing day, and the same group's label changing with the order the coins were collected in.
 
-**TIMELINE** (NEVER HAPPENED YET: a hypothetical timeline, from the review's probe on two made-up coins in the record shape Task 8 writes; no real coin was pooled, so every number here is made up)
+**TIMELINE** (NEVER HAPPENED YET: a hypothetical timeline, from two made-up coins in the record shape Task 8 writes, built as the proof test's own fixture; no real coin was pooled, so every number here is made up)
 
 1. `Oct 23, 2026` - Task 7 is committed as `d5c9e14ba719`, and `verdict` labels a group's window with `next(...)`: the first coin's own record.
-2. The made-up coins, the younger one listed first: NEWCOIN_USDT (window start `Aug 10, 2026 12:00am`, 360 older candles, 2,160 unseen candles, 4.1 seconds) and BTC_USDT (start `Oct 23, 2025 12:00am`, 6,480 older candles, 2,160 unseen candles, 61.0 seconds). Both have the split `Jul 25, 2026` and the end `Oct 23, 2026`.
-3. Before the fix, the group reads NEWCOIN's own record: start `Aug 10, 2026 12:00am`, 360 older candles, 2,160 unseen candles, 4.1 seconds. Listed the other way round, it reads BTC's record: start `Oct 23, 2025 12:00am`, 6,480 older candles, 61.0 seconds. One group, two labels, decided by the order of the list.
-4. After the fix, both orders give the same window: split `Jul 25, 2026`, end `Oct 23, 2026`, 6,840 older candles (360 + 6,480) and 4,320 unseen candles (2,160 + 2,160), with no start and no seconds, in a new dict and never a coin's record.
+2. The made-up coins, the younger one listed first: NEWCOIN_USDT (window start `Jun 10, 2026 12:00am`, 1,080 older candles, 2,160 unseen candles, 4.1 seconds) and BTC_USDT (start `Oct 23, 2025 12:00am`, 6,600 older candles, 2,160 unseen candles, 61.0 seconds). Both have the split `Jul 25, 2026` and the end `Oct 23, 2026`.
+3. Before the fix, the group reads NEWCOIN's own record: start `Jun 10, 2026 12:00am`, 1,080 older candles, 2,160 unseen candles, 4.1 seconds. Listed the other way round, it reads BTC's record: start `Oct 23, 2025 12:00am`, 6,600 older candles, 61.0 seconds. One group, two labels, decided by the order of the list.
+4. After the fix, both orders give the same window: split `Jul 25, 2026`, end `Oct 23, 2026`, 7,680 older candles (1,080 + 6,600) and 4,320 unseen candles (2,160 + 2,160), with no start and no seconds, in a new dict and never a coin's record.
 5. A group whose coins were measured on different splits is refused, with `v3_snap 1h: coins measured on different windows cannot be pooled`.
 
 **ROOT CAUSE** - `verdict` took its window as `next((c["windows"][tf] for c in used ...), None)`, which is the first coin's own record. A window record holds that coin's own start, candle counts and seconds; only the split and the end are the plan's, shared by every coin. A pooled label therefore described one coin, and which coin depended on the order of the list.
@@ -238,9 +238,9 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 **COST** - none: NEVER HAPPENED YET. No pooled verdict has been written from real coin records; the first will be Task 9's run.
 
-**FIX** - this commit: `verdict` builds the window from the split and the end the coins share (refused by name when they differ), with the two candle counts summed over the group's coins, as a new dict. Its tests are `test_a_pooled_window_is_the_groups_split_and_end_with_the_candle_counts_summed` (the young coin listed first, and then second) and `test_coins_measured_on_different_splits_are_refused_by_name`. The brief's window assertion now carries the new shape.
+**FIX** - this commit: `verdict` builds the window from the split and the end the coins share (refused by name when they differ), with the two candle counts summed over the group's coins, as a new dict. Its tests are `test_a_pooled_window_is_the_groups_split_and_end_with_the_candle_counts_summed` (the young coin listed first, and then second) and `test_coins_measured_on_different_splits_are_refused_by_name`. The window assertion in `test_a_family_that_clears_every_step_passes` now carries the new shape.
 
-**GUARD** - `tests/test_v3_proof.py::test_a_pooled_window_is_the_groups_split_and_end_with_the_candle_counts_summed`: red on the committed code (the window is NEWCOIN's own record), and red on the mutant that restores the first coin's record (the round-2 probe, mutant W1). `tests/test_v3_proof.py::test_coins_measured_on_different_splits_are_refused_by_name` is red on the mutant that drops the refusal (W2).
+**GUARD** - `tests/test_v3_proof.py::test_a_pooled_window_is_the_groups_split_and_end_with_the_candle_counts_summed`: red on the committed code (the window is NEWCOIN's own record), and red on the mutant that restores the first coin's record. `tests/test_v3_proof.py::test_coins_measured_on_different_splits_are_refused_by_name` is red on the mutant that drops the refusal.
 
 ---
 

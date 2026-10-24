@@ -173,7 +173,7 @@ def test_a_group_with_too_few_older_trades_or_no_coin_fails_at_the_choice():
     v = vp.verdict("v3_snap", "1h", "none", thin)
     assert (v["failed"], v["setting"]) == ("choose", None) and "30 trades" in v["why"]
     v = vp.verdict("v3_trend", "1d", "none", thin)
-    assert v["failed"] == "choose" and v["why"] == "no coin measured v3_trend on 1d (none)"
+    assert v["failed"] == "choose" and v["why"] == "no coin measured v3_trend on 1d"
     assert v["coins"] == [] and any("survivorship" in n for n in v["notes"])
 
 
@@ -192,7 +192,7 @@ def test_every_judged_group_gets_a_verdict_and_what_could_not_be_measured_is_sum
     assert sum(1 for v in out if v["failed"] == "choose") == 29
 
 
-# --- Fix round 1 (the coordinator's ruling, Oct 23, 2026): the luck bar is pinned at verdict
+# --- Fix round 1 (ruled Oct 23, 2026): the luck bar is pinned at verdict
 # level - its best-run floor, and its pooling run by run over the coins - and a verdict's z
 # follows its own count of tries.
 
@@ -263,12 +263,12 @@ def test_an_explicit_z_is_used_as_given_and_its_alpha_is_the_one_it_makes():
         vp.verdict("v3_snap", "1h", "none", coins, z=-1.0)
 
 
-# --- Fix round 2 (the controller's ruling, task-7-fix-2.md, Oct 23, 2026) ---------------------
+# --- Fix round 2 (ruled on the task review of Oct 23, 2026) ----------------------------------
 # 1. a pooled verdict's window is the group's; 2. the bootstrap's z, the 300-trade edge and the
 # exit-day clustering are pinned; 3. a choose-failed verdict names the filter that blocked it;
 # 4. coins pooled twice, or at two risks, plans or run counts, are refused; 5. z and tried are
-# refused exactly. Each pin fails on its mutant (report, Fix round 2), and where the behaviour was
-# already right the pin passes on the committed code.
+# refused exactly. Each pin fails on its mutant, and where the behaviour was already right the
+# pin passes on the committed code.
 
 
 def _windowed(coin, start, older, unseen, seconds):
@@ -289,15 +289,17 @@ def _group(name, family, tf, filt, older_by_setting):
 
 
 def test_a_pooled_window_is_the_groups_split_and_end_with_the_candle_counts_summed():
-    # NEWCOIN is listed first and is young: its own start (Aug 10, 2026) and its seconds must not
-    # become the group's, and BTC's candles are added to NEWCOIN's, not used in its place
+    # NEWCOIN is listed first and is young: its own start (Jun 10, 2026, before the split and later
+    # than BTC's) and its seconds must never become the group's, and BTC's candles are added to
+    # NEWCOIN's, not used in its place. The 1h counts follow the starts: 45 days from Jun 10 to the
+    # split is 1,080 candles; 275 days from Oct 23, 2025 is 6,600
     young = _windowed(_coin("NEWCOIN_USDT", _rows([0.05] * 40), _rows([0.10] * 40),
-                            _rows(STEADY)[:160], QUIET), "Aug 10, 2026 12:00am", 360, 2160, 4.1)
+                            _rows(STEADY)[:160], QUIET), "Jun 10, 2026 12:00am", 1080, 2160, 4.1)
     old = _windowed(_coin("BTC_USDT", _rows([0.05] * 40), _rows([0.10] * 40),
-                          _rows(STEADY)[160:], QUIET), "Oct 23, 2025 12:00am", 6480, 2160, 61.0)
+                          _rows(STEADY)[160:], QUIET), "Oct 23, 2025 12:00am", 6600, 2160, 61.0)
     v = vp.verdict("v3_snap", "1h", "none", [young, old])
     assert v["window"] == {"split": "Jul 25, 2026", "end": "Oct 23, 2026",
-                           "older_candles": 6840, "unseen_candles": 4320}
+                           "older_candles": 7680, "unseen_candles": 4320}
     assert v["window"] is not young["windows"]["1h"], "a copy, never a coin's own record"
     assert vp.verdict("v3_snap", "1h", "none", [old, young])["window"] == v["window"]
 
@@ -362,15 +364,36 @@ def test_a_filter_that_blocked_every_signal_on_the_older_days_says_so():
     assert v["why"] == "funding_minutes blocked all 1,234 signals on the older days"
 
 
+def test_blocked_all_is_not_said_when_one_setting_let_a_signal_through():
+    # AAA blocks every signal of both settings; BBB blocks every signal of k1.5 but lets 15 of the
+    # 20 signals of k2 through. Pooled, k1.5 is blocked on every signal and k2 is not, so "blocked
+    # all" must not be said: an any-setting reading says it, and so does a reading of the first coin
+    coins = [
+        _group("AAA_USDT", "v3_snap", "1h", "funding_minutes", {
+            "k1.5": _walk([], filter={"signal_candles": 50, "blocked": 50}),
+            "k2": _walk([], filter={"signal_candles": 40, "blocked": 40})}),
+        _group("BBB_USDT", "v3_snap", "1h", "funding_minutes", {
+            "k1.5": _walk([], filter={"signal_candles": 30, "blocked": 30}),
+            "k2": _walk([], filter={"signal_candles": 20, "blocked": 5})})]
+    v = vp.verdict("v3_snap", "1h", "funding_minutes", coins)
+    assert v["setting"] is None
+    assert v["why"] == "no setting had 30 trades on the older days with funding_minutes"
+    assert "blocked all" not in v["why"]
+
+
 def test_the_other_choose_failures_name_the_filter_they_ran_under():
-    # signals got through the filter, but too few trades came of them
+    # signals got through the filter, but too few trades came of them: the filter is named
     coin = _group("AAA_USDT", "v3_snap", "1h", "busy_hours", {
         "k1.5": _walk([], filter={"signal_candles": 50, "blocked": 10}),
         "k2": _walk([], filter={"signal_candles": 40, "blocked": 0})})
     v = vp.verdict("v3_snap", "1h", "busy_hours", [coin])
-    assert v["why"] == "no setting had 30 trades on the older days (busy_hours)"
-    assert vp.verdict("v3_trend", "1d", "none", [])["why"] == \
-        "no coin measured v3_trend on 1d (none)"
+    assert v["why"] == "no setting had 30 trades on the older days with busy_hours"
+    # the plain group blocks nothing and names no filter: its sentences carry no suffix
+    plain = _group("AAA_USDT", "v3_snap", "1h", "none", {
+        "k1.5": _walk(_rows([0.1] * 10)), "k2": _walk(_rows([0.1] * 29))})
+    assert vp.verdict("v3_snap", "1h", "none", [plain])["why"] == \
+        "no setting had 30 trades on the older days"
+    assert vp.verdict("v3_trend", "1d", "none", [])["why"] == "no coin measured v3_trend on 1d"
 
 
 def test_verdicts_refuses_the_same_coin_handed_over_twice_by_name():

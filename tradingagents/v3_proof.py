@@ -240,12 +240,14 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | No
             "older": table, "setting": chosen, "notes": notes}
     if chosen is None:
         most = _blocked_all(used, ck, keys)
+        # a plain group names no filter; a filtered one says which, as "with <filter>"
+        named = "" if filt == "none" else f" with {filt}"
         if not used:
-            why = f"no coin measured {family} on {tf} ({filt})"
+            why = f"no coin measured {family} on {tf}{named}"
         elif most is not None:
             why = f"{filt} blocked all {most:,} signals on the older days"
         else:
-            why = f"no setting had {MIN_CHOOSE} trades on the older days ({filt})"
+            why = f"no setting had {MIN_CHOOSE} trades on the older days{named}"
         return {**base, "passed": False, "failed": "choose", "why": why}
     key = ck[chosen]
     walks = _walks(used, key, "unseen")

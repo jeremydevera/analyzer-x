@@ -5,6 +5,7 @@ the window is BUILT from its own minutes (RCA-2026-09-12-A); the lead-in
 before the window is flat candles the indicators read and nothing trades on.
 The unseen days are shortened to 3 here (the real run's are 90)."""
 import calendar
+import time
 
 import numpy as np
 import pandas as pd
@@ -73,6 +74,12 @@ def _book(t_s):
     """One recorded reading, buying and selling $100 at 0.02% each: the coin's flat gap."""
     return bh.pack([{"t": t_s, "bid": 99.95, "ask": 100.05, "spread": 0.001, "buy": 0.0002,
                      "sell": 0.0002, "exhausted": False, "source": "full"}])
+
+
+def _reading(t_s, cost, exhausted=False):
+    """One recorded reading: buying and selling the book's $100 at `cost` a side."""
+    return {"t": t_s, "bid": 99.95, "ask": 100.05, "spread": 0.001, "buy": cost, "sell": cost,
+            "exhausted": exhausted, "source": "full"}
 
 
 @pytest.fixture()
@@ -223,9 +230,11 @@ def test_the_coins_own_flat_gap_and_the_books_coverage_come_first(monkeypatch, g
     rec = _metal(monkeypatch, _dips(OLD_DIP, EDGE_DIP, NEW_DIP))
     pre = rec["pre"]
     assert pre["flat_slip"] == pytest.approx(0.0002)
-    assert pre["flat_slip_source"] == "the median of its 1 recorded minutes"
-    # the one reading (at the window's first second) answers its own minute and the 60 after
-    # it: 61 of the older days' 7 x 1,440 minutes; nothing of the unseen days
+    # the one reading is stamped at the window's first second: before the split, on the older days
+    assert pre["flat_slip_source"] == (
+        "the median of its 1 recorded minutes, 1 of them on the older days")
+    # it answers its own minute and the 60 after it: 61 of the older days' 7 x 1,440 minutes;
+    # nothing of the unseen days
     assert pre["coverage_older"] == pytest.approx(61 / (7 * 1440))
     assert pre["coverage_unseen"] == 0.0
     assert pre["contract"]["max_lev"] == 20 and pre["minutes"] == 10 * 1440
@@ -234,6 +243,38 @@ def test_the_coins_own_flat_gap_and_the_books_coverage_come_first(monkeypatch, g
     assert rec["windows"]["1h"]["split"].endswith(("am", "pm"))
     # the unseen days, Oct 01 - Oct 04, 2026, fall in one month
     assert rec["unseen_months"] == ["2026-10"]
+
+
+def test_the_flat_gaps_source_says_how_many_of_its_minutes_lie_on_the_older_days(
+        monkeypatch, gate_floors):
+    from tradingagents import cost_store
+
+    plan = _plan(START_A, END_A, {"2026-09": ["XAU_USDT"], "2026-10": ["XAU_USDT"]})
+    first, split, day = START_A // 1000, SPLIT_A // 1000, DAY // 1000
+
+    def pre_of(readings):
+        monkeypatch.setattr(cost_store, "engine_book", lambda *a, **k: bh.pack(readings))
+        return vm.measure_coin("XAU_USDT", plan, runs=1, fx=FakeFx(START_A, END_A, {}))["pre"]
+
+    # four readings: on the older days Sep 25 (0.02% a side) and Sep 26 (5%, but its book ran
+    # out); on the unseen ones, one stamped AT the split (0.04%: the book 3 s after it, an unseen
+    # price) and one an hour later (0.06%). The gap is the median of the three whose book did not
+    # run out, 0.02% 0.04% 0.06%, which is 0.04%: a figure read partly off unseen days. The source
+    # says ONE of those three minutes is on the older days: the book that ran out counts in
+    # neither number, and the reading at the split is already unseen
+    pre = pre_of([_reading(first + day, 0.0002), _reading(first + 2 * day, 0.05, True),
+                  _reading(split, 0.0004), _reading(split + 3600, 0.0006)])
+    assert pre["flat_slip"] == pytest.approx(0.0004)
+    assert pre["flat_slip_source"] == (
+        "the median of its 3 recorded minutes, 1 of them on the older days")
+    # what a real coin is today: the store's 61 days all lie after the split, so the gap every
+    # older exit pays comes from minutes none of which is on the older days (the median of 0.04%
+    # and 0.06% is 0.05%), and the older days have no reading of their own
+    pre = pre_of([_reading(split, 0.0004), _reading(split + 3600, 0.0006)])
+    assert pre["flat_slip"] == pytest.approx(0.0005)
+    assert pre["flat_slip_source"] == (
+        "the median of its 2 recorded minutes, 0 of them on the older days")
+    assert pre["coverage_older"] == 0.0
 
 
 def test_random_runs_are_seeded_and_entered_like_the_real_run(monkeypatch, gate_floors):
@@ -355,6 +396,135 @@ def test_strength_enters_at_a_monday_rank_and_is_forced_out_when_it_drops_past_t
     assert k3["random"] == [[1, pytest.approx(real)]] * 6
 
 
+def _strength_rec(monkeypatch, up, runs):
+    """World B's coin, ABC - 1st in the ranks of Sep 21 and Oct 05, 9th on Sep 28 - over the
+    market `up`."""
+    from tradingagents import cost_store
+
+    others = [f"C{k}_USDT" for k in range(9)]
+    plan = _plan(START_B, END_B, {}, liquid={"2026-09": ["ABC_USDT"] + others,
+                                             "2026-10": ["ABC_USDT"] + others},
+                 strength={str(SEP21): ["ABC_USDT"] + others,
+                           str(SEP28): others[:8] + ["ABC_USDT"],
+                           str(OCT5): ["ABC_USDT"] + others},
+                 kinds={"ABC_USDT": "crypto"})
+    monkeypatch.setattr(cost_store, "engine_book", lambda *a, **k: _book(START_B // 1000))
+    return vm.measure_coin("ABC_USDT", plan, runs=runs, fx=FakeFx(START_B, END_B, up))
+
+
+def test_random_strength_entries_are_drawn_only_on_the_candles_that_close_at_a_monday(
+        monkeypatch, gate_floors):
+    # Oct 04 and Oct 05 trade 100.9-101.1 (both close at 101.0); Oct 06 trades 101.4-101.6, ABOVE
+    # them. The real order - Sunday Oct 04's close, in at Monday Oct 05 00:00 - fills in that
+    # minute (the low 100.9 is under 101.0) and the trade is open when the window ends, at Oct 06's
+    # close, 101.5. ATR(20) is (19 x 0.2 + 1.1) / 20 = 0.245 (Oct 04's true range runs from the
+    # 100.0 close to the 101.1 high): a 0.735 trail, a 0.7277% stop, $1 risk = $137.42 of coin =
+    # 136 lots of 0.01 x 101.0, and it makes 136 x 1.01 x (101.5 / 101.0 - 1 - 0.00115) = +$0.5220
+    # (the maker 0.02% in; out, the taker 0.075% and the coin's 0.02% gap)
+    up = {SPLIT_B + m * M: (101.1, 100.9) for m in range(2 * 1440)}
+    up.update({SPLIT_B + 2 * DAY + m * M: (101.6, 101.4) for m in range(1440)})
+    rec = _strength_rec(monkeypatch, up, runs=20)
+    k3 = rec["combos"][vf.combo_key("v3_strength", "k3", "1d", "none")]
+    real = k3["unseen"]["rows"][0][4]
+    assert real == pytest.approx(136 * 1.01 * (101.5 / 101.0 - 1 - 0.00115))
+    # a random entry may be drawn on two unseen candles, Oct 04's and Oct 05's (Oct 06's has no
+    # next candle to fill in). Only Oct 04's closes at a Monday 00:00, where a rank is taken; an
+    # order resting at Oct 05's 101.0 close would go in on Tuesday and never fill - Oct 06's low is
+    # 101.4 - so a run drawn there would be [0, 0.0]. All 20 runs must enter where the real one did
+    assert k3["random"] == [[1, pytest.approx(real)]] * 20
+
+
+def test_every_walk_of_a_strength_combo_carries_the_rank_exit_flags_of_its_own_view(
+        monkeypatch, gate_floors):
+    # only strength is measured, so every walk below is one of its walks. 2 settings x 5 filters
+    # = 10 combos, each walked on the older days and on the unseen ones: 20 real walks. The real
+    # unseen order (Monday Oct 05 00:00, 1st in the rank) gets in under every filter but
+    # funding_minutes - 00:00 UTC is a settlement hour - so 8 combos draw 4 random runs each: 32
+    # more. All 52 are handed the rank exit's flags, one per candle of the view they walk
+    monkeypatch.setattr(vf, "FAMILIES", {"v3_strength": vf.FAMILIES["v3_strength"]})
+    seen = []
+    real_walk = vm.ve.walk
+
+    def spy(bars, dirs, spec, **kw):
+        seen.append((len(bars["t"]), kw.get("forced")))
+        return real_walk(bars, dirs, spec, **kw)
+
+    monkeypatch.setattr(vm.ve, "walk", spy)
+    up = {SPLIT_B + m * M: (101.1, 100.9) for m in range(3 * 1440)}
+    _strength_rec(monkeypatch, up, runs=4)
+    assert len(seen) == 20 + 8 * 4
+    assert all(flags is not None and len(flags) == n for n, flags in seen)
+
+
+# ---- a market falling $1.00 a day: who may sell short, and when ---------------------------------
+# World A's calendar (Sep 24 - Oct 04, 2026). The market is flat at 100.0 for `flat_days`, then
+# falls in a straight line, every minute trading its price +- 0.1: a day opens 1.00 under the last
+# one's open and closes at 99.0007 less the days already fallen (the last minute's middle, 1,439 /
+# 1,440 of a dollar down). The first day of the fall closes under its 20-day average, (19 x 100.0 +
+# 99.0007) / 20 = 99.95, which is under the 100.0 it stood at five days earlier: v3_trend n=20 on
+# 1d signals a short that day and every day after. v3_trend and v3_breakout may short only in the
+# calm group.
+
+def _fall(flat_days=0):
+    out = {}
+    for k in range(10 * 1440):
+        p = 100.0 - max(0, k - flat_days * 1440) / 1440
+        out[START_A + k * M] = (p + 0.1, p - 0.1)
+    return out
+
+
+def _fall_world(monkeypatch, kind, calm, liquid, flat_days=0):
+    from tradingagents import cost_store
+
+    monkeypatch.setattr(cost_store, "engine_book", lambda *a, **k: _book(START_A // 1000))
+    plan = _plan(START_A, END_A, calm, liquid=liquid, kinds={"XYZ_USDT": kind})
+    return vm.measure_coin("XYZ_USDT", plan, runs=1, fx=FakeFx(START_A, END_A, _fall(flat_days)))
+
+
+def _trade_rows(rec):
+    return [(key, row) for key, c in rec["combos"].items() for part in ("older", "unseen")
+            for row in c[part]["rows"]]
+
+
+def test_only_a_calm_coin_goes_short_in_a_falling_market(monkeypatch, gate_floors):
+    months = ["2026-09", "2026-10"]
+    calm = _fall_world(monkeypatch, "metals", {m: ["XYZ_USDT"] for m in months}, None)
+    liquid = _fall_world(monkeypatch, "crypto", {}, {m: ["XYZ_USDT"] for m in months})
+    # the calm coin sells short on the first day's signal: signal Thu Sep 24, the order in at Fri
+    # Sep 25 00:00 (that minute trades up to 99.1, through the 99.0007 close) and the trade is
+    # still open when the older days end, closed at the split (END) at 93.0007, six days down.
+    # ATR(20) is (19 x 0.2 + 1.1993) / 20 = 0.24997 (the day's range, from its 100.1 high down to
+    # its 98.9007 low, is the widest of the three true-range readings): a 0.7499 trail, a 0.7575%
+    # stop, $1 risk = $132.02 of coin = 133 lots of 0.01 x 99.0007, and it makes
+    # 133 x 0.990007 x (6 / 99.0007 - 0.00115) = +$7.83
+    entry = 100 - 1439 / 1440
+    first = calm["combos"][vf.combo_key("v3_trend", "n20", "1d", "none")]["older"]["rows"][0]
+    assert first[:4] == [START_A, START_A + DAY, SPLIT_A, -1] and first[5] == "END"
+    assert first[4] == pytest.approx(133 * 0.01 * entry * (6 / entry - 0.00115))
+    # a coin that is liquid but not calm may only buy, and a fall gives it nothing to buy - though
+    # its families are measured (trend and breakout apply to it)
+    assert "v3_trend" in liquid["families"] and liquid["combos"]
+    assert _trade_rows(liquid) == []
+
+
+def test_busy_hours_holds_a_weekend_short(monkeypatch, gate_floors):
+    # flat on Thursday Sep 24, falling from Friday. Friday's close gives the first short signal,
+    # whose order would go in on Saturday 00:00; Saturday's gives one for Sunday 00:00 - busy_hours
+    # holds both (2 of the 5 older signals: Fri, Sat, Sun, Mon, Tue - Wednesday's candle closes at
+    # the split and has no next candle). Sunday's candle closes at Monday 00:00 and gives the
+    # first order it lets in: signal Sunday Sep 27, in at Monday Sep 28 00:00, closed at the split
+    months = ["2026-09", "2026-10"]
+    rec = _fall_world(monkeypatch, "metals", {m: ["XYZ_USDT"] for m in months}, None, flat_days=1)
+    busy = rec["combos"][vf.combo_key("v3_trend", "n20", "1d", "busy_hours")]["older"]
+    assert [r[:4] for r in busy["rows"]] == [[START_A + 3 * DAY, START_A + 4 * DAY, SPLIT_A, -1]]
+    assert busy["filter"] == {"signal_candles": 5, "blocked": 2}
+    # and whatever the family and the bar, every order busy_hours lets in goes in on a weekday
+    bar = {"1h": H, "4h": 4 * H, "1d": DAY}
+    rows = [(key, row) for key, row in _trade_rows(rec) if key.endswith("|busy_hours")]
+    assert rows and all(time.gmtime((row[0] + bar[key.split("|")[2]]) / 1000).tm_wday < 5
+                        for key, row in rows)
+
+
 def test_the_flat_gap_falls_back_to_a_live_read_then_to_the_paper_figure_and_says_so():
     import tradingagents.auto_trader as at
     from tradingagents import cost_store
@@ -372,6 +542,9 @@ def test_the_flat_gap_falls_back_to_a_live_read_then_to_the_paper_figure_and_say
     assert vm.flat_gap("X_USDT", empty, fx=Live(0.0004)) == (
         0.0004, "one live reading of its book (no minute recorded)")
     assert vm.flat_gap("X_USDT", empty, fx=Live(0.0))[0] == at.PAPER_SLIPPAGE, "never a free 0"
+    # and the figure then is the app's own, not a reading of the book: the words say so
+    assert vm.flat_gap("X_USDT", empty, fx=Live(0.0))[1] == (
+        "the app's paper figure: its one live reading said 0 (no minute recorded)")
     assert vm.flat_gap("X_USDT", None, fx=Live(None)) == (
         at.PAPER_SLIPPAGE, "the app's paper figure: no book could be read (RuntimeError)")
 

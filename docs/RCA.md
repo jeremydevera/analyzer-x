@@ -172,6 +172,42 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-23-H — Backtest v3's cost line would have said "one live reading of its book" beside the app's own built-in figure whenever the live book read 0: NEVER HAPPENED YET
+
+**CEO**
+
+* Nothing wrong was shown yet (it NEVER HAPPENED YET): for a coin with no recorded order-book minutes, whose live book said that buying $100 would cost nothing extra, the cost line would have read "one live reading of its book" beside 0.03% - a figure that was the app's built-in default, not anything read from that book.
+* Why: the words were written once, below the line that picks the number, so they stayed the same when the number was swapped for the default; and the one test of this case checked the number and never the words.
+* What stops it now: the words are chosen together with the number ("the app's paper figure: its one live reading said 0"), and a test holds that sentence.
+
+**DEV**
+
+* `tradingagents/v3_measure.py:70-85` at `0ca02b6858ff` (`flat_gap`, the live branch): it returned `br.charged_slippage([live or at.PAPER_SLIPPAGE])` with the literal label `"one live reading of its book (no minute recorded)"`, so `live == 0.0` swapped the number for `at.PAPER_SLIPPAGE` (0.0003) and kept the words. After the fix (this commit) a live 0 returns `(at.PAPER_SLIPPAGE, "the app's paper figure: its one live reading said 0 (no minute recorded)")`; a real reading and a failed read return what they returned before.
+* Invariant broken: **a label is derived from the data it describes: the words beside a figure name the branch that produced it.** Measured on the committed code: `flat_gap("X_USDT", cost_store.empty(), fx=Live(0.0))` returned `(0.0003, "one live reading of its book (no minute recorded)")`.
+* Guard: `tests/test_v3_measure.py::test_the_flat_gap_falls_back_to_a_live_read_then_to_the_paper_figure_and_says_so` (the new label assertion beside the `Live(0.0)` one).
+
+**SAW** — NEVER HAPPENED YET: nothing reached a screen, and no Backtest v3 coin has been measured on real data. Found by the implementer's own hunt on Task 8 (`Oct 23, 2026`, report filed `10:54pm`), which called `flat_gap` with a made-up exchange whose live book reads 0. What a result would have shown: the flat gap's source line saying a live reading of the book, beside 0.03% that no book had said.
+
+**TIMELINE** (NEVER HAPPENED YET: a hypothetical timeline; the numbers come from calling the function with a made-up exchange, and no real coin was measured)
+
+1. `Oct 23, 2026 10:48pm` - Task 8 is committed as `0ca02b6858ff`. `flat_gap` ends in `br.charged_slippage([live or at.PAPER_SLIPPAGE])` and returns one label whatever `live` was.
+2. The hunt calls `flat_gap` on a book with no recorded minute and a made-up exchange whose live read says 0.0004: `(0.0004, "one live reading of its book (no minute recorded)")`. Right: a real reading, its own label.
+3. The same call with a live read of 0: `(0.0003, "one live reading of its book (no minute recorded)")`. The 0.0003 is `at.PAPER_SLIPPAGE`, the app's built-in default for a coin with no better figure; the words say a reading of the book.
+4. The committed test asserted only `[0] == at.PAPER_SLIPPAGE` ("never a free 0") for that call: the number, never the words. It was green while the words were wrong.
+5. After the fix (`Oct 23, 2026`, this commit): the same call returns `(0.0003, "the app's paper figure: its one live reading said 0 (no minute recorded)")`; the 0.0004 call and the failed-read call (`"the app's paper figure: no book could be read (RuntimeError)"`) return what they returned before.
+
+**ROOT CAUSE** - `flat_gap` decided the figure and the label in two places: the figure inside an expression (`live or at.PAPER_SLIPPAGE`), the label as a literal on the next line. The expression swapped the number when the live read was 0; nothing swapped the words. A figure that comes from a fallback needs a label that comes from the same branch.
+
+**WHY IT WAS NOT CAUGHT** - The one test of this branch asserted the number (`[0] == at.PAPER_SLIPPAGE`, "never a free 0") and never the words beside it: the figure was verified and the label was not, which is the `three-gates` blind spot that `label-must-match-data` exists for. The two neighbouring assertions (a real live reading, a failed read) pin value and label together because their labels differ in kind; the zero case shared the first one's label by accident, so no assertion looked at it. And nothing had printed this label yet, so no screen could show the mismatch.
+
+**COST** - none: NEVER HAPPENED YET. No coin has been measured on real data; the branch needs a coin with no recorded minute AND a live book reading 0, which the first real run (Task 9) would have been the first to meet.
+
+**FIX** - this commit: `flat_gap` returns `(at.PAPER_SLIPPAGE, "the app's paper figure: its one live reading said 0 (no minute recorded)")` for a live 0, and leaves a real reading and a failed read as they were. The same commit makes the flat gap's source name how many of its minutes lie on the older days and pins the random runs' entry days and rank exit and the short side with four tests (its message has the numbers).
+
+**GUARD** - `tests/test_v3_measure.py::test_the_flat_gap_falls_back_to_a_live_read_then_to_the_paper_figure_and_says_so`: red on the committed code (the label is the old one), red on the mutant that keeps the old label, and red on the mutant that returns a free 0 for a live 0.
+
+---
+
 ## RCA-2026-10-23-G — a pooled Backtest v3 verdict's window was its first coin's own record, so a group carried one coin's start, candle counts and seconds: NEVER HAPPENED YET
 
 **CEO**

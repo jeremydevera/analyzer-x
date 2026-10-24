@@ -10,7 +10,13 @@ family's timeframes, for every setting and every filter:
   days) up to the split (the plan's end - 90 days), with the setting's
   lead-in before them; a trade still open at the split is closed at its last
   candle (`END`). Its minutes, order books and funding are CUT at the split,
-  so the setting can never be chosen on an unseen price — by construction;
+  so the setting can never be chosen on an unseen price — by construction.
+  One number is NOT cut: the flat gap it pays where a minute has no reading
+  of its own — the coin's usual cost, the median of EVERY recorded minute of
+  the window, which today all lie after the split (the store holds about 61
+  days). That is a cost level, never a price path, and `flat_slip_source`
+  says how many of its minutes lie on the older days; Part 2b's order-book
+  backfill gives the older days their own readings;
 * the UNSEEN walk: the newest 90 days, the lead-in before them read by the
   indicators only;
 * RUNS random runs on the unseen window (`v3_random`), measured for EVERY
@@ -67,18 +73,46 @@ def bars_of(df, bar_ms: int, end_ms: int) -> dict:
             **{k: [float(x) for x in df[v].to_numpy()[keep]] for k, v in col.items()}}
 
 
-def flat_gap(sym: str, book, *, fx) -> tuple[float, str]:
+def _book_before(book, split: int):
+    """The order-book readings stamped before the split, or None. A reading
+    stamped AT the split is the book 3 s after it — an unseen price — so it is
+    out. The older walk's book and the count of the flat gap's minutes that lie
+    on the older days are cut by this one function."""
+    if book is None:
+        return None
+    import numpy as np
+
+    j = int(np.searchsorted(book["t"], split // 1000, side="left"))
+    return {k: v[:j] for k, v in book.items()}
+
+
+def flat_gap(sym: str, book, *, fx, split_ms: int | None = None) -> tuple[float, str]:
     """The coin's own usual one-side cost where a minute has no recorded
-    book, and where it came from (said beside every result)."""
+    book, and where it came from (said beside every result).
+
+    From the recorded minutes it is the median of EVERY one of them in the
+    window, whichever side of the split it lies on — the older walk pays it
+    too — so with `split_ms` the source says how many of those minutes lie on
+    the older days (counted as `usual_slip` counts, on the book cut as the
+    older walk's is). With no recorded minute: one live reading of the book,
+    or the app's paper figure (a live reading of 0 is never a free 0), each
+    named for what it is."""
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br, cost_store
 
     slip, n = cost_store.usual_slip(book)
     if slip is not None:
-        return slip, f"the median of its {n:,} recorded minutes"
+        source = f"the median of its {n:,} recorded minutes"
+        if split_ms is not None:
+            older = cost_store.usual_slip(_book_before(book, split_ms))[1]
+            source += f", {older:,} of them on the older days"
+        return slip, source
     try:
         live = float(fx.book_cost(sym, BOOK_USD).get("slippage") or 0.0)
-        return (br.charged_slippage([live or at.PAPER_SLIPPAGE]),
+        if not live:
+            return at.PAPER_SLIPPAGE, ("the app's paper figure: its one live reading said 0 "
+                                       "(no minute recorded)")
+        return (br.charged_slippage([live]),
                 "one live reading of its book (no minute recorded)")
     except Exception as exc:                                   # noqa: BLE001
         return at.PAPER_SLIPPAGE, (f"the app's paper figure: no book could be read "
@@ -106,7 +140,7 @@ def prefetch(sym: str, plan: dict, leads: dict, *, fx) -> dict:
     keep = ft < end
     fine = (ft[keep].tolist(), fh[keep].tolist(), fl[keep].tolist())
     book = cost_store.engine_book(sym, start // 1000, end // 1000)
-    slip, source = flat_gap(sym, book, fx=fx)
+    slip, source = flat_gap(sym, book, fx=fx, split_ms=split)
     funding = [f for f in fx.funding_history(sym, since_ms=start - FUNDING_PAD_DAYS * DAY_MS)
                if int(f["settle_ms"]) <= end]
     fees = {"maker": at.maker_fee_floor(), "taker": at.fee_floor()}
@@ -125,16 +159,11 @@ def prefetch(sym: str, plan: dict, leads: dict, *, fx) -> dict:
 def _before(pre: dict, split: int) -> dict:
     """The older walk's data: minutes, order books and funding CUT at the
     split, so nothing it reads can be an unseen price."""
-    fine, book = pre["fine"], pre["book"]
+    fine = pre["fine"]
     if fine is not None:
         j = bisect.bisect_left(fine[0], split)
         fine = (fine[0][:j], fine[1][:j], fine[2][:j])
-    if book is not None:
-        import numpy as np
-
-        j = int(np.searchsorted(book["t"], split // 1000, side="left"))
-        book = {k: v[:j] for k, v in book.items()}
-    return {"fine": fine, "book": book,
+    return {"fine": fine, "book": _book_before(pre["book"], split),
             "funding": [f for f in pre["funding"] if int(f["settle_ms"]) <= split]}
 
 

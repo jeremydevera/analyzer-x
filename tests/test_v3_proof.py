@@ -1,0 +1,191 @@
+"""The Backtest v3 proof test (decisions doc docs/superpowers/specs/2026-10-23-
+backtest-v3-part2-decisions.md, "The proof test"): choose on the older days,
+judge on the unseen days against the random runs' bar and a day-clustered
+bootstrap, at least 300 unseen trades — and every verdict kept with the step
+it failed. Rows are the compact trade rows `v3_measure` writes:
+[signal_ms, entry_ms, exit_ms, side, pnl, why]."""
+import calendar
+import math
+
+import pytest
+
+from tradingagents import v3_families as vf, v3_proof as vp
+
+DAY = 86_400_000
+D0 = calendar.timegm((2026, 7, 25, 0, 0, 0)) * 1000        # the unseen days start here
+KEY = vf.combo_key("v3_snap", "k2", "1h", "none")
+KEY15 = vf.combo_key("v3_snap", "k1.5", "1h", "none")
+
+
+def _rows(pnls, per_day=4, why="TP"):
+    """One row per pnl, `per_day` of them closing on each UTC day from D0."""
+    return [[D0 + (k // per_day) * DAY, D0 + (k // per_day) * DAY + 60_000,
+             D0 + (k // per_day) * DAY + 3_600_000, 1, p, why] for k, p in enumerate(pnls)]
+
+
+def _walk(rows, **extra):
+    return {"rows": rows, "counts": {}, "filter": {}, "twins": [0, 0.0], "lev": [20, 20],
+            "notional": [50.0, 50.0], "over_book": 0, **extra}
+
+
+def _coin(name, older15, older2, unseen2, random2, unseen15=()):
+    return {"coin": name, "windows": {"1h": {"split": "Jul 25, 2026", "end": "Oct 23, 2026"}},
+            "unseen_months": ["2026-07", "2026-08", "2026-09", "2026-10"],
+            "combos": {KEY15: {"older": _walk(older15), "unseen": _walk(list(unseen15)),
+                               "random": [[0, 0.0]] * 200},
+                       KEY: {"older": _walk(older2), "unseen": _walk(unseen2),
+                             "random": random2}}}
+
+
+QUIET = [[100, 0.1 * ((k % 5) - 2)] for k in range(200)]    # a run's profit a trade: +-0.002
+LOUD = [[100, 10.0 * ((k % 5) - 2)] for k in range(200)]    # +-0.2
+
+
+def _two_coins(unseen, random_runs=QUIET):
+    """k1.5 makes +0.05 a trade on the older days, k2 +0.10 (40 trades each per coin): k2 is
+    chosen. The unseen trades are split between the two coins."""
+    half = len(unseen) // 2
+    return [_coin(c, _rows([0.05] * 40), _rows([0.10] * 40), part, random_runs)
+            for c, part in (("AAA_USDT", unseen[:half]), ("BBB_USDT", unseen[half:]))]
+
+
+def test_alpha_divides_by_every_combination_measured():
+    # 0.05 / 70 = 0.000714; z = the normal curve's 1 - 0.000357 point
+    assert vp.TRIED == len(vf.combos()) == 70
+    assert round(vp.Z, 4) == 3.384 and round(vp.z_for(1), 5) == 1.95996
+
+
+def test_the_setting_is_chosen_on_the_older_days_with_30_trades_ties_to_the_simplest():
+    older = {"n20": _rows([0.10] * 40), "n50": _rows([0.20] * 35), "n100": _rows([5.0] * 29)}
+    chosen, table = vp.choose(older, ["n20", "n50", "n100"])
+    # n100 makes far more a trade, but 29 trades are under the 30 a setting needs
+    assert chosen == "n50" and table["n100"]["eligible"] is False
+    assert table["n50"]["per_trade"] == pytest.approx(0.20) and table["n50"]["trades"] == 35
+    tie = {"n20": _rows([0.2] * 30), "n50": _rows([0.2] * 30)}
+    assert vp.choose(tie, ["n20", "n50", "n100"])[0] == "n20", "a tie goes to the simplest"
+    assert vp.choose({"n20": _rows([1.0] * 29)}, ["n20"])[0] is None
+
+
+def test_the_random_bar_is_the_normal_curves_point_with_the_best_run_as_its_floor():
+    # three runs that traded make +0.1, -0.1 and +0.1 a trade (the run with no trade is left
+    # out): mean 0.0333, sample sd sqrt((0.0667^2 + 0.1333^2 + 0.0667^2) / 2) = 0.11547, so
+    # the point is 0.0333 + 3.384 x 0.11547 = 0.4241, over the best run's 0.1
+    bar = vp.random_bar([(10, 1.0), (10, -1.0), (5, 0.5), (0, 0.0)])
+    assert (bar["runs"], bar["traded"]) == (4, 3)
+    assert bar["sd"] == pytest.approx(0.11547, abs=1e-5)
+    assert bar["bar"] == pytest.approx(0.0333333 + vp.Z * 0.11547, abs=1e-4)
+    # 199 runs at 0 and one at +0.5 a trade: mean 0.0025, sd sqrt(0.24875 / 199) = 0.035355,
+    # the point 0.0025 + 3.384 x 0.035355 = 0.1221 - under the best run, which is the bar
+    bar = vp.random_bar([(10, 0.0)] * 199 + [(10, 5.0)])
+    assert bar["normal"] == pytest.approx(0.12214, abs=1e-4) and bar["bar"] == 0.5
+    assert vp.random_bar([(10, 1.0), (0, 0.0)]) is None, "one run that traded is no curve"
+
+
+def test_random_runs_pool_run_by_run_over_the_coins():
+    assert vp.pool_random([[[10, 1.0], [5, -1.0]], [[2, 0.5], [0, 0.0]]]) == [(12, 1.5),
+                                                                            (5, -1.0)]
+    with pytest.raises(ValueError, match="random runs"):
+        vp.pool_random([[[1, 1.0]], [[1, 1.0], [1, 1.0]]])
+
+
+def test_the_bootstrap_draws_whole_days():
+    # two days, one trade each, +1 and -1: a draw of 2 days is (+1, +1) a quarter of the time,
+    # (-1, -1) a quarter, mixed half - profit a trade +1, -1 or 0: sd sqrt(0.5) = 0.7071
+    two = _rows([1.0, -1.0], per_day=1)
+    se, days = vp.boot_se(two, seed=1)
+    assert days == 2 and se == pytest.approx(math.sqrt(0.5), abs=0.03)
+    assert vp.boot_se(two, seed=1) == (se, 2), "seeded: the same every time"
+    # two wins on day 1 and a loss on day 2 are 2 clusters, not 3 trades: a draw is +1 (both
+    # day 1), -1 (both day 2) or (2 - 1) / 3 = +0.333 (one each), so the sd is
+    # sqrt(0.25 + 0.25 + 0.5 x 0.1111 - 0.1667^2) = 0.7265
+    se, days = vp.boot_se(_rows([1.0, 1.0, -1.0], per_day=2), seed=1)
+    assert days == 2 and se == pytest.approx(0.7265, abs=0.03)
+    assert vp.boot_se(_rows([1.0, 2.0], per_day=2), seed=1) == (None, 1)
+
+
+def test_the_summary_is_the_standard_kits_figures_in_closing_order():
+    rows = _rows([1.0, -0.5, -0.7, 2.0, -0.4], per_day=1)
+    rows[4][5] = "END"
+    s = vp.summary(list(reversed(rows)))                  # handed over in any order
+    # wins 1.0 and 2.0 (avg 1.5), losses 0.5, 0.7, 0.4 (avg 0.5333): break-even 0.5333 / 2.0333
+    assert (s["trades"], s["wins"], s["losses"]) == (5, 2, 3)
+    assert s["profit"] == pytest.approx(1.4) and s["per_trade"] == pytest.approx(0.28)
+    assert s["break_even"] == pytest.approx(0.53333 / 2.03333, abs=1e-4)
+    assert (s["worst_run_usd"], s["worst_run_trades"]) == (pytest.approx(-1.2), 2)
+    assert s["open_at_end"] == 1
+
+
+STEADY = [1.2, -0.8] * 160                  # 320 trades, +0.20 each on average, every day alike
+
+
+def test_a_family_that_clears_every_step_passes():
+    v = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(STEADY)))
+    # k2 chosen (+0.10 against +0.05 on the older days); unseen 320 trades at +0.20; QUIET's runs
+    # make -0.002..+0.002 a trade (mean 0, sd 0.0014178): the bar 3.384 x 0.0014178 = 0.0048;
+    # every day makes the same +0.20, so the bootstrap's error is 0
+    assert v["setting"] == "k2" and v["passed"] is True and v["failed"] == ""
+    assert v["unseen"]["trades"] == 320 and v["unseen"]["per_trade"] == pytest.approx(0.2)
+    assert v["random"]["bar"] == pytest.approx(vp.Z * 0.0014178, abs=1e-5)
+    assert v["bootstrap"]["se"] == pytest.approx(0.0, abs=1e-12) and v["bootstrap"]["days"] == 80
+    assert v["coins"] == ["AAA_USDT", "BBB_USDT"] and v["id"] == vf.verdict_id("v3_snap", "1h",
+                                                                               "none")
+    assert v["months"] == ["2026-07", "2026-08", "2026-09", "2026-10"], "the months used"
+    assert v["window"] == {"split": "Jul 25, 2026", "end": "Oct 23, 2026"}
+
+
+def test_each_step_that_fails_names_the_verdict():
+    # the luck bar: LOUD's runs make -0.2..+0.2 a trade (sd 0.14178): 3.384 x 0.14178 = 0.4798
+    v = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(STEADY), LOUD))
+    assert (v["passed"], v["failed"]) == (False, "random") and v["checks"]["profit"] is True
+    # losing money: -0.20 a trade
+    v = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows([-1.2, 0.8] * 160)))
+    assert v["failed"] == "profit"
+    # +0.20 a trade, all of it from ONE day: 79 days of 4 losses of 0.1, and one day of 3 losses
+    # and a +95.9 win. A draw holds that day K times, K ~ Binomial(80, 1/80): profit a trade
+    # (96K - 32) / 320 = 0.3K - 0.1, sd 0.3 x sqrt(0.9875) = 0.298, and 0.2 - 3.384 x 0.298 < 0
+    lucky = [-0.1] * 319 + [95.9]
+    v = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(lucky)))
+    assert v["unseen"]["per_trade"] == pytest.approx(0.2) and v["failed"] == "bootstrap"
+    assert v["bootstrap"]["se"] == pytest.approx(0.298, abs=0.03)
+    # +0.20 a trade, the days swinging: 40 days of 4 trades at +1.2, 40 of 4 at -0.8. Every day
+    # holds 4 trades, so a draw's profit a trade is the mean of 80 drawn days' averages, whose sd
+    # is 1.0: the error sqrt(1 / 80) = 0.1118, and 0.2 - 3.384 x 0.1118 = -0.178 - not proven,
+    # though 0.2 is 1.8 errors above 0
+    swing = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(([1.2] * 4 + [-0.8] * 4) * 40)))
+    assert swing["bootstrap"]["se"] == pytest.approx(0.1118, abs=0.01)
+    assert swing["failed"] == "bootstrap" and swing["checks"]["random"] is True
+    # every check passes but there are 299 trades, not 300
+    v = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows([0.2] * 299)))
+    assert v["failed"] == "trades" and [v["checks"][k] for k in vp.CHECKS[:3]] == [True] * 3
+
+
+def test_a_family_that_shines_only_on_the_older_days_fails():
+    # +0.10 a trade on the older days, +0.001 on the unseen ones: under QUIET's 0.0048 bar
+    coins = _two_coins(_rows([0.501, -0.499] * 160))
+    v = vp.verdict("v3_snap", "1h", "none", coins)
+    assert v["older"]["k2"]["per_trade"] == pytest.approx(0.10)
+    assert v["unseen"]["per_trade"] == pytest.approx(0.001) and v["failed"] == "random"
+
+
+def test_a_group_with_too_few_older_trades_or_no_coin_fails_at_the_choice():
+    thin = [_coin("AAA_USDT", _rows([0.1] * 10), _rows([0.1] * 29), _rows(STEADY), QUIET)]
+    v = vp.verdict("v3_snap", "1h", "none", thin)
+    assert (v["failed"], v["setting"]) == ("choose", None) and "30 trades" in v["why"]
+    v = vp.verdict("v3_trend", "1d", "none", thin)
+    assert v["failed"] == "choose" and v["why"] == "no coin measured v3_trend on 1d"
+    assert v["coins"] == [] and any("survivorship" in n for n in v["notes"])
+
+
+def test_every_judged_group_gets_a_verdict_and_what_could_not_be_measured_is_summed():
+    coins = _two_coins(_rows(STEADY))
+    for c in coins:
+        c["combos"][KEY]["unseen"].update(counts={"cost_unmeasured": 7, "missed": 2},
+                                          filter={"signals": 50}, twins=[2, 0.75], over_book=3,
+                                          lev=[12, 20], notional=[40.0, 120.0])
+    out = vp.verdicts(coins)
+    assert [(v["family"], v["tf"], v["filter"]) for v in out] == vf.judged()
+    v = next(v for v in out if (v["family"], v["tf"], v["filter"]) == ("v3_snap", "1h", "none"))
+    assert v["counts"] == {"cost_unmeasured": 14, "missed": 4, "signals": 100}
+    assert (v["twins"], v["twins_pnl"], v["over_book"]) == (4, pytest.approx(1.5), 6)
+    assert v["lev"] == [12, 20] and v["notional"] == [40.0, 120.0]
+    assert sum(1 for v in out if v["failed"] == "choose") == 29

@@ -339,3 +339,21 @@ def coverage(packed: dict | None, start_s: int, end_s: int,
     ok = j >= 0
     ok[ok] = (minutes[ok] - t[j[ok]]) <= age
     return float(ok.mean())
+
+
+def usual_slip(packed: dict | None) -> tuple[float | None, int]:
+    """A coin's OWN usual one-side cost (CLAUDE.md rule 10: per contract,
+    never averaged across coins): the median over its recorded minutes of the
+    average of buying and selling the book's $100, leaving out minutes whose
+    book ran out. (median or None when nothing usable was recorded, the
+    minutes it was read from.) The confluence shard keeps its own copy of
+    this rule (.github/scripts/cq_shard.py `usual_slip`)."""
+    import numpy as np
+
+    if packed is None or not len(packed.get("t", [])):
+        return None, 0
+    ok = ~np.asarray(packed["exhausted"], dtype=bool)
+    both = (np.asarray(packed["buy"], dtype=float)[ok]
+            + np.asarray(packed["sell"], dtype=float)[ok]) / 2
+    both = both[np.isfinite(both)]
+    return (float(np.median(both)) if len(both) else None), int(len(both))

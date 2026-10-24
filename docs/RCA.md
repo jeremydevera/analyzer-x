@@ -172,6 +172,42 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-23-F — Backtest v3's funding rule would have judged an order placed on a funding hour by the payment that had just gone out or the one 8 hours older, depending on the second Gate stamped it: 55 of BTC's 776 daily side decisions would have changed
+
+**CEO**
+
+* Nothing was lost and nothing has been shown yet (it NEVER HAPPENED YET): the rule that skips a long, or a short, when a coin's funding fee is in the top or bottom tenth of its last 30 days would have judged an order placed on a funding hour by the wrong payment. On Bitcoin's daily candles, 55 of the 776 side decisions would have changed, out of 87 the rule blocked.
+* Why: the rule counted a payment stamped at the exact second of the order as already paid. Gate stamps those payments on the hour in some months and a few seconds late in others, so the same market got a different answer depending on the month.
+* What stops it now: the rule counts only payments stamped before the order, a test holds that one market gives the same answer whatever second Gate stamps its payments, and a second test holds the 10% edge exactly.
+
+**DEV**
+
+* `tradingagents/v3_filters.py:72-73` at `fc42ef0ba096` (`funding_side`, both `bisect.bisect_right` calls): `hi` counted a settlement stamped at the order's own instant as settled, and the window's start dropped one stamped exactly 30 days before the order. After the fix both are `bisect.bisect_left`, so the last settled rate is the last one stamped before the order and the window is `[order - 30 days, order)`.
+* Invariant broken: **an order's answer may not depend on the second a settlement was stamped. A settlement counts for an order only when it was stamped strictly before the order, over the window [order - 30 days, order).** Measured on the committed code: one settlement history gives (long ok, short ok) = (True, False) when its settlements are stamped on the hour, and (False, True) when they are stamped 1, 3 or 7 seconds late.
+* Guard: `tests/test_v3_filters.py::test_funding_side_judges_the_same_settlements_whatever_second_gate_stamped_them` (the 10% edge is held by `tests/test_v3_filters.py::test_funding_side_cuts_at_exactly_a_tenth_of_the_30_days_and_the_tenth_itself_is_in`).
+
+**SAW** — nothing on a screen, and no Backtest v3 number yet: **NEVER HAPPENED YET**. Found by the task review of Task 5 (`Oct 23, 2026`), which measured Gate's own funding history before any v3 result existed. What a screen would have shown: the same market skipped on one candle and allowed on the next, the older and the unseen windows judged under different rules, and no count anywhere to say so.
+
+**TIMELINE** (steps 1-4 happened; step 5 is what the verdict would have said)
+
+1. `Oct 23, 2026` - Task 5 is committed as `fc42ef0ba096`: `funding_side` reads the last settlement with `bisect.bisect_right`, so a settlement stamped at the order's own instant counts as settled. The decisions doc says "before the order".
+2. Gate's public funding history for BTC_USDT, by the second each settlement was stamped, month by month (the review's measurement, `Oct 23, 2026`): Oct 2025 to Feb 2026, every stamp at +0 s (93, 90, 93, 93 and 84 settlements); Mar 2026, 50 of 93 at +0 s, 42 at +1 s, 1 at +2 s; Apr to Aug 2026, +1 to +3 s (459 stamps, 3 of them at +0 s); Sep 2026, 27 of 90 at +0 s; Oct 2026, 70 of 70 at +0 s.
+3. The 1-day decisions on BTC_USDT: 776 side decisions (a long and a short for each daily order). The committed rule blocked 87 of them, and 55 of the 776 differ from the strict-before reading (46 differ from a reading that settles each payment by the end of its order minute). XRP 42 of 776, LINK 40 of 774, XAUT 30 of 776, ADA 60 of 776.
+4. The 365-day plan ending Oct 24, 2026: the older walk (Oct 25, 2025 to Jul 25, 2026) would read the just-settled rate for about four months, a mixed month, and the rate 8 hours older for about four months. On BTC, about 53% of settlement-hour orders in the older walk read the just-settled rate, against about 36% in the unseen walk (estimated from the monthly shares). The choice and the judgment would have read different rules.
+5. Before the fix (the committed module, the new stamp-jitter test, run `Oct 23, 2026`): two answers across four stamps (+0 s gives (True, False); +1 s, +3 s and +7 s give (False, True)). After the fix: one answer, (False, True), at all four stamps. The seven committed tests pass before and after. The decile test passes before and after, and after the fix it fails all five share and cut mutants (SIDE_SHARE 0.05, 0.20 and 0.50, and the two `>= cut` mutants).
+
+**ROOT CAUSE** - `funding_side` used `bisect.bisect_right` on the order's own instant and on the window's start (`v3_filters.py:72-73` at `fc42ef0ba096`). `bisect_right` counts a settlement stamped exactly at the order's instant as settled and drops one stamped exactly 30 days before, so the answer turned on the second a stamp landed, at both edges. The decisions doc's word, "before the order", was not what the code did.
+
+**WHY IT WAS NOT CAUGHT** - No committed test put a non-uniform settlement exactly at an order's own instant. The one order on a settlement hour (`test_funding_side_passes_and_counts...`, at 712 hours) sat on uniform rates, where either reading gives the same answer, and the spike orders (801, 809 and 881 hours) sat an hour away from every settlement. Replacing `bisect_right` by `bisect_left` at `:72` alone survives all seven committed tests (measured: 0 of 7 fail). The same seven never pinned the 10% share either: SIDE_SHARE 0.05, 0.20 and 0.50 and both `>= cut` mutants survived all of them. The stamp-jitter test is the first test that moves a settlement's stamp by a second.
+
+**COST** - none: NEVER HAPPENED YET. No Backtest v3 number, verdict or room has used `funding_side`; the measuring code that would use it is not written yet.
+
+**FIX** - this commit: `funding_side` reads `bisect.bisect_left` on both bounds, so the last settled rate is the last one stamped before the order and the window is `[order - 30 days, order)`. The module docstring states the rule and its reason (decisions doc, "The filters", ruled `Oct 23, 2026`, commit `27a52fb846ee`). Three tests are added: the stamp-jitter test; the decile edge (9 of 90 at or above the rate is the top tenth, 10 is past it, mirrored for shorts); and the agreement of `funding_minutes`' recorded and cycle paths on every hour-aligned order, which needed no change. The seven committed tests are unchanged.
+
+**GUARD** - `tests/test_v3_filters.py::test_funding_side_judges_the_same_settlements_whatever_second_gate_stamped_them`: red on the committed code (two answers), red on a half fix that moves only the upper bound, green here. The 10% edge is held by `tests/test_v3_filters.py::test_funding_side_cuts_at_exactly_a_tenth_of_the_30_days_and_the_tenth_itself_is_in`.
+
+---
+
 ## RCA-2026-10-23-E — a Backtest v3 strength trade still open when a window ends on a Monday would have been booked RANK ("left the top 2K") on a ranking nobody took: the plan holds none for its own end
 
 **CEO**

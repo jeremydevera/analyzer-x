@@ -13,9 +13,13 @@ when its waiting order would go in — and reads only what was known by then:
   a Saturday or Sunday (UTC).
 * ``funding_side``: no long when the last settled funding rate is among the
   top 10% of the coin's own settlements of the 30 days before it, no short
-  among the bottom 10% (ties count against the rate). Where the history does
-  not cover those 30 days the filter cannot judge: the signal passes and is
-  counted `funding_unknown`.
+  among the bottom 10% (ties count against the rate). "The last settled rate"
+  is the last settlement stamped BEFORE the order, and the 30 days are the
+  half-open span [order - 30 days, order): an order on a settlement hour judges
+  the cycle before it, because Gate stamps the same settlement 0-7 s past the
+  hour in some months and on it in others (decisions doc, "The filters", ruled
+  Oct 23, 2026). Where the history does not cover those 30 days the filter
+  cannot judge: the signal passes and is counted `funding_unknown`.
 * ``funding_minutes``: no order within 5 minutes either side of a funding
   settlement — the recorded ones where the history reaches, else the
   contract's settlement cycle from 00:00 UTC, counted `settle_by_cycle`.
@@ -69,8 +73,11 @@ def funding_side(order_ms, funding):
         ms = int(ms)
         covered = (bool(f_ms) and f_ms[0] - f_cyc[0] * HOUR_MS <= ms - SIDE_DAYS * DAY_MS
                    and ms <= f_ms[-1] + f_cyc[-1] * HOUR_MS)
-        hi = bisect.bisect_right(f_ms, ms) if covered else 0
-        window = f_rate[bisect.bisect_right(f_ms, ms - SIDE_DAYS * DAY_MS):hi] if hi else []
+        # "before the order": a settlement stamped at the order's own instant has not
+        # settled for it. Both bounds are bisect_left: the window is [order - 30 days,
+        # order), so a settlement stamped exactly 30 days before the order counts.
+        hi = bisect.bisect_left(f_ms, ms) if covered else 0
+        window = f_rate[bisect.bisect_left(f_ms, ms - SIDE_DAYS * DAY_MS):hi] if hi else []
         if not window:
             long_ok.append(True)
             short_ok.append(True)

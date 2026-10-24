@@ -130,3 +130,67 @@ def test_no_filter_lets_everything_through_and_an_unknown_one_is_refused():
     with pytest.raises(ValueError, match="crash_guard"):
         vfl.masks("crash_guard", sym="X_USDT", kind="crypto", order_ms=[F0])
     assert vfl.NAMES[1:] == ("btc_mood", "busy_hours", "funding_side", "funding_minutes")
+
+
+def _distinct_history(last, n=90):
+    """n settlements every 8 hours from F0: the first n-1 at the distinct rates 1, 2 ... n-1 (in
+    millionths), the last - the one the filter reads - at `last` millionths. No ties."""
+    rates = [(k + 1) * 1e-6 for k in range(n - 1)] + [last * 1e-6]
+    return [{"settle_ms": F0 + k * 8 * H, "rate": r, "cycle_h": 8} for k, r in enumerate(rates)]
+
+
+def test_funding_side_cuts_at_exactly_a_tenth_of_the_30_days_and_the_tenth_itself_is_in():
+    # An hour after the last of 90 settlements, all 90 inside the 30 days, every rate different.
+    at = F0 + 89 * 8 * H + H
+
+    def reading(last):
+        long_ok, short_ok, flag = vfl.masks("funding_side", sym="X_USDT", kind="crypto",
+                                            order_ms=[at], funding=_distinct_history(last))
+        assert flag == [""]
+        return long_ok[0], short_ok[0]
+
+    # 9 of the 90 (itself included) are >= a rate of 81.5: exactly a tenth, still the top tenth, no
+    # long; 10 are >= 80.5: past a tenth, the long goes in
+    assert reading(81.5) == (False, True)
+    assert reading(80.5) == (True, True)
+    # the mirror: 9 are <= 8.5, the bottom tenth, no short; 10 are <= 9.5, the short goes in
+    assert reading(8.5) == (True, False)
+    assert reading(9.5) == (True, True)
+
+
+def test_funding_side_judges_the_same_settlements_whatever_second_gate_stamped_them():
+    # Gate stamped its settlements exactly on the hour until Feb 2026, 1-3 s after it on BTC_USDT
+    # (up to 7 s on other coins) from Apr to Aug 2026 and exactly on the hour again in Oct 2026:
+    # the same market has to read the same answer. An order on
+    # settlement hour #90 judges the 90 settlements before it - #89 is the 9th highest of them (the
+    # top tenth) and #90, the rate that settles at the order's own hour, is the lowest.
+    rates = [(k + 1) * 1e-6 for k in range(89)] + [81.5e-6, 0.5e-6]
+    answers = set()
+    for late_ms in (0, 1000, 3000, 7000):
+        fund = [{"settle_ms": F0 + k * 8 * H + late_ms, "rate": r, "cycle_h": 8}
+                for k, r in enumerate(rates)]
+        long_ok, short_ok, flag = vfl.masks("funding_side", sym="X_USDT", kind="crypto",
+                                            order_ms=[F0 + 90 * 8 * H], funding=fund)
+        answers.add((long_ok[0], short_ok[0], flag[0]))
+    assert len(answers) == 1, answers
+    assert answers == {(False, True, "")}, answers
+    # after the ruling, pin the convention itself: under (a) strict-before the one answer is
+    # (False, True, "") - the order judges #89, the 9th highest; under (b) end-of-minute it is
+    # (True, False, "") - the order judges #90, the lowest, the rate that settles at its own hour
+    # (the committed code gives (True, False, "") at +0 s and (False, True, "") at +1 s or more)
+
+
+def test_funding_minutes_recorded_and_cycle_paths_agree_on_every_hour_aligned_order():
+    # every order is a whole-hour candle close; Gate stamps on the hour, or a few seconds past it
+    for cycle in (1, 4, 8):
+        for late_ms in (0, 1000, 7000):
+            fund = [{"settle_ms": F0 + k * cycle * H + late_ms, "rate": 0.0001, "cycle_h": cycle}
+                    for k in range(24 * 10 // cycle)]
+            for step in (1, 4, 24):
+                at = [F0 + DAY + k * step * H for k in range(5 * 24 // step)]
+                rec, _s, flag = vfl.masks("funding_minutes", sym="X_USDT", kind="crypto",
+                                          order_ms=at, funding=fund, cycle_h=cycle)
+                cyc, _s, cflag = vfl.masks("funding_minutes", sym="X_USDT", kind="crypto",
+                                           order_ms=at, funding=[], cycle_h=cycle)
+                assert flag == [""] * len(at) and cflag == ["settle_by_cycle"] * len(at)
+                assert rec == cyc, (cycle, late_ms, step)

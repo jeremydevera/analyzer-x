@@ -93,14 +93,19 @@ def choose(older: dict, order) -> tuple[str | None, dict]:
     return best, table
 
 
-def pool_random(per_coin) -> list[tuple[int, float]]:
-    """Run k pooled over the coins: (its trades, its profit), summed."""
+def pool_random(per_coin, names=None) -> list[tuple[int, float]]:
+    """Run k pooled over the coins: (its trades, its profit), summed. A coin
+    whose number of runs differs from the first coin's is refused by name:
+    `names` gives the coins' names in the order of `per_coin`."""
     runs: list[list] | None = None
-    for coin_runs in per_coin:
+    first = ""
+    for i, coin_runs in enumerate(per_coin):
         if runs is None:
             runs = [[0, 0.0] for _ in coin_runs]
+            first = names[i] if names else "the first coin"
         if len(coin_runs) != len(runs):
-            raise ValueError(f"a coin holds {len(coin_runs)} random runs, another {len(runs)}")
+            who = names[i] if names else "a coin"
+            raise ValueError(f"{who} holds {len(coin_runs)} random runs, {first} holds {len(runs)}")
         for k, (n, p) in enumerate(coin_runs):
             runs[k][0] += int(n)
             runs[k][1] += float(p)
@@ -165,6 +170,38 @@ def tally(walks: list[dict]) -> dict:
             "notional": [min(notional), max(notional)] if notional else None}
 
 
+def _refuse_mixed(coins: list[dict]) -> None:
+    """Coins are pooled only when each is listed once and all were measured on
+    one risk, one run count and one plan end. Anything else is refused by name:
+    the pooled trades would not all exist at one risk, or one coin would be
+    counted twice."""
+    names = [c.get("coin") for c in coins]
+    for i, name in enumerate(names):
+        if name in names[:i]:
+            raise ValueError(f"{name} is listed twice: pooling it twice would count its trades twice")
+    for key in ("risk_usd", "runs", "plan_end_ms"):
+        for c in coins[1:]:
+            if c.get(key) != coins[0].get(key):
+                raise ValueError(
+                    f"coins measured at different {key} cannot be pooled: {c.get('coin')} at "
+                    f"{c.get(key)!r}, {coins[0].get('coin')} at {coins[0].get(key)!r}")
+
+
+def _blocked_all(used: list, ck: dict, keys: list) -> int | None:
+    """The most signals any setting had on the older days, when the filter
+    blocked every one of them for every setting and there was a signal; else
+    None. The counts are the older walks' own (`filter`: signal_candles and
+    blocked; an absent count is zero)."""
+    signals = dict.fromkeys(keys, 0)
+    blocked = dict.fromkeys(keys, 0)
+    for k in keys:
+        for w in _walks(used, ck[k], "older"):
+            signals[k] += int(w.get("filter", {}).get("signal_candles", 0))
+            blocked[k] += int(w.get("filter", {}).get("blocked", 0))
+    most = max(signals.values())
+    return most if most >= 1 and all(blocked[k] == signals[k] for k in keys) else None
+
+
 def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | None = None,
             tried: int = TRIED) -> dict:
     """One family on one timeframe with one filter, chosen and judged over
@@ -174,9 +211,12 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | No
     always for the same count of tries. An explicit z is used as given, and the
     record's alpha is the one that z makes, 2 x (1 - Φ(z)), so no label names
     one count with another count's z. z must be positive."""
+    _refuse_mixed(coins)
+    if isinstance(tried, bool) or not isinstance(tried, int) or tried < 1:
+        raise ValueError(f"tried must be a positive whole number, got {tried!r}")
     if z is None:
         z, alpha = z_for(tried), ALPHA / tried
-    elif z <= 0:
+    elif not z > 0:
         raise ValueError(f"z must be positive, got {z!r}")
     else:
         alpha = 2 * (1 - NormalDist().cdf(z))
@@ -185,7 +225,13 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | No
     used = [c for c in coins if any(ck[k] in c.get("combos", {}) for k in keys)]
     older = {k: [r for w in _walks(used, ck[k], "older") for r in w["rows"]] for k in keys}
     chosen, table = choose(older, keys)
-    window = next((c["windows"][tf] for c in used if tf in c.get("windows", {})), None)
+    wins = [c["windows"][tf] for c in used if tf in c.get("windows", {})]
+    if len({(w.get("split"), w.get("end")) for w in wins}) > 1:
+        raise ValueError(f"{family} {tf}: coins measured on different windows cannot be pooled")
+    window = ({"split": wins[0].get("split"), "end": wins[0].get("end"),
+               "older_candles": sum(int(w.get("older_candles", 0)) for w in wins),
+               "unseen_candles": sum(int(w.get("unseen_candles", 0)) for w in wins)}
+              if wins else None)
     notes = [vu.SURVIVORSHIP] + ([NOTES[filt]] if filt in NOTES else [])
     base = {"id": vf.verdict_id(family, tf, filt), "family": family, "tf": tf, "filter": filt,
             "tried": tried, "alpha": alpha, "z": z, "coins": [c["coin"] for c in used],
@@ -193,15 +239,21 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | No
                                                if c.get("unseen_months")), []),
             "older": table, "setting": chosen, "notes": notes}
     if chosen is None:
-        why = (f"no coin measured {family} on {tf}" if not used else
-               f"no setting had {MIN_CHOOSE} trades on the older days")
+        most = _blocked_all(used, ck, keys)
+        if not used:
+            why = f"no coin measured {family} on {tf} ({filt})"
+        elif most is not None:
+            why = f"{filt} blocked all {most:,} signals on the older days"
+        else:
+            why = f"no setting had {MIN_CHOOSE} trades on the older days ({filt})"
         return {**base, "passed": False, "failed": "choose", "why": why}
     key = ck[chosen]
     walks = _walks(used, key, "unseen")
     rows = [r for w in walks for r in w["rows"]]
     s = summary(rows)
-    bar = random_bar(pool_random(c["combos"][key]["random"] for c in used
-                                 if key in c["combos"]), z)
+    held = [c for c in used if key in c["combos"]]
+    bar = random_bar(pool_random([c["combos"][key]["random"] for c in held],
+                                 [c["coin"] for c in held]), z)
     se, days = boot_se(rows, vrn.seed_of("boot", key))
     ppt = s["per_trade"]
     checks = {"profit": ppt is not None and ppt > 0,

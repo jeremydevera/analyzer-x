@@ -130,7 +130,8 @@ def test_a_family_that_clears_every_step_passes():
     assert v["coins"] == ["AAA_USDT", "BBB_USDT"] and v["id"] == vf.verdict_id("v3_snap", "1h",
                                                                                "none")
     assert v["months"] == ["2026-07", "2026-08", "2026-09", "2026-10"], "the months used"
-    assert v["window"] == {"split": "Jul 25, 2026", "end": "Oct 23, 2026"}
+    assert v["window"] == {"split": "Jul 25, 2026", "end": "Oct 23, 2026",
+                           "older_candles": 0, "unseen_candles": 0}
 
 
 def test_each_step_that_fails_names_the_verdict():
@@ -172,7 +173,7 @@ def test_a_group_with_too_few_older_trades_or_no_coin_fails_at_the_choice():
     v = vp.verdict("v3_snap", "1h", "none", thin)
     assert (v["failed"], v["setting"]) == ("choose", None) and "30 trades" in v["why"]
     v = vp.verdict("v3_trend", "1d", "none", thin)
-    assert v["failed"] == "choose" and v["why"] == "no coin measured v3_trend on 1d"
+    assert v["failed"] == "choose" and v["why"] == "no coin measured v3_trend on 1d (none)"
     assert v["coins"] == [] and any("survivorship" in n for n in v["notes"])
 
 
@@ -260,3 +261,148 @@ def test_an_explicit_z_is_used_as_given_and_its_alpha_is_the_one_it_makes():
     assert v["alpha"] == pytest.approx(0.0026998, abs=1e-6)
     with pytest.raises(ValueError, match="z must be positive"):
         vp.verdict("v3_snap", "1h", "none", coins, z=-1.0)
+
+
+# --- Fix round 2 (the controller's ruling, task-7-fix-2.md, Oct 23, 2026) ---------------------
+# 1. a pooled verdict's window is the group's; 2. the bootstrap's z, the 300-trade edge and the
+# exit-day clustering are pinned; 3. a choose-failed verdict names the filter that blocked it;
+# 4. coins pooled twice, or at two risks, plans or run counts, are refused; 5. z and tried are
+# refused exactly. Each pin fails on its mutant (report, Fix round 2), and where the behaviour was
+# already right the pin passes on the committed code.
+
+
+def _windowed(coin, start, older, unseen, seconds):
+    """A coin whose 1h window is its own: its start, its candle counts and its seconds."""
+    coin["windows"] = {"1h": {"start": start, "split": "Jul 25, 2026", "end": "Oct 23, 2026",
+                              "older_candles": older, "unseen_candles": unseen,
+                              "seconds": seconds}}
+    return coin
+
+
+def _group(name, family, tf, filt, older_by_setting):
+    """A coin that measured one group: `older_by_setting` maps each setting to its older walk."""
+    combos = {vf.combo_key(family, k, tf, filt): {"older": w, "unseen": _walk([]),
+                                                  "random": [[0, 0.0]] * 200}
+              for k, w in older_by_setting.items()}
+    return {"coin": name, "windows": {tf: {"split": "Jul 25, 2026", "end": "Oct 23, 2026"}},
+            "unseen_months": ["2026-07"], "combos": combos}
+
+
+def test_a_pooled_window_is_the_groups_split_and_end_with_the_candle_counts_summed():
+    # NEWCOIN is listed first and is young: its own start (Aug 10, 2026) and its seconds must not
+    # become the group's, and BTC's candles are added to NEWCOIN's, not used in its place
+    young = _windowed(_coin("NEWCOIN_USDT", _rows([0.05] * 40), _rows([0.10] * 40),
+                            _rows(STEADY)[:160], QUIET), "Aug 10, 2026 12:00am", 360, 2160, 4.1)
+    old = _windowed(_coin("BTC_USDT", _rows([0.05] * 40), _rows([0.10] * 40),
+                          _rows(STEADY)[160:], QUIET), "Oct 23, 2025 12:00am", 6480, 2160, 61.0)
+    v = vp.verdict("v3_snap", "1h", "none", [young, old])
+    assert v["window"] == {"split": "Jul 25, 2026", "end": "Oct 23, 2026",
+                           "older_candles": 6840, "unseen_candles": 4320}
+    assert v["window"] is not young["windows"]["1h"], "a copy, never a coin's own record"
+    assert vp.verdict("v3_snap", "1h", "none", [old, young])["window"] == v["window"]
+
+
+def test_coins_measured_on_different_splits_are_refused_by_name():
+    coins = _two_coins(_rows(STEADY))
+    coins[1]["windows"]["1h"]["split"] = "Jul 26, 2026"
+    with pytest.raises(ValueError,
+                       match="v3_snap 1h: coins measured on different windows cannot be pooled"):
+        vp.verdict("v3_snap", "1h", "none", coins)
+
+
+def test_the_bootstrap_low_end_uses_the_verdicts_own_z_not_the_70_count_z():
+    # days alternate +1.335 and -0.665 a trade (four trades a day, 80 days): profit a trade +0.335;
+    # the day averages' sd is 1.0, so the error is about 0.11 (sqrt(1 / 80) = 0.1118, less the
+    # sampling noise of 2,000 draws) and 0.335 / 0.11 = 3.0 - between z_for(10) = 2.807 and the
+    # 70-count's Z = 3.384
+    unseen = []
+    for day in range(80):
+        unseen += [1.335] * 4 if day % 2 == 0 else [-0.665] * 4
+    ten = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(unseen)), tried=10)
+    default = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(unseen)))
+    se, per_trade = ten["bootstrap"]["se"], ten["unseen"]["per_trade"]
+    assert ten["z"] == pytest.approx(vp.z_for(10)) and default["z"] == vp.Z
+    assert ten["bootstrap"]["low"] == pytest.approx(per_trade - ten["z"] * se, abs=1e-9)
+    assert ten["checks"]["bootstrap"] is True and ten["passed"] is True
+    assert default["bootstrap"]["low"] == pytest.approx(per_trade - vp.Z * se, abs=1e-9)
+    assert default["checks"]["bootstrap"] is False and default["failed"] == "bootstrap"
+
+
+def test_exactly_300_unseen_trades_pass_the_trades_check():
+    three = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows([0.2] * 300)))
+    assert three["unseen"]["trades"] == 300 and three["checks"]["trades"] is True
+    assert three["passed"] is True and three["failed"] == ""
+
+
+def test_the_bootstrap_clusters_trades_by_the_day_they_closed_not_the_day_they_opened():
+    # 80 days, four trades closing on each; a day's four sum to +0.8 (+0.2 a trade) in any order,
+    # so by CLOSE day every cluster is alike and the error is 0. The first two trades of each day
+    # OPENED the day before (across midnight): by OPEN day the clusters differ, and the error is
+    # about 0.11
+    rows = []
+    for j in range(80):
+        pnls = [1.2, 1.2, -0.8, -0.8] if j % 2 == 0 else [-0.8, -0.8, 1.2, 1.2]
+        close = D0 + j * DAY + 3_600_000
+        for q, p in enumerate(pnls):
+            opened = close - 3_600_000 - (DAY if q < 2 else 0)
+            rows.append([opened - 60_000, opened, close, 1, p, "TP"])
+    se, days = vp.boot_se(rows, seed=1)
+    assert days == 80, "80 closing days, not the 81 opening days"
+    assert se == pytest.approx(0.0, abs=1e-9)
+
+
+def test_a_filter_that_blocked_every_signal_on_the_older_days_says_so():
+    # the real case is funding_minutes on 1d: every daily order goes in at a settlement, so the
+    # filter blocks every signal of every setting (1,234 and 900 here)
+    coin = _group("AAA_USDT", "v3_snap", "1h", "funding_minutes", {
+        "k1.5": _walk([], filter={"signal_candles": 1234, "blocked": 1234}),
+        "k2": _walk([], filter={"signal_candles": 900, "blocked": 900})})
+    v = vp.verdict("v3_snap", "1h", "funding_minutes", [coin])
+    assert (v["failed"], v["setting"]) == ("choose", None)
+    assert v["why"] == "funding_minutes blocked all 1,234 signals on the older days"
+
+
+def test_the_other_choose_failures_name_the_filter_they_ran_under():
+    # signals got through the filter, but too few trades came of them
+    coin = _group("AAA_USDT", "v3_snap", "1h", "busy_hours", {
+        "k1.5": _walk([], filter={"signal_candles": 50, "blocked": 10}),
+        "k2": _walk([], filter={"signal_candles": 40, "blocked": 0})})
+    v = vp.verdict("v3_snap", "1h", "busy_hours", [coin])
+    assert v["why"] == "no setting had 30 trades on the older days (busy_hours)"
+    assert vp.verdict("v3_trend", "1d", "none", [])["why"] == \
+        "no coin measured v3_trend on 1d (none)"
+
+
+def test_verdicts_refuses_the_same_coin_handed_over_twice_by_name():
+    coins = _two_coins(_rows(STEADY))
+    with pytest.raises(ValueError, match="AAA_USDT is listed twice"):
+        vp.verdicts(coins + [_two_coins(_rows(STEADY))[0]])
+
+
+def test_verdicts_refuses_coins_measured_at_different_risk_runs_or_plan_end_by_name():
+    for key, a, b in (("risk_usd", 1.0, 2.0), ("runs", 200, 199), ("plan_end_ms", 1, 2)):
+        coins = _two_coins(_rows(STEADY))
+        coins[0][key], coins[1][key] = a, b
+        with pytest.raises(ValueError, match=f"coins measured at different {key} cannot be pooled"):
+            vp.verdicts(coins)
+
+
+def test_the_run_count_error_names_the_coin_that_holds_another_number_of_runs():
+    coins = [_coin("AAA_USDT", _rows([0.05] * 40), _rows([0.10] * 40), _rows(STEADY)[:160],
+                   [[10, 1.0], [10, -1.0]]),
+             _coin("BBB_USDT", _rows([0.05] * 40), _rows([0.10] * 40), _rows(STEADY)[160:],
+                   [[10, 1.0], [10, -1.0], [10, 0.5]])]
+    with pytest.raises(ValueError, match="BBB_USDT holds 3 random runs, AAA_USDT holds 2"):
+        vp.verdicts(coins)
+
+
+def test_z_and_tried_are_refused_by_name_when_they_cannot_make_a_correction():
+    coins = _two_coins(_rows(STEADY))
+    for z in (float("nan"), 0.0, -1.0):
+        with pytest.raises(ValueError, match="z must be positive"):
+            vp.verdict("v3_snap", "1h", "none", coins, z=z)
+    for tried in (0, -3, 2.5, True, 10.0):
+        with pytest.raises(ValueError, match="tried must be a positive whole number"):
+            vp.verdict("v3_snap", "1h", "none", coins, tried=tried)
+        with pytest.raises(ValueError, match="tried must be a positive whole number"):
+            vp.verdict("v3_snap", "1h", "none", coins, z=3.0, tried=tried)

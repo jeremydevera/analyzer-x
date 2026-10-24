@@ -3,6 +3,7 @@ backtest-v3-part2-decisions.md, "The families"): each rule's signals worked by
 hand on small candle series, their exits, their lead-ins, their universes, and
 the count of combinations the luck correction divides by."""
 import calendar
+import random
 
 import pytest
 
@@ -285,3 +286,112 @@ def test_an_unknown_family_is_refused_by_name():
             vf.rule("v3_strength", 3, "1d", bars, sym="D_USDT", plan=plan)
         with pytest.raises(ValueError, match="needs the plan's Monday ranks"):
             vf.forced("v3_strength", 3, "1d", bars, sym="D_USDT", plan=plan)
+
+
+def _walk_bars(n, bar, seed):
+    """n candles of a seeded random walk from Oct 01, 2026 00:00 UTC, `bar` ms long, in drift
+    regimes of 150 candles (+0.4% a candle, then -0.4%) so every rule fires both ways: each close
+    is the last one moved by a 2%-sigma step, with a high and a low up to 1% either side."""
+    rnd = random.Random(seed)
+    px, close, high, low = 100.0, [], [], []
+    for k in range(n):
+        new = px * (1 + rnd.gauss(0.004 if (k // 150) % 2 == 0 else -0.004, 0.02))
+        high.append(max(px, new) * (1 + 0.01 * rnd.random()))
+        low.append(min(px, new) * (1 - 0.01 * rnd.random()))
+        close.append(new)
+        px = new
+    return _bars(close, high, low, bar=bar)
+
+
+def _ranked_series(bars, seed):
+    """A plan whose Monday ranks cover the daily series: D's place in a 12-coin list is drawn
+    from 1-12 or absent, and one Monday in ten is not ranked at all - so top-K membership, the 2K
+    band, a coin missing from a ranking and an unranked Monday all occur."""
+    rnd = random.Random(seed)
+    others = [f"{x}_USDT" for x in "ABCEFGHIJKL"]
+    ranks, monday = {}, MONDAYS[0]
+    while monday <= bars["t"][-1] + DAY:
+        place = rnd.choice([*range(1, 13), None])
+        if rnd.random() >= 0.1:
+            ranks[str(monday)] = (others if place is None
+                                  else others[:place - 1] + ["D_USDT"] + others[place - 1:])
+        monday += 7 * DAY
+    return {"months": [], "liquid": {}, "calm": {}, "strength": ranks}
+
+
+def _plan_at(plan, now, later):
+    """The plan as it stood at `now` (a candle's close): the Mondays ranked by then; the later
+    ones either gone ("cut") or with their ranking turned upside down ("replaced")."""
+    ranks = {}
+    for key, ranking in plan["strength"].items():
+        if int(key) <= now:
+            ranks[key] = ranking
+        elif later == "replaced":
+            ranks[key] = ranking[::-1]
+    return {**plan, "strength": ranks}
+
+
+def _scaled_after(col, k):
+    """The column with every candle from the cut on moved: x3, x0.3, x3, ... - one factor a
+    candle, the same for its open, high, low and close."""
+    return col[:k] + [x * (0.3 if j % 2 else 3.0) for j, x in enumerate(col[k:])]
+
+
+def _same(what, got, want):
+    assert len(got) == len(want), f"{what}: {len(got)} values where {len(want)} were expected"
+    first = next((i for i, (a, b) in enumerate(zip(got, want, strict=True)) if a != b), None)
+    assert first is None, f"{what}: candle {first} changes with what comes after the cut"
+
+
+def test_no_rule_reads_a_candle_after_the_one_it_signals_on():
+    """Every family, setting and timeframe, on a seeded random walk long enough for its lookback:
+    the rule, the forced exit and the entry days of the series CUT at about ten points equal the
+    whole series' first part, AND that first part does not move when everything after the cut is
+    REPLACED (each later candle x3 or x0.3, each later Monday's ranking upside down). Neither
+    alone is enough: a decision is mostly 0, and a peek at a smooth average rarely flips one (the
+    Crypto-Predictor port's planted peek moved 0 of 13 decisions and was caught by comparing the
+    readings) - so the replacement; and it leaves the candle times alone - so the cut. Some cuts
+    end ON a candle the series decides on, where a peek one candle past the cut changes that
+    very decision."""
+    bar = {"1h": 3_600_000, "4h": 4 * 3_600_000, "1d": DAY}
+    series = {}
+    for seed, tf in enumerate(bar, start=1):
+        # the longest lookback of any setting that runs on this timeframe (trend n = 100 on 4h: 630)
+        longest = max(vf.lookback(f, v, tf) for f, d in vf.FAMILIES.items() if tf in d["tfs"]
+                      for v in d["settings"])
+        series[tf] = _walk_bars(longest + 250, bar[tf], seed)
+    plan = _ranked_series(series["1d"], seed=7)
+    for fam, spec in vf.FAMILIES.items():
+        for tf in spec["tfs"]:
+            bars, n = series[tf], len(series[tf]["t"])
+            for value in spec["settings"]:
+                what = f"{fam} {vf.setting_key(fam, value)} {tf}"
+                whole = vf.rule(fam, value, tf, bars, sym="D_USDT", plan=plan)
+                out = vf.forced(fam, value, tf, bars, sym="D_USDT", plan=plan)
+                days = vf.entry_days(fam, bars, tf)
+                decided = [i for i in range(n) if whole[i] or (out and out[i])]
+                assert len(decided) >= 8, (
+                    f"{what}: only {len(decided)} candles decided - nothing to cut at")
+                spread = [decided[round(j * (len(decided) - 1) / 3)] for j in range(4)]
+                # just past the lookback, the middle of what can signal, the last-but-one candle,
+                # ON four decided candles and just before three of them
+                lb = vf.lookback(fam, value, tf)
+                cuts = {lb + 1, (lb + n) // 2, n - 1} | {i + 1 for i in spread} | set(spread[1:])
+                for k in sorted(cuts):
+                    now = bars["t"][k - 1] + bar[tf]
+                    cut = {name: col[:k] for name, col in bars.items()}
+                    moved = {name: _scaled_after(col, k)
+                             for name, col in bars.items() if name != "t"}
+                    moved["t"] = bars["t"]
+                    for kind, part in (("cut", cut), ("replaced", moved)):
+                        plan_k = _plan_at(plan, now, kind)
+                        where = f"{what}, {kind} at {k}"
+                        got = vf.rule(fam, value, tf, part, sym="D_USDT", plan=plan_k)
+                        _same(f"{where}, rule", got[:k], whole[:k])
+                        got = vf.forced(fam, value, tf, part, sym="D_USDT", plan=plan_k)
+                        if out is None:
+                            assert got is None, f"{where}: forced is only for strength"
+                        else:
+                            _same(f"{where}, forced", got[:k], out[:k])
+                        got = vf.entry_days(fam, part, tf)
+                        _same(f"{where}, entry days", got[:k], days[:k])

@@ -226,8 +226,10 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | No
     older = {k: [r for w in _walks(used, ck[k], "older") for r in w["rows"]] for k in keys}
     chosen, table = choose(older, keys)
     wins = [c["windows"][tf] for c in used if tf in c.get("windows", {})]
-    if len({(w.get("split"), w.get("end")) for w in wins}) > 1:
-        raise ValueError(f"{family} {tf}: coins measured on different windows cannot be pooled")
+    # One plan end - `_refuse_mixed` has seen to it - is one split and one end, so the window's text
+    # is the first coin's label of that one instant. The texts are never compared: each machine
+    # prints them in its own time zone, and a coin measured on this PC and one measured on GitHub
+    # print the same instant two ways
     window = ({"split": wins[0].get("split"), "end": wins[0].get("end"),
                "older_candles": sum(int(w.get("older_candles", 0)) for w in wins),
                "unseen_candles": sum(int(w.get("unseen_candles", 0)) for w in wins)}

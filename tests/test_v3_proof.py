@@ -13,6 +13,7 @@ from tradingagents import v3_families as vf, v3_proof as vp
 
 DAY = 86_400_000
 D0 = calendar.timegm((2026, 7, 25, 0, 0, 0)) * 1000        # the unseen days start here
+PLAN_END = calendar.timegm((2026, 10, 23, 0, 0, 0)) * 1000  # the plan's end: D0 + 90 days
 KEY = vf.combo_key("v3_snap", "k2", "1h", "none")
 KEY15 = vf.combo_key("v3_snap", "k1.5", "1h", "none")
 
@@ -305,11 +306,35 @@ def test_a_pooled_window_is_the_groups_split_and_end_with_the_candle_counts_summ
 
 
 def test_coins_measured_on_different_splits_are_refused_by_name():
+    # a split is the plan's end less 90 days, so coins of two plan ends have two splits - and it is
+    # that number, never the date a machine printed for it, that tells the two windows apart
     coins = _two_coins(_rows(STEADY))
+    coins[0]["plan_end_ms"], coins[1]["plan_end_ms"] = PLAN_END, PLAN_END + DAY
     coins[1]["windows"]["1h"]["split"] = "Jul 26, 2026"
-    with pytest.raises(ValueError,
-                       match="v3_snap 1h: coins measured on different windows cannot be pooled"):
+    with pytest.raises(ValueError, match="coins measured at different plan_end_ms cannot be pooled: "
+                                         f"BBB_USDT at {PLAN_END + DAY}, AAA_USDT at {PLAN_END}"):
         vp.verdict("v3_snap", "1h", "none", coins)
+
+
+def test_two_coins_of_one_plan_pool_whatever_time_zone_their_dates_were_printed_in():
+    # one plan: a split of Jul 25, 2026 00:00 UTC and an end of Oct 23, 2026 00:00 UTC. A runner on
+    # UTC prints them so; this PC, on New York time (UTC-4 in July and in October), prints the same
+    # two instants as the evening before. The plan's end says they are one window; the texts are
+    # labels of it and are never compared
+    coins = _two_coins(_rows(STEADY))
+    for c in coins:
+        c["plan_end_ms"] = PLAN_END
+    coins[0]["windows"]["1h"].update(split="Jul 25, 2026 12:00am", end="Oct 23, 2026 12:00am")
+    coins[1]["windows"]["1h"].update(split="Jul 24, 2026 8:00pm", end="Oct 22, 2026 8:00pm")
+    v = vp.verdict("v3_snap", "1h", "none", coins)
+    assert v["coins"] == ["AAA_USDT", "BBB_USDT"]
+    # the group's label is one coin's text of that one instant: the first coin's
+    assert (v["window"]["split"], v["window"]["end"]) == ("Jul 25, 2026 12:00am",
+                                                           "Oct 23, 2026 12:00am")
+    back = vp.verdict("v3_snap", "1h", "none", coins[::-1])
+    assert back["coins"] == ["BBB_USDT", "AAA_USDT"]
+    assert (back["window"]["split"], back["window"]["end"]) == ("Jul 24, 2026 8:00pm",
+                                                                 "Oct 22, 2026 8:00pm")
 
 
 def test_the_bootstrap_low_end_uses_the_verdicts_own_z_not_the_70_count_z():

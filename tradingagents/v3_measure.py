@@ -38,6 +38,7 @@ run's [trades, profit].
 from __future__ import annotations
 
 import bisect
+import math
 import time
 
 from tradingagents import (
@@ -95,23 +96,26 @@ def flat_gap(sym: str, book, *, fx, split_ms: int | None = None) -> tuple[float,
     too — so with `split_ms` the source says how many of those minutes lie on
     the older days (counted as `usual_slip` counts, on the book cut as the
     older walk's is). With no recorded minute: one live reading of the book,
-    or the app's paper figure (a live reading of 0 is never a free 0), each
-    named for what it is."""
+    or the app's paper figure. A live reading that is not a positive finite
+    number - 0, below 0, not a number, infinite, none at all - is no reading:
+    never a free, a missing or an infinite cost. Each is named for what it is."""
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br, cost_store
 
     slip, n = cost_store.usual_slip(book)
     if slip is not None:
-        source = f"the median of its {n:,} recorded minutes"
+        source = f"the median of its {n:,} recorded minutes whose book did not run out"
         if split_ms is not None:
             older = cost_store.usual_slip(_book_before(book, split_ms))[1]
             source += f", {older:,} of them on the older days"
         return slip, source
     try:
-        live = float(fx.book_cost(sym, BOOK_USD).get("slippage") or 0.0)
-        if not live:
-            return at.PAPER_SLIPPAGE, ("the app's paper figure: its one live reading said 0 "
-                                       "(no minute recorded)")
+        said = fx.book_cost(sym, BOOK_USD).get("slippage")
+        live = None if said is None else float(said)
+        if live is None or not (math.isfinite(live) and live > 0):
+            shown = "None" if live is None else format(live, "g")
+            return at.PAPER_SLIPPAGE, (f"the app's paper figure: its one live reading said "
+                                       f"{shown} (no minute recorded)")
         return (br.charged_slippage([live]),
                 "one live reading of its book (no minute recorded)")
     except Exception as exc:                                   # noqa: BLE001

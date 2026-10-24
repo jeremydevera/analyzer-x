@@ -6,6 +6,7 @@ before the window is flat candles the indicators read and nothing trades on.
 The unseen days are shortened to 3 here (the real run's are 90)."""
 import calendar
 import time
+import types
 
 import numpy as np
 import pandas as pd
@@ -232,7 +233,7 @@ def test_the_coins_own_flat_gap_and_the_books_coverage_come_first(monkeypatch, g
     assert pre["flat_slip"] == pytest.approx(0.0002)
     # the one reading is stamped at the window's first second: before the split, on the older days
     assert pre["flat_slip_source"] == (
-        "the median of its 1 recorded minutes, 1 of them on the older days")
+        "the median of its 1 recorded minutes whose book did not run out, 1 of them on the older days")
     # it answers its own minute and the 60 after it: 61 of the older days' 7 x 1,440 minutes;
     # nothing of the unseen days
     assert pre["coverage_older"] == pytest.approx(61 / (7 * 1440))
@@ -266,14 +267,14 @@ def test_the_flat_gaps_source_says_how_many_of_its_minutes_lie_on_the_older_days
                   _reading(split, 0.0004), _reading(split + 3600, 0.0006)])
     assert pre["flat_slip"] == pytest.approx(0.0004)
     assert pre["flat_slip_source"] == (
-        "the median of its 3 recorded minutes, 1 of them on the older days")
+        "the median of its 3 recorded minutes whose book did not run out, 1 of them on the older days")
     # what a real coin is today: the store's 61 days all lie after the split, so the gap every
     # older exit pays comes from minutes none of which is on the older days (the median of 0.04%
     # and 0.06% is 0.05%), and the older days have no reading of their own
     pre = pre_of([_reading(split, 0.0004), _reading(split + 3600, 0.0006)])
     assert pre["flat_slip"] == pytest.approx(0.0005)
     assert pre["flat_slip_source"] == (
-        "the median of its 2 recorded minutes, 0 of them on the older days")
+        "the median of its 2 recorded minutes whose book did not run out, 0 of them on the older days")
     assert pre["coverage_older"] == 0.0
 
 
@@ -545,6 +546,19 @@ def test_the_flat_gap_falls_back_to_a_live_read_then_to_the_paper_figure_and_say
     # and the figure then is the app's own, not a reading of the book: the words say so
     assert vm.flat_gap("X_USDT", empty, fx=Live(0.0))[1] == (
         "the app's paper figure: its one live reading said 0 (no minute recorded)")
+
+    # a reading that is not a positive finite number - below 0, not a number, infinite, or none at
+    # all - is no reading either: the paper figure again, never a None figure (the walk would die on
+    # a bare TypeError) and never an infinite cost, and the words print what the book said
+    class Silent:                           # a book that answers with no slippage at all
+        def book_cost(self, sym, notional):
+            return {}
+
+    for fx, said in ((Live(-0.0001), "-0.0001"), (Live(float("nan")), "nan"),
+                     (Live(float("inf")), "inf"), (Silent(), "None")):
+        assert vm.flat_gap("X_USDT", empty, fx=fx) == (
+            at.PAPER_SLIPPAGE,
+            f"the app's paper figure: its one live reading said {said} (no minute recorded)")
     assert vm.flat_gap("X_USDT", None, fx=Live(None)) == (
         at.PAPER_SLIPPAGE, "the app's paper figure: no book could be read (RuntimeError)")
 
@@ -569,3 +583,243 @@ def test_the_candles_are_cut_at_the_plans_end_never_at_the_clock():
     got = vm.bars_of(df, H, END_A)
     assert got["t"] == [END_A - 2 * H, END_A - H] and got["c"] == [1.0, 2.0]
     assert np.int64(got["t"][0]) == END_A - 2 * H
+
+
+# ---- wires the tests above leave open: funding, the risk, the random runs' seeds, draws and data
+
+class SpikedFunding(FakeFx):
+    """Funding at 0.01% every 8 hours, except Friday Sep 25's 08:00 settlement, at 0.09%."""
+
+    def funding_history(self, sym, since_ms=None):
+        return [{"settle_ms": x, "rate": 0.0009 if x == _utc(2026, 9, 25, 8) else 0.0001,
+                 "cycle_h": 8}
+                for x in range(self.start - 60 * DAY, self.end + 1, 8 * H)]
+
+
+class FailingFunding(FakeFx):
+    def funding_history(self, sym, since_ms=None):
+        raise RuntimeError("funding history for XAU_USDT is incomplete: page 3 failed")
+
+
+class DipLeadFx(FakeFx):
+    """World A, but the two hours 30 and 29 before the window dip as well: a signal in the lead-in
+    (the dip hour closes at 99.3, the next hour trades down through it and back to 100)."""
+
+    def klines(self, sym, iv, limit):
+        df = super().klines(sym, iv, limit)
+        if iv != "Min60":
+            return df
+        t = df["Date"].to_numpy().astype("datetime64[ms]").astype("int64")
+        dip, after = df.index[t == self.start - 30 * H][0], df.index[t == self.start - 29 * H][0]
+        df.loc[dip, ["Open", "High", "Low", "Close"]] = [99.3, 99.4, 99.2, 99.3]
+        df.loc[after, ["Open", "High", "Low", "Close"]] = [99.3, 100.1, 99.25, 100.0]
+        return df
+
+
+def _world_a(monkeypatch, fx_cls, special, **kw):
+    from tradingagents import cost_store
+
+    monkeypatch.setattr(cost_store, "engine_book", lambda *a, **k: _book(START_A // 1000))
+    plan = _plan(START_A, END_A, {"2026-09": ["XAU_USDT"], "2026-10": ["XAU_USDT"]})
+    return vm.measure_coin("XAU_USDT", plan, fx=fx_cls(START_A, END_A, special), **kw)
+
+
+def test_funding_side_holds_a_long_that_follows_the_highest_payment_of_30_days(
+        monkeypatch, gate_floors):
+    rec = _world_a(monkeypatch, SpikedFunding, _dips(OLD_DIP, EDGE_DIP, NEW_DIP), runs=1)
+    # the older dip's order goes in on Friday Sep 25 at 11:00; the last settlement before it is
+    # that day's 08:00, at 0.09%: of the 90 settlements of the 30 days before the order only that
+    # one is at or above its own rate, and 1 is not over a tenth (9): the long is held. The unseen
+    # dip's order (Saturday Oct 03, 11:00) follows a 0.01% payment that all 90 are at or above
+    fs = rec["combos"][vf.combo_key("v3_snap", "k1.5", "1h", "funding_side")]
+    assert fs["older"]["rows"] == []
+    assert fs["older"]["filter"] == {"signal_candles": 1, "blocked": 1}
+    assert len(fs["unseen"]["rows"]) == 1 and "blocked" not in fs["unseen"]["filter"]
+
+
+def test_funding_reaches_both_walks_and_a_failed_funding_page_fails_the_coin(
+        monkeypatch, gate_floors):
+    # the fake's funding covers every hold: a walk handed none would count its hold as
+    # funding_estimated
+    snap = _world_a(monkeypatch, FakeFx, _dips(OLD_DIP, EDGE_DIP, NEW_DIP), runs=1)["combos"][SNAP]
+    assert snap["older"]["rows"] and snap["unseen"]["rows"]
+    assert "funding_estimated" not in snap["older"]["counts"]
+    assert "funding_estimated" not in snap["unseen"]["counts"]
+    # and a page that fails is the coin's failure, never a shorter history that makes trades cheap
+    with pytest.raises(RuntimeError, match="page 3 failed"):
+        _world_a(monkeypatch, FailingFunding, {}, runs=1)
+
+
+def test_every_walk_gets_the_risk_the_gap_the_fees_and_the_coins_data(monkeypatch, gate_floors):
+    monkeypatch.setattr(vf, "FAMILIES", {"v3_snap": vf.FAMILIES["v3_snap"]})
+    seen = []
+    real_walk = vm.ve.walk
+
+    def spy(bars, dirs, spec, **kw):
+        seen.append((len(bars["t"]), kw))
+        return real_walk(bars, dirs, spec, **kw)
+
+    monkeypatch.setattr(vm.ve, "walk", spy)
+    # an unseen dip on Friday Oct 02 the busy-hours filter lets through: runs are drawn
+    rec = _world_a(monkeypatch, FakeFx, _dips(OLD_DIP, _utc(2026, 10, 2, 10)), runs=3,
+                   risk_usd=2.0)
+    # 2 settings x 2 timeframes x 5 filters x (older + unseen) = 40 real walks, and 3 random runs
+    # on each combination whose real unseen run placed an order
+    assert len(seen) > 40
+    for n, kw in seen:
+        assert kw["risk_usd"] == 2.0 and kw["fees"] == rec["pre"]["fees"]
+        assert kw["flat_slip"] == rec["pre"]["flat_slip"]
+        assert kw["fine"] and kw["fine"][0] and kw["book"] is not None and kw["funding"]
+        assert 0 < kw["start"] < n - 1
+
+
+def test_a_random_runs_seed_names_the_coin_timeframe_family_filter_and_run(
+        monkeypatch, gate_floors):
+    calls = []
+    real_seed = vm.vrn.seed_of
+
+    def spy(*parts):
+        calls.append(parts)
+        return real_seed(*parts)
+
+    monkeypatch.setattr(vm.vrn, "seed_of", spy)
+    rec = _world_a(monkeypatch, FakeFx, _dips(OLD_DIP, EDGE_DIP, NEW_DIP), runs=3)
+    want = set()
+    for key in rec["combos"]:
+        fam, _setting, tf, filt = key.split("|")
+        want |= {("XAU_USDT", tf, fam, filt, k) for k in range(3)}
+    # five parts, each its own: without the run number all 200 runs would be one draw
+    assert set(calls) == want
+
+
+def test_random_runs_are_drawn_only_on_candles_the_filter_lets_the_order_into(
+        monkeypatch, gate_floors):
+    monkeypatch.setattr(vf, "FAMILIES", {"v3_snap": vf.FAMILIES["v3_snap"]})
+    monkeypatch.setattr(vf, "FILTERS", ("busy_hours",))
+    calls = []
+    real_candidates = vm.vrn.candidates
+
+    def spy(t, bar_ms, start, long_ok, short_ok):
+        calls.append((list(t), bar_ms, start, list(long_ok), list(short_ok)))
+        return real_candidates(t, bar_ms, start, long_ok, short_ok)
+
+    monkeypatch.setattr(vm.vrn, "candidates", spy)
+    # the real unseen order goes in on Friday Oct 02, 11:00, so runs are drawn; the Saturday's
+    # candles are ones busy_hours holds, for the long side and for the short
+    _world_a(monkeypatch, FakeFx, _dips(OLD_DIP, _utc(2026, 10, 2, 10)), runs=2)
+    assert calls
+    weekdays = 0
+    for t, bar_ms, start, long_ok, short_ok in calls:
+        for i in range(start, len(t) - 1):
+            weekday = time.gmtime((t[i] + bar_ms) / 1000).tm_wday < 5
+            assert long_ok[i] == weekday and short_ok[i] == weekday, (bar_ms, i)
+            weekdays += weekday
+    assert weekdays
+
+
+def test_the_older_walks_lead_in_can_never_open_a_trade(monkeypatch, gate_floors):
+    rec = _world_a(monkeypatch, DipLeadFx, _dips(OLD_DIP, EDGE_DIP, NEW_DIP), runs=1)
+    rows = [r for c in rec["combos"].values() for r in c["older"]["rows"]]
+    assert rows, "the window's own dip still trades"
+    assert all(r[0] >= START_A for r in rows), "an older trade signalled before the window"
+
+
+def test_a_timeframe_with_one_unseen_candle_is_skipped_and_named(monkeypatch, gate_floors):
+    monkeypatch.setattr(vm, "UNSEEN_DAYS", 1)
+    rec = _world_a(monkeypatch, FakeFx, {}, runs=1)
+    assert rec["skipped"] == {"1d": "9 older and 1 unseen 1d candles"}
+    assert {k.split("|")[2] for k in rec["combos"]} == {"1h", "4h"}
+
+
+# ---- what the seven above leave open: the unseen walk's lead-in, and the windows a coin is read over
+
+def test_the_unseen_walks_lead_in_can_never_open_a_trade(monkeypatch, gate_floors):
+    # DipLeadFx's two dipped hours, Sep 22 18:00 and 19:00, lie before the window and inside the
+    # unseen walk's lead-in (300 hours before the split reach back to Sep 18 12:00): that walk
+    # starts at the split, so what they signalled is read and never traded
+    rec = _world_a(monkeypatch, DipLeadFx, _dips(OLD_DIP, EDGE_DIP, NEW_DIP), runs=1)
+    rows = [r for c in rec["combos"].values() for r in c["unseen"]["rows"]]
+    assert rows, "the unseen days' own dip still trades"
+    assert all(r[0] >= SPLIT_A for r in rows), "an unseen trade signalled before the split"
+
+
+class RecordingFx(FakeFx):
+    """World A's fake, remembering every read it was asked for."""
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self.asked = {"klines": [], "minutes": [], "funding": []}
+
+    def klines(self, sym, iv, limit):
+        self.asked["klines"].append((iv, limit))
+        return super().klines(sym, iv, limit)
+
+    def minutes(self, sym, start_s, end_s):
+        self.asked["minutes"].append((start_s, end_s))
+        return super().minutes(sym, start_s, end_s)
+
+    def funding_history(self, sym, since_ms=None):
+        self.asked["funding"].append(since_ms)
+        return super().funding_history(sym, since_ms)
+
+
+def _clock_at_the_plans_end(monkeypatch):
+    """Stop v3_measure's clock at the plan's end, so the candle counts it asks for are exact."""
+    monkeypatch.setattr(vm, "time", types.SimpleNamespace(time=lambda: END_A / 1000))
+
+
+def test_a_coin_is_read_once_over_the_windows_it_needs(monkeypatch, gate_floors):
+    from tradingagents import cost_store
+
+    books = []
+    monkeypatch.setattr(cost_store, "engine_book",
+                        lambda *a, **k: books.append(a) or _book(START_A // 1000))
+    _clock_at_the_plans_end(monkeypatch)
+    fx = RecordingFx(START_A, END_A, {})
+    plan = _plan(START_A, END_A, {"2026-09": ["XAU_USDT"], "2026-10": ["XAU_USDT"]})
+    vm.measure_coin("XAU_USDT", plan, runs=1, fx=fx)
+    # one read of each kind: the minutes and the order book of the whole window [start, end), and
+    # the funding from 31 days before it - the 30 days funding_side looks back from the first
+    # order, and one more - never from the window's start or the split
+    assert fx.asked["minutes"] == [(START_A // 1000, END_A // 1000)]
+    assert books == [("XAU_USDT", START_A // 1000, END_A // 1000)]
+    assert fx.asked["funding"] == [START_A - 31 * DAY]
+    # one candle read per timeframe, long enough for that timeframe's longest lead-in. The window
+    # is 10 days: 240 1h candles, 60 4h, 10 1d. The longest lead-in is 300 candles on 1h (snap),
+    # 630 on 4h (v3_trend n=100 reads 100 x 6 + 5 x 6) and 300 on 1d (no rule reads more than
+    # 105); the code asks for two candles more
+    assert sorted(fx.asked["klines"]) == [("Day1", 10 + 300 + 2), ("Hour4", 60 + 630 + 2),
+                                           ("Min60", 240 + 300 + 2)]
+
+
+def test_each_setting_walks_the_lead_in_it_needs_before_the_window_and_before_the_split(
+        monkeypatch, gate_floors):
+    monkeypatch.setattr(vf, "FAMILIES", {"v3_trend": vf.FAMILIES["v3_trend"]})
+    monkeypatch.setattr(vf, "FILTERS", ("none",))
+    _clock_at_the_plans_end(monkeypatch)
+    seen = []
+    real_walk = vm.ve.walk
+
+    def spy(bars, dirs, spec, **kw):
+        seen.append(((kw["bar_s"], spec["ma_n"]), kw["start"], len(bars["t"])))
+        return real_walk(bars, dirs, spec, **kw)
+
+    monkeypatch.setattr(vm.ve, "walk", spy)
+    _world_a(monkeypatch, FakeFx, {}, runs=1)
+    walked = {}
+    for key, start, n in seen:
+        walked.setdefault(key, []).append((start, n))       # the older walk, then the unseen one
+    # (bar seconds, average length) -> [(first tradable candle, candles walked)] older, unseen.
+    # On 4h the frozen clock makes the read 60 + 630 + 2 = 692 candles, 632 before the window, 42
+    # older and 18 unseen after it. A setting's walk starts `lead` candles into its view - 300,
+    # 330 and 630 for n = 20, 50 and 100 (6n + 30 where that is over 300) - so the older view is
+    # the lead-in and the 42 older candles (342, 372, 672) and the unseen view the lead-in and the
+    # 18 unseen ones (318, 348, 648). On 1d (7 older, 3 unseen) every setting's lead is 300
+    four, day = 4 * 3600, 86400
+    assert walked == {
+        (four, 120): [(300, 342), (300, 318)],
+        (four, 300): [(330, 372), (330, 348)],
+        (four, 600): [(630, 672), (630, 648)],
+        (day, 20): [(300, 307), (300, 303)],
+        (day, 50): [(300, 307), (300, 303)],
+        (day, 100): [(300, 307), (300, 303)]}

@@ -125,16 +125,20 @@ def _span(daily: dict, lo_ms: int, hi_ms: int) -> tuple[int, int]:
 
 
 def traded_value(daily: dict, contract_size: float, at_ms: int) -> float:
-    """What traded in the VALUE_DAYS daily candles that closed by `at_ms`, in
-    dollars: the sum of volume x contract size x close."""
+    """What traded in the VALUE_DAYS daily candles that opened in the VALUE_DAYS
+    days before `at_ms`, in dollars: the sum of volume x contract size x
+    close. At a UTC midnight — every caller passes a month start — those are
+    exactly the candles that closed by then."""
     a, b = _span(daily, at_ms - VALUE_DAYS * DAY_MS, at_ms)
     return sum(daily["v"][k] * contract_size * daily["c"][k] for k in range(a, b))
 
 
 def realized_vol(daily: dict, at_ms: int) -> float | None:
-    """The standard deviation of the VOL_DAYS daily log returns that closed by
-    `at_ms` (VOL_DAYS + 1 closes); None when any of those days is missing:
-    unknown is never calm."""
+    """The standard deviation of the VOL_DAYS daily log returns of the
+    VOL_DAYS + 1 candles that opened in the days before `at_ms` (at a UTC
+    midnight — a month start, as every caller passes — the ones that closed
+    by then); None when any of those days is missing or a close is 0 or
+    less: unknown is never calm."""
     a, b = _span(daily, at_ms - (VOL_DAYS + 1) * DAY_MS, at_ms)
     closes = daily["c"][a:b]
     if len(closes) < VOL_DAYS + 1 or min(closes) <= 0:

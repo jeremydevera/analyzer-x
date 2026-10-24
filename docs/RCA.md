@@ -232,7 +232,8 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 2. The made-up coins, the younger one listed first: NEWCOIN_USDT (window start `Jun 10, 2026 12:00am`, 1,080 older candles, 2,160 unseen candles, 4.1 seconds) and BTC_USDT (start `Oct 23, 2025 12:00am`, 6,600 older candles, 2,160 unseen candles, 61.0 seconds). Both have the split `Jul 25, 2026` and the end `Oct 23, 2026`.
 3. Before the fix, the group reads NEWCOIN's own record: start `Jun 10, 2026 12:00am`, 1,080 older candles, 2,160 unseen candles, 4.1 seconds. Listed the other way round, it reads BTC's record: start `Oct 23, 2025 12:00am`, 6,600 older candles, 61.0 seconds. One group, two labels, decided by the order of the list.
 4. After the fix, both orders give the same window: split `Jul 25, 2026`, end `Oct 23, 2026`, 7,680 older candles (1,080 + 6,600) and 4,320 unseen candles (2,160 + 2,160), with no start and no seconds, in a new dict and never a coin's record.
-5. A group whose coins were measured on different splits is refused, with `v3_snap 1h: coins measured on different windows cannot be pooled`.
+5. A group whose coins were measured on different plans is refused by `v3_proof._refuse_mixed`, which `verdict()` calls first, with `coins measured at different plan_end_ms cannot be pooled: <coin> at <value>, <coin> at <value>` (the differing coin first, then the first coin). Two coins of one plan whose dates were printed in two time zones pool: the plan's end says they are one window, and the printed texts are never compared.
+6. The first version of this fix (`20a7bd10cee5`) also refused a group whose printed split and end differed, with `v3_snap 1h: coins measured on different windows cannot be pooled`; `620450fcf171` removed that printed-date check, because a date printed in one machine's time zone is not the plan (this PC, on New York time, prints the instant a runner on UTC prints as "Jul 25, 2026 12:00am" as "Jul 24, 2026 8:00pm").
 
 **ROOT CAUSE** - `verdict` took its window as `next((c["windows"][tf] for c in used ...), None)`, which is the first coin's own record. A window record holds that coin's own start, candle counts and seconds; only the split and the end are the plan's, shared by every coin. A pooled label therefore described one coin, and which coin depended on the order of the list.
 
@@ -398,29 +399,38 @@ by removing it in memory.
   (FRAX_USDT is never named; USD1_USDT and USDC_USDT still are).
 
 **SAW** - nothing on a screen, and no plan from the real exchange yet: **NEVER
-HAPPENED YET**. Found by the review hunt of the universe minutes after its
-commit, on `Oct 23, 2026 6:35pm`: the plan's `left_out` would have read
-"FRAX_USDT: a stablecoin: it barely moves, so it is never calm or liquid" for a
-coin quoted at 0.2593.
+HAPPENED YET**. Found by the implementer's own hunt on the universe's task,
+made before its commit (`Oct 23, 2026 6:33pm`): it priced FRAX_USDT on the
+saved listing at 0.2608, and the list was kept as ruled with the finding
+written into that commit's message. The fix round priced every name at
+`Oct 23, 2026 6:35pm` (FRAX at 0.2593) and `66333d30facc` took FRAX out. What
+the plan's `left_out` would have read: "FRAX_USDT: a stablecoin: it barely
+moves, so it is never calm or liquid" for a coin quoted at 0.2593.
 
-**TIMELINE** (steps 1-3 happened; step 4 is what the plan would have said)
+**TIMELINE** (steps 1-4 and 6 happened; step 5 is what the plan would have said)
 
 1. `Oct 23, 2026` - Ruling A names 16 base names as stablecoins, written from
    knowledge of dollar tokens; its four volatility indices and USDC came from
    the real plan's October calm group.
-2. `Oct 23, 2026 6:33pm` (`6c6398fa0f16`) - the universe is committed with the
+2. Before `Oct 23, 2026 6:33pm` - the implementer's hunt prices FRAX_USDT on
+   the saved listing at 0.2608 (index 0.2616; maintenance 2.5% like USTC and
+   MOVE, where USD1 and USDC sit at 1.00 with 1%): the governance token. The
+   list is kept as ruled, and the finding is written into the commit message
+   ("noted, not changed (Ruling A's list is as ruled)").
+3. `Oct 23, 2026 6:33pm` (`6c6398fa0f16`) - the universe is committed with the
    list as ruled; its 12 tests pass (a made-up world with USDC, USDE and BVOL;
    none reads a real price).
-3. `Oct 23, 2026 6:35pm` - the hunt prices every name on the saved listing
+4. `Oct 23, 2026 6:35pm` - the fix round prices every name on the saved listing
    (1,061 contracts): 3 of the 16 names have a contract. USDC 1.0000 (index
    1.0010), USD1 0.9985 (index 0.9999), FRAX **0.2593** (index 0.2595; 0.2608
    at the first read; 74.07% off $1.00; maintenance 2.5% like USTC and MOVE).
    The other 13 names have no contract. On that listing the committed module
-   named 7 contracts, FRAX among them.
-4. Had it shipped: the real plan's `left_out` would have named FRAX, and if it
+   named 7 contracts, FRAX among them. At `Oct 23, 2026 6:52pm`
+   (`66333d30facc`) FRAX is taken out, on the controller's ruling.
+5. Had it shipped: the real plan's `left_out` would have named FRAX, and if it
    ever reached the top 50 by traded value it would have been missing from
    `liquid` and `calm` while trading like any small coin.
-5. After the fix: 15 names, and 6 contracts named on the same listing (BVOL,
+6. After the fix: 15 names, and 6 contracts named on the same listing (BVOL,
    EVOL, GVZ, VOLX, USDC, USD1). Looked at the other way, one contract of a
    kind a group could hold sits within 2% of $1.00 and is not named: AXS_USDT
    at 0.9893, a volatile token - so the check stays a list of names, each
@@ -584,9 +594,9 @@ both logged it as a deferred minor.
    trade-list click's saved funding list for MINA ended Oct 10, 2026 4:00am
    (RCA-2026-10-22-H).
 
-**ROOT CAUSE** - `funding_paid` bounded the history's coverage at its first
-settlement only; where its coverage ENDS (one cycle after the last
-settlement) was never worked out.
+**ROOT CAUSE** - `funding_paid` bounded the history's coverage at its START
+only (one cycle before its first settlement); where its coverage ENDS (one
+cycle after the last settlement) was never worked out.
 
 **WHY IT WAS NOT CAUGHT** - every funding test put the hold inside or before
 the history: the head estimate was tested and the tail never was. The smoke

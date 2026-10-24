@@ -85,9 +85,12 @@ def marketable(side: int, limit_px: float, bid: float, ask: float) -> bool:
 
 def stop_reached(side: int, stop: float, hi: float, lo: float) -> bool:
     """A TOUCH STOPS: a long's stop is reached when a low is at or under it, a
-    short's when a high is at or over it (as `settle_in_minutes` reads a
-    stop). ONE rule for the trail, the fixed stop and the candle that proves a
-    stop its points do not show — the engine now, the runner later."""
+    short's when a high is at or over it. ONE rule for the trail, for the stop
+    inside a waiting order's fill minute (`v3_engine._fill_point`) and for the
+    candle that proves a stop its points do not show; a fixed stop at a later
+    recorded minute is read by `settle_in_minutes` (`lw <= sl_px`), the same
+    touch, held equal to this one by a test — the engine now, the runner
+    later."""
     return lo <= stop if side == 1 else hi >= stop
 
 

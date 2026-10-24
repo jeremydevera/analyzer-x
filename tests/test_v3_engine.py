@@ -1050,9 +1050,11 @@ def test_a_short_trails_hidden_stop_in_the_rest_of_the_fill_candle_is_proven_by_
 
 
 def test_a_short_trails_hidden_stop_in_a_whole_candle_cannot_ride_on_to_a_later_exit():
-    # (b) the mirror of the long test above. Hour 23 begins with the short's trail at 100.515.
-    # Minute 10 trades up to 101.0, over it; minute 20 down to 99.0 (which would pull the stop to
-    # 99.615) and minute 30 up to 99.7. Every minute: out at minute 10, at 100.515
+    # (b) the mirror of
+    # test_a_trail_whose_hidden_minute_hits_its_stop_cannot_ride_on_to_a_later_exit.
+    # Hour 23 begins with the short's trail at 100.515. Minute 10 trades up to 101.0, over it;
+    # minute 20 down to 99.0 (which would pull the stop to 99.615) and minute 30 up to 99.7.
+    # Every minute: out at minute 10, at 100.515
     hour = ([(100.1, 99.9)] * 10 + [(101.0, 100.0)] + [(100.1, 99.9)] * 9 + [(99.6, 99.0)]
             + [(99.5, 99.0)] * 9 + [(99.7, 99.4)] + [(99.7, 99.5)] * 29)
     bars, fine = _world([FLAT] * 21 + [SIGNAL, SHORT_TRAIL_FILL, hour, FLAT])

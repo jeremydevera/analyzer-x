@@ -12,7 +12,8 @@ OCT31_22 = calendar.timegm((2026, 10, 31, 22, 0, 0)) * 1000   # the last hours o
 
 
 def test_a_seed_is_the_same_on_every_machine():
-    # blake2b of "BTC_USDT|1d|v3_trend|none|0", its first 8 bytes read big-endian
+    # blake2b with digest_size=8 of "BTC_USDT|1d|v3_trend|none|0", read big-endian: not the
+    # first 8 bytes of the default 64-byte digest (that one reads 6932095940997299596)
     assert vrn.seed_of("BTC_USDT", "1d", "v3_trend", "none", 0) == 9232730103163168985
     assert vrn.seed_of("BTC_USDT", "1d", "v3_trend", "none", 1) != \
         vrn.seed_of("BTC_USDT", "1d", "v3_trend", "none", 0)
@@ -60,3 +61,14 @@ def test_candidates_are_the_walks_tradable_candles_by_order_month_and_side():
     # from candle 1 (the walk's start) to candle 4 (candle 5 has no next candle to fill in)
     assert vrn.candidates(t, H, 1, long_ok, short_ok) == {
         ("2026-11", 1): [1, 3, 4], ("2026-11", -1): [1, 2]}
+
+
+def test_a_draw_walks_the_months_in_order_longs_then_shorts_on_one_stream():
+    # two months, both sides allowed on every candle of the month. The dicts are built OUT of
+    # order, so only the module's own ordering can put October before November and longs
+    # before shorts; one random() stream runs through all four blocks
+    s = vrn.seed_of("Y_USDT", "1d", "v3_trend", "none", 3)
+    cands = {("2026-11", -1): list(range(6, 12)), ("2026-10", -1): list(range(6)),
+             ("2026-11", 1): list(range(6, 12)), ("2026-10", 1): list(range(6))}
+    wanted = {("2026-11", -1): 2, ("2026-10", -1): 1, ("2026-11", 1): 1, ("2026-10", 1): 2}
+    assert vrn.draw(12, wanted, cands, s) == ([1, 0, -1, 1, 0, 0, 1, 0, 0, -1, 0, -1], 0)

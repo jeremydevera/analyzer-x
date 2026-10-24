@@ -36,7 +36,8 @@ def seed_of(*parts) -> int:
 def entries_by_month(walked: dict, t, bar_ms: int) -> dict[tuple[str, int], int]:
     """{(month, side): orders} of a real walk — its trades and its missed
     orders (rejected or never filled), by the month of the minute each order
-    went in (the open of the candle after its signal)."""
+    went in: the close of its signal candle, t + bar_ms, where the order goes
+    in (the open of the next candle when candles are contiguous)."""
     out: dict[tuple[str, int], int] = {}
     for x in list(walked["trades"]) + list(walked["missed"]):
         key = (vu.month_key(int(t[x["signal_bar"]]) + int(bar_ms)), int(x["side"]))

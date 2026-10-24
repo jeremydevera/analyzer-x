@@ -165,10 +165,21 @@ def tally(walks: list[dict]) -> dict:
             "notional": [min(notional), max(notional)] if notional else None}
 
 
-def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float = Z,
+def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | None = None,
             tried: int = TRIED) -> dict:
     """One family on one timeframe with one filter, chosen and judged over
-    every coin record that measured it."""
+    every coin record that measured it.
+
+    z=None (the default) takes z_for(tried), so a verdict's alpha and z are
+    always for the same count of tries. An explicit z is used as given, and the
+    record's alpha is the one that z makes, 2 x (1 - Φ(z)), so no label names
+    one count with another count's z. z must be positive."""
+    if z is None:
+        z, alpha = z_for(tried), ALPHA / tried
+    elif z <= 0:
+        raise ValueError(f"z must be positive, got {z!r}")
+    else:
+        alpha = 2 * (1 - NormalDist().cdf(z))
     keys = [vf.setting_key(family, v) for v in vf.FAMILIES[family]["settings"]]
     ck = {k: vf.combo_key(family, k, tf, filt) for k in keys}
     used = [c for c in coins if any(ck[k] in c.get("combos", {}) for k in keys)]
@@ -177,7 +188,7 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float = Z,
     window = next((c["windows"][tf] for c in used if tf in c.get("windows", {})), None)
     notes = [vu.SURVIVORSHIP] + ([NOTES[filt]] if filt in NOTES else [])
     base = {"id": vf.verdict_id(family, tf, filt), "family": family, "tf": tf, "filter": filt,
-            "tried": tried, "alpha": ALPHA / tried, "z": z, "coins": [c["coin"] for c in used],
+            "tried": tried, "alpha": alpha, "z": z, "coins": [c["coin"] for c in used],
             "window": window, "months": next((c["unseen_months"] for c in used
                                                if c.get("unseen_months")), []),
             "older": table, "setting": chosen, "notes": notes}

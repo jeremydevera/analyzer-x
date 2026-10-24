@@ -189,3 +189,74 @@ def test_every_judged_group_gets_a_verdict_and_what_could_not_be_measured_is_sum
     assert (v["twins"], v["twins_pnl"], v["over_book"]) == (4, pytest.approx(1.5), 6)
     assert v["lev"] == [12, 20] and v["notional"] == [40.0, 120.0]
     assert sum(1 for v in out if v["failed"] == "choose") == 29
+
+
+# --- Fix round 1 (the coordinator's ruling, Oct 23, 2026): the luck bar is pinned at verdict
+# level - its best-run floor, and its pooling run by run over the coins - and a verdict's z
+# follows its own count of tries.
+
+
+def _two_coins_with_runs(unseen, runs_a, runs_b):
+    """Two coins that choose k2 on the older days (k1.5 +0.05 a trade, k2 +0.10), each with its
+    own random runs; the unseen trades are split between them."""
+    half = len(unseen) // 2
+    return [_coin("AAA_USDT", _rows([0.05] * 40), _rows([0.10] * 40), unseen[:half], runs_a),
+            _coin("BBB_USDT", _rows([0.05] * 40), _rows([0.10] * 40), unseen[half:], runs_b)]
+
+
+def test_the_luck_bar_is_the_best_run_when_the_best_run_is_above_the_normal_point():
+    # 199 runs at 0 and one at +0.5 a trade: mean 0.0025, sd sqrt(0.24875 / 199) = 0.035355, so
+    # the normal point is 0.0025 + 3.384 x 0.035355 = 0.1221, and the best run (0.5) is ABOVE it:
+    # the bar is the best run
+    runs = [[10, 0.0]] * 199 + [[10, 5.0]]
+    # a real +0.30 a trade is over the normal point and under the bar: it FAILS the random check
+    v = vp.verdict("v3_snap", "1h", "none", _two_coins_with_runs(_rows([0.3] * 320), runs, runs))
+    assert v["setting"] == "k2" and v["unseen"]["per_trade"] == pytest.approx(0.3)
+    assert v["random"]["normal"] == pytest.approx(0.12214, abs=1e-4)
+    assert v["random"]["bar"] == pytest.approx(0.5)
+    assert v["checks"]["profit"] is True and v["checks"]["random"] is False
+    assert (v["passed"], v["failed"]) == (False, "random")
+    # a real +0.60 a trade is over the bar, so it passes the random check
+    w = vp.verdict("v3_snap", "1h", "none", _two_coins_with_runs(_rows([0.6] * 320), runs, runs))
+    assert w["checks"]["random"] is True and w["passed"] is True
+
+
+def test_random_runs_pool_run_by_run_across_the_coins_not_strung_together():
+    # coin A's two runs make +1.0 and -1.0 over 10 trades each; coin B's make -0.5 and +0.5.
+    # Pooled run by run (each run's trades and profit summed over the coins): (20 trades, +0.5)
+    # and (20, -0.5), i.e. +0.025 and -0.025 a trade: sd 0.025 x sqrt(2) = 0.035355, normal point
+    # 3.384 x 0.035355 = 0.119644, best run 0.025: the bar is 0.119644.
+    # Strung together (four runs: +0.1, -0.1, -0.05, +0.05 a trade): sd 0.091287, normal point
+    # 0.308919, best run 0.1: the bar would be 0.308919. The pooled bar is the one that holds.
+    v = vp.verdict("v3_snap", "1h", "none", _two_coins_with_runs(
+        _rows(STEADY), [[10, 1.0], [10, -1.0]], [[10, -0.5], [10, 0.5]]))
+    assert v["setting"] == "k2" and (v["random"]["runs"], v["random"]["traded"]) == (2, 2)
+    assert v["random"]["best"] == pytest.approx(0.025)
+    assert v["random"]["bar"] == pytest.approx(vp.Z * 0.025 * math.sqrt(2), abs=1e-9)
+    # the real +0.20 a trade clears the pooled bar (0.1196), not the strung-together one (0.3089)
+    assert v["unseen"]["per_trade"] == pytest.approx(0.2) and v["checks"]["random"] is True
+
+
+def test_the_default_z_is_the_normal_point_for_the_full_correction():
+    v = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(STEADY)))
+    assert v["z"] == vp.Z and v["alpha"] == pytest.approx(0.05 / vp.TRIED)
+    assert v["random"]["normal"] == pytest.approx(v["random"]["mean"] + vp.Z * v["random"]["sd"])
+
+
+def test_tried_sets_the_z_and_the_alpha_for_the_same_count():
+    # 0.05 / 10 = 0.005 a test, so z = z_for(10) = 2.807 - not the 70-count's 3.384
+    v = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(STEADY)), tried=10)
+    assert v["tried"] == 10 and v["alpha"] == pytest.approx(0.05 / 10)
+    assert v["z"] == pytest.approx(vp.z_for(10)) and v["z"] != vp.Z
+    assert v["random"]["normal"] == pytest.approx(v["random"]["mean"] + v["z"] * v["random"]["sd"])
+
+
+def test_an_explicit_z_is_used_as_given_and_its_alpha_is_the_one_it_makes():
+    coins = _two_coins(_rows(STEADY))
+    v = vp.verdict("v3_snap", "1h", "none", coins, z=3.0)
+    assert v["z"] == 3.0
+    assert v["random"]["normal"] == pytest.approx(v["random"]["mean"] + 3.0 * v["random"]["sd"])
+    # 2 x (1 - Phi(3)) = 0.0026998: the two-sided alpha that z = 3.0 is made for
+    assert v["alpha"] == pytest.approx(0.0026998, abs=1e-6)
+    with pytest.raises(ValueError, match="z must be positive"):
+        vp.verdict("v3_snap", "1h", "none", coins, z=-1.0)

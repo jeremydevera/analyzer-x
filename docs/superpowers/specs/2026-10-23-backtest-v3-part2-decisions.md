@@ -68,9 +68,10 @@ and the rank of Monday 00:00 reads the closes at that instant, so the order goes
   forex of the calm group, whose markets are shut at weekends — no entry whose order goes in on a Saturday or Sunday
   (UTC). No family's universe holds stock tokens today, so only the weekend half can bite — said on the verdict.
 * `funding_side` — skip a long when the last settled funding rate before the order is in the top 10% of the coin's
-  own settlements over the 30 days before it; a short in the bottom 10%. "Before" is strict, on both edges of the
-  30 days: a settlement stamped AT the order's own instant has not settled for it, so an order on a settlement hour
-  judges the cycle before it (ruled Oct 23, 2026, when the task review measured Gate stamping the same 00:00 / 08:00
+  own settlements over the 30 days before it; a short in the bottom 10%. "Before" is strict: a settlement stamped
+  AT the order's own instant has not settled for it, so an order on a settlement hour judges the cycle before it,
+  and the 30 days are half-open, [order - 30 days, order) — a settlement stamped 0-7 s late lands on the same side
+  of both edges as one stamped on the hour (ruled Oct 23, 2026, when the task review measured Gate stamping the same 00:00 / 08:00
   / 16:00 UTC settlements 0-7 s past the hour in some months and exactly on it in others — an "at or before" rule
   read the just-settled rate in one month and the rate 8 hours older in the next, which flipped 55 of BTC's 776
   daily decisions). Where the history does not reach, the filter cannot judge: the signal passes and is counted

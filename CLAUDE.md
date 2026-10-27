@@ -2533,13 +2533,16 @@ before any test. Decisions:
   settlement on the hour in some months and 0-7 s past it in others, and
   an "at or before" rule flipped 55 of BTC's 776 daily side decisions),
   funding_minutes (no order within 5 minutes of a settlement; orders go in
-  on the hour, so it blocks every order on a settlement hour: every 1d
-  order, EVERY 4h order of a coin that settles every 4 hours, half the 4h
-  orders of an 8-hour coin, 6 or 3 of the 24 1h orders of a 4- or 8-hour
-  coin — Gate's listing on Oct 27, 2026 put 22 of October's 50 liquid coins
-  and 6 of its 45 calm ones, XAU, XAG, XPD, XPT, HYPE and TAO, on 4 hours;
-  whether to keep it on 4h and 1d is the operator's to rule before Part
-  2b); an order the history cannot judge passes and is counted
+  on the hour, so it blocks every order on a settlement hour: EVERY 4h
+  order of a coin that settles every 4 hours, half the 4h orders of an
+  8-hour coin, 6 or 3 of the 24 1h orders of a 4- or 8-hour coin — Gate's
+  listing on Oct 27, 2026 put 22 of October's 50 liquid coins and 6 of its
+  45 calm ones, XAU, XAG, XPD, XPT, HYPE and TAO, on 4 hours; it is NOT
+  TRIED ON 1d (operator, Oct 27, 2026, before any full run: every 1d order
+  goes in at 00:00 UTC, a settlement on every cycle, so it would block them
+  all — `v3_families.NOT_TRIED`, `filters_for(tf)`, which `combos`, `judged`
+  and `v3_measure` all read); whether to keep it on 4h is still the
+  operator's to rule before Part 2b); an order the history cannot judge passes and is counted
   (`mood_unknown`, `funding_unknown`), except funding_minutes, which
   outside the history judges by the contract's settlement cycle from 00:00
   UTC and counts `settle_by_cycle` — each printed, in signal candles, with
@@ -2560,8 +2563,10 @@ before any test. Decisions:
   to the simplest); judge the chosen setting pooled over every coin: profit
   a trade above 0, above the random runs' normal-fit (1 - α/2) point and
   their best, a day-clustered bootstrap's low end above 0, 300+ unseen
-  trades; α = 0.05 / 70 (every combination measured, `len(combos())`),
-  z = 3.384. Every verdict is kept with the step it failed. A pooled
+  trades; α = 0.05 / 63 (every combination measured, `len(combos())`: 14
+  family-setting-timeframes x 5 filters = 70, less the 7 funding_minutes
+  ones on 1d that are not tried; the judged groups are 27, not 30),
+  z = 3.355 (it was 3.384 while the 7 were counted). Every verdict is kept with the step it failed. A pooled
   verdict's window is the group's, never its first coin's own record: the
   plan's split and end (as the first coin printed them) with the candle
   counts summed over the coins, and no start or seconds. Coins listed
@@ -2573,14 +2578,22 @@ before any test. Decisions:
   that cannot choose a setting says why, and
   "<filter> blocked all N signals on the older days" when its filter
   blocked every signal of every setting (N: the most any one setting had;
-  funding_minutes on 1d, and on 4h for a coin on a 4-hour cycle); a
+  funding_minutes on 4h for a coin on a 4-hour cycle); a
   filtered group that traded nothing on the unseen days still prints its
   filter's blocked count. Every setting's older figure that has trades
   prints how many of its exits paid a typical cost ("exits at a typical
   cost N of T"), as the unseen line does.
-* **$1 of risk decides which trades exist.** At Gate's lots a $1-risk trade
-  of ETH, SOL or XRP on 1d is under one lot (Oct 23, 2026: 19 of October's
-  50 liquid coins on 1d, 7 on 4h, 4 on 1h): skipped, counted `too_small`. A
+* **Risk decides which trades exist, so the research measures at $5.** At
+  Gate's lots a $1-risk trade of ETH, SOL or XRP on 1d is under one lot
+  (Oct 23, 2026: 19 of October's 50 liquid coins on 1d, 7 on 4h, 4 on 1h):
+  skipped, counted `too_small`. The operator's pick for the research, Oct
+  27, 2026, before any full run: **$5 a trade** (at $1 ETH's daily trend
+  could not take one lot on 228 of 228 signal candles) —
+  `v3_rules.RESEARCH_RISK_USD`, the default of `v3_research run` and
+  `judge`. `v3_rules.RISK_USD` ($1) is the tab's default and
+  `measure_coin`'s own default stays at it, so Part 2b's shard passes the
+  research risk explicitly; a record measured at $1 is left out by `judge`
+  (named, "risk $1.00, not $5.00") until it is measured again. A
   verdict that traded on the unseen days prints that count ("refused signal
   candles: under one lot N": the chosen setting's, pooled over the coins);
   one that failed at choosing says it in its reason, from the older walks'
@@ -2588,7 +2601,8 @@ before any test. Decisions:
   that say a candle counts once per setting it signals under: "no setting
   had 30 trades on the older days: 228 of 228 signals over the 3 settings
   (a candle counts once for each setting it signals under) were under one
-  lot at $1.00 risk" (the test's 76 candles x 3 settings). One that traded
+  lot at $1.00 risk" (the test's 76 candles x 3 settings, its records
+  measured at $1: the risk printed is always the records' own). One that traded
   nothing on the unseen days prints none.
   `measure_coin(risk_usd=)` and `--risk` exist; records measured at another
   risk, plan or run count are never pooled.

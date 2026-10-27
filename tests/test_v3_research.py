@@ -68,8 +68,9 @@ def _verdict(verdicts, family="v3_snap", tf="1h", filt="none"):
 def test_the_report_prints_coverage_first_then_every_verdict_with_the_kits_figures():
     lines, verdicts = vr.report([_record()], _plan(), 200, 1.0)
     text = "\n".join(lines)
-    assert len(verdicts) == 30 and sum(v["passed"] for v in verdicts) == 1
-    assert "70 combinations tried (14 family-setting-timeframes x 5 filter choices)" in lines[1]
+    assert len(verdicts) == 27 and sum(v["passed"] for v in verdicts) == 1
+    assert ("63 combinations tried (14 family-setting-timeframes x 5 filter choices, less the 7 "
+            "not tried: funding_minutes on 1d), alpha = 0.05 / 63, z = 3.355") in lines[1]
     assert "$1.00 risk a trade" in lines[1]
     cover = next(k for k, ln in enumerate(lines) if ln.startswith("XAU_USDT (metals)"))
     first = next(k for k, ln in enumerate(lines) if ln.startswith("#"))
@@ -85,7 +86,7 @@ def test_the_report_prints_coverage_first_then_every_verdict_with_the_kits_figur
     assert "target: the 20-candle average at the signal, resting" in snap
     assert "leverage 20x-20x" in snap
     assert "$45-$130 of coin a trade (2 over the books' $100)" in snap
-    assert "exits at a typical cost 5 of 320" in snap and "1 of 30 verdicts passed." in text
+    assert "exits at a typical cost 5 of 320" in snap and "1 of 27 verdicts passed." in text
     assert "refused signal candles: under one lot 0, no safe leverage 0, the cost check 0" in snap
     assert vr.CRASH_GUARD in text and vr.FEW_COINS in text and vu.SURVIVORSHIP in text
 
@@ -146,7 +147,7 @@ def test_judge_pools_only_the_coins_of_this_plan_and_names_every_other_with_its_
     vr.save_coin(root, unstamped)
     vr.save_coin(root, unpriced)
     plan_path = vu.save(_plan(), tmp_path / "plan.json")
-    assert vr.main(["judge", "--plan", str(plan_path)]) == 0
+    assert vr.main(["judge", "--plan", str(plan_path), "--risk", "1"]) == 0
     lines = capsys.readouterr().out.splitlines()
     # the header, then the left-out line - before any coverage line - then the one coin pooled
     assert lines[0].startswith("Backtest v3 Part 2a on Gate: 1 coin(s) measured;")
@@ -179,7 +180,7 @@ def test_two_builds_of_one_day_are_never_pooled_and_the_other_is_named(
     for plan, other, kept, left in ((first, second, "AAA_USDT", "BBB_USDT"),
                                     (second, first, "BBB_USDT", "AAA_USDT")):
         path = vu.save(plan, tmp_path / "plan.json")
-        assert vr.main(["judge", "--plan", str(path)]) == 0
+        assert vr.main(["judge", "--plan", str(path), "--risk", "1"]) == 0
         out = capsys.readouterr().out
         assert "1 coin(s) measured" in out
         assert f"{left} (plan build {vu.plan_id(other)}, not {vu.plan_id(plan)})" in out
@@ -202,12 +203,46 @@ def test_run_measures_each_coin_saves_it_judges_it_and_prints_its_line(
     plan_path = vu.save(_plan(), tmp_path / "plan.json")
     assert vr.main(["run", "xau_usdt", "--plan", str(plan_path), "--runs", "3",
                     "--label", "t"]) == 0
-    assert asked == [("XAU_USDT", 3, 1.0)], "the spec's $1 unless --risk says otherwise"
+    assert asked == [("XAU_USDT", 3, 5.0)], "the research's $5 unless --risk says otherwise"
     assert vr.coin_file(tmp_path / "t", "XAU_USDT").exists()
     out = capsys.readouterr().out
     assert "XAU_USDT (metals): order books cover 0.0%" in out
     # the command judges what it has just measured: the coin it stamped is pooled, none left out
     assert "1 coin(s) measured" in out and "left out" not in out
+
+
+def test_the_research_measures_at_5_dollars_a_trade_and_risk_still_overrides(
+        monkeypatch, tmp_path, capsys):
+    # the operator's pick, Oct 27, 2026: at $1 ETH's daily trend could not take one lot on 228 of
+    # 228 signals. The tab's own default ($1) is not the research's
+    from tradingagents import v3_measure, v3_rules
+
+    assert v3_rules.RESEARCH_RISK_USD == 5.0 and v3_rules.RISK_USD == 1.0
+    asked = []
+
+    def fake(sym, plan, *, runs, risk_usd, log=None):
+        asked.append(risk_usd)
+        return {**_record(sym, risk=risk_usd), "runs": runs, "plan_id": plan["id"]}
+
+    monkeypatch.setattr(v3_measure, "measure_coin", fake)
+    monkeypatch.setattr(vr, "home", lambda label="local": tmp_path / label)
+    plan_path = vu.save(_plan(), tmp_path / "plan.json")
+    base = ["--plan", str(plan_path), "--runs", "200"]
+    assert vr.main(["run", "aaa_usdt", *base]) == 0
+    assert "$5.00 risk a trade" in capsys.readouterr().out
+    # judge names the same default: a record measured at the research's $5 is pooled, and one at
+    # the tab's $1 is left out with both figures
+    vr.save_coin(tmp_path / "local", _record("TAB_USDT", risk=1.0))
+    assert vr.main(["judge", *base]) == 0
+    out = capsys.readouterr().out
+    assert "1 coin(s) measured" in out and "TAB_USDT (risk $1.00, not $5.00)" in out
+    # --risk wins, on both commands
+    assert vr.main(["run", "bbb_usdt", *base, "--risk", "2.5"]) == 0
+    assert asked == [5.0, 2.5]
+    assert "$2.50 risk a trade" in capsys.readouterr().out
+    with pytest.raises(SystemExit):
+        vr.main(["run", "--help"])
+    assert "default $5.00" in capsys.readouterr().out
 
 
 def test_a_coin_that_fails_is_named_its_old_record_dropped_and_the_others_still_measured(
@@ -390,7 +425,7 @@ def test_the_default_run_count_is_the_random_runs_own(monkeypatch, tmp_path, cap
     monkeypatch.setattr(vr, "home", lambda label="local": tmp_path / label)
     vr.save_coin(tmp_path / "local", _record(runs=7))
     plan_path = vu.save(_plan(), tmp_path / "plan.json")
-    assert vr.main(["judge", "--plan", str(plan_path)]) == 0
+    assert vr.main(["judge", "--plan", str(plan_path), "--risk", "1"]) == 0
     out = capsys.readouterr().out
     assert "1 coin(s) measured" in out and "7 random runs a combination" in out
 

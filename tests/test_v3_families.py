@@ -21,17 +21,35 @@ def _bars(c, h=None, lo=None, t0=OCT1, bar=DAY):
             "l": [float(x) for x in (lo if lo is not None else c)]}
 
 
-def test_seventy_combinations_and_thirty_verdicts_are_counted_whether_or_not_they_trade():
+def test_sixty_three_combinations_and_twenty_seven_verdicts_are_counted_whether_or_not_they_trade():
     # (3 + 2 + 2 + 2 settings) x their timeframes = 6 + 2 + 2 + 4 = 14, each alone and with each
-    # of the 4 filters: 70 combinations (the luck correction's count); one verdict per family,
-    # timeframe and filter: 10 + 5 + 5 + 10 = 30
-    assert len(vf.combos()) == len(set(vf.combos())) == 70
-    assert len(vf.judged()) == 30
+    # of the 4 filters: 70 - the 7 funding_minutes ones on 1d (trend x3, breakout x2, strength
+    # x2), which are not tried: 63 combinations (the luck correction's count); one verdict per
+    # family, timeframe and filter: 10 + 5 + 5 + 10 = 30 - the 3 on 1d (trend, breakout,
+    # strength) = 27
+    assert len(vf.combos()) == len(set(vf.combos())) == 63
+    assert len(vf.judged()) == 27
     assert ("v3_trend", "n100", "4h", "funding_minutes") in vf.combos()
     assert ("v3_snap", "k1.5", "1h", "none") in vf.combos()
     assert vf.setting_key("v3_snap", 2.0) == "k2" and vf.setting_key("v3_strength", 3) == "k3"
     ids = {vf.verdict_id(*g) for g in vf.judged()}
-    assert len(ids) == 30, "every verdict its own id"
+    assert len(ids) == 27, "every verdict its own id"
+
+
+def test_funding_minutes_is_not_tried_on_1d_and_still_is_on_4h_and_1h():
+    # every 1d order goes in at 00:00 UTC, a settlement on every cycle: it would block them all
+    # (operator, Oct 27, 2026), so no combination, no judged group and no filter list holds it
+    assert set(vf.NOT_TRIED) == {("funding_minutes", "1d")}
+    assert "funding_minutes" not in vf.filters_for("1d")
+    assert vf.filters_for("1d") == ("none", "btc_mood", "busy_hours", "funding_side")
+    assert vf.filters_for("4h") == vf.filters_for("1h") == vf.FILTERS
+    assert not [c for c in vf.combos() if c[2] == "1d" and c[3] == "funding_minutes"]
+    assert not [g for g in vf.judged() if g[1] == "1d" and g[2] == "funding_minutes"]
+    assert {(c[0], c[2]) for c in vf.combos() if c[3] == "funding_minutes"} == {
+        ("v3_trend", "4h"), ("v3_snap", "1h"), ("v3_snap", "4h")}
+    assert [g for g in vf.judged() if g[2] == "funding_minutes"] == [
+        ("v3_trend", "4h", "funding_minutes"), ("v3_snap", "1h", "funding_minutes"),
+        ("v3_snap", "4h", "funding_minutes")]
 
 
 def test_a_verdict_id_can_never_equal_a_v1_or_v2_id():

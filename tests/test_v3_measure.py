@@ -143,9 +143,17 @@ def test_a_coin_is_measured_for_every_family_setting_timeframe_and_filter_it_can
         monkeypatch, gate_floors):
     rec = _metal(monkeypatch, _dips(OLD_DIP, EDGE_DIP, NEW_DIP))
     # a metal is calm every month: trend (3 settings x 1d, 4h), breakout (2 x 1d), snap
-    # (2 x 1h, 4h) - 12 family-setting-timeframes x 5 filters. Never strength (liquid only)
+    # (2 x 1h, 4h) - 12 family-setting-timeframes x 5 filters, less funding_minutes on the 5 of
+    # them that are 1d (not tried there): 55. Never strength (liquid only)
     assert rec["families"] == ["v3_trend", "v3_breakout", "v3_snap"]
-    assert len(rec["combos"]) == 60 and rec["skipped"] == {}
+    assert len(rec["combos"]) == 55 and rec["skipped"] == {}
+    # funding_minutes is measured on 4h and 1h and in no record of a 1d combination (operator,
+    # Oct 27, 2026: it blocks every daily order, so measuring it tests nothing)
+    keys = [k.split("|") for k in rec["combos"]]
+    assert not [k for k in keys if k[2] == "1d" and k[3] == "funding_minutes"]
+    assert {(k[2]) for k in keys if k[3] == "funding_minutes"} == {"4h", "1h"}
+    assert sorted(k[3] for k in keys if k[2] == "1d" and k[0] == "v3_trend") == sorted(
+        ["none", "btc_mood", "busy_hours", "funding_side"] * 3)
     old, new = rec["combos"][SNAP]["older"], rec["combos"][SNAP]["unseen"]
     # each dip's waiting buy at 99.3 fills in the next hour's first minute (low 99.25) and the
     # second minute (high 100.1) trades through the target
@@ -454,10 +462,11 @@ def test_random_strength_entries_are_drawn_only_on_the_candles_that_close_at_a_m
 def test_every_walk_of_a_strength_combo_carries_the_rank_exit_flags_of_its_own_view(
         monkeypatch, gate_floors):
     # only strength is measured, so every walk below is one of its walks. 2 settings x 5 filters
-    # = 10 combos, each walked on the older days and on the unseen ones: 20 real walks. The real
-    # unseen order (Monday Oct 05 00:00, 1st in the rank) gets in under every filter but
-    # funding_minutes - 00:00 UTC is a settlement hour - so 8 combos draw 4 random runs each: 32
-    # more. All 52 are handed the rank exit's flags, one per candle of the view they walk
+    # = 10 combos less funding_minutes, which is not tried on 1d (00:00 UTC is a settlement hour):
+    # 8 combos, each walked on the older days and on the unseen ones: 16 real walks. The real
+    # unseen order (Monday Oct 05 00:00, 1st in the rank) gets in under every filter tried, so
+    # all 8 combos draw 4 random runs each: 32 more. All 48 are handed the rank exit's flags, one
+    # per candle of the view they walk
     monkeypatch.setattr(vf, "FAMILIES", {"v3_strength": vf.FAMILIES["v3_strength"]})
     seen = []
     real_walk = vm.ve.walk
@@ -469,7 +478,7 @@ def test_every_walk_of_a_strength_combo_carries_the_rank_exit_flags_of_its_own_v
     monkeypatch.setattr(vm.ve, "walk", spy)
     up = {SPLIT_B + m * M: (101.1, 100.9) for m in range(3 * 1440)}
     _strength_rec(monkeypatch, up, runs=4)
-    assert len(seen) == 20 + 8 * 4
+    assert len(seen) == 16 + 8 * 4
     assert all(flags is not None and len(flags) == n for n, flags in seen)
 
 

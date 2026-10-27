@@ -51,9 +51,9 @@ def _two_coins(unseen, random_runs=QUIET):
 
 
 def test_alpha_divides_by_every_combination_measured():
-    # 0.05 / 70 = 0.000714; z = the normal curve's 1 - 0.000357 point
-    assert vp.TRIED == len(vf.combos()) == 70
-    assert round(vp.Z, 4) == 3.384 and round(vp.z_for(1), 5) == 1.95996
+    # 0.05 / 63 = 0.000794; z = the normal curve's 1 - 0.000397 point
+    assert vp.TRIED == len(vf.combos()) == 63
+    assert round(vp.Z, 4) == 3.355 and round(vp.z_for(1), 5) == 1.95996
 
 
 def test_the_setting_is_chosen_on_the_older_days_with_30_trades_ties_to_the_simplest():
@@ -70,15 +70,15 @@ def test_the_setting_is_chosen_on_the_older_days_with_30_trades_ties_to_the_simp
 def test_the_random_bar_is_the_normal_curves_point_with_the_best_run_as_its_floor():
     # three runs that traded make +0.1, -0.1 and +0.1 a trade (the run with no trade is left
     # out): mean 0.0333, sample sd sqrt((0.0667^2 + 0.1333^2 + 0.0667^2) / 2) = 0.11547, so
-    # the point is 0.0333 + 3.384 x 0.11547 = 0.4241, over the best run's 0.1
+    # the point is 0.0333 + 3.355 x 0.11547 = 0.4207, over the best run's 0.1
     bar = vp.random_bar([(10, 1.0), (10, -1.0), (5, 0.5), (0, 0.0)])
     assert (bar["runs"], bar["traded"]) == (4, 3)
     assert bar["sd"] == pytest.approx(0.11547, abs=1e-5)
     assert bar["bar"] == pytest.approx(0.0333333 + vp.Z * 0.11547, abs=1e-4)
     # 199 runs at 0 and one at +0.5 a trade: mean 0.0025, sd sqrt(0.24875 / 199) = 0.035355,
-    # the point 0.0025 + 3.384 x 0.035355 = 0.1221 - under the best run, which is the bar
+    # the point 0.0025 + 3.355 x 0.035355 = 0.1211 - under the best run, which is the bar
     bar = vp.random_bar([(10, 0.0)] * 199 + [(10, 5.0)])
-    assert bar["normal"] == pytest.approx(0.12214, abs=1e-4) and bar["bar"] == 0.5
+    assert bar["normal"] == pytest.approx(0.12112, abs=1e-4) and bar["bar"] == 0.5
     assert vp.random_bar([(10, 1.0), (0, 0.0)]) is None, "one run that traded is no curve"
 
 
@@ -122,7 +122,7 @@ STEADY = [1.2, -0.8] * 160                  # 320 trades, +0.20 each on average,
 def test_a_family_that_clears_every_step_passes():
     v = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(STEADY)))
     # k2 chosen (+0.10 against +0.05 on the older days); unseen 320 trades at +0.20; QUIET's runs
-    # make -0.002..+0.002 a trade (mean 0, sd 0.0014178): the bar 3.384 x 0.0014178 = 0.0048;
+    # make -0.002..+0.002 a trade (mean 0, sd 0.0014178): the bar 3.355 x 0.0014178 = 0.0048;
     # every day makes the same +0.20, so the bootstrap's error is 0
     assert v["setting"] == "k2" and v["passed"] is True and v["failed"] == ""
     assert v["unseen"]["trades"] == 320 and v["unseen"]["per_trade"] == pytest.approx(0.2)
@@ -136,7 +136,7 @@ def test_a_family_that_clears_every_step_passes():
 
 
 def test_each_step_that_fails_names_the_verdict():
-    # the luck bar: LOUD's runs make -0.2..+0.2 a trade (sd 0.14178): 3.384 x 0.14178 = 0.4798
+    # the luck bar: LOUD's runs make -0.2..+0.2 a trade (sd 0.14178): 3.355 x 0.14178 = 0.4757
     v = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(STEADY), LOUD))
     assert (v["passed"], v["failed"]) == (False, "random") and v["checks"]["profit"] is True
     # losing money: -0.20 a trade
@@ -144,14 +144,14 @@ def test_each_step_that_fails_names_the_verdict():
     assert v["failed"] == "profit"
     # +0.20 a trade, all of it from ONE day: 79 days of 4 losses of 0.1, and one day of 3 losses
     # and a +95.9 win. A draw holds that day K times, K ~ Binomial(80, 1/80): profit a trade
-    # (96K - 32) / 320 = 0.3K - 0.1, sd 0.3 x sqrt(0.9875) = 0.298, and 0.2 - 3.384 x 0.298 < 0
+    # (96K - 32) / 320 = 0.3K - 0.1, sd 0.3 x sqrt(0.9875) = 0.298, and 0.2 - 3.355 x 0.298 < 0
     lucky = [-0.1] * 319 + [95.9]
     v = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(lucky)))
     assert v["unseen"]["per_trade"] == pytest.approx(0.2) and v["failed"] == "bootstrap"
     assert v["bootstrap"]["se"] == pytest.approx(0.298, abs=0.03)
     # +0.20 a trade, the days swinging: 40 days of 4 trades at +1.2, 40 of 4 at -0.8. Every day
     # holds 4 trades, so a draw's profit a trade is the mean of 80 drawn days' averages, whose sd
-    # is 1.0: the error sqrt(1 / 80) = 0.1118, and 0.2 - 3.384 x 0.1118 = -0.178 - not proven,
+    # is 1.0: the error sqrt(1 / 80) = 0.1118, and 0.2 - 3.355 x 0.1118 = -0.175 - not proven,
     # though 0.2 is 1.8 errors above 0
     swing = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(([1.2] * 4 + [-0.8] * 4) * 40)))
     assert swing["bootstrap"]["se"] == pytest.approx(0.1118, abs=0.01)
@@ -190,7 +190,7 @@ def test_every_judged_group_gets_a_verdict_and_what_could_not_be_measured_is_sum
     assert v["counts"] == {"cost_unmeasured": 14, "missed": 4, "signals": 100}
     assert (v["twins"], v["twins_pnl"], v["over_book"]) == (4, pytest.approx(1.5), 6)
     assert v["lev"] == [12, 20] and v["notional"] == [40.0, 120.0]
-    assert sum(1 for v in out if v["failed"] == "choose") == 29
+    assert sum(1 for v in out if v["failed"] == "choose") == 26
 
 
 # --- Fix round 1 (ruled Oct 23, 2026): the luck bar is pinned at verdict
@@ -208,13 +208,13 @@ def _two_coins_with_runs(unseen, runs_a, runs_b):
 
 def test_the_luck_bar_is_the_best_run_when_the_best_run_is_above_the_normal_point():
     # 199 runs at 0 and one at +0.5 a trade: mean 0.0025, sd sqrt(0.24875 / 199) = 0.035355, so
-    # the normal point is 0.0025 + 3.384 x 0.035355 = 0.1221, and the best run (0.5) is ABOVE it:
+    # the normal point is 0.0025 + 3.355 x 0.035355 = 0.1211, and the best run (0.5) is ABOVE it:
     # the bar is the best run
     runs = [[10, 0.0]] * 199 + [[10, 5.0]]
     # a real +0.30 a trade is over the normal point and under the bar: it FAILS the random check
     v = vp.verdict("v3_snap", "1h", "none", _two_coins_with_runs(_rows([0.3] * 320), runs, runs))
     assert v["setting"] == "k2" and v["unseen"]["per_trade"] == pytest.approx(0.3)
-    assert v["random"]["normal"] == pytest.approx(0.12214, abs=1e-4)
+    assert v["random"]["normal"] == pytest.approx(0.12112, abs=1e-4)
     assert v["random"]["bar"] == pytest.approx(0.5)
     assert v["checks"]["profit"] is True and v["checks"]["random"] is False
     assert (v["passed"], v["failed"]) == (False, "random")
@@ -227,7 +227,7 @@ def test_random_runs_pool_run_by_run_across_the_coins_not_strung_together():
     # coin A's two runs make +1.0 and -1.0 over 10 trades each; coin B's make -0.5 and +0.5.
     # Pooled run by run (each run's trades and profit summed over the coins): (20 trades, +0.5)
     # and (20, -0.5), i.e. +0.025 and -0.025 a trade: sd 0.025 x sqrt(2) = 0.035355, normal point
-    # 3.384 x 0.035355 = 0.119644, best run 0.025: the bar is 0.119644.
+    # 3.355 x 0.035355 = 0.118616, best run 0.025: the bar is 0.118616.
     # Strung together (four runs: +0.1, -0.1, -0.05, +0.05 a trade): sd 0.091287, normal point
     # 0.308919, best run 0.1: the bar would be 0.308919. The pooled bar is the one that holds.
     v = vp.verdict("v3_snap", "1h", "none", _two_coins_with_runs(
@@ -235,7 +235,7 @@ def test_random_runs_pool_run_by_run_across_the_coins_not_strung_together():
     assert v["setting"] == "k2" and (v["random"]["runs"], v["random"]["traded"]) == (2, 2)
     assert v["random"]["best"] == pytest.approx(0.025)
     assert v["random"]["bar"] == pytest.approx(vp.Z * 0.025 * math.sqrt(2), abs=1e-9)
-    # the real +0.20 a trade clears the pooled bar (0.1196), not the strung-together one (0.3089)
+    # the real +0.20 a trade clears the pooled bar (0.1186), not the strung-together one (0.3089)
     assert v["unseen"]["per_trade"] == pytest.approx(0.2) and v["checks"]["random"] is True
 
 
@@ -246,7 +246,7 @@ def test_the_default_z_is_the_normal_point_for_the_full_correction():
 
 
 def test_tried_sets_the_z_and_the_alpha_for_the_same_count():
-    # 0.05 / 10 = 0.005 a test, so z = z_for(10) = 2.807 - not the 70-count's 3.384
+    # 0.05 / 10 = 0.005 a test, so z = z_for(10) = 2.807 - not the 63-count's 3.355
     v = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(STEADY)), tried=10)
     assert v["tried"] == 10 and v["alpha"] == pytest.approx(0.05 / 10)
     assert v["z"] == pytest.approx(vp.z_for(10)) and v["z"] != vp.Z
@@ -337,11 +337,11 @@ def test_two_coins_of_one_plan_pool_whatever_time_zone_their_dates_were_printed_
                                                                  "Oct 22, 2026 8:00pm")
 
 
-def test_the_bootstrap_low_end_uses_the_verdicts_own_z_not_the_70_count_z():
+def test_the_bootstrap_low_end_uses_the_verdicts_own_z_not_the_63_count_z():
     # days alternate +1.335 and -0.665 a trade (four trades a day, 80 days): profit a trade +0.335;
     # the day averages' sd is 1.0, so the error is about 0.11 (sqrt(1 / 80) = 0.1118, less the
     # sampling noise of 2,000 draws) and 0.335 / 0.11 = 3.0 - between z_for(10) = 2.807 and the
-    # 70-count's Z = 3.384
+    # 63-count's Z = 3.355
     unseen = []
     for day in range(80):
         unseen += [1.335] * 4 if day % 2 == 0 else [-0.665] * 4
@@ -379,8 +379,8 @@ def test_the_bootstrap_clusters_trades_by_the_day_they_closed_not_the_day_they_o
 
 
 def test_a_filter_that_blocked_every_signal_on_the_older_days_says_so():
-    # the real case is funding_minutes on 1d: every daily order goes in at a settlement, so the
-    # filter blocks every signal of every setting (1,234 and 900 here)
+    # the real case is funding_minutes on a 4-hour coin's 4h orders (all six a day go in on a
+    # settlement hour): the filter blocks every signal of every setting (1,234 and 900 here)
     coin = _group("AAA_USDT", "v3_snap", "1h", "funding_minutes", {
         "k1.5": _walk([], filter={"signal_candles": 1234, "blocked": 1234}),
         "k2": _walk([], filter={"signal_candles": 900, "blocked": 900})})
@@ -574,10 +574,11 @@ def test_every_filter_that_can_surprise_has_its_note_and_each_note_is_true_of_th
     minutes = vfl.SETTLE_GAP_MS // 60_000
     assert vp.NOTES["funding_minutes"] == (
         f"No order within {minutes} minutes of a funding settlement. Orders go in on the hour, so "
-        "every order that goes in on a settlement hour is blocked: every 1d order (00:00 UTC is a "
-        "settlement on every cycle), every 4h order of a coin that settles every 4 hours, half the "
-        "4h orders of an 8-hour coin, and 6 or 3 of the 24 1h orders of a 4- or an 8-hour coin (all "
-        "of a 1-hour coin's). The filter's blocked count is on the verdict.")
+        "every order that goes in on a settlement hour is blocked: every 4h order of a coin that "
+        "settles every 4 hours, half the 4h orders of an 8-hour coin, and 6 or 3 of the 24 1h "
+        "orders of a 4- or an 8-hour coin (all of a 1-hour coin's). It is not tried on 1d, where "
+        "it would block every order (00:00 UTC is a settlement on every cycle). The filter's "
+        "blocked count is on the verdict.")
     hour = 3_600_000
 
     def blocked(step_h, n, cycle, recorded=False):

@@ -187,6 +187,9 @@ def header_lines(plan: dict, runs: int, coins: int, risk: float,
 
     start, split, end = windows(plan)
     tried, filters = vp.TRIED, len(vf.FILTERS)
+    cells = len({c[:3] for c in vf.combos()})
+    less = (f", less the {cells * filters - tried} not tried: "
+            + ", ".join(f"{f} on {tf}" for f, tf in vf.NOT_TRIED)) if cells * filters > tried else ""
     idle = f", {no_universe} in no family's universe" if no_universe else ""
     idle += (f", {none_measured} with every timeframe skipped (its line says why)"
              if none_measured else "")
@@ -194,8 +197,8 @@ def header_lines(plan: dict, runs: int, coins: int, risk: float,
             f"measured{idle}; the window {fmt_when(start / 1000)} to {fmt_when(end / 1000)} - "
             f"older days to {fmt_when(split / 1000)}, then {UNSEEN_DAYS} unseen days; {runs} "
             f"random runs a combination",
-            f"{tried} combinations tried ({tried // filters} family-setting-timeframes x "
-            f"{filters} filter choices), alpha = {vp.ALPHA:g} / {tried}, "
+            f"{tried} combinations tried ({cells} family-setting-timeframes x "
+            f"{filters} filter choices{less}), alpha = {vp.ALPHA:g} / {tried}, "
             f"z = {vp.z_for(tried, vp.ALPHA):.3f}; ${risk:,.2f} risk a trade (margin = the coin "
             f"bought / its leverage)"]
 
@@ -396,7 +399,8 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="python -m tradingagents.v3_research",
                                 description="Backtest v3 Part 2a on this PC.")
     sub = p.add_subparsers(dest="cmd", required=True)
-    risk_help = f"dollars a trade risks (default ${v3_rules.RISK_USD:,.2f})"
+    risk_help = (f"dollars a trade risks (default ${v3_rules.RESEARCH_RISK_USD:,.2f}, the "
+                 f"research's own; the tab's is ${v3_rules.RISK_USD:,.2f})")
     runs_help = f"random runs a combination (default {vrn.RUNS})"
     pl = sub.add_parser("plan", help="build the universe plan from daily candles")
     pl.add_argument("--out", default=str(vu.PLAN_FILE))
@@ -430,7 +434,7 @@ def main(argv=None) -> int:
         return 0
     plan = vu.load(a.plan)
     root = home(a.label)
-    risk = v3_rules.RISK_USD if a.risk is None else float(a.risk)
+    risk = v3_rules.RESEARCH_RISK_USD if a.risk is None else float(a.risk)
     failed: dict[str, str] = {}
     if a.cmd == "run":
         from tradingagents.v3_measure import measure_coin

@@ -21,8 +21,8 @@ returned for each coin and decides nothing anywhere else.
      above 0: BOOT_DRAWS seeded draws of the unseen trading days (a trade's
      day is the UTC day it closed), with replacement;
    * ``trades`` — at least MIN_UNSEEN unseen trades.
-   α = ALPHA / every combination measured (`v3_families.combos()`, 70 —
-   counted, never estimated) and z = Φ⁻¹(1 - α/2), 3.384.
+   α = ALPHA / every combination measured (`v3_families.combos()`, 63 —
+   counted, never estimated) and z = Φ⁻¹(1 - α/2), 3.355.
 3. Every verdict is kept, passed or failed, with its numbers.
 
 A trade still open when a walk ends (`why` END: at the split for the older
@@ -52,11 +52,12 @@ NOTES = {
                      "funding_unknown."),
     "funding_minutes": (f"No order within {vfl.SETTLE_GAP_MS // 60_000} minutes of a funding "
                         "settlement. Orders go in on the hour, so every order that goes in on a "
-                        "settlement hour is blocked: every 1d order (00:00 UTC is a settlement on "
-                        "every cycle), every 4h order of a coin that settles every 4 hours, half "
-                        "the 4h orders of an 8-hour coin, and 6 or 3 of the 24 1h orders of a 4- "
-                        "or an 8-hour coin (all of a 1-hour coin's). The filter's blocked count "
-                        "is on the verdict."),
+                        "settlement hour is blocked: every 4h order of a coin that settles "
+                        "every 4 hours, half the 4h orders of an 8-hour coin, and 6 or 3 of the "
+                        "24 1h orders of a 4- or an 8-hour coin (all of a 1-hour coin's). It is "
+                        "not tried on 1d, where it would block every order (00:00 UTC is a "
+                        "settlement on every cycle). The filter's blocked count is on the "
+                        "verdict."),
 }
 # The engine's counts that turn a signal candle away before any order goes in, in the order a tie is
 # settled, and the words each is said in ({at} is " at $x risk" when the records name a risk).

@@ -233,7 +233,7 @@ def _measure_tf(rec: dict, sym: str, kind: str, tf: str, fams: list, pre: dict, 
         return f"{max(0, i1 - i0)} older and {max(0, len(t) - i1)} unseen {tf} candles"
     order = [x + bar_ms for x in t]
     masks = {f: vfl.masks(f, sym=sym, kind=kind, order_ms=order, funding=pre["funding"],
-                          cycle_h=pre["cycle_h"], plan=plan) for f in vf.FILTERS}
+                          cycle_h=pre["cycle_h"], plan=plan) for f in vf.filters_for(tf)}
     rec["windows"][tf] = {"start": fmt_when(t[i0] / 1000), "split": fmt_when(split / 1000),
                           "end": fmt_when(end / 1000), "older_candles": i1 - i0,
                           "unseen_candles": len(t) - i1}
@@ -255,7 +255,7 @@ def _measure_tf(rec: dict, sym: str, kind: str, tf: str, fams: list, pre: dict, 
                 parts[part] = {"bars": vb, "a": a, "start": s0 - a,
                                "rule": vf.rule(fam, v, tf, vb, sym=sym, plan=plan),
                                "forced": vf.forced(fam, v, tf, vb, sym=sym, plan=plan)}
-            for filt in vf.FILTERS:
+            for filt in vf.filters_for(tf):
                 keep_l, keep_s, flags = masks[filt]
                 ok_l = [m and k for m, k in zip(long_m, keep_l, strict=True)]
                 ok_s = [m and k for m, k in zip(short_m, keep_s, strict=True)]

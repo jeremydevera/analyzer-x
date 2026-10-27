@@ -19,9 +19,10 @@ signals — what a trend follower does. The averages and ranges are
 and its exit never read two numbers for one average.
 
 The proof test judges each family on each timeframe with each filter (a
-"judged" group, 30 of them) and chooses its setting there; every family x
-setting x timeframe x filter measured (`combos`, 70) counts toward the luck
-correction.
+"judged" group, 27 of them) and chooses its setting there; every family x
+setting x timeframe x filter measured (`combos`, 63) counts toward the luck
+correction. A filter is tried on every timeframe but the ones `NOT_TRIED`
+names (funding_minutes is not tried on 1d), so 70 became 63 and 30 became 27.
 """
 from __future__ import annotations
 
@@ -46,6 +47,18 @@ FAMILIES = {
                 "long": ("calm",), "short": ("calm",)},
 }
 FILTERS = ("none", "btc_mood", "busy_hours", "funding_side", "funding_minutes")
+# (filter, timeframe) pairs that are never tried, and why - the operator's pick of Oct 27, 2026,
+# made before any full run. It replaces the earlier ruling to count them: a combination that
+# cannot trade is nothing to correct for, and it would only have raised the luck bar.
+NOT_TRIED = {("funding_minutes", "1d"): (
+    "every 1d order goes in at 00:00 UTC, a funding settlement on every cycle, so the filter "
+    "would block them all (operator, Oct 27, 2026)")}
+
+
+def filters_for(tf: str) -> tuple[str, ...]:
+    """The filters a timeframe is tried with: `FILTERS` less the ones `NOT_TRIED`
+    names for it. `combos`, `judged` and the measurement all read this."""
+    return tuple(f for f in FILTERS if (f, tf) not in NOT_TRIED)
 
 
 def setting_key(family: str, value) -> str:
@@ -61,13 +74,14 @@ def combos() -> list[tuple[str, str, str, str]]:
     """Every (family, setting, timeframe, filter) measured — the luck
     correction's count, whether or not a combination trades."""
     return [(f, setting_key(f, v), tf, filt) for f, d in FAMILIES.items() for tf in d["tfs"]
-            for v in d["settings"] for filt in FILTERS]
+            for v in d["settings"] for filt in filters_for(tf)]
 
 
 def judged() -> list[tuple[str, str, str]]:
     """Every (family, timeframe, filter) the proof test gives a verdict: it
     chooses the setting inside each."""
-    return [(f, tf, filt) for f, d in FAMILIES.items() for tf in d["tfs"] for filt in FILTERS]
+    return [(f, tf, filt) for f, d in FAMILIES.items() for tf in d["tfs"]
+            for filt in filters_for(tf)]
 
 
 def verdict_id(family: str, tf: str, filt: str) -> str:

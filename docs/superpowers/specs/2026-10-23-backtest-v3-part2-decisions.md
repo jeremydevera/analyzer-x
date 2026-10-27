@@ -78,21 +78,30 @@ and the rank of Monday 00:00 reads the closes at that instant, so the order goes
   `funding_unknown` (Gate's funding history reached back to Jul 01-02, 2025 for BTC, ETH, SOL, XRP, LINK, XAUT and ADA
   on Oct 23, 2026 — about 480 days; it is the open-interest history that keeps about 180).
 * `funding_minutes` — no order within 5 minutes either side of a funding settlement. Orders go in on the hour (the
-  open of the next candle), so every order that goes in on a settlement hour is blocked outright: every 1d order
-  (00:00 UTC is a settlement on every cycle), EVERY 4h order of a coin that settles every 4 hours, half the 4h orders
-  of an 8-hour coin, and 6 or 3 of the 24 1h orders of a 4- or an 8-hour coin (all of a 1-hour coin's). Gate's
+  open of the next candle), so every order that goes in on a settlement hour is blocked outright: EVERY 4h order of a
+  coin that settles every 4 hours, half the 4h orders of an 8-hour coin, and 6 or 3 of the 24 1h orders of a 4- or an 8-hour coin (all of a 1-hour coin's). Gate's
   listing on Oct 27, 2026 put 22 of October's 50 liquid coins (121 of the 199 liquid in any month of the plan) on a
   4-hour cycle, and 6 of October's 45 calm ones — XAU, XAG, XPD, XPT, HYPE and TAO — so on 4h this filter leaves
   little more than the 8-hour coins. The note on every funding_minutes verdict says so, and the verdict prints the
-  filter's blocked count (on the line of a group that traded nothing on the unseen days too). Whether to keep it on
-  4h and 1d is the operator's to rule before Part 2b.
+  filter's blocked count (on the line of a group that traded nothing on the unseen days too). **It is not tried on 1d**
+  (the operator's pick, Oct 27, 2026, made before any full run): every 1d order goes in at 00:00 UTC, a settlement on
+  every cycle, so it would block them all and test nothing (`v3_families.NOT_TRIED`, `filters_for`). Whether to keep
+  it on 4h is still the operator's to rule before Part 2b.
 * **`crash_guard` (#8) is NOT in Part 2a/2b's first run:** no reader of Gate's open-interest history exists yet and
   Gate keeps about 180 days; it is listed on the page as "not tested yet: needs open-interest history".
 * `when_map` (#10) belongs to Part 3 (the re-test of the stored rows).
 
 Combinations tried (the luck correction's count): 4 families with 3 + 2 + 2 + 2 = 9 settings × 2/1/1/2 timeframes
-= 6 + 2 + 2 + 4 = **14 family-setting-timeframes**, each alone and with each of 4 filters = **70 combinations**,
-so α = 0.05 / 70. Every combination is counted whether or not it trades.
+= 6 + 2 + 2 + 4 = **14 family-setting-timeframes**, each alone and with each of 4 filters = 70, less the 7
+`funding_minutes` ones on 1d (trend x3, breakout x2, strength x2, which are not tried: the operator's pick of Oct 27,
+2026, above) = **63 combinations**, so α = 0.05 / 63 and z = Φ⁻¹(1 − α/2) = **3.355** (`vp.z_for(63)`). This replaces
+the build's earlier ruling to count the 7 anyway (z 3.384). The judged groups (family x timeframe x filter) are 30 − 3
+= **27**. Every combination that is tried is counted whether or not it trades.
+
+**Risk per trade: the research measures at $5** (the operator's pick, Oct 27, 2026, made before any full run;
+`v3_rules.RESEARCH_RISK_USD`, the default of `v3_research run` and `judge`). At $1, ETH's daily trend could not take one
+lot on 228 of 228 signal candles. `v3_rules.RISK_USD` ($1) is the tab's default and `measure_coin`'s own default; Part
+2b's shard passes the research risk explicitly. `--risk` still overrides, and a record says the risk it was measured at.
 
 ## Random entries (the luck bar)
 
@@ -124,7 +133,7 @@ so α = 0.05 / 70. Every combination is counted whether or not it trades.
    * profit per trade > the 1 − α/2 quantile of the 200 pooled random runs' profit per trade (α = 0.05 / 70)
      AND > the best of the 200. Two hundred runs cannot show a tail as far out as 1 − α/2 = 0.99964 by counting
      (their best is about the 0.995 point), so the quantile is read from a normal curve fitted to the 200
-     (mean + z × standard deviation, z = Φ⁻¹(1 − α/2) = 3.384), and the best run is the floor under it;
+     (mean + z × standard deviation, z = Φ⁻¹(1 − α/2) = 3.355 for the 63 combinations), and the best run is the floor under it;
    * a day-clustered bootstrap: 2,000 seeded draws of the unseen trading days with replacement give the standard
      error of profit per trade; profit per trade − z × that error > 0 (the same z, for the same reason);
    * at least 300 unseen trades.

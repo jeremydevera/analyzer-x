@@ -15,6 +15,10 @@ from __future__ import annotations
 import bisect
 
 RISK_USD = 1.0      # lost when a stop is hit; the v3 page's risk box rescales it
+# what the Part 2 research measures at - the operator's pick, Oct 27, 2026: at $1 ETH's daily trend
+# could not take one lot on 228 of 228 signal candles (`too_small`). RISK_USD, the tab's default,
+# is unchanged
+RESEARCH_RISK_USD = 5.0
 ATR_N = 20
 TRAIL_ATR = 3.0     # trailing stop = 3 x ATR(20) of the strategy's timeframe
 LIQ_CEILING = 0.8   # auto_trader.STOP_LIQ_CEILING, held equal by a test

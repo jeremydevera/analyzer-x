@@ -26,7 +26,7 @@ their content tells them apart.
   return (the close at Monday 00:00 against the close 14 days before), best
   first.
 
-Every number is worked from candles CLOSED before the instant it is used at,
+Every number is worked from candles CLOSED by the instant it is used at,
 so no coin is chosen with hindsight. Candidates are the contracts the
 exchange trades TODAY: a coin delisted during the year is missing
 (survivorship bias, said beside every verdict).

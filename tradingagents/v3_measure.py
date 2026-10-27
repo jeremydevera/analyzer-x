@@ -13,10 +13,11 @@ family's timeframes, for every setting and every filter:
   so the setting can never be chosen on an unseen price — by construction.
   One number is NOT cut: the flat gap it pays where a minute has no reading
   of its own — the coin's usual cost, the median of EVERY recorded minute of
-  the window, which today all lie after the split (the store holds about 61
-  days). That is a cost level, never a price path, and `flat_slip_source`
-  says how many of its minutes lie on the older days; Part 2b's order-book
-  backfill gives the older days their own readings;
+  the window, which today all lie after the split (the store holds about two
+  months). That is a cost level, never a price path, and `flat_slip_source`
+  says how many of its minutes lie on the older days, until an order-book
+  backfill over the older days (Part 2b, if the pilot shows it is needed)
+  gives them their own readings;
 * the UNSEEN walk: the newest 90 days, the lead-in before them read by the
   indicators only;
 * RUNS random runs on the unseen window (`v3_random`), measured for EVERY

@@ -2508,10 +2508,14 @@ before any test. Decisions:
   1d; its order goes in AT each Monday 00:00 UTC rank — the signal candle
   is the daily candle closing then, never the one opening, which put the
   order a day after the rank — and it is forced out at a later Monday
-  00:00 rank outside the top 2K (or unranked), `walk(forced=)`, `why`
-  RANK; a Monday the plan holds no ranking for (the plan's own end, or
-  later) forces nothing, so a trade still open when the plan ends on a
-  Monday is END, not RANK), snap (k 1.5/2.0, 1h and 4h). Lead-in: 300
+  00:00 rank outside the top 2K (or gone from that month's liquid list),
+  `walk(forced=)`, `why` RANK; a Monday the plan holds no ranking for (the
+  plan's own end, or later) forces nothing, so a trade still open when the
+  plan ends on a Monday is END, not RANK; nor does a ranked Monday that left
+  out a coin still in the month's liquid list — the plan ranks every liquid
+  coin whose 14-day return it can work out, so that coin is missing a close
+  it needs, and its trade keeps its trail, not counted (RCA-2026-10-27-B)),
+  snap (k 1.5/2.0, 1h and 4h). Lead-in: 300
   candles or the rule's own lookback, whichever is longer. Four filters as
   masks on the signal (`v3_filters`): btc_mood, busy_hours (stock tokens:
   New York hours; every other contract — crypto, metals, indices, forex —
@@ -2519,13 +2523,30 @@ before any test. Decisions:
   BEFORE the order, over [order − 30 days, order): Gate stamps a
   settlement on the hour in some months and 0-7 s past it in others, and
   an "at or before" rule flipped 55 of BTC's 776 daily side decisions),
-  funding_minutes; an order the history cannot judge passes and is counted
+  funding_minutes (no order within 5 minutes of a settlement; orders go in
+  on the hour, so it blocks every order on a settlement hour: every 1d
+  order, EVERY 4h order of a coin that settles every 4 hours, half the 4h
+  orders of an 8-hour coin, 6 or 3 of the 24 1h orders of a 4- or 8-hour
+  coin — Gate's listing on Oct 27, 2026 put 22 of October's 50 liquid coins
+  and 6 of its 45 calm ones, XAU, XAG, XPD, XPT, HYPE and TAO, on 4 hours;
+  whether to keep it on 4h and 1d is the operator's to rule before Part
+  2b); an order the history cannot judge passes and is counted
   (`mood_unknown`, `funding_unknown`), except funding_minutes, which
   outside the history judges by the contract's settlement cycle from 00:00
-  UTC and counts `settle_by_cycle`. crash_guard is not built.
+  UTC and counts `settle_by_cycle` — each printed, in signal candles, with
+  its filter, where above 0, on the counts line of a verdict that traded.
+  crash_guard is not built.
 * **The luck bar** (`v3_random`): per combination and coin, 200 seeded
   runs on the unseen days, as many orders per month and side as the real
-  run placed, on candles it could have entered on.
+  run placed, on candles it could have entered on. It is STRICTER than "as
+  many trades as the real run", and kept so (ruled Oct 27, 2026): an entry
+  inside the run's own open trade is not taken, and a snap entry drawn on
+  the far side of its average has no target (`no_levels`), so a run trades
+  less and its profit a trade spreads wider — it can fail a real edge at
+  "random", never pass a false one. Every verdict prints the shortfall: the
+  runs' median trades against the real run's, and why the other entries
+  never traded, summed over the runs (`random_short`, `random_refused`,
+  `random_in_trade`, pooled in `random_runs`). Part 2b may redraw.
 * **The proof** (`v3_proof`): choose on the older walks (30+ trades, ties
   to the simplest); judge the chosen setting pooled over every coin: profit
   a trade above 0, above the random runs' normal-fit (1 - α/2) point and
@@ -2543,32 +2564,45 @@ before any test. Decisions:
   that cannot choose a setting says why, and
   "<filter> blocked all N signals on the older days" when its filter
   blocked every signal of every setting (N: the most any one setting had;
-  funding_minutes on 1d: every daily order goes in at 00:00 UTC, a
-  settlement).
+  funding_minutes on 1d, and on 4h for a coin on a 4-hour cycle); a
+  filtered group that traded nothing on the unseen days still prints its
+  filter's blocked count. Every setting's older figure that has trades
+  prints how many of its exits paid a typical cost ("exits at a typical
+  cost N of T"), as the unseen line does.
 * **$1 of risk decides which trades exist.** At Gate's lots a $1-risk trade
   of ETH, SOL or XRP on 1d is under one lot (Oct 23, 2026: 19 of October's
   50 liquid coins on 1d, 7 on 4h, 4 on 1h): skipped, counted `too_small`. A
   verdict that traded on the unseen days prints that count ("refused signal
   candles: under one lot N": the chosen setting's, pooled over the coins);
   one that failed at choosing says it in its reason, from the older walks'
-  counts summed over every setting and coin (`older_counts`): "no setting
-  had 30 trades on the older days: 76 of 76 signal candles were under one
-  lot at $1.00 risk". One that traded nothing on the unseen days prints
-  none.
+  counts summed over every setting and coin (`older_counts`), in words
+  that say a candle counts once per setting it signals under: "no setting
+  had 30 trades on the older days: 228 of 228 signals over the 3 settings
+  (a candle counts once for each setting it signals under) were under one
+  lot at $1.00 risk" (the test's 76 candles x 3 settings). One that traded
+  nothing on the unseen days prints none.
   `measure_coin(risk_usd=)` and `--risk` exist; records measured at another
   risk, plan or run count are never pooled.
 * **The command is a check, not the proof**: `python -m
   tradingagents.v3_research plan` builds the plan file; `run COIN ...`
   measures coins and `judge` judges those already measured, both printing
-  every coin's order-book coverage before any verdict. Its own files are
-  the plan file and `stores.V3.home/research/<label>` (the readers it calls
-  keep their usual candle and order-book caches), and it runs no job in the
-  v3 store. `cost_store.usual_slip` is each coin's own flat gap — the median
-  of its recorded minutes whose book did not run out; today they all lie
-  after the split (the store holds about 61 days), and every coin line says
-  how many lie on the older days (or that no minute is recorded): a cost
-  level, never a price path, until Part 2b's order-book backfill gives the
-  older days their own.
+  the order-book coverage of every pooled coin before any verdict (a coin in
+  no family's universe prints its reason; a record of another plan build,
+  plan end, risk or run count is named, with the field that differs and
+  both values, and left out). The header counts a coin as measured only
+  when at least one of its timeframes was. A coin that fails is named, its
+  old record dropped (one that cannot be dropped is named too, and never
+  judged) and the others still measured, and the command ends 1. Its own
+  files are the plan file and `stores.V3.home/research/<label>`, the label
+  one plain folder name (never a path, a Windows device name or a name
+  ending in "."); the readers it calls keep their usual caches (candles,
+  order books, the contract list), and it runs no job in the v3 store.
+  `cost_store.usual_slip` is each coin's own flat gap — the median of its
+  recorded minutes whose book did not run out; today they all lie after
+  the split (the store holds about two months), and every coin line says
+  how many lie on the older days (or why no minute figure was used): a cost
+  level, never a price path, until an order-book backfill over the older
+  days (Part 2b, if the pilot shows it is needed) gives them their own.
 
 Guards: `tests/test_v3_universe.py`, `tests/test_v3_families.py`,
 `tests/test_v3_filters.py`, `tests/test_v3_random.py`,

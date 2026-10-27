@@ -172,6 +172,40 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-27-C — a Backtest v3 tab run with no trade printed "leverage —x" and "$— of coin a trade": a dash dressed as a number
+
+**CEO**
+
+* A run of the Backtest v3 tab that made no trade (ETH 1d v3_trend n = 50 over 30 days at $1 a trade, every one of its 20 signals too small for one lot) printed "leverage —x" and "$— of coin a trade", as if a leverage and a size had been measured.
+* Why: the line was written for runs that trade, and put the letter "x" and the dollar sign around whatever came back, even nothing.
+* What stops it now: a run with no trade says "no leverage (no trade)" and "no coin bought (no trade)", and a test fails if the old spelling comes back.
+
+**DEV**
+
+* `webapp/src/components/backtest-v3/V3Runner.tsx` (HEAD `92c632d61ae5`, the provenance line and the summary table's Leverage cell): `leverage {s.leverage_min ?? "—"}{...}x` and `${plain(s.notional_min)}...of coin a trade` - `summary.leverage_min` / `notional_min` are None when `v3_page._tally` has no trade rows, and the unit stayed outside the fallback.
+* Invariant broken: **a label is derived from the data it describes** (label-must-match-data): a unit belongs to a number, so no number means no unit and the words say why.
+* Guard: `tests/test_backtest_v3_tab_no_trade_words.py::test_a_run_with_no_trade_never_prints_a_dash_for_its_leverage`.
+
+**SAW** - this session's look at the page (Oct 27, 2026), not the operator: the ETH run's provenance line read "$1.00 risk a trade · leverage —x · $— of coin a trade", and its table's Leverage cell "—x". The stored-idea runs of Part 1 print through the same line, so any of them that made no trade since Oct 23, 2026 read the same.
+
+**TIMELINE**
+
+1. `Oct 23, 2026` - the Backtest v3 tab ships (Part 1); every figure on its result line is read from `summary`, and the leverage and size are printed with their units outside the `?? "—"` fallback.
+2. `Oct 27, 2026` - this change runs ETH_USDT 1d v3_trend n50 none on a build of the page: 0 trades, 20 signals "too small for one lot at this risk" ($1.00), 1 signal on the last candle; the line printed "leverage —x" and "$— of coin a trade".
+3. The same run after the fix prints "no leverage (no trade)" and "no coin bought (no trade)"; BTC_USDT 1h v3_snap k1.5 none still prints "leverage 20x · $32.95–$187.13 of coin a trade" (35 trades).
+
+**ROOT CAUSE** - The fallback covered the number and not its unit: `?? "—"` stood inside `{...}x` and `$${...}`, so a missing figure became a dash that still carried "x" and "$".
+
+**WHY IT WAS NOT CAUGHT** - The tab's tests (`tests/test_backtest_v3_tab.py`) assert on the server's numbers - trades, profit, leverage 20x - all on a world where every signal trades; none rendered the page for a run with no trade, and no check reads the words beside a missing number. A run with zero rows has no row for a row-shaped test to stand on (the Sep 12, 2026 "empty page" rule), so the assertion has to go against the words.
+
+**COST** - none: a wrong-looking label, no money and no decision rested on it.
+
+**FIX** - this commit: the provenance line and the Leverage cell print "no leverage (no trade)", "no coin bought (no trade)" and "no trade" when `leverage_min` / `notional_min` are null.
+
+**GUARD** - `tests/test_backtest_v3_tab_no_trade_words.py::test_a_run_with_no_trade_never_prints_a_dash_for_its_leverage` - it finds the old spelling twice in HEAD's `V3Runner.tsx` and none in the fixed file.
+
+---
+
 ## RCA-2026-10-27-B — a Backtest v3 strength trade would have been closed as "left the top 2K" when one of its coin's daily candles was missing, on a ranking that had simply skipped the coin: NEVER HAPPENED YET
 
 **CEO**

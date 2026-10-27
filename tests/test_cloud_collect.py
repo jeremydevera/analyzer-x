@@ -21,6 +21,17 @@ import pytest
 from tradingagents import cloud_sweep as cs
 
 
+# 2:1 AFTER FEES in the stored FILES (Oct 27, 2026) is not what this file
+# tests: its sample rows carry no fee, and the rule has its own file,
+# tests/test_backtest_v2_keeps_target_over_stop.py. Off here, never in code.
+@pytest.fixture(autouse=True)
+def _no_two_to_one_floor(monkeypatch):
+    from tradingagents import backtest_report as _br
+
+    monkeypatch.setattr(_br, "PAY_RATIO", 0.0)
+    monkeypatch.setattr(_br, "target_over_stop", lambda row: True)
+
+
 @pytest.fixture
 def store(tmp_path, monkeypatch):
     from tradingagents import market_sweep as msw

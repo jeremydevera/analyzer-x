@@ -2375,8 +2375,17 @@ win will break even 2 loss"* in dollars after fees; the build compared prices.
   running row, as an unread target does). The replays and the research decide
   through the same functions: `_Book.row` and the research rows carry
   `cost_of_tp`, and `watcher_research._pay_ok` is its array copy.
-* **The pair files still keep every row** (the Oct 06 reason); the list is
-  cleaned by one v2 index rebuild. "Why isn't #ID listed" names it
+* **THE PAIR FILES HOLD THE SAME AS THE LIST SINCE OCT 27, 2026** (operator:
+  *"then update it now"*, on being told the files kept 7.5 million
+  strategies the list hides): `store_keeps` — used by every write of a v2 pair
+  file (a night's merge, the live door, UPDATE THIS BACKTEST) — keeps TP > SL
+  AND 2:1 after fees, so the Oct 06 reason ("the rooms read the files") is
+  gone: a running strategy the files no longer hold is switched off by its
+  room on its next hourly check, Backtest a room cannot replay one the files
+  never held, and a missing id reads "not kept". A copy of every file as it
+  was is in `~/.tradingagents/v2/backup-before-2to1/`; undoing is copying
+  it back and removing the `store_keeps` line, then the next night's merge
+  measures them again (GitHub still measures every combination). "Why isn't #ID listed" names it
   (`missing_row` state `not_two_to_one`, with the win and loss after fees).
 * Guard: `tests/test_two_to_one_after_fees.py`.
 

@@ -64,10 +64,15 @@ def test_the_flat_only_rule_still_applies_to_the_list():
     assert not br.index_keeps(_row(1.0, 2.0, sizing="martingale"))
 
 
-def test_the_files_keep_every_flat_row_whatever_its_target():
-    assert br.store_keeps(_row(5.0, 5.0))
-    assert br.store_keeps(_row(5.0, 4.0))
-    assert not br.store_keeps(_row(1.0, 2.0, sizing="martingale"))
+def test_the_files_keep_only_flat_rows_that_pay_two_to_one():
+    """Since Oct 27, 2026 the files hold what the list holds (they kept every
+    flat row from Oct 06): equal and smaller targets, and a target that does
+    not pay 2:1 after its fee, are not kept; v1 rows, any."""
+    assert not br.store_keeps(_row(5.0, 5.0, cost_of_tp=5.0, gate="ok"))
+    assert not br.store_keeps(_row(5.0, 4.0, cost_of_tp=5.0, gate="ok"))
+    assert br.store_keeps(_row(1.0, 3.0, cost_of_tp=5.0, gate="ok"))
+    assert not br.store_keeps(_row(1.0, 3.0, sizing="martingale", cost_of_tp=5.0, gate="ok"))
+    assert br.store_keeps(_row(5.0, 5.0, res=None))
 
 
 # ------------------------------------------------- the files and the index
@@ -84,12 +89,27 @@ def _three(tf="30m"):
     return [_row(2.0, tp, tf=tf, signal="keltner") for tp in (2.0, 3.0, 1.5)]
 
 
-def test_the_pair_file_keeps_an_equal_row_the_rooms_read(index):
-    """What the watcher and Backtest a room read: every row, untouched."""
-    msw.save_pair_rows("GPNSTOCK", "30m", _three())
-    msw.merge_pair_rows("GPNSTOCK", "30m", [])
-    msw.rewrite_pair_rows("GPNSTOCK", "30m", lambda rows: rows)
-    assert sorted(r["tp"] for r in msw.pair_rows("GPNSTOCK", "30m")) == [1.5, 2.0, 3.0]
+def _pays(tp):
+    return _row(1.0, tp, tf="30m", signal="keltner", cost_of_tp=5.0, gate="ok")
+
+
+def test_the_pair_file_keeps_only_two_to_one_after_fees(index):
+    """Oct 27, 2026, "then update it now": the stored files hold what the list
+    holds - 2:1 after fees - on EVERY write (a night's merge, a live post, an
+    UPDATE). Until then they kept every row so rooms could replay what they
+    had run; the list was cut from them (spec 2026-10-06)."""
+    rows = [_pays(1.0), _pays(3.0), _pays(0.75)]     # equal, 2:1, smaller
+    msw.save_pair_rows("GPNSTOCK", "30m", rows)
+    assert [r["tp"] for r in msw.pair_rows("GPNSTOCK", "30m")] == [3.0]
+    msw.merge_pair_rows("GPNSTOCK", "30m", [_pays(1.0)])
+    assert [r["tp"] for r in msw.pair_rows("GPNSTOCK", "30m")] == [3.0]
+    msw.rewrite_pair_rows("GPNSTOCK", "30m", lambda r: r + [_pays(0.75)])
+    assert [r["tp"] for r in msw.pair_rows("GPNSTOCK", "30m")] == [3.0]
+
+
+def test_a_v1_pair_file_is_never_trimmed(index):
+    msw.save_pair_rows("GPNSTOCK", "30m", [_row(2.0, 1.0, tf="30m", res=None)])
+    assert len(msw.pair_rows("GPNSTOCK", "30m")) == 1
 
 
 def test_the_index_files_only_rows_whose_target_is_bigger(index):
@@ -114,16 +134,16 @@ def test_the_index_and_the_files_read_their_own_rule():
     assert "br.store_keeps(r)" in inspect.getsource(msw.rewrite_pair_rows)
 
 
-def test_a_row_written_to_its_file_still_reaches_the_watcher(index, monkeypatch):
-    """The watcher's hourly switch-off check finds a running row in its pair
-    file (strategy_watcher._fresh_row -> watcher_candidates.matched_rows): a
-    TP = SL row Main runs (keltner_30m_sl2tp2 on GPNSTOCK) must still be
-    there after any write, or the room switches it off within the hour."""
+def test_a_strategy_the_files_no_longer_hold_is_switched_off_by_the_watcher(index, monkeypatch):
+    """The watcher's hourly check finds a running row in its pair file
+    (watcher_candidates.matched_rows); a strategy that is not 2:1 after fees is
+    no longer there, and the room switches it off ("the backtest store no
+    longer holds this row") - the rule it already switches it off by."""
     from tradingagents import watcher_candidates as wc
 
     monkeypatch.setattr(wc, "stores", types.SimpleNamespace(V2=types.SimpleNamespace(home=index)))
     wc._MATCH_CACHE.clear()
-    msw.save_pair_rows("GPNSTOCK", "30m", _three())
-    got = wc.matched_rows("GPNSTOCK", "30m",
-                          [{"signal": "keltner", "th": 0.0, "sl": 2.0, "tp": 2.0}])
-    assert got and [float(r["tp"]) for r in got.values() if r] == [2.0]
+    msw.save_pair_rows("GPNSTOCK", "30m", [_pays(1.0), _pays(3.0)])
+    got = wc.matched_rows("GPNSTOCK", "30m", [{"signal": "keltner", "th": 0.0, "sl": 1.0, "tp": 1.0},
+                                              {"signal": "keltner", "th": 0.0, "sl": 1.0, "tp": 3.0}])
+    assert [float(r["tp"]) for r in got.values() if r] == [3.0]

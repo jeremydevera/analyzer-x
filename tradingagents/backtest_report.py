@@ -369,7 +369,16 @@ def store_keeps(row: dict) -> bool:
     (`market_sweep.save_pair_rows`): a v2 file that is written again comes
     back flat only, instead of carrying martingale twins that no measure
     updates any more (RCA-2026-09-25-C)."""
-    return str(row.get("sizing") or "flat") in sizings_for(row.get("res"))
+    if str(row.get("sizing") or "flat") not in sizings_for(row.get("res")):
+        return False
+    if str(row.get("res") or "").strip().lower() != "1m":
+        return True
+    # BACKTEST v2's FILES HOLD WHAT ITS LIST HOLDS (operator, Oct 27, 2026,
+    # "then update it now", after learning the files kept 7.5 million
+    # strategies the list hides): a target bigger than the stop, paying 2:1
+    # after fees. Rooms that run a strategy this drops switch it off on their
+    # next hourly check - the rule they already switch it off by.
+    return target_over_stop(row) and pays_two_to_one(row)
 
 
 def index_keeps(row: dict) -> bool:
@@ -379,20 +388,17 @@ def index_keeps(row: dict) -> bool:
     than the stop (Oct 06, 2026, spec 2026-10-06-backtest-v2-target-over-
     stop: "the goal is to have higher tp than sl").
 
-    THE INDEX ONLY, NEVER THE PAIR FILES (final review, Oct 06, 2026): the
+    SINCE OCT 27, 2026 THE FILES HOLD THE SAME (`store_keeps`): this was
+    "the index only, never the pair files" on Oct 06, 2026 (final review: the
     rooms read the files. Main had switched off 256 TP <= SL strategies in the
     14 days before; with their rows gone from the files, Backtest a room had
     nothing to replay for them (room_replay.room_picks) and a paused one could
     never be switched on again (the watcher switches off a row its file no
-    longer holds). GitHub keeps measuring them, so undoing this is this
-    function and one index rebuild."""
-    if not store_keeps(row):
-        return False
-    if str(row.get("res") or "").strip().lower() != "1m":
-        return True
-    # and since Oct 16, 2026, 2:1 AFTER FEES ("Backtest list and rooms"): a
-    # target bigger than the stop on paper is not enough
-    return target_over_stop(row) and pays_two_to_one(row)
+    longer holds)), until the operator asked for the files to match the list.
+    The copy of every file as it was is in v2/backup-before-2to1."""
+    # 2:1 AFTER FEES, bigger-than-the-stop included (Oct 16, 2026): in
+    # `store_keeps` for Backtest v2 since Oct 27, 2026
+    return store_keeps(row)
 
 
 BARRIERS: dict[str, list[tuple[float, float]]] = {

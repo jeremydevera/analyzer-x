@@ -169,5 +169,5 @@ def test_the_index_and_the_files_read_one_rule():
     # the index lists through index_keeps since Oct 06, 2026 (TP > SL on v2),
     # which keeps nothing store_keeps would not
     assert "br.index_keeps(r)" in inspect.getsource(ri._kept)
-    assert "if not store_keeps(row):" in inspect.getsource(br.index_keeps)
+    assert "return store_keeps(row)" in inspect.getsource(br.index_keeps)
     assert "br.store_keeps(r)" in inspect.getsource(msw.save_pair_rows)

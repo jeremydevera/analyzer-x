@@ -20,6 +20,17 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 
 
+# 2:1 AFTER FEES in the stored FILES (Oct 27, 2026) is not what this file
+# tests: its sample rows carry no fee, and the rule has its own file,
+# tests/test_backtest_v2_keeps_target_over_stop.py. Off here, never in code.
+@pytest.fixture(autouse=True)
+def _no_two_to_one_floor(monkeypatch):
+    from tradingagents import backtest_report as _br
+
+    monkeypatch.setattr(_br, "PAY_RATIO", 0.0)
+    monkeypatch.setattr(_br, "target_over_stop", lambda row: True)
+
+
 def _frame(n=900, tf="1h", seed=7, end=None, volume=True):
     rng = np.random.default_rng(seed)
     step = {"15m": 900, "30m": 1800, "1h": 3600, "4h": 14400, "1d": 86400}[tf]

@@ -159,6 +159,27 @@ def test_strength_takes_the_kth_place_and_keeps_the_2kth_but_not_the_one_after()
     assert [out[i] for i in sundays] == [False, False, True]
 
 
+def test_the_strength_exit_keeps_a_coin_while_its_rank_is_within_strength_keep_times_k(monkeypatch):
+    # "the top 2K" is a named number, so that a printed rule can read it (v3_research.exit_words)
+    # and a change of it moves the walk and the words together
+    assert vf.STRENGTH_KEEP == 2
+    a_to_g = [f"{x}_USDT" for x in "ABCDEFG"]
+    plan = {"months": ["2026-10"], "liquid": {"2026-10": a_to_g}, "calm": {"2026-10": []},
+            "strength": {str(MONDAYS[0]): _d_at(6), str(MONDAYS[1]): _d_at(7),
+                         str(MONDAYS[2]): _d_at(3)}}              # D is 6th, 7th and 3rd
+    bars, sundays = _bars([100.0] * 28), [3, 10, 17]
+
+    def forced_on_sundays():
+        out = vf.forced("v3_strength", 3, "1d", bars, sym="D_USDT", plan=plan)
+        return [out[i] for i in sundays]
+
+    assert forced_on_sundays() == [False, True, False], "2K = 6: the 6th stays, the 7th goes"
+    monkeypatch.setattr(vf, "STRENGTH_KEEP", 3)
+    assert forced_on_sundays() == [False, False, False], "3K = 9: the 7th stays too"
+    monkeypatch.setattr(vf, "STRENGTH_KEEP", 1)
+    assert forced_on_sundays() == [True, True, False], "1K = 3: the 3rd stays, the 6th goes"
+
+
 def test_forced_reads_only_a_monday_the_plan_ranked():
     # 35 daily candles, Oct 01 - Nov 04. Candle 24 (Sunday Oct 25) closes at Monday Oct 26, which
     # the plan ranked without D: a ranking that no longer holds the coin forces it out. Candle 31

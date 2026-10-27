@@ -34,7 +34,7 @@ from __future__ import annotations
 import random
 from statistics import NormalDist, fmean, median, stdev
 
-from tradingagents import v3_families as vf, v3_random as vrn, v3_universe as vu
+from tradingagents import v3_families as vf, v3_filters as vfl, v3_random as vrn, v3_universe as vu
 
 ALPHA = 0.05
 MIN_CHOOSE = 30
@@ -43,11 +43,22 @@ BOOT_DRAWS = 2000
 DAY_MS = 86_400_000
 CHECKS = ("profit", "random", "bootstrap", "trades")
 TRIED = len(vf.combos())
+# What each filter that can surprise says on its verdict (the decisions doc, "The filters").
 NOTES = {
     "busy_hours": ("No family's universe holds stock tokens, so only the no-weekend half of "
                    "busy hours can bite."),
     "btc_mood": "Only crypto alt-coins' longs are filtered; BTC and other contracts pass.",
+    "funding_side": ("A signal the funding history cannot judge passes and is counted "
+                     "funding_unknown."),
+    "funding_minutes": (f"No order within {vfl.SETTLE_GAP_MS // 60_000} minutes of a funding "
+                        "settlement; every 1d order goes in at 00:00 UTC, a settlement, so on 1d "
+                        "it blocks them all."),
 }
+# The engine's counts that turn a signal candle away before any order goes in, in the order a tie is
+# settled, and the words each is said in ({at} is " at $x risk" when the records name a risk).
+REFUSALS = (("too_small", "were under one lot{at}"),
+            ("unsafe_stop", "had no safe leverage"),
+            ("gate_blocked", "were turned away by the cost check"))
 
 
 def z_for(tried: int, alpha: float = ALPHA) -> float:
@@ -172,14 +183,17 @@ def tally(walks: list[dict]) -> dict:
 
 def _refuse_mixed(coins: list[dict]) -> None:
     """Coins are pooled only when each is listed once and all were measured on
-    one risk, one run count and one plan end. Anything else is refused by name:
-    the pooled trades would not all exist at one risk, or one coin would be
-    counted twice."""
+    one risk, one run count, one plan end and one plan BUILD (`plan_id`: builds
+    of one UTC day share an end, and only their content tells them apart; a
+    record written before builds were stamped has none, so two of them pool with
+    each other and never with a stamped one). Anything else is refused by name:
+    the pooled trades would not all exist at one risk, one coin would be counted
+    twice, or the coins would come from two universes."""
     names = [c.get("coin") for c in coins]
     for i, name in enumerate(names):
         if name in names[:i]:
             raise ValueError(f"{name} is listed twice: pooling it twice would count its trades twice")
-    for key in ("risk_usd", "runs", "plan_end_ms"):
+    for key in ("risk_usd", "runs", "plan_end_ms", "plan_id"):
         for c in coins[1:]:
             if c.get(key) != coins[0].get(key):
                 raise ValueError(
@@ -202,6 +216,23 @@ def _blocked_all(used: list, ck: dict, keys: list) -> int | None:
     return most if most >= 1 and all(blocked[k] == signals[k] for k in keys) else None
 
 
+def _refusal_words(counts: dict, risk) -> str:
+    """The dominant reason signal candles were turned away, from the engine's
+    own counts summed over the older walks (`REFUSALS`: the biggest, a tie to
+    the first), as "76 of 76 signal candles were under one lot at $1.00 risk";
+    "" when none was refused. The risk is the records', and is left unsaid when
+    they name none. `signal_candles` is what the filter counted: a count above
+    it (a record that kept no signal count) is said without a denominator."""
+    key, words = max(REFUSALS, key=lambda kw: int(counts.get(kw[0], 0)))
+    n = int(counts.get(key, 0))
+    if n <= 0:
+        return ""
+    signals = int(counts.get("signal_candles", 0))
+    of = f"{n:,} of {signals:,}" if signals >= n else f"{n:,}"
+    at = f" at ${float(risk):,.2f} risk" if risk is not None else ""
+    return f"{of} signal candles {words.format(at=at)}"
+
+
 def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | None = None,
             tried: int = TRIED) -> dict:
     """One family on one timeframe with one filter, chosen and judged over
@@ -210,7 +241,13 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | No
     z=None (the default) takes z_for(tried), so a verdict's alpha and z are
     always for the same count of tries. An explicit z is used as given, and the
     record's alpha is the one that z makes, 2 x (1 - Φ(z)), so no label names
-    one count with another count's z. z must be positive."""
+    one count with another count's z. z must be positive.
+
+    A verdict that failed at the choice carries `older_counts` - the older
+    walks' counts summed over every setting and every coin - and its `why` names
+    the dominant reason signals were turned away; one that went on to be judged
+    carries `random_runs`, the runs made and the runs that traded, whether or
+    not a bar came of them."""
     _refuse_mixed(coins)
     if isinstance(tried, bool) or not isinstance(tried, int) or tried < 1:
         raise ValueError(f"tried must be a positive whole number, got {tried!r}")
@@ -242,6 +279,8 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | No
             "older": table, "setting": chosen, "notes": notes}
     if chosen is None:
         most = _blocked_all(used, ck, keys)
+        # what the older walks of every setting, of every coin, could not measure or turned away
+        older_counts = tally([w for k in keys for w in _walks(used, ck[k], "older")])["counts"]
         # a plain group names no filter; a filtered one says which, as "with <filter>"
         named = "" if filt == "none" else f" with {filt}"
         if not used:
@@ -250,14 +289,20 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | No
             why = f"{filt} blocked all {most:,} signals on the older days"
         else:
             why = f"no setting had {MIN_CHOOSE} trades on the older days{named}"
-        return {**base, "passed": False, "failed": "choose", "why": why}
+            # a group can fail here because its signals never became orders: say so, at the risk
+            # the records were measured at (every coin of `used` shares one: `_refuse_mixed`)
+            refused = _refusal_words(older_counts, used[0].get("risk_usd"))
+            if refused:
+                why += f": {refused}"
+        return {**base, "passed": False, "failed": "choose", "why": why,
+                "older_counts": older_counts}
     key = ck[chosen]
     walks = _walks(used, key, "unseen")
     rows = [r for w in walks for r in w["rows"]]
     s = summary(rows)
     held = [c for c in used if key in c["combos"]]
-    bar = random_bar(pool_random([c["combos"][key]["random"] for c in held],
-                                 [c["coin"] for c in held]), z)
+    pooled = pool_random([c["combos"][key]["random"] for c in held], [c["coin"] for c in held])
+    bar = random_bar(pooled, z)
     se, days = boot_se(rows, vrn.seed_of("boot", key))
     ppt = s["per_trade"]
     checks = {"profit": ppt is not None and ppt > 0,
@@ -267,6 +312,8 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | No
     failed = next((k for k in CHECKS if not checks[k]), "")
     return {**base, "passed": not failed, "failed": failed, "checks": checks, "unseen": s,
             "random": bar,
+            # the runs made and the runs that traded, kept whether or not a bar came of them
+            "random_runs": {"runs": len(pooled), "traded": sum(1 for n, _p in pooled if n)},
             "bootstrap": {"draws": BOOT_DRAWS, "days": days, "se": se,
                           "low": ppt - z * se if ppt is not None and se is not None else None},
             **tally(walks)}

@@ -2535,9 +2535,12 @@ before any test. Decisions:
   verdict's window is the group's, never its first coin's own record: the
   plan's split and end (as the first coin printed them) with the candle
   counts summed over the coins, and no start or seconds. Coins listed
-  twice or measured at another risk, run count or plan end are refused by
-  name — compared on the plan's end, never on a date printed in one
-  machine's time zone. A verdict that cannot choose a setting says why, and
+  twice or measured at another risk, run count, plan end or plan BUILD are
+  refused by name — compared on the plan's end, never on a date printed in
+  one machine's time zone, and on the plan's `id` (`v3_universe.plan_id`, a
+  fingerprint of its content, stamped on every record: builds of one UTC day
+  share an end, so the end alone cannot tell two plans apart). A verdict
+  that cannot choose a setting says why, and
   "<filter> blocked all N signals on the older days" when its filter
   blocked every signal of every setting (N: the most any one setting had;
   funding_minutes on 1d: every daily order goes in at 00:00 UTC, a
@@ -2547,7 +2550,11 @@ before any test. Decisions:
   50 liquid coins on 1d, 7 on 4h, 4 on 1h): skipped, counted `too_small`. A
   verdict that traded on the unseen days prints that count ("refused signal
   candles: under one lot N": the chosen setting's, pooled over the coins);
-  one that failed at choosing, or traded nothing there, prints none.
+  one that failed at choosing says it in its reason, from the older walks'
+  counts summed over every setting and coin (`older_counts`): "no setting
+  had 30 trades on the older days: 76 of 76 signal candles were under one
+  lot at $1.00 risk". One that traded nothing on the unseen days prints
+  none.
   `measure_coin(risk_usd=)` and `--risk` exist; records measured at another
   risk, plan or run count are never pooled.
 * **The command is a check, not the proof**: `python -m

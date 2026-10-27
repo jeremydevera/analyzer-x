@@ -6,7 +6,9 @@ Spec: docs/superpowers/specs/2026-10-22-backtest-v3-design.md (Part 2, the
 universe words); decisions: docs/superpowers/specs/2026-10-23-backtest-v3-
 part2-decisions.md ("The universe"). Built on this PC from daily candles
 before a run and written as the run's plan file (`PLAN_FILE`), so every
-machine reads the same universe.
+machine reads the same universe. The plan carries an `id`, a fingerprint of its
+content (`plan_id`): two builds of one UTC day end on one instant, and only
+their content tells them apart.
 
 * LIQUID crypto: kind "crypto", the top 50 by 30-day traded value at each
   month start. A day's traded value is its Volume (in contracts) x the
@@ -33,6 +35,7 @@ from __future__ import annotations
 
 import bisect
 import calendar
+import hashlib
 import json
 import math
 import os
@@ -191,6 +194,22 @@ def left_out_why(sym: str) -> str:
     return ""
 
 
+ID_LEAVES_OUT = ("built", "built_s", "id")
+
+
+def plan_id(plan: dict) -> str:
+    """The plan's fingerprint: 16 hex digits of a blake2b over its JSON — keys
+    sorted, no spaces, as `save` writes it — with `built`, `built_s` and `id`
+    left out. Every build of one UTC day ends on the same instant, so the end
+    cannot tell two plans apart; the CONTENT can. A plan built again from the
+    same candles is the same plan (only its build time moved); any other key
+    changed — one coin's group, a rank, the left-out list — is another one.
+    Records stamp it (`v3_measure.measure_coin`) and are pooled only under one."""
+    body = {k: v for k, v in plan.items() if k not in ID_LEAVES_OUT}
+    text = json.dumps(body, sort_keys=True, separators=(",", ":"))
+    return hashlib.blake2b(text.encode("utf-8"), digest_size=8).hexdigest()
+
+
 def build(dailies: dict, kinds: dict, sizes: dict, end_ms: int, *, skipped=None,
           venue_name: str = "", built_s: float | None = None) -> dict:
     """The plan: membership per month, BTC's mood and the Monday ranks over
@@ -198,7 +217,8 @@ def build(dailies: dict, kinds: dict, sizes: dict, end_ms: int, *, skipped=None,
     closed by then). `dailies` {symbol: daily_of(...)}, `kinds` {symbol:
     venue kind} for every candidate, `sizes` {symbol: contract size}. `skipped`
     {symbol: why it could not be read} goes into the plan, and a BTC found there
-    is quoted in the error that refuses a plan with no mood."""
+    is quoted in the error that refuses a plan with no mood. The plan carries
+    its own `id` (`plan_id`)."""
     from tradingagents.positions_view import fmt_when
 
     end_ms = int(end_ms)
@@ -235,7 +255,7 @@ def build(dailies: dict, kinds: dict, sizes: dict, end_ms: int, *, skipped=None,
                          + (f" ({skipped[BTC]})" if skipped and BTC in skipped else ""))
     coins = sorted({s for g in (liquid, calm) for members in g.values() for s in members})
     built = time.time() if built_s is None else float(built_s)
-    return {"version": VERSION, "venue": venue_name, "built": fmt_when(built),
+    plan = {"version": VERSION, "venue": venue_name, "built": fmt_when(built),
             "built_s": built, "start_ms": start_ms, "end_ms": end_ms,
             "start": fmt_when(start_ms / 1000), "end": fmt_when(end_ms / 1000),
             "months": sorted(liquid), "liquid": liquid, "value": value, "calm": calm,
@@ -245,6 +265,8 @@ def build(dailies: dict, kinds: dict, sizes: dict, end_ms: int, *, skipped=None,
             "sizes": {s: sizes[s] for s in crypto},
             "coins": coins, "skipped": dict(skipped or {}), "left_out": left_out,
             "notes": [SURVIVORSHIP, SIZE_NOTE, LEFT_OUT_NOTE]}
+    plan["id"] = plan_id(plan)
+    return plan
 
 
 def collect(*, fx=None, end_ms: int | None = None, kind_of=None, log=print) -> dict:
@@ -289,9 +311,20 @@ def save(plan: dict, path: Path | str = PLAN_FILE) -> Path:
 
 
 def load(path: Path | str = PLAN_FILE) -> dict:
+    """Read a plan file. A file written at another version is refused. A file
+    with no `id` (written before plans carried one: research/v3/plan.json of
+    Oct 24, 2026) gets the id of its content. A file whose `id` is not the id
+    of its content was changed after it was built, and is refused by name: a
+    record stamped with that id would claim a plan nobody built."""
     plan = json.loads(Path(path).read_text(encoding="utf-8"))
     if plan.get("version") != VERSION:
         raise ValueError(f"{path}: plan version {plan.get('version')!r}, this code reads {VERSION}")
+    made = plan_id(plan)
+    if "id" not in plan:
+        plan["id"] = made
+    elif plan["id"] != made:
+        raise ValueError(f"{path}: plan id {plan['id']!r} does not match its content {made!r}: "
+                         "the file was changed after it was built")
     return plan
 
 

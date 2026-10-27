@@ -5,6 +5,7 @@ candles CLOSED before it is used. Every day here is a real UTC day; day k
 opens at FIRST + k days (Jul 01, 2026 is day 0, Sep 01 day 62, Oct 01 day 92,
 the window ends Nov 01, 2026 00:00 UTC, after day 122)."""
 import calendar
+import json
 import math
 import time
 import types
@@ -201,6 +202,53 @@ def test_the_plan_round_trips_and_an_old_version_is_refused(plan, tmp_path):
     p.write_text(p.read_text(encoding="utf-8").replace('"version":1', '"version":0'),
                  encoding="utf-8")
     with pytest.raises(ValueError, match="version"):
+        vu.load(p)
+
+
+# --- Fix round 1 of Task 9 (ruled Oct 24, 2026): a plan is told apart by its CONTENT. Every build
+# of one UTC day ends on the same instant, so the end can never say "the same plan".
+
+
+def test_a_plan_id_is_a_fingerprint_of_the_plans_content_never_of_its_build_time(plan):
+    assert plan["id"] == vu.plan_id(plan) and len(plan["id"]) == 16
+    int(plan["id"], 16)                                              # sixteen hex digits
+    # built again an hour later from the same candles: the same plan, only its build time moved
+    d, kinds, sizes = _world()
+    again = vu.build(d, kinds, sizes, END, built_s=END / 1000 + 3600)
+    assert again["built_s"] != plan["built_s"] and again["id"] == plan["id"]
+    # every other key counts: a plan with any one of them changed is another plan
+    for key in plan:
+        changed = {**plan, key: "changed"}
+        left_out = key in ("built", "built_s", "id")
+        assert (vu.plan_id(changed) == plan["id"]) is left_out, key
+
+
+def test_one_coins_group_changed_is_another_plan_though_it_ends_on_the_same_day(plan):
+    d, kinds, sizes = _world()
+    d["CCC_USDT"] = _daily(0, [100.0] * 123, [30.0] * 123)           # CCC now trades more than BBB
+    other = vu.build(d, kinds, sizes, END, built_s=END / 1000)
+    assert other["end_ms"] == plan["end_ms"] and other["liquid"] != plan["liquid"]
+    assert other["id"] != plan["id"]
+
+
+def test_the_id_survives_a_save_and_a_file_written_without_one_gets_it_on_load(plan, tmp_path):
+    p = vu.save(plan, tmp_path / "plan.json")
+    assert json.loads(p.read_text(encoding="utf-8"))["id"] == plan["id"]
+    assert vu.load(p)["id"] == plan["id"]
+    # a plan file written before plans had an id (research/v3/plan.json of Oct 24, 2026): the same
+    # content, so the same id
+    old = vu.save({k: v for k, v in plan.items() if k != "id"}, tmp_path / "old.json")
+    assert "id" not in json.loads(old.read_text(encoding="utf-8"))
+    assert vu.load(old)["id"] == plan["id"]
+
+
+def test_a_plan_file_edited_after_it_was_built_is_refused_by_name(plan, tmp_path):
+    p = vu.save(plan, tmp_path / "plan.json")
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    doc["calm"][doc["months"][-1]].append("EDITED_USDT")             # a coin added by hand, id kept
+    p.write_text(json.dumps(doc), encoding="utf-8")
+    with pytest.raises(ValueError, match=r"plan\.json: plan id '[0-9a-f]{16}' does not match "
+                                         r"its content '[0-9a-f]{16}'"):
         vu.load(p)
 
 

@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tradingagents import book_history as bh, v3_families as vf, v3_measure as vm
+from tradingagents import book_history as bh, v3_families as vf, v3_measure as vm, v3_universe as vu
 
 M = 60_000
 H = 60 * M
@@ -340,6 +340,22 @@ def test_a_coin_in_no_familys_universe_is_named_not_measured(monkeypatch, gate_f
                                              kinds={"AAPL_USDT": "stocks"}),
                           runs=3, fx=FakeFx(START_A, END_A, {}))
     assert rec["combos"] == {} and rec["why"] == "in no family's universe in any month of the plan"
+
+
+def test_a_record_carries_the_build_of_its_plan_beside_the_plans_end(monkeypatch, gate_floors):
+    # Fix round 1 of Task 9 (ruled Oct 24, 2026): every build of one UTC day ends on one instant, so
+    # the end cannot say which plan a coin was measured under. A plan built or loaded carries its
+    # own id; a hand-made one is fingerprinted by its content. The stamp is made before the coin's
+    # universe is looked at, so a coin in no universe carries it too
+    plan = _plan(START_A, END_A, {"2026-09": []}, kinds={"AAPL_USDT": "stocks"})
+    fx = FakeFx(START_A, END_A, {})
+    hand_made = vm.measure_coin("AAPL_USDT", plan, runs=3, fx=fx)
+    assert hand_made["plan_id"] == vu.plan_id(plan) and hand_made["plan_end_ms"] == END_A
+    loaded = vm.measure_coin("AAPL_USDT", {**plan, "id": "0123456789abcdef"}, runs=3, fx=fx)
+    assert loaded["plan_id"] == "0123456789abcdef"
+    # the same end and window with one group changed is another build, and so another stamp
+    other = vm.measure_coin("AAPL_USDT", {**plan, "calm": {"2026-09": ["XAU_USDT"]}}, runs=3, fx=fx)
+    assert other["plan_end_ms"] == END_A and other["plan_id"] != hand_made["plan_id"]
 
 
 # ---- a liquid coin the Monday ranks pick, then drop: v3_strength's forced exit -----------

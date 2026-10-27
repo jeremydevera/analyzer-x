@@ -33,6 +33,7 @@ TREND_LAG_DAYS = 5       # "...and that average is above its value 5 days ago"
 BREAKOUT_MA_DAYS = 100   # "...only while the 100-day average is rising"
 SNAP_N = 20
 SNAP_MAX_BARS = 24
+STRENGTH_KEEP = 2        # a v3_strength coin stays while its rank is within STRENGTH_KEEP x K
 
 FAMILIES = {
     "v3_trend": {"param": "n", "settings": (20, 50, 100), "tfs": ("1d", "4h"),
@@ -202,9 +203,9 @@ def rule(family: str, value, tf: str, bars: dict, *, sym: str = "", plan=None) -
 def forced(family: str, value, tf: str, bars: dict, *, sym: str = "", plan=None):
     """v3_strength's forced exit, as `walk(forced=)` flags: out at the close
     of a candle ending at a Monday 00:00 UTC whose rank no longer has the coin
-    in the top 2K (or does not rank it at all). A Monday the plan holds no
-    ranking for (past its end) forces nothing: no rank was taken there. None
-    for every other family."""
+    in the top STRENGTH_KEEP x K, "the top 2K" (or does not rank it at all). A
+    Monday the plan holds no ranking for (past its end) forces nothing: no
+    rank was taken there. None for every other family."""
     if family != "v3_strength":
         return None
     _need_ranks(plan)
@@ -214,7 +215,7 @@ def forced(family: str, value, tf: str, bars: dict, *, sym: str = "", plan=None)
         monday = _monday_close(ms, tf)
         if monday is not None and str(monday) in plan["strength"]:
             r = vu.rank_at(plan, sym, monday)
-            out[i] = r is None or r > 2 * k
+            out[i] = r is None or r > STRENGTH_KEEP * k
     return out
 
 

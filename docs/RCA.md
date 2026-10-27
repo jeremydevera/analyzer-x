@@ -172,6 +172,44 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-27-A — Backtest v3's research command called two plans "the same plan" when they ended on the same day, so coins measured on two different universes would have been judged together without a word: NEVER HAPPENED YET
+
+**CEO**
+
+* Nothing wrong was shown yet (it NEVER HAPPENED YET): if the list of coins to test was built twice in one day - for instance again after the exchange refused a read - the results of coins tested on the first list would have been judged together with coins tested on the second list, and the verdict would have looked like any other.
+* Why: the only thing a result remembered about its list was the day it ended, and every list built on one day ends at the same midnight, even when its coin groups differ.
+* What stops it now: every list carries a short fingerprint of its content, every result stamps it, judging together is refused for two fingerprints (and a result with none is never mixed with a stamped one), and the command names each result it leaves out and says which field differed, with both values.
+
+**DEV**
+
+* `tradingagents/v3_research.py` (`judge`, as committed in `52bf967b52d2`) kept a record when `plan_end_ms == plan["end_ms"]`; the record carried nothing else about its plan (`tradingagents/v3_measure.py` `measure_coin`), and `tradingagents/v3_proof.py` `_refuse_mixed` compared the same three keys (`risk_usd`, `runs`, `plan_end_ms`). `v3_universe.build` ends every plan of one UTC day at the same `end_ms`, so two builds with different groups were one plan to all three. Now `v3_universe.plan_id` (blake2b over the plan's JSON without `built`, `built_s`, `id`) is set by `build`, filled or checked by `load`, stamped by `measure_coin`, compared by `_refuse_mixed`, and compared by the new `v3_research.differences`.
+* Invariant broken: **"measured under this plan" means the plan's CONTENT, never a field that two plans can share.** Measured on the committed code with the real `research/v3/plan.json` and a copy whose last month's calm list is cut from 45 coins to 40 (end `1792800000000` in both): `_refuse_mixed` on one BTC record and one ETH record, one under each, raised nothing, so `verdicts()` would have pooled them.
+* Guard: `tests/test_v3_research.py::test_two_builds_of_one_day_are_never_pooled_and_the_other_is_named`, `tests/test_v3_proof.py::test_coins_of_two_builds_of_one_plan_end_are_refused_and_unstamped_ones_pool_alone`, `tests/test_v3_universe.py::test_one_coins_group_changed_is_another_plan_though_it_ends_on_the_same_day` and `tests/test_v3_measure.py::test_a_record_carries_the_build_of_its_plan_beside_the_plans_end`.
+
+**SAW** — NEVER HAPPENED YET: no pooled verdict has been written from coins of two builds, and the one real plan has had one build. Found by the task review of Task 9 (`Oct 24, 2026`, `task-9-review.txt`, Important 2), which read `judge` against `build()` and saw that the plan's end is today's UTC midnight for every build of that day. The builder's own rules had already changed inside one UTC day once, on `Oct 23, 2026` (the volatility indices and stablecoins left out of the groups: calm 50 before, 45 after, 233 coins in a group before and 228 after), so two builds of one end are not a made-up case.
+
+**TIMELINE** (NEVER HAPPENED YET: a hypothetical timeline; the numbers are from calling the committed and the fixed functions with made-up coin records on the real plan file, and no real coin was pooled wrongly)
+
+1. `Oct 23, 2026` - the universe builder's rules change within one UTC day: calm 50 -> 45 coins and 233 -> 228 coins in a group, with the day's end instant unchanged.
+2. `Oct 24, 2026 12:33am` - the committed plan is built: `research/v3/plan.json`, end `1792800000000` (printed `Oct 23, 2026 8:00pm` on this PC), 228 coins in a group, calm 45 in `2026-10`. Its fingerprint, computed from its content by the fix, is `aa18553360e8b012`.
+3. The committed `judge` keeps a record whose `plan_end_ms` is `1792800000000`; the same end is what `_refuse_mixed` compares. A second plan built that day after a read was refused (the rulings' own note: "build the plan again later if a coin was skipped") would end on `1792800000000` too.
+4. A copy of the real plan with the last month's calm list cut to 40 coins (45 - 5): the same end, `1792800000000`; a BTC record stamped with the first and an ETH record with the second. On the committed code `_refuse_mixed` raised nothing: "pooled without a word".
+5. The task review (`Oct 24, 2026`) names the case and the real exposure: the three check records of the first real run (BTC, XAU, ETH under the committed plan) would have pooled with any rebuild made before `Oct 25, 2026 12:00am UTC`.
+6. After the fix (`Oct 27, 2026`, this commit) the same two records raise `coins measured at different plan_id cannot be pooled: ETH_USDT at '4d1978767b87b13b', BTC_USDT at 'aa18553360e8b012'`, and `judge` over a folder holding both leaves the other build out with `ETH_USDT (plan build 4d1978767b87b13b, not aa18553360e8b012)`. A plan file edited after it was built (a coin added by hand with the id kept) is refused by `load`; a plan file with no id (the committed one) gets the id of its content.
+7. A consequence, stated here so nobody is surprised: the three check records already in the store were written before records carried a fingerprint, so `judge` now leaves them out ("plan build not recorded") until the coins are measured again.
+
+**ROOT CAUSE** - "the same plan" was decided by one field, the plan's end instant, which is a DATE (today's UTC midnight) and not a description of the plan: every build of one day has it, whatever its groups. The record shape (Task 8) carried only that field, the proof's mixing check (Task 7) compared it, and the command's pooling filter (Task 9) was written against both, so the headline invariant of the pooling - one universe per verdict - held for plans of different days and for nothing else.
+
+**WHY IT WAS NOT CAUGHT** - The tests that pinned "another plan" built it the one way the key could see: a record whose `plan_end_ms` was one day earlier (`END - DAY`, and `PLAN_END + DAY` in the proof test), so every test of the mixing check and of the command's filter passed while a plan with the same end and other groups went through. A fixture's plan was a hand-made dict of a start and an end, so there was nothing else for two fixture plans to differ in. The test module's own docstring promised "never pools a coin measured under another plan", and that promise was tested on exactly the cases that already worked. When a guard names a thing by a field, test it with two things that share the field.
+
+**COST** - none: NEVER HAPPENED YET. No verdict was pooled over coins of two builds; the first real run measured three coins under one plan.
+
+**FIX** - this commit: `v3_universe.plan_id`, `build` sets `plan["id"]`, `load` fills a missing id and refuses an id that does not match its content; `measure_coin` stamps `plan_id`; `_refuse_mixed` compares it (a record without one pools only with another without one); `judge` keeps a record only when its `plan_id` equals the plan's and names, for each record left out, the field that differs with both values (plan build, plan end, risk, run count - a record with no risk recorded is left out and no longer assumed to be $1). Because it crosses Tasks 4, 8 and 9, the same commit carries the rest of Task 9's fix round 1 (the printed rules read from the code that decides them, a random count that is true, a failed coin named and its old record dropped, a plain label, filter notes printed, a choose-failed verdict saying when its signals were under one lot).
+
+**GUARD** - `tests/test_v3_research.py::test_two_builds_of_one_day_are_never_pooled_and_the_other_is_named` (two plans of one end, one coin's group changed: each judge keeps its own build's coin and names the other), `tests/test_v3_proof.py::test_coins_of_two_builds_of_one_plan_end_are_refused_and_unstamped_ones_pool_alone`, `tests/test_v3_universe.py::test_one_coins_group_changed_is_another_plan_though_it_ends_on_the_same_day`, `test_a_plan_id_is_a_fingerprint_of_the_plans_content_never_of_its_build_time`, `test_the_id_survives_a_save_and_a_file_written_without_one_gets_it_on_load` and `test_a_plan_file_edited_after_it_was_built_is_refused_by_name`, and `tests/test_v3_measure.py::test_a_record_carries_the_build_of_its_plan_beside_the_plans_end`: all red on the committed code (shown in a scratch copy of HEAD, nothing written to the repo), green after.
+
+---
+
 ## RCA-2026-10-23-H — Backtest v3's cost line would have said "one live reading of its book" beside the app's own built-in figure whenever the live book read 0: NEVER HAPPENED YET
 
 **CEO**

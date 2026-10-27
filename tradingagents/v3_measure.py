@@ -310,7 +310,11 @@ def measure_coin(sym: str, plan: dict, *, runs: int = vrn.RUNS, risk_usd: float 
     kind = plan.get("kinds", {}).get(sym, "unknown")
     fams = [f for f in vf.FAMILIES if vf.applies(plan, f, sym)]
     _start, split, end = windows(plan)
-    rec = {"version": VERSION, "coin": sym, "kind": kind, "plan_end_ms": int(plan["end_ms"]),
+    # The plan's BUILD is stamped beside its end: every build of one UTC day ends on one instant, so
+    # the end cannot say which plan a coin was measured under. A plan built or loaded carries its
+    # `id`; a hand-made one is fingerprinted by its content
+    rec = {"version": VERSION, "coin": sym, "kind": kind,
+           "plan_id": plan.get("id") or vu.plan_id(plan), "plan_end_ms": int(plan["end_ms"]),
            "unseen_months": [vu.month_key(x) for x in vu.months_between(split, end)],
            "families": fams, "runs": int(runs), "risk_usd": risk_usd, "windows": {}, "combos": {},
            "skipped": {}}

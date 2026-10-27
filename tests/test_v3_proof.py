@@ -9,7 +9,7 @@ import math
 
 import pytest
 
-from tradingagents import v3_families as vf, v3_proof as vp
+from tradingagents import v3_families as vf, v3_filters as vfl, v3_proof as vp, v3_universe as vu
 
 DAY = 86_400_000
 D0 = calendar.timegm((2026, 7, 25, 0, 0, 0)) * 1000        # the unseen days start here
@@ -454,3 +454,131 @@ def test_z_and_tried_are_refused_by_name_when_they_cannot_make_a_correction():
             vp.verdict("v3_snap", "1h", "none", coins, tried=tried)
         with pytest.raises(ValueError, match="tried must be a positive whole number"):
             vp.verdict("v3_snap", "1h", "none", coins, z=3.0, tried=tried)
+
+
+# --- Fix round 1 of Task 9 (ruled Oct 24, 2026) ----------------------------------------------
+# 1. coins pool only when they were measured under one plan BUILD, not only one plan end;
+# 2. a verdict says how many random runs were made and how many traded, whether or not a bar came
+#    of them; 3. a group that failed at the choice says when its signals were refused as under one
+#    lot (the engine's own counts, summed over the older walks); 4. every filter that can surprise
+#    has its note, and each note is true of the filter's code.
+
+
+def test_coins_of_two_builds_of_one_plan_end_are_refused_and_unstamped_ones_pool_alone():
+    coins = _two_coins(_rows(STEADY))
+    for c in coins:
+        c["plan_end_ms"] = PLAN_END                                  # one end, one split
+    # two records written before builds were stamped pool with each other (None is None) ...
+    assert vp.verdict("v3_snap", "1h", "none", coins)["coins"] == ["AAA_USDT", "BBB_USDT"]
+    # ... but never with a stamped one
+    coins[0]["plan_id"] = "0123456789abcdef"
+    with pytest.raises(ValueError, match="coins measured at different plan_id cannot be pooled: "
+                                         "BBB_USDT at None, AAA_USDT at '0123456789abcdef'"):
+        vp.verdict("v3_snap", "1h", "none", coins)
+    # two stamped builds of the same day never pool; one build does
+    coins[1]["plan_id"] = "fedcba9876543210"
+    with pytest.raises(ValueError, match="coins measured at different plan_id cannot be pooled: "
+                                         "BBB_USDT at 'fedcba9876543210', "
+                                         "AAA_USDT at '0123456789abcdef'"):
+        vp.verdicts(coins)
+    coins[1]["plan_id"] = "0123456789abcdef"
+    assert vp.verdict("v3_snap", "1h", "none", coins)["coins"] == ["AAA_USDT", "BBB_USDT"]
+
+
+def test_a_verdict_says_how_many_random_runs_were_made_and_how_many_traded():
+    # 200 runs that never traded: no bar, and the count says why, from the data
+    never = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(STEADY), [[0, 0.0]] * 200))
+    assert never["random"] is None and never["random_runs"] == {"runs": 200, "traded": 0}
+    # one run that traded is no curve either
+    one = vp.verdict("v3_snap", "1h", "none",
+                     _two_coins(_rows(STEADY), [[10, 1.0]] + [[0, 0.0]] * 199))
+    assert one["random"] is None and one["random_runs"] == {"runs": 200, "traded": 1}
+    # runs pooled over the coins are still 200 runs, not 400
+    some = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(STEADY)))
+    assert some["random_runs"] == {"runs": 200, "traded": 200}
+    assert (some["random"]["runs"], some["random"]["traded"]) == (200, 200)
+
+
+def _trend_1d(counts, *, filt="none", signals=76, blocked=0, risk=1.0):
+    """ETH-like: the older walk of every setting of v3_trend on 1d signalled `signals` times,
+    `blocked` of them stopped by the filter, and the engine counted `counts` for the rest."""
+    def walk():
+        flt = {"signal_candles": signals, **({"blocked": blocked} if blocked else {})}
+        return _walk([], counts=dict(counts), filter=flt)
+
+    coin = _group("ETH_USDT", "v3_trend", "1d", filt, {k: walk() for k in ("n20", "n50", "n100")})
+    if risk is not None:
+        coin["risk_usd"] = risk
+    return coin
+
+
+def test_a_group_whose_signals_were_under_one_lot_says_so_at_the_risk_the_records_name():
+    # ETH on 1d at $1: every signal candle of every setting was under one lot (76 of 76 on the
+    # unseen days; here the older ones, three settings: 228 of 228)
+    v = vp.verdict("v3_trend", "1d", "none", [_trend_1d({"too_small": 76})])
+    assert (v["failed"], v["setting"]) == ("choose", None)
+    assert v["why"] == ("no setting had 30 trades on the older days: 228 of 228 signal candles "
+                        "were under one lot at $1.00 risk")
+    # the risk is the records', never typed
+    v = vp.verdict("v3_trend", "1d", "none", [_trend_1d({"too_small": 76}, risk=2.5)])
+    assert v["why"].endswith("were under one lot at $2.50 risk")
+    # a record that names no risk says none
+    v = vp.verdict("v3_trend", "1d", "none", [_trend_1d({"too_small": 76}, risk=None)])
+    assert v["why"].endswith("228 of 228 signal candles were under one lot")
+    # the counts are kept on the verdict: the older walks', every setting, every coin, the
+    # filter's beside the engine's
+    assert v["older_counts"] == {"too_small": 228, "signal_candles": 228}
+    assert vp.verdict("v3_trend", "1d", "none", [])["older_counts"] == {}
+
+
+def test_a_filtered_group_counts_the_signals_the_filter_let_through_and_names_the_filter():
+    # 76 signals, 21 stopped by busy_hours, the 55 that got through were all under one lot
+    v = vp.verdict("v3_trend", "1d", "busy_hours",
+                   [_trend_1d({"too_small": 55}, filt="busy_hours", blocked=21)])
+    assert v["why"] == ("no setting had 30 trades on the older days with busy_hours: 165 of 228 "
+                        "signal candles were under one lot at $1.00 risk")
+
+
+def test_the_dominant_refusal_is_the_one_said_and_each_has_its_own_words():
+    counts = {"too_small": 10, "unsafe_stop": 30, "gate_blocked": 5}
+    v = vp.verdict("v3_trend", "1d", "none", [_trend_1d(counts, signals=100)])
+    assert v["why"] == ("no setting had 30 trades on the older days: 90 of 300 signal candles "
+                        "had no safe leverage")
+    counts = {"too_small": 10, "unsafe_stop": 3, "gate_blocked": 40}
+    v = vp.verdict("v3_trend", "1d", "none", [_trend_1d(counts, signals=100)])
+    assert v["why"] == ("no setting had 30 trades on the older days: 120 of 300 signal candles "
+                        "were turned away by the cost check")
+    # a tie goes to the first of the three (under one lot), so the sentence never flips between runs
+    v = vp.verdict("v3_trend", "1d", "none",
+                   [_trend_1d({"too_small": 7, "unsafe_stop": 7}, signals=100)])
+    assert "were under one lot" in v["why"]
+    # signals the engine never refused add nothing to the sentence
+    v = vp.verdict("v3_trend", "1d", "none", [_trend_1d({"missed": 12}, signals=100)])
+    assert v["why"] == "no setting had 30 trades on the older days"
+
+
+def test_every_filter_that_can_surprise_has_its_note_and_each_note_is_true_of_the_filter():
+    assert set(vp.NOTES) == {"btc_mood", "busy_hours", "funding_side", "funding_minutes"}
+    # the notes ride on the verdict, beside the survivorship line every verdict carries
+    for filt, note in vp.NOTES.items():
+        assert vp.verdict("v3_snap", "1h", filt, [])["notes"] == [vu.SURVIVORSHIP, note]
+    assert vp.verdict("v3_snap", "1h", "none", [])["notes"] == [vu.SURVIVORSHIP]
+    # funding_minutes: the gap is read off the filter's own constant, and every 1d order goes in at
+    # 00:00 UTC, which is a settlement on every cycle Gate has (8, 4 and 1 hours) - recorded
+    # (stamped a few seconds late, as Gate does) or by the cycle - so on 1d it blocks them all
+    minutes = vfl.SETTLE_GAP_MS // 60_000
+    assert vp.NOTES["funding_minutes"] == (
+        f"No order within {minutes} minutes of a funding settlement; every 1d order goes in at "
+        "00:00 UTC, a settlement, so on 1d it blocks them all.")
+    midnights = [PLAN_END + k * DAY for k in range(5)]
+    for cycle in (8, 4, 1):
+        ok, _short, flag = vfl.funding_minutes(midnights, None, cycle)
+        assert ok == [False] * 5 and flag == ["settle_by_cycle"] * 5
+    recorded = [{"settle_ms": m + 3000, "rate": 0.0001, "cycle_h": 8} for m in midnights]
+    ok, _short, flag = vfl.funding_minutes(midnights, recorded, 8)
+    assert ok == [False] * 5 and flag == [""] * 5
+    # funding_side: where the history cannot judge, the signal passes and is counted funding_unknown
+    long_ok, short_ok, flag = vfl.funding_side(midnights, None)
+    assert (long_ok, short_ok, flag) == ([True] * 5, [True] * 5, ["funding_unknown"] * 5)
+    assert vp.NOTES["funding_side"] == ("A signal the funding history cannot judge passes and is "
+                                        "counted funding_unknown.")

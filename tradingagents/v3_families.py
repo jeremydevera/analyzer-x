@@ -202,10 +202,17 @@ def rule(family: str, value, tf: str, bars: dict, *, sym: str = "", plan=None) -
 
 def forced(family: str, value, tf: str, bars: dict, *, sym: str = "", plan=None):
     """v3_strength's forced exit, as `walk(forced=)` flags: out at the close
-    of a candle ending at a Monday 00:00 UTC whose rank no longer has the coin
-    in the top STRENGTH_KEEP x K, "the top 2K" (or does not rank it at all). A
-    Monday the plan holds no ranking for (past its end) forces nothing: no
-    rank was taken there. None for every other family."""
+    of a candle ending at a Monday 00:00 UTC whose rank has the coin outside
+    the top STRENGTH_KEEP x K, "the top 2K", or no longer holds it because it
+    left that month's liquid list. A Monday the plan holds no ranking for
+    (past its end) forces nothing: no rank was taken there. Nor does a Monday
+    that ranked the month's liquid coins without this one while it was still
+    among them: the plan ranks every liquid coin whose 14-day return it could
+    work out (`v3_universe.build`), so that coin's close at the Monday or 14
+    days before it is missing - a gap in its candles, which says nothing about
+    its rank, and the trade keeps its trail (not counted). A gap in the
+    coin's own candles forces nothing either: only a candle that closes AT the
+    Monday 00:00 is ever flagged. None for every other family."""
     if family != "v3_strength":
         return None
     _need_ranks(plan)
@@ -213,9 +220,13 @@ def forced(family: str, value, tf: str, bars: dict, *, sym: str = "", plan=None)
     out = [False] * len(bars["t"])
     for i, ms in enumerate(bars["t"]):
         monday = _monday_close(ms, tf)
-        if monday is not None and str(monday) in plan["strength"]:
-            r = vu.rank_at(plan, sym, monday)
-            out[i] = r is None or r > STRENGTH_KEEP * k
+        if monday is None or str(monday) not in plan["strength"]:
+            continue
+        r = vu.rank_at(plan, sym, monday)
+        if r is None:
+            out[i] = sym not in plan.get("liquid", {}).get(vu.month_key(monday), ())
+        else:
+            out[i] = r > STRENGTH_KEEP * k
     return out
 
 

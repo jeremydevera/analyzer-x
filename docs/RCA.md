@@ -172,6 +172,43 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-27-B — a Backtest v3 strength trade would have been closed as "left the top 2K" when one of its coin's daily candles was missing, on a ranking that had simply skipped the coin: NEVER HAPPENED YET
+
+**CEO**
+
+* Nothing wrong was shown yet (it NEVER HAPPENED YET): the weekly "strongest coins" idea closes a trade when its coin falls out of the top places, and a coin with one missing day in its price history would have been closed the same way, with the same label, although nobody had ranked it lower.
+* Why: the weekly ranking leaves out any coin whose two-week rise cannot be worked out, and the rule that closes trades read "left out of the ranking" as "ranked too low".
+* What stops it now: a trade is closed only when its coin is ranked too low or has really left that month's list of busy coins; a coin left out because of a missing day keeps its trade, and a test builds that case with the plan's own builder.
+
+**DEV**
+
+* `tradingagents/v3_families.py` `forced` (as committed in `6db712ab3ab7`, the loop at `:214-218`): `out[i] = r is None or r > STRENGTH_KEEP * k`, where `r = v3_universe.rank_at(plan, sym, monday)`. `v3_universe.build` ranks a Monday from `liquid.get(month_key(monday))` and drops every coin whose `return_14` is None (its close at the Monday or 14 days before it is missing), so `r is None` for a coin still in the month's liquid list meant a gap in its daily candles, and `forced` booked it `RANK`. Now `r is None` forces only when the coin is not in `plan["liquid"][month_key(monday)]`.
+* Invariant broken: **a label is decided by the thing it names: RANK is said only where a rank decided the exit** - a coin the plan could not rank is unknown, never ranked out. Measured on the committed code with a plan built by `v3_universe.build` from seven coins, D the fastest riser with its Oct 04, 2026 daily candle removed: D ranked `[None, 1, None, 1]` on the Mondays Oct 05-26, still in October's liquid list, and `forced` flagged `[True, False, True, False]` on the four Sundays.
+* Guard: `tests/test_v3_families.py::test_a_gap_in_a_coins_daily_candles_never_forces_a_rank_exit_and_leaving_the_list_does`, with `test_strength_longs_a_top_k_coin_at_its_monday_rank_and_forces_it_out_past_the_top_2k` and `test_forced_reads_only_a_monday_the_plan_ranked` corrected to the rule.
+
+**SAW** — NEVER HAPPENED YET: no strength trade has been closed this way, on screen or in a record. Found by the final whole-branch review of Backtest v3 Part 2a (`Oct 27, 2026`, `final-review.txt`, Minor 4), which read `forced` against `build` and saw that "not ranked on a Monday the plan ranked" covers a missing candle as well as a coin that dropped out of the month's list.
+
+**TIMELINE** (NEVER HAPPENED YET: steps 1-3 are the committed plan, measured; steps 4-6 are a hypothetical coin built by the plan's own builder, and no real trade was closed wrongly)
+
+1. `Oct 23, 2026 7:42pm` - `90b6ff502b55` adds the forced exit: a Monday ranking that does not hold the coin forces it out, `why` RANK. Its test's plan listed the coin as liquid in October and left it out of the Oct 26 ranking by hand, so "unranked while liquid" was written down as the meaning of RANK.
+2. The committed plan (`research/v3/plan.json`, built `Oct 24, 2026 12:33am`) ranks 53 Mondays. On one of them, Monday Feb 02, 2026 00:00 UTC (this PC prints it `Feb 01, 2026 7:00pm`), 2 of February's 50 liquid coins were left out: SKR_USDT and ACU_USDT.
+3. Both were first ranked the next Monday, Feb 09, 2026 (SKR 4th, ACU 48th): they were too young for a 14-day rise on Feb 02, had never been ranked, so neither could hold a strength trade there. On the committed plan no RANK exit was booked wrongly.
+4. A coin D with one missing daily candle (Sunday Oct 04, 2026, the one closing at Monday Oct 05 00:00): the plan's builder ranks it 1st on Oct 12 and Oct 26 and leaves it out on Oct 05 and Oct 19 (the Oct 05 close is the one 14 days before Oct 19), while D stays in October's 8 liquid coins.
+5. On the committed code `forced` flags the Sundays closing at Oct 05 and Oct 19: a D trade entered at Oct 12 00:00, as 1st, and not yet stopped by its trail would be closed at the market at Oct 19 00:00, labelled RANK ("left the top 6"), and a week later D is 1st again.
+6. After the fix (`Oct 27, 2026`, this commit) the same plan flags none of the four Sundays; a plan whose November list no longer holds D still flags the Sunday closing at Monday Nov 02 (candle 31 of 35); a gap in D's own candles (Sunday Oct 18 removed) flags nothing, as before.
+
+**ROOT CAUSE** - `forced` had two causes for one outcome. "The ranking does not hold the coin" is true both when the coin left the month's liquid list and when the builder could not work out its 14-day rise (`return_14` is None for a missing close), and only the first is a rank exit. The builder's filter (`if r is not None`) and the exit's test (`r is None`) were written in two tasks, and nothing joined them.
+
+**WHY IT WAS NOT CAUGHT** - Every test of the forced exit built its plan by hand: a ranking was a list typed into the fixture, so a coin was "unranked" because the test left it out, and the fixture's coin stayed in the liquid list while being left out. The case was therefore not just untested but asserted the wrong way ("unranked" -> True). No test built a plan through `v3_universe.build` and then read `forced` from it, so the reason a real plan leaves a coin out never reached the exit. When a rule reads another module's output, build that output with the module, not by hand.
+
+**COST** - none: NEVER HAPPENED YET. The only liquid-but-unranked coins of the committed plan (SKR, ACU on Feb 02, 2026) held no trade; no verdict has been judged on a full universe yet.
+
+**FIX** - this commit: in `v3_families.forced`, a coin missing from a ranked Monday is forced out only when it is not in that month's liquid list; a coin still in it (a gap in its candles) keeps its trade and its trail. Not counted: the walk has no count for it yet, and the docstring says so. The two forced-exit tests whose fixture had a liquid coin left out by hand now assert that it holds.
+
+**GUARD** - `tests/test_v3_families.py::test_a_gap_in_a_coins_daily_candles_never_forces_a_rank_exit_and_leaving_the_list_does` (a plan built by `v3_universe.build` with one candle removed: no flag; a coin gone from November's list: flagged; a gap in the coin's own candles: no flag), and the corrected `test_strength_longs_a_top_k_coin_at_its_monday_rank_and_forces_it_out_past_the_top_2k` and `test_forced_reads_only_a_monday_the_plan_ranked`: all three red on the committed code (run on a scratch copy of HEAD's package, nothing written to the repo), green after.
+
+---
+
 ## RCA-2026-10-27-A — Backtest v3's research command called two plans "the same plan" when they ended on the same day, so coins measured on two different universes would have been judged together without a word: NEVER HAPPENED YET
 
 **CEO**

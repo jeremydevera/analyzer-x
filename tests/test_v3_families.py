@@ -113,7 +113,7 @@ def _ranked_plan():
             "strength": {str(MONDAYS[0]): a_to_g,                                     # D 4th
                          str(MONDAYS[1]): ["D_USDT"] + [s for s in a_to_g if s != "D_USDT"],
                          str(MONDAYS[2]): [s for s in a_to_g if s != "D_USDT"] + ["D_USDT"],
-                         str(MONDAYS[3]): ["A_USDT"]}}                                # D unranked
+                         str(MONDAYS[3]): ["A_USDT"]}}                       # D liquid, unranked
 
 
 def test_strength_longs_a_top_k_coin_at_its_monday_rank_and_forces_it_out_past_the_top_2k():
@@ -121,17 +121,19 @@ def test_strength_longs_a_top_k_coin_at_its_monday_rank_and_forces_it_out_past_t
     # Monday Oct 05's rank is taken from the closes AT Oct 05 00:00, so its order goes in right
     # then: the signal candle is the one CLOSING at Oct 05 00:00 - Sunday Oct 04's, candle 3
     sundays = [3, 10, 17, 24]
-    # K = 3: D is 4th (Oct 05), 1st (Oct 12), 7th (Oct 19), unranked (Oct 26)
+    # K = 3: D is 4th (Oct 05), 1st (Oct 12), 7th (Oct 19), and on Oct 26 unranked while still
+    # among October's liquid coins - its 14-day return could not be worked out, a gap that says
+    # nothing about its rank (final review M4)
     got = vf.rule("v3_strength", 3, "1d", bars, sym="D_USDT", plan=plan)
     assert [got[i] for i in sundays] == [0, 1, 0, 0] and sum(got) == 1
     out = vf.forced("v3_strength", 3, "1d", bars, sym="D_USDT", plan=plan)
-    assert [out[i] for i in sundays] == [False, False, True, True], "7th > 2K = 6; unranked"
-    assert sum(out) == 2, "only a candle closing at a Monday 00:00 forces anything"
+    assert [out[i] for i in sundays] == [False, False, True, False], "7th > 2K = 6; a gap holds"
+    assert sum(out) == 1, "only a candle closing at a ranked Monday 00:00 forces anything"
     # K = 5: 4th is in, and 7th is inside 2K = 10
     got = vf.rule("v3_strength", 5, "1d", bars, sym="D_USDT", plan=plan)
     assert [got[i] for i in sundays] == [1, 1, 0, 0]
     out = vf.forced("v3_strength", 5, "1d", bars, sym="D_USDT", plan=plan)
-    assert [out[i] for i in sundays] == [False, False, False, True]
+    assert [out[i] for i in sundays] == [False, False, False, False]
     assert vf.forced("v3_trend", 20, "1d", bars) is None
     assert [i for i, x in enumerate(vf.entry_days("v3_strength", bars, "1d")) if x] == sundays
     # the Monday candles themselves open AT the rank: an order on one goes in a day late
@@ -181,19 +183,19 @@ def test_the_strength_exit_keeps_a_coin_while_its_rank_is_within_strength_keep_t
 
 
 def test_forced_reads_only_a_monday_the_plan_ranked():
-    # 35 daily candles, Oct 01 - Nov 04. Candle 24 (Sunday Oct 25) closes at Monday Oct 26, which
-    # the plan ranked without D: a ranking that no longer holds the coin forces it out. Candle 31
-    # (Sunday Nov 01) closes at Monday Nov 02, which the plan never ranked (its last ranking is
-    # Oct 26's - a window that ends on a Monday has none for its own end): no rank was taken
-    # there, so nothing is forced, and a trade still open books END, not RANK
+    # 35 daily candles, Oct 01 - Nov 04. Candle 31 (Sunday Nov 01) closes at Monday Nov 02, which
+    # the plan never ranked (its last ranking is Oct 26's - a window that ends on a Monday has none
+    # for its own end): no rank was taken there, so nothing is forced, and a trade still open
+    # books END, not RANK. Candle 24 (Sunday Oct 25) closes at Monday Oct 26, ranked without D
+    # while D was still liquid in October: a gap, never a rank (final review M4)
     plan, bars = _ranked_plan(), _bars([100.0] * 35)
     out = vf.forced("v3_strength", 3, "1d", bars, sym="D_USDT", plan=plan)
-    assert out[24] is True and out[31] is False
-    # Oct 19 (D 7th, past 2K = 6) and Oct 26 (D missing) - and nothing else
-    assert [i for i, x in enumerate(out) if x] == [17, 24]
-    # a ranking with nobody in it still forces: the coin is out of it
+    assert out[24] is False and out[31] is False
+    # Oct 19 (D 7th, past 2K = 6) - and nothing else
+    assert [i for i, x in enumerate(out) if x] == [17]
+    # a ranking with nobody in it says nothing about a coin still in the month's liquid list
     empty = {**plan, "strength": {**plan["strength"], str(MONDAYS[3]): []}}
-    assert vf.forced("v3_strength", 3, "1d", bars, sym="D_USDT", plan=empty)[24] is True
+    assert vf.forced("v3_strength", 3, "1d", bars, sym="D_USDT", plan=empty)[24] is False
     # and a plan that ranked no Monday at all forces nothing
     assert not any(vf.forced("v3_strength", 3, "1d", bars, sym="D_USDT",
                              plan={**plan, "strength": {}}))
@@ -416,3 +418,50 @@ def test_no_rule_reads_a_candle_after_the_one_it_signals_on():
                             _same(f"{where}, forced", got[:k], out[:k])
                         got = vf.entry_days(fam, part, tf)
                         _same(f"{where}, entry days", got[:k], days[:k])
+
+
+def test_a_gap_in_a_coins_daily_candles_never_forces_a_rank_exit_and_leaving_the_list_does():
+    from tradingagents import v3_universe as vu
+
+    # final review M4. The plan ranks every coin of a month's liquid list whose 14-day return it can
+    # work out (v3_universe.build), so a liquid coin missing from a Monday's ranking is one whose
+    # close at that Monday, or 14 days before it, is missing - a gap, never "out of the top 2K".
+    # Built by the plan's own builder: D rises fastest, and its candle of Sunday Oct 04 (the one
+    # closing at Monday Oct 05 00:00) is missing, so its return cannot be worked out at Oct 05
+    # (that close) nor at Oct 19 (the close 14 days before) - while D stays in October's list
+    syms = [f"{x}_USDT" for x in "ABCDEFG"]
+    start = OCT1 - 70 * DAY
+
+    def daily(rise, skip=()):
+        t = [start + k * DAY for k in range(100) if start + k * DAY not in skip]
+        return {"t": t, "c": [100.0 + rise * (x - start) / DAY for x in t], "v": [1e6] * len(t)}
+
+    dailies = {s: daily(r) for s, r in zip(syms, (0.1, 0.2, 0.3, 0.9, 0.4, 0.5, 0.6), strict=True)}
+    dailies["D_USDT"] = daily(0.9, skip={MONDAYS[0] - DAY})
+    dailies["BTC_USDT"] = daily(0.1)
+    plan = vu.build(dailies, dict.fromkeys(dailies, "crypto"), dict.fromkeys(dailies, 1.0),
+                    OCT1 + 31 * DAY, built_s=0.0)
+    assert "D_USDT" in plan["liquid"]["2026-10"]
+    assert [vu.rank_at(plan, "D_USDT", m) for m in MONDAYS] == [None, 1, None, 1]
+    bars = _bars([100.0] * 31)
+    sundays = [3, 10, 17, 24]
+    out = vf.forced("v3_strength", 3, "1d", bars, sym="D_USDT", plan=plan)
+    assert [out[i] for i in sundays] == [False, False, False, False], "a gap is not a rank exit"
+    # a coin that LEFT the month's liquid list is not ranked there, and that IS a rank exit: Monday
+    # Nov 02 ranked November's list, which no longer holds D
+    hand = _ranked_plan()
+    nov2 = MONDAYS[3] + 7 * DAY
+    others = [s for s in hand["liquid"]["2026-10"] if s != "D_USDT"]
+    left = {**hand, "months": ["2026-10", "2026-11"],
+            "liquid": {**hand["liquid"], "2026-11": others},
+            "strength": {**hand["strength"], str(nov2): others}}
+    bars35 = _bars([100.0] * 35)
+    assert vf.forced("v3_strength", 3, "1d", bars35, sym="D_USDT", plan=left)[31] is True
+    stayed = {**left, "liquid": {**left["liquid"], "2026-11": [*others, "D_USDT"]}}
+    assert vf.forced("v3_strength", 3, "1d", bars35, sym="D_USDT", plan=stayed)[31] is False
+    # a gap in the coin's OWN candles flags nothing: on Oct 19 D is 7th (past 2K = 6), but without
+    # Sunday Oct 18's candle no candle closes at that rank
+    out = vf.forced("v3_strength", 3, "1d", bars35, sym="D_USDT", plan=hand)
+    assert [i for i, x in enumerate(out) if x] == [17]
+    holed = {k: [v for j, v in enumerate(col) if j != 17] for k, col in bars35.items()}
+    assert not any(vf.forced("v3_strength", 3, "1d", holed, sym="D_USDT", plan=hand))

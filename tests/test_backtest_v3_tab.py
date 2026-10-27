@@ -104,6 +104,7 @@ def test_the_run_adds_up_to_what_the_tab_prints(world):
     assert s["leverage_min"] == s["leverage_max"] == 20
     assert s["notional_min"] == s["notional_max"] == pytest.approx(100.0)
     assert s["combos"] == 1
+    assert s["trades_per_day"] == pytest.approx(10 / (100 / 24)), "over the 100 hours walked"
 
 
 def test_each_trade_row_is_the_engines_trade(world):

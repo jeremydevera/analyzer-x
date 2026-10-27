@@ -161,7 +161,7 @@ def test_judge_pools_only_the_coins_of_this_plan_and_names_every_other_with_its_
                    f"REBUILT_USDT (plan build 0123456789abcdef, not {PLAN_ID})",
                    f"UNSTAMPED_USDT (plan build not recorded, not {PLAN_ID})"):
         assert reason in lines[2]
-    saved = json.loads((root / "verdicts.json").read_text(encoding="utf-8"))
+    saved = json.loads((root / "verdicts.json").read_text(encoding="utf-8"))["verdicts"]
     snap = next(v for v in saved if v["passed"])
     assert snap["coins"] == ["XAU_USDT"] and snap["unseen"]["trades"] == 320
 
@@ -184,7 +184,7 @@ def test_two_builds_of_one_day_are_never_pooled_and_the_other_is_named(
         out = capsys.readouterr().out
         assert "1 coin(s) measured" in out
         assert f"{left} (plan build {vu.plan_id(other)}, not {vu.plan_id(plan)})" in out
-        saved = json.loads((root / "verdicts.json").read_text(encoding="utf-8"))
+        saved = json.loads((root / "verdicts.json").read_text(encoding="utf-8"))["verdicts"]
         assert next(v for v in saved if v["passed"])["coins"] == [kept]
 
 
@@ -637,5 +637,26 @@ def test_an_old_record_that_cannot_be_dropped_is_named_and_never_stops_the_other
     # its old record is still on disk, and is never judged in its place
     assert vr.coin_file(root, "BAD_USDT").exists()
     assert "2 coin(s) measured" in out and "BAD_USDT (metals)" not in out
-    saved = json.loads((root / "verdicts.json").read_text(encoding="utf-8"))
+    saved = json.loads((root / "verdicts.json").read_text(encoding="utf-8"))["verdicts"]
     assert next(v for v in saved if v["passed"])["coins"] == ["AAA_USDT", "CCC_USDT"]
+
+
+def test_judge_writes_its_verdicts_with_what_they_were_judged_under(monkeypatch, tmp_path, capsys):
+    # the parked M-5: a bare list could not say which plan, risk, runs or coins it judged, so the
+    # Backtest v3 tab could not label its check card from the file
+    monkeypatch.setattr(vr, "home", lambda label="local": tmp_path / label)
+    root = tmp_path / "local"
+    vr.save_coin(root, _record())
+    vr.save_coin(root, _record("OLD_USDT", end=END - DAY))
+    plan_path = vu.save(_plan(), tmp_path / "plan.json")
+    before = __import__("time").time()
+    assert vr.main(["judge", "--plan", str(plan_path), "--risk", "1"]) == 0
+    capsys.readouterr()
+    saved = json.loads((root / "verdicts.json").read_text(encoding="utf-8"))
+    assert set(saved) == {"plan_id", "plan_end", "risk_usd", "runs", "coins", "judged_at",
+                          "verdicts"}
+    assert saved["plan_id"] == PLAN_ID and saved["plan_end"] == END
+    assert (saved["risk_usd"], saved["runs"]) == (1.0, 200)
+    assert saved["coins"] == ["XAU_USDT"], "only the coins pooled, never the one left out"
+    assert before <= saved["judged_at"] <= __import__("time").time()
+    assert len(saved["verdicts"]) == len(vf.judged())

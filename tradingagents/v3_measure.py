@@ -134,10 +134,20 @@ def prefetch(sym: str, plan: dict, leads: dict, *, fx) -> dict:
     """Everything one coin's walks read, fetched ONCE: {tf: bars} with each
     timeframe's longest lead-in before the window, the minutes of the window,
     its order books, funding, the listing and the fees."""
+    start, split, end = windows(plan)
+    return read_window(sym, start, end, leads, fx=fx, split_ms=split)
+
+
+def read_window(sym: str, start: int, end: int, leads: dict, *, fx,
+                split_ms: int | None = None) -> dict:
+    """What `prefetch` reads, over any window [start, end) in ms: the plan's
+    (with its split, so the coverage and the flat gap's source are said for
+    the older and the unseen days), or the Backtest v3 tab's one look at a
+    family on one coin (no split: one coverage over the window). ONE body, so
+    the tab and the research read a coin the same way."""
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br, cost_store
 
-    start, split, end = windows(plan)
     spec = fx.contract_spec(sym)
     contract = ve.contract_of(spec)
     now_ms = int(time.time() * 1000)
@@ -151,17 +161,20 @@ def prefetch(sym: str, plan: dict, leads: dict, *, fx) -> dict:
     keep = ft < end
     fine = (ft[keep].tolist(), fh[keep].tolist(), fl[keep].tolist())
     book = cost_store.engine_book(sym, start // 1000, end // 1000)
-    slip, source = flat_gap(sym, book, fx=fx, split_ms=split)
+    slip, source = flat_gap(sym, book, fx=fx, split_ms=split_ms)
     funding = [f for f in fx.funding_history(sym, since_ms=start - FUNDING_PAD_DAYS * DAY_MS)
                if int(f["settle_ms"]) <= end]
     fees = {"maker": at.maker_fee_floor(), "taker": at.fee_floor()}
     meta = {"contract": contract, "fees": fees, "flat_slip": slip, "flat_slip_source": source,
-            "minutes": len(fine[0]), "five_minute": int(n5),
-            "coverage_older": cost_store.coverage(book, start // 1000, split // 1000),
-            "coverage_unseen": cost_store.coverage(book, split // 1000, end // 1000),
-            "funding": len(funding),
-            "funding_from_ms": int(funding[0]["settle_ms"]) if funding else None,
-            "cycle_h": float(spec.get("funding_interval_h") or 8)}
+            "minutes": len(fine[0]), "five_minute": int(n5)}
+    if split_ms is None:
+        meta["coverage"] = cost_store.coverage(book, start // 1000, end // 1000)
+    else:
+        meta["coverage_older"] = cost_store.coverage(book, start // 1000, split_ms // 1000)
+        meta["coverage_unseen"] = cost_store.coverage(book, split_ms // 1000, end // 1000)
+    meta |= {"funding": len(funding),
+             "funding_from_ms": int(funding[0]["settle_ms"]) if funding else None,
+             "cycle_h": float(spec.get("funding_interval_h") or 8)}
     return {"bars": bars, "fine": fine if fine[0] else None, "book": book, "funding": funding,
             "contract": contract, "fees": fees, "slip": slip, "cycle_h": meta["cycle_h"],
             "meta": meta}
@@ -196,6 +209,20 @@ def compact(walked: dict, t, signals: dict) -> dict:
             "lev": [min(lev), max(lev)] if lev else None,
             "notional": [round(min(notional), 2), round(max(notional), 2)] if notional else None,
             "over_book": sum(1 for x in notional if x > BOOK_USD)}
+
+
+def allowed(long_m, short_m, keep_l, keep_s) -> tuple[list[bool], list[bool]]:
+    """Per candle: may a long, may a short go in - the universe's sides AND the
+    filter's. The research's walks and the tab's one look both read this."""
+    return ([m and k for m, k in zip(long_m, keep_l, strict=True)],
+            [m and k for m, k in zip(short_m, keep_s, strict=True)])
+
+
+def dirs_of(rule, ok_l, ok_s, a: int) -> list[int]:
+    """The walk's +1 / -1 / 0 per candle of a view starting at candle `a`: the
+    family's rule where its side is allowed there, else 0."""
+    return [1 if r == 1 and ok_l[a + i] else -1 if r == -1 and ok_s[a + i] else 0
+            for i, r in enumerate(rule)]
 
 
 def _signals(rule, long_m, short_m, keep_l, keep_s, flags, a: int, start: int) -> dict:
@@ -257,13 +284,11 @@ def _measure_tf(rec: dict, sym: str, kind: str, tf: str, fams: list, pre: dict, 
                                "forced": vf.forced(fam, v, tf, vb, sym=sym, plan=plan)}
             for filt in vf.filters_for(tf):
                 keep_l, keep_s, flags = masks[filt]
-                ok_l = [m and k for m, k in zip(long_m, keep_l, strict=True)]
-                ok_s = [m and k for m, k in zip(short_m, keep_s, strict=True)]
+                ok_l, ok_s = allowed(long_m, short_m, keep_l, keep_s)
                 out, walked = {}, {}
                 for part, p in parts.items():
                     a = p["a"]
-                    dirs = [1 if r == 1 and ok_l[a + i] else -1 if r == -1 and ok_s[a + i] else 0
-                            for i, r in enumerate(p["rule"])]
+                    dirs = dirs_of(p["rule"], ok_l, ok_s, a)
                     walked[part] = ve.walk(p["bars"], dirs, spec, start=p["start"],
                                            forced=p["forced"], **common, **data[part])
                     out[part] = compact(walked[part], p["bars"]["t"],

@@ -85,8 +85,8 @@ and the rank of Monday 00:00 reads the closes at that instant, so the order goes
   little more than the 8-hour coins. The note on every funding_minutes verdict says so, and the verdict prints the
   filter's blocked count (on the line of a group that traded nothing on the unseen days too). **It is not tried on 1d**
   (the operator's pick, Oct 27, 2026, made before any full run): every 1d order goes in at 00:00 UTC, a settlement on
-  every cycle, so it would block them all and test nothing (`v3_families.NOT_TRIED`, `filters_for`). Whether to keep
-  it on 4h is still the operator's to rule before Part 2b.
+  every cycle, so it would block them all and test nothing (`v3_families.NOT_TRIED`, `filters_for`). It IS tried on
+  1h and 4h: the operator answered "go" on Oct 27, 2026 to keeping it on 4-hour, where it still lets many trades through.
 * **`crash_guard` (#8) is NOT in Part 2a/2b's first run:** no reader of Gate's open-interest history exists yet and
   Gate keeps about 180 days; it is listed on the page as "not tested yet: needs open-interest history".
 * `when_map` (#10) belongs to Part 3 (the re-test of the stored rows).

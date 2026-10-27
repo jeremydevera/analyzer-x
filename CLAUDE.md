@@ -2541,8 +2541,9 @@ before any test. Decisions:
   TRIED ON 1d (operator, Oct 27, 2026, before any full run: every 1d order
   goes in at 00:00 UTC, a settlement on every cycle, so it would block them
   all — `v3_families.NOT_TRIED`, `filters_for(tf)`, which `combos`, `judged`
-  and `v3_measure` all read); whether to keep it on 4h is still the
-  operator's to rule before Part 2b); an order the history cannot judge passes and is counted
+  and `v3_measure` all read) and it IS tried on 1h and 4h (the operator's
+  "go", Oct 27, 2026, to keeping it on 4-hour, where it still lets many
+  trades through); an order the history cannot judge passes and is counted
   (`mood_unknown`, `funding_unknown`), except funding_minutes, which
   outside the history judges by the contract's settlement cycle from 00:00
   UTC and counts `settle_by_cycle` — each printed, in signal candles, with
@@ -2626,12 +2627,32 @@ before any test. Decisions:
   how many lie on the older days (or why no minute figure was used): a cost
   level, never a price path, until an order-book backfill over the older
   days (Part 2b, if the pilot shows it is needed) gives them their own.
+  `verdicts.json` carries what it was judged under (`plan_id`, `plan_end`
+  ms, `risk_usd`, `runs`, `coins`, `judged_at` s, then `verdicts`); a bare
+  list is a file from before that, which the tab says to judge again.
+* **The Backtest v3 tab runs the four families and shows the check**
+  (operator, Oct 27, 2026: "go" to "both"). Its idea box lists `v3_trend`,
+  `v3_breakout`, `v3_strength` and `v3_snap` under "New v3 ideas" before the
+  stored signals; a family offers only its own timeframes, settings and
+  `filters_for(tf)`, and closes by its OWN exit, said in the research's
+  words (`v3_research.exit_words`). `v3_page.run_family` is ONE walk over
+  the tab's window with the research's own pieces (`v3_measure.read_window`,
+  the coin's own flat gap, `allowed`, `dirs_of`, `_signals`; `vf.rule`,
+  `forced`, `sides_allowed`, `exit_spec`; `v3_filters.masks`;
+  `v3_engine.walk`) — no unseen days, no random runs, said on the page as a
+  look, never the proof. Its universe is the committed plan's; after the
+  plan's end its last month's membership stands in and strength can make no
+  entry, both said. Its id is `row_code(coin, tf, family, 0, 0, 0, "flat",
+  plan=combo_key(...), res="v3")`. The tested-ideas card shows the 3-coin
+  check from `verdicts.json` under "Check only — N coins, not the proof"
+  (Oct 27, 2026: BTC, ETH and XAU at $5.00, 200 runs, 0 of 27 passed),
+  every cell a number or why there is none.
 
 Guards: `tests/test_v3_universe.py`, `tests/test_v3_families.py`,
 `tests/test_v3_filters.py`, `tests/test_v3_random.py`,
 `tests/test_v3_proof.py`, `tests/test_v3_measure.py`,
-`tests/test_v3_research.py`, and the forced exit and `contract_of` in
-`tests/test_v3_engine.py`.
+`tests/test_v3_research.py`, `tests/test_backtest_v3_tab_families.py`, and
+the forced exit and `contract_of` in `tests/test_v3_engine.py`.
 
 ## The daytime rule (MANDATORY — Oct 07, 2026; trial on #4FC03172)
 

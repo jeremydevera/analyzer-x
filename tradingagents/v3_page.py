@@ -12,9 +12,24 @@ never disagree on a trade. Every figure the tab prints is derived here from
 the run — the profit is the sum of the trade rows as shown (to the cent),
 wins and losses add up to the trades, the worst losing run is the run's own
 — never a number typed in.
+
+THE FOUR V3 FAMILIES on one coin (operator, Oct 27, 2026: "go" to "both"):
+`run_family` walks one family x setting x filter over the tab's window with
+the research's own pieces - `v3_measure.read_window` (the coin read the way
+the research reads it, its OWN flat gap), `v3_families.rule` / `forced` /
+`sides_allowed` / `exit_spec`, `v3_filters.masks`, `v3_measure.allowed` /
+`dirs_of` / `_signals` and `v3_engine.walk` - one walk, no older / unseen
+split and no random runs: a look at one idea on one coin, never the proof.
+The universe is the committed plan's (`v3_universe.load`); after the plan's
+end the plan's last month's membership stands in, said on the page.
+
+THE 3-COIN CHECK (`tested()["check"]`): the verdicts `v3_research` judged on
+this PC, with their provenance (plan, risk, runs, coins, when), shown on the
+tab as a check of the machinery - never the proof, which needs every coin.
 """
 from __future__ import annotations
 
+import bisect
 import time
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -43,7 +58,8 @@ EXITS = {
 
 # how each exit and each missed order reads on the screen
 HOW = {"TP": "target", "SL": "stop", "TRAIL": "trailing stop", "MA": "closed past its average",
-       "TIME": "time limit", "END": "still open at the end"}
+       "TIME": "time limit", "END": "still open at the end",
+       "RANK": "out at a Monday's rank"}
 MISSED_HOW = {"not_traded_through": "the price never traded through it",
               "post_only_reject": "cancelled: it would have filled at once (post-only)"}
 
@@ -67,19 +83,94 @@ def worst_run(pnls: list) -> tuple[float, int]:
     return cents(worst) if worst_n else 0.0, worst_n
 
 
-def tested(rows_db=None) -> dict:
-    """What the tab's tested-ideas section can say today. Part 2 writes the
-    v3 store; until it exists nothing has been tested and the section says so."""
+def tested(rows_db=None, check_file=None) -> dict:
+    """What the tab's tested-ideas section can say today. Part 2b writes the
+    v3 store; until it exists nothing has been tested and the section says so.
+    Beside it, `check`: the 3-coin check `v3_research` judged on this PC
+    (`check()`), labelled a check on the page, never the proof."""
     from tradingagents import stores
 
     path = stores.V3.rows_db if rows_db is None else rows_db
     if not path.exists():
-        return {"state": "not_run", "rows": 0,
-                "words": "The test of every idea on every coin (step 2 of the Backtest v3 plan) "
-                         "has not run yet, so no idea has been tested against random entries. "
-                         "This section fills when it does."}
-    return {"state": "stored", "rows": None,
-            "words": "The v3 store holds tested ideas; listing them here is step 4 of the plan."}
+        out = {"state": "not_run", "rows": 0,
+               "words": "The test of every idea on every coin (step 2 of the Backtest v3 plan) "
+                        "has not run yet, so no idea has been tested against random entries. "
+                        "This section fills when it does."}
+    else:
+        out = {"state": "stored", "rows": None,
+               "words": "The v3 store holds tested ideas; listing them here is step 4 of the plan."}
+    return {**out, "check": check(check_file)}
+
+
+CHECK_OLD = ("This check's verdicts were made before its details were kept (which plan, risk and "
+             "coins) - run judge again: python -m tradingagents.v3_research judge")
+
+
+def check(path=None) -> dict:
+    """The check's verdicts file (`v3_research` writes it beside the coins it
+    measured) as the tab shows it: {"state": "ok", "coins", "risk_usd",
+    "runs", "judged_at" (seconds), "plan_end" (ms), "plan_id", "lev",
+    "notional", "verdicts": one row per verdict, every column filled or saying
+    why}. A file written before its provenance was kept (a bare list) is
+    "old" and says to judge again; no file is "none"; a file that cannot be
+    read is "unreadable", naming why."""
+    import json
+
+    from tradingagents import v3_research as vrs
+
+    p = vrs.home(vrs.DEFAULT_LABEL) / "verdicts.json" if path is None else path
+    if not p.exists():
+        return {"state": "none", "words": "The 3-coin check has not been judged on this PC: "
+                                          "python -m tradingagents.v3_research run BTC_USDT "
+                                          "XAU_USDT ETH_USDT"}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return {"state": "unreadable", "words": f"The check's file {p} could not be read "
+                                                f"({type(exc).__name__}: {exc})"}
+    if isinstance(data, list):
+        return {"state": "old", "words": CHECK_OLD, "verdicts": len(data)}
+    vs = data.get("verdicts") or []
+    lev = [x for v in vs for x in (v.get("lev") or [])]
+    notional = [x for v in vs for x in (v.get("notional") or [])]
+    return {"state": "ok", "coins": list(data.get("coins") or []),
+            "risk_usd": data.get("risk_usd"), "runs": data.get("runs"),
+            "judged_at": data.get("judged_at"), "plan_end": data.get("plan_end"),
+            "plan_id": data.get("plan_id"),
+            "lev": [min(lev), max(lev)] if lev else None,
+            "notional": [min(notional), max(notional)] if notional else None,
+            "verdicts": [check_row(v) for v in vs]}
+
+
+def check_row(v: dict) -> dict:
+    """One verdict as the check's table prints it. A number the verdict does
+    not have is None with `blank` saying why, so no cell is ever empty."""
+    chose = v.get("failed") == "choose"
+    s = v.get("unseen") or {}
+    rr = v.get("random_runs") or {}
+    if chose:
+        blank = "not judged: no setting was chosen"
+    elif not s.get("trades"):
+        blank = "no trade on the unseen days"
+    else:
+        blank = ""
+    trades = None if chose else int(s.get("trades") or 0)
+    has = bool(trades)
+    return {"id": v["id"], "family": v["family"], "tf": v["tf"], "filter": v["filter"],
+            "setting": v.get("setting"), "passed": bool(v.get("passed")),
+            "failed": v.get("failed") or "",
+            "verdict": "PASSED" if v.get("passed") else f"FAILED at {v.get('failed')}",
+            "trades": trades, "wins": s.get("wins") if has else None,
+            "losses": s.get("losses") if has else None,
+            "win_rate": s.get("win_rate") if has else None,
+            "profit": cents(s["profit"]) if has and s.get("profit") is not None else None,
+            "worst_run_usd": cents(s.get("worst_run_usd") or 0.0) if has else None,
+            "worst_run_trades": int(s.get("worst_run_trades") or 0) if has else None,
+            "random_median_trades": None if chose else rr.get("median_trades"),
+            "real_trades": None if chose else rr.get("real_trades"),
+            "why": (v.get("why") or "") if chose else f"chose {v.get('setting')} on the older days",
+            "blank": blank or ("" if rr.get("median_trades") is not None
+                               else "the random runs' trades were not recorded")}
 
 
 def options(*, fx=None) -> dict:
@@ -92,10 +183,15 @@ def options(*, fx=None) -> dict:
         coins, coins_error = sorted(fx.trading_symbols()), ""
     except Exception as exc:                                   # noqa: BLE001
         coins, coins_error = [], f"{type(exc).__name__}: {exc}"
+    try:
+        plan, plan_error = plan_info(load_plan()), ""
+    except (OSError, ValueError) as exc:
+        plan, plan_error = None, f"{type(exc).__name__}: {exc}"
     return {"venue": venue.name(), "coins": coins, "coins_error": coins_error,
             "tfs": list(stores.FIVE), "signals": list(br.SIGNALS),
             "thresh_signals": sorted(br.THRESH_SIGNALS), "days": list(DAYS),
             "default_days": DEFAULT_DAYS, "exits": EXITS, "risk": RISK, "defaults": DEFAULTS,
+            "families": families(), "plan": plan, "plan_error": plan_error,
             "tested": tested()}
 
 
@@ -186,11 +282,264 @@ def exit_words(p: dict) -> str:
             f"out after {int(v['max_bars'])} candles")
 
 
+# ------------------------------------------------------------ the v3 families
+# what each filter does, in the words the boxes print (the rules are v3_filters')
+FILTER_WORDS = {
+    "none": "no filter",
+    "btc_mood": "alt-coin longs only while BTC closed above its 50-day average",
+    "busy_hours": "stock tokens 9:30am-4:00pm New York on a weekday; others never on a weekend",
+    "funding_side": "no long when funding is in the coin's top 10% of 30 days, no short in its "
+                    "bottom 10%",
+    "funding_minutes": "no order within 5 minutes of a funding settlement",
+}
+
+
+def load_plan(path=None) -> dict:
+    """The committed universe plan (`v3_universe.load`): which coins each
+    family may trade, month by month."""
+    from tradingagents import v3_universe as vu
+
+    return vu.load(vu.PLAN_FILE if path is None else path)
+
+
+def plan_info(plan: dict) -> dict:
+    from tradingagents import v3_universe as vu
+
+    return {"id": plan.get("id") or vu.plan_id(plan), "start_ms": int(plan["start_ms"]),
+            "end_ms": int(plan["end_ms"]), "last_month": plan["months"][-1]}
+
+
+def setting_words(family: str, value) -> str:
+    """A family's setting in its own words, from the numbers its rule reads."""
+    from tradingagents import v3_families as vf, v3_rules as vr, v3_universe as vu
+
+    v = float(value)
+    if family in ("v3_trend", "v3_breakout"):
+        return f"n = {v:g} days"
+    if family == "v3_strength":
+        return f"K = {v:g} (the top {v:g} by {vu.STRENGTH_DAYS}-day return each Monday)"
+    if family == "v3_snap":
+        return (f"k = {v:g} (a close {v:g} x ATR({vr.ATR_N}) past its {vf.SNAP_N}-candle "
+                "average)")
+    raise ValueError(f"unknown family {family!r}")
+
+
+def family_words(family: str) -> str:
+    """What the family's rule holds on, from the constants it reads."""
+    from tradingagents import v3_families as vf, v3_rules as vr, v3_universe as vu
+
+    if family == "v3_trend":
+        return (f"Trend: the close above its n-day average while that average is above its value "
+                f"{vf.TREND_LAG_DAYS} days ago (short: below a falling one)")
+    if family == "v3_breakout":
+        return (f"Breakout: a close past the high (short: the low) of the n days before, while "
+                f"the {vf.BREAKOUT_MA_DAYS}-day average rises (falls)")
+    if family == "v3_strength":
+        return (f"Strength: each Monday, long the top K liquid coins by {vu.STRENGTH_DAYS}-day "
+                "return")
+    if family == "v3_snap":
+        return (f"Snap back: a close k x ATR({vr.ATR_N}) past its {vf.SNAP_N}-candle average, "
+                "bet on the way back")
+    raise ValueError(f"unknown family {family!r}")
+
+
+def families() -> list[dict]:
+    """The four families as the tab's boxes offer them: their timeframes,
+    settings (in words), the filters each timeframe is tried with (and the
+    ones it is not, with why), and each setting's own exit in words - all
+    read from v3_families and the research's exit words."""
+    from tradingagents import v3_families as vf, v3_research as vrs
+
+    out = []
+    for fam, d in vf.FAMILIES.items():
+        settings = []
+        for v in d["settings"]:
+            key = vf.setting_key(fam, v)
+            exits = {}
+            for tf in d["tfs"]:
+                target, stop = vrs.exit_words(fam, key, tf)
+                exits[tf] = {"target": target, "stop": stop}
+            settings.append({"key": key, "value": v, "words": setting_words(fam, v),
+                             "exit": exits})
+        out.append({"name": fam, "words": family_words(fam), "tfs": list(d["tfs"]),
+                    "long": list(d["long"]), "short": list(d["short"]), "settings": settings,
+                    "filters": {tf: [{"key": f, "words": FILTER_WORDS[f]}
+                                     for f in vf.filters_for(tf)] for tf in d["tfs"]},
+                    "not_tried": {tf: [{"key": f, "why": why}
+                                       for (f, t), why in vf.NOT_TRIED.items() if t == tf]
+                                  for tf in d["tfs"]}})
+    return out
+
+
+def parse_family(body: dict, coins=None) -> dict:
+    """A family pick, checked: the coin, one of the family's timeframes, one
+    of its settings (its key, "n50", or its value), a filter that timeframe
+    is tried with, a listed window and the risk. A bad pick is refused naming
+    its box."""
+    from tradingagents import v3_families as vf
+
+    fam = body.get("signal")
+    if fam not in vf.FAMILIES:
+        raise ValueError(f"idea: {fam!r} is not a v3 family")
+    d = vf.FAMILIES[fam]
+    sym = str(body.get("sym") or "").strip().upper()
+    if not sym:
+        raise ValueError("coin: pick one")
+    if coins is not None and sym not in coins:
+        raise ValueError(f"{sym} is not a coin the exchange lists")
+    tf = body.get("tf")
+    if tf not in d["tfs"]:
+        raise ValueError(f"timeframe: {fam} runs on {', '.join(d['tfs'])}")
+    raw = body.get("setting")
+    keys = {vf.setting_key(fam, v): v for v in d["settings"]}
+    value = keys.get(str(raw))
+    if value is None and not isinstance(raw, bool):
+        try:
+            value = next((v for v in d["settings"] if float(raw) == float(v)), None)
+        except (TypeError, ValueError):
+            value = None
+    if value is None:
+        raise ValueError(f"setting: {fam} is tried with {', '.join(keys)}")
+    filt = body.get("filter") or "none"
+    if filt not in vf.filters_for(tf):
+        why = vf.NOT_TRIED.get((filt, tf))
+        raise ValueError(f"filter: on {tf} pick one of {', '.join(vf.filters_for(tf))}"
+                         + (f" ({filt} is not tried on {tf}: {why})" if why else ""))
+    try:
+        days = int(body.get("days") or DEFAULT_DAYS)
+    except (TypeError, ValueError):
+        raise ValueError("days: pick one of the listed windows") from None
+    if days not in DAYS:
+        raise ValueError(f"days: pick one of {', '.join(str(x) for x in DAYS)}")
+    risk = _number(body.get("risk_usd", RISK["default"]),
+                   {"label": "risk per trade $", "min": RISK["min"], "max": RISK["max"]})
+    return {"sym": sym, "tf": tf, "family": fam, "value": value,
+            "setting": vf.setting_key(fam, value), "filter": filt, "days": days, "risk_usd": risk}
+
+
+def family_id(p: dict) -> str:
+    """A family run's stable id: the coin, the timeframe and the family, with
+    the setting and the filter in `plan` (`v3_families.combo_key`), hashed with
+    res="v3" - every combination its own id, never a v1 or v2 one, and never a
+    stored idea's (no family is a stored signal). The risk is not in it."""
+    from tradingagents import backtest_report as br, v3_families as vf
+
+    return br.row_code(p["sym"], p["tf"], p["family"], 0.0, 0.0, 0.0, "flat",
+                       plan=vf.combo_key(p["family"], p["setting"], p["tf"], p["filter"]),
+                       res="v3")
+
+
+def universe_words(plan: dict, family: str, sym: str, start_ms: int, end_ms: int) -> list[str]:
+    """What the plan lets `sym` do in the window, in words: in how many of the
+    window's months it is in the family's universe, and what stands in after
+    the plan's end (its last month's membership; no strength ranks)."""
+    from tradingagents import v3_families as vf, v3_universe as vu
+    from tradingagents.positions_view import fmt_when
+
+    d = vf.FAMILIES[family]
+    groups = set(d["long"]) | set(d["short"])
+    end_plan = int(plan["end_ms"])
+    months = vu.months_between(start_ms, end_ms)
+    inside = sum(1 for m in months
+                 if vu.member_mask(plan, groups, sym, [min(max(m, start_ms), end_plan - 1)])[0])
+    sides = (f"longs: {' or '.join(d['long']) or 'none'}; "
+             f"shorts: {' or '.join(d['short']) or 'none'}")
+    out = [f"{sym} is in {family}'s universe in {inside} of the window's {len(months)} months "
+           f"({sides})"]
+    if end_ms > end_plan:
+        out.append(f"membership after {fmt_when(end_plan / 1000)} (the plan's end) is "
+                   f"{plan['months'][-1]}'s")
+        if family == "v3_strength":
+            out.append(f"v3_strength has no Monday ranks after {fmt_when(end_plan / 1000)}, so it "
+                       "can make no entry there")
+    if start_ms < int(plan["start_ms"]):
+        out.append(f"the plan starts {fmt_when(int(plan['start_ms']) / 1000)}: before it the coin "
+                   "is in no universe")
+    return out
+
+
+def run_family(body: dict, *, fx=None, plan=None, now_ms: int | None = None) -> dict:
+    """One press of Run with a v3 family picked: the family's rule, its own
+    exit, its universe and one filter over the window that ends `now_ms` (None:
+    the clock), walked once (see the module doc), with every row and figure
+    the tab prints."""
+    from tradingagents import (
+        backtest_report as br,
+        v3_engine as ve,
+        v3_families as vf,
+        v3_filters as vfl,
+        v3_measure as vm,
+        v3_research as vrs,
+        venue,
+    )
+
+    if fx is None:
+        from tradingagents.dataflows import exchange as fx
+    p = parse_family(body, coins=set(fx.trading_symbols()))
+    plan = load_plan() if plan is None else plan
+    t0 = time.time()
+    fam, v, tf, filt, sym = p["family"], p["value"], p["tf"], p["filter"], p["sym"]
+    bar_ms = br.TFS[tf][1] * 1000
+    end = int(time.time() * 1000) if now_ms is None else int(now_ms)
+    start = end - p["days"] * vm.DAY_MS
+    lead = vf.lead(fam, v, tf)
+    pre = vm.read_window(sym, start, end, {tf: lead}, fx=fx)
+    b = pre["bars"][tf]
+    t = b["t"]
+    i0 = bisect.bisect_left(t, start)
+    if len(t) - i0 < 2:
+        raise ValueError(f"{sym} has {max(0, len(t) - i0)} closed {tf} candles in the window")
+    end_plan = int(plan["end_ms"])
+    order = [x + bar_ms for x in t]
+    # after the plan's end its last month's membership stands in (said on the page)
+    at = [ms if ms < end_plan else end_plan - 1 for ms in order]
+    kind = plan.get("kinds", {}).get(sym, "unknown")
+    long_m, short_m = vf.sides_allowed(fam, sym, plan, at)
+    keep_l, keep_s, flags = vfl.masks(filt, sym=sym, kind=kind, order_ms=order,
+                                      funding=pre["funding"], cycle_h=pre["cycle_h"], plan=plan)
+    ok_l, ok_s = vm.allowed(long_m, short_m, keep_l, keep_s)
+    a = max(0, i0 - lead)
+    vb = {k: x[a:] for k, x in b.items()}
+    s0 = i0 - a
+    rule = vf.rule(fam, v, tf, vb, sym=sym, plan=plan)
+    got = ve.walk(vb, vm.dirs_of(rule, ok_l, ok_s, a), vf.exit_spec(fam, v, tf), start=s0,
+                  forced=vf.forced(fam, v, tf, vb, sym=sym, plan=plan), bar_s=bar_ms // 1000,
+                  contract=pre["contract"], fees=pre["fees"], flat_slip=pre["slip"],
+                  risk_usd=p["risk_usd"], fine=pre["fine"], book=pre["book"],
+                  funding=pre["funding"])
+    signals = vm._signals(rule, long_m, short_m, keep_l, keep_s, flags, a, s0)
+    rows, missed, summary = _tally(got, vb["t"], (int(t[-1]) + bar_ms - int(t[i0])) / vm.DAY_MS)
+    summary["filter"] = signals
+    summary["filter_words"] = vrs._filter_counts(signals)
+    target, stop = vrs.exit_words(fam, p["setting"], tf)
+    win_start, win_end = int(t[i0]), int(t[-1]) + bar_ms
+    meta = pre["meta"]
+    provenance = {
+        "sym": sym, "tf": tf, "signal": fam, "family": fam, "setting": p["setting"],
+        "setting_words": setting_words(fam, v), "family_words": family_words(fam),
+        "filter": filt, "filter_words": FILTER_WORDS[filt], "th_pct": None, "exit": "family",
+        "exit_words": f"its own exit - target: {target}; stop: {stop}", "target": target,
+        "stop": stop, "params": {}, "days": p["days"], "start_ms": win_start,
+        "end_ms": win_end, "venue": venue.name(), "risk_usd": p["risk_usd"],
+        "maker_fee": pre["fees"]["maker"], "taker_fee": pre["fees"]["taker"],
+        "flat_slip": pre["slip"], "flat_slip_source": meta["flat_slip_source"],
+        "coverage": meta["coverage"], "candles": len(t) - i0,
+        "points": len(pre["fine"][0]) if pre["fine"] else 0,
+        "universe": universe_words(plan, fam, sym, win_start, win_end),
+        "plan_id": plan.get("id"), "plan_end_ms": end_plan,
+        "look": "A look at one idea on one coin over this window - one walk, no older and unseen "
+                "days, no random runs: never the proof, which judges every coin together."}
+    return {"id": family_id(p), "provenance": provenance, "summary": summary, "trades": rows,
+            "missed": missed, "elapsed_s": round(time.time() - t0, 1)}
+
+
 def run(body: dict, *, fx=None) -> dict:
     """One press of the tab's Run button: the choices checked, the v3 walk,
     and every row and figure the tab prints."""
-    from tradingagents import v3_smoke, venue
+    from tradingagents import v3_families as vf, v3_smoke, venue
 
+    if body.get("signal") in vf.FAMILIES:
+        return run_family(body, fx=fx)
     if fx is None:
         from tradingagents.dataflows import exchange as fx
     p = parse(body, coins=set(fx.trading_symbols()))
@@ -198,6 +547,24 @@ def run(body: dict, *, fx=None) -> dict:
     m = v3_smoke.measure(p["sym"], p["tf"], p["signal"], p["spec"], days=p["days"],
                          th=p["th"], risk_usd=p["risk_usd"], fx=fx)
     got, t = m["walk"], m["t"]
+    rows, missed, summary = _tally(got, t, (int(m["end_s"]) - int(m["from_s"])) / 86400)
+    provenance = {
+        "sym": p["sym"], "tf": p["tf"], "signal": p["signal"], "th_pct": p["th_pct"],
+        "exit": p["kind"], "exit_words": exit_words(p), "params": p["params"],
+        "days": p["days"], "start_ms": int(m["from_s"]) * 1000, "end_ms": int(m["end_s"]) * 1000,
+        "venue": venue.name(), "risk_usd": p["risk_usd"], "maker_fee": m["fees"]["maker"],
+        "taker_fee": m["fees"]["taker"], "flat_slip": m["flat_slip"],
+        "coverage": m["coverage"], "candles": len(t) - m["lead"], "points": m["points"]}
+    return {"id": row_id(p), "provenance": provenance, "summary": summary, "trades": rows,
+            "missed": missed, "elapsed_s": round(time.time() - t0, 1)}
+
+
+def _tally(got: dict, t, span_days: float) -> tuple[list, list, dict]:
+    """A walk as the tab prints it: (the trade rows with their running total,
+    the orders that never filled with their market twins, the summary) - ONE
+    body for a stored idea's run and a family's. Trades a day are over the
+    days the walked candles span (`span_days`), never the window asked for:
+    a young coin's window is shorter."""
     rows, total = [], 0.0
     for k, x in enumerate(got["trades"], 1):
         pnl = cents(x["pnl"])
@@ -253,13 +620,6 @@ def run(body: dict, *, fx=None) -> dict:
                         "unsafe_stop", "no_levels")),
         "missed_entered": len(twins), "missed_pnl": cents(sum(r["pnl"] for r in twins)),
         "open_at_end": sum(1 for r in rows if r["why"] == "END"),
+        "trades_per_day": len(rows) / span_days if span_days > 0 else None,
         "counts": counts, "combos": 1}
-    provenance = {
-        "sym": p["sym"], "tf": p["tf"], "signal": p["signal"], "th_pct": p["th_pct"],
-        "exit": p["kind"], "exit_words": exit_words(p), "params": p["params"],
-        "days": p["days"], "start_ms": int(m["from_s"]) * 1000, "end_ms": int(m["end_s"]) * 1000,
-        "venue": venue.name(), "risk_usd": p["risk_usd"], "maker_fee": m["fees"]["maker"],
-        "taker_fee": m["fees"]["taker"], "flat_slip": m["flat_slip"],
-        "coverage": m["coverage"], "candles": len(t) - m["lead"], "points": m["points"]}
-    return {"id": row_id(p), "provenance": provenance, "summary": summary, "trades": rows,
-            "missed": missed, "elapsed_s": round(time.time() - t0, 1)}
+    return rows, missed, summary

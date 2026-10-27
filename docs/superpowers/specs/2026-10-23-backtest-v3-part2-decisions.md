@@ -77,8 +77,15 @@ and the rank of Monday 00:00 reads the closes at that instant, so the order goes
   daily decisions). Where the history does not reach, the filter cannot judge: the signal passes and is counted
   `funding_unknown` (Gate's funding history reached back to Jul 01-02, 2025 for BTC, ETH, SOL, XRP, LINK, XAUT and ADA
   on Oct 23, 2026 — about 480 days; it is the open-interest history that keeps about 180).
-* `funding_minutes` — no order within 5 minutes either side of a funding settlement. On 1h/4h/1d candles that open on
-  a settlement hour this blocks those entries outright; the verdict shows it.
+* `funding_minutes` — no order within 5 minutes either side of a funding settlement. Orders go in on the hour (the
+  open of the next candle), so every order that goes in on a settlement hour is blocked outright: every 1d order
+  (00:00 UTC is a settlement on every cycle), EVERY 4h order of a coin that settles every 4 hours, half the 4h orders
+  of an 8-hour coin, and 6 or 3 of the 24 1h orders of a 4- or an 8-hour coin (all of a 1-hour coin's). Gate's
+  listing on Oct 27, 2026 put 22 of October's 50 liquid coins (121 of the 199 liquid in any month of the plan) on a
+  4-hour cycle, and 6 of October's 45 calm ones — XAU, XAG, XPD, XPT, HYPE and TAO — so on 4h this filter leaves
+  little more than the 8-hour coins. The note on every funding_minutes verdict says so, and the verdict prints the
+  filter's blocked count (on the line of a group that traded nothing on the unseen days too). Whether to keep it on
+  4h and 1d is the operator's to rule before Part 2b.
 * **`crash_guard` (#8) is NOT in Part 2a/2b's first run:** no reader of Gate's open-interest history exists yet and
   Gate keeps about 180 days; it is listed on the page as "not tested yet: needs open-interest history".
 * `when_map` (#10) belongs to Part 3 (the re-test of the stored rows).
@@ -93,6 +100,19 @@ so α = 0.05 / 70. Every combination is counted whether or not it trades.
   number of signals in each calendar month as the real run did there, on randomly drawn candles of that month (seeded
   by coin, timeframe, family, filter and run number — reproducible), with the same longs/shorts mix, the same exit,
   sizing and costs, through the same `v3_engine.walk`.
+* **The bar is stricter than "the same number of trades", and kept so** (ruled Oct 27, 2026, on the final review of
+  Part 2a). A run places as many entries as the real run placed orders, but an entry that lands inside the run's own
+  open trade is never taken (one position at a time), and a `v3_snap` entry drawn on the far side of its 20-candle
+  average has no target and is refused (`no_levels`); the real run's orders are counted only where its walk placed
+  one, so neither can happen to them. So a run trades fewer times than the real one — about 65% as often for trend
+  and 42% for snap on the review's synthetic 4h walks — and fewer trades spread profit a trade wider, which raises
+  the bar (and snap's runs trade only on the side of the average a snap signal also needs, so part of the idea is
+  inside the bar). It can fail a real edge at
+  "random"; it can never pass a false one. Every verdict prints the shortfall: the runs' median trades against the
+  real run's, and why, over every run, the other entries never traded (`random_runs`: `real_trades`,
+  `median_trades`, `not_traded` — inside an open trade, refused by the engine with its own count, never filled, or
+  not placed for want of candles in the month). Part 2b may redraw (until a run has as many trades as the real one,
+  and snap only on the winning side of its average).
 * To keep the choice blind, the shard measures the random runs for EVERY setting (only the chosen one is ever read).
 
 ## The proof test (spec Part 3), pooled over a family's coins
@@ -104,16 +124,21 @@ so α = 0.05 / 70. Every combination is counted whether or not it trades.
    * profit per trade > the 1 − α/2 quantile of the 200 pooled random runs' profit per trade (α = 0.05 / 70)
      AND > the best of the 200. Two hundred runs cannot show a tail as far out as 1 − α/2 = 0.99964 by counting
      (their best is about the 0.995 point), so the quantile is read from a normal curve fitted to the 200
-     (mean + z × standard deviation, z = Φ⁻¹(1 − α/2) ≈ 3.39), and the best run is the floor under it;
+     (mean + z × standard deviation, z = Φ⁻¹(1 − α/2) = 3.384), and the best run is the floor under it;
    * a day-clustered bootstrap: 2,000 seeded draws of the unseen trading days with replacement give the standard
      error of profit per trade; profit per trade − z × that error > 0 (the same z, for the same reason);
    * at least 300 unseen trades.
 3. **Every verdict is kept** — passed or failed with the first failing step — with trades, wins, losses, win rate,
-   break-even win rate, profit, profit per trade against random's (median and the bar), missed orders, post-only
-   cancels, `cost_unmeasured`, `funding_estimated`, `funding_unknown`, the setting chosen, the coins and months used.
+   break-even win rate, profit, profit per trade against random's (median and the bar), the random runs' median trades
+   against the real run's and why their other entries never traded, missed orders, post-only cancels,
+   `cost_unmeasured` (on the unseen days and beside every setting's older figures), `funding_estimated` (trades),
+   the filter's own counts of signal candles (`funding_unknown`, `mood_unknown`, `settle_by_cycle`, where above 0),
+   the setting chosen, the coins and months used.
 
 ## What a machine returns per coin
 
 Per combination and setting: the older and unseen trade lists in compact rows `[signal_ms, entry_ms, exit_ms, side,
-pnl, why]`, the counts, and the random runs' per-run `(trades, profit)` on the unseen window. Nothing is chosen on a
+pnl, why]`, the counts, and the random runs' per-run `(trades, profit)` on the unseen window with, summed over the
+runs, the entries that could not be placed (`random_short`), the engine's counts of those it refused or that never
+filled (`random_refused`) and those that fell inside the run's own open trade (`random_in_trade`). Nothing is chosen on a
 machine; the PC chooses and judges after collecting every account's share.

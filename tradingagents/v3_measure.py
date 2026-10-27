@@ -32,8 +32,9 @@ trades afterwards. Nothing is chosen here: `v3_proof` chooses and judges
 after every coin is in.
 
 Every number is kept compact: trade rows [signal_ms, entry_ms, exit_ms,
-side, pnl, why], the engine's counts, the filter's counts, and each random
-run's [trades, profit].
+side, pnl, why], the engine's counts, the filter's counts, each random
+run's [trades, profit], and what kept the random runs' entries from trading
+(`_random_runs`: not placed, refused or never filled, inside an open trade).
 """
 from __future__ import annotations
 
@@ -55,6 +56,11 @@ DAY_MS = 86_400_000
 BOOK_USD = 100.0          # a recorded reading is the cost of walking the book for $100
 FUNDING_PAD_DAYS = 31     # funding_side reads the 30 days before each order
 TF_ORDER = ("1h", "4h", "1d")
+# The engine's counts of a placed entry that never became a trade: refused before an order went in,
+# or an order that never filled. Every placed entry the walk looks at ends as a trade or as one of
+# these; the rest fell inside the walk's own open trade (`inside_open_trades`)
+DROPS = ("no_levels", "too_small", "unsafe_stop", "gate_blocked", "chase_skip", "closed_skip",
+         "missed", "post_only_reject", "no_next_bar")
 
 
 def windows(plan: dict) -> tuple[int, int, int]:
@@ -264,7 +270,7 @@ def _measure_tf(rec: dict, sym: str, kind: str, tf: str, fams: list, pre: dict, 
                                                  flags, a, p["start"]))
                 u = parts["unseen"]
                 seeds = [vrn.seed_of(sym, tf, fam, filt, k) for k in range(runs)]
-                out["random"], out["random_short"] = _random_runs(
+                out |= _random_runs(
                     u, walked["unseen"], ok_l, ok_s, days, bar_ms, seeds,
                     {**common, **data["unseen"], "start": u["start"], "forced": u["forced"]},
                     spec)
@@ -272,26 +278,50 @@ def _measure_tf(rec: dict, sym: str, kind: str, tf: str, fams: list, pre: dict, 
     return ""
 
 
+def inside_open_trades(walked: dict, dirs) -> int:
+    """How many of a walk's placed entries (`dirs` not 0) the walk never looked
+    at because its own trade was open on that candle: the candles after each
+    trade's signal candle up to the candle it closed in (which may signal
+    again), or to the last candle for a trade still open at the end (`END`).
+    Counted where `v3_engine.walk` skips them, never worked out as a
+    difference."""
+    n, out = len(dirs), 0
+    for x in walked["trades"]:
+        last = n if x["why"] == "END" else int(x["exit_bar"])
+        out += sum(1 for k in range(int(x["signal_bar"]) + 1, min(last, n)) if dirs[k])
+    return out
+
+
 def _random_runs(p: dict, real: dict, ok_l, ok_s, days, bar_ms: int, seeds, walk_kw: dict,
-                 spec: dict) -> tuple[list, int]:
-    """One random run per seed on the unseen view `p`: [[trades, profit], ...]
-    and how many entries, over all the runs, could not be placed. Entries are
-    drawn where the side is allowed (universe and filter) on the family's
-    entry days."""
+                 spec: dict) -> dict:
+    """One random run per seed on the unseen view `p`: {"random": [[trades,
+    profit], ...], "random_short": entries, over all the runs, that could not
+    be placed (the month had too few candles to draw from), "random_refused":
+    {engine count: entries} the walk turned away or that never filled
+    (`DROPS`), summed over the runs, "random_in_trade": entries that fell
+    inside the run's own open trade (`inside_open_trades`), summed}. Placed
+    entries = trades + refused + in_trade, run by run. Entries are drawn where
+    the side is allowed (universe and filter) on the family's entry days."""
     wanted = vrn.entries_by_month(real, p["bars"]["t"], bar_ms)
     if not wanted:
-        return [[0, 0.0] for _ in seeds], 0
+        return {"random": [[0, 0.0] for _ in seeds], "random_short": 0, "random_refused": {},
+                "random_in_trade": 0}
     a, n = p["a"], len(p["rule"])
     cands = vrn.candidates(p["bars"]["t"], bar_ms, p["start"],
                            [ok_l[a + i] and days[a + i] for i in range(n)],
                            [ok_s[a + i] and days[a + i] for i in range(n)])
-    out, short = [], 0
+    out, short, refused, inside = [], 0, {}, 0
     for seed in seeds:
         dirs, missing = vrn.draw(n, wanted, cands, seed)
         short += missing
         w = ve.walk(p["bars"], dirs, spec, **walk_kw)
         out.append([len(w["trades"]), round(sum(float(x["pnl"]) for x in w["trades"]), 6)])
-    return out, short
+        for k in DROPS:
+            if w["counts"].get(k):
+                refused[k] = refused.get(k, 0) + int(w["counts"][k])
+        inside += inside_open_trades(w, dirs)
+    return {"random": out, "random_short": short, "random_refused": refused,
+            "random_in_trade": inside}
 
 
 def measure_coin(sym: str, plan: dict, *, runs: int = vrn.RUNS, risk_usd: float | None = None,

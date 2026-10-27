@@ -51,8 +51,12 @@ NOTES = {
     "funding_side": ("A signal the funding history cannot judge passes and is counted "
                      "funding_unknown."),
     "funding_minutes": (f"No order within {vfl.SETTLE_GAP_MS // 60_000} minutes of a funding "
-                        "settlement; every 1d order goes in at 00:00 UTC, a settlement, so on 1d "
-                        "it blocks them all."),
+                        "settlement. Orders go in on the hour, so every order that goes in on a "
+                        "settlement hour is blocked: every 1d order (00:00 UTC is a settlement on "
+                        "every cycle), every 4h order of a coin that settles every 4 hours, half "
+                        "the 4h orders of an 8-hour coin, and 6 or 3 of the 24 1h orders of a 4- "
+                        "or an 8-hour coin (all of a 1-hour coin's). The filter's blocked count "
+                        "is on the verdict."),
 }
 # The engine's counts that turn a signal candle away before any order goes in, in the order a tie is
 # settled, and the words each is said in ({at} is " at $x risk" when the records name a risk).
@@ -133,6 +137,27 @@ def random_bar(runs, z: float = Z) -> dict | None:
     mean, sd, best = fmean(ppt), stdev(ppt), max(ppt)
     return {"runs": len(runs), "traded": len(ppt), "median": median(ppt), "mean": mean,
             "sd": sd, "best": best, "normal": mean + z * sd, "bar": max(mean + z * sd, best)}
+
+
+def not_traded(held: list[dict], key: str) -> dict | None:
+    """The random runs' entries that never became a trade, summed over every
+    coin and every run, by why: "short" (could not be placed: the month had
+    too few candles to draw from, `random_short`), "in_trade" (it fell inside
+    the run's own open trade, `random_in_trade`) and the engine's own counts
+    (`random_refused`: e.g. `no_levels`, a snap drawn on the far side of its
+    average, which has no target). Only the counts above 0 are kept. None when
+    a coin's record does not carry them (measured before they were kept):
+    never a zero nobody counted."""
+    out: dict[str, int] = {}
+    for c in held:
+        combo = c["combos"][key]
+        if not all(f in combo for f in ("random_short", "random_in_trade", "random_refused")):
+            return None
+        for k, v in {"short": combo["random_short"], "in_trade": combo["random_in_trade"],
+                     **combo["random_refused"]}.items():
+            if int(v):
+                out[k] = out.get(k, 0) + int(v)
+    return out
 
 
 def boot_se(rows, seed: int, draws: int = BOOT_DRAWS) -> tuple[float | None, int]:
@@ -216,13 +241,17 @@ def _blocked_all(used: list, ck: dict, keys: list) -> int | None:
     return most if most >= 1 and all(blocked[k] == signals[k] for k in keys) else None
 
 
-def _refusal_words(counts: dict, risk) -> str:
+def _refusal_words(counts: dict, risk, settings: int = 1) -> str:
     """The dominant reason signal candles were turned away, from the engine's
     own counts summed over the older walks (`REFUSALS`: the biggest, a tie to
-    the first), as "76 of 76 signal candles were under one lot at $1.00 risk";
-    "" when none was refused. The risk is the records', and is left unsaid when
-    they name none. `signal_candles` is what the filter counted: a count above
-    it (a record that kept no signal count) is said without a denominator."""
+    the first), as "228 of 228 signals over the 3 settings (a candle counts
+    once for each setting it signals under) were under one lot at $1.00 risk";
+    "" when none was refused. The counts are summed over `settings` settings,
+    so a candle that signals under three of them is three signals there: the
+    words say so whenever there is more than one. The risk is the records',
+    and is left unsaid when they name none. `signal_candles` is what the filter
+    counted: a count above it (a record that kept no signal count) is said
+    without a denominator."""
     key, words = max(REFUSALS, key=lambda kw: int(counts.get(kw[0], 0)))
     n = int(counts.get(key, 0))
     if n <= 0:
@@ -230,7 +259,10 @@ def _refusal_words(counts: dict, risk) -> str:
     signals = int(counts.get("signal_candles", 0))
     of = f"{n:,} of {signals:,}" if signals >= n else f"{n:,}"
     at = f" at ${float(risk):,.2f} risk" if risk is not None else ""
-    return f"{of} signal candles {words.format(at=at)}"
+    what = ("signal candles" if settings == 1 else
+            f"signals over the {settings} settings (a candle counts once for each setting it "
+            "signals under)")
+    return f"{of} {what} {words.format(at=at)}"
 
 
 def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | None = None,
@@ -246,8 +278,13 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | No
     A verdict that failed at the choice carries `older_counts` - the older
     walks' counts summed over every setting and every coin - and its `why` names
     the dominant reason signals were turned away; one that went on to be judged
-    carries `random_runs`, the runs made and the runs that traded, whether or
-    not a bar came of them."""
+    carries `random_runs`, whether or not a bar came of them: the runs made,
+    the runs that traded, the real run's unseen trades, the runs' median
+    trades and why their other entries never traded (`not_traded`). The bar is
+    stricter than one drawn from runs with as many trades as the real run:
+    a random entry inside an open trade, or a snap drawn on the far side of
+    its average, does not trade, and fewer trades spread profit a trade wider
+    (decisions doc, "Random entries")."""
     _refuse_mixed(coins)
     if isinstance(tried, bool) or not isinstance(tried, int) or tried < 1:
         raise ValueError(f"tried must be a positive whole number, got {tried!r}")
@@ -262,7 +299,13 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | No
     used = [c for c in coins if any(ck[k] in c.get("combos", {}) for k in keys)]
     older = {k: [r for w in _walks(used, ck[k], "older") for r in w["rows"]] for k in keys}
     chosen, table = choose(older, keys)
-    wins = [c["windows"][tf] for c in used if tf in c.get("windows", {})]
+    for k in keys:
+        # the older exits that paid the coin's usual cost, no minute's book recorded: beside the
+        # figure the choice was made on, as the unseen walk's is beside its own (CLAUDE.md, "Every
+        # backtest LOOKS AT THE COSTS")
+        table[k]["cost_unmeasured"] = sum(int(w.get("counts", {}).get("cost_unmeasured", 0))
+                                          for w in _walks(used, ck[k], "older"))
+    wins =[c["windows"][tf] for c in used if tf in c.get("windows", {})]
     # One plan end - `_refuse_mixed` has seen to it - is one split and one end, so the window's text
     # is the first coin's label of that one instant. The texts are never compared: each machine
     # prints them in its own time zone, and a coin measured on this PC and one measured on GitHub
@@ -291,7 +334,7 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | No
             why = f"no setting had {MIN_CHOOSE} trades on the older days{named}"
             # a group can fail here because its signals never became orders: say so, at the risk
             # the records were measured at (every coin of `used` shares one: `_refuse_mixed`)
-            refused = _refusal_words(older_counts, used[0].get("risk_usd"))
+            refused = _refusal_words(older_counts, used[0].get("risk_usd"), len(keys))
             if refused:
                 why += f": {refused}"
         return {**base, "passed": False, "failed": "choose", "why": why,
@@ -312,8 +355,12 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | No
     failed = next((k for k in CHECKS if not checks[k]), "")
     return {**base, "passed": not failed, "failed": failed, "checks": checks, "unseen": s,
             "random": bar,
-            # the runs made and the runs that traded, kept whether or not a bar came of them
-            "random_runs": {"runs": len(pooled), "traded": sum(1 for n, _p in pooled if n)},
+            # the runs made and the runs that traded, kept whether or not a bar came of them, and how
+            # far the runs' trades fell short of the real run's (decisions doc, "Random entries")
+            "random_runs": {"runs": len(pooled), "traded": sum(1 for n, _p in pooled if n),
+                            "real_trades": s["trades"],
+                            "median_trades": median(n for n, _p in pooled) if pooled else None,
+                            "not_traded": not_traded(held, key)},
             "bootstrap": {"draws": BOOT_DRAWS, "days": days, "se": se,
                           "low": ppt - z * se if ppt is not None and se is not None else None},
             **tally(walks)}

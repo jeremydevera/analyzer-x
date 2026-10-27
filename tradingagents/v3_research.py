@@ -49,6 +49,10 @@ from tradingagents import (
 
 DEFAULT_LABEL = "local"
 LABEL_OK = re.compile(r"[A-Za-z0-9_.-]+")
+# Names Windows keeps for its devices, in any case and with any extension ("nul.txt" is the device
+# too): a folder of one of these names cannot be made, or is the device itself
+DEVICE_NAMES = frozenset({"CON", "PRN", "AUX", "NUL", *(f"COM{k}" for k in range(1, 10)),
+                          *(f"LPT{k}" for k in range(1, 10))})
 CRASH_GUARD = ("crash_guard (#8) is not tested yet: it needs open-interest history no "
                "reader serves yet (decisions doc).")
 FEW_COINS = ("A few coins is a check of the machinery, never the proof: the proof pools the "
@@ -57,15 +61,20 @@ FEW_COINS = ("A few coins is a check of the machinery, never the proof: the proo
 
 def plain_label(label: str) -> str:
     """The label if it is one plain folder name - letters, digits, "-", "_" and
-    "." only, never "." itself or anything holding ".." - else a ValueError that
-    names it. A label is a folder under the v3 store's research folder, so a
-    path must never get in: an absolute one would put the records on the system
-    drive (which this repo forbids for anything big) and ".." would leave the
-    store."""
+    "." only, never "." itself or anything holding "..", never a name Windows
+    keeps for a device (CON, PRN, AUX, NUL, COM1-COM9, LPT1-LPT9, in any case,
+    alone or before a "."), never ending in "." (Windows drops it, so "x." would
+    be the folder "x") - else a ValueError that names it. A label is a folder
+    under the v3 store's research folder, so a path must never get in: an
+    absolute one would put the records on the system drive (which this repo
+    forbids for anything big) and ".." would leave the store. (A space, which
+    Windows also drops at the end, is refused with every other character.)"""
     s = str(label)
-    if not LABEL_OK.fullmatch(s) or s == "." or ".." in s:
+    if (not LABEL_OK.fullmatch(s) or s == "." or ".." in s or s.endswith(".")
+            or s.split(".")[0].upper() in DEVICE_NAMES):
         raise ValueError(f"label {s!r} is not a plain folder name: letters, digits, '-', '_' "
-                         "and '.' only, never '.' or '..'")
+                         "and '.' only, never '.' or '..', never ending in '.', never a Windows "
+                         "device name (CON, PRN, AUX, NUL, COM1-9, LPT1-9)")
     return s
 
 
@@ -140,7 +149,8 @@ def exit_words(family: str, key: str, tf: str | None = None) -> tuple[str, str]:
     spec = vf.exit_spec(family, value, tf)
     atr = f"ATR({v3_rules.ATR_N})"
     if spec["kind"] == "snap":
-        return (f"the {spec['mean_n']}-candle average, resting; out after {spec['max_bars']} candles",
+        return (f"the {spec['mean_n']}-candle average at the signal, resting; out after "
+                f"{spec['max_bars']} candles",
                 f"an emergency stop {spec['stop_atr']:g} x {atr} at the market")
     trail = f"a trailing stop {spec['atr_mult']:g} x {atr}, never loosened"
     if spec["ma_n"]:
@@ -166,17 +176,20 @@ def coin_line(rec: dict) -> str:
 
 
 def header_lines(plan: dict, runs: int, coins: int, risk: float,
-                 no_universe: int = 0) -> list[str]:
-    """The two lines above the coverage: the venue, the coins measured (and how
-    many were in no family's universe), the window and its split, the random
-    runs, the combinations tried, the luck correction and the risk - each from
-    the plan, the arguments or the code that decides it."""
+                 no_universe: int = 0, none_measured: int = 0) -> list[str]:
+    """The two lines above the coverage: the venue, the coins measured (at least
+    one timeframe measured), how many were in no family's universe and how many
+    had every timeframe skipped, the window and its split, the random runs, the
+    combinations tried, the luck correction and the risk - each from the plan,
+    the arguments or the code that decides it."""
     from tradingagents.positions_view import fmt_when
     from tradingagents.v3_measure import UNSEEN_DAYS, windows
 
     start, split, end = windows(plan)
     tried, filters = vp.TRIED, len(vf.FILTERS)
     idle = f", {no_universe} in no family's universe" if no_universe else ""
+    idle += (f", {none_measured} with every timeframe skipped (its line says why)"
+             if none_measured else "")
     return [f"Backtest v3 Part 2a on {plan.get('venue') or 'the exchange'}: {coins} coin(s) "
             f"measured{idle}; the window {fmt_when(start / 1000)} to {fmt_when(end / 1000)} - "
             f"older days to {fmt_when(split / 1000)}, then {UNSEEN_DAYS} unseen days; {runs} "
@@ -187,22 +200,89 @@ def header_lines(plan: dict, runs: int, coins: int, risk: float,
             f"bought / its leverage)"]
 
 
+# Why a random run's entry never became a trade, in words, in the order a tie is said
+# (`v3_proof.not_traded`: "short", "in_trade" and the engine's own counts, `v3_measure.DROPS`)
+NOT_TRADED_WORDS = (
+    ("in_trade", "fell inside the run's own open trade"),
+    ("no_levels", "had no target or stop (ATR or the average not ready, or a snap drawn on the far "
+                  "side of its average)"),
+    ("short", "could not be placed (the month had too few candles to draw from)"),
+    ("too_small", "were under one lot"),
+    ("unsafe_stop", "had no safe leverage"),
+    ("gate_blocked", "were turned away by the cost check"),
+    ("chase_skip", "found the price had run away"),
+    ("closed_skip", "fell on a closed market"),
+    ("missed", "rested and never filled"),
+    ("post_only_reject", "were rejected as post-only"),
+    ("no_next_bar", "fell on the last candle"),
+)
+
+
+def _older_one(k: str, o: dict) -> str:
+    """One setting's older-days figure, with the share of its exits that paid a
+    typical cost beside it (M1: the evidence the choice was made on)."""
+    text = f"{k} {money(o['per_trade'], 3)} a trade over {o['trades']}"
+    notes = [] if o["eligible"] else ["too few"]
+    if o["trades"] and "cost_unmeasured" in o:
+        notes.append(f"exits at a typical cost {o['cost_unmeasured']} of {o['trades']}")
+    return text + (f" ({'; '.join(notes)})" if notes else "")
+
+
+def random_line(made: dict) -> str:
+    """How far the random runs' trades fell short of the real run's, and why
+    their other entries never traded, summed over every run and coin: the luck
+    bar is stricter than "as many trades as the real run" by that much (the
+    decisions doc, "Random entries")."""
+    runs, med = made.get("runs", 0), made.get("median_trades")
+    if med is None:
+        return "   random runs: how many times they traded was not recorded"
+    head = (f"   random runs traded a median {med:,g} of the real run's "
+            f"{plural(made.get('real_trades', 0), 'trade')}")
+    nt = made.get("not_traded")
+    if nt is None:
+        return head + "; why their other entries never traded was not recorded"
+    said = dict(NOT_TRADED_WORDS)
+    order = [k for k, _w in NOT_TRADED_WORDS] + sorted(set(nt) - set(said))
+    parts = [f"{nt[k]:,} {said.get(k, k)}"
+             for k in sorted((k for k in order if nt.get(k)), key=lambda k: (-nt[k], order.index(k)))]
+    if not parts:
+        return head + f"; over the {runs:,} runs, every entry they placed traded"
+    return head + f"; over the {runs:,} runs, entries that never traded: " + ", ".join(parts)
+
+
+def _filter_counts(c: dict) -> str:
+    """The filter's counts of the verdict's own signal candles (one setting's,
+    pooled over the coins): what it blocked, and what it could not judge
+    (each where it is above 0, with the filter that counted it)."""
+    sig = c.get("signal_candles", 0)
+    out = f"filter blocked {c.get('blocked', 0)} of {sig} signal candles"
+    for key, words in (("funding_unknown", "funding_side could not judge {n} of {s} signal "
+                                           "candles (they passed)"),
+                       ("mood_unknown", "btc_mood could not judge {n} of {s} signal candles "
+                                        "(they passed)"),
+                       ("settle_by_cycle", "funding_minutes judged {n} of {s} signal candles by "
+                                           "the settlement cycle (no recorded settlement)")):
+        if c.get(key):
+            out += "; " + words.format(n=c[key], s=sig)
+    return out
+
+
 def _verdict_body(v: dict) -> list[str]:
     from tradingagents.v3_measure import BOOK_USD, UNSEEN_DAYS
 
     head = f"#{v['id']} {v['family']} {v['tf']} {v['filter']}"
-    older = ", ".join(f"{k} {money(o['per_trade'], 3)} a trade over {o['trades']}"
-                      + ("" if o["eligible"] else " (too few)")
-                      for k, o in v["older"].items())
+    older = ", ".join(_older_one(k, o) for k, o in v["older"].items())
     state = "PASSED" if v["passed"] else f"FAILED at {v['failed']}"
     if v["failed"] == "choose":
         return [f"{head}: {state} - {v['why']} (older days: {older or 'no trades'})"]
     s, r, b = v["unseen"], v["random"] or {}, v["bootstrap"]
+    c = v["counts"]
     if not s["trades"]:
-        return [f"{head}: setting {v['setting']} - {state}: no trade on the unseen days "
+        # a filter that blocked the unseen days' signals says how many, here as on a full line
+        said = "" if v["filter"] == "none" else f"; {_filter_counts(c)}"
+        return [f"{head}: setting {v['setting']} - {state}: no trade on the unseen days{said} "
                 f"(older days: {older})"]
     target, stop = exit_words(v["family"], v["setting"], v["tf"])
-    c = v["counts"]
     lev = v["lev"] or ["-", "-"]
     notional = v["notional"] or [0.0, 0.0]
     made = v.get("random_runs") or r      # the runs made and those that traded, bar or no bar
@@ -215,15 +295,15 @@ def _verdict_body(v: dict) -> list[str]:
         f"({made.get('traded', 0)} of {made.get('runs', 0)} traded); bootstrap low "
         f"{money(b['low'], 3)} over {plural(b['days'], 'day')}; worst losing run "
         f"{money(s['worst_run_usd'])} over {plural(s['worst_run_trades'], 'trade')}",
+        random_line(v.get("random_runs") or {}),
         f"   target: {target}; stop: {stop}; leverage {lev[0]}x-{lev[1]}x; "
         f"${notional[0]:,.0f}-${notional[1]:,.0f} of coin a trade ({v['over_book']} over the "
         f"books' ${BOOK_USD:,.0f})",
         f"   counts: missed {c.get('missed', 0)} and post-only rejected "
         f"{c.get('post_only_reject', 0)} (their market twins {money(v['twins_pnl'])} over "
         f"{v['twins']}); exits at a typical cost {c.get('cost_unmeasured', 0)} of {s['trades']}; "
-        f"funding estimated {c.get('funding_estimated', 0)}, unknown "
-        f"{c.get('funding_unknown', 0)}; filter blocked {c.get('blocked', 0)} of "
-        f"{c.get('signal_candles', 0)} signal candles; refused signal candles: under one lot "
+        f"funding estimated on {c.get('funding_estimated', 0)} of {plural(s['trades'], 'trade')}; "
+        f"{_filter_counts(c)}; refused signal candles: under one lot "
         f"{c.get('too_small', 0)}, no safe leverage {c.get('unsafe_stop', 0)}, the cost check "
         f"{c.get('gate_blocked', 0)}; open at the end {s['open_at_end']}; coins {len(v['coins'])}"]
 
@@ -288,8 +368,12 @@ def left_out_line(other: list[tuple[str, list[str]]]) -> str:
 def report(records: list[dict], plan: dict, runs: int, risk: float) -> tuple[list[str], list[dict]]:
     """Every line the command prints, and the verdicts."""
     verdicts = vp.verdicts(records)
-    measured = [r for r in records if not r.get("why")]
-    lines = header_lines(plan, runs, len(measured), risk, len(records) - len(measured))
+    # a coin is measured when at least one of its timeframes was: a record whose every timeframe was
+    # skipped (too few candles) holds no walk, and its coverage line says why
+    idle = [r for r in records if r.get("why")]
+    measured = [r for r in records if not r.get("why") and r.get("windows")]
+    lines = header_lines(plan, runs, len(measured), risk, len(idle),
+                         len(records) - len(idle) - len(measured))
     lines += [coin_line(r) for r in records]
     for v in verdicts:
         lines += verdict_lines(v)
@@ -356,15 +440,25 @@ def main(argv=None) -> int:
             try:
                 rec = measure_coin(sym, plan, runs=a.runs, risk_usd=risk, log=print)
             except Exception as exc:                            # noqa: BLE001
-                # A failed coin is named, its OLD record is dropped (a failed redo must never leave
-                # the last measurement in the pool) and the others go on; the command ends 1
                 failed[sym] = f"{type(exc).__name__}: {str(exc)[:160]}"
-                drop_coin(root, sym)
+                rec = None
+            if rec is None:
+                # A failed coin is named, its OLD record is dropped (a failed redo must never leave
+                # the last measurement in the pool) and the others go on; the command ends 1. A
+                # record that cannot be dropped (a file another program holds) is named with the
+                # failure and left out of the judging below, never allowed to stop the coins after it
+                try:
+                    drop_coin(root, sym)
+                except OSError as exc:
+                    failed[sym] += (f"; its old record {coin_file(root, sym)} could not be "
+                                    f"dropped ({type(exc).__name__}: {str(exc)[:120]})")
                 print(f"FAILED {sym}: {failed[sym]} ({time.time() - t0:.0f} s)")
                 continue
             save_coin(root, rec)
             print(coin_line(rec) + f" ({time.time() - t0:.0f} s)")
-    records, other = split_records(load_coins(root), plan, a.runs, risk)
+    # a coin that failed in this run is never judged, even if its old record could not be dropped
+    records, other = split_records([r for r in load_coins(root) if r.get("coin") not in failed],
+                                   plan, a.runs, risk)
     lines, verdicts = report(records, plan, a.runs, risk)
     if other:
         lines.insert(2, left_out_line(other))

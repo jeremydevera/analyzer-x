@@ -82,7 +82,8 @@ def test_the_report_prints_coverage_first_then_every_verdict_with_the_kits_figur
     assert "(break-even 40.0%)" in snap, "0.8 / (1.2 + 0.8)"
     assert "PROFIT +$64.00, +$0.200 a trade" in snap
     assert "worst losing run -$0.80 over 1 trade" in snap and "1 trades" not in snap
-    assert "target: the 20-candle average, resting" in snap and "leverage 20x-20x" in snap
+    assert "target: the 20-candle average at the signal, resting" in snap
+    assert "leverage 20x-20x" in snap
     assert "$45-$130 of coin a trade (2 over the books' $100)" in snap
     assert "exits at a typical cost 5 of 320" in snap and "1 of 30 verdicts passed." in text
     assert "refused signal candles: under one lot 0, no safe leverage 0, the cost check 0" in snap
@@ -96,7 +97,8 @@ def test_a_chosen_setting_with_no_unseen_trade_says_so_in_one_line():
     snap = _verdict(verdicts)
     assert vr.verdict_lines(snap) == [
         f"#{snap['id']} v3_snap 1h none: setting k2 - FAILED at profit: no trade on the unseen "
-        "days (older days: k1.5 +$0.050 a trade over 40, k2 +$0.100 a trade over 40)"]
+        "days (older days: k1.5 +$0.050 a trade over 40 (exits at a typical cost 5 of 40), k2 "
+        "+$0.100 a trade over 40 (exits at a typical cost 5 of 40))"]
 
 
 def test_a_group_no_coin_measured_says_so_in_one_line():
@@ -305,9 +307,11 @@ def test_a_plain_label_is_filed_under_the_stores_research_folder():
     ("v3_trend", "n50", "4h", ("none; out on a close past its 50-day average", TRAIL)),
     ("v3_breakout", "n20", "1d", ("none", TRAIL)),
     ("v3_strength", "k3", "1d", ("none; out at a Monday 00:00 UTC rank outside the top 6", TRAIL)),
-    ("v3_snap", "k1.5", "1h", ("the 20-candle average, resting; out after 24 candles",
+    ("v3_snap", "k1.5", "1h", ("the 20-candle average at the signal, resting; out after 24 "
+                               "candles",
                                "an emergency stop 3 x ATR(20) at the market")),
-    ("v3_snap", "k2", "4h", ("the 20-candle average, resting; out after 24 candles",
+    ("v3_snap", "k2", "4h", ("the 20-candle average at the signal, resting; out after 24 "
+                             "candles",
                              "an emergency stop 3 x ATR(20) at the market"))])
 def test_each_familys_target_and_stop_are_said_in_words(family, key, tf, words):
     assert vr.exit_words(family, key, tf) == words
@@ -327,7 +331,7 @@ def test_the_words_move_with_the_numbers_the_walk_reads(monkeypatch):
     assert vr.exit_words("v3_strength", "k3") == (
         "none; out at a Monday 00:00 UTC rank outside the top 9", trail)
     assert vr.exit_words("v3_snap", "k2") == (
-        "the 10-candle average, resting; out after 48 candles",
+        "the 10-candle average at the signal, resting; out after 48 candles",
         "an emergency stop 2.5 x ATR(14) at the market")
 
 
@@ -337,7 +341,7 @@ def test_every_combination_prints_words_that_say_what_its_exit_spec_says():
         target, stop = vr.exit_words(family, key, tf)
         if spec["kind"] == "snap":
             assert f"{spec['stop_atr']:g} x ATR({v3_rules.ATR_N}) at the market" in stop
-            assert target == (f"the {spec['mean_n']}-candle average, resting; "
+            assert target == (f"the {spec['mean_n']}-candle average at the signal, resting; "
                               f"out after {spec['max_bars']} candles")
         else:
             assert f"{spec['atr_mult']:g} x ATR({v3_rules.ATR_N}), never loosened" in stop
@@ -451,5 +455,152 @@ def test_a_group_that_failed_at_the_choice_for_want_of_a_lot_says_so_on_its_line
                      for k in ("n20", "n50", "n100")}
     _lines, verdicts = vr.report([rec], _plan(), 200, 1.0)
     (line,) = vr.verdict_lines(_verdict(verdicts, "v3_trend", "1d"))
-    assert (": FAILED at choose - no setting had 30 trades on the older days: 228 of 228 signal "
-            "candles were under one lot at $1.00 risk (older days: ") in line
+    assert (": FAILED at choose - no setting had 30 trades on the older days: 228 of 228 "
+            "signals over the 3 settings (a candle counts once for each setting it signals under) "
+            "were under one lot at $1.00 risk (older days: ") in line
+
+
+# --- the final review's fixes (Oct 27, 2026) -------------------------------------------------------
+
+
+def test_every_verdict_says_how_far_the_random_runs_trades_fell_short_of_the_real_runs():
+    rec = _record()
+    rec["combos"][KEY].update(random_short=0, random_in_trade=85,
+                              random_refused={"no_levels": 210, "missed": 4})
+    _lines, verdicts = vr.report([rec], _plan(), 200, 1.0)
+    lines = vr.verdict_lines(_verdict(verdicts))
+    assert lines[2] == (
+        "   random runs traded a median 100 of the real run's 320 trades; over the 200 runs, "
+        "entries that never traded: 210 had no target or stop (ATR or the average not ready, or a "
+        "snap drawn on the far side of its average), 85 fell inside the run's own open trade, 4 "
+        "rested and never filled")
+    # every reason the measurement can keep has its words
+    assert {k for k, _w in vr.NOT_TRADED_WORDS} == {"short", "in_trade", *vm.DROPS}
+    # nothing refused, and a record that did not keep the reasons
+    rec["combos"][KEY].update(random_in_trade=0, random_refused={})
+    _lines, verdicts = vr.report([rec], _plan(), 200, 1.0)
+    assert vr.verdict_lines(_verdict(verdicts))[2].endswith(
+        "over the 200 runs, every entry they placed traded")
+    del rec["combos"][KEY]["random_refused"]
+    _lines, verdicts = vr.report([rec], _plan(), 200, 1.0)
+    assert vr.verdict_lines(_verdict(verdicts))[2] == (
+        "   random runs traded a median 100 of the real run's 320 trades; why their other entries "
+        "never traded was not recorded")
+
+
+def test_the_counts_line_names_each_counts_unit_and_the_filters_unjudged_signals():
+    # final review M2: funding_estimated counts TRADES, the filters' counts SIGNAL CANDLES
+    rec = _record()
+    rec["combos"][KEY]["unseen"]["counts"] = {"cost_unmeasured": 5, "funding_estimated": 7}
+    _lines, verdicts = vr.report([rec], _plan(), 200, 1.0)
+    text = "\n".join(vr.verdict_lines(_verdict(verdicts)))
+    assert ("funding estimated on 7 of 320 trades; filter blocked 0 of 9 signal candles; refused"
+            in text)
+    assert "could not judge" not in text and "by the settlement cycle" not in text
+    # a filter's unjudged signals are said where there are any, with the filter that counted them
+    for filt, count, words in (
+            ("funding_side", "funding_unknown",
+             "funding_side could not judge 4 of 9 signal candles (they passed)"),
+            ("btc_mood", "mood_unknown",
+             "btc_mood could not judge 4 of 9 signal candles (they passed)"),
+            ("funding_minutes", "settle_by_cycle",
+             "funding_minutes judged 4 of 9 signal candles by the settlement cycle "
+             "(no recorded settlement)")):
+        key = vf.combo_key("v3_snap", "k2", "1h", filt)
+        r = _record()
+        r["combos"] = {key: {**r["combos"][KEY]},
+                       vf.combo_key("v3_snap", "k1.5", "1h", filt): r["combos"][KEY15]}
+        r["combos"][key]["unseen"] = _walk(_rows([1.2, -0.8] * 160),
+                                           filter={"signal_candles": 9, count: 4})
+        _lines, verdicts = vr.report([r], _plan(), 200, 1.0)
+        text = "\n".join(vr.verdict_lines(_verdict(verdicts, filt=filt)))
+        assert f"filter blocked 0 of 9 signal candles; {words}; refused" in text, filt
+
+
+def test_a_4h_funding_minutes_group_that_traded_nothing_unseen_still_prints_what_it_blocked():
+    # final review I2: on a coin that settles every 4 hours every 4h order goes in on a settlement
+    # hour, so funding_minutes blocks them all - the line says how many, and the note says why
+    key = vf.combo_key("v3_trend", "n20", "4h", "funding_minutes")
+    rec = _record("XAU_USDT")
+    rec["windows"] = {"4h": {"split": "Jul 24, 2026 8:00pm"}}
+    rec["combos"] = {key: {"older": _walk(_rows([0.10] * 40)),
+                           "unseen": _walk([], counts={},
+                                           filter={"signal_candles": 12, "blocked": 12}),
+                           "random": [[0, 0.0]] * 200}}
+    _lines, verdicts = vr.report([rec], _plan(), 200, 1.0)
+    v = _verdict(verdicts, "v3_trend", "4h", "funding_minutes")
+    lines = vr.verdict_lines(v)
+    assert lines[0].startswith(f"#{v['id']} v3_trend 4h funding_minutes: setting n20 - FAILED at "
+                               "profit: no trade on the unseen days; filter blocked 12 of 12 "
+                               "signal candles (older days: ")
+    assert lines[-1] == f"   note: {vp.NOTES['funding_minutes']}"
+    assert "every 4h order of a coin that settles every 4 hours" in lines[-1]
+    # a plain group names no filter count on that line
+    plain = _record()
+    plain["combos"][KEY]["unseen"] = _walk([])
+    _lines, verdicts = vr.report([plain], _plan(), 200, 1.0)
+    assert "filter blocked" not in vr.verdict_lines(_verdict(verdicts))[0]
+
+
+def test_a_coin_whose_every_timeframe_was_skipped_is_not_counted_as_measured():
+    # final review M7
+    young = {"coin": "NEW_USDT", "kind": "metals", "plan_id": PLAN_ID, "plan_end_ms": END,
+             "runs": 200, "risk_usd": 1.0, "pre": {}, "windows": {}, "combos": {},
+             "skipped": {"1h": "1 older and 40 unseen 1h candles",
+                         "4h": "0 older and 10 unseen 4h candles"}}
+    lines, _ = vr.report([_record(), young], _plan(), 200, 1.0)
+    assert (": 1 coin(s) measured, 1 with every timeframe skipped (its line says why); the "
+            in lines[0])
+    assert any(ln.startswith("NEW_USDT (metals)") and "1h skipped: 1 older and 40 unseen" in ln
+               for ln in lines)
+
+
+@pytest.mark.parametrize("label", ["CON", "con", "Nul", "PRN", "AUX", "COM1", "com9", "LPT1",
+                                   "lpt9", "nul.txt", "CON.x", "x.", "run."])
+def test_a_windows_device_name_or_a_label_ending_in_a_dot_is_refused(label, capsys):
+    with pytest.raises(SystemExit) as refused:
+        vr.main(["judge", "--label", label])
+    assert refused.value.code == 2 and repr(label) in capsys.readouterr().err
+    with pytest.raises(ValueError, match="not a plain folder name"):
+        vr.home(label)
+
+
+@pytest.mark.parametrize("label", ["COM10", "CONSOLE", "LPT", "com", "x.con", "nul_1", "COM0"])
+def test_names_that_only_look_like_a_device_are_still_plain_labels(label):
+    from tradingagents import stores
+
+    assert vr.home(label) == Path(stores.V3.home) / "research" / label
+
+
+def test_an_old_record_that_cannot_be_dropped_is_named_and_never_stops_the_other_coins(
+        monkeypatch, tmp_path, capsys):
+    from tradingagents import v3_measure
+
+    root = tmp_path / "local"
+    vr.save_coin(root, _record("BAD_USDT"))
+    asked = []
+
+    def fake(sym, plan, *, runs, risk_usd, log=None):
+        asked.append(sym)
+        if sym == "BAD_USDT":
+            raise RuntimeError("the exchange refused the read")
+        return {**_record(sym, risk=risk_usd), "runs": runs, "plan_id": plan["id"]}
+
+    def locked(root_, sym):
+        raise PermissionError(13, "The process cannot access the file")
+
+    monkeypatch.setattr(v3_measure, "measure_coin", fake)
+    monkeypatch.setattr(vr, "home", lambda label="local": tmp_path / label)
+    monkeypatch.setattr(vr, "drop_coin", locked)
+    plan_path = vu.save(_plan(), tmp_path / "plan.json")
+    code = vr.main(["run", "aaa_usdt", "bad_usdt", "ccc_usdt", "--plan", str(plan_path),
+                    "--runs", "200"])
+    out = capsys.readouterr().out
+    assert code == 1 and asked == ["AAA_USDT", "BAD_USDT", "CCC_USDT"]
+    assert ("FAILED BAD_USDT: RuntimeError: the exchange refused the read; its old record "
+            f"{vr.coin_file(root, 'BAD_USDT')} could not be dropped (PermissionError: ") in out
+    # its old record is still on disk, and is never judged in its place
+    assert vr.coin_file(root, "BAD_USDT").exists()
+    assert "2 coin(s) measured" in out and "BAD_USDT (metals)" not in out
+    saved = json.loads((root / "verdicts.json").read_text(encoding="utf-8"))
+    assert next(v for v in saved if v["passed"])["coins"] == ["AAA_USDT", "CCC_USDT"]

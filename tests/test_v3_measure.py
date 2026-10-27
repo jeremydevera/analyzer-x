@@ -839,3 +839,63 @@ def test_each_setting_walks_the_lead_in_it_needs_before_the_window_and_before_th
         (day, 20): [(300, 307), (300, 303)],
         (day, 50): [(300, 307), (300, 303)],
         (day, 100): [(300, 307), (300, 303)]}
+
+
+# ---- what kept the random runs' entries from trading (final review I1): kept, and counted where the
+# walk skips them
+
+def test_every_placed_random_entry_is_a_trade_a_drop_or_inside_an_open_trade():
+    import random
+
+    from tradingagents import v3_engine as ve
+
+    rng = random.Random(7)
+    t, o, h, lo, c, px = [], [], [], [], [], 100.0
+    for k in range(400):
+        step = rng.gauss(0, 0.6)
+        t.append(_utc(2026, 9, 1, 0) + k * H)
+        o.append(px)
+        px = max(50.0, px + step)
+        h.append(max(o[-1], px) + abs(rng.gauss(0, 0.3)))
+        lo.append(min(o[-1], px) - abs(rng.gauss(0, 0.3)))
+        c.append(px)
+    bars = {"t": t, "o": o, "h": h, "l": lo, "c": c}
+    contract = ve.contract_of(SPEC)
+    inside_seen = 0
+    for spec in (vf.exit_spec("v3_snap", 1.5, "1h"), vf.exit_spec("v3_trend", 20, "1d")):
+        for seed in range(6):
+            r = random.Random(seed)
+            dirs = [r.choice((1, -1)) if r.random() < 0.3 else 0 for _ in range(400)]
+            w = ve.walk(bars, dirs, spec, bar_s=3600, contract=contract,
+                        fees={"maker": 0.0002, "taker": 0.00075}, flat_slip=0.0003,
+                        start=30, cost_check=False)
+            placed = sum(1 for d in dirs[30:] if d)
+            inside = vm.inside_open_trades(w, dirs)
+            assert placed == (len(w["trades"]) + sum(w["counts"][k] for k in vm.DROPS) + inside), (
+                spec["kind"], seed)
+            inside_seen += inside
+    assert inside_seen > 0, "the world must hold entries inside open trades to test the count"
+
+
+def test_inside_open_trades_counts_the_candles_after_each_signal_up_to_its_exit_or_the_end():
+    dirs = [0, 1, 1, 0, -1, 0, 1, 1, 1]
+    # a trade signalled at 1 closed in candle 4 (which signals again): 2 skipped (candles 2 and 3:
+    # only 2 holds an entry); one signalled at 4 still open at the end: 6, 7 and 8 skipped
+    walked = {"trades": [{"signal_bar": 1, "exit_bar": 4, "why": "TP"},
+                         {"signal_bar": 4, "exit_bar": 8, "why": "END"}]}
+    assert vm.inside_open_trades(walked, dirs) == 1 + 3
+
+
+def test_a_random_run_keeps_why_its_entries_never_traded(monkeypatch, gate_floors):
+    rec = _metal(monkeypatch, _dips(OLD_DIP, EDGE_DIP, NEW_DIP))
+    combo = rec["combos"][SNAP]
+    # each of the 3 runs places one October entry; a flat hour gives a snap no average to aim at, so
+    # an entry there is refused no_levels - and every placed entry is a trade or a counted reason
+    traded = sum(n for n, _p in combo["random"])
+    assert combo["random_short"] == 0 and combo["random_in_trade"] == 0
+    assert traded + sum(combo["random_refused"].values()) == 3
+    assert set(combo["random_refused"]) <= {"no_levels"}
+    assert combo["random_refused"].get("no_levels", 0) == 3 - traded
+    # a filter that blocked the real order leaves the runs nothing to place, and nothing to refuse
+    busy = rec["combos"][vf.combo_key("v3_snap", "k1.5", "1h", "busy_hours")]
+    assert (busy["random_short"], busy["random_refused"], busy["random_in_trade"]) == (0, {}, 0)

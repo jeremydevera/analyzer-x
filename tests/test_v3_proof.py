@@ -487,15 +487,18 @@ def test_coins_of_two_builds_of_one_plan_end_are_refused_and_unstamped_ones_pool
 
 def test_a_verdict_says_how_many_random_runs_were_made_and_how_many_traded():
     # 200 runs that never traded: no bar, and the count says why, from the data
+    def made(v):
+        return {k: v["random_runs"][k] for k in ("runs", "traded")}
+
     never = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(STEADY), [[0, 0.0]] * 200))
-    assert never["random"] is None and never["random_runs"] == {"runs": 200, "traded": 0}
+    assert never["random"] is None and made(never) == {"runs": 200, "traded": 0}
     # one run that traded is no curve either
     one = vp.verdict("v3_snap", "1h", "none",
                      _two_coins(_rows(STEADY), [[10, 1.0]] + [[0, 0.0]] * 199))
-    assert one["random"] is None and one["random_runs"] == {"runs": 200, "traded": 1}
+    assert one["random"] is None and made(one) == {"runs": 200, "traded": 1}
     # runs pooled over the coins are still 200 runs, not 400
     some = vp.verdict("v3_snap", "1h", "none", _two_coins(_rows(STEADY)))
-    assert some["random_runs"] == {"runs": 200, "traded": 200}
+    assert made(some) == {"runs": 200, "traded": 200}
     assert (some["random"]["runs"], some["random"]["traded"]) == (200, 200)
 
 
@@ -517,14 +520,16 @@ def test_a_group_whose_signals_were_under_one_lot_says_so_at_the_risk_the_record
     # unseen days; here the older ones, three settings: 228 of 228)
     v = vp.verdict("v3_trend", "1d", "none", [_trend_1d({"too_small": 76})])
     assert (v["failed"], v["setting"]) == ("choose", None)
-    assert v["why"] == ("no setting had 30 trades on the older days: 228 of 228 signal candles "
+    # three settings' counts summed: a candle that signals under all three is three signals, and
+    # the words say so (never "228 signal candles" for 76 candles)
+    assert v["why"] == ("no setting had 30 trades on the older days: 228 of 228 signals over the 3 settings (a candle counts once for each setting it signals under) "
                         "were under one lot at $1.00 risk")
     # the risk is the records', never typed
     v = vp.verdict("v3_trend", "1d", "none", [_trend_1d({"too_small": 76}, risk=2.5)])
     assert v["why"].endswith("were under one lot at $2.50 risk")
     # a record that names no risk says none
     v = vp.verdict("v3_trend", "1d", "none", [_trend_1d({"too_small": 76}, risk=None)])
-    assert v["why"].endswith("228 of 228 signal candles were under one lot")
+    assert v["why"].endswith("228 of 228 signals over the 3 settings (a candle counts once for each setting it signals under) were under one lot")
     # the counts are kept on the verdict: the older walks', every setting, every coin, the
     # filter's beside the engine's
     assert v["older_counts"] == {"too_small": 228, "signal_candles": 228}
@@ -536,17 +541,17 @@ def test_a_filtered_group_counts_the_signals_the_filter_let_through_and_names_th
     v = vp.verdict("v3_trend", "1d", "busy_hours",
                    [_trend_1d({"too_small": 55}, filt="busy_hours", blocked=21)])
     assert v["why"] == ("no setting had 30 trades on the older days with busy_hours: 165 of 228 "
-                        "signal candles were under one lot at $1.00 risk")
+                        "signals over the 3 settings (a candle counts once for each setting it signals under) were under one lot at $1.00 risk")
 
 
 def test_the_dominant_refusal_is_the_one_said_and_each_has_its_own_words():
     counts = {"too_small": 10, "unsafe_stop": 30, "gate_blocked": 5}
     v = vp.verdict("v3_trend", "1d", "none", [_trend_1d(counts, signals=100)])
-    assert v["why"] == ("no setting had 30 trades on the older days: 90 of 300 signal candles "
+    assert v["why"] == ("no setting had 30 trades on the older days: 90 of 300 signals over the 3 settings (a candle counts once for each setting it signals under) "
                         "had no safe leverage")
     counts = {"too_small": 10, "unsafe_stop": 3, "gate_blocked": 40}
     v = vp.verdict("v3_trend", "1d", "none", [_trend_1d(counts, signals=100)])
-    assert v["why"] == ("no setting had 30 trades on the older days: 120 of 300 signal candles "
+    assert v["why"] == ("no setting had 30 trades on the older days: 120 of 300 signals over the 3 settings (a candle counts once for each setting it signals under) "
                         "were turned away by the cost check")
     # a tie goes to the first of the three (under one lot), so the sentence never flips between runs
     v = vp.verdict("v3_trend", "1d", "none",
@@ -563,22 +568,74 @@ def test_every_filter_that_can_surprise_has_its_note_and_each_note_is_true_of_th
     for filt, note in vp.NOTES.items():
         assert vp.verdict("v3_snap", "1h", filt, [])["notes"] == [vu.SURVIVORSHIP, note]
     assert vp.verdict("v3_snap", "1h", "none", [])["notes"] == [vu.SURVIVORSHIP]
-    # funding_minutes: the gap is read off the filter's own constant, and every 1d order goes in at
-    # 00:00 UTC, which is a settlement on every cycle Gate has (8, 4 and 1 hours) - recorded
-    # (stamped a few seconds late, as Gate does) or by the cycle - so on 1d it blocks them all
+    # funding_minutes: the gap is read off the filter's own constant; orders go in on the hour, so
+    # every order on a settlement hour is blocked - recorded (stamped a few seconds late, as Gate
+    # does) or by the cycle. Each figure the note says is the filter's own answer:
     minutes = vfl.SETTLE_GAP_MS // 60_000
     assert vp.NOTES["funding_minutes"] == (
-        f"No order within {minutes} minutes of a funding settlement; every 1d order goes in at "
-        "00:00 UTC, a settlement, so on 1d it blocks them all.")
-    midnights = [PLAN_END + k * DAY for k in range(5)]
-    for cycle in (8, 4, 1):
-        ok, _short, flag = vfl.funding_minutes(midnights, None, cycle)
-        assert ok == [False] * 5 and flag == ["settle_by_cycle"] * 5
-    recorded = [{"settle_ms": m + 3000, "rate": 0.0001, "cycle_h": 8} for m in midnights]
-    ok, _short, flag = vfl.funding_minutes(midnights, recorded, 8)
-    assert ok == [False] * 5 and flag == [""] * 5
+        f"No order within {minutes} minutes of a funding settlement. Orders go in on the hour, so "
+        "every order that goes in on a settlement hour is blocked: every 1d order (00:00 UTC is a "
+        "settlement on every cycle), every 4h order of a coin that settles every 4 hours, half the "
+        "4h orders of an 8-hour coin, and 6 or 3 of the 24 1h orders of a 4- or an 8-hour coin (all "
+        "of a 1-hour coin's). The filter's blocked count is on the verdict.")
+    hour = 3_600_000
+
+    def blocked(step_h, n, cycle, recorded=False):
+        orders = [PLAN_END + k * step_h * hour for k in range(n)]
+        funding = ([{"settle_ms": PLAN_END + k * cycle * hour + 3000, "rate": 0.0001,
+                     "cycle_h": cycle} for k in range(n * step_h // cycle + 1)]
+                   if recorded else None)
+        ok, short, flag = vfl.funding_minutes(orders, funding, cycle)
+        assert ok == short and set(flag) == ({""} if recorded else {"settle_by_cycle"})
+        return ok.count(False)
+
+    for recorded in (False, True):
+        # 1d: every order, whatever the cycle
+        assert [blocked(24, 5, c, recorded) for c in (8, 4, 1)] == [5, 5, 5]
+        # 4h: all six of a 4-hour coin's orders a day, half of an 8-hour coin's
+        assert blocked(4, 6, 4, recorded) == 6 and blocked(4, 6, 8, recorded) == 3
+        assert blocked(4, 6, 1, recorded) == 6
+        # 1h: 6 of 24 on a 4-hour coin, 3 of 24 on an 8-hour coin, all 24 on a 1-hour coin
+        assert [blocked(1, 24, c, recorded) for c in (4, 8, 1)] == [6, 3, 24]
     # funding_side: where the history cannot judge, the signal passes and is counted funding_unknown
+    midnights = [PLAN_END + k * DAY for k in range(5)]
     long_ok, short_ok, flag = vfl.funding_side(midnights, None)
     assert (long_ok, short_ok, flag) == ([True] * 5, [True] * 5, ["funding_unknown"] * 5)
     assert vp.NOTES["funding_side"] == ("A signal the funding history cannot judge passes and is "
                                         "counted funding_unknown.")
+
+
+def test_a_verdict_shows_how_far_the_random_runs_trades_fell_short_of_the_real_runs():
+    # final review I1: the bar is kept as drawn - stricter than "as many trades" - and every verdict
+    # says by how much: the real run's 320 unseen trades against the runs' median 100, and why the
+    # other entries never traded, summed over both coins and every run
+    coins = _two_coins(_rows(STEADY))
+    for c, (short, inside, refused) in zip(coins, ((3, 40, {"no_levels": 150, "too_small": 2}),
+                                                   (0, 45, {"no_levels": 60})), strict=True):
+        c["combos"][KEY].update(random_short=short, random_in_trade=inside,
+                                random_refused=refused)
+    v = vp.verdict("v3_snap", "1h", "none", coins)
+    made = v["random_runs"]
+    assert made["real_trades"] == v["unseen"]["trades"] == 320
+    assert made["median_trades"] == 200, "100 trades a run on each of the two coins, pooled run by run"
+    assert made["not_traded"] == {"short": 3, "in_trade": 85, "no_levels": 210, "too_small": 2}
+    # counts that are 0 are not kept, and a record measured before the counts were kept says
+    # "not recorded" (None), never a zero nobody counted
+    coins[1]["combos"][KEY].update(random_short=0, random_in_trade=0, random_refused={})
+    assert vp.verdict("v3_snap", "1h", "none", coins)["random_runs"]["not_traded"] == {
+        "short": 3, "in_trade": 40, "no_levels": 150, "too_small": 2}
+    del coins[1]["combos"][KEY]["random_refused"]
+    assert vp.verdict("v3_snap", "1h", "none", coins)["random_runs"]["not_traded"] is None
+    assert vp.verdict("v3_snap", "1h", "none",
+                      _two_coins(_rows(STEADY)))["random_runs"]["not_traded"] is None
+
+
+def test_the_older_figures_carry_how_many_exits_paid_a_typical_cost():
+    # final review M1: the evidence the setting was chosen on says how much of it paid an estimate
+    coins = _two_coins(_rows(STEADY))
+    for c in coins:
+        c["combos"][KEY]["older"]["counts"] = {"cost_unmeasured": 30}
+        c["combos"][KEY15]["older"]["counts"] = {"cost_unmeasured": 40, "unclear": 2}
+    v = vp.verdict("v3_snap", "1h", "none", coins)
+    assert (v["older"]["k2"]["trades"], v["older"]["k2"]["cost_unmeasured"]) == (80, 60)
+    assert (v["older"]["k1.5"]["trades"], v["older"]["k1.5"]["cost_unmeasured"]) == (80, 80)

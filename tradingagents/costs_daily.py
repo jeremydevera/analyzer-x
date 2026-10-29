@@ -273,16 +273,26 @@ def _held_by_backfill(days: list[str], now: float, st: dict) -> str:
     try:
         got = v3_coverage.daily_held_off(days, now)
         st.pop("backfill_unreadable_since", None)
+        st.pop("backfill_ignored", None)
         return got
     except Exception as exc:                                   # noqa: BLE001
         mtime = v3_coverage.record_mtime()
         first = st.setdefault("backfill_unreadable_since", now)
         hours = v3_coverage.STALE_S // 3600
-        if now - (first if mtime is None else mtime) > v3_coverage.STALE_S:
+        # a stamp in the FUTURE (a clock set ahead, or moved back) would stretch the bound by the
+        # skew, today and again once the clock passes it: the earlier of the file's stamp and
+        # when it was first seen unreadable decides, so no path holds past the bound
+        stamp = first if mtime is None else min(mtime, first)
+        if now - stamp > v3_coverage.STALE_S:
             msg = (f"the v3 backfill record could not be read ({exc}) for more than {hours} "
                    "hours: the daily press runs without it")
             st["last_error"] = msg
-            _say(st, now, msg)
+            if not st.get("backfill_ignored"):
+                # the notice that the press RAN without the record is never thinned by the
+                # hourly gate that thins "still held" lines; said once per episode
+                st["backfill_ignored"] = now
+                st["held_said_at"] = now
+                print(f"[costs-daily] {msg}", flush=True)
             return ""
         return (f"could not read the v3 backfill record ({exc}): the daily press waits for it, "
                 f"at most {hours} hours")

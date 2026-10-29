@@ -345,6 +345,34 @@ def test_a_record_that_cannot_even_be_stat_ed_is_judged_by_when_it_was_first_see
         "started"] is True
 
 
+def test_a_record_stamped_in_the_future_never_stretches_the_twelve_hour_bound(world, daily,
+                                                                              monkeypatch):
+    """A clock set ahead when the file was written: `now - stamp` is negative, and judged by the
+    stamp the hold would last the skew plus twelve hours."""
+    now = _utc(2026, 10, 27, 3) + 300
+    _corrupt_record(world, now, -10 * 3600)                    # stamped ten hours ahead
+    assert costs_daily.tick(now=now)["started"] is False
+    assert costs_daily.tick(now=now + vcv.STALE_S - 600)["started"] is False
+    got = costs_daily.tick(now=now + vcv.STALE_S + 2 * costs_daily.HELD_RECHECK_S)
+    assert got["started"] is True and len(daily) == 1, "held past twelve hours by the skew"
+
+
+def test_the_notice_that_the_press_ran_without_the_record_is_never_thinned_by_the_hourly_gate(
+        world, daily, capsys):
+    now = _utc(2026, 10, 27, 3) + 300
+    _corrupt_record(world, now, vcv.STALE_S - 1800)            # half an hour from the bound
+    assert costs_daily.tick(now=now)["started"] is False
+    assert "waits for it" in capsys.readouterr().out           # the hold line: held_said_at = now
+    t = now + 2100                                              # inside that hour, past the bound
+    assert costs_daily.tick(now=t)["started"] is True
+    out = capsys.readouterr().out
+    assert out.count("[costs-daily]") == 1 and "runs without it" in out
+    assert "runs without it" in costs_daily.read()["last_error"]
+    # said once per episode, not again at the next press of the same unreadable file
+    assert costs_daily.tick(now=t + 3 * 86400)["started"] in (True, False)
+    assert "runs without it" not in capsys.readouterr().out
+
+
 def test_a_hold_is_seen_in_the_state_and_said_once_an_hour_in_the_log(world, daily, capsys,
                                                                      monkeypatch):
     now = _utc(2026, 10, 27, 3) + 300

@@ -156,11 +156,13 @@ def test_a_coin_is_measured_for_every_family_setting_timeframe_and_filter_it_can
         ["none", "btc_mood", "busy_hours", "funding_side"] * 3)
     old, new = rec["combos"][SNAP]["older"], rec["combos"][SNAP]["unseen"]
     # each dip's waiting buy at 99.3 fills in the next hour's first minute (low 99.25) and the
-    # second minute (high 100.1) trades through the target
+    # second minute (high 100.1) trades through the target. The row ends with the stop and the
+    # target the order went in with, as fractions of the 99.3 entry: 3 x ATR 0.23 = 0.69 under
+    # it (0.69 / 99.3 = 0.00695) and the 99.965 average over it (0.665 / 99.3 = 0.0067)
     assert old["rows"] == [[OLD_DIP, OLD_DIP + H, OLD_DIP + H + M, 1, pytest.approx(_snap_pnl()),
-                            "TP"]]
+                            "TP", 0.00695, 0.0067]]
     assert new["rows"] == [[NEW_DIP, NEW_DIP + H, NEW_DIP + H + M, 1,
-                            pytest.approx(_snap_pnl()), "TP"]]
+                            pytest.approx(_snap_pnl()), "TP", 0.00695, 0.0067]]
     assert old["lev"] == [20, 20] and old["notional"] == [pytest.approx(142.99, abs=0.01)] * 2
     assert old["over_book"] == 1, "$143 of coin is more than the $100 a reading walks"
     # a flat market gives the trend and breakout rules nothing
@@ -284,6 +286,11 @@ def test_the_flat_gaps_source_says_how_many_of_its_minutes_lie_on_the_older_days
     assert pre["flat_slip_source"] == (
         "the median of its 2 recorded minutes whose book did not run out, 0 of them on the older days")
     assert pre["coverage_older"] == 0.0
+    # with no reading of their own, the older days keep the whole window's figure, and say so
+    assert pre["flat_slip_older"] == pytest.approx(0.0005)
+    assert pre["flat_slip_older_source"] == (
+        "no reading of its own on the older days: the median of its 2 recorded minutes whose "
+        "book did not run out, 0 of them on the older days")
 
 
 def test_random_runs_are_seeded_and_entered_like_the_real_run(monkeypatch, gate_floors):
@@ -401,14 +408,17 @@ def test_strength_enters_at_a_monday_rank_and_is_forced_out_when_it_drops_past_t
     # past 2K = 6: out at Sunday Sep 27's close - Monday 00:00 - 100.0, at the market: taker 0.075%
     # plus the coin's 0.02% gap, and the maker 0.02% in
     k3 = rec["combos"][vf.combo_key("v3_strength", "k3", "1d", "none")]
+    # a 0.6 trail under a 100.0 entry is a 0.006 stop, and a trail has no target
     assert k3["older"]["rows"] == [[SEP21 - DAY, SEP21, SEP28, 1,
-                                    pytest.approx(-166.0 * (0.0002 + 0.00075 + 0.0002)), "RANK"]]
+                                    pytest.approx(-166.0 * (0.0002 + 0.00075 + 0.0002)), "RANK",
+                                    0.006, None]]
     # K = 5: 9th is inside 2K = 10, so the trade is still open at the split and closes there, at
     # the last older close, 100.0 - paying the coin's flat 0.02% gap, never the 5% of the reading
     # stamped at the split, which the older walk cannot see
     k5 = rec["combos"][vf.combo_key("v3_strength", "k5", "1d", "none")]
     assert k5["older"]["rows"] == [[SEP21 - DAY, SEP21, SPLIT_B, 1,
-                                    pytest.approx(-166.0 * (0.0002 + 0.00075 + 0.0002)), "END"]]
+                                    pytest.approx(-166.0 * (0.0002 + 0.00075 + 0.0002)), "END",
+                                    0.006, None]]
     assert k5["older"]["counts"]["cost_unmeasured"] == 1
     # unseen: 1st at Monday Oct 05's rank, read off Sunday Oct 04's close - in at Oct 05 00:00 at
     # 101.0, open at the window's end. An order a day late (the plan's first text) would have been
@@ -908,3 +918,36 @@ def test_a_random_run_keeps_why_its_entries_never_traded(monkeypatch, gate_floor
     # a filter that blocked the real order leaves the runs nothing to place, and nothing to refuse
     busy = rec["combos"][vf.combo_key("v3_snap", "k1.5", "1h", "busy_hours")]
     assert (busy["random_short"], busy["random_refused"], busy["random_in_trade"]) == (0, {}, 0)
+
+
+# ---- Backtest v3 Part 2b: two flat gaps, one per walk ------------------------------------------
+
+def test_the_older_walk_pays_the_older_days_own_flat_gap_once_they_have_readings(
+        monkeypatch, gate_floors):
+    from tradingagents import cost_store
+
+    others = [f"C{k}_USDT" for k in range(9)]
+    plan = _plan(START_B, END_B, {}, liquid={"2026-09": ["ABC_USDT"] + others,
+                                             "2026-10": ["ABC_USDT"] + others},
+                 strength={str(SEP21): ["ABC_USDT"] + others,
+                           str(SEP28): others[:8] + ["ABC_USDT"],
+                           str(OCT5): ["ABC_USDT"] + others},
+                 kinds={"ABC_USDT": "crypto"})
+    # one reading on the older days at 0.02% a side, two on the unseen days at 0.10%: the whole
+    # window's median (of 0.02%, 0.10%, 0.10%) is 0.10%, the older days' own 0.02%
+    book = bh.pack([_reading(START_B // 1000, 0.0002), _reading(SPLIT_B // 1000 + 3600, 0.0010),
+                    _reading(SPLIT_B // 1000 + 7200, 0.0010)])
+    monkeypatch.setattr(cost_store, "engine_book", lambda *a, **k: book)
+    up = {SPLIT_B + m * M: (101.1, 100.9) for m in range(3 * 1440)}
+    rec = vm.measure_coin("ABC_USDT", plan, runs=2, fx=FakeFx(START_B, END_B, up))
+    pre = rec["pre"]
+    assert pre["flat_slip"] == pytest.approx(0.0010)
+    assert pre["flat_slip_older"] == pytest.approx(0.0002)
+    assert pre["flat_slip_older_source"] == (
+        "the median of its 1 recorded minutes on the older days whose book did not run out")
+    # K = 5's trade is still open at the split and closes at the last older close at the market,
+    # with no reading in the hour before it: it pays the OLDER days' 0.02%, never the 0.10% read
+    # off the unseen days. 166 lots of 0.01 x $100, maker in, taker out
+    k5 = rec["combos"][vf.combo_key("v3_strength", "k5", "1d", "none")]
+    (row,) = k5["older"]["rows"]
+    assert row[5] == "END" and row[4] == pytest.approx(-166.0 * (0.0002 + 0.00075 + 0.0002))

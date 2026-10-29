@@ -1170,3 +1170,18 @@ def test_the_contract_is_read_from_the_listing_one_way_and_a_missing_field_is_na
     # a rate READ as 0 passes the reading and is refused by the engine's own check, by name
     with pytest.raises(ValueError, match="contract mmr = 0.0"):
         ve.contract_of({**spec, "maintenanceMarginRate": 0.0})
+
+
+# ---- Backtest v3 Part 2b: a trade keeps the stop and the target its order went in with ---------
+
+def test_a_trade_keeps_the_stop_and_target_its_order_went_in_with():
+    # a fixed 2% stop and 1% target on a 100.0 entry
+    fill_hour = [(100.1, 99.9)] * 10 + [(100.0, 99.95)] + [(100.5, 100.0)] * 49
+    bars, fine = _fixed_world(fill_hour, [(101.5, 100.5)] + [(101.6, 101.0)] * 59)
+    (tr,) = _walk(bars, [1, 0, 0], fine=fine)["trades"]
+    assert tr["stop_px"] == pytest.approx(98.0) and tr["target_px"] == pytest.approx(101.0)
+    # a trail: 3 x ATR(20) 0.205 under the 100.0 signal close, and no target. The trail moves
+    # its stop later (to 99.485); the trade keeps the FIRST one, the one the order went in with
+    bars, fine, dirs = _trail_world(FLAT, FLAT)
+    (tr,) = _walk(bars, dirs, TRAIL, fine=fine)["trades"]
+    assert tr["stop_px"] == pytest.approx(100.0 - 3 * 0.205) and tr["target_px"] is None

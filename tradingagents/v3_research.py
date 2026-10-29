@@ -171,7 +171,10 @@ def coin_line(rec: dict) -> str:
     return (f"{rec['coin']} ({rec['kind']}): order books cover {pct(pre.get('coverage_older'))} "
             f"of the older days' minutes and {pct(pre.get('coverage_unseen'))} of the unseen "
             f"days' (the rest pay its usual {100 * pre.get('flat_slip', 0):.5f}% a side: "
-            f"{pre.get('flat_slip_source', '?')}); {len(rec.get('combos', {}))} combinations"
+            f"{pre.get('flat_slip_source', '?')}"
+            + (f"; the older walk's: {100 * pre['flat_slip_older']:.5f}%, "
+               f"{pre.get('flat_slip_older_source', '?')}" if "flat_slip_older" in pre else "")
+            + f"); {len(rec.get('combos', {}))} combinations"
             + (f"; {skipped}" if skipped else ""))
 
 

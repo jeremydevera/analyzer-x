@@ -618,7 +618,13 @@ def walk(bars: dict, dirs, exit_spec: dict, *, bar_s: int, contract: dict, fees:
         trades.append({"side": s, "signal_bar": i, "entry_bar": i + 1,
                        "entry_ms": int(fill_ms), "entry": c[i],
                        "contracts": size["contracts"], "notional": size["notional"],
-                       "leverage": size["leverage"], "margin": size["margin"], **tr})
+                       "leverage": size["leverage"], "margin": size["margin"],
+                       # the stop and target the order went in with (a trail moves its stop
+                       # later; this is the first one): what the results page's max TP % and
+                       # max SL % read (Backtest v3 Part 2b)
+                       "stop_px": float(levels["stop"]),
+                       "target_px": None if levels["target"] is None else float(levels["target"]),
+                       **tr})
         if tr["why"] == "END":
             break
         i = tr["exit_bar"]          # a candle a trade closed in may signal again

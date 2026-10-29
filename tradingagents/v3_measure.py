@@ -11,13 +11,11 @@ family's timeframes, for every setting and every filter:
   lead-in before them; a trade still open at the split is closed at its last
   candle (`END`). Its minutes, order books and funding are CUT at the split,
   so the setting can never be chosen on an unseen price — by construction.
-  One number is NOT cut: the flat gap it pays where a minute has no reading
-  of its own — the coin's usual cost, the median of EVERY recorded minute of
-  the window, which today all lie after the split (the store holds about two
-  months). That is a cost level, never a price path, and `flat_slip_source`
-  says how many of its minutes lie on the older days, until an order-book
-  backfill over the older days (Part 2b, if the pilot shows it is needed)
-  gives them their own readings;
+  The flat gap it pays where a minute has no reading of its own is the
+  older days' own (the median of the readings before the split, `older_gap`)
+  once they have readings - the order-book backfill of Part 2b. Where they
+  have none it is the whole window's figure, a cost level, never a price
+  path, and `flat_slip_older_source` says which it is;
 * the UNSEEN walk: the newest 90 days, the lead-in before them read by the
   indicators only;
 * RUNS random runs on the unseen window (`v3_random`), measured for EVERY
@@ -51,7 +49,10 @@ from tradingagents import (
     v3_universe as vu,
 )
 
-VERSION = 1
+# 2 (Backtest v3 Part 2b): every trade row carries the stop and target it opened with, as
+# fractions of its entry, and the older walk pays the older days' own flat gap where they have
+# readings. A record of version 1 holds neither; the proof reads only the first six fields
+VERSION = 2
 UNSEEN_DAYS = 90
 DAY_MS = 86_400_000
 BOOK_USD = 100.0          # a recorded reading is the cost of walking the book for $100
@@ -130,6 +131,22 @@ def flat_gap(sym: str, book, *, fx, split_ms: int | None = None) -> tuple[float,
                                    f"({type(exc).__name__})")
 
 
+def older_gap(book, split_ms: int, whole: tuple[float, str]) -> tuple[float, str]:
+    """The OLDER walk's flat gap: the median of the recorded minutes stamped
+    before the split (`_book_before`, the cut every older read takes), so a
+    setting is chosen on the older days' own cost level once they have
+    readings (the order-book backfill, Part 2b). Where they have none - the
+    store held about two months on Oct 27, 2026 - the older walk keeps the
+    whole window's figure `whole` (value, source), and its source says so."""
+    from tradingagents import cost_store
+
+    slip, n = cost_store.usual_slip(_book_before(book, split_ms))
+    if slip is not None:
+        return slip, (f"the median of its {n:,} recorded minutes on the older days whose book "
+                      "did not run out")
+    return whole[0], f"no reading of its own on the older days: {whole[1]}"
+
+
 def prefetch(sym: str, plan: dict, leads: dict, *, fx) -> dict:
     """Everything one coin's walks read, fetched ONCE: {tf: bars} with each
     timeframe's longest lead-in before the window, the minutes of the window,
@@ -167,17 +184,20 @@ def read_window(sym: str, start: int, end: int, leads: dict, *, fx,
     fees = {"maker": at.maker_fee_floor(), "taker": at.fee_floor()}
     meta = {"contract": contract, "fees": fees, "flat_slip": slip, "flat_slip_source": source,
             "minutes": len(fine[0]), "five_minute": int(n5)}
+    slip_older = slip
     if split_ms is None:
         meta["coverage"] = cost_store.coverage(book, start // 1000, end // 1000)
     else:
         meta["coverage_older"] = cost_store.coverage(book, start // 1000, split_ms // 1000)
         meta["coverage_unseen"] = cost_store.coverage(book, split_ms // 1000, end // 1000)
+        slip_older, meta["flat_slip_older_source"] = older_gap(book, split_ms, (slip, source))
+        meta["flat_slip_older"] = slip_older
     meta |= {"funding": len(funding),
              "funding_from_ms": int(funding[0]["settle_ms"]) if funding else None,
              "cycle_h": float(spec.get("funding_interval_h") or 8)}
     return {"bars": bars, "fine": fine if fine[0] else None, "book": book, "funding": funding,
-            "contract": contract, "fees": fees, "slip": slip, "cycle_h": meta["cycle_h"],
-            "meta": meta}
+            "contract": contract, "fees": fees, "slip": slip, "slip_older": slip_older,
+            "cycle_h": meta["cycle_h"], "meta": meta}
 
 
 def _before(pre: dict, split: int) -> dict:
@@ -195,14 +215,25 @@ def _view(bars: dict, a: int, b: int) -> dict:
     return {k: v[a:b] for k, v in bars.items()}
 
 
+def _frac(px, entry: float) -> float | None:
+    """A level's distance from the entry, as a fraction of it (5 places), or None."""
+    return None if px is None else round(abs(float(px) - float(entry)) / float(entry), 5)
+
+
 def compact(walked: dict, t, signals: dict) -> dict:
-    """One walk in the shape every machine returns."""
+    """One walk in the shape every machine returns. A trade row is [signal_ms,
+    entry_ms, exit_ms, side, pnl, why, stop, target]: the last two are the stop
+    and the target the order went in with, as fractions of the entry (a trail
+    has no target: None) - what the results page's max SL % and max TP % read.
+    Everything that reads the first six fields reads them as before."""
     trades = walked["trades"]
     twins = [m["market"] for m in walked["missed"] if "pnl" in m["market"]]
     lev = [int(x["leverage"]) for x in trades]
     notional = [float(x["notional"]) for x in trades]
     return {"rows": [[int(t[x["signal_bar"]]), int(x["entry_ms"]), int(x["exit_ms"]),
-                      int(x["side"]), round(float(x["pnl"]), 6), x["why"]] for x in trades],
+                      int(x["side"]), round(float(x["pnl"]), 6), x["why"],
+                      _frac(x["stop_px"], x["entry"]), _frac(x.get("target_px"), x["entry"])]
+                     for x in trades],
             "counts": {k: int(v) for k, v in walked["counts"].items() if v},
             "filter": signals, "missed": len(walked["missed"]),
             "twins": [len(twins), round(sum(float(x["pnl"]) for x in twins), 6)],
@@ -267,7 +298,10 @@ def _measure_tf(rec: dict, sym: str, kind: str, tf: str, fams: list, pre: dict, 
     data = {"older": _before(pre, split),
             "unseen": {"fine": pre["fine"], "book": pre["book"], "funding": pre["funding"]}}
     common = {"bar_s": bar_s, "contract": pre["contract"], "fees": pre["fees"],
-              "flat_slip": pre["slip"], "risk_usd": risk_usd}
+              "risk_usd": risk_usd}
+    # each walk's own flat gap: the older days' where they have readings (`older_gap`), the whole
+    # window's for the unseen walk and its random runs
+    gap = {"older": pre.get("slip_older", pre["slip"]), "unseen": pre["slip"]}
     for fam in fams:
         if tf not in vf.FAMILIES[fam]["tfs"]:
             continue
@@ -290,7 +324,8 @@ def _measure_tf(rec: dict, sym: str, kind: str, tf: str, fams: list, pre: dict, 
                     a = p["a"]
                     dirs = dirs_of(p["rule"], ok_l, ok_s, a)
                     walked[part] = ve.walk(p["bars"], dirs, spec, start=p["start"],
-                                           forced=p["forced"], **common, **data[part])
+                                           forced=p["forced"], flat_slip=gap[part], **common,
+                                           **data[part])
                     out[part] = compact(walked[part], p["bars"]["t"],
                                         _signals(p["rule"], long_m, short_m, keep_l, keep_s,
                                                  flags, a, p["start"]))
@@ -298,7 +333,8 @@ def _measure_tf(rec: dict, sym: str, kind: str, tf: str, fams: list, pre: dict, 
                 seeds = [vrn.seed_of(sym, tf, fam, filt, k) for k in range(runs)]
                 out |= _random_runs(
                     u, walked["unseen"], ok_l, ok_s, days, bar_ms, seeds,
-                    {**common, **data["unseen"], "start": u["start"], "forced": u["forced"]},
+                    {**common, **data["unseen"], "flat_slip": gap["unseen"], "start": u["start"],
+                     "forced": u["forced"]},
                     spec)
                 rec["combos"][vf.combo_key(fam, vf.setting_key(fam, v), tf, filt)] = out
     return ""

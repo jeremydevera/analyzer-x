@@ -172,6 +172,41 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-28-F — Backtest v3's order-book backfill could run beside the daily costs job on the same month file and silently erase one run's days, and COVERAGE FIRST under-counted the trades that paid a typical cost: NEVER HAPPENED YET
+
+**CEO**
+
+* Nothing wrong was shown yet (it NEVER HAPPENED YET, no backfill has been pressed): a backfill started at 10pm and still running at the daily costs job's 3:05am press would have had both runs add to the same month file, the later one keeping only its own days, while both finished green and both marked their days done - so days would have paid a coin's typical cost for ever with no red anywhere. The coverage report also said "100% of trades exited at a typical cost" while counting only exits, and priced one lump of days when the operator fills the unseen days first and the older days after.
+* Why: the "keep clear of the daily job" check ran once, at the moment the backfill started, and the daily job never looked at the backfill at all; the report's share counted one kind of leg and one denominator.
+* What stops it now: the two jobs share one record and each refuses (naming the run) while the other has a run in the air, judged by the runs' own status with stale entries expired; the share counts every entry and exit; the unseen and older days each get their own count, coin-days (days before a coin's listing left out) and time.
+
+**DEV**
+
+* `v3_coverage.clash` (34bfc136a534) refused only on `costs_daily.read()["flight"]` at start time or when the press started in a 02:00-08:59 UTC hour proxy; `costs_daily.tick` (`costs_daily.py:160-215`) never read `backfill.json`, and `costs_shard.py` reads each coin-month asset, merges and uploads it back with `--clobber`, so overlapping runs lose one run's days. `trade_costs` divided `cost_unmeasured` (market exits only) by all trades; `report` printed one missing-days count and one estimate, charged pre-listing coin-days, printed a "UTC" range in the PC's local clock, mixed one-day and multi-day runs into a speed, kept `done_days` as one global list, read a corrupt state file as `{}`, and had no `settle` expiry.
+* Invariant broken: **two writers of one file exclude each other both ways, judged by a fact (the run's own status) and never by an hour or a pid**, and **a share names its denominator (rule 24)**.
+* Guard: `tests/test_v3_coverage.py::test_the_daily_costs_press_holds_off_a_backfill_in_the_air_on_its_months` (the overlap that used to lose days), `::test_a_backfill_press_refuses_while_a_daily_costs_run_is_in_the_air_naming_it`, `::test_the_daily_costs_press_says_it_is_pressing_before_it_dispatches`, `::test_the_daily_press_backs_off_when_a_backfill_flight_appears_after_it_said_pressing`, `::test_a_backfill_that_finds_the_daily_press_coming_after_writing_its_own_flight_backs_off`, `::test_an_entry_that_had_no_book_is_a_typical_cost_leg_though_its_exit_was_measured`, `::test_the_two_ranges_each_get_their_own_line_and_estimate`, `::test_the_report_says_coverage_first_with_every_number_from_the_records`.
+
+**SAW** - NEVER HAPPENED YET: found by the task review of Part 2b Task 6 (`Oct 28, 2026`, `task-6-review.txt`, Important 1-3, Minor 4-7), reading `clash` against `costs_daily.tick` and `costs_shard.py`.
+
+**TIMELINE** (NEVER HAPPENED YET: hypothetical; the numbers come from `tests/test_v3_coverage.py`)
+
+1. `Oct 27, 2026 10:00pm` UTC the operator presses `backfill pilot --part unseen`: 30 days, `clash` finds no daily flight and the hour is outside 02:00-08:59, so it goes; 3 accounts take the run, each machine reads and rewrites the coin-month files of Aug-Oct.
+2. `Oct 28, 2026 3:05am` UTC the daily costs tick runs: it reads only its own state, finds no flight, and presses yesterday and the days before it on the same coin-months.
+3. Before the fix both runs upload each month file back with `--clobber`: the later upload wins, the other's days vanish, both finish green, both mark their days done. After the fix the tick returns "a v3 backfill press is in the air (run 77 on a/x) on the month file(s) 2026-10 ... the daily press waits" and presses at its next tick once the backfill's runs are `completed`; a backfill refuses while the daily job has a run in the air, naming it.
+4. The pilot's report: 100 exits of 100 trades paid a typical cost, and 45 of 105 entries went in with no book - which one sentence said as "100 of 100 trades exited at a typical cost (100.0%)". After the fix: "145 of 205 entries and exits paid a typical cost (70.7%)", with the entry and exit counts beside it.
+
+**ROOT CAUSE** - The exclusion between the two jobs was a start-time check in one direction (plus an hour proxy for the other job's schedule); the share's numerator and denominator counted different legs.
+
+**WHY IT WAS NOT CAUGHT** - Every test pressed one backfill with the daily job's record faked as empty or as holding a flight at the instant of the press; no test ran the daily tick while a backfill flight existed, and a race that needs a second job has no row to assert on. The report's test built its records so every trade exited typical and had no TP exit and no entry without a book, so the numerator and the denominator were equal by construction.
+
+**COST** - none: NEVER HAPPENED YET. No backfill was pressed.
+
+**FIX** - this commit: `v3_coverage.air_of / clash / daily_held_off` (one judgement by run status, expiry `STALE_S`, `PRESSING_S` for a press being dispatched, `pressing` and a second look on both sides), `costs_daily.tick` holds off and says `pressing` before it dispatches (`_held_by_backfill`), `trade_costs` legs, `report` per range with `coin_days` / `listings_of` / `range_words`, `costs_speed` on multi-day runs only and an unknown time said as unknown, `done_days(plan)` per plan id and coin set, `read_state` refusing a corrupt file, `settle` with expiry and a status read that may fail, a unique temp name, a coverage figure that is not measured read as unknown.
+
+**GUARD** - the tests named above plus `::test_a_day_backfilled_for_one_plan_is_not_held_for_another`, `::test_a_corrupt_state_file_is_refused_by_name_never_read_as_empty`, `::test_settle_gives_back_a_stale_press_and_survives_a_status_read_that_fails`, `::test_days_that_are_not_one_stretch_are_a_count_never_a_range`, `::test_the_report_says_the_time_is_unknown_when_no_speed_runs_are_given`, `::test_the_speed_is_the_costs_jobs_own_machine_seconds_per_coin_day`; the four daily-job tests and the minute-cover test red on 34bfc136a534.
+
+---
+
 ## RCA-2026-10-28-E — the Backtest v3 results page worked every figure out from whatever records sat in the run folder when it was built, so a coin landed again after the verdicts were published would have printed a PROFIT that disagreed with its PASSED: NEVER HAPPENED YET
 
 **CEO**

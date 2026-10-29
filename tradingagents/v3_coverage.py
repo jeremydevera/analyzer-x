@@ -30,15 +30,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import statistics
 import time
 from pathlib import Path
 
 DAY_S = 86_400
 DAYS_PER_PRESS = 30
-# the daily costs job presses at 03:00 and 07:00 UTC (costs_daily.READY_HOUR_UTC, TODAY_HOUR_UTC);
-# a backfill of a month it also writes keeps clear of 02:00-08:59 UTC
-DAILY_HOURS_UTC = range(2, 9)
+# A press (this module's or the daily costs job's) is judged IN THE AIR by its runs' own status,
+# never a pid; an entry this old is expired so a run that never finishes cannot hold the other
+# job for ever. A press that has only said it is dispatching holds the door for PRESSING_S.
+STALE_S = 12 * 3600
+PRESSING_S = 600
 
 
 def state_path() -> Path:
@@ -48,15 +51,29 @@ def state_path() -> Path:
 
 
 def read_state() -> dict:
+    """The saved state; no file is `{}`. A file that cannot be read is REFUSED by name, never
+    read as empty: an empty state forgets the press in the air and every day done, and a second
+    press would go out beside the first."""
+    p = state_path()
     try:
-        return json.loads(state_path().read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+        text = p.read_text(encoding="utf-8")
+    except FileNotFoundError:
         return {}
+    except OSError as exc:
+        raise RuntimeError(f"{p} is not readable: {exc}") from exc
+    try:
+        st = json.loads(text)
+    except ValueError as exc:
+        raise RuntimeError(f"{p} is not readable ({exc}): fix or remove it") from exc
+    if not isinstance(st, dict):
+        raise RuntimeError(f"{p} is not an object: fix or remove it")
+    return st
 
 
 def _write_state(st: dict) -> None:
     p = state_path()
-    tmp = p.with_name(p.name + ".tmp")
+    # a name of its own to every write: a settle and a backfill never share one temp file
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.{time.time_ns()}.tmp")
     tmp.write_text(json.dumps(st, indent=1), encoding="utf-8")
     tmp.replace(p)
 
@@ -80,9 +97,12 @@ def trade_costs(records: list[dict]) -> dict:
     """Over every combination's walks of every record, older and unseen apart:
     {part: {"trades", "typical_exits" (cost_unmeasured), "orders" (trades +
     missed + post-only rejected), "unchecked_orders" (placement_unmeasured),
-    "funding_estimated"}}."""
+    "funding_estimated", "legs" (every entry = order placed, and every exit),
+    "typical_legs" (an entry that went in with no book to check, and an exit that
+    paid the coin's usual gap)}}."""
     out = {p: dict.fromkeys(("trades", "typical_exits", "orders", "unchecked_orders",
-                             "funding_estimated"), 0) for p in ("older", "unseen")}
+                             "funding_estimated", "legs", "typical_legs"), 0)
+           for p in ("older", "unseen")}
     for rec in records:
         for combo in rec.get("combos", {}).values():
             for part in ("older", "unseen"):
@@ -94,19 +114,29 @@ def trade_costs(records: list[dict]) -> dict:
                 o["orders"] += n + int(c.get("missed", 0)) + int(c.get("post_only_reject", 0))
                 o["unchecked_orders"] += int(c.get("placement_unmeasured", 0))
                 o["funding_estimated"] += int(c.get("funding_estimated", 0))
+    for o in out.values():
+        o["legs"] = o["orders"] + o["trades"]
+        o["typical_legs"] = o["unchecked_orders"] + o["typical_exits"]
     return out
 
 
 def minute_cover(records: list[dict]) -> dict:
-    """The books' share of each coin's minutes, older and unseen apart: the
-    mean over the coins, the least, and the coins with none on the older days."""
+    """The books' share of each coin's minutes, older and unseen apart: the mean over the coins
+    with a reading, the least, the coins with NONE on the days (a measured 0.0) and the coins
+    with no figure at all (`unknown`: not measured is not "no books")."""
     out = {}
     for part in ("older", "unseen"):
-        got = {r["coin"]: float((r.get("pre") or {}).get(f"coverage_{part}") or 0.0)
-               for r in records if r.get("pre")}
+        got, unknown = {}, []
+        for r in records:
+            v = (r.get("pre") or {}).get(f"coverage_{part}")
+            if v is None:
+                unknown.append(r["coin"])
+            else:
+                got[r["coin"]] = float(v)
         out[part] = {"mean": statistics.fmean(got.values()) if got else None,
                      "least": min(got.values()) if got else None,
-                     "none": sorted(c for c, v in got.items() if v == 0.0), "coins": len(got)}
+                     "none": sorted(c for c, v in got.items() if v == 0.0),
+                     "unknown": sorted(unknown), "coins": len(got)}
     return out
 
 
@@ -133,20 +163,25 @@ def missing_days(plan: dict, done, part: str | None = None) -> list[str]:
             if d not in have]
 
 
-def done_days() -> set:
-    """Every day the cost store holds for every coin: the daily costs job's
-    and this module's backfilled ones."""
+def done_days(plan: dict) -> set:
+    """Every day the cost store holds for this plan's coins: the daily costs job's (every coin
+    Gate trades) and this module's own backfilled days - kept per plan id and only while the
+    press covered every coin of the plan, never one global list."""
     from tradingagents import costs_daily
 
-    return set(costs_daily.read().get("done_days") or []) | set(read_state().get("done_days")
-                                                                 or [])
+    rec = (read_state().get("done") or {}).get(plan["id"]) or {}
+    mine = set(rec.get("days") or []) if set(plan["coins"]) <= set(rec.get("coins") or [])         else set()
+    return set(costs_daily.read().get("done_days") or []) | mine
 
 
 def costs_speed(runs: list[tuple[str, int]], *, gh=None) -> dict:
     """The costs job's measured speed from its own green runs [(repo, run id)]:
     machine-seconds (each job's start to end, the dealing job left out) per
     coin-day (coins x days the run's title names: "Costs per minute · <days> ·
-    ... <N> coins", the daily press's label or a backfill's)."""
+    ... <N> coins", the daily press's label or a backfill's). ONLY runs of two
+    days or more measure it: a one-day run's seconds are mostly each machine's
+    setup, which a press of thirty days pays once, so mixing the two would
+    overstate the time (`one_day_runs` counts the ones left out)."""
     import datetime as dt
     import re
 
@@ -157,7 +192,7 @@ def costs_speed(runs: list[tuple[str, int]], *, gh=None) -> dict:
     def ts(x):
         return dt.datetime.fromisoformat(str(x).replace("Z", "+00:00")).timestamp()
 
-    secs = coin_days = used = 0
+    secs = coin_days = used = one_day = 0
     for repo, run in runs:
         d = json.loads(gh("run", "view", str(run), "--repo", repo, "--json",
                           "displayTitle,conclusion,jobs"))
@@ -165,13 +200,18 @@ def costs_speed(runs: list[tuple[str, int]], *, gh=None) -> dict:
                      d.get("displayTitle", ""))
         if d.get("conclusion") != "success" or not m:
             continue
+        days = len(m.group(1).split(","))
+        if days < 2:
+            one_day += 1
+            continue
         jobs = [j for j in d.get("jobs") or [] if j.get("name") != "plan"
                 and j.get("startedAt") and j.get("completedAt")]
         secs += sum(ts(j["completedAt"]) - ts(j["startedAt"]) for j in jobs)
-        coin_days += int(m.group(2)) * len(m.group(1).split(","))
+        coin_days += int(m.group(2)) * days
         used += 1
     return {"runs": used, "machine_s": round(secs), "coin_days": coin_days,
-            "s_per_coin_day": round(secs / coin_days, 1) if coin_days else None}
+            "s_per_coin_day": round(secs / coin_days, 1) if coin_days else None,
+            "one_day_runs": one_day}
 
 
 def estimate(coin_days: int, s_per_coin_day: float | None, machines: int) -> dict | None:
@@ -184,69 +224,180 @@ def estimate(coin_days: int, s_per_coin_day: float | None, machines: int) -> dic
             "machines": machines}
 
 
-def report(name: str, *, runs: list[tuple[str, int]] | None = None,
-           machines: int = 60) -> list[str]:
-    """COVERAGE FIRST's lines for the collected run `name` (see the module doc)."""
-    from tradingagents import v3_cloud as vc, v3_research as vrs, v3_universe as vu
+def listings_of(coins: list[str], *, fx=None) -> dict:
+    """{coin: the exchange's listing time in ms, or None when it cannot be read}: the
+    contract's own create time. A coin's days before it are not missing books."""
+    if fx is None:
+        import tradingagents.dataflows.exchange as fx
+    out = {}
+    for c in coins:
+        try:
+            ms = int(fx.contract_spec(c).get("createTime") or 0)
+        except Exception:                                      # noqa: BLE001
+            ms = 0
+        out[c] = ms or None
+    return out
+
+
+def coin_days(days: list[str], coins: list[str], listings: dict) -> tuple[int, int, int]:
+    """(coin-days to fill, coin-days left out because they fall before the coin's listing,
+    coins whose listing is unknown and so count every day): an UPPER bound."""
+    starts = [_start_of(d) for d in days]
+    total = before = unknown = 0
+    for c in coins:
+        ms = listings.get(c)
+        if ms is None:
+            unknown += 1
+            total += len(days)
+            continue
+        live = sum(1 for s0 in starts if s0 + DAY_S > ms / 1000)
+        total += live
+        before += len(days) - live
+    return total, before, unknown
+
+
+def range_words(days: list[str]) -> str:
+    """The days in words, the clock named: a day KEY is a UTC day, `fmt_when` prints this PC's
+    local clock. Days that are not one unbroken stretch are said as a count and the number of
+    stretches, never as a range from the first to the last."""
     from tradingagents.positions_view import fmt_when
+
+    starts = [_start_of(d) for d in days]
+    stretches = 1 + sum(1 for a, b in zip(starts, starts[1:], strict=False) if b - a != DAY_S)
+    first, last = fmt_when(starts[0]), fmt_when(starts[-1] + DAY_S)
+    if stretches == 1:
+        return f"UTC days from {first} to {last}, printed in this PC's clock"
+    return (f"{len(days)} UTC days in {stretches} separate stretches, not one range; the first "
+            f"starts {first}, the last ends {last}, printed in this PC's clock")
+
+
+def _pct(x) -> str:
+    return "unknown" if x is None else f"{100 * x:.1f}%"
+
+
+def report(name: str, *, runs: list[tuple[str, int]] | None = None, machines: int = 60,
+           listings: dict | None = None) -> list[str]:
+    """COVERAGE FIRST's lines for the collected run `name` (see the module doc). The days the
+    cost store lacks and what filling them takes are said for each range apart - the unseen
+    days (filled before the full run) and the older days (after it)."""
+    from tradingagents import v3_cloud as vc, v3_research as vrs, v3_universe as vu
 
     state = vc.load_state(name)
     plan = vu.load(state["plan_copy"])
     records = [r for r in vrs.load_coins(vrs.home(state["folder"]))
                if r.get("plan_id") == plan["id"]]
     cost, cover = trade_costs(records), minute_cover(records)
-    missing = missing_days(plan, done_days())
-    coins = len(plan["coins"])
+    held = done_days(plan)
+    coins = list(plan["coins"])
+    listings = listings_of(coins) if listings is None else listings
     lines = [f"COVERAGE FIRST for {name}: {len(records)} coins measured under plan {plan['id']}"]
-    for part, words in (("older", "older days"), ("unseen", "unseen days")):
+    for part in PARTS:
         c, m = cost[part], cover[part]
-        share = c["typical_exits"] / c["trades"] if c["trades"] else None
+        share = c["typical_legs"] / c["legs"] if c["legs"] else None
         lines.append(
-            f"  {words}: the books cover {_pct(m['mean'])} of a coin's minutes on average (the "
-            f"least {_pct(m['least'])}; {len(m['none'])} of {m['coins']} coins have none); "
-            f"{c['typical_exits']:,} of {c['trades']:,} trades exited at a typical cost "
-            f"({_pct(share)}); {c['unchecked_orders']:,} of {c['orders']:,} orders went in "
-            f"with no book to check post-only against; funding estimated on "
-            f"{c['funding_estimated']:,} trades")
-    if not missing:
-        lines.append("  the cost store holds every day of the plan's window: nothing to fill")
-        return lines
-    lines.append(f"  the cost store holds no reading for {len(missing)} of the window's days "
-                 f"(UTC days from {fmt_when(_start_of(missing[0]))} to "
-                 f"{fmt_when(_start_of(missing[-1]) + DAY_S)}): {len(missing) * coins:,} "
-                 f"coin-days for the plan's {coins} coins")
-    if runs:
-        sp = costs_speed(runs)
-        est = estimate(len(missing) * coins, sp["s_per_coin_day"], machines)
-        if est:
-            lines.append(f"  the costs job measured {sp['s_per_coin_day']} machine-seconds a "
-                         f"coin-day over {sp['runs']} of its runs ({sp['coin_days']:,} "
-                         f"coin-days): filling them is about {est['machine_hours']:,} "
-                         f"machine-hours, at least {est['wall_hours']} hours of all "
-                         f"{machines} machines")
+            f"  {part} days: the books cover {_pct(m['mean'])} of a coin's minutes on average "
+            f"(the least {_pct(m['least'])}; {len(m['none'])} of {m['coins']} coins have none; "
+            f"{len(m['unknown'])} unknown); {c['typical_legs']:,} of {c['legs']:,} entries and "
+            f"exits paid a typical cost ({_pct(share)}): {c['unchecked_orders']:,} of "
+            f"{c['orders']:,} entries went in with no book to check post-only against, "
+            f"{c['typical_exits']:,} of {c['trades']:,} exits at a coin's usual cost (a TP exit "
+            f"reads no book); funding estimated on {c['funding_estimated']:,} trades")
+    lines.append("  an entry's cost check made with no recorded book is not counted by the "
+                 "engine: the minutes the books cover, above, are its measure")
+    gaps = []
+    for part in ("unseen", "older"):
+        every = missing_days(plan, [], part)
+        miss = missing_days(plan, held, part)
+        if not every:
+            lines.append(f"  {part} days: the plan's window holds none")
+        elif not miss:
+            lines.append(f"  {part} days: every one of its {len(every)} days is in the cost "
+                         "store: nothing to fill")
         else:
-            lines.append("  no green costs run could be read to measure the speed")
+            n, before, unknown = coin_days(miss, coins, listings)
+            lines.append(
+                f"  {part} days: the cost store holds no reading for {len(miss)} of "
+                f"{len(every)} days ({range_words(miss)}): {n:,} coin-days for the plan's "
+                f"{len(coins)} coins (an upper bound: {before:,} coin-days before a coin's "
+                f"listing are left out; listing unknown for {unknown} coins, counted whole)")
+            gaps.append((part, n))
+    if not gaps:
+        return lines
+    if not runs:
+        lines.append("  no costs runs were given to measure the speed (--speed-runs "
+                     "owner/repo:run,...): the time to fill is unknown")
+        return lines
+    sp = costs_speed(runs)
+    if not sp["s_per_coin_day"]:
+        lines.append(f"  no green costs run of two days or more could be read to measure the "
+                     f"speed ({sp['one_day_runs']} one-day runs left out, their per-machine "
+                     "setup would overstate it): the time to fill is unknown")
+        return lines
+    lines.append(f"  the costs job measured {sp['s_per_coin_day']} machine-seconds a coin-day "
+                 f"over {sp['runs']} of its runs of two days or more ({sp['coin_days']:,} "
+                 "coin-days)")
+    for part, n in gaps:
+        est = estimate(n, sp["s_per_coin_day"], machines)
+        lines.append(f"  filling the {part} days' {n:,} coin-days: about "
+                     f"{est['machine_hours']:,} machine-hours, at least {est['wall_hours']} "
+                     f"hours of all {machines} machines")
     return lines
 
 
-def _pct(x) -> str:
-    return "-" if x is None else f"{100 * x:.1f}%"
+def air_of(rec: dict | None, now: float) -> str:
+    """What of a press record ({at, runs: [{repo, run}], dispatching?}) is IN THE AIR at `now`,
+    in words, or "": its runs' own status decides (a status that cannot be read counts as
+    going), a press still being dispatched holds for PRESSING_S, and one older than STALE_S is
+    expired. The ONE judgement both the backfill and the daily costs job make of the other."""
+    from tradingagents import forecast_v2_daily as fd
+
+    if not rec:
+        return ""
+    at = float(rec.get("at") or 0)
+    if now - at > STALE_S:
+        return ""
+    going = []
+    if (rec.get("dispatching") or not rec.get("runs")) and now - at < PRESSING_S:
+        going.append("a press being dispatched")
+    for r in rec.get("runs") or []:
+        try:
+            status = fd.run_status(int(r["run"]), r["repo"]).get("status")
+        except Exception:                                      # noqa: BLE001
+            status = None
+        if status != "completed":
+            going.append(f"run {r['run']} on {r['repo']}")
+    return ", ".join(going)
 
 
 def clash(days: list[str], now: float) -> str:
-    """Why a backfill press of `days` may not go now, or "": the daily costs
-    job has a run in the air, or it is within its pressing hours and one of
-    the days is in a month it writes (its last BACKFILL_DAYS)."""
+    """Why a backfill press of `days` may not go now, or "": the daily costs job has a run in
+    the air (or is dispatching one), named. The daily job holds off a backfill in the air in its
+    turn (`daily_held_off`): two runs adding to one coin-month file keep only one run's days."""
     from tradingagents import costs_daily
+    from tradingagents.positions_view import fmt_when
 
-    if costs_daily.read().get("flight"):
-        return "the daily costs job has a run in the air"
-    daily = {_day(now - k * DAY_S)[:7] for k in range(costs_daily.BACKFILL_DAYS + 1)}
-    if time.gmtime(int(now)).tm_hour in DAILY_HOURS_UTC and any(d[:7] in daily for d in days):
-        return ("between 02:00 and 08:59 UTC the daily costs job writes the months "
-                + ", ".join(sorted(daily)) + ": a press of the same month file would lose one "
-                                             "of the two runs' days")
+    d = costs_daily.read()
+    for key in ("flight", "pressing"):
+        what = air_of(d.get(key), now)
+        if what:
+            return (f"the daily costs job is busy with {what} (pressed "
+                    f"{fmt_when(float(d[key].get('at') or 0))})")
     return ""
+
+
+def daily_held_off(days: list[str], now: float) -> str:
+    """Why the daily costs press of `days` must wait, or "": a backfill press is in the air on a
+    month it would also write. Read by `costs_daily.tick`."""
+    fl = read_state().get("flight")
+    what = air_of(fl, now)
+    if not what:
+        return ""
+    months = sorted({d[:7] for d in days} & {d[:7] for d in fl.get("days") or []})
+    if not months:
+        return ""
+    return (f"a v3 backfill press is in the air ({what}) on the month file(s) "
+            f"{', '.join(months)} this press would also write: two runs adding to one month "
+            "file keep only one run's days, so the daily press waits")
 
 
 def backfill(name: str, *, days_per_press: int = DAYS_PER_PRESS, now: float | None = None,
@@ -271,7 +422,7 @@ def backfill(name: str, *, days_per_press: int = DAYS_PER_PRESS, now: float | No
         raise RuntimeError("not pressed: between 12:45am and 5:00am the nightly jobs need every "
                            "machine")
     plan = vu.load(vc.load_state(name)["plan_copy"])
-    days = missing_days(plan, done_days(), part)[-int(days_per_press):]
+    days = missing_days(plan, done_days(plan), part)[-int(days_per_press):]
     if not days:
         return {"started": False, "part": part,
                 "why": f"every day of the plan's {part or 'whole'} window is in the cost store"}
@@ -282,8 +433,15 @@ def backfill(name: str, *, days_per_press: int = DAYS_PER_PRESS, now: float | No
     if not ready:
         raise RuntimeError("no GitHub account can run the costs job: " + "; ".join(refused))
     piles = cs.split_coins(list(plan["coins"]), len(ready))
-    st["flight"] = {"at": now, "days": days, "part": part, "runs": [], "unrun": list(refused)}
+    st["flight"] = {"at": now, "days": days, "part": part, "plan_id": plan["id"],
+                    "coins": list(plan["coins"]), "dispatching": True, "runs": [],
+                    "unrun": list(refused)}
     _write_state(st)                   # BEFORE the dispatch, as every dispatcher here
+    why = clash(days, now)             # a daily press that said it was pressing since the first look
+    if why:
+        st.pop("flight")
+        _write_state(st)
+        raise RuntimeError(f"not pressed: {why}")
     for slug, pile in zip(ready, piles, strict=False):
         drift = cs.sync_fleet(slug)
         if drift:
@@ -297,30 +455,52 @@ def backfill(name: str, *, days_per_press: int = DAYS_PER_PRESS, now: float | No
         except Exception as exc:                               # noqa: BLE001
             st["flight"]["unrun"].append(f"{slug}: {str(exc)[:160]}")
         _write_state(st)
+    st["flight"]["dispatching"] = False
+    _write_state(st)
     return {"started": bool(st["flight"]["runs"]), "days": days, **st["flight"]}
 
 
-def settle() -> dict:
+def settle(now: float | None = None) -> dict:
     """Mark the press in the air done when every share finished green; give
-    its days back, named, when one is red or never ran."""
+    its days back, named, when one is red, never ran, never finished within
+    STALE_S or was never dispatched. A status that cannot be read keeps the
+    press (it is still running until it is old)."""
     from tradingagents import forecast_v2_daily as fd
 
+    now = time.time() if now is None else float(now)
     st = read_state()
     fl = st.get("flight")
     if not fl:
         return {"settled": False, "why": "no backfill press in the air"}
-    got = [(r, fd.run_status(int(r["run"]), r["repo"])) for r in fl["runs"]]
-    if any(g.get("status") != "completed" for _r, g in got):
+    age = now - float(fl.get("at") or now)
+    runs = fl.get("runs") or []
+    got = []
+    for r in runs:
+        try:
+            g = fd.run_status(int(r["run"]), r["repo"])
+        except Exception as exc:                               # noqa: BLE001
+            g = {"status": "unknown", "conclusion": f"unreadable: {exc}"}
+        got.append((r, g))
+    going = [(r, g) for r, g in got if g.get("status") != "completed"]
+    if (going or fl.get("dispatching")) and age <= (STALE_S if going else PRESSING_S):
         return {"settled": False, "why": "still running"}
-    red = [f"{r['repo']} (run {r['run']}): {g.get('conclusion')}" for r, g in got
-           if g.get("conclusion") != "success"] + list(fl.get("unrun") or [])
+    red = [f"{r['repo']} (run {r['run']}): never finished within {STALE_S // 3600} hours"
+           for r, _g in going]
+    red += [f"{r['repo']} (run {r['run']}): {g.get('conclusion')}" for r, g in got
+            if g.get("status") == "completed" and g.get("conclusion") != "success"]
+    red += list(fl.get("unrun") or [])
+    if not runs and not red:
+        red = ["no run was ever started for this press"]
     if red:
         st["last_error"] = "not every share finished green: " + "; ".join(red)
     else:
-        st["done_days"] = sorted(set(st.get("done_days") or []) | set(fl["days"]))
+        done = st.setdefault("done", {}).setdefault(fl["plan_id"], {"coins": fl["coins"],
+                                                                   "days": []})
+        done["coins"] = fl["coins"]
+        done["days"] = sorted(set(done["days"]) | set(fl["days"]))
         st["last_error"] = ""
         st.setdefault("presses", []).append({"days": fl["days"], "part": fl.get("part"),
-                                                 "runs": fl["runs"]})
+                                             "runs": fl["runs"]})
     st.pop("flight")
     _write_state(st)
     return {"settled": True, "red": red, "days": fl["days"]}

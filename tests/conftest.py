@@ -587,6 +587,9 @@ def _isolate_kline_disk_cache(tmp_path, monkeypatch):
     from tradingagents import costs_daily as _cdl
 
     monkeypatch.setattr(_cdl, "STATE", tmp_path / "costs_daily.json")
+    from tradingagents import v3_coverage as _v3cov
+
+    monkeypatch.setattr(_v3cov, "state_path", lambda: tmp_path / "v3_backfill.json")
     _gf.clear_spec_cache()
     _gf._PRICES.update(at=0.0, px={})
     _gf._KLINE_CACHE.clear()

@@ -197,13 +197,30 @@ def tick(now: float | None = None) -> dict:
     if not days:
         _write(st)
         return {"started": False, "why": "every day of the last month is done"}
+    # A BACKFILL OF THE V3 RESEARCH'S ORDER BOOKS may be in the air on a month this press also
+    # writes (RCA-2026-10-28-F): two runs reading one coin-month file and uploading it back keep
+    # only the later run's days, and both mark theirs done. Wait for it; say `pressing` before
+    # the dispatch and look once more, so whichever of the two writes second sees the other.
+    held = _held_by_backfill(days, now)
+    if held:
+        _write(st)
+        return {"started": False, "why": held}
+    st["pressing"] = {"at": now}
+    _write(st)
+    held = _held_by_backfill(days, now)
+    if held:
+        st.pop("pressing", None)
+        _write(st)
+        return {"started": False, "why": held}
     st["tried_at"] = now
     try:
         got = _dispatch(days, now)
     except Exception as exc:                                   # noqa: BLE001
+        st.pop("pressing", None)
         st["last_error"] = f"could not start the costs job: {type(exc).__name__}: {exc}"
         _write(st)
         return {"started": False, "why": st["last_error"]}
+    st.pop("pressing", None)
     st["flight"] = {"at": now, "days": days, "runs": got["runs"],
                     "unrun": got["unrun"], "today": today if today_due else None,
                     # the read its shards make: a flight pressed before
@@ -213,6 +230,17 @@ def tick(now: float | None = None) -> dict:
         st["last_error"] = "; ".join(got["refused"])
     _write(st)
     return {"started": True, "days": days, "runs": got["runs"]}
+
+
+def _held_by_backfill(days: list[str], now: float) -> str:
+    """Why this press of `days` must wait for a v3 backfill press in the air, or "". A record
+    that cannot be read holds the press too, named: unknown is not clear."""
+    from tradingagents import v3_coverage
+
+    try:
+        return v3_coverage.daily_held_off(days, now)
+    except Exception as exc:                                   # noqa: BLE001
+        return f"the daily press waits: {exc}"
 
 
 def _dispatch(days: list[str], now: float) -> dict:

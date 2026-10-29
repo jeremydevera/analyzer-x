@@ -85,8 +85,10 @@ def test_the_row_adds_up_to_its_verdict_and_its_trades(page):
     assert m["wins"] + m["losses"] == m["trades"] and m["wins"] == v["unseen"]["wins"]
     assert m["profit"] == pytest.approx(v["unseen"]["profit"], abs=0.005)
     assert (round(m["worst"], 2), m["worstN"]) == vpg.worst_run([t[4] / 1e4 for t in m["t"]])
-    # the median stop of 200 at 0.4% and 200 at 1.0%, in percent, as the SL % box reads it
-    assert m["stop"] == pytest.approx(0.7) and m["target"] == pytest.approx(0.9)
+    # 200 trades at a 0.4% stop / 0.6% target and 200 at 1.0% / 1.2%: the boxes read the WIDEST
+    # of every trade's own, in percent, and the row shows the least beside it
+    assert m["stop"] == pytest.approx(1.0) and m["target"] == pytest.approx(1.2)
+    assert m["stopLeast"] == pytest.approx(0.4) and m["targetLeast"] == pytest.approx(0.6)
 
 
 @needs_node
@@ -104,7 +106,7 @@ def test_the_window_re_adds_each_row_and_drops_the_months_outside_it(page):
     i = _snap(data)
     end = data["end"] // 1000
     got = _js(html, data, f"[measure(D.rows[{i}],{end - 30 * 86400},1),"
-                          f"monthsIn(D.months,{end},30),monthsIn(D.months,{end},null)]")
+                          f"monthsIn(monthList(D),{end},30),monthsIn(monthList(D),{end},null)]")
     m, months30, every = got
     closed = [t for t in data["rows"][i]["t"] if t[2] >= end - 30 * 86400]
     # the fixture's trades close one day after another to Oct 12, 2026: some in the last 30
@@ -112,7 +114,7 @@ def test_the_window_re_adds_each_row_and_drops_the_months_outside_it(page):
     assert 0 < len(closed) < 400
     assert m["trades"] == len(closed)
     assert m["profit"] == pytest.approx(sum(t[4] for t in closed) / 1e4)
-    assert every == data["months"] and set(months30) <= set(every)
+    assert set(data["months"]) <= set(every) and set(months30) <= set(every)
     assert all(mk >= months30[0] for mk in months30) and len(months30) <= 2
 
 
@@ -224,3 +226,138 @@ def test_the_page_is_from_the_kept_copy_with_the_newest_stamp_and_counter(monkey
         "pilot-1793000000000.json", "pilot-1793000100000-1.json", "pilot-1793000100000.json",
         "pilot-2-1793999999999.json"]
     assert vrp.newest_kept("pilot").name == "pilot-1793000100000-1.json"
+
+
+# ------------------------------------------------------------------ fix round 1 (task review)
+def _land_again(run, coin, unseen, risk=5.0):
+    from tradingagents import v3_research as vrs
+
+    vrs.save_coin(run.folder, tv._record(coin, run.plan, unseen, risk=risk))
+
+
+def _v3_home(tmp_path, monkeypatch):
+    from tradingagents import stores
+
+    monkeypatch.setattr(stores, "V3", stores.Store(**{**stores.V3.__dict__,
+                                                      "home": tmp_path / "v3"}))
+
+
+def test_the_page_refuses_when_the_run_folder_now_holds_other_trades_than_the_verdicts(
+        monkeypatch, tmp_path):
+    import tests.test_v3_proof as tp
+
+    run = tv.make_run(monkeypatch, tmp_path)
+    vv.publish("pilot", now=1_793_000_000.0)
+    _v3_home(tmp_path, monkeypatch)
+    assert vrp.write("pilot").exists(), "the folder still agrees: the page is built"
+    # a coin landed again with 100 unseen trades instead of 200: its rows are not the verdict's
+    _land_again(run, "XAU_USDT", tv._eight(tp._rows([0.30] * 100, per_day=5), 0.004, 0.006))
+    with pytest.raises(ValueError, match=r"[0-9A-Z]{8}: the run folder now holds trades the "
+                                         r"verdicts were not judged on .*publish the verdicts "
+                                         r"again"):
+        vrp.write("pilot")
+
+
+def test_the_page_refuses_when_a_judged_coin_was_landed_again_under_another_risk(
+        monkeypatch, tmp_path):
+    import tests.test_v3_proof as tp
+
+    run = tv.make_run(monkeypatch, tmp_path)
+    vv.publish("pilot", now=1_793_000_000.0)
+    _v3_home(tmp_path, monkeypatch)
+    _land_again(run, "XAU_USDT", tv._eight(tp._rows([0.30] * 200, per_day=5), 0.004, 0.006),
+                risk=1.0)
+    with pytest.raises(ValueError, match=r"XAU_USDT: .*no longer .*publish the verdicts again"):
+        vrp.write("pilot")
+
+
+def test_a_record_the_verdicts_never_judged_is_left_out_of_the_page(monkeypatch, tmp_path):
+    import tests.test_v3_proof as tp
+
+    run = tv.make_run(monkeypatch, tmp_path)
+    vv.publish("pilot", now=1_793_000_000.0)
+    _v3_home(tmp_path, monkeypatch)
+    _land_again(run, "XPT_USDT", tv._eight(tp._rows([0.30] * 50, per_day=5), 0.004, 0.006))
+    data = json.loads(re.search(r"const D = (\{.*?\});\n",
+                                vrp.write("pilot").read_text(encoding="utf-8")).group(1))
+    assert data["coins"] == ["XAG_USDT", "XAU_USDT"], "the coins the verdicts judged, no others"
+
+
+@needs_node
+def test_a_window_longer_than_the_data_starts_where_the_data_starts(page):
+    _store, _records, html, data = page
+    end, split = data["end"] / 1000, data["split"] / 1000
+    long_, short, none = _js(html, data, "[windowOf(D,1000),windowOf(D,30),windowOf(D,null)]")
+    assert long_["start"] == split and long_["clamped"] is True
+    assert long_["span"] == pytest.approx((end - split) / 86400) == pytest.approx(90)
+    assert short["start"] == end - 30 * 86400 and short["clamped"] is False
+    assert short["span"] == pytest.approx(30)
+    assert none["start"] == split and none["span"] == pytest.approx(90) and not none["clamped"]
+    # 400 trades over the 90 days the data covers, never over the 1,000 typed
+    assert _js(html, data, "perDay(400,windowOf(D,1000).span)") == "4.44"
+    assert "all unseen days" in html
+
+
+@needs_node
+def test_max_sl_and_max_tp_are_ceilings_on_every_trades_own_stop_and_target(page):
+    _store, _records, html, data = page
+    i = _snap(data)
+    # the snap row's median stop is 0.7% but half of its trades risk 1.0%: it passes max SL
+    # 1.0 and fails 0.99; the same for the target (median 0.9%, widest 1.2%)
+    got = _js(html, data, f"(()=>{{const m=measure(D.rows[{i}],null,1);"
+                          "return [fails(m,{sl:1.0,tp:1.2}),fails(m,{sl:0.99}),fails(m,{tp:1.19}),"
+                          "fails(m,{sl:0.7})]})()")
+    assert got == [[], ["max SL %"], ["max TP %"], ["max SL %"]]
+    for text in ("stop at most", "target at most", "on every trade"):
+        assert text in html
+
+
+@needs_node
+def test_a_row_with_no_trade_has_no_numbers_and_never_passes_a_dip_or_a_green_box(page):
+    _store, _records, html, data = page
+    chose = next(i for i, r in enumerate(data["rows"]) if r["failed"] == "choose")
+    m = _js(html, data, f"measure(D.rows[{chose}],null,1)")
+    assert m["trades"] == 0 and m["green"] is None and m["win"] is None and m["per"] is None
+    got = _js(html, data, f"[fails(measure(D.rows[{chose}],null,1),{{dd:50}}),"
+                          f"fails(measure(D.rows[{chose}],null,1),{{gm:0}})]")
+    assert got == [["max worst dip $"], ["min months green"]]
+
+
+@needs_node
+def test_blank_rows_sort_last_both_ways(page):
+    _store, _records, html, data = page
+    xs = [{"id": "A", "m": {"profit": None}, "r": {"random": [None, None]}},
+          {"id": "B", "m": {"profit": 5}, "r": {"random": [None, None]}},
+          {"id": "C", "m": {"profit": 9}, "r": {"random": [None, None]}}]
+    up, down = _js(html, {**data, "xs": xs},
+                   "[sortRows(D.xs,'profit',1).map(x=>x.id),sortRows(D.xs,'profit',-1).map(x=>x.id)]")
+    assert up == ["B", "C", "A"] and down == ["C", "B", "A"]
+
+
+@needs_node
+def test_the_filters_are_named_in_the_words_a_reader_expects(page):
+    _store, _records, html, data = page
+    names = _js(html, data, "filterNames({wr:60,pr:5,gm:10,dd:10,tp:3,sl:1})")
+    assert names == ["win at least 60%", "profit at least +$5.00", "10 or more months green",
+                     "worst dip no worse than −$10.00", "target at most 3% on every trade",
+                     "stop at most 1% on every trade"]
+    assert _js(html, data, "[levWords([20,20]),levWords([10,20]),levWords(null)]") == [
+        "20x", "10x-20x", None]
+
+
+@needs_node
+def test_month_columns_use_the_clock_of_the_printed_times(page):
+    _store, _records, html, data = page
+    # a trade printed Oct 31 9:00pm local is in the October column, whatever UTC says
+    got = _js(html, data, "[monthKey(new Date(2026,9,31,21,0).getTime()/1000),"
+                          "monthKey(new Date(2026,10,1,0,30).getTime()/1000),"
+                          "monthList(D).length,"
+                          "D.rows.every(r=>r.t.every(x=>monthList(D).includes(monthKey(x[2]))))]")
+    assert got[0] == "2026-10" and got[1] == "2026-11" and got[2] >= 4 and got[3] is True
+    assert "calendar months of your own time zone" in html
+
+
+def test_the_log_is_paged_and_the_provenance_follows_the_risk_box(page):
+    _store, _records, html, _data = page
+    assert "const LOG_PAGE=" in html and "log-next" in html
+    assert "function drawProv" in html and "no row has #" in html

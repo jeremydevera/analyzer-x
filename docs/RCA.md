@@ -172,6 +172,40 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-28-E — the Backtest v3 results page worked every figure out from whatever records sat in the run folder when it was built, so a coin landed again after the verdicts were published would have printed a PROFIT that disagreed with its PASSED: NEVER HAPPENED YET
+
+**CEO**
+
+* Nothing wrong was shown yet (it NEVER HAPPENED YET, no page has been built for a real run): a coin re-measured after the verdicts were published would have changed the numbers on the page while the PASSED / FAILED beside them stayed the old judgement, with nothing on the page saying so.
+* Why: the page took its trades from the folder as it is today and its verdicts from the file as they were published, and nobody compared the two.
+* What stops it now: the page is built only from the records the verdicts were judged on, and it refuses by name, row by row, when a row's trades or profit are not the verdict's ("publish the verdicts again").
+
+**DEV**
+
+* `v3_results_page.write` (b2c5c6835d00) kept every record in the run folder whose coin was in `store["coins"]`, never splitting by plan, risk, runs and record version as the judge did (`v3_verdicts.build` -> `v3_research.split_records`), and `payload` never compared a row's trades with `verdict["unseen"]`; the coin list and the heading read the records, not the store.
+* Invariant broken: **a figure and the label beside it come from the same measurement** (label-must-match-data) - the page's PROFIT / W / L / worst run are worked out from trades, its PASSED from the store, so the two sources must be proved equal or the build refused.
+* Guard: `tests/test_v3_results_page.py::test_the_page_refuses_when_the_run_folder_now_holds_other_trades_than_the_verdicts`, `::test_the_page_refuses_when_a_judged_coin_was_landed_again_under_another_risk`, `::test_a_record_the_verdicts_never_judged_is_left_out_of_the_page`.
+
+**SAW** - NEVER HAPPENED YET: found by the task review of Part 2b Task 5 (`Oct 28, 2026`, `task-5-review.txt`, Important 1), reading `write` against `v3_verdicts.build`.
+
+**TIMELINE** (NEVER HAPPENED YET: hypothetical; the numbers come from the 4-coin pilot of `tests/test_v3_verdicts.py`)
+
+1. `publish pilot` judges XAU_USDT and XAG_USDT: group #NK3VPRN5 (v3_snap 1h) PASSED on 400 unseen trades, +$120.00 at $5.00 a trade.
+2. A retry lands XAU_USDT again with 100 unseen trades instead of 200 (or at $1.00 risk). The folder now holds 300 trades for that group.
+3. Before the fix: `write pilot` pooled whatever was in the folder and printed a row of 300 trades and +$90.00 beside "PASSED" - a verdict judged on 400 trades and +$120.00; at another risk the coin was pooled at the wrong dollars. After the fix: `write pilot` refuses with "#NK3VPRN5: the run folder now holds trades the verdicts were not judged on (300 trades, +90.00, against the verdict's 400, +120.00) - publish the verdicts again", and for the other risk "XAU_USDT: the run folder no longer holds the record the verdicts were judged on ... publish the verdicts again".
+
+**ROOT CAUSE** - The page took its verdicts from one file and its trades from another place, and never proved the two the same measurement.
+
+**WHY IT WAS NOT CAUGHT** - Every test built the page straight after publishing, from a folder nothing had touched since, so the page and the verdicts were equal by construction; no test changed the folder between `publish` and `write`, and the one agreement test (`a row adds up to its verdict`) ran on the same fixture it was built from.
+
+**COST** - none: NEVER HAPPENED YET. No page was built for a real run.
+
+**FIX** - this commit: `v3_results_page.write` splits the folder with `v3_research.split_records` under the run's own plan copy, risk and runs; `payload` takes the coin list and heading from the store, names a judged coin the folder no longer holds, and `_agree` refuses a row whose trade count or profit is not its verdict's.
+
+**GUARD** - `tests/test_v3_results_page.py::test_the_page_refuses_when_the_run_folder_now_holds_other_trades_than_the_verdicts`, `::test_the_page_refuses_when_a_judged_coin_was_landed_again_under_another_risk` and `::test_a_record_the_verdicts_never_judged_is_left_out_of_the_page`, the first two red on b2c5c6835d00; the page's other review fixes (a window longer than the data, ceilings on every trade, no-trade rows, sorting, wording, paged log, one-leverage words, local month clock) are pinned in the same file.
+
+---
+
 ## RCA-2026-10-28-D — Backtest v3's verdict store would have left coins nobody judged unnamed, and would have called a coin a redo measured "failed": NEVER HAPPENED YET
 
 **CEO**

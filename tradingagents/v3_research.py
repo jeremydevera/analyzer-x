@@ -453,6 +453,15 @@ def main(argv=None) -> int:
         for sym, why in plan.get("left_out", {}).items():
             print(f"  left out {sym}: {why}")
         return 0
+    from tradingagents import v3_cloud as vc
+
+    if vc.run_named(a.label):
+        # a cloud run's records land in research/<name> too: a PC record of the same plan would join
+        # that folder and be judged as the run's (M11; `dispatch` refuses the other way round)
+        print(f"--label {a.label} is the name of a GitHub run (python -m tradingagents.v3_cloud "
+              f"dispatch {a.label}), whose records land in {home(a.label)}: give this PC's "
+              "measurement another label")
+        return 2
     plan = vu.load(a.plan)
     root = home(a.label)
     risk = v3_rules.RESEARCH_RISK_USD if a.risk is None else float(a.risk)

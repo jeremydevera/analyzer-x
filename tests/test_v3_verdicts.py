@@ -341,3 +341,79 @@ def test_the_tab_names_every_bucket_the_provenance_and_the_full_run_heading():
     assert "coins not judged" in src and "check.dispatched" in src
     assert "of the plan's ${planCoins} coins judged" in src       # the provenance line
     assert "check.accounts" in src and "not_judged_coins" in src
+
+
+# ---- the final fix wave (Oct 29, 2026) ---------------------------------------------------------
+
+def test_an_account_whose_machines_all_refused_or_that_left_no_artifact_files_its_coins_there(
+        monkeypatch, tmp_path):
+    """M4, M13: d/x's machines all refused, e/x's run produced no artifact - their coins are filed
+    under that account's line, never "no machine reported it"."""
+    r = _full_run(monkeypatch, tmp_path)
+    st = json.loads((tmp_path / "cloud" / "pilot.json").read_text(encoding="utf-8"))
+    st["board"] = sorted(set(st["board"]) | {"EEE_USDT"})
+    st["dealt"]["e/x"] = {"coin_list": "EEE_USDT"}
+    (tmp_path / "cloud" / "pilot.json").write_text(json.dumps(st), encoding="utf-8")
+    plan = _plan(r.plan["coins"] + ["EEE_USDT"])
+    vu.save(plan, tmp_path / "cloud" / "pilot.plan.json")
+    st["plan_id"] = plan["id"]
+    (tmp_path / "cloud" / "pilot.json").write_text(json.dumps(st), encoding="utf-8")
+    for coin in ("XAU_USDT", "XAG_USDT"):
+        vrs.save_coin(r.folder, _record(coin, plan, _eight(tp._rows([0.30] * 200, per_day=5))))
+    _collected(tmp_path, "pilot", landed=["XAG_USDT", "XAU_USDT"],
+               failed=["XPT_USDT: ConnectionError: cut"],
+               unmeasured=["EURUSD_USDT: claimed and not finished"],
+               left_out=["GBPUSD_USDT: no family's universe"],
+               not_reached=["AAA_USDT", "BBB_USDT", "CCC_USDT", "DDD_USDT", "EEE_USDT"],
+               downloads_failed=["b/x run 22: no artifact matches v3-out-*"],
+               shares_refused=["c/x: HTTP 422 no workflow"],
+               machines_refused=["d/x shards 0-19 (20 machines): plan mismatch"],
+               runs_without_artifact=["e/x run 25: the run produced no artifact"])
+    data = json.loads(vv.publish("pilot").read_text(encoding="utf-8"))
+    nj = data["not_judged"]
+    assert nj["machines_refused"] == ["DDD_USDT: d/x shards 0-19 (20 machines): plan mismatch"]
+    assert nj["not_reached"] == ["EEE_USDT: e/x run 25: the run produced no artifact"]
+    assert data["accounts"]["runs_without_artifact"] == ["e/x run 25: the run produced no artifact"]
+    named = [x.split(":")[0] for lines in nj.values() for x in lines]
+    assert len(named) == len(set(named))
+
+
+def test_a_run_no_account_started_names_redo_when_it_is_published(run):
+    st = json.loads((run.tmp / "cloud" / "pilot.json").read_text(encoding="utf-8"))
+    st.update(runs={}, refused=["a/x: HTTP 502"], dealt={"a/x": {"coin_list": "XAU_USDT"}})
+    (run.tmp / "cloud" / "pilot.json").write_text(json.dumps(st), encoding="utf-8")
+    (run.tmp / "cloud" / "pilot-collected.json").unlink()
+    with pytest.raises(ValueError, match=r"pilot: no run was started \(every share refused: "
+                                         r"a/x: HTTP 502\); start each share with python -m "
+                                         r"tradingagents.v3_cloud redo pilot <a/x>"):
+        vv.publish("pilot")
+
+
+def test_the_store_swap_is_retried_under_a_reader_and_a_failed_one_keeps_no_copy(run,
+                                                                                monkeypatch):
+    """M10: Windows refuses a replace while the site reads verdicts.json - retried; a swap that
+    never goes takes its kept copy back, so publishing again keeps ONE copy of one judgement."""
+    real = Path.replace
+    calls = []
+
+    def flaky(self, dest):
+        calls.append(1)
+        if len(calls) < 3:
+            raise PermissionError("in use")
+        return real(self, dest)
+
+    monkeypatch.setattr(Path, "replace", flaky)
+    vv.publish("pilot", now=1_793_000_000.0)
+    assert len(calls) == 3 and (run.tmp / "v3" / "verdicts.json").exists()
+    assert not list((run.tmp / "v3").glob("*.tmp"))
+
+    def never(self, dest):
+        raise PermissionError("in use")
+
+    monkeypatch.setattr(Path, "replace", never)
+    monkeypatch.setattr(vc, "_swap", lambda tmp, p, wait=0.0: never(tmp, p))
+    with pytest.raises(PermissionError):
+        vv.publish("pilot", now=1_793_000_500.0)
+    kept = sorted(p.name for p in (run.tmp / "v3" / "verdicts").iterdir())
+    assert kept == ["pilot-1793000000000.json"], "the refused publish kept no copy"
+    assert not list((run.tmp / "v3").glob("*.tmp"))

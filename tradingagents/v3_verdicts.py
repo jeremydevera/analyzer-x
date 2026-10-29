@@ -27,8 +27,8 @@ judged, with why - so a page that shows it never has to guess.
 What was not judged is recomputed from the records actually LANDED, against the
 plan: every coin of the plan with no measured timeframe is named ONCE, in the
 one bucket that is true (`BUCKETS`: failed, unmeasured, left out, not reached,
-a refused record, an account whose download failed or whose share was refused,
-a record of another plan or risk, a coin with no measured timeframe, a coin
+a refused record, an account whose download failed, whose share was refused or
+whose machines all refused to measure, a record of another plan or risk, a coin with no measured timeframe, a coin
 the run was never sent), read from the newest collected summary of the family
 that holds it - so a coin a redo landed is never "failed". The accounts that
 failed are named beside, as `accounts`.
@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import statistics
 import time
@@ -81,7 +82,8 @@ _REDO = re.compile(r"^(?P<base>.+)-redo(?P<n>\d+)$")
 
 # the buckets a coin of the plan that was not judged falls in - each coin in exactly one
 BUCKETS = ("not_reached", "failed", "unmeasured", "left_out", "refused_records",
-           "downloads_failed", "shares_refused", "other_records", "no_walk", "not_dispatched")
+           "downloads_failed", "shares_refused", "machines_refused", "other_records", "no_walk",
+           "not_dispatched")
 
 
 def family(name: str) -> list[str]:
@@ -110,6 +112,8 @@ def _member(vc, name: str) -> tuple[dict, dict, Path]:
     state = json.loads(sp.read_text(encoding="utf-8"))
     done = vc.home() / f"{name}-collected.json"
     if not done.exists():
+        if "runs" in state and not state["runs"]:
+            raise ValueError(vc.no_run_words(name, state))
         raise ValueError(f"{name} is not collected yet: python -m tradingagents.v3_cloud "
                          f"collect {name}")
     copy = Path(state.get("plan_copy") or "")
@@ -125,7 +129,7 @@ def _reasons(members: list) -> tuple[dict, set, dict]:
     earlier one: a coin a redo landed is no longer failed."""
     reasons, boards = {}, set()
     accounts = {"downloads_failed": [], "shares_refused": [], "machines_refused": [],
-                "unreadable_records": []}
+                "runs_without_artifact": [], "unreadable_records": []}
     for name, st, su in members:
         board = set(st.get("board") or [])
         boards |= board
@@ -134,6 +138,13 @@ def _reasons(members: list) -> tuple[dict, set, dict]:
                  for c in (d.get("coin_list") or "").split(",") if c}
         dl = {x.split(" run ", 1)[0]: x for x in su.get("downloads_failed") or []}
         sr = {x.split(": ", 1)[0]: x for x in su.get("shares_refused") or []}
+        # an account whose run produced no artifact, and one whose machines refused to measure
+        # (each line "owner/repo shards ...: why"): their coins are filed under that account's
+        # line, never "no machine reported it" (M4, M13)
+        na = {x.split(" run ", 1)[0]: x for x in su.get("runs_without_artifact") or []}
+        mr: dict = {}
+        for x in su.get("machines_refused") or []:
+            mr.setdefault(x.split(" ", 1)[0], []).append(x)
         named = {}
         for key in ("failed", "unmeasured", "left_out", "refused_records"):
             for line in su.get(key) or []:
@@ -152,9 +163,14 @@ def _reasons(members: list) -> tuple[dict, set, dict]:
                 reasons[coin] = ("downloads_failed", dl[owner[coin]])
             elif owner.get(coin) in sr:
                 reasons[coin] = ("shares_refused", sr[owner[coin]])
+            elif owner.get(coin) in na:
+                reasons[coin] = ("not_reached", na[owner[coin]])
+            elif owner.get(coin) in mr:
+                reasons[coin] = ("machines_refused", "; ".join(mr[owner[coin]]))
             else:
                 reasons[coin] = ("not_reached", "no machine reported it")
-        for key in ("downloads_failed", "shares_refused", "machines_refused"):
+        for key in ("downloads_failed", "shares_refused", "machines_refused",
+                    "runs_without_artifact"):
             accounts[key] += [prefix + x for x in su.get(key) or []]
     return reasons, boards, accounts
 
@@ -249,11 +265,21 @@ def publish(name: str, *, now: float | None = None) -> Path:
             break
         except FileExistsError:
             k += 1
+    # the store the tab reads, swapped whole with a temp of its own and the swap retried while the
+    # site has the file open (Windows refuses a replace under a reader: `v3_cloud._swap`); a swap
+    # that still fails takes its kept copy back, so a publish run again keeps ONE copy (M10)
+    from tradingagents import v3_cloud as vc
+
     p = store_path()
-    tmp = p.with_name(p.name + ".tmp")
     p.parent.mkdir(parents=True, exist_ok=True)
-    tmp.write_text(text, encoding="utf-8")
-    tmp.replace(p)
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.{time.time_ns()}.tmp")
+    try:
+        tmp.write_text(text, encoding="utf-8")
+        vc._swap(tmp, p)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        kept.unlink(missing_ok=True)
+        raise
     return p
 
 

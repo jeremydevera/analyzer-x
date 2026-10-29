@@ -47,8 +47,8 @@ def fleet(monkeypatch, tmp_path):
     ns = SimpleNamespace(started=[], fail=set(), tmp=tmp_path)
 
     def start(repo, inputs, since=None):
-        assert vc._state_path("pilot").exists() or vc._state_path("pilot-redo1").exists(), \
-            "the state is saved before the dispatch"
+        name = inputs["label"].split(" · ")[0].replace(" redo ", "-redo")
+        assert vc._state_path(name).exists(), "the state is saved before the dispatch"
         if repo in ns.fail:
             raise RuntimeError("could not create workflow dispatch event: HTTP 502")
         ns.started.append((repo, dict(inputs), since))
@@ -215,9 +215,9 @@ def test_the_collect_lands_this_runs_records_and_names_every_coin_it_did_not(fle
 
 def test_a_coin_that_failed_this_time_loses_its_old_record(fleet, monkeypatch):
     plan = fleet.plan
-    vrs.save_coin(vrs.home("pilot"), _rec("SOL_USDT", plan))
 
     def fill(st, roots, plan_):
+        vrs.save_coin(vrs.home("pilot"), _rec("SOL_USDT", plan))    # an earlier collect's
         _artifact(roots["a/x"], 0, [], [{"coin": "SOL_USDT", "error": "ValueError: x",
                                          "tries": 3}])
         _artifact(roots["b/x"], 0, [], [])
@@ -229,9 +229,9 @@ def test_a_coin_that_failed_this_time_loses_its_old_record(fleet, monkeypatch):
 
 def test_a_folder_holding_another_plans_records_is_never_landed_into(fleet, monkeypatch):
     plan = fleet.plan
-    vrs.save_coin(vrs.home("pilot"), _rec("BTC_USDT", plan, plan_id="0123456789abcdef"))
 
     def fill(st, roots, plan_):
+        vrs.save_coin(vrs.home("pilot"), _rec("BTC_USDT", plan, plan_id="0123456789abcdef"))
         _artifact(roots["a/x"], 0, [_rec("SOL_USDT", plan_)], [])
         _artifact(roots["b/x"], 0, [], [])
 
@@ -414,11 +414,11 @@ def test_a_name_whose_runs_are_going_is_never_dispatched_again(fleet, monkeypatc
     started = fleet.started
     st = vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
     before = vc.load_state("pilot")
-    with pytest.raises(RuntimeError, match=r"pilot still has 3 run\(s\) going: collect or "
-                                           r"retry them first"):
+    with pytest.raises(RuntimeError, match=r"pilot was already run on .*give the new round a "
+                                           r"new name"):
         vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
     assert vc.load_state("pilot") == before and len(started) == 3
-    # a collected run is finished: the name can be used again, and its old summary goes
+    # collected, the name is STILL used: a name is used once (RCA-2026-10-29-A)
     roots = {}
     for repo, r in st["runs"].items():
         roots[repo] = fleet.tmp / f"art-{r['run']}"
@@ -426,9 +426,12 @@ def test_a_name_whose_runs_are_going_is_never_dispatched_again(fleet, monkeypatc
     monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "completed"})
     monkeypatch.setattr(vc, "download", lambda run, repo: roots[repo])
     vc.collect("pilot")
-    assert (vc.home() / "pilot-collected.json").exists()
-    vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
-    assert len(started) == 6 and not (vc.home() / "pilot-collected.json").exists()
+    summary = (vc.home() / "pilot-collected.json").read_bytes()
+    with pytest.raises(RuntimeError, match="pilot was already run on"):
+        vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
+    assert len(started) == 3 and (vc.home() / "pilot-collected.json").read_bytes() == summary
+    vc.dispatch("pilot-2", plan_path=fleet.path, now=NOON)
+    assert len(started) == 6 and vc.load_state("pilot-2")["folder"] == "pilot-2"
 
 
 def test_every_machine_of_an_account_refusing_for_one_cause_is_one_line(fleet, monkeypatch):
@@ -453,9 +456,9 @@ def test_a_run_is_labelled_with_the_runs_that_exist(fleet):
 
 def test_a_left_out_coin_loses_its_old_record_and_no_coin_is_in_two_buckets(fleet, monkeypatch):
     plan = fleet.plan
-    vrs.save_coin(vrs.home("pilot"), _rec("SOL_USDT", plan))
 
     def fill(st, roots, plan_):
+        vrs.save_coin(vrs.home("pilot"), _rec("SOL_USDT", plan))    # an earlier collect's
         left = "the exchange is not trading it now"
         _artifact(roots["a/x"], 0, [], [{"coin": "SOL_USDT", "why": left},
                                         {"coin": "BTC_USDT", "why": left},
@@ -628,32 +631,206 @@ def test_a_name_collected_in_part_is_never_dispatched_again(fleet, monkeypatch):
     state_before = (vc.home() / "pilot.json").read_bytes()
     summary_before = (vc.home() / "pilot-collected.json").read_bytes()
     started = len(fleet.started)
-    with pytest.raises(RuntimeError, match=r"pilot is only partly collected: b/x not collected "
-                                           r"yet"):
+    with pytest.raises(RuntimeError, match=r"pilot was already run on"):
         vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
     assert len(fleet.started) == started
     assert (vc.home() / "pilot.json").read_bytes() == state_before
     assert (vc.home() / "pilot-collected.json").read_bytes() == summary_before
-    # once the share is fetched the name is free again
+    # the share is fetched by collecting again, never by a second round under the name
     monkeypatch.setattr(vc, "download", lambda run, repo: roots[repo])
     _artifact(roots["b/x"], 0, [], [])
     assert vc.collect("pilot")["downloads_failed"] == []
+
+
+def _round(fleet, monkeypatch, name, recs_of, *, lost=()):
+    """`name` dispatched on all three accounts and collected: `recs_of(coins)` the records each
+    account's machine wrote; an account in `lost` produced nothing (its machines were lost)."""
     fleet.fail = set()
-    vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
-    assert len(fleet.started) == started + 3
+    st = vc.dispatch(name, plan_path=fleet.path, now=NOON)
+    roots = {}
+    for repo, r in st["runs"].items():
+        roots[repo] = fleet.tmp / f"art-{r['run']}"
+        coins = st["dealt"][repo]["coin_list"].split(",")
+        recs = [] if repo in lost else recs_of(coins)
+        _artifact(roots[repo], 0, recs,
+                  [{"coin": x["coin"], "seconds": 1.0, "bytes": 5} for x in recs])
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "completed"})
+    monkeypatch.setattr(vc, "download", lambda run, repo: roots[repo])
+    return st, vc.collect(name)
 
 
-def test_a_re_dispatched_name_puts_its_old_summary_aside_never_deletes_it(fleet, monkeypatch):
+def test_two_rounds_never_share_a_folder_so_a_coin_round_two_missed_is_never_round_ones(
+        fleet, monkeypatch):
+    """The final review's reproduction (I1): round 1 lands every coin; round 2 under the SAME
+    name loses one account's machines - its coins kept round 1's records in the folder and were
+    judged as round 2's. A new round needs a new name, and gets a folder of its own."""
+    plan = fleet.plan
+    _round(fleet, monkeypatch, "universe", lambda cs_: [_rec(c, plan, round=1) for c in cs_])
+    assert len(vrs.load_coins(vrs.home("universe"))) == len(COINS)
+    started = len(fleet.started)
+    with pytest.raises(RuntimeError, match=r"universe was already run on .*new name"):
+        vc.dispatch("universe", plan_path=fleet.path, now=NOON)
+    assert len(fleet.started) == started
+    st2, got2 = _round(fleet, monkeypatch, "universe-2",
+                       lambda cs_: [_rec(c, plan, round=2) for c in cs_], lost={"b/x"})
+    held = vrs.load_coins(vrs.home("universe-2"))
+    assert {r["round"] for r in held} == {2}, "round 2's folder holds round 2's records only"
+    assert sorted(got2["not_reached"]) == sorted(st2["dealt"]["b/x"]["coin_list"].split(","))
+    assert {r["round"] for r in vrs.load_coins(vrs.home("universe"))} == {1}
+
+
+def test_a_redo_name_is_retrys_own_and_a_local_label_folder_is_never_a_runs(fleet, monkeypatch):
+    from tradingagents import v3_research
+
+    with pytest.raises(ValueError, match="the name `retry` gives a redo of pilot"):
+        vc.dispatch("pilot-redo1", plan_path=fleet.path, now=NOON)
+    # a folder a local `v3_research run --label pilot` wrote is refused as a cloud run's folder
+    vrs.save_coin(vrs.home("pilot"), _rec("BTC_USDT", fleet.plan))
+    with pytest.raises(RuntimeError, match=r"the folder .*pilot already exists"):
+        vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
+    assert fleet.started == [] and not vc._state_path("pilot").exists()
+    # and the other way round: a local measurement under a GitHub run's name is refused (M11)
+    monkeypatch.setattr(vc, "home_path", vc.home)
+    vc.dispatch("pilot-2", plan_path=fleet.path, now=NOON)
+    assert v3_research.main(["run", "BTC_USDT", "--plan", str(fleet.path),
+                             "--label", "pilot-2"]) == 2
+
+
+def test_collecting_the_run_again_after_a_redo_landed_keeps_the_redos_record(fleet, monkeypatch):
+    """The final review's reproduction (I2): collect -> retry -> collect the redo -> collect the
+    original again. The original's machine still says ETH failed; the redo's record of ETH is the
+    newer measurement and survives."""
+    plan = fleet.plan
+    fleet.fail = {"c/x"}
+    st = vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
+    a = st["dealt"]["a/x"]["coin_list"].split(",")
+    by_run = {r["run"]: fleet.tmp / f"art-{r['run']}" for r in st["runs"].values()}
+    _artifact(by_run[st["runs"]["a/x"]["run"]], 0, [_rec(a[0], plan)],
+              [{"coin": a[0], "seconds": 1.0, "bytes": 5},
+               {"coin": a[1], "error": "ValueError: x", "tries": 3}])
+    _artifact(by_run[st["runs"]["b/x"]["run"]], 0, [], [])
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "completed"})
+    monkeypatch.setattr(vc, "download", lambda run, repo: by_run[run])
+    first = vc.collect("pilot")
+    assert first["failed"] == [f"{a[1]}: ValueError: x"]
+    fleet.fail = set()
+    redo = vc.retry("pilot", now=NOON)
+    for repo, r in redo["runs"].items():
+        by_run[r["run"]] = fleet.tmp / f"art-{r['run']}"
+        coins = redo["dealt"][repo]["coin_list"].split(",")
+        recs = [_rec(c, plan, by="redo1") for c in coins]
+        _artifact(by_run[r["run"]], 0, recs,
+                  [{"coin": c, "seconds": 1.0, "bytes": 5} for c in coins])
+    got = vc.collect("pilot-redo1")
+    assert a[1] in got["landed"]
+    again = vc.collect("pilot")                  # the original collected again
+    by = {r["coin"]: r.get("by") for r in vrs.load_coins(vrs.home("pilot"))}
+    assert by[a[1]] == "redo1", "the redo's record survives a later collect of the original"
+    assert again["failed"] == [] and a[1] not in again["not_reached"]
+    assert f"{a[1]}: pilot-redo1 landed it since; its record is kept" in again["landed_since"]
+    # ...and nothing sends it to a second redo
+    with pytest.raises(ValueError, match="nothing to redo"):
+        vc.retry("pilot", now=NOON)
+
+
+def test_an_earlier_members_record_never_writes_over_a_later_redos(fleet, monkeypatch):
+    """A share whose download failed is redone with --abandon; once the redo lands, collecting
+    the original again (its share now downloads) must not replace the redo's newer record."""
+    import subprocess
+
+    plan = fleet.plan
     st, roots = _dispatched(fleet, monkeypatch)
-    for r in roots.values():
-        _artifact(r, 0, [], [])
+    b = st["dealt"]["b/x"]["coin_list"].split(",")
+    _artifact(roots["a/x"], 0, [], [])
+    by_run = {r["run"]: roots[repo] for repo, r in st["runs"].items()}
+
+    def download(run, repo):
+        if run == st["runs"]["b/x"]["run"]:
+            raise subprocess.CalledProcessError(1, "gh", stderr="HTTP 502")
+        return by_run[run]
+
+    monkeypatch.setattr(vc, "download", download)
     vc.collect("pilot")
-    old = (vc.home() / "pilot-collected.json").read_text(encoding="utf-8")
+    fleet.fail = set()
+    redo = vc.retry("pilot", now=NOON, abandon=True)
+    for repo, r in redo["runs"].items():
+        by_run[r["run"]] = fleet.tmp / f"art-{r['run']}"
+        coins = redo["dealt"][repo]["coin_list"].split(",")
+        _artifact(by_run[r["run"]], 0, [_rec(c, plan, by="redo1") for c in coins],
+                  [{"coin": c, "seconds": 1.0, "bytes": 5} for c in coins])
+    monkeypatch.setattr(vc, "download", lambda run, repo: by_run[run])
+    vc.collect("pilot-redo1")
+    _artifact(roots["b/x"], 0, [_rec(c, plan, by="pilot") for c in b],
+              [{"coin": c, "seconds": 1.0, "bytes": 5} for c in b])
+    again = vc.collect("pilot")
+    by = {r["coin"]: r.get("by") for r in vrs.load_coins(vrs.home("pilot"))}
+    assert all(by[c] == "redo1" for c in b)
+    assert not set(b) & set(again["landed"])
+
+
+def test_a_run_where_every_account_refused_names_redo_as_the_way_out(fleet, monkeypatch):
+    fleet.fail = {"a/x", "b/x", "c/x"}
+    st = vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
+    assert st["runs"] == {}
+    for call in (lambda: vc.collect("pilot"), lambda: vc.retry("pilot", now=NOON)):
+        with pytest.raises((RuntimeError, ValueError),
+                           match=r"no run was started \(every share refused: a/x: .*\); start "
+                                 r"each share with python -m tradingagents.v3_cloud redo pilot "
+                                 r"<a/x \| b/x \| c/x>"):
+            call()
+
+
+def test_a_run_that_produced_no_artifact_is_not_a_failed_download(fleet, monkeypatch):
+    import subprocess
+
+    st, roots = _dispatched(fleet, monkeypatch)
+    a = st["dealt"]["a/x"]["coin_list"].split(",")
+    _artifact(roots["a/x"], 0, [_rec(a[0], fleet.plan)],
+              [{"coin": a[0], "seconds": 1.0, "bytes": 5}])
+
+    def download(run, repo):
+        if repo == "b/x":
+            raise subprocess.CalledProcessError(1, "gh", stderr="no valid artifacts found")
+        return roots[repo]
+
+    monkeypatch.setattr(vc, "download", download)
+    monkeypatch.setattr(vc, "artifact_count", lambda run, repo: 0 if repo == "b/x" else 3)
+    got = vc.collect("pilot")
+    assert got["downloads_failed"] == []
+    assert got["runs_without_artifact"] == ["b/x run 1002: the run produced no artifact"]
+    assert set(st["dealt"]["b/x"]["coin_list"].split(",")) <= set(got["not_reached"])
+    fleet.fail = set()
+    assert vc.retry("pilot", now=NOON)["name"] == "pilot-redo1", "no --abandon needed"
+
+
+def test_redo_keeps_the_night_and_the_plan_on_main_as_dispatch_does(fleet, monkeypatch):
+    fleet.fail = {"b/x"}
     vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
-    assert not (vc.home() / "pilot-collected.json").exists()
-    aside = sorted(vc.home().glob("pilot-collected.*.json"))
-    assert len(aside) == 1 and aside[0].read_text(encoding="utf-8") == old
-    assert json.loads(old)["name"] == "pilot"
+    fleet.fail = set()
+    with pytest.raises(RuntimeError, match="12:45am and 5:00am"):
+        vc.redo("pilot", "b/x", now=ONE_AM)
+    monkeypatch.setattr(vc, "_git", lambda *a: "local-blob" if a[0] == "hash-object"
+                        else "main-blob")
+    with pytest.raises(RuntimeError, match="not redone: .*no longer the plan on origin/main"):
+        vc.redo("pilot", "b/x", now=NOON)
+    started = len(fleet.started)
+    monkeypatch.setattr(vc, "_git", lambda *a: "same-blob")
+    assert vc.redo("pilot", "b/x", now=ONE_AM, force=True)["runs"]["b/x"]
+    assert len(fleet.started) == started + 1
+
+
+def test_two_writers_never_share_a_temp_name(fleet, monkeypatch):
+    names = []
+    real = Path.replace
+
+    def spy(self, dest):
+        names.append(self.name)
+        return real(self, dest)
+
+    monkeypatch.setattr(Path, "replace", spy)
+    vc._write_whole(vc.home() / "a.json", "{}")
+    vc._write_whole(vc.home() / "a.json", "{}")
+    assert len(set(names)) == 2 and all(n != "a.json.tmp" for n in names)
 
 
 def test_a_record_that_is_valid_json_but_not_an_object_is_named_and_skipped(fleet, monkeypatch):

@@ -10,7 +10,7 @@ store's drive (`stores.V3.home`, never the system drive), where
 Plan: docs/superpowers/plans/2026-10-27-backtest-v3-part2b-github.md.
 
     python -m tradingagents.v3_cloud dispatch <name> [--coins A,B] [--plan FILE] [--force]
-    python -m tradingagents.v3_cloud redo <name> <owner/repo>
+    python -m tradingagents.v3_cloud redo <name> <owner/repo> [--force]
     python -m tradingagents.v3_cloud collect <name>
     python -m tradingagents.v3_cloud retry <name>
     python -m tradingagents.v3_cloud progress
@@ -18,7 +18,12 @@ Plan: docs/superpowers/plans/2026-10-27-backtest-v3-part2b-github.md.
 
 `<name>` is one plain folder name ("pilot", "universe"): the run's state file
 (`<name>.json` beside this module's home) and the folder its records land in
-(`stores.V3.home/research/<name>`, `v3_research.home`).
+(`stores.V3.home/research/<name>`, `v3_research.home`). A NAME IS USED ONCE: a
+name whose state, collected summary or folder already exists is refused ("give
+the new round a new name") - two rounds never share one folder, so a coin one
+round did not reach can never be judged with the other round's record. Only
+`retry` writes into an existing folder, as `<name>-redoN` (a name of that shape
+is refused from `dispatch`).
 
 * A run is dispatched only with a plan that is COMMITTED and on origin/main
   (every machine reads the plan from its own checkout) and its id travels as
@@ -29,21 +34,27 @@ Plan: docs/superpowers/plans/2026-10-27-backtest-v3-part2b-github.md.
 * `collect` lands only records measured under the run's own plan build, risk
   and random-run count, and refuses to land into a folder holding another
   plan's records; every coin it did not land is NAMED: not reached (a share
-  GitHub refused), failed (with its error), left out by the machine (with
-  why), or refused at landing (with what differs), or unmeasured (claimed by a machine
-  that stopped before it finished it: named once, redone by `retry`).
+  GitHub refused, or a run that produced no artifact), failed (with its error),
+  left out by the machine (with why), refused at landing (with what differs -
+  that coin is ALSO counted in `not_reached`), unmeasured (claimed by a machine
+  that stopped before it finished it: named once, redone by `retry`), or landed
+  since by a LATER redo of the family (`landed_since`: that record is kept,
+  never deleted or written over by collecting an earlier member again).
 * `retry` redoes only the coins a collected run failed or never reached, into
   the SAME folder (CLAUDE.md: a failed coin is redone alone).
 
-Never dispatched between 12:45am and 5:00am (this PC's clock: the nightly
-room re-test and backtest update need every machine; `cq_search.quiet_hours`);
-`--force` is for a person who knows they are not running.
+Never dispatched, redone or retried between 12:45am and 5:00am (this PC's
+clock: the nightly room re-test and backtest update need every machine;
+`cq_search.quiet_hours`); `--force` is for a person who knows they are not
+running.
 """
 from __future__ import annotations
 
 import argparse
 import gzip
 import json
+import os
+import re
 import shutil
 import subprocess
 import time
@@ -57,15 +68,31 @@ RUN_TTL_S = 7 * 86400               # a downloaded run folder older than this is
 PLAN_REL = "research/v3/plan.json"
 # a record's fields that say WHEN and WHERE it was measured, never WHAT: `parity` ignores them
 TIMING = ("seconds", "machine")
+# the name `retry` gives a redo of a run: `<name>-redo<N>`, ONE run family with it (v3_verdicts)
+REDO = re.compile(r"^(?P<base>.+)-redo(?P<n>\d+)$")
+
+
+def home_path() -> Path:
+    """Where the runs' states live, beside the v3 store on the store's drive - not created."""
+    from tradingagents import stores
+
+    return Path(stores.V3.home) / "cloud"
 
 
 def home() -> Path:
-    """Beside the v3 store, on the store's drive."""
-    from tradingagents import stores
-
-    p = Path(stores.V3.home) / "cloud"
+    """Beside the v3 store, on the store's drive (created)."""
+    p = home_path()
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def run_named(name: str) -> bool:
+    """True when a GitHub run of this name was dispatched: its records land in
+    `research/<name>`, the folder a local `v3_research --label <name>` would write. Creates
+    nothing (a reader may ask it from anywhere, a test included)."""
+    from tradingagents import v3_research as vrs
+
+    return (home_path() / f"{vrs.plain_label(name)}.json").exists()
 
 
 def title_of(label: str) -> str:
@@ -122,7 +149,9 @@ def _swap(tmp: Path, p: Path, wait: float = 3.0) -> None:
 
 
 def _write_whole(p: Path, text: str) -> None:
-    tmp = p.with_name(p.name + ".tmp")
+    # a temp name of its own to every write: a `collect` and a `progress` of two processes never
+    # share one
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.{time.time_ns()}.tmp")
     tmp.write_text(text, encoding="utf-8")
     _swap(tmp, p)
 
@@ -165,32 +194,52 @@ def _start(repo: str, inputs: dict, since: float | None = None) -> int:
     return fd.dispatch(WORKFLOW, inputs, repo, since=since)
 
 
-def _refuse_reuse(name: str) -> None:
-    """A name whose runs are still to be collected is never dispatched again: its state would be
-    overwritten and the first run's machines forgotten. A run collected in PART (a download
-    failed) is still going: its unfetched share is only named in the old summary."""
+def _when_made(p: Path) -> str:
+    from tradingagents.positions_view import fmt_when
+
+    try:
+        return fmt_when(p.stat().st_mtime)
+    except OSError:
+        return "an unknown date"
+
+
+def _refuse_reuse(name: str, folder: str, retrying: bool) -> None:
+    """A NAME IS USED ONCE (RCA-2026-10-29-A). A name whose state, collected summary or records
+    folder already exists is refused, collected or not: a second round under it would land beside
+    the first, and a coin the second round did not reach would keep the first round's record and
+    be judged as the second's. A new round takes a new name. `<name>-redoN` is `retry`'s name for a
+    redo, the one dispatch that writes into its family's existing folder."""
+    from tradingagents import v3_research as vrs
+
+    m = REDO.match(name)
+    if m and not retrying:
+        raise ValueError(f"{name} is the name `retry` gives a redo of {m['base']}: give the new "
+                         "round a name of its own")
     p = _state_path(name)
-    if not p.exists():
-        return
+    if p.exists():
+        try:
+            when = json.loads(p.read_text(encoding="utf-8")).get("started_at") or _when_made(p)
+        except (OSError, ValueError, AttributeError):
+            when = _when_made(p)
+        raise RuntimeError(f"{name} was already run on {when}; give the new round a new name")
     done = home() / f"{name}-collected.json"
     if done.exists():
-        try:
-            left = json.loads(done.read_text(encoding="utf-8")).get("downloads_failed") or []
-        except ValueError:
-            raise RuntimeError(f"{done} is unreadable: {name} is not dispatched again; move it "
-                               "aside first") from None
-        if left:
-            accounts = sorted({x.split(" run ", 1)[0] for x in left})
-            raise RuntimeError(f"{name} is only partly collected: {', '.join(accounts)} not "
-                               "collected yet - collect it again first")
-        return
-    try:
-        runs = json.loads(p.read_text(encoding="utf-8")).get("runs") or {}
-    except ValueError:
-        raise RuntimeError(f"{p} is unreadable: not overwritten; move it aside first") from None
-    if runs:
-        raise RuntimeError(f"{name} still has {len(runs)} run(s) going: collect or retry them "
-                           "first")
+        raise RuntimeError(f"{name} was already run on {_when_made(done)} (its collected summary "
+                           f"{done} is there); give the new round a new name")
+    root = vrs.home(folder)
+    if not retrying and root.exists():
+        raise RuntimeError(f"{name}: the folder {root} already exists (made {_when_made(root)}) - "
+                           "a run of that name, or a local `v3_research run --label` - and two "
+                           "rounds never share one folder; give the new round a new name")
+
+
+def no_run_words(name: str, state: dict) -> str:
+    """What to say when a run's state holds no started run at all (every share refused, M3): the
+    way out is `redo`, one account at a time."""
+    refused = "; ".join(state.get("refused") or []) or "no reason was recorded"
+    repos = " | ".join(sorted(state.get("dealt") or {})) or "owner/repo"
+    return (f"{name}: no run was started (every share refused: {refused}); start each share "
+            f"with python -m tradingagents.v3_cloud redo {name} <{repos}>")
 
 
 def dispatch(name: str, *, coins: list | None = None, plan_path: Path | str | None = None,
@@ -213,7 +262,7 @@ def dispatch(name: str, *, coins: list | None = None, plan_path: Path | str | No
 
     vrs.plain_label(name)
     folder = vrs.plain_label(folder or name)
-    _refuse_reuse(name)
+    _refuse_reuse(name, folder, retrying)
     if cq_search.quiet_hours(now) and not force:
         raise RuntimeError("not dispatched: between 12:45am and 5:00am the nightly room "
                            "re-test and backtest update need every machine")
@@ -233,17 +282,7 @@ def dispatch(name: str, *, coins: list | None = None, plan_path: Path | str | No
     if not ready:
         raise RuntimeError("no GitHub account can run the research: " + "; ".join(refused))
     piles = cs.split_coins(board, len(ready))
-    # a finished run's summary under a name being used again would be read as the new run's:
-    # it is put aside, never deleted (it is the only named list of that round's failed coins)
-    old = home() / f"{name}-collected.json"
-    if old.exists():
-        stamp = int(time.time())
-        aside = old.with_name(f"{name}-collected.{stamp}.json")
-        while aside.exists():
-            stamp += 1
-            aside = old.with_name(f"{name}-collected.{stamp}.json")
-        old.replace(aside)
-    t0 = time.time() if now is None else float(now)
+    t0 =time.time() if now is None else float(now)
     label = label or name
     state = {"name": name, "label": label, "folder": folder, "started": t0,
              "started_at": fmt_when(t0), "plan_id": plan["id"], "plan_end_ms": int(plan["end_ms"]),
@@ -283,11 +322,14 @@ def dispatch(name: str, *, coins: list | None = None, plan_path: Path | str | No
     return state
 
 
-def redo(name: str, repo: str) -> dict:
+def redo(name: str, repo: str, *, now: float | None = None, force: bool = False) -> dict:
     """Start ONE account's share again by itself - the account GitHub refused,
     never the whole run. A share with a run already is refused by name (two
-    runs would measure its coins twice); a run GitHub listed late is adopted."""
-    from tradingagents import cloud_sweep as cs
+    runs would measure its coins twice); a run GitHub listed late is adopted.
+    Like `dispatch`, never between 12:45am and 5:00am without `force`, and
+    never once the plan the run was dispatched with is no longer the plan on
+    origin/main (M14)."""
+    from tradingagents import cloud_sweep as cs, cq_search
 
     state = load_state(name)
     if repo in state["runs"]:
@@ -295,6 +337,12 @@ def redo(name: str, repo: str) -> dict:
     inputs = state["dealt"].get(repo)
     if not inputs:
         raise ValueError(f"{name} dealt no share to {repo}")
+    if cq_search.quiet_hours(now) and not force:
+        raise RuntimeError("not redone: between 12:45am and 5:00am the nightly room re-test and "
+                           "backtest update need every machine")
+    why = plan_on_main(Path(state.get("plan_copy") or state["plan_path"]), retrying=True)
+    if why:
+        raise RuntimeError(f"not redone: {why}")
     if repo != cs.origin_fleet():
         drift = cs.sync_fleet(repo)
         if drift:
@@ -319,6 +367,18 @@ def download(run: int, repo: str) -> Path:
         cmd += ["-p", p]
     subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=3600)
     return root
+
+
+def artifact_count(run: int, repo: str) -> int | None:
+    """How many artifacts GitHub holds for the run, or None when it cannot be asked: tells a run
+    that produced none (cancelled before any machine started) from a download that failed."""
+    from tradingagents import cloud_sweep as cs
+
+    try:
+        return int(cs._gh("api", f"repos/{repo}/actions/runs/{int(run)}/artifacts",
+                          "--jq", ".total_count").strip())
+    except Exception:                                          # noqa: BLE001
+        return None
 
 
 def sweep_runs(now: float | None = None) -> list:
@@ -379,9 +439,33 @@ def _held(root: Path) -> list:
     return out
 
 
+def landed_later(name: str) -> dict:
+    """{coin: member} - every coin a LATER member of `name`'s run family landed (`<base>-redoK`
+    for every K after `name`'s own, read from its newest collected summary). Collecting `name`
+    again must never delete or write over those records (RCA-2026-10-29-A): the later member's
+    measurement is the newer one. A later summary that cannot be read stops the collect, named."""
+    m = REDO.match(name or "")
+    base, k = (m["base"], int(m["n"]) + 1) if m else (name, 1)
+    out = {}
+    while name and _state_path(f"{base}-redo{k}").exists():
+        p = home() / f"{base}-redo{k}-collected.json"
+        if p.exists():
+            try:
+                landed = json.loads(p.read_text(encoding="utf-8")).get("landed") or []
+            except (ValueError, AttributeError):
+                raise RuntimeError(f"not landed: {p} is unreadable, and it names the coins "
+                                   f"{base}-redo{k} landed since - fix or move it first") from None
+            for coin in landed:
+                out[coin] = f"{base}-redo{k}"
+        k += 1
+    return out
+
+
 def land(state: dict, roots) -> dict:
     """Every machine's records of a finished run into its folder in the v3
-    store, and what was not landed, NAMED (see the module doc)."""
+    store, and what was not landed, NAMED (see the module doc). A coin a later
+    redo of the family has landed since keeps that record: this run's own
+    failure or record for it never deletes or replaces it (`landed_since`)."""
     from tradingagents import pro_search as ps, v3_research as vrs
 
     root = vrs.home(state["folder"])
@@ -408,6 +492,14 @@ def land(state: dict, roots) -> dict:
     left = {e["coin"]: e["why"] for e in entries if e.get("why") and "bytes" not in e}
     for coin in [*failed, *unmeasured]:    # a coin is in ONE bucket: a failure or a placeholder
         left.pop(coin, None)               # outranks "left out"
+    # a coin a LATER redo landed keeps that record: it is the newer measurement (RCA-2026-10-29-A)
+    later = {c: who for c, who in landed_later(state.get("name") or "").items()
+             if c in board and vrs.coin_file(root, c).exists()}
+    since = {c: f"{c}: {who} landed it since; its record is kept" for c, who in later.items()}
+    for coin in later:
+        failed.pop(coin, None)
+        unmeasured.pop(coin, None)
+        left.pop(coin, None)
     for coin in [*failed, *unmeasured, *left]:
         vrs.drop_coin(root, coin)          # DELETE first: never an old record beside a failure
     landed, refused, seen = [], [], set()
@@ -433,15 +525,18 @@ def land(state: dict, roots) -> dict:
             refused.append(f"{coin}: {'; '.join(why)}")
             continue
         seen.add(coin)
+        if coin in later:                  # this run's record is the OLDER one: never over the newer
+            continue
         failed.pop(coin, None)             # a coin that failed once and was redone on a machine
         unmeasured.pop(coin, None)         # a record saved just before the machine was stopped
         left.pop(coin, None)
         vrs.save_coin(root, rec)
         landed.append(coin)
-    reached = set(landed) | set(failed) | set(left) | set(unmeasured)
+    reached = set(landed) | set(failed) | set(left) | set(unmeasured) | set(later)
     secs = sorted(float(e["seconds"]) for e in entries if e.get("seconds") is not None)
     size = sum(int(e.get("bytes") or 0) for e in entries)
     return {"folder": str(root), "landed": sorted(landed),
+            "landed_since": [since[c] for c in sorted(since)],
             "not_reached": sorted(board - reached),
             "failed": [f"{c}: {e}" for c, e in sorted(failed.items())],
             "left_out": [f"{c}: {w}" for c, w in sorted(left.items())],
@@ -457,6 +552,8 @@ def collect(name: str) -> dict:
     from tradingagents import forecast_v2_daily as fd
 
     state = load_state(name)
+    if "runs" in state and not state["runs"]:
+        raise RuntimeError(f"not collected: {no_run_words(name, state)}")
     unfinished = []
     for repo, r in state["runs"].items():
         st = fd.run_status(int(r["run"]), repo)
@@ -465,7 +562,7 @@ def collect(name: str) -> dict:
     if unfinished:
         raise RuntimeError("not collected, still running: " + "; ".join(unfinished))
     sweep_runs()
-    roots, downloads_failed = [], []
+    roots, downloads_failed, no_artifact = [], [], []
     for repo, r in state["runs"].items():
         # one account's download failing names the account and the cause; every other account's
         # records are still landed, and `collect` can be run again for this one
@@ -473,18 +570,24 @@ def collect(name: str) -> dict:
             roots.append(download(int(r["run"]), repo))
         except subprocess.CalledProcessError as exc:
             said = (exc.stderr or exc.stdout or str(exc)).strip()[-200:] or str(exc)
-            downloads_failed.append(f"{repo} run {r['run']}: {said}")
+            # a run GitHub holds NO artifact for (cancelled before a machine started) is not a
+            # download that failed: there is nothing to fetch, its coins were not reached and
+            # `retry` redoes them without --abandon (M13)
+            if artifact_count(int(r["run"]), repo) == 0:
+                no_artifact.append(f"{repo} run {r['run']}: the run produced no artifact")
+            else:
+                downloads_failed.append(f"{repo} run {r['run']}: {said}")
         except (subprocess.TimeoutExpired, OSError) as exc:
             downloads_failed.append(f"{repo} run {r['run']}: {type(exc).__name__}: "
                                     f"{str(exc)[:160]}")
-    if not roots:
+    if not roots and not no_artifact:
         raise RuntimeError("not collected, no run could be downloaded: "
                            + "; ".join(downloads_failed))
     got = land(state, roots)
     summary = {"name": name, "label": state["label"], "plan_id": state["plan_id"],
                "runs": {k: v["run"] for k, v in state["runs"].items()},
                "shares_refused": list(state["refused"]), "downloads_failed": downloads_failed,
-               "roots": [str(r) for r in roots], **got}
+               "runs_without_artifact": no_artifact, "roots": [str(r) for r in roots], **got}
     _write_whole(home() / f"{name}-collected.json", json.dumps(summary, indent=1))
     progress(f"collected {name}: {len(got['landed'])} of {state['coins']} coin(s) landed in "
              f"{got['folder']}; {len(got['not_reached'])} not reached, {len(got['failed'])} "
@@ -492,6 +595,9 @@ def collect(name: str) -> dict:
              f"{len(got['refused_records'])} refused"
              + (f", {len(downloads_failed)} download(s) failed: {'; '.join(downloads_failed)}"
                 if downloads_failed else "")
+             + (f", {'; '.join(no_artifact)}" if no_artifact else "")
+             + (f", {len(got['landed_since'])} landed since by a later redo"
+                if got["landed_since"] else "")
              + f" (each named in {name}-collected.json)")
     return summary
 
@@ -507,6 +613,8 @@ def retry(name: str, *, now: float | None = None, force: bool = False,
     try:
         summary = json.loads((home() / f"{name}-collected.json").read_text(encoding="utf-8"))
     except FileNotFoundError:
+        if "runs" in state and not state["runs"]:
+            raise ValueError(no_run_words(name, state)) from None
         raise ValueError(f"{name} has not been collected: collect it first") from None
     if summary.get("downloads_failed") and not abandon:
         raise RuntimeError(f"{name}: a download failed ({'; '.join(summary['downloads_failed'])})"
@@ -576,6 +684,7 @@ def main(argv=None) -> int:
     r = sub.add_parser("redo")
     r.add_argument("name")
     r.add_argument("repo")
+    r.add_argument("--force", action="store_true")
     sub.add_parser("collect").add_argument("name")
     t = sub.add_parser("retry")
     t.add_argument("name")
@@ -591,7 +700,7 @@ def main(argv=None) -> int:
         got = dispatch(a.name, coins=[c for c in a.coins.split(",") if c] or None,
                        plan_path=a.plan, force=a.force)
     elif a.cmd == "redo":
-        got = redo(a.name, a.repo)
+        got = redo(a.name, a.repo, force=a.force)
     elif a.cmd == "collect":
         got = collect(a.name)
     elif a.cmd == "retry":

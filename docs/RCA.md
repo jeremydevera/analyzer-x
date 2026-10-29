@@ -172,6 +172,41 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-29-A — Backtest v3's run names could be used for a second round, which would have judged one round's coins as the other's, and collecting a run again after a redo would have deleted what the redo measured: NEVER HAPPENED YET
+
+**CEO**
+
+* Nothing wrong was shown yet (it NEVER HAPPENED YET, no GitHub run of Backtest v3 has been made): the planned second full run, sent under the same name as the first, would have left every coin it failed to reach holding the FIRST run's result, and the verdicts would have mixed the two runs with nothing saying so. Separately, fetching a run's results a second time after its failed coins were redone would have thrown the redone coins' results away and sent them to be measured a third time.
+* Why: a finished name could be sent again into the same folder, and fetching results always deleted the record of every coin that run had failed, even when a later redo had measured it since.
+* What stops it now: a name is used once - a second round needs a new name and gets a folder of its own; fetching an earlier run again never deletes or replaces what a later redo of it measured, and says which coins it left alone.
+
+**DEV**
+
+* `v3_cloud._refuse_reuse` (12fc7a67619d, e87558e22ec1) let a COLLECTED name be dispatched again into `research/<name>` and only renamed its summary aside; `land` (`v3_cloud.py`, the `for coin in [*failed, *unmeasured, *left]: vrs.drop_coin(root, coin)` line) dropped every such coin's record on every collect, and saved every record it read over whatever the folder held.
+* Invariants broken: **one folder holds one round** (CLAUDE.md, A failed coin is redone alone: "one coin carrying a mixture of two runs", at the size of a whole verdict) and **a record is only ever replaced by a NEWER measurement of the same coin** - the family's order (`<name>`, `-redo1`, `-redo2` ...) is the order of measurement.
+* Guard: `tests/test_v3_cloud.py::test_two_rounds_never_share_a_folder_so_a_coin_round_two_missed_is_never_round_ones`, `::test_collecting_the_run_again_after_a_redo_landed_keeps_the_redos_record`, `::test_an_earlier_members_record_never_writes_over_a_later_redos`, `::test_a_redo_name_is_retrys_own_and_a_local_label_folder_is_never_a_runs`, `::test_a_name_whose_runs_are_going_is_never_dispatched_again`.
+
+**SAW** - NEVER HAPPENED YET: found by the final whole-branch review of Backtest v3 Part 2b (`Oct 29, 2026`, `final-review.txt`, Important 1 and 2), both reproduced in a scratch folder before the fix.
+
+**TIMELINE** (NEVER HAPPENED YET: hypothetical; the coins and run numbers are the tests')
+
+1. Round 1: `dispatch universe`, collected - BTC_USDT and ETH_USDT land in `research/universe`.
+2. After the older-days backfill (the operator's decision 1(b)) round 2 is sent as `dispatch universe` again: before the fix the name was accepted (it was collected), only `universe-collected.json` was put aside.
+3. Round 2's ETH machine is lost: `collect universe` says `not_reached ['ETH_USDT']`, but the folder still holds round 1's ETH record, so the verdict store counted ETH as measured and `retry` skipped it ("a coin that has landed since needs no redo"). After the fix step 2 is refused: "universe was already run on Oct 28, 2026 ...; give the new round a new name", and `universe-2` lands into a folder of its own.
+4. Separately: `collect pilot` names ETH_USDT failed; `retry pilot` starts `pilot-redo1`; `collect pilot-redo1` lands ETH; `collect pilot` is run again (the documented way to fetch an account whose download failed). Before the fix ETH's record was deleted, the store filed ETH as "not reached: no record in the folder", and the next `retry` sent it to be measured again. After the fix the collect leaves it and says `ETH_USDT: pilot-redo1 landed it since; its record is kept` (`landed_since`); `retry pilot` answers "nothing to redo".
+
+**ROOT CAUSE** - The name was the key of a run's folder but not of one round, and the landing step deleted by "this run failed it" instead of "this run has a newer record of it".
+
+**WHY IT WAS NOT CAUGHT** - Every collect test collected a run once, from a folder only that run had written, so "the folder" and "this round" were the same thing by construction; the one re-dispatch test checked that the old SUMMARY was kept, never what the old RECORDS did to the new round, and no test collected an earlier member of a family after a later one.
+
+**COST** - none: NEVER HAPPENED YET. No Backtest v3 run has been dispatched to GitHub.
+
+**FIX** - this commit: `v3_cloud._refuse_reuse(name, folder, retrying)` refuses a name whose state, collected summary or folder exists (and a `-redoN` name from anything but `retry`); `landed_later` reads the later members' collected summaries and `land` neither drops nor replaces a coin a later member landed, naming it in `landed_since`. With it, the review's minors on the same path: `v3_research run|judge --label <a GitHub run's name>` is refused (M11), `redo` checks the night hours and the plan on origin/main (M14), a run where every account refused says `redo` is the way out (M3), a run that produced no artifact is not a failed download (M13), an account whose machines all refused files its coins under its own line (M4), and the summary and the verdict store are swapped with temps of their own and a retry (M10, M15).
+
+**GUARD** - the five tests above plus `tests/test_v3_cloud.py::test_a_run_where_every_account_refused_names_redo_as_the_way_out`, `::test_a_run_that_produced_no_artifact_is_not_a_failed_download`, `::test_redo_keeps_the_night_and_the_plan_on_main_as_dispatch_does`, `::test_two_writers_never_share_a_temp_name` and `tests/test_v3_verdicts.py::test_an_account_whose_machines_all_refused_or_that_left_no_artifact_files_its_coins_there`, `::test_a_run_no_account_started_names_redo_when_it_is_published`, `::test_the_store_swap_is_retried_under_a_reader_and_a_failed_one_keeps_no_copy`; every one red on 40ab4feba8a2.
+
+---
+
 ## RCA-2026-10-28-F — Backtest v3's order-book backfill could run beside the daily costs job on the same month file and silently erase one run's days, and COVERAGE FIRST under-counted the trades that paid a typical cost: NEVER HAPPENED YET
 
 **CEO**

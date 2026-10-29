@@ -606,3 +606,69 @@ def test_a_retry_under_a_plan_that_is_no_longer_on_main_says_so_not_rebuild_it(f
                         else "main-blob")
     with pytest.raises(RuntimeError, match="a retry cannot run under another plan"):
         vc.retry("pilot", now=NOON)
+
+
+# ---- Task 3 fix round 2 ------------------------------------------------------------------------
+
+def test_a_name_collected_in_part_is_never_dispatched_again(fleet, monkeypatch):
+    import subprocess
+
+    st, roots = _dispatched(fleet, monkeypatch)
+    a = st["dealt"]["a/x"]["coin_list"].split(",")
+    _artifact(roots["a/x"], 0, [_rec(a[0], fleet.plan)],
+              [{"coin": a[0], "seconds": 1.0, "bytes": 5}])
+
+    def download(run, repo):
+        if repo == "b/x":
+            raise subprocess.CalledProcessError(1, "gh", stderr="no artifact matches v3-out-*")
+        return roots[repo]
+
+    monkeypatch.setattr(vc, "download", download)
+    vc.collect("pilot")
+    state_before = (vc.home() / "pilot.json").read_bytes()
+    summary_before = (vc.home() / "pilot-collected.json").read_bytes()
+    started = len(fleet.started)
+    with pytest.raises(RuntimeError, match=r"pilot is only partly collected: b/x not collected "
+                                           r"yet"):
+        vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
+    assert len(fleet.started) == started
+    assert (vc.home() / "pilot.json").read_bytes() == state_before
+    assert (vc.home() / "pilot-collected.json").read_bytes() == summary_before
+    # once the share is fetched the name is free again
+    monkeypatch.setattr(vc, "download", lambda run, repo: roots[repo])
+    _artifact(roots["b/x"], 0, [], [])
+    assert vc.collect("pilot")["downloads_failed"] == []
+    fleet.fail = set()
+    vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
+    assert len(fleet.started) == started + 3
+
+
+def test_a_re_dispatched_name_puts_its_old_summary_aside_never_deletes_it(fleet, monkeypatch):
+    st, roots = _dispatched(fleet, monkeypatch)
+    for r in roots.values():
+        _artifact(r, 0, [], [])
+    vc.collect("pilot")
+    old = (vc.home() / "pilot-collected.json").read_text(encoding="utf-8")
+    vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
+    assert not (vc.home() / "pilot-collected.json").exists()
+    aside = sorted(vc.home().glob("pilot-collected.*.json"))
+    assert len(aside) == 1 and aside[0].read_text(encoding="utf-8") == old
+    assert json.loads(old)["name"] == "pilot"
+
+
+def test_a_record_that_is_valid_json_but_not_an_object_is_named_and_skipped(fleet, monkeypatch):
+    def fill(st, roots, plan):
+        a = st["dealt"]["a/x"]["coin_list"].split(",")
+        _artifact(roots["a/x"], 0, [_rec(a[0], plan), _rec(a[2], plan)],
+                  [{"coin": a[0], "seconds": 1.0, "bytes": 5},
+                   {"coin": a[2], "seconds": 1.0, "bytes": 5}])
+        with gzip.open(vrs.coin_file(roots["a/x"] / "v3-out-0" / "v3", a[2]), "wt") as fh:
+            json.dump([1, 2, 3], fh)
+        _artifact(roots["b/x"], 0, [], [])
+
+    st, got, _p, _t = _collected(fleet, monkeypatch, fill)
+    a = st["dealt"]["a/x"]["coin_list"].split(",")
+    assert got["landed"] == [a[0]]
+    assert len(got["refused_records"]) == 1
+    assert "a list, not a record" in got["refused_records"][0]
+    assert a[2] not in got["landed"]

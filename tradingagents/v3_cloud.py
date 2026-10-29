@@ -167,9 +167,22 @@ def _start(repo: str, inputs: dict, since: float | None = None) -> int:
 
 def _refuse_reuse(name: str) -> None:
     """A name whose runs are still to be collected is never dispatched again: its state would be
-    overwritten and the first run's machines forgotten (a run collected is finished)."""
+    overwritten and the first run's machines forgotten. A run collected in PART (a download
+    failed) is still going: its unfetched share is only named in the old summary."""
     p = _state_path(name)
-    if not p.exists() or (home() / f"{name}-collected.json").exists():
+    if not p.exists():
+        return
+    done = home() / f"{name}-collected.json"
+    if done.exists():
+        try:
+            left = json.loads(done.read_text(encoding="utf-8")).get("downloads_failed") or []
+        except ValueError:
+            raise RuntimeError(f"{done} is unreadable: {name} is not dispatched again; move it "
+                               "aside first") from None
+        if left:
+            accounts = sorted({x.split(" run ", 1)[0] for x in left})
+            raise RuntimeError(f"{name} is only partly collected: {', '.join(accounts)} not "
+                               "collected yet - collect it again first")
         return
     try:
         runs = json.loads(p.read_text(encoding="utf-8")).get("runs") or {}
@@ -220,8 +233,16 @@ def dispatch(name: str, *, coins: list | None = None, plan_path: Path | str | No
     if not ready:
         raise RuntimeError("no GitHub account can run the research: " + "; ".join(refused))
     piles = cs.split_coins(board, len(ready))
-    # a finished run's summary under a name being used again would be read as the new run's
-    (home() / f"{name}-collected.json").unlink(missing_ok=True)
+    # a finished run's summary under a name being used again would be read as the new run's:
+    # it is put aside, never deleted (it is the only named list of that round's failed coins)
+    old = home() / f"{name}-collected.json"
+    if old.exists():
+        stamp = int(time.time())
+        aside = old.with_name(f"{name}-collected.{stamp}.json")
+        while aside.exists():
+            stamp += 1
+            aside = old.with_name(f"{name}-collected.{stamp}.json")
+        old.replace(aside)
     t0 = time.time() if now is None else float(now)
     label = label or name
     state = {"name": name, "label": label, "folder": folder, "started": t0,
@@ -352,6 +373,8 @@ def _held(root: Path) -> list:
                 r = json.load(fh)
         except (OSError, EOFError, ValueError, zlib.error):
             continue                       # named by whoever lands it; never stops a collect
+        if not isinstance(r, dict):
+            continue
         out.append((r.get("coin"), r.get("plan_id"), r.get("risk_usd"), r.get("runs")))
     return out
 
@@ -395,6 +418,10 @@ def land(state: dict, roots) -> dict:
         except (OSError, EOFError, ValueError, zlib.error) as exc:
             refused.append(f"unreadable record {Path(f).name}: {type(exc).__name__}: "
                            f"{str(exc)[:100]}")
+            continue
+        if not isinstance(rec, dict):
+            refused.append(f"unreadable record {Path(f).name}: a {type(rec).__name__}, not a "
+                           "record")
             continue
         coin = rec.get("coin")
         why = vrs.differences(rec, plan, want[2], want[1])

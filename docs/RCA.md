@@ -191,7 +191,7 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 **TIMELINE** (NEVER HAPPENED YET: hypothetical; the numbers come from running the committed and the fixed dispatcher on made-up coins in `tests/test_v3_cloud.py`)
 
 1. `Oct 28, 2026` - commits `2a31a287068f` and `b6e2db00d115` add `v3_cloud`; `dispatch("pilot")` starts runs 1001, 1002, 1003 on a/x, b/x, c/x and saves them in `pilot.json`.
-2. Before the fix, `dispatch("pilot")` typed again saved a new `pilot.json`: runs 1001-1003 were no longer named anywhere, `collect pilot` could only ever collect the second set, and the first set's 60 machines kept running for an hour. After the fix the second command raises "pilot still has 3 run(s) going: collect or retry them first" and `pilot.json` is byte for byte as it was.
+2. Before the fix, `dispatch("pilot")` typed again saved a new `pilot.json`: runs 1001-1003 were no longer named anywhere, `collect pilot` could only ever collect the second set, and the first set's 60 machines kept running for an hour. After the fix the second command raises "pilot still has 3 run(s) going: collect or retry them first" and `pilot.json` still holds the same state (the test compares the loaded state).
 3. Before the fix, with b/x's run holding no artifact, `collect("pilot")` raised after a/x's download and before `land`: a/x's coins were not landed, no summary was written, and the error said only "returned non-zero exit status 1". After the fix: a/x's coin lands, the summary holds `downloads_failed: ["b/x run 1002: no artifact matches v3-out-*"]`, b/x's coins are in `not_reached`, and a second `collect pilot` lands b/x's records once they can be fetched; `retry` refuses until that is done unless `--abandon` is passed, so the same coins are not measured twice.
 4. Before the fix, an account whose 20 machines all refused for one cause printed 20 lines; it prints "c/x shards 0-19 (20 machines): ..." now. A dispatch of 2 coins on 3 accounts titled its runs "x - 1 of 3" and "x - 2 of 3"; they are "1 of 2" and "2 of 2".
 
@@ -203,7 +203,7 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 **FIX** - this commit: `dispatch` refuses a name whose state still holds runs (`_refuse_reuse`, deleting a collected run's stale summary when the name is used again); `collect` catches each download's failure, names "account run id: stderr tail", lands the others, raises only when none could be fetched, and `retry` refuses while a download failed unless `--abandon`; plus the eight smaller edges above.
 
-**GUARD** - the tests above in `tests/test_v3_cloud.py` (15 new tests, all 15 red on the committed code, all green after).
+**GUARD** - fix round 1, 15 tests in `tests/test_v3_cloud.py`, all 15 red on the committed code and green after: the 13 named above, plus `::test_collect_calls_the_sweep_before_it_downloads` and `::test_a_retry_with_every_coin_landed_since_has_nothing_to_redo`. Fix round 2 (the re-review found that a name collected in part could still be dispatched again, losing the unfetched share, and that the old summary was deleted rather than put aside; a record that is valid JSON but not an object stopped the landing), 3 more, red first: `::test_a_name_collected_in_part_is_never_dispatched_again` (refused naming the account, state and summary bytes unchanged, free again once collected), `::test_a_re_dispatched_name_puts_its_old_summary_aside_never_deletes_it`, `::test_a_record_that_is_valid_json_but_not_an_object_is_named_and_skipped`.
 
 ---
 

@@ -1180,8 +1180,21 @@ def test_a_trade_keeps_the_stop_and_target_its_order_went_in_with():
     bars, fine = _fixed_world(fill_hour, [(101.5, 100.5)] + [(101.6, 101.0)] * 59)
     (tr,) = _walk(bars, [1, 0, 0], fine=fine)["trades"]
     assert tr["stop_px"] == pytest.approx(98.0) and tr["target_px"] == pytest.approx(101.0)
-    # a trail: 3 x ATR(20) 0.205 under the 100.0 signal close, and no target. The trail moves
-    # its stop later (to 99.485); the trade keeps the FIRST one, the one the order went in with
-    bars, fine, dirs = _trail_world(FLAT, FLAT)
+    # a short: sold at 100.0 with the stop 2% above and the target 1% below
+    fill_hour = [(100.1, 99.9)] + [(99.95, 99.5)] * 59
+    bars, fine = _fixed_world(fill_hour, [(99.5, 98.5)] * 60)
+    (tr,) = _walk(bars, [-1, 0, 0], fine=fine)["trades"]
+    assert tr["stop_px"] == pytest.approx(102.0) and tr["target_px"] == pytest.approx(99.0)
+    # a trail: 3 x ATR(20) 0.205 under the 100.0 signal close, and no target. The trail then LIFTS
+    # its stop to ~99.485 (100.1 - 0.615, as the trail test above works it out), and a minute of
+    # hour 23 touches exactly that: the trade leaves there, ABOVE the stop it went in with. The
+    # row keeps the FIRST stop - the one the order went in with, never the lifted one
+    from tradingagents import v3_rules as vr
+
+    probe, _fine, _dirs = _trail_world()
+    lifted = 100.1 - 3.0 * vr.atr(probe["h"], probe["l"], probe["c"], vr.ATR_N)[21]
+    bars, fine, dirs = _trail_world([(100.1, 99.9)] * 10 + [(100.1, lifted)] + [(100.1, 99.9)] * 49)
     (tr,) = _walk(bars, dirs, TRAIL, fine=fine)["trades"]
+    assert tr["why"] == "TRAIL" and tr["exit"] == lifted, "the trail did move its stop"
     assert tr["stop_px"] == pytest.approx(100.0 - 3 * 0.205) and tr["target_px"] is None
+    assert tr["stop_px"] < lifted - 0.05, "the saved stop is the first one, not the lifted one"

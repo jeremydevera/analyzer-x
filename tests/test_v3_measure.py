@@ -163,6 +163,8 @@ def test_a_coin_is_measured_for_every_family_setting_timeframe_and_filter_it_can
                             "TP", 0.00695, 0.0067]]
     assert new["rows"] == [[NEW_DIP, NEW_DIP + H, NEW_DIP + H + M, 1,
                             pytest.approx(_snap_pnl()), "TP", 0.00695, 0.0067]]
+    # the named places hold the same two numbers
+    assert (old["rows"][0][vm.ROW_STOP], old["rows"][0][vm.ROW_TARGET]) == (0.00695, 0.0067)
     assert old["lev"] == [20, 20] and old["notional"] == [pytest.approx(142.99, abs=0.01)] * 2
     assert old["over_book"] == 1, "$143 of coin is more than the $100 a reading walks"
     # a flat market gives the trend and breakout rules nothing
@@ -951,3 +953,47 @@ def test_the_older_walk_pays_the_older_days_own_flat_gap_once_they_have_readings
     k5 = rec["combos"][vf.combo_key("v3_strength", "k5", "1d", "none")]
     (row,) = k5["older"]["rows"]
     assert row[5] == "END" and row[4] == pytest.approx(-166.0 * (0.0002 + 0.00075 + 0.0002))
+
+
+def test_the_older_walks_fallback_says_whether_the_older_days_had_no_reading_or_no_usable_one(
+        monkeypatch, gate_floors):
+    from tradingagents import cost_store
+
+    others = [f"C{k}_USDT" for k in range(9)]
+    plan = _plan(START_B, END_B, {}, liquid={"2026-09": ["ABC_USDT"] + others,
+                                             "2026-10": ["ABC_USDT"] + others},
+                 strength={str(SEP21): ["ABC_USDT"] + others,
+                           str(SEP28): others[:8] + ["ABC_USDT"],
+                           str(OCT5): ["ABC_USDT"] + others},
+                 kinds={"ABC_USDT": "crypto"})
+    up = {SPLIT_B + m * M: (101.1, 100.9) for m in range(3 * 1440)}
+    # a reading on the older days whose book ran out is stamped, and no cost at all
+    book = bh.pack([_reading(START_B // 1000, 0.0002, exhausted=True),
+                    _reading(SPLIT_B // 1000 + 3600, 0.0010),
+                    _reading(SPLIT_B // 1000 + 7200, 0.0010)])
+    monkeypatch.setattr(cost_store, "engine_book", lambda *a, **k: book)
+    pre = vm.measure_coin("ABC_USDT", plan, runs=2, fx=FakeFx(START_B, END_B, up))["pre"]
+    assert pre["flat_slip_older"] == pytest.approx(0.0010)
+    assert pre["flat_slip_older_source"].startswith(
+        "no usable reading on the older days (1 recorded, every book ran out): ")
+    # and with nothing stamped on the older days at all it says there was none
+    book = bh.pack([_reading(SPLIT_B // 1000 + 3600, 0.0010),
+                    _reading(SPLIT_B // 1000 + 7200, 0.0010)])
+    monkeypatch.setattr(cost_store, "engine_book", lambda *a, **k: book)
+    pre = vm.measure_coin("ABC_USDT", plan, runs=2, fx=FakeFx(START_B, END_B, up))["pre"]
+    assert pre["flat_slip_older_source"].startswith("no reading of its own on the older days: ")
+
+
+def test_a_compact_row_holds_the_stop_and_target_at_their_named_places_for_a_short_too():
+    assert vm.ROW_FIELDS[vm.ROW_STOP] == "stop" and vm.ROW_FIELDS[vm.ROW_TARGET] == "target"
+    assert (vm.ROW_STOP, vm.ROW_TARGET) == (6, 7)
+    # a short sold at 100.0 with a stop at 102.0 and a target at 99.0: distances, never signed
+    trade = {"signal_bar": 0, "entry_ms": 2, "exit_ms": 3, "side": -1, "pnl": 0.5, "why": "TP",
+             "entry": 100.0, "stop_px": 102.0, "target_px": 99.0, "leverage": 10, "notional": 50.0}
+    row = vm.compact({"trades": [trade], "missed": [], "counts": {}}, [1], {})["rows"][0]
+    assert len(row) == len(vm.ROW_FIELDS)
+    assert row[vm.ROW_STOP] == pytest.approx(0.02) and row[vm.ROW_TARGET] == pytest.approx(0.01)
+    # a trail has no target: None, and a long's stop below its entry reads the same way up
+    trade |= {"side": 1, "stop_px": 98.0, "target_px": None}
+    row = vm.compact({"trades": [trade], "missed": [], "counts": {}}, [1], {})["rows"][0]
+    assert row[vm.ROW_STOP] == pytest.approx(0.02) and row[vm.ROW_TARGET] is None

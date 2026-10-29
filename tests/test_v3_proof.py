@@ -435,6 +435,16 @@ def test_verdicts_refuses_coins_measured_at_different_risk_runs_or_plan_end_by_n
             vp.verdicts(coins)
 
 
+def test_verdicts_refuses_a_version_1_and_a_version_2_record_in_one_pool_by_name():
+    # Backtest v3 Part 2b, Task 1: a version 1 coin has 6-wide trade rows and an older walk that
+    # paid another flat gap; the two are never one measurement
+    coins = _two_coins(_rows(STEADY))
+    coins[0]["version"], coins[1]["version"] = 1, 2
+    with pytest.raises(ValueError, match="coins measured at different version cannot be pooled: "
+                                         "BBB_USDT at 2, AAA_USDT at 1"):
+        vp.verdicts(coins)
+
+
 def test_the_run_count_error_names_the_coin_that_holds_another_number_of_runs():
     coins = [_coin("AAA_USDT", _rows([0.05] * 40), _rows([0.10] * 40), _rows(STEADY)[:160],
                    [[10, 1.0], [10, -1.0]]),

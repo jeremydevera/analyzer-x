@@ -209,17 +209,19 @@ def tally(walks: list[dict]) -> dict:
 
 def _refuse_mixed(coins: list[dict]) -> None:
     """Coins are pooled only when each is listed once and all were measured on
-    one risk, one run count, one plan end and one plan BUILD (`plan_id`: builds
+    one risk, one run count, one plan end, one plan BUILD (`plan_id`: builds
     of one UTC day share an end, and only their content tells them apart; a
     record written before builds were stamped has none, so two of them pool with
-    each other and never with a stamped one). Anything else is refused by name:
+    each other and never with a stamped one) and one record `version` (a
+    version 1 trade row has no stop or target, and its older walk paid another
+    flat gap). Anything else is refused by name:
     the pooled trades would not all exist at one risk, one coin would be counted
     twice, or the coins would come from two universes."""
     names = [c.get("coin") for c in coins]
     for i, name in enumerate(names):
         if name in names[:i]:
             raise ValueError(f"{name} is listed twice: pooling it twice would count its trades twice")
-    for key in ("risk_usd", "runs", "plan_end_ms", "plan_id"):
+    for key in ("risk_usd", "runs", "plan_end_ms", "plan_id", "version"):
         for c in coins[1:]:
             if c.get(key) != coins[0].get(key):
                 raise ValueError(

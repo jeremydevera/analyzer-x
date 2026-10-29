@@ -51,7 +51,7 @@ def _record(coin="XAU_USDT", end=END, risk=1.0, runs=200, build=PLAN_ID):
     ones (1.2 and -0.8 in turn), against random runs of -0.002..+0.002 a trade."""
     quiet = [[100, 0.1 * ((k % 5) - 2)] for k in range(200)]
     return {"coin": coin, "kind": "metals", "plan_id": build, "plan_end_ms": end, "runs": runs,
-            "risk_usd": risk,
+            "risk_usd": risk, "version": vm.VERSION,
             "pre": {"coverage_older": 0.0, "coverage_unseen": 0.712, "flat_slip": 0.00012,
                     "flat_slip_source": "the median of its 95,012 recorded minutes"},
             "windows": {"1h": {"split": "Jul 24, 2026 8:00pm"}}, "skipped": {},
@@ -130,7 +130,11 @@ def test_differences_names_each_field_that_differs_with_both_values():
     assert vr.differences({"coin": "OLD_USDT"}, plan, 200, 1.0) == [
         f"plan build not recorded, not {PLAN_ID}",
         f"plan end not recorded, not {fmt_when(END / 1000)}",
-        "no risk recorded", "no run count recorded"]
+        "no risk recorded", "no run count recorded",
+        f"record version not recorded, not {vm.VERSION}"]
+    # a record of another version (1: its rows have no stop or target) is named, never pooled
+    assert vr.differences({**_record(), "version": 1}, plan, 200, 1.0) == [
+        f"record version 1, not {vm.VERSION}"]
 
 
 def test_judge_pools_only_the_coins_of_this_plan_and_names_every_other_with_its_reason(
@@ -144,6 +148,7 @@ def test_judge_pools_only_the_coins_of_this_plan_and_names_every_other_with_its_
     vr.save_coin(root, _record("REBUILT_USDT", build="0123456789abcdef"))
     unstamped, unpriced = _record("UNSTAMPED_USDT"), _record("NORISK_USDT")
     del unstamped["plan_id"], unpriced["risk_usd"]
+    vr.save_coin(root, {**_record("V1_USDT"), "version": 1})
     vr.save_coin(root, unstamped)
     vr.save_coin(root, unpriced)
     plan_path = vu.save(_plan(), tmp_path / "plan.json")
@@ -151,14 +156,15 @@ def test_judge_pools_only_the_coins_of_this_plan_and_names_every_other_with_its_
     lines = capsys.readouterr().out.splitlines()
     # the header, then the left-out line - before any coverage line - then the one coin pooled
     assert lines[0].startswith("Backtest v3 Part 2a on Gate: 1 coin(s) measured;")
-    assert lines[2].startswith("left out, not measured under this plan build, plan end, risk and "
-                               "run count: ")
+    assert lines[2].startswith("left out, not measured under this plan build, plan end, risk, "
+                               "run count and record version: ")
     assert lines[3].startswith("XAU_USDT (metals)")
     for reason in ("BIG_USDT (risk $5.00, not $1.00)", "FEW_USDT (20 random runs, not 200)",
                    "NORISK_USDT (no risk recorded)",
                    f"OLD_USDT (plan end {fmt_when((END - DAY) / 1000)}, "
                    f"not {fmt_when(END / 1000)})",
                    f"REBUILT_USDT (plan build 0123456789abcdef, not {PLAN_ID})",
+                   f"V1_USDT (record version 1, not {vm.VERSION})",
                    f"UNSTAMPED_USDT (plan build not recorded, not {PLAN_ID})"):
         assert reason in lines[2]
     saved = json.loads((root / "verdicts.json").read_text(encoding="utf-8"))["verdicts"]
@@ -472,7 +478,7 @@ def test_each_verdict_prints_its_filters_note_beneath_it_and_the_survivorship_li
 
 def test_the_header_counts_only_the_coins_measured_and_says_how_many_were_in_no_universe():
     idle = {"coin": "AAPL_USDT", "kind": "stocks", "plan_id": PLAN_ID, "plan_end_ms": END,
-            "runs": 200, "risk_usd": 1.0, "windows": {}, "combos": {}, "skipped": {},
+            "runs": 200, "risk_usd": 1.0, "version": vm.VERSION, "windows": {}, "combos": {}, "skipped": {},
             "why": "in no family's universe in any month of the plan"}
     lines, _ = vr.report([_record(), idle], _plan(), 200, 1.0)
     assert ": 1 coin(s) measured, 1 in no family's universe; the window " in lines[0]
@@ -580,7 +586,7 @@ def test_a_4h_funding_minutes_group_that_traded_nothing_unseen_still_prints_what
 def test_a_coin_whose_every_timeframe_was_skipped_is_not_counted_as_measured():
     # final review M7
     young = {"coin": "NEW_USDT", "kind": "metals", "plan_id": PLAN_ID, "plan_end_ms": END,
-             "runs": 200, "risk_usd": 1.0, "pre": {}, "windows": {}, "combos": {},
+             "runs": 200, "risk_usd": 1.0, "version": vm.VERSION, "pre": {}, "windows": {}, "combos": {},
              "skipped": {"1h": "1 older and 40 unseen 1h candles",
                          "4h": "0 older and 10 unseen 4h candles"}}
     lines, _ = vr.report([_record(), young], _plan(), 200, 1.0)

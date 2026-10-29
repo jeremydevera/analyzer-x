@@ -53,6 +53,11 @@ from tradingagents import (
 # fractions of its entry, and the older walk pays the older days' own flat gap where they have
 # readings. A record of version 1 holds neither; the proof reads only the first six fields
 VERSION = 2
+# A compact trade row, field by field. Every reader of a row's stop or target takes its place from
+# here (`ROW_STOP`, `ROW_TARGET`), never a number typed; a record of VERSION 1 has the first six
+# only, and `v3_proof` and `v3_research` refuse to pool or judge records of two versions
+ROW_FIELDS = ("signal_ms", "entry_ms", "exit_ms", "side", "pnl", "why", "stop", "target")
+ROW_STOP, ROW_TARGET = ROW_FIELDS.index("stop"), ROW_FIELDS.index("target")
 UNSEEN_DAYS = 90
 DAY_MS = 86_400_000
 BOOK_USD = 100.0          # a recorded reading is the cost of walking the book for $100
@@ -100,10 +105,11 @@ def flat_gap(sym: str, book, *, fx, split_ms: int | None = None) -> tuple[float,
     book, and where it came from (said beside every result).
 
     From the recorded minutes it is the median of EVERY one of them in the
-    window, whichever side of the split it lies on — the older walk pays it
-    too — so with `split_ms` the source says how many of those minutes lie on
-    the older days (counted as `usual_slip` counts, on the book cut as the
-    older walk's is). With no recorded minute: one live reading of the book,
+    window, whichever side of the split it lies on — the unseen walk pays it,
+    and so does the older walk where the older days have no reading of their
+    own (`older_gap`) — so with `split_ms` the source says how many of those
+    minutes lie on the older days (counted as `usual_slip` counts, on the
+    book cut as the older walk's is). With no recorded minute: one live reading of the book,
     or the app's paper figure. A live reading that is not a positive finite
     number - 0, below 0, not a number, infinite, none at all - is no reading:
     never a free, a missing or an infinite cost. Each is named for what it is."""
@@ -140,10 +146,15 @@ def older_gap(book, split_ms: int, whole: tuple[float, str]) -> tuple[float, str
     whole window's figure `whole` (value, source), and its source says so."""
     from tradingagents import cost_store
 
-    slip, n = cost_store.usual_slip(_book_before(book, split_ms))
+    older = _book_before(book, split_ms)
+    slip, n = cost_store.usual_slip(older)
     if slip is not None:
         return slip, (f"the median of its {n:,} recorded minutes on the older days whose book "
                       "did not run out")
+    stamped = len(older["t"]) if older is not None else 0
+    if stamped:
+        return whole[0], (f"no usable reading on the older days ({stamped:,} recorded, every "
+                          f"book ran out): {whole[1]}")
     return whole[0], f"no reading of its own on the older days: {whole[1]}"
 
 
@@ -224,7 +235,8 @@ def compact(walked: dict, t, signals: dict) -> dict:
     """One walk in the shape every machine returns. A trade row is [signal_ms,
     entry_ms, exit_ms, side, pnl, why, stop, target]: the last two are the stop
     and the target the order went in with, as fractions of the entry (a trail
-    has no target: None) - what the results page's max SL % and max TP % read.
+    has no target: None) - what the results page's max SL % and max TP % read
+    (`ROW_FIELDS`, `ROW_STOP`, `ROW_TARGET`).
     Everything that reads the first six fields reads them as before."""
     trades = walked["trades"]
     twins = [m["market"] for m in walked["missed"] if "pnl" in m["market"]]

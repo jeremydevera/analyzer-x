@@ -326,8 +326,10 @@ def verdict_lines(v: dict) -> list[str]:
 def differences(rec: dict, plan: dict, runs: int, risk: float) -> list[str]:
     """What differs between a saved record and the plan, run count and risk
     being judged, one phrase per field with both values (plan build, plan end,
-    risk, run count); empty when the record fits. A field the record does not
-    carry is never assumed to fit: it is named as not recorded."""
+    risk, run count, record version); empty when the record fits. A field the
+    record does not carry is never assumed to fit: it is named as not
+    recorded."""
+    from tradingagents import v3_measure as vm
     from tradingagents.positions_view import fmt_when
 
     out = []
@@ -348,13 +350,15 @@ def differences(rec: dict, plan: dict, runs: int, risk: float) -> list[str]:
         out.append("no run count recorded")
     elif got != runs:
         out.append(f"{got} random runs, not {runs}")
+    if rec.get("version") != vm.VERSION:
+        out.append(f"record version {rec.get('version') or 'not recorded'}, not {vm.VERSION}")
     return out
 
 
 def split_records(records: list[dict], plan: dict, runs: int,
                   risk: float) -> tuple[list[dict], list[tuple[str, list[str]]]]:
-    """(the records measured under THIS plan build, plan end, risk and run
-    count, and every other record as (its coin, what differs)): a record of
+    """(the records measured under THIS plan build, plan end, risk, run
+    count and record version, and every other record as (its coin, what differs)): a record of
     another plan is never pooled, and always named."""
     kept, other = [], []
     for r in records:
@@ -367,7 +371,8 @@ def split_records(records: list[dict], plan: dict, runs: int,
 
 
 def left_out_line(other: list[tuple[str, list[str]]]) -> str:
-    return ("left out, not measured under this plan build, plan end, risk and run count: "
+    return ("left out, not measured under this plan build, plan end, risk, run count and record "
+            "version: "
             + ", ".join(f"{coin} ({'; '.join(why)})" for coin, why in other))
 
 

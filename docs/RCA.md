@@ -172,6 +172,43 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-28-A — Backtest v3's research records got a second shape (record version 2, trade rows with a stop and a target) while nothing checked the version, so old and new results would have been judged together without a word: NEVER HAPPENED YET
+
+**CEO**
+
+* Nothing wrong was shown yet (it NEVER HAPPENED YET): the results measured before this week and the results measured after it are not the same kind of result - the newer ones remember the stop and the target of every trade, and pay the older days' own cost once those days have readings - and the judging step would have mixed them as if they were one.
+* Why: the new kind was given a version number, but no step that pools or judges results ever looked at it, so the number was a label nobody read.
+* What stops it now: judging refuses a pool that holds two versions and says which coin has which, and the command that judges a folder leaves out a result of another version and names it ("record version 1, not 2").
+
+**DEV**
+
+* `tradingagents/v3_measure.py` bumped `VERSION` to 2 in commit `1ff86756d83c` (trade rows 8 wide, an older-days flat gap) and wrote it into every record, but `tradingagents/v3_proof.py` `_refuse_mixed` compared only `risk_usd`, `runs`, `plan_end_ms` and `plan_id`, and `tradingagents/v3_research.py` `differences` (so `split_records` and `judge`) compared the same four. A version 1 coin and a version 2 coin pooled; a later reader of a row's stop or target (the results page's max TP % and max SL %) would have raised `IndexError` on a 6-wide row.
+* Invariant broken: **"measured the same way" means every field that changes what a record contains, and a version stamp that no pooling check reads is a label, not a guard** - the same shape as RCA-2026-10-27-A (`plan_end_ms` alone did not say "one plan"). Measured on the committed code: `vp.verdicts` over two coins, one with `version` 1 and one with 2, raised nothing.
+* Guard: `tests/test_v3_proof.py::test_verdicts_refuses_a_version_1_and_a_version_2_record_in_one_pool_by_name`, `tests/test_v3_research.py::test_differences_names_each_field_that_differs_with_both_values` and `::test_judge_pools_only_the_coins_of_this_plan_and_names_every_other_with_its_reason`, and `tests/test_v3_measure.py::test_a_compact_row_holds_the_stop_and_target_at_their_named_places_for_a_short_too`.
+
+**SAW** - NEVER HAPPENED YET: no verdict was pooled over records of two versions; the only real records (the three check coins) are version 1 and no version 2 record exists in the store yet. Found by the task review of Part 2b Task 1 (`Oct 28, 2026`, `task-1-review.txt`, Important 1), which grepped every reader of `VERSION`/`version` over the v3 modules and found the writer only.
+
+**TIMELINE** (NEVER HAPPENED YET: a hypothetical timeline; the numbers are from calling the committed and the fixed functions on made-up coin records, and no real coin was pooled wrongly)
+
+1. `Oct 28, 2026` - commit `1ff86756d83c` makes `measure_coin` write `version` 2: each trade row `[signal_ms, entry_ms, exit_ms, side, pnl, why, stop, target]`, and the older walk pays `flat_slip_older`.
+2. The three coins of the first check (BTC, ETH, XAU) hold version 1 records: rows of 6, the older walk paying the whole window's gap.
+3. A coin measured again after the commit holds a version 2 record. Both sit in one folder under one plan build, one risk ($5.00) and one run count (200).
+4. On the committed code `_refuse_mixed` raised nothing for the two, `differences` returned `[]` for both, and `judge` pooled them: "pooled without a word".
+5. A page reading `row[6]` of the version 1 coin would have raised `IndexError: list index out of range`.
+6. After the fix the same two raise `coins measured at different version cannot be pooled: BBB_USDT at 2, AAA_USDT at 1`, and `judge` over the folder prints `V1_USDT (record version 1, not 2)` among the coins left out; a record with no version is named `record version not recorded, not 2`.
+
+**ROOT CAUSE** - A record's shape and what its numbers mean changed (rows gained two fields, the older walk's cost changed) and the change was announced by a number that only the writer used. Pooling is decided by a list of fields written before there was a second version, so the list never named it.
+
+**WHY IT WAS NOT CAUGHT** - Every pooling test varied one of the four fields the check already knew (a plan a day older, a risk of $5, 20 random runs, another build) because each earlier incident had been one of those, and the test fixtures never carried a `version` at all, so two fixture coins always agreed on it by both having none. The brief's tests for Task 1 pinned the new row shape and the new flat gap, and no test asked what the readers of a record do when handed the other version: a version bump has no failing assertion until something pools across it.
+
+**COST** - none: NEVER HAPPENED YET. No verdict was pooled over two versions.
+
+**FIX** - this commit: `_refuse_mixed` compares `version` (refused by name like the other fields), `differences` names a record of another or no version, the "left out" line says "record version", and the compact row's field order is named once (`ROW_FIELDS`, `ROW_STOP`, `ROW_TARGET`) for every later reader. With it, the older gap's fallback says "no usable reading" where the older days had readings that all ran out, the `flat_gap` docstring says what the older walk pays, and the trail test proves the trail moved while the row kept the first stop.
+
+**GUARD** - `tests/test_v3_proof.py::test_verdicts_refuses_a_version_1_and_a_version_2_record_in_one_pool_by_name` (red on the committed code: nothing raised) and the two `tests/test_v3_research.py` tests above, whose fixtures now carry the version and whose expectations name `V1_USDT (record version 1, not 2)`.
+
+---
+
 ## RCA-2026-10-27-C — a Backtest v3 tab run with no trade printed "leverage —x" and "$— of coin a trade": a dash dressed as a number
 
 **CEO**

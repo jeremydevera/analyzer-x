@@ -50,9 +50,22 @@ HELD_RECHECK_S = 300
 HELD_SAY_S = 3600
 
 
+def read_strict() -> dict:
+    """The saved state; no file is `{}`, a file that cannot be read RAISES - for the v3 backfill,
+    which must treat an unreadable record as a daily press possibly in the air (M7)."""
+    try:
+        text = STATE.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return {}
+    d = json.loads(text)
+    if not isinstance(d, dict):
+        raise ValueError(f"{STATE} is not an object")
+    return d
+
+
 def read() -> dict:
     try:
-        return json.loads(STATE.read_text(encoding="utf-8"))
+        return read_strict()
     except (OSError, ValueError):
         return {}
 
@@ -218,8 +231,18 @@ def tick(now: float | None = None) -> dict:
         return _hold(st, now, held)
     _released(st)
     st["tried_at"] = now
+    t0 = time.time()
+
+    def step(runs: list) -> None:
+        # the `pressing` flag is said again before each account (M9): a v3 backfill judges it
+        # live for v3_coverage.PRESSING_S from its newest step, and the runs started so far by
+        # their own status, so a slow dispatch of three accounts never outlasts it
+        st["pressing"] = {"at": now, "step_at": now + (time.time() - t0), "dispatching": True,
+                          "runs": list(runs)}
+        _write(st)
+
     try:
-        got = _dispatch(days, now)
+        got = _dispatch(days, now, step=step)
     except Exception as exc:                                   # noqa: BLE001
         st.pop("pressing", None)
         st["last_error"] = f"could not start the costs job: {type(exc).__name__}: {exc}"
@@ -267,7 +290,9 @@ def _released(st: dict) -> None:
 def _held_by_backfill(days: list[str], now: float, st: dict) -> str:
     """Why this press of `days` must wait for a v3 backfill press in the air, or "". A record
     that cannot be read holds the press (it might describe a live run) but never longer than
-    STALE_S, judged by the file's age: after that the press runs and says it ignored it."""
+    v3_coverage.STALE_S, judged from the EARLIER of the file's stamp and when it was first seen
+    unreadable (so a stamp in the future cannot stretch it): after that the press runs and says
+    once that it ignored it."""
     from tradingagents import v3_coverage
 
     try:
@@ -299,7 +324,9 @@ def _held_by_backfill(days: list[str], now: float, st: dict) -> str:
                 f"at most {hours} hours")
 
 
-def _dispatch(days: list[str], now: float) -> dict:
+def _dispatch(days: list[str], now: float, step=None) -> dict:
+    """Deal Gate's coins between the accounts and start costs.yml on each. `step(runs so far)`
+    is called before each account, so whoever watches the press sees it still going."""
     from tradingagents import cloud_sweep as cs, forecast_v2_daily as f2d
     from tradingagents.dataflows import gate_futures as gf
 
@@ -310,7 +337,9 @@ def _dispatch(days: list[str], now: float) -> dict:
     coins = gf.trading_symbols()
     piles = cs.split_coins(coins, len(fleets))
     runs, unrun = [], []
-    for slug, pile in zip(fleets, piles):
+    for slug, pile in zip(fleets, piles, strict=False):
+        if step is not None:
+            step(runs)
         drift = cs.sync_fleet(slug)
         if drift:
             # a pile was DEALT to this account and never ran: its coins are

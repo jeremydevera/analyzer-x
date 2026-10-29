@@ -9,12 +9,15 @@ from __future__ import annotations
 import calendar
 import json
 import os
+import time
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from tradingagents import (
     cloud_sweep as cs,
+    cost_store,
     costs_daily,
     forecast_v2_daily as fd,
     v3_cloud as vc,
@@ -23,6 +26,11 @@ from tradingagents import (
     v3_universe as vu,
 )
 from tradingagents.positions_view import fmt_when
+
+# the real functions, taken before any fixture fakes them (a test needing one sets it back with its
+# own monkeypatch; never `undo`, which would also undo conftest's isolation of the real store)
+REAL_LOAD_MONTH = cost_store.load_month
+REAL_DAILY_DISPATCH = costs_daily._dispatch
 
 DAY = 86_400
 
@@ -64,20 +72,45 @@ def world(monkeypatch, tmp_path):
     monkeypatch.setattr(vcv, "state_path", lambda: tmp_path / "cloud" / "backfill.json")
     flights = {"daily": {}}
     monkeypatch.setattr(costs_daily, "read", lambda: flights["daily"])
-    return SimpleNamespace(plan=plan, tmp=tmp_path, flights=flights)
+    monkeypatch.setattr(costs_daily, "read_strict", lambda: flights["daily"], raising=False)
+    # THE COST STORE, faked: {(coin, "YYYYMM"): packed month} - nothing here reaches GitHub
+    store = {}
+    monkeypatch.setattr(cost_store, "load_month", lambda sym, ym, **k: store.get((sym, ym)))
+    return SimpleNamespace(plan=plan, tmp=tmp_path, flights=flights, store=store)
+
+
+def _hold(world, coin, *days):
+    """The cost store holds every hour of `days` for `coin`, read when practice looks."""
+    import numpy as np
+
+    from tradingagents import book_history as bh
+
+    for day in days:
+        y, m, d = (int(x) for x in day.split("-"))
+        t0 = _utc(y, m, d)
+        key = (coin, f"{y:04d}{m:02d}")
+        old = world.store.get(key)
+        t = np.array([t0 + 3600 * h + bh.READ_AT_S for h in range(24)], "int64")
+        if old is not None:
+            t = np.concatenate([old["t"], t])
+        world.store[key] = {"t": t, "at": np.full(len(t), bh.READ_AT_S, "int8")}
 
 
 def test_the_share_of_trades_that_paid_a_typical_cost_is_counted_older_and_unseen_apart(world):
     recs = vrs.load_coins(vrs.home("pilot"))
     got = vcv.trade_costs(recs)
-    # every ENTRY (an order placed) and every EXIT (a trade's) is a leg; a leg is typical when
-    # its entry went in with no book to check or its exit paid the coin's usual gap
-    assert got["older"] == {"trades": 100, "typical_exits": 100, "orders": 105,
+    # a FILLED trade has two legs, its entry and its exit (M2): an exit is settled without its own
+    # minute's book when it paid the coin's usual gap, an entry when its order went in with no
+    # book to check post-only against - counted per order PLACED, so with 5 orders that never
+    # filled, 40 to 45 of the 45 unchecked orders were filled entries: a range
+    assert got["older"] == {"trades": 100, "typical_exits": 100, "orders": 105, "missed": 5,
                             "unchecked_orders": 45, "funding_estimated": 0,
-                            "legs": 205, "typical_legs": 145}
-    assert got["unseen"] == {"trades": 40, "typical_exits": 5, "orders": 43,
+                            "legs": 200, "typical_low": 140, "typical_high": 145}
+    assert got["unseen"] == {"trades": 40, "typical_exits": 5, "orders": 43, "missed": 0,
                              "unchecked_orders": 0, "funding_estimated": 1,
-                             "legs": 83, "typical_legs": 5}
+                             "legs": 80, "typical_low": 5, "typical_high": 5}
+    assert vcv.share_words(got["older"]) == "70.0%-72.5% of 200 entries and exits"
+    assert vcv.share_words(got["unseen"]) == "6.2% of 80 entries and exits"
     cover = vcv.minute_cover(recs)
     assert cover["older"] == {"mean": 0.0, "least": 0.0, "none": ["BTC_USDT", "XAU_USDT"],
                               "unknown": [], "coins": 2}
@@ -87,7 +120,8 @@ def test_the_share_of_trades_that_paid_a_typical_cost_is_counted_older_and_unsee
 def test_an_entry_that_had_no_book_is_a_typical_cost_leg_though_its_exit_was_measured(world):
     rec = _rec("DOGE_USDT", world.plan, _walk(10, placement_unmeasured=10), _walk(0), 0.5, 0.5)
     got = vcv.trade_costs([rec])["older"]
-    assert got["typical_exits"] == 0 and got["typical_legs"] == 10 and got["legs"] == 20
+    assert got["typical_exits"] == 0 and got["legs"] == 20
+    assert got["typical_low"] == got["typical_high"] == 10, "no order missed: all 10 filled"
 
 
 def test_a_missing_coverage_value_is_unknown_never_no_books(world):
@@ -140,21 +174,27 @@ def test_the_report_says_coverage_first_with_every_number_from_the_records(world
                                                           "coin_days": 373,
                                                           "s_per_coin_day": 12.9,
                                                           "one_day_runs": 0})
-    world.flights["daily"] = {"done_days": ["2026-10-09", "2026-10-10"]}
+    # the cost store itself holds Oct 09 and Oct 10 for every coin (whoever pressed them)
+    for coin in world.plan["coins"]:
+        _hold(world, coin, "2026-10-09", "2026-10-10")
     # XAU_USDT listed Oct 05, 2026 at noon UTC: its days Oct 01-04 are not missing for it
     listings = _listings(world.plan, XAU_USDT=_utc(2026, 10, 5, 12) * 1000)
     lines = vcv.report("pilot", runs=[("a/x", 11)], machines=60, listings=listings)
     assert lines[0] == f"COVERAGE FIRST for pilot: 2 coins measured under plan {world.plan['id']}"
     assert "2 of 2 coins have none" in lines[1] and lines[1].startswith("  older days")
-    # the denominator is named: every entry and every exit, a TP exit counted too
-    assert "145 of 205 entries and exits paid a typical cost (70.7%)" in lines[1]
-    assert "45 of 105 entries went in with no book" in lines[1]
-    assert "100 of 100 exits at a coin's usual cost" in lines[1]
-    assert "5 of 83 entries and exits paid a typical cost (6.0%)" in lines[2]
-    unseen = next(ln for ln in lines if ln.startswith("  unseen days: the cost store holds no"))
+    # the denominator is named: the entries and exits of the FILLED trades (M2)
+    assert ("between 140 and 145 of the 200 entries and exits of 100 filled trades were settled "
+            "without their own minute's book (70.0%-72.5%)") in lines[1]
+    assert "45 of the 105 orders placed (filled or not) went in with no book" in lines[1]
+    assert "which of them filled is not counted" in lines[1]
+    assert "100 of 100 exits paid a coin's usual cost" in lines[1]
+    assert "5 of the 80 entries and exits of 40 filled trades" in lines[2]
+    assert "(6.2%)" in lines[2] and "which of them filled" not in lines[2]
+    assert any("read from the cost store: 3 coin-months" in ln for ln in lines)
+    unseen = next(ln for ln in lines if ln.startswith("  unseen days: ") and "lack" in ln)
     assert "8 of 10 days" in unseen, "the unseen range is the whole of this short window"
     # BTC and ZEC (listing unknown) all 8 days, XAU its 4 listed days: 20, an upper bound
-    assert "20 coin-days for the plan's 3 coins" in unseen and "listing unknown" in unseen
+    assert "20 coin-days missing over the plan's 3 coins" in unseen and "listing unknown" in unseen
     assert "before a coin's listing" in unseen
     assert "this PC's clock" in unseen and fmt_when(_utc(2026, 10, 1)) in unseen
     assert fmt_when(_utc(2026, 10, 9)) in unseen
@@ -184,8 +224,8 @@ def test_the_two_ranges_each_get_their_own_line_and_estimate(world, monkeypatch)
     # the run folder of "long" holds no records: the report still prices the plan's days
     lines = vcv.report("long", runs=[("a/x", 1)], machines=2,
                        listings=_listings(plan, **dict.fromkeys(plan["coins"], 0)))
-    older = next(ln for ln in lines if ln.startswith("  older days: the cost store holds no"))
-    unseen = next(ln for ln in lines if ln.startswith("  unseen days: the cost store holds no"))
+    older = next(ln for ln in lines if ln.startswith("  older days: ") and "lack" in ln)
+    unseen = next(ln for ln in lines if ln.startswith("  unseen days: ") and "lack" in ln)
     assert "30 of 30 days" in older and "60 coin-days" in older
     assert "90 of 90 days" in unseen and "180 coin-days" in unseen
     assert any("older days' 60 coin-days: about 0.6 machine-hours, at least 0.3 hours" in ln
@@ -237,10 +277,16 @@ def test_a_backfill_press_refuses_while_a_daily_costs_run_is_in_the_air_naming_i
     monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "completed",
                                                              "conclusion": "success"})
     assert vcv.clash(["2025-11-03"], now) == ""
-    # a stale entry expires: a run that never finishes cannot hold the press for ever
+    # a stale entry expires: a run that never finishes cannot hold the press for ever - past
+    # STALE_S only while GitHub itself says it is not finished, and never past AIR_MAX_S (M8)
     monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "in_progress"})
     world.flights["daily"] = {"flight": _air(now - 2 * vcv.STALE_S, ("a/x", 4242))}
+    assert "still says in_progress after 24 hours" in vcv.clash(["2025-11-03"], now)
+    world.flights["daily"] = {"flight": _air(now - vcv.AIR_MAX_S - 60, ("a/x", 4242))}
     assert vcv.clash(["2025-11-03"], now) == ""
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: (_ for _ in ()).throw(OSError("gh")))
+    world.flights["daily"] = {"flight": _air(now - 2 * vcv.STALE_S, ("a/x", 4242))}
+    assert vcv.clash(["2025-11-03"], now) == "", "past STALE_S an unreadable status holds nothing"
     # a daily press that has only said it is about to dispatch holds the door too
     world.flights["daily"] = {"pressing": {"at": now - 30}}
     assert "being dispatched" in vcv.clash(["2025-11-03"], now)
@@ -263,9 +309,10 @@ def daily(monkeypatch, world):
             return {}
 
     monkeypatch.setattr(costs_daily, "read", read)
+    monkeypatch.setattr(costs_daily, "read_strict", read, raising=False)
     sent = []
 
-    def dispatch(days, now):
+    def dispatch(days, now, step=None):
         sent.append(list(days))
         return {"runs": [{"repo": "a/x", "run": 900 + len(sent), "coins": 3}], "refused": [],
                 "unrun": []}
@@ -408,9 +455,9 @@ def test_the_daily_costs_press_says_it_is_pressing_before_it_dispatches(world, d
     seen = {}
     real = costs_daily._dispatch
 
-    def dispatch(days, at):
+    def dispatch(days, at, step=None):
         seen["pressing"] = costs_daily.read().get("pressing")
-        return real(days, at)
+        return real(days, at, step=step)
 
     monkeypatch.setattr(costs_daily, "_dispatch", dispatch)
     assert costs_daily.tick(now=now)["started"] is True
@@ -420,7 +467,7 @@ def test_the_daily_costs_press_says_it_is_pressing_before_it_dispatches(world, d
 
 def test_a_daily_press_that_cannot_dispatch_stops_saying_it_is_pressing(world, daily,
                                                                        monkeypatch):
-    def dispatch(days, at):
+    def dispatch(days, at, step=None):
         raise RuntimeError("no account")
 
     monkeypatch.setattr(costs_daily, "_dispatch", dispatch)
@@ -454,13 +501,13 @@ def test_a_backfill_that_finds_the_daily_press_coming_after_writing_its_own_flig
     now = _utc(2026, 10, 27, 12)
     calls = []
 
-    def clash(days, at):
+    def clash(days, at, st=None):
         calls.append(1)
         return "" if len(calls) == 1 else "the daily costs job is being dispatched"
 
     monkeypatch.setattr(vcv, "clash", clash)
     with pytest.raises(RuntimeError, match="being dispatched"):
-        vcv.backfill("pilot", now=now, force=True)
+        vcv.backfill("pilot", now=now, force=True, listings=_listings(world.plan))
     assert not sent and not vcv.read_state().get("flight"), "its flight was taken back"
 
 
@@ -478,39 +525,275 @@ def test_the_backfill_presses_the_newest_missing_days_for_the_plans_coins(world,
     # noon UTC; `force` because the nightly quiet hours are this PC's own clock, which a test
     # cannot know
     now = _utc(2026, 10, 27, 12)
-    got = vcv.backfill("pilot", days_per_press=3, now=now, force=True)
+    lst = _listings(world.plan)
+    got = vcv.backfill("pilot", days_per_press=3, now=now, force=True, listings=lst)
     assert got["days"] == ["2026-10-08", "2026-10-09", "2026-10-10"], "newest first"
     assert [s[:2] for s in sent] == [("costs.yml", "a/x"), ("costs.yml", "b/x")]
     assert sorted(c for _w, _s, i in sent for c in i["coin_list"].split(",")) == \
         world.plan["coins"]
     assert all(i["days"] == "2026-10-08,2026-10-09,2026-10-10" for _w, _s, i in sent)
     with pytest.raises(RuntimeError, match="still in the air"):
-        vcv.backfill("pilot", now=now, force=True)
-    # one share red: the days go back, named; then both green: the days are done
+        vcv.backfill("pilot", now=now, force=True, listings=lst)
+    # one share red: the days go back, named; then both green: the days are asked for once
     monkeypatch.setattr(fd, "run_status", lambda run, repo: {
         "status": "completed", "conclusion": "failure" if run == 502 else "success"})
     assert vcv.settle(now=now)["red"] == ["b/x (run 502): failure"]
-    assert not vcv.read_state().get("done")
-    vcv.backfill("pilot", days_per_press=3, now=now, force=True)
+    assert not vcv.read_state().get("presses")
+    assert vcv.backfill("pilot", days_per_press=3, now=now, force=True, listings=lst)["days"] == \
+        ["2026-10-08", "2026-10-09", "2026-10-10"]
     monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "completed",
                                                              "conclusion": "success"})
     assert vcv.settle(now=now)["red"] == []
-    assert vcv.read_state()["done"][world.plan["id"]]["days"] == \
-        ["2026-10-08", "2026-10-09", "2026-10-10"]
-    assert vcv.backfill("pilot", days_per_press=3, now=now, force=True)["days"] == \
+    press = vcv.read_state()["presses"][-1]
+    assert press["days"] == ["2026-10-08", "2026-10-09", "2026-10-10"]
+    assert press["coins"] == world.plan["coins"]
+    # the store now holds those days for two coins; ZEC's never completed (an hour missing at
+    # Gate) and a green press already asked for them, so they are not asked again
+    for coin in ("BTC_USDT", "XAU_USDT"):
+        _hold(world, coin, "2026-10-08", "2026-10-09", "2026-10-10")
+    assert vcv.backfill("pilot", days_per_press=3, now=now, force=True, listings=lst)["days"] == \
         ["2026-10-05", "2026-10-06", "2026-10-07"]
 
 
-def test_a_day_backfilled_for_one_plan_is_not_held_for_another(world):
-    other = {**world.plan, "coins": ["BTC_USDT", "DOGE_USDT"]}
-    other["id"] = vu.plan_id(other)
-    vcv._write_state({"done": {world.plan["id"]: {"coins": world.plan["coins"],
-                                                  "days": ["2026-10-08"]}}})
-    assert vcv.done_days(world.plan) == {"2026-10-08"}
-    assert vcv.done_days(other) == set(), "another plan's coins, another record"
-    # the same plan id read with a coin set the press did not cover is not held either
-    wider = {**world.plan, "coins": world.plan["coins"] + ["DOGE_USDT"]}
-    assert vcv.done_days(wider) == set()
+def test_filled_days_belong_to_the_coin_and_the_day_so_a_rebuilt_plan_never_calls_them_missing(
+        world, monkeypatch):
+    """I4: the days come from the cost store, per coin and day. A plan REBUILT a day later (a new
+    id, one more day) still sees every day the store holds, and can be pressed by its plan file
+    before any run of it exists - only its new day is asked for."""
+    for coin in world.plan["coins"]:
+        _hold(world, coin, *[f"2026-10-{d:02d}" for d in range(1, 11)])
+    lst = _listings(world.plan)
+    lines = vcv.report("pilot", listings=lst)
+    assert any("unseen days: the cost store holds every one of its 10 days" in ln for ln in lines)
+    rebuilt = {**world.plan, "end_ms": _utc(2026, 10, 12) * 1000}
+    rebuilt["id"] = vu.plan_id(rebuilt)
+    assert rebuilt["id"] != world.plan["id"]
+    path = vu.save(rebuilt, world.tmp / "plan.json")
+    lines = vcv.report(plan_path=path, listings=lst)
+    assert lines[0].startswith(f"COVERAGE FIRST for the plan {rebuilt['id']}")
+    gap = next(ln for ln in lines if "lack a reading" in ln)
+    assert "1 of 11 days" in gap and "3 coin-days missing" in gap
+    sent = []
+    monkeypatch.setattr(cs, "usable_fleets", lambda: (["a/x"], []))
+    monkeypatch.setattr(cs, "sync_fleet", lambda slug: "")
+    monkeypatch.setattr(fd, "dispatch", lambda wf, inputs, slug, since=None:
+                        sent.append(dict(inputs)) or 801)
+    got = vcv.backfill(plan_path=path, now=_utc(2026, 10, 27, 12), force=True, listings=lst)
+    assert got["days"] == ["2026-10-11"] and got["plan_id"] == rebuilt["id"]
+    assert sent[0]["days"] == "2026-10-11"
+    assert sorted(sent[0]["coin_list"].split(",")) == world.plan["coins"]
+
+
+def test_a_coin_already_holding_the_days_is_not_in_the_press(world, monkeypatch):
+    _hold(world, "BTC_USDT", "2026-10-10")
+    sent = []
+    monkeypatch.setattr(cs, "usable_fleets", lambda: (["a/x"], []))
+    monkeypatch.setattr(cs, "sync_fleet", lambda slug: "")
+    monkeypatch.setattr(fd, "dispatch", lambda wf, inputs, slug, since=None:
+                        sent.append(dict(inputs)) or 802)
+    got = vcv.backfill("pilot", days_per_press=1, now=_utc(2026, 10, 27, 12), force=True,
+                       listings=_listings(world.plan))
+    assert got["days"] == ["2026-10-10"] and got["coins"] == ["XAU_USDT", "ZEC_USDT"]
+
+
+def test_a_day_is_held_only_when_all_24_hours_were_read_when_practice_looks():
+    import numpy as np
+
+    from tradingagents import book_history as bh
+
+    t0 = _utc(2026, 10, 8)
+    full = np.array([t0 + 3600 * h + bh.READ_AT_S for h in range(24)], "int64")
+    assert vcv.held_days_of({"t": full, "at": np.full(24, bh.READ_AT_S, "int8")}) == \
+        {"2026-10-08"}
+    assert vcv.held_days_of({"t": full[:23], "at": np.full(23, bh.READ_AT_S, "int8")}) == set()
+    assert vcv.held_days_of({"t": full, "at": np.zeros(24, "int8")}) == set(), \
+        "read at the close (the old way): the costs job reads it again"
+    assert vcv.held_days_of(None) == set()
+
+
+def test_the_rule_for_a_held_day_is_the_costs_jobs_own(monkeypatch, tmp_path):
+    """`held_days_of` must say what the costs job's shard skips (costs_shard.held_days), or a
+    press would be asked for days it skips, or never for days it would fill."""
+    import importlib.util
+    import sys
+
+    import numpy as np
+
+    from tradingagents import book_history as bh
+
+    scripts = Path(__file__).resolve().parent.parent / ".github" / "scripts"
+    for k in ("GITHUB_TOKEN", "GITHUB_REPOSITORY"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("DAYS_LIST", "2026-10-08")
+    monkeypatch.setenv("COIN_LIST", "BTC_USDT")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.syspath_prepend(str(scripts))
+    spec = importlib.util.spec_from_file_location("costs_shard_v3cov", scripts / "costs_shard.py")
+    mod = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.modules.pop("costs_shard_v3cov", None)
+    t0 = _utc(2026, 10, 8)
+    t = np.array([t0 + 3600 * h + bh.READ_AT_S for h in range(48) if h != 30], "int64")
+    packed = {"t": t, "at": np.full(len(t), bh.READ_AT_S, "int8")}
+    shard = {time.strftime("%Y-%m-%d", time.gmtime(d)) for d in mod.held_days(packed)}
+    assert vcv.held_days_of(packed) == shard == {"2026-10-08"}
+
+
+def test_an_unreadable_month_is_named_and_its_days_count_as_missing(world, monkeypatch):
+    from tradingagents.cost_store import CostReadError
+
+    def load(sym, ym, **k):
+        if sym == "BTC_USDT":
+            raise CostReadError("BTC_USDT 202610 could not be read from a/x: 502")
+        return world.store.get((sym, ym))
+
+    monkeypatch.setattr(cost_store, "load_month", load)
+    got = vcv.store_days(world.plan["coins"], _utc(2026, 10, 1), _utc(2026, 10, 11))
+    assert got["coin_months"] == 3 and got["by_coin"]["BTC_USDT"] == set()
+    assert got["unreadable"] == ["BTC_USDT 202610: CostReadError: BTC_USDT 202610 could not be "
+                                 "read from a/x: 502"]
+
+
+def test_settling_a_press_takes_this_pcs_cached_months_it_wrote_out_of_the_cache(world,
+                                                                                  monkeypatch):
+    """I5: a month that ended more than 35 days ago is served from this PC's cache for ever, so
+    after a backfill wrote it the PC would keep the readings from before. Settling the press takes
+    every coin-month it pressed out of the cache, and the next read fetches what it wrote."""
+    import numpy as np
+
+    from tradingagents import cost_store as real_cs
+
+    # the real load_month (the fixture faked it), its cache in this test's tmp (conftest)
+    monkeypatch.setattr(cost_store, "load_month", REAL_LOAD_MONTH)
+    old = {k: np.zeros(1, dtype) for k, dtype in (("t", "int64"), ("bid", "float64"),
+                                                    ("ask", "float64"), ("spread", "float32"),
+                                                    ("buy", "float32"), ("sell", "float32"),
+                                                    ("exhausted", "bool"), ("source", "int8"),
+                                                    ("at", "int8"))}
+    real_cs.CACHE.mkdir(parents=True, exist_ok=True)
+    cached = real_cs.CACHE / real_cs.asset("XAU_USDT", "202607")
+    cached.write_bytes(real_cs.to_bytes(old))
+    new = {**old, "t": np.array([_utc(2026, 7, 20)], "int64")}
+
+    def fetch(u):
+        return (200, real_cs.to_bytes(new)) if "jeremydevera/" in u else (404, b"")
+
+    # a final month (July ended more than 35 days before today) is the cached one...
+    assert int(real_cs.load_month("XAU_USDT", "202607", fetch=fetch)["t"][0]) == 0
+    now = _utc(2026, 10, 27, 12)
+    vcv._write_state({"flight": {"at": now - 3600, "days": ["2026-07-20"], "part": "older",
+                                 "plan_id": "x", "coins": ["XAU_USDT"],
+                                 "runs": [{"repo": "a/x", "run": 9, "coins": 1}], "unrun": []}})
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "completed",
+                                                             "conclusion": "success"})
+    got = vcv.settle(now=now)
+    assert got["settled"] and got["stale_removed"] == 1 and not cached.exists()
+    # ...and after the press this PC reads what the press wrote
+    assert int(real_cs.load_month("XAU_USDT", "202607", fetch=fetch)["t"][0]) == _utc(2026, 7, 20)
+
+
+def test_an_unreadable_daily_record_holds_the_backfill_but_only_for_twelve_hours(world,
+                                                                                 monkeypatch):
+    """M7: the daily side holds off an unreadable backfill record; the backfill now does the same
+    for an unreadable daily record, bounded the same way."""
+    bad = world.tmp / "costs_daily.json"
+    bad.write_text("{not json", encoding="utf-8")
+    now = _utc(2026, 10, 27, 12)
+    os.utime(bad, (now - 3600, now - 3600))
+    monkeypatch.setattr(costs_daily, "STATE", bad)
+    monkeypatch.setattr(costs_daily, "read_strict", _strict_of(bad))
+    st = {}
+    why = vcv.clash(["2026-10-08"], now, st)
+    assert "could not be read" in why and "at most 12 hours" in why
+    assert st["daily_unreadable_since"] == now
+    with pytest.raises(RuntimeError, match="the daily costs job's record .* could not be read"):
+        vcv.backfill("pilot", now=now, force=True, listings=_listings(world.plan))
+    assert vcv.read_state()["daily_unreadable_since"] == now, "kept for the next look"
+    later = now + vcv.STALE_S + 60
+    assert vcv.clash(["2026-10-08"], later, st) == ""
+    assert "pressed without it" in st["daily_ignored"]
+
+
+def _strict_of(path):
+    def read():
+        return json.loads(path.read_text(encoding="utf-8"))
+    return read
+
+
+def test_a_press_still_queued_past_twelve_hours_keeps_holding_until_github_settles_it(
+        world, monkeypatch):
+    """M8: settle used to give a press up at 12 hours while GitHub still had its run queued, and
+    the daily job then pressed the same month files beside it."""
+    now = _utc(2026, 10, 27, 12)
+    vcv._write_state({"flight": {"at": now - 14 * 3600, "days": ["2026-10-08"], "part": None,
+                                 "plan_id": "x", "coins": ["BTC_USDT"],
+                                 "runs": [{"repo": "a/x", "run": 5, "coins": 1}], "unrun": []}})
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "queued"})
+    got = vcv.settle(now=now)
+    assert got["settled"] is False and "a/x run 5 is queued" in got["why"]
+    assert "GitHub still says queued after 14 hours" in vcv.daily_held_off(["2026-10-09"], now)
+    late = now - 14 * 3600 + vcv.AIR_MAX_S + 60
+    assert vcv.daily_held_off(["2026-10-09"], late) == ""
+    got = vcv.settle(now=late)
+    assert got["settled"] and "never finished within 36 hours" in " ".join(got["red"])
+
+
+def test_a_slow_daily_dispatch_keeps_saying_it_is_pressing_before_each_account(world, daily,
+                                                                               monkeypatch):
+    """M9: the daily `pressing` flag lasted 600 s from the press, and three accounts' syncs and
+    dispatches can take longer, so a backfill could go out between them. Each account now says
+    it again (`step_at`), with the runs started so far, through the REAL `_dispatch`."""
+    from tradingagents.dataflows import gate_futures as gf
+
+    monkeypatch.setattr(costs_daily, "_dispatch", REAL_DAILY_DISPATCH)
+    monkeypatch.setattr(cs, "usable_fleets", lambda: (["a/x", "b/x", "c/x"], []))
+    monkeypatch.setattr(cs, "sync_fleet", lambda slug: "")
+    monkeypatch.setattr(gf, "trading_symbols", lambda: ["AAA_USDT", "BBB_USDT", "CCC_USDT"])
+    seen = []
+
+    def dispatch(wf, inputs, slug, since=None):
+        seen.append(costs_daily.read()["pressing"])
+        return 600 + len(seen)
+
+    monkeypatch.setattr(fd, "dispatch", dispatch)
+    now = _utc(2026, 10, 27, 3) + 300
+    assert costs_daily.tick(now=now)["started"] is True
+    assert [len(p["runs"]) for p in seen] == [0, 1, 2], "each account sees the runs so far"
+    assert all(p["dispatching"] and p["step_at"] >= now for p in seen)
+    # a pressing record whose press began long ago but whose newest step is fresh still holds
+    rec = {"at": now - 2 * vcv.PRESSING_S, "step_at": now - 60, "dispatching": True,
+           "runs": [{"repo": "a/x", "run": 601}]}
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "completed"})
+    assert "a press being dispatched" in vcv.air_of(rec, now)
+    assert vcv.air_of({**rec, "step_at": now - vcv.PRESSING_S - 1}, now) == ""
+
+
+def test_a_verdict_carries_the_share_of_its_legs_that_paid_a_typical_cost(world):
+    """I3 (the store's half): the older days over every setting the choice compared, the unseen
+    days of the chosen setting - the same counting as the report."""
+    from tradingagents import v3_families as vf
+
+    fam, tf, filt = "v3_snap", "1h", "none"
+    keys = [vf.setting_key(fam, x) for x in vf.FAMILIES[fam]["settings"]][:2]
+    combos = {vf.combo_key(fam, keys[0], tf, filt): {"older": _walk(10, cost_unmeasured=10),
+                                                     "unseen": _walk(4, cost_unmeasured=1)},
+              vf.combo_key(fam, keys[1], tf, filt): {"older": _walk(30, cost_unmeasured=0,
+                                                                    missed=2,
+                                                                    placement_unmeasured=4),
+                                                     "unseen": _walk(20, cost_unmeasured=2)}}
+    rec = {"coin": "BTC_USDT", "combos": combos}
+    v = {"family": fam, "tf": tf, "filter": filt, "setting": keys[1],
+         "older": {keys[0]: {}, keys[1]: {}}}
+    got = vcv.verdict_costs([rec], v)
+    assert got["older"]["trades"] == 40 and got["older"]["legs"] == 80
+    assert (got["older"]["typical_low"], got["older"]["typical_high"]) == (12, 14)
+    assert got["unseen"]["legs"] == 40 and got["unseen"]["typical_low"] == 2
+    assert "older days 15.0%-17.5% of 80 entries and exits" in got["words"]
+    assert "unseen days 5.0% of 40 entries and exits" in got["words"]
+    none = vcv.verdict_costs([rec], {**v, "setting": None})
+    assert none["unseen"] is None and "unseen days no setting chosen" in none["words"]
 
 
 def test_a_corrupt_state_file_is_refused_by_name_never_read_as_empty(world):
@@ -588,7 +871,8 @@ def test_a_backfill_names_its_range_and_stays_inside_it(world, monkeypatch):
     monkeypatch.setattr(fd, "dispatch", lambda wf, inputs, slug, since=None:
                         sent.append(dict(inputs)) or 700)
     now = _utc(2026, 10, 27, 12)
-    got = vcv.backfill("long", days_per_press=3, now=now, force=True, part="older")
+    lst = _listings(plan)
+    got = vcv.backfill("long", days_per_press=3, now=now, force=True, part="older", listings=lst)
     assert got["days"] == ["2026-07-25", "2026-07-26", "2026-07-27"], "the older range's newest"
     assert got["part"] == "older" and vcv.read_state()["flight"]["part"] == "older"
     assert sent[0]["days"] == "2026-07-25,2026-07-26,2026-07-27"
@@ -596,13 +880,12 @@ def test_a_backfill_names_its_range_and_stays_inside_it(world, monkeypatch):
     monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "completed",
                                                              "conclusion": "success"})
     vcv.settle(now=now)
-    st = vcv.read_state()
-    st["done"][plan["id"]]["days"] = sorted(set(st["done"][plan["id"]]["days"])
-                                            | set(vcv.missing_days(plan, [], part="older")))
-    vcv._write_state(st)
-    assert vcv.backfill("long", now=now, force=True, part="older")["started"] is False
-    assert vcv.backfill("long", days_per_press=2, now=now, force=True,
-                        part="unseen")["days"] == ["2026-10-24", "2026-10-25"]
+    for coin in plan["coins"]:
+        _hold(world, coin, *vcv.missing_days(plan, [], part="older"))
+    assert vcv.backfill("long", now=now, force=True, part="older",
+                        listings=lst)["started"] is False
+    assert vcv.backfill("long", days_per_press=2, now=now, force=True, part="unseen",
+                        listings=lst)["days"] == ["2026-10-24", "2026-10-25"]
 
 
 def test_the_costs_job_deals_to_every_account_the_backfill_presses_to():

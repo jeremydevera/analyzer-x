@@ -172,6 +172,40 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-29-B — Backtest v3's coverage check kept the order-book days it had filled against one plan's id, so a rebuilt plan would have called them missing, and this PC would have kept reading the months it filled from before they were filled: NEVER HAPPENED YET
+
+**CEO**
+
+* Nothing wrong was shown yet (it NEVER HAPPENED YET, no order-book backfill has been pressed): after filling the missing order books and rebuilding the coin plan a day later, the coverage check would have reported every filled day as missing again and asked the machines to fill it a second time; and every check run on this PC afterwards (the Backtest v3 tab, the GitHub-against-PC parity check) would have kept using the order books from before the fill, so this PC and GitHub would have disagreed about the same coin with nothing saying why.
+* Why: the list of filled days was kept under the plan's id and found only through a run's name, and this PC's copy of a month older than 35 days is treated as final and never fetched again.
+* What stops it now: the check reads what the order-book store itself holds, coin by coin and day by day, and can be pressed for a plan before any run of it exists; ending a fill clears this PC's copies of every month it filled, so the next read fetches the filled month.
+
+**DEV**
+
+* `v3_coverage.done_days` (34bfc136a534) read `backfill.json["done"][plan["id"]]` only when its coins covered the plan, `backfill` found the plan only through `vc.load_state(name)["plan_copy"]`, and `cost_store.load_month` serves a cached month whose end is more than `FINAL_AFTER_S` (35 days) ago whatever its age - while the backfill writes exactly such months (`--part older`) and `settle` touched no cache.
+* Invariants broken: **a measurement of what exists is read from where it exists** (filled days belong to the coin and the day, not to a plan id or a run name), and **a writer that changes a store invalidates every cached copy of what it changed**.
+* Guard: `tests/test_v3_coverage.py::test_filled_days_belong_to_the_coin_and_the_day_so_a_rebuilt_plan_never_calls_them_missing`, `::test_settling_a_press_takes_this_pcs_cached_months_it_wrote_out_of_the_cache`, `::test_the_rule_for_a_held_day_is_the_costs_jobs_own`.
+
+**SAW** - NEVER HAPPENED YET: found by the final whole-branch review of Backtest v3 Part 2b (`Oct 29, 2026`, `final-review.txt`, Important 4 and 5); this PC already held `BTC_USDT-202608.npz` (written Oct 21, 2026) and `XAU_USDT-202608.npz` (Oct 23, 2026) in its cost cache, and XAU_USDT is the parity coin.
+
+**TIMELINE** (NEVER HAPPENED YET: hypothetical; the days are the tests' and the plan's)
+
+1. Runbook Step 6: `backfill pilot --part unseen` fills the unseen gap (Jul 30 - Aug 15, 2026); `settle` recorded the 17 days under the pilot plan's id.
+2. Step 8: the plan is rebuilt a day later - a new id. Before the fix `report universe` said "the cost store holds no reading for" all 17 days and every older day pressed, and `backfill` pressed them again (60 machines, the daily costs job held off meanwhile); "press the newest day(s) it adds" could not be done at all until a run of the new plan was dispatched. After the fix the report reads the store per coin-day: on the test's rebuilt plan "1 of 11 days ... 3 coin-days missing", and `backfill --plan` presses only that day, before any run exists.
+3. The backfill writes August 2026 for XAU_USDT. Before the fix this PC kept `XAU_USDT-202608.npz` from Oct 23, 2026 for ever (August ended more than 35 days ago), so a parity re-run of XAU_USDT here used the old readings while GitHub's machines used the new ones. After the fix `settle` removes every cached coin-month of the press (`stale_removed`), and the next read fetches the filled month (the test's month reads `t` = 0 before and the filled minute after).
+
+**ROOT CAUSE** - The filled days were remembered as a fact about a plan instead of read from the store they describe, and the PC's "a finished month never changes" cache rule had no exception for the one job that changes finished months.
+
+**WHY IT WAS NOT CAUGHT** - Every coverage test used one plan and one run name for its whole life, so "the plan's days" and "the days the store holds" could not differ; and no test read a month through `cost_store`'s cache after a press - the backfill's tests stopped at `settle`'s return value, the cache's tests never saw a backfill.
+
+**COST** - none: NEVER HAPPENED YET. No backfill has been pressed.
+
+**FIX** - this commit: `v3_coverage.store_days` reads every coin-month of the window from the cost store (`cost_store.load_month`, strict; an unreadable month is named and its days counted missing) and `held_days_of` holds a day when all 24 hours were read when practice looks (the costs job's own `held_days`); `gaps` per coin and day, after each coin's listing; `report` and `backfill` take a run's plan copy or a plan file (`--plan`), `backfill` presses only the coins that lack the days and never asks again for a coin-day a green press asked for (`pressed_days`); `settle` calls `stale_months`. With it, the review's minors on the same path: the headline counts only FILLED trades' legs and names an order placed with no book as "settled without its own minute's book", a range where some never filled (M2); the backfill holds off an unreadable daily-costs record at most 12 hours, as the daily side does (M7); a press past 12 hours still holds while GitHub says its run is queued or in progress, at most 36 hours (M8); the daily `pressing` flag is said again before each account with the runs so far, `PRESSING_S` 1,800 s from the newest step (M9); the stale docstrings (M1); the runbook's `--part unseen` / `--part older` (M5).
+
+**GUARD** - the three tests above plus `::test_a_coin_already_holding_the_days_is_not_in_the_press`, `::test_a_day_is_held_only_when_all_24_hours_were_read_when_practice_looks`, `::test_an_unreadable_month_is_named_and_its_days_count_as_missing`, `::test_an_unreadable_daily_record_holds_the_backfill_but_only_for_twelve_hours`, `::test_a_press_still_queued_past_twelve_hours_keeps_holding_until_github_settles_it`, `::test_a_slow_daily_dispatch_keeps_saying_it_is_pressing_before_each_account`, `::test_the_share_of_trades_that_paid_a_typical_cost_is_counted_older_and_unseen_apart`, `::test_the_report_says_coverage_first_with_every_number_from_the_records`; every one red on 40ab4feba8a2.
+
+---
+
 ## RCA-2026-10-29-A — Backtest v3's run names could be used for a second round, which would have judged one round's coins as the other's, and collecting a run again after a redo would have deleted what the redo measured: NEVER HAPPENED YET
 
 **CEO**

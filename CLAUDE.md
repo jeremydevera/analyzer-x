@@ -2654,6 +2654,135 @@ Guards: `tests/test_v3_universe.py`, `tests/test_v3_families.py`,
 `tests/test_v3_research.py`, `tests/test_backtest_v3_tab_families.py`, and
 the forced exit and `contract_of` in `tests/test_v3_engine.py`.
 
+## Backtest v3 Part 2b — on GitHub, judged, kept and shown (MANDATORY — Oct 28, 2026)
+
+The operator: *"go"* (Oct 27, 2026), then *"go"* again (Oct 28, 2026) to the
+five recommendations at the top of the plan: fill the 17 unseen days of order
+books before the full run and the older days after it, the plan's 20 named
+pilot coins first, the stricter random bar kept, any max TP % hides a trailing
+stop, and "last N days" and the risk box each said to be a re-add and a scaling
+of the measured trades. Plan:
+`docs/superpowers/plans/2026-10-27-backtest-v3-part2b-github.md`. Every defect
+the task reviews found is `docs/RCA.md` RCA-2026-10-28-A..F (all NEVER HAPPENED
+YET: found before the first real run).
+
+* **One plan per run, and it travels by id.** `python -m
+  tradingagents.v3_cloud dispatch <name>` is refused unless the plan file is
+  byte for byte the one on origin/main (`plan_on_main`), and sends its id as
+  v3.yml's `plan_id`. The machine (`.github/scripts/v3_shard.py`, `refusal`)
+  measures nothing - exit 2, the reason in its report - when its checkout's
+  plan is another, no plan was named, the run is not on Gate, the plan cannot
+  be read, or its coin list is EMPTY (an empty list means the whole market to
+  `sweep_shard`, and each account would measure every coin: RCA-2026-10-28-B).
+  The plan as dispatched is kept (`cloud/<name>.plan.json`) and the run is
+  judged under it, never under a rebuilt `research/v3/plan.json`; a `retry`
+  runs under that copy and is refused once it is no longer the plan on main.
+* **Every account, every machine** (`split_coins` over
+  `forecast_v2_daily.fleets_now()`, a fork synced with `sync_fleet` first;
+  v3.yml has 4 inputs, GitHub allows 10). The state is saved BEFORE the first
+  dispatch; an account that refuses or cannot be brought up to this code is
+  named and the others still run, and `redo <name> <owner/repo>` starts that
+  one share alone (a run GitHub listed late is adopted, never started twice).
+  A name is never dispatched again while any of its runs is going or any
+  share of it is uncollected - one collected in part counts as going; a
+  collected name used again has its old summary renamed aside
+  (`<name>-collected.<stamp>.json`), never deleted (RCA-2026-10-28-C). Never
+  between 12:45am and 5:00am without `--force`.
+* **The machine is Part 2a's measurement, nothing else**: `measure_coin` per
+  claimed coin at `v3_rules.RESEARCH_RISK_USD` ($5) and `v3_random.RUNS`, one
+  record per coin stamped with its machine, written the moment the coin is
+  done; `sweep_shard` imported with `RES` popped. A coin that raises has its
+  file deleted and is redone alone after the others (`COIN_RETRIES`), and is
+  named if it never recovers. A coin CLAIMED and not finished (the machine
+  killed at GitHub's limit, or past the retry cutoff) stays in the report from
+  the moment it is claimed, as `unfinished`, never silently absent
+  (RCA-2026-10-28-B).
+* **Collect lands only this run's records and names every other coin ONCE**
+  (`v3_cloud.land`, folder `stores.V3.home/research/<name>`, on G:). A record
+  lands only if its plan build, plan end, risk, run count and RECORD VERSION
+  are the run's (`v3_research.differences`) and its coin is on the run's board;
+  a coin measured twice keeps the first; a folder holding another plan's
+  records is refused whole; a coin that failed, went unmeasured or was left out
+  loses its old record first. Each coin not landed is in exactly one bucket:
+  not reached, failed (with its error), unmeasured (claimed by a machine that
+  stopped), left out by the machine (with why), or refused at landing (with
+  what differs). An account whose download fails is NAMED
+  (`downloads_failed`) and every other account is still landed - `collect`
+  again for it. `retry` redoes only the failed, unmeasured and unreached coins
+  as `<name>-redoN` into the SAME folder; it refuses while a download failed
+  (unless `--abandon`, which accepts that a coin may be measured twice) and while the
+  previous redo is uncollected (RCA-2026-10-28-C).
+* **The verdict store** (`python -m tradingagents.v3_verdicts publish
+  <name>`): Part 2a's own judge, pooled, over a run AND every `-redoN` of it as
+  ONE family (a redo's own name is refused, pointing at the run's), under the
+  plan copy. `stores.V3.home/verdicts.json` (store version 2) is what the tab
+  shows, swapped whole; a kept copy per publish in `verdicts/` is never written
+  over and nothing deletes one. Every verdict carries its chosen setting's
+  stop and target sizes (`levels`). Every coin of the plan that was not judged
+  is named ONCE, in the one bucket that is true of what is LANDED (`BUCKETS`:
+  failed, unmeasured, left out, not reached, refused record, download failed,
+  share refused, another plan's record, no timeframe measured, never sent) - a
+  coin a redo landed is never "failed". "Pilot ... not the proof" heads the
+  tab and the page only for a run SENT fewer coins than its plan holds; a full
+  run with gaps says how many coins were not judged (RCA-2026-10-28-D).
+* **Each trade row keeps its opening stop and target** (record version 2,
+  `v3_measure.VERSION`), and the older walk pays the older days' own flat gap
+  once they have readings (`older_gap`). Every reader checks the version -
+  landing and judging (`differences`) and `v3_proof` refuse a record of
+  another version, naming it; Part 2a's judge reads the first six fields only
+  (RCA-2026-10-28-A).
+* **The results page** (`python -m tradingagents.v3_results_page <name>`,
+  `stores.V3.home/pages/<name>.html`): one row per judged group, id first,
+  every figure worked out IN THE PAGE from the group's pooled unseen trades.
+  **It refuses to build when a row disagrees with its verdict** - a run folder
+  whose trades or profit are not the ones the verdicts were judged on, a coin
+  landed again under another plan or risk, or another store version - never a
+  PROFIT beside a PASSED it does not belong to (RCA-2026-10-28-E). The risk box
+  rescales every dollar (scaled from the $5 measured, said); "last N days"
+  re-adds each row from the trades that CLOSED in the window (said: no minutes
+  ride in a page), starts where the data starts when N is longer than the data
+  and divides by the days covered, and removes the month columns outside the
+  window; **max TP % and max SL % are ceilings on every trade's OWN target and
+  stop** (the row prints the tightest to the widest, the box cuts on the
+  widest; a trailing stop has no target and leaves any max TP %, said); a row
+  with no trade prints blanks, never passes a dip or green box, and sorts last
+  either way; find by ID opens that row's trade log once per new match; the log
+  is paged and prints the TOTAL PROFIT of every trade.
+* **COVERAGE FIRST before the universe** (`python -m
+  tradingagents.v3_coverage report <name>`): the share of entries AND exits
+  that paid a typical cost instead of their minute's book, with its
+  denominator named ("N of M entries and exits"), older and unseen days apart;
+  for each of those two ranges separately, the plan's days the cost store holds
+  no reading for, in coin-days (a day before a coin's listing is not missing)
+  and the time to fill them at the costs job's own measured speed - an unknown
+  speed said as unknown. `backfill <name> [--part unseen|older]` presses the
+  existing costs.yml for the plan's coins, newest days first, dealt between
+  every account, one press at a time (`settle` marks its days done only when
+  every share finished green); the operator's order is `--part unseen` BEFORE
+  the full run and `--part older` AFTER it.
+* **The backfill and the daily costs job EXCLUDE EACH OTHER, both ways**
+  (RCA-2026-10-28-F): two runs adding to one coin-month file keep only one
+  run's days. Both read ONE record (`backfill.json` and the daily job's
+  `flight` / `pressing` in `costs_daily.json`), judged by the runs' own status
+  (never a pid), a stale entry (`STALE_S`, 12 hours) expired, `pressing` said
+  before a dispatch and looked at again after. A backfill refuses while the
+  daily job has a run in the air; the daily press waits only while a backfill
+  in the air writes a month it would also write. An UNREADABLE backfill record
+  holds the daily press at most 12 hours - judged by the earlier of the file's
+  stamp and when it was first seen unreadable, so a clock set ahead cannot
+  stretch it - then the press runs and says once that it ignored the record.
+  Every hold is written into `~/.tradingagents/costs_daily.json` (`held`,
+  `last_error`) and said as one `[costs-daily]` line an hour in `.run/api.log`
+  (the API's own log, which the error filer reads); a held press asks GitHub at
+  most every 5 minutes. The daily job runs in the site's supervisor, so this
+  goes live only after the API restarts.
+
+Guards: `tests/test_v3_shard.py`, `tests/test_v3_cloud.py`,
+`tests/test_v3_verdicts.py`, `tests/test_v3_results_page.py`,
+`tests/test_v3_coverage.py`, and the Part 2b tests in `tests/test_v3_engine.py`,
+`tests/test_v3_measure.py`, `tests/test_v3_proof.py` and
+`tests/test_v3_research.py`.
+
 ## The daytime rule (MANDATORY — Oct 07, 2026; trial on #4FC03172)
 
 The operator: *"so what do you think is the correct, because its seems like i

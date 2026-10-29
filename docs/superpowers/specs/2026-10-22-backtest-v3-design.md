@@ -1,6 +1,6 @@
 # Backtest v3 — research-backed ideas, proven against random, then practice
 
-**Date:** Oct 22, 2026 · **Status:** approved Oct 22, 2026 ("ok go ahead"); Part 1, the engine, is built (plan docs/superpowers/plans/2026-10-22-backtest-v3-part1-engine.md); Part 2a, the families and the proof test on this PC, is built (plan docs/superpowers/plans/2026-10-23-backtest-v3-part2a-families-and-proof.md)
+**Date:** Oct 22, 2026 · **Status:** approved Oct 22, 2026 ("ok go ahead"); Part 1, the engine, is built (plan docs/superpowers/plans/2026-10-22-backtest-v3-part1-engine.md); Part 2a, the families and the proof test on this PC, is built (plan docs/superpowers/plans/2026-10-23-backtest-v3-part2a-families-and-proof.md); Part 2b, the GitHub run, the verdict store, the tab's list, the results page and COVERAGE FIRST, is built (plan docs/superpowers/plans/2026-10-27-backtest-v3-part2b-github.md)
 
 ## The operator's words
 

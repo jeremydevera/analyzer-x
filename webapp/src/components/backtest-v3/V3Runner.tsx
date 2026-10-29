@@ -35,7 +35,7 @@ type Options = {
   families: Family[];
   plan: { id: string; start_ms: number; end_ms: number; last_month: string } | null;
   plan_error: string;
-  tested: { state: string; rows: number | null; words: string; check: Check };
+  tested: { state: string; rows: number | null; words: string; store: Omit<NonNullable<Check>, "state"> | null; check: Check };
 };
 type Family = {
   name: string; words: string; tfs: string[]; long: string[]; short: string[];
@@ -555,6 +555,7 @@ export default function V3Runner() {
         <div className={card}>
           <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Tested ideas</h3>
           <p className="mt-1 max-w-3xl text-theme-xs text-gray-500 dark:text-gray-400">{opts.tested.words}</p>
+          {opts.tested.store && <V3Check check={{ state: "ok", ...opts.tested.store }} kind="stored" />}
           <V3Check check={opts.tested.check} />
         </div>
       )}

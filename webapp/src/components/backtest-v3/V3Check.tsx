@@ -18,12 +18,22 @@ export type CheckRow = {
   losses: number | null; win_rate: number | null; profit: number | null;
   worst_run_usd: number | null; worst_run_trades: number | null;
   random_median_trades: number | null; real_trades: number | null; why: string; blank: string;
+  // Part 2b: the kit's remaining columns (v3_page.check_row)
+  per_day?: number | null; target?: string | null; stop?: string | null;
+  target_pct?: string | null; stop_pct?: string | null; lev?: string | null;
 };
 export type Check = {
   state: string; words?: string; coins?: string[]; risk_usd?: number | null; runs?: number | null;
   judged_at?: number | null; plan_end?: number | null; plan_id?: string | null;
   lev?: [number, number] | null; notional?: [number, number] | null; verdicts?: CheckRow[] | number;
+  // the verdict store's (v3_page.store_view): combinations tried, the plan's coins, the run's name,
+  // and how many of the plan's coins were not judged, by why
+  tried?: number | null; plan_coins?: number | null; name?: string | null;
+  not_judged?: Record<string, number>;
 } | null;
+
+/** "check": the 3-coin check on this PC; "stored": the verdict store a GitHub run published. */
+export type CheckKind = "check" | "stored";
 
 const PER_PAGE = 10;           // Auto Trade's own page size
 const th = "px-3 py-2 text-left text-theme-xs font-medium text-gray-500 dark:text-gray-400";
@@ -38,11 +48,17 @@ function coinWords(coins: string[]): string {
   if (names.length <= 1) return names.join("");
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
+// why a coin of the plan was not judged, in words (v3_verdicts' `not_judged` keys)
+const NOT_JUDGED: Record<string, string> = {
+  not_reached: "not reached", failed: "failed", left_out: "left out by the machine",
+  refused_records: "refused at landing", machines_refused: "machines refused",
+  other_records: "measured under another plan or risk", not_dispatched: "not sent (a pilot)",
+};
 function money(v: number): string {
   return `${v >= 0 ? "+" : "−"}$${Math.abs(v).toFixed(2)}`;
 }
 
-export default function V3Check({ check }: { check: Check }) {
+export default function V3Check({ check, kind = "check" }: { check: Check; kind?: CheckKind }) {
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<{ key: Key; dir: 1 | -1 } | null>(null);
   const rows = useMemo(() => (Array.isArray(check?.verdicts) ? check.verdicts : []), [check]);
@@ -61,10 +77,17 @@ export default function V3Check({ check }: { check: Check }) {
   }, [rows, sort]);
   if (!check) return null;
   const coins = check.coins ?? [];
-  const heading = check.state === "ok"
-    ? `Check only — ${coins.length} coin${coins.length === 1 ? "" : "s"}, not the proof`
-    : "Check only — not the proof";
-  if (check.state !== "ok") {
+  const planCoins = check.plan_coins ?? 0;
+  // every word of the heading from the file: a store judged on fewer coins than its plan holds is a
+  // pilot, never the proof
+  const heading = kind === "stored"
+    ? (coins.length < planCoins
+      ? `Pilot — ${coins.length} of the plan's ${planCoins} coins, not the proof`
+      : `Every idea's verdict — ${coins.length} coins`)
+    : check.state === "ok"
+      ? `Check only — ${coins.length} coin${coins.length === 1 ? "" : "s"}, not the proof`
+      : "Check only — not the proof";
+  if (kind === "check" && check.state !== "ok") {
     return (
       <div className="mt-4">
         <h4 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">{heading}</h4>
@@ -94,8 +117,12 @@ export default function V3Check({ check }: { check: Check }) {
     <div className="mt-4">
       <h4 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">{heading}</h4>
       <p className="mt-1 max-w-3xl text-theme-xs text-gray-500 dark:text-gray-400">
-        {coinWords(coins)} judged {fmtWhen(check.judged_at)} at {risk} a trade, {check.runs ?? "an unrecorded number of"} random
-        runs a combination; the proof needs every coin (step 2b on GitHub). {passed} of {rows.length} verdicts passed.
+        {kind === "stored" ? `${coins.length} coins` : coinWords(coins)} judged {fmtWhen(check.judged_at)} at {risk} a
+        trade, {check.runs ?? "an unrecorded number of"} random runs a combination
+        {kind === "stored" ? `, ${check.tried ?? "an unrecorded number of"} combinations tried` : "; the proof needs every coin (step 2b on GitHub)"}.
+        {" "}{passed} of {rows.length} verdicts passed.
+        {kind === "stored" && check.not_judged && Object.keys(check.not_judged).length > 0 &&
+          ` Not judged: ${Object.entries(check.not_judged).map(([k, n]) => `${n} ${NOT_JUDGED[k] ?? k}`).join(", ")}.`}
       </p>
       <p className="mt-1 max-w-3xl text-theme-xs text-gray-500 dark:text-gray-400">
         Universe plan {check.plan_id ?? "not recorded"}, ending {fmtWhen(check.plan_end != null ? check.plan_end / 1000 : null)}
@@ -107,8 +134,10 @@ export default function V3Check({ check }: { check: Check }) {
           <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
             <TableRow>
               {head("id", "ID")}{head("family", "Idea")}{head("tf", "Timeframe")}{head("filter", "Filter")}
-              {head("setting", "Setting chosen")}{head("verdict", "Verdict")}{head("trades", "Unseen trades")}
-              {head("wins", "Won / lost")}{head("win_rate", "Win rate")}{head("profit", "PROFIT (total $)")}
+              {head("setting", "Setting chosen")}{head("verdict", "Verdict")}{head("profit", "PROFIT (total $)")}
+              {head("target", "Target (TP rule)")}{head("target_pct", "Target size")}{head("stop", "Stop (SL rule)")}
+              {head("stop_pct", "Stop size")}{head("lev", "Leverage")}{head("trades", "Unseen trades")}{head("per_day", "Trades a day")}
+              {head("wins", "Won / lost")}{head("win_rate", "Win rate")}
               {head("worst_run_usd", "Worst losing run")}{head("random_median_trades", "Random runs' median trades vs the real run's")}
               {head("why", "Why")}
             </TableRow>
@@ -122,10 +151,12 @@ export default function V3Check({ check }: { check: Check }) {
                 <TableCell className={td}>{r.filter}</TableCell>
                 {cell(r, r.setting)}
                 <TableCell className={`${td} font-semibold ${r.passed ? "text-success-600 dark:text-success-400" : "text-error-600 dark:text-error-400"}`}>{r.verdict}</TableCell>
-                {cell(r, r.trades)}
+                {cell(r, r.profit != null ? money(r.profit) : null)}
+                {cell(r, r.target ?? null)}{cell(r, r.target_pct ?? null)}{cell(r, r.stop ?? null)}
+                {cell(r, r.stop_pct ?? null)}{cell(r, r.lev ?? null)}
+                {cell(r, r.trades)}{cell(r, r.per_day ?? null)}
                 {cell(r, r.wins != null && r.losses != null ? `${r.wins} / ${r.losses}` : null)}
                 {cell(r, r.win_rate != null ? `${(r.win_rate * 100).toFixed(1)}%` : null)}
-                {cell(r, r.profit != null ? money(r.profit) : null)}
                 {cell(r, r.worst_run_usd != null && r.worst_run_trades != null
                   ? (r.worst_run_trades ? `${money(r.worst_run_usd)} over ${r.worst_run_trades} trade${r.worst_run_trades === 1 ? "" : "s"}` : "no losses")
                   : null)}
@@ -136,7 +167,7 @@ export default function V3Check({ check }: { check: Check }) {
           </TableBody>
         </Table>
       </div>
-      <PageButtons cur={page} pages={pages} goto={setPage} what="Check verdicts" />
+      <PageButtons cur={page} pages={pages} goto={setPage} what={kind === "stored" ? "Verdicts" : "Check verdicts"} />
     </div>
   );
 }

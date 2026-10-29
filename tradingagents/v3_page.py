@@ -32,6 +32,7 @@ from __future__ import annotations
 import bisect
 import time
 from decimal import ROUND_HALF_UP, Decimal
+from pathlib import Path
 
 DAYS = (30, 60, 90, 120, 180, 365)
 DEFAULT_DAYS = 30           # operator, Sep 10, 2026: "it should always default to past 30 days"
@@ -83,23 +84,69 @@ def worst_run(pnls: list) -> tuple[float, int]:
     return cents(worst) if worst_n else 0.0, worst_n
 
 
-def tested(rows_db=None, check_file=None) -> dict:
-    """What the tab's tested-ideas section can say today. Part 2b writes the
-    v3 store; until it exists nothing has been tested and the section says so.
-    Beside it, `check`: the 3-coin check `v3_research` judged on this PC
-    (`check()`), labelled a check on the page, never the proof."""
-    from tradingagents import stores
+def tested(store_file=None, check_file=None) -> dict:
+    """What the tab's tested-ideas section can say today: the verdict store
+    `python -m tradingagents.v3_verdicts publish` writes (Part 2b), as
+    `store` - every verdict, its provenance and how many coins it did NOT
+    judge, by why - or, until a run is published, that nothing has been
+    tested. Beside it, `check`: the 3-coin check `v3_research` judged on this
+    PC (`check()`), labelled a check on the page, never the proof."""
+    import json
 
-    path = stores.V3.rows_db if rows_db is None else rows_db
+    from tradingagents import v3_verdicts as vv
+
+    path = vv.store_path() if store_file is None else Path(store_file)
     if not path.exists():
-        out = {"state": "not_run", "rows": 0,
+        out = {"state": "not_run", "rows": 0, "store": None,
                "words": "The test of every idea on every coin (step 2 of the Backtest v3 plan) "
                         "has not run yet, so no idea has been tested against random entries. "
                         "This section fills when it does."}
-    else:
-        out = {"state": "stored", "rows": None,
-               "words": "The v3 store holds tested ideas; listing them here is step 4 of the plan."}
-    return {**out, "check": check(check_file)}
+        return {**out, "check": check(check_file)}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        out = {"state": "unreadable", "rows": 0, "store": None,
+               "words": f"The verdict store {path} could not be read ({type(exc).__name__}: "
+                        f"{exc})"}
+        return {**out, "check": check(check_file)}
+    view = store_view(data)
+    return {"state": "stored", "rows": len(view["verdicts"]), "store": view,
+            "words": stored_words(view), "check": check(check_file)}
+
+
+def stored_words(view: dict) -> str:
+    """The sentence above the stored verdicts, every number from the store: how
+    many passed, on how many of the plan's coins, judged when - and, when fewer
+    coins were judged than the plan holds, that it is not the proof."""
+    from tradingagents.positions_view import fmt_when
+
+    n, passed = len(view["verdicts"]), sum(1 for r in view["verdicts"] if r["passed"])
+    coins, plan_coins = len(view["coins"]), view.get("plan_coins") or 0
+    head = (f"{passed} of {n} judged ideas passed against random entries, judged "
+            f"{fmt_when(view['judged_at'])} on {coins} of the plan's {plan_coins} coins")
+    if coins < plan_coins:
+        return head + " - a pilot of the machinery, not the proof: the proof pools every coin."
+    return head + "."
+
+
+def store_view(data: dict) -> dict:
+    """A verdicts file - the 3-coin check's or the verdict store - as the tab
+    shows it: {"coins", "risk_usd", "runs", "judged_at" (seconds), "plan_end"
+    (ms), "plan_id", "lev", "notional", "tried", "plan_coins", "name",
+    "not_judged" ({why: how many coins}), "verdicts": one row per verdict,
+    every column filled or saying why}."""
+    vs = data.get("verdicts") or []
+    lev = [x for v in vs for x in (v.get("lev") or [])]
+    notional = [x for v in vs for x in (v.get("notional") or [])]
+    nj = data.get("not_judged") or {}
+    return {"coins": list(data.get("coins") or []), "risk_usd": data.get("risk_usd"),
+            "runs": data.get("runs"), "judged_at": data.get("judged_at"),
+            "plan_end": data.get("plan_end"), "plan_id": data.get("plan_id"),
+            "lev": [min(lev), max(lev)] if lev else None,
+            "notional": [min(notional), max(notional)] if notional else None,
+            "tried": data.get("tried"), "plan_coins": data.get("plan_coins"),
+            "name": data.get("name"), "not_judged": {k: len(x) for k, x in nj.items() if x},
+            "verdicts": [check_row(v) for v in vs]}
 
 
 CHECK_OLD = ("This check's verdicts were made before its details were kept (which plan, risk and "
@@ -108,12 +155,10 @@ CHECK_OLD = ("This check's verdicts were made before its details were kept (whic
 
 def check(path=None) -> dict:
     """The check's verdicts file (`v3_research` writes it beside the coins it
-    measured) as the tab shows it: {"state": "ok", "coins", "risk_usd",
-    "runs", "judged_at" (seconds), "plan_end" (ms), "plan_id", "lev",
-    "notional", "verdicts": one row per verdict, every column filled or saying
-    why}. A file written before its provenance was kept (a bare list) is
-    "old" and says to judge again; no file is "none"; a file that cannot be
-    read is "unreadable", naming why."""
+    measured) as the tab shows it: {"state": "ok", **store_view(file)}. A file
+    written before its provenance was kept (a bare list) is "old" and says to
+    judge again; no file is "none"; a file that cannot be read is
+    "unreadable", naming why."""
     import json
 
     from tradingagents import v3_research as vrs
@@ -130,21 +175,39 @@ def check(path=None) -> dict:
                                                 f"({type(exc).__name__}: {exc})"}
     if isinstance(data, list):
         return {"state": "old", "words": CHECK_OLD, "verdicts": len(data)}
-    vs = data.get("verdicts") or []
-    lev = [x for v in vs for x in (v.get("lev") or [])]
-    notional = [x for v in vs for x in (v.get("notional") or [])]
-    return {"state": "ok", "coins": list(data.get("coins") or []),
-            "risk_usd": data.get("risk_usd"), "runs": data.get("runs"),
-            "judged_at": data.get("judged_at"), "plan_end": data.get("plan_end"),
-            "plan_id": data.get("plan_id"),
-            "lev": [min(lev), max(lev)] if lev else None,
-            "notional": [min(notional), max(notional)] if notional else None,
-            "verdicts": [check_row(v) for v in vs]}
+    return {"state": "ok", **store_view(data)}
+
+
+def _pct_range(xs) -> str | None:
+    """[least, median, most] fractions -> "0.70% (0.41%-1.92%)", or None."""
+    if not xs:
+        return None
+    lo, mid, hi = (100 * float(x) for x in xs)
+    return f"{mid:.2f}% ({lo:.2f}%-{hi:.2f}%)"
+
+
+def level_words(lv: dict, which: str) -> str:
+    """A verdict's stop or target sizes in words: "0.70% (0.41%-1.92%)" (the
+    median, then the least and the most), "none: a trailing stop has no
+    target", or "not recorded" for a verdict judged from records whose trade
+    rows did not keep them (Part 2a's)."""
+    if not lv.get("trades"):
+        return "not recorded"
+    got = _pct_range(lv.get(which))
+    if got is None:
+        return "none: a trailing stop has no target" if which == "target" else "not recorded"
+    return got
 
 
 def check_row(v: dict) -> dict:
-    """One verdict as the check's table prints it. A number the verdict does
-    not have is None with `blank` saying why, so no cell is ever empty."""
+    """One verdict as the tab's tables print it - the kit's columns: id,
+    profit, the target and stop rules (and, from the store's `levels`, their
+    sizes), leverage, wins and losses, the worst losing run, trades and trades
+    a day. A number the verdict does not have is None with `blank` saying why,
+    so no cell is ever empty."""
+    from tradingagents import v3_research as vrs
+    from tradingagents.v3_measure import UNSEEN_DAYS
+
     chose = v.get("failed") == "choose"
     s = v.get("unseen") or {}
     rr = v.get("random_runs") or {}
@@ -156,6 +219,11 @@ def check_row(v: dict) -> dict:
         blank = ""
     trades = None if chose else int(s.get("trades") or 0)
     has = bool(trades)
+    target = stop = None
+    if v.get("setting"):
+        target, stop = vrs.exit_words(v["family"], v["setting"], v["tf"])
+    lv = v.get("levels") or {}
+    lev = v.get("lev") if has else None
     return {"id": v["id"], "family": v["family"], "tf": v["tf"], "filter": v["filter"],
             "setting": v.get("setting"), "passed": bool(v.get("passed")),
             "failed": v.get("failed") or "",
@@ -164,8 +232,13 @@ def check_row(v: dict) -> dict:
             "losses": s.get("losses") if has else None,
             "win_rate": s.get("win_rate") if has else None,
             "profit": cents(s["profit"]) if has and s.get("profit") is not None else None,
+            "per_day": round(trades / UNSEEN_DAYS, 2) if has else None,
             "worst_run_usd": cents(s.get("worst_run_usd") or 0.0) if has else None,
             "worst_run_trades": int(s.get("worst_run_trades") or 0) if has else None,
+            "target": target, "stop": stop,
+            "target_pct": level_words(lv, "target") if has else None,
+            "stop_pct": level_words(lv, "stop") if has else None,
+            "lev": f"{lev[0]}x-{lev[1]}x" if lev else None,
             "random_median_trades": None if chose else rr.get("median_trades"),
             "real_trades": None if chose else rr.get("real_trades"),
             "why": (v.get("why") or "") if chose else f"chose {v.get('setting')} on the older days",

@@ -281,7 +281,8 @@ def _held_by_backfill(days: list[str], now: float, st: dict) -> str:
         hours = v3_coverage.STALE_S // 3600
         # a stamp in the FUTURE (a clock set ahead, or moved back) would stretch the bound by the
         # skew, today and again once the clock passes it: the earlier of the file's stamp and
-        # when it was first seen unreadable decides, so no path holds past the bound
+        # when it was first seen unreadable decides: at most 12 hours of this PC's
+        # clock (a clock stepped BACK during a hold adds that step; a deleted state file restarts it once)
         stamp = first if mtime is None else min(mtime, first)
         if now - stamp > v3_coverage.STALE_S:
             msg = (f"the v3 backfill record could not be read ({exc}) for more than {hours} "

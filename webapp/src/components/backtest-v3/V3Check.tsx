@@ -30,6 +30,11 @@ export type Check = {
   // and how many of the plan's coins were not judged, by why
   tried?: number | null; plan_coins?: number | null; name?: string | null;
   not_judged?: Record<string, number>;
+  // every coin of the plan not judged, one line each ("COIN: why"), by bucket; the accounts that
+  // failed (a download, a refused share, machines) and how many coins the run was sent
+  not_judged_coins?: Record<string, string[]>;
+  accounts?: Record<string, string[]>;
+  dispatched?: number | null;
 } | null;
 
 /** "check": the 3-coin check on this PC; "stored": the verdict store a GitHub run published. */
@@ -50,9 +55,15 @@ function coinWords(coins: string[]): string {
 }
 // why a coin of the plan was not judged, in words (v3_verdicts' `not_judged` keys)
 const NOT_JUDGED: Record<string, string> = {
-  not_reached: "not reached", failed: "failed", left_out: "left out by the machine",
-  refused_records: "refused at landing", machines_refused: "machines refused",
-  other_records: "measured under another plan or risk", not_dispatched: "not sent (a pilot)",
+  not_reached: "not reached", failed: "failed", unmeasured: "claimed by a machine and not finished",
+  left_out: "left out by the machine", refused_records: "record refused at landing",
+  downloads_failed: "on an account whose download failed", shares_refused: "on an account that refused its share",
+  other_records: "measured under another plan or risk", no_walk: "no timeframe measured",
+  not_dispatched: "not sent (a pilot)",
+};
+const ACCOUNTS: Record<string, string> = {
+  downloads_failed: "Download failed", shares_refused: "Share refused", machines_refused: "Machines refused",
+  unreadable_records: "Unreadable record",
 };
 function money(v: number): string {
   return `${v >= 0 ? "+" : "−"}$${Math.abs(v).toFixed(2)}`;
@@ -80,10 +91,15 @@ export default function V3Check({ check, kind = "check" }: { check: Check; kind?
   const planCoins = check.plan_coins ?? 0;
   // every word of the heading from the file: a store judged on fewer coins than its plan holds is a
   // pilot, never the proof
+  // every word of the heading from the file. A PILOT is a run that was SENT fewer coins than the plan
+  // holds; a full run with gaps says how many coins were not judged, never "pilot"
+  const pilot = check.dispatched != null && check.dispatched < planCoins;
   const heading = kind === "stored"
-    ? (coins.length < planCoins
+    ? (pilot
       ? `Pilot — ${coins.length} of the plan's ${planCoins} coins, not the proof`
-      : `Every idea's verdict — ${coins.length} coins`)
+      : coins.length < planCoins
+        ? `Full run — ${planCoins - coins.length} of ${planCoins} coins not judged`
+        : `Every idea's verdict — ${coins.length} coins`)
     : check.state === "ok"
       ? `Check only — ${coins.length} coin${coins.length === 1 ? "" : "s"}, not the proof`
       : "Check only — not the proof";
@@ -117,13 +133,24 @@ export default function V3Check({ check, kind = "check" }: { check: Check; kind?
     <div className="mt-4">
       <h4 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">{heading}</h4>
       <p className="mt-1 max-w-3xl text-theme-xs text-gray-500 dark:text-gray-400">
-        {kind === "stored" ? `${coins.length} coins` : coinWords(coins)} judged {fmtWhen(check.judged_at)} at {risk} a
+        {kind === "stored" ? `${coins.length} of the plan's ${planCoins} coins judged` : `${coinWords(coins)} judged`} {fmtWhen(check.judged_at)} at {risk} a
         trade, {check.runs ?? "an unrecorded number of"} random runs a combination
         {kind === "stored" ? `, ${check.tried ?? "an unrecorded number of"} combinations tried` : "; the proof needs every coin (step 2b on GitHub)"}.
         {" "}{passed} of {rows.length} verdicts passed.
         {kind === "stored" && check.not_judged && Object.keys(check.not_judged).length > 0 &&
           ` Not judged: ${Object.entries(check.not_judged).map(([k, n]) => `${n} ${NOT_JUDGED[k] ?? k}`).join(", ")}.`}
       </p>
+      {kind === "stored" && check.accounts && Object.entries(check.accounts).map(([k, xs]) => (
+        <p key={k} className="mt-1 max-w-3xl text-theme-xs text-warning-600 dark:text-warning-400">
+          {ACCOUNTS[k] ?? k}: {xs.join("; ")}
+        </p>
+      ))}
+      {kind === "stored" && check.not_judged_coins && Object.entries(check.not_judged_coins).map(([k, xs]) => (
+        <details key={k} className="mt-1 max-w-3xl text-theme-xs text-gray-500 dark:text-gray-400">
+          <summary className="cursor-pointer">{xs.length} {NOT_JUDGED[k] ?? k}</summary>
+          <ul className="ml-4 list-disc">{xs.map((x) => <li key={x}>{x}</li>)}</ul>
+        </details>
+      ))}
       <p className="mt-1 max-w-3xl text-theme-xs text-gray-500 dark:text-gray-400">
         Universe plan {check.plan_id ?? "not recorded"}, ending {fmtWhen(check.plan_end != null ? check.plan_end / 1000 : null)}
         {" "}· {rows.length} judged groups

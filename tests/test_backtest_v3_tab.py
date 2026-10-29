@@ -26,6 +26,16 @@ T0 = 1_790_000_000_000 - (1_790_000_000_000 % H) - N * H
 SIGNALS = set(range(300, 400, 10))            # ten long signals, at bars 300, 310, ... 390
 
 
+@pytest.fixture(autouse=True)
+def _never_the_real_verdict_store(monkeypatch, tmp_path):
+    """The tab's tested-ideas section reads the verdict store: a test of the tab never reads the
+    operator's own."""
+    from tradingagents import v3_verdicts
+
+    monkeypatch.setattr(v3_verdicts, "store_path", lambda: tmp_path / "no-verdicts.json")
+
+
+
 def _bars():
     """Every hour opens and closes at 100. The hour after a signal trades down
     to 99.8 (through the 100.0 waiting buy); the hour after that reaches the

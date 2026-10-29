@@ -124,8 +124,14 @@ def stored_words(view: dict) -> str:
     coins, plan_coins = len(view["coins"]), view.get("plan_coins") or 0
     head = (f"{passed} of {n} judged ideas passed against random entries, judged "
             f"{fmt_when(view['judged_at'])} on {coins} of the plan's {plan_coins} coins")
-    if coins < plan_coins:
+    sent = view.get("dispatched")
+    if sent is not None and sent < plan_coins:
+        # a PILOT is a run that was SENT fewer coins than the plan holds; read from the run's state
         return head + " - a pilot of the machinery, not the proof: the proof pools every coin."
+    if coins < plan_coins:
+        return (f"{passed} of {n} judged ideas passed against random entries, judged "
+                f"{fmt_when(view['judged_at'])} - a full run with {plan_coins - coins} of the "
+                f"plan's {plan_coins} coins not judged (named below), {coins} judged.")
     return head + "."
 
 
@@ -139,13 +145,18 @@ def store_view(data: dict) -> dict:
     lev = [x for v in vs for x in (v.get("lev") or [])]
     notional = [x for v in vs for x in (v.get("notional") or [])]
     nj = data.get("not_judged") or {}
+    accounts = {k: x for k, x in (data.get("accounts") or {}).items() if x}
     return {"coins": list(data.get("coins") or []), "risk_usd": data.get("risk_usd"),
             "runs": data.get("runs"), "judged_at": data.get("judged_at"),
             "plan_end": data.get("plan_end"), "plan_id": data.get("plan_id"),
             "lev": [min(lev), max(lev)] if lev else None,
             "notional": [min(notional), max(notional)] if notional else None,
             "tried": data.get("tried"), "plan_coins": data.get("plan_coins"),
-            "name": data.get("name"), "not_judged": {k: len(x) for k, x in nj.items() if x},
+            "name": data.get("name"), "dispatched": data.get("dispatched"),
+            "family": list(data.get("family") or []),
+            "not_judged": {k: len(x) for k, x in nj.items() if x},
+            "not_judged_coins": {k: list(x) for k, x in nj.items() if x},
+            "accounts": accounts,
             "verdicts": [check_row(v) for v in vs]}
 
 
@@ -246,8 +257,10 @@ def check_row(v: dict) -> dict:
                                else "the random runs' trades were not recorded")}
 
 
-def options(*, fx=None) -> dict:
-    """Everything the tab's boxes offer, from the registries — never typed in."""
+def options(*, fx=None, store_file=None, check_file=None) -> dict:
+    """Everything the tab's boxes offer, from the registries — never typed in.
+    `store_file` / `check_file` are passed to `tested`, so a test never reads the
+    operator's real verdict store."""
     from tradingagents import backtest_report as br, stores, venue
 
     if fx is None:
@@ -265,7 +278,7 @@ def options(*, fx=None) -> dict:
             "thresh_signals": sorted(br.THRESH_SIGNALS), "days": list(DAYS),
             "default_days": DEFAULT_DAYS, "exits": EXITS, "risk": RISK, "defaults": DEFAULTS,
             "families": families(), "plan": plan, "plan_error": plan_error,
-            "tested": tested()}
+            "tested": tested(store_file, check_file)}
 
 
 def _number(raw, field: dict) -> float:

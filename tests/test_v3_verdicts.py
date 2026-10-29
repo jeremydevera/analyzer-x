@@ -100,7 +100,7 @@ def test_every_verdict_is_kept_with_every_coin_it_did_not_judge_named(run):
     vv.publish("pilot", now=1_793_000_000.0)
     vv.publish("pilot", now=1_793_000_100.0)
     kept = sorted(p.name for p in (run.tmp / "v3" / "verdicts").iterdir())
-    assert kept == ["pilot-1793000000.json", "pilot-1793000100.json"], "nothing deletes one"
+    assert kept == ["pilot-1793000000000.json", "pilot-1793000100000.json"], "nothing deletes one"
     data = json.loads((run.tmp / "v3" / "verdicts.json").read_text(encoding="utf-8"))
     nj = data["not_judged"]
     assert nj["failed"] == ["XPT_USDT: ConnectionError: cut"]
@@ -176,3 +176,168 @@ def test_the_tabs_list_prints_the_kits_columns_and_derives_its_heading():
     assert "combinations tried" in src and "check.tried" in src
     runner = (root / "V3Runner.tsx").read_text(encoding="utf-8")
     assert 'kind="stored"' in runner and "opts.tested.store" in runner
+
+
+# ---------------------------------------------------------------- fix round 1 (review of f2eb1bbbb6ba)
+
+def _state(tmp, name, board, *, plan, dealt=None, refused=(), runs=None, label=None):
+    """A run's state beside the plan copy `make_run` wrote (a redo keeps its own state)."""
+    runs = runs or {"a/x": {"run": 21, "coins": len(board), "label": name}}
+    st = {"name": name, "label": label or name, "folder": "pilot", "plan_id": plan["id"],
+          "plan_copy": str(tmp / "cloud" / "pilot.plan.json"), "risk_usd": 5.0,
+          "runs_per_combo": 200, "coins": len(board), "board": list(board), "runs": runs,
+          "refused": list(refused), "dealt": dealt or {}}
+    (tmp / "cloud" / f"{name}.json").write_text(json.dumps(st), encoding="utf-8")
+    return st
+
+
+def _collected(tmp, name, **kw):
+    base = {"name": name, "runs": {"a/x": 21}, "landed": [], "not_reached": [], "failed": [],
+            "left_out": [], "unmeasured": [], "refused_records": [], "machines_refused": [],
+            "shares_refused": [], "downloads_failed": []}
+    base.update(kw)
+    (tmp / "cloud" / f"{name}-collected.json").write_text(json.dumps(base), encoding="utf-8")
+
+
+def _full_run(monkeypatch, tmp_path):
+    """A run dispatched with the WHOLE plan (9 coins, 4 accounts): 2 coins judged, and every other
+    coin in the one bucket that is true."""
+    make_run(monkeypatch, tmp_path)
+    coins = ["XAU_USDT", "XAG_USDT", "XPT_USDT", "EURUSD_USDT", "GBPUSD_USDT", "AAA_USDT",
+             "BBB_USDT", "CCC_USDT", "DDD_USDT"]
+    plan = _plan(coins)
+    vu.save(plan, tmp_path / "cloud" / "pilot.plan.json")
+    folder = vrs.home("pilot")
+    vrs.save_coin(folder, _record("XAU_USDT", plan, _eight(tp._rows([0.30] * 200, per_day=5))))
+    vrs.save_coin(folder, _record("XAG_USDT", plan, _eight(tp._rows([0.30] * 200, per_day=5))))
+    dealt = {"a/x": {"coin_list": "XAU_USDT,XAG_USDT,XPT_USDT,EURUSD_USDT,GBPUSD_USDT"},
+             "b/x": {"coin_list": "AAA_USDT,BBB_USDT"}, "c/x": {"coin_list": "CCC_USDT"},
+             "d/x": {"coin_list": "DDD_USDT"}}
+    _state(tmp_path, "pilot", coins, plan=plan, dealt=dealt,
+           refused=["c/x: HTTP 422 no workflow"])
+    _collected(tmp_path, "pilot", landed=["XAG_USDT", "XAU_USDT"],
+               failed=["XPT_USDT: ConnectionError: cut"],
+               unmeasured=["EURUSD_USDT: claimed and not finished"],
+               left_out=["GBPUSD_USDT: no family's universe"],
+               not_reached=["AAA_USDT", "BBB_USDT", "CCC_USDT", "DDD_USDT"],
+               downloads_failed=["b/x run 22: no artifact matches v3-out-*"],
+               shares_refused=["c/x: HTTP 422 no workflow"],
+               machines_refused=["a/x shards 0-3 (4 machines): plan mismatch"])
+    return SimpleNamespace(plan=plan, tmp=tmp_path, folder=folder)
+
+
+def test_every_coin_the_run_did_not_judge_is_named_once_in_the_bucket_that_is_true(
+        monkeypatch, tmp_path):
+    r = _full_run(monkeypatch, tmp_path)
+    data = json.loads(vv.publish("pilot").read_text(encoding="utf-8"))
+    nj = data["not_judged"]
+    assert nj["failed"] == ["XPT_USDT: ConnectionError: cut"]
+    assert nj["unmeasured"] == ["EURUSD_USDT: claimed and not finished"]
+    assert nj["left_out"] == ["GBPUSD_USDT: no family's universe"]
+    assert [x.split(":")[0] for x in nj["downloads_failed"]] == ["AAA_USDT", "BBB_USDT"]
+    assert "b/x run 22" in nj["downloads_failed"][0]
+    assert [x.split(":")[0] for x in nj["shares_refused"]] == ["CCC_USDT"]
+    assert [x.split(":")[0] for x in nj["not_reached"]] == ["DDD_USDT"]
+    assert nj["not_dispatched"] == [] and nj["other_records"] == []
+    named = [x.split(":")[0] for lines in nj.values() for x in lines]
+    assert len(named) == len(set(named)), "a coin is in ONE bucket"
+    assert sorted(named + data["coins"]) == sorted(r.plan["coins"]), "every coin is accounted for"
+    # the accounts that failed are named too, with why
+    assert data["accounts"]["downloads_failed"] == ["b/x run 22: no artifact matches v3-out-*"]
+    assert data["accounts"]["shares_refused"] == ["c/x: HTTP 422 no workflow"]
+    assert data["accounts"]["machines_refused"] == ["a/x shards 0-3 (4 machines): plan mismatch"]
+    assert data["dispatched"] == 9 and data["plan_coins"] == 9
+
+
+def test_a_run_and_its_redos_are_one_family_and_a_coin_a_redo_landed_is_never_failed(run):
+    plan = run.plan
+    vrs.save_coin(run.folder, _record("XPT_USDT", plan, _eight(tp._rows([0.30] * 200, per_day=5))))
+    _state(run.tmp, "pilot-redo1", ["XPT_USDT"], plan=plan,
+           runs={"b/x": {"run": 31, "coins": 1, "label": "pilot redo 1"}})
+    _collected(run.tmp, "pilot-redo1", runs={"b/x": 31}, landed=["XPT_USDT"])
+    data = json.loads(vv.publish("pilot", now=1_793_000_000.0).read_text(encoding="utf-8"))
+    assert data["family"] == ["pilot", "pilot-redo1"]
+    assert "XPT_USDT" in data["coins"] and data["not_judged"]["failed"] == []
+    assert data["github_runs"] == {"a/x": 11, "b/x": 12, "b/x (pilot-redo1)": 31}
+    with pytest.raises(ValueError, match="publish pilot"):
+        vv.publish("pilot-redo1")
+
+
+def test_a_redo_that_failed_again_is_failed_by_the_newest_word(run):
+    _state(run.tmp, "pilot-redo1", ["XPT_USDT"], plan=run.plan)
+    _collected(run.tmp, "pilot-redo1", failed=["XPT_USDT: Timeout: again"])
+    data = json.loads(vv.publish("pilot").read_text(encoding="utf-8"))
+    assert data["not_judged"]["failed"] == ["XPT_USDT: Timeout: again"]
+
+
+def test_a_redo_not_collected_yet_and_a_run_not_collected_are_refused_by_name(run):
+    _state(run.tmp, "pilot-redo1", ["XPT_USDT"], plan=run.plan)
+    with pytest.raises(ValueError, match="pilot-redo1 is not collected yet"):
+        vv.publish("pilot")
+    (run.tmp / "cloud" / "pilot-redo1.json").unlink()
+    (run.tmp / "cloud" / "pilot-collected.json").unlink()
+    with pytest.raises(ValueError, match="pilot is not collected yet"):
+        vv.publish("pilot")
+
+
+def test_a_missing_plan_copy_is_refused_by_name(run):
+    (run.tmp / "cloud" / "pilot.plan.json").unlink()
+    with pytest.raises(ValueError, match="the plan copy of pilot is missing"):
+        vv.publish("pilot")
+
+
+def test_a_coin_with_no_measured_timeframe_is_not_judged_and_says_why(run):
+    idle = _record("XAG_USDT", run.plan, [])
+    idle.pop("windows")
+    idle["why"] = "too few candles on every timeframe"
+    idle["combos"] = {}
+    vrs.save_coin(run.folder, idle)
+    data = json.loads(vv.publish("pilot").read_text(encoding="utf-8"))
+    assert data["coins"] == ["XAU_USDT"], "only a coin with a measured timeframe is judged"
+    assert data["not_judged"]["no_walk"] == ["XAG_USDT: too few candles on every timeframe"]
+
+
+def test_two_publishes_in_one_second_keep_two_copies(run):
+    vv.publish("pilot", now=1_793_000_000.0)
+    vv.publish("pilot", now=1_793_000_000.0)
+    assert len(list((run.tmp / "v3" / "verdicts").iterdir())) == 2
+
+
+def test_pilot_is_said_only_when_the_run_was_sent_fewer_coins_than_the_plan_holds(
+        monkeypatch, tmp_path):
+    r = _full_run(monkeypatch, tmp_path)
+    t = vpg.tested(vv.publish("pilot"), check_file=r.tmp / "none.json")
+    assert "pilot" not in t["words"].lower()
+    assert "a full run with 7 of the plan's 9 coins not judged" in t["words"]
+    assert t["store"]["dispatched"] == 9
+    assert t["store"]["not_judged"] == {"failed": 1, "unmeasured": 1, "left_out": 1,
+                                        "downloads_failed": 2, "shares_refused": 1,
+                                        "not_reached": 1}
+
+
+def test_a_pilot_publishes_the_coins_it_never_sent_and_says_pilot(run):
+    t = vpg.tested(vv.publish("pilot"), check_file=run.tmp / "none.json")
+    assert t["store"]["dispatched"] == 3 and "a pilot of the machinery" in t["words"]
+
+
+def test_options_passes_the_store_path_so_a_test_never_reads_the_real_store(run):
+    mine = vv.publish("pilot")
+
+    class FX:
+        def trading_symbols(self):
+            return ["BTC_USDT"]
+
+    o = vpg.options(fx=FX(), store_file=mine, check_file=run.tmp / "none.json")
+    assert o["tested"]["state"] == "stored"
+    o = vpg.options(fx=FX(), store_file=run.tmp / "absent.json", check_file=run.tmp / "none.json")
+    assert o["tested"]["state"] == "not_run"
+
+
+def test_the_tab_names_every_bucket_the_provenance_and_the_full_run_heading():
+    root = Path(__file__).resolve().parent.parent / "webapp" / "src" / "components" / "backtest-v3"
+    src = (root / "V3Check.tsx").read_text(encoding="utf-8")
+    for key in ("unmeasured", "downloads_failed", "shares_refused", "no_walk"):
+        assert key in src, key
+    assert "coins not judged" in src and "check.dispatched" in src
+    assert "of the plan's ${planCoins} coins judged" in src       # the provenance line
+    assert "check.accounts" in src and "not_judged_coins" in src

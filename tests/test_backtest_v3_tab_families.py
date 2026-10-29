@@ -40,6 +40,16 @@ DIPS = set(range(320, N - 3, 48))       # a dip every 48 hours, never on the las
 SYM = "TEST_USDT"
 
 
+@pytest.fixture(autouse=True)
+def _never_the_real_verdict_store(monkeypatch, tmp_path):
+    """The tab's tested-ideas section reads the verdict store: a test of the tab never reads the
+    operator's own."""
+    from tradingagents import v3_verdicts
+
+    monkeypatch.setattr(v3_verdicts, "store_path", lambda: tmp_path / "no-verdicts.json")
+
+
+
 def _frame():
     o, h, lo, c = [100.0] * N, [100.5] * N, [99.5] * N, [100.0] * N
     for i in DIPS:

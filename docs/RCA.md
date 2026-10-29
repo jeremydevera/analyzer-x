@@ -172,6 +172,40 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-28-D — Backtest v3's verdict store would have left coins nobody judged unnamed, and would have called a coin a redo measured "failed": NEVER HAPPENED YET
+
+**CEO**
+
+* Nothing wrong was shown yet (it NEVER HAPPENED YET, no run has been published): a run with coins a machine started and never finished, or an account whose results could not be fetched, would have been published as judged on "N coins" with those coins named nowhere, and a coin that failed once and was measured again by a redo would still have been listed as failed.
+* Why: the store copied the five lists of the first collect and nothing else, from one run's name, while a redo is a second run landed into the same folder.
+* What stops it now: a run and every redo of it are one family, and every coin of the plan that was not judged is named once, in the one bucket that is true, worked out from the records actually landed; a run sent fewer coins than the plan holds is called a pilot, a full run with gaps says how many coins are not judged.
+
+**DEV**
+
+* `v3_verdicts.build` (f2eb1bbbb6ba) read `collected.get(...)` for seven keys of ONE run's summary: `unmeasured`, `downloads_failed` and `shares_refused` were absent, so an unmeasured coin (it is in `reached`, so not in `not_reached`; it has no record, so not in `coins`) fell between every list; and the family was never read, so `publish <name>` kept naming a coin its `-redo1` had landed as `failed` while also listing it in `coins`, and `publish <name>-redo1` called every coin the base run sent "not sent (a pilot)". The tab's "Pilot" came from `len(coins) < plan_coins`, so one failed coin of 1,000 said "a pilot of the machinery".
+* Invariant broken: **a label is derived from the data it describes (label-must-match-data) and a count must add up** - judged + the named buckets = the plan's coins, each coin once.
+* Guard: `tests/test_v3_verdicts.py::test_every_coin_the_run_did_not_judge_is_named_once_in_the_bucket_that_is_true`, `::test_a_run_and_its_redos_are_one_family_and_a_coin_a_redo_landed_is_never_failed`, `::test_a_redo_that_failed_again_is_failed_by_the_newest_word`, `::test_pilot_is_said_only_when_the_run_was_sent_fewer_coins_than_the_plan_holds`.
+
+**SAW** - NEVER HAPPENED YET: found by the task review of Part 2b Task 4 (`Oct 28, 2026`, `task-4-review.txt`, Important 1 and 2, Minor 3-8), reading `build` against Task 3's collect summary.
+
+**TIMELINE** (NEVER HAPPENED YET: hypothetical; the numbers come from the made-up 9-coin run in `tests/test_v3_verdicts.py`)
+
+1. A run is dispatched with all 9 coins of its plan on 4 accounts; the collect lands XAU and XAG, XPT failed, EURUSD was claimed and not finished, GBPUSD was left out, b/x's download failed (AAA, BBB), c/x's share was refused (CCC), DDD was never reported.
+2. Before the fix the store named 6 of the 7 coins not judged (XPT failed, GBPUSD left out, AAA, BBB, CCC and DDD all "not reached" with no cause) and EURUSD nowhere: 2 judged + 6 named = 8 of 9 coins; the tab printed "Pilot - 2 of the plan's 9 coins" for a run sent all 9. After the fix: 2 judged, failed 1, unmeasured 1, left out 1, download failed 2 (naming "b/x run 22: no artifact matches v3-out-*"), share refused 1 (naming c/x), not reached 1 = 9 of 9, and the heading reads "Full run - 7 of 9 coins not judged".
+3. `retry pilot` redoes XPT as `pilot-redo1` and it lands. Before the fix `publish pilot` listed XPT in `coins` and in `failed`; `publish pilot-redo1` said "not sent" for the other 8 coins and listed only the redo's run. After the fix `publish pilot` judges the family (`["pilot", "pilot-redo1"]`), lists the runs of both, and has no failed coin; `publish pilot-redo1` is refused: "pilot-redo1 is a redo of pilot: publish pilot".
+
+**ROOT CAUSE** - The store was written from the run's own summary lists instead of from the thing it describes: the coins landed in the folder, set against the plan.
+
+**WHY IT WAS NOT CAUGHT** - Every test of the store used one run, one summary and one failed coin, with the keys the first version read; a coin in a bucket the store did not know has no row to assert on, and no test added up judged + named against the plan's coin count. The redo path was never run because `retry` was a different module's feature, tested in its own file.
+
+**COST** - none: NEVER HAPPENED YET. No store was published for a real run.
+
+**FIX** - this commit: `v3_verdicts.family` / `build` / `_reasons` (the family's summaries, the newest word per coin, every plan coin in one of `BUCKETS` or judged), `accounts` beside, `dispatched` in the store, "Pilot" only when `dispatched < plan_coins`, a "coins judged" count of coins with a measured timeframe, a kept copy with a unique millisecond name, missing collected file or plan copy refused by name, `v3_page.options(store_file=, check_file=)`, the provenance line's plan coin count.
+
+**GUARD** - the four tests above plus `::test_a_redo_not_collected_yet_and_a_run_not_collected_are_refused_by_name`, `::test_a_missing_plan_copy_is_refused_by_name`, `::test_a_coin_with_no_measured_timeframe_is_not_judged_and_says_why`, `::test_two_publishes_in_one_second_keep_two_copies`, `::test_a_pilot_publishes_the_coins_it_never_sent_and_says_pilot`, `::test_options_passes_the_store_path_so_a_test_never_reads_the_real_store` and `::test_the_tab_names_every_bucket_the_provenance_and_the_full_run_heading`; every new test red on f2eb1bbbb6ba.
+
+---
+
 ## RCA-2026-10-28-C — Backtest v3's GitHub dispatcher would have lost a whole run's machines on a repeated name, and one account's failed download would have stopped every other account's results from coming home: NEVER HAPPENED YET
 
 **CEO**

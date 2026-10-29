@@ -70,6 +70,14 @@ def read_state() -> dict:
     return st
 
 
+def record_mtime() -> float | None:
+    """When the saved state was last written, or None when there is no file to stat."""
+    try:
+        return os.stat(state_path()).st_mtime
+    except OSError:
+        return None
+
+
 def _write_state(st: dict) -> None:
     p = state_path()
     # a name of its own to every write: a settle and a backfill never share one temp file

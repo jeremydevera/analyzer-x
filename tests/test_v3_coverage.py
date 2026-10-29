@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import calendar
 import json
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -295,7 +296,10 @@ def test_the_daily_costs_press_holds_off_a_backfill_in_the_air_on_its_months(wor
     # the backfill's run finishes: the daily press goes at its next tick
     monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "completed",
                                                              "conclusion": "success"})
-    assert costs_daily.tick(now=now + 60)["started"] is True and len(daily) == 1
+    later = now + costs_daily.HELD_RECHECK_S + 1
+    assert costs_daily.tick(now=later)["started"] is True and len(daily) == 1
+    st = costs_daily.read()
+    assert "held" not in st and not st.get("last_error"), "a released hold is not left behind"
 
 
 def test_the_daily_costs_press_is_not_held_by_a_backfill_of_other_months(world, daily):
@@ -304,11 +308,70 @@ def test_the_daily_costs_press_is_not_held_by_a_backfill_of_other_months(world, 
     assert costs_daily.tick(now=now)["started"] is True
 
 
-def test_the_daily_costs_press_holds_off_when_the_backfill_record_cannot_be_read(world, daily):
+def _corrupt_record(world, now, age_s):
+    p = world.tmp / "cloud" / "backfill.json"
+    p.write_text("{not json", encoding="utf-8")
+    os.utime(p, (now - age_s, now - age_s))
+
+
+def test_an_unreadable_backfill_record_holds_the_daily_press_but_only_for_twelve_hours(
+        world, daily):
     now = _utc(2026, 10, 27, 3) + 300
-    (world.tmp / "cloud" / "backfill.json").write_text("{not json", encoding="utf-8")
+    _corrupt_record(world, now, 3600)
     got = costs_daily.tick(now=now)
     assert got["started"] is False and not daily and "backfill.json" in got["why"]
+    assert "could not read the v3 backfill record" in got["why"] and "at most 12 hours" in got["why"]
+    # just inside the bound: still held; just outside it: the press runs and says it ignored it
+    t2 = now + costs_daily.HELD_RECHECK_S + 1
+    _corrupt_record(world, t2, vcv.STALE_S - 60)
+    assert costs_daily.tick(now=t2)["started"] is False
+    t3 = now + 2 * costs_daily.HELD_RECHECK_S + 2
+    _corrupt_record(world, t3, vcv.STALE_S + 60)
+    got = costs_daily.tick(now=t3)
+    assert got["started"] is True and len(daily) == 1
+    st = costs_daily.read()
+    assert "could not be read" in st["last_error"] and "runs without it" in st["last_error"]
+    assert "held" not in st
+
+
+def test_a_record_that_cannot_even_be_stat_ed_is_judged_by_when_it_was_first_seen(world, daily,
+                                                                                   monkeypatch):
+    now = _utc(2026, 10, 27, 3) + 300
+    _corrupt_record(world, now, 60)
+    monkeypatch.setattr(vcv, "record_mtime", lambda: None)
+    assert costs_daily.tick(now=now)["started"] is False
+    assert costs_daily.tick(now=now + vcv.STALE_S - 60)["started"] is False
+    assert costs_daily.tick(now=now + vcv.STALE_S + 2 * costs_daily.HELD_RECHECK_S)[
+        "started"] is True
+
+
+def test_a_hold_is_seen_in_the_state_and_said_once_an_hour_in_the_log(world, daily, capsys,
+                                                                     monkeypatch):
+    now = _utc(2026, 10, 27, 3) + 300
+    _backfill_in_air(world, now, ["2026-10-01"])
+    costs_daily.tick(now=now)
+    st = costs_daily.read()
+    assert st["held"]["why"] == st["last_error"] and "run 77 on a/x" in st["last_error"]
+    first = capsys.readouterr().out
+    assert first.count("[costs-daily] a v3 backfill press is in the air") == 1
+    # every look in the next hour finds it held and says nothing more; an hour later, once more
+    for k in range(1, 8):
+        costs_daily.tick(now=now + k * (costs_daily.HELD_RECHECK_S + 1))
+    assert capsys.readouterr().out == ""
+    costs_daily.tick(now=now + costs_daily.HELD_SAY_S + 10)
+    assert capsys.readouterr().out.count("[costs-daily]") == 1
+
+
+def test_a_held_press_does_not_ask_github_every_supervisor_pass(world, daily, monkeypatch):
+    now = _utc(2026, 10, 27, 3) + 300
+    _backfill_in_air(world, now, ["2026-10-01"])
+    asked = []
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: asked.append(run)
+                        or {"status": "in_progress"})
+    for k in range(0, 600, 30):                    # the supervisor's 30 s tick, ten minutes
+        costs_daily.tick(now=now + k)
+    assert len(asked) <= 4, asked      # a look now, then one every HELD_RECHECK_S (twice a look)
+    assert not daily
 
 
 def test_the_daily_costs_press_says_it_is_pressing_before_it_dispatches(world, daily,
@@ -344,7 +407,7 @@ def test_the_daily_press_backs_off_when_a_backfill_flight_appears_after_it_said_
     now = _utc(2026, 10, 27, 3) + 300
     calls = []
 
-    def held(days, at):
+    def held(days, at, st):
         calls.append(1)
         return "" if len(calls) == 1 else "a v3 backfill press is in the air"
 

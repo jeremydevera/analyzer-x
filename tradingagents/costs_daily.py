@@ -44,6 +44,10 @@ SHARDS = 20
 RETRY_S = 30 * 60
 MAX_WAIT_S = 8 * 3600       # the longest a run of red presses ever waits
 STALE_S = 8 * 3600
+# A press held off by a v3 backfill (RCA-2026-10-28-F) looks again at most this often (each look
+# is one `gh run view` per run), and says so in the log at most this often
+HELD_RECHECK_S = 300
+HELD_SAY_S = 3600
 
 
 def read() -> dict:
@@ -201,17 +205,18 @@ def tick(now: float | None = None) -> dict:
     # writes (RCA-2026-10-28-F): two runs reading one coin-month file and uploading it back keep
     # only the later run's days, and both mark theirs done. Wait for it; say `pressing` before
     # the dispatch and look once more, so whichever of the two writes second sees the other.
-    held = _held_by_backfill(days, now)
+    if st.get("held") and now < float(st.get("held_until") or 0):
+        return {"started": False, "why": st["held"]["why"]}
+    held = _held_by_backfill(days, now, st)
     if held:
-        _write(st)
-        return {"started": False, "why": held}
+        return _hold(st, now, held)
     st["pressing"] = {"at": now}
     _write(st)
-    held = _held_by_backfill(days, now)
+    held = _held_by_backfill(days, now, st)
     if held:
         st.pop("pressing", None)
-        _write(st)
-        return {"started": False, "why": held}
+        return _hold(st, now, held)
+    _released(st)
     st["tried_at"] = now
     try:
         got = _dispatch(days, now)
@@ -232,15 +237,55 @@ def tick(now: float | None = None) -> dict:
     return {"started": True, "days": days, "runs": got["runs"]}
 
 
-def _held_by_backfill(days: list[str], now: float) -> str:
+def _say(st: dict, now: float, text: str) -> None:
+    """One log line (the API's own log, `.run/api.log`, which the error filer also reads) at
+    most every HELD_SAY_S: a hold that is a line every 30 seconds is a silence."""
+    if now - float(st.get("held_said_at") or 0) >= HELD_SAY_S:
+        st["held_said_at"] = now
+        print(f"[costs-daily] {text}", flush=True)
+
+
+def _hold(st: dict, now: float, why: str) -> dict:
+    """The press waits: the reason is kept in the state (`held`, `last_error`, the file the
+    operator can open), said once an hour in the log, and not looked at again for
+    HELD_RECHECK_S."""
+    st["held"] = {"since": (st.get("held") or {}).get("since", now), "why": why}
+    st["held_until"] = now + HELD_RECHECK_S
+    st["last_error"] = why
+    _say(st, now, why)
+    _write(st)
+    return {"started": False, "why": why}
+
+
+def _released(st: dict) -> None:
+    held = st.pop("held", None)
+    st.pop("held_until", None)
+    if held and st.get("last_error") == held["why"]:
+        st["last_error"] = ""
+
+
+def _held_by_backfill(days: list[str], now: float, st: dict) -> str:
     """Why this press of `days` must wait for a v3 backfill press in the air, or "". A record
-    that cannot be read holds the press too, named: unknown is not clear."""
+    that cannot be read holds the press (it might describe a live run) but never longer than
+    STALE_S, judged by the file's age: after that the press runs and says it ignored it."""
     from tradingagents import v3_coverage
 
     try:
-        return v3_coverage.daily_held_off(days, now)
+        got = v3_coverage.daily_held_off(days, now)
+        st.pop("backfill_unreadable_since", None)
+        return got
     except Exception as exc:                                   # noqa: BLE001
-        return f"the daily press waits: {exc}"
+        mtime = v3_coverage.record_mtime()
+        first = st.setdefault("backfill_unreadable_since", now)
+        hours = v3_coverage.STALE_S // 3600
+        if now - (first if mtime is None else mtime) > v3_coverage.STALE_S:
+            msg = (f"the v3 backfill record could not be read ({exc}) for more than {hours} "
+                   "hours: the daily press runs without it")
+            st["last_error"] = msg
+            _say(st, now, msg)
+            return ""
+        return (f"could not read the v3 backfill record ({exc}): the daily press waits for it, "
+                f"at most {hours} hours")
 
 
 def _dispatch(days: list[str], now: float) -> dict:

@@ -196,6 +196,8 @@ def title_of(workflow: str, inputs: dict) -> str:
         return f"Watcher replay · from {inputs['start']} · {inputs['write_rule']}"
     if workflow == "costs.yml":          # its run-name (the daily per-minute costs, Oct 10, 2026)
         return f"Costs per minute · {inputs.get('days') or 'yesterday'} · {inputs.get('label') or ''}"
+    if workflow == "v3.yml":             # its run-name (Backtest v3 Part 2b, Oct 27, 2026)
+        return f"Backtest v3 research · {inputs['label']}"
     if workflow == "research.yml":       # its run-name (the daily room-strategy re-test, Oct 07, 2026)
         return (f"Watcher rules research · {inputs['scenarios']} · {inputs['output']} · "
                 f"replay {inputs['source_run']}")

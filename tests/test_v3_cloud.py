@@ -115,12 +115,12 @@ def test_a_refused_share_is_redone_by_itself_and_a_late_listed_run_is_adopted(fl
     share = st["dealt"]["b/x"]
     started.clear()
     fleet.fail = set()
-    got = vc.redo("pilot", "b/x")
+    got = vc.redo("pilot", "b/x", now=NOON)
     # the share it was dealt, asked with `since`: a run GitHub took and listed late is adopted
     assert started == [("b/x", share, NOON)] and got["runs"]["b/x"]["run"] == 1001
     assert got["refused"] == []
     with pytest.raises(ValueError, match="already has run"):
-        vc.redo("pilot", "b/x")
+        vc.redo("pilot", "b/x", now=NOON)
 
 
 def test_the_dispatcher_adopts_a_run_github_listed_late_never_starting_a_second(monkeypatch):

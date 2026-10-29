@@ -333,3 +333,276 @@ def test_an_unfinished_coin_that_has_a_record_or_a_final_entry_is_not_unmeasured
     a = st["dealt"]["a/x"]["coin_list"].split(",")
     assert got["landed"] == [a[0]] and got["unmeasured"] == []
     assert got["failed"] == [f"{a[1]}: ValueError: x"]
+
+
+# ---- Task 3 fix round 1 ------------------------------------------------------------------------
+
+def _dispatched(fleet, monkeypatch, **kw):
+    """pilot dispatched on a/x and b/x (c/x refused), ready to collect."""
+    fleet.fail = {"c/x"}
+    st = vc.dispatch("pilot", plan_path=fleet.path, now=NOON, **kw)
+    roots = {}
+    for repo, r in st["runs"].items():
+        roots[repo] = fleet.tmp / f"art-{r['run']}"
+        roots[repo].mkdir()
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "completed"})
+    monkeypatch.setattr(vc, "download", lambda run, repo: roots[repo])
+    return st, roots
+
+
+def test_one_accounts_failed_download_is_named_and_the_others_still_land(fleet, monkeypatch):
+    import subprocess
+
+    st, roots = _dispatched(fleet, monkeypatch)
+    a = st["dealt"]["a/x"]["coin_list"].split(",")
+    b = st["dealt"]["b/x"]["coin_list"].split(",")
+    _artifact(roots["a/x"], 0, [_rec(a[0], fleet.plan)],
+              [{"coin": a[0], "seconds": 1.0, "bytes": 5}])
+
+    def download(run, repo):
+        if repo == "b/x":
+            raise subprocess.CalledProcessError(1, "gh", stderr="no artifact matches v3-out-*")
+        return roots[repo]
+
+    monkeypatch.setattr(vc, "download", download)
+    got = vc.collect("pilot")
+    assert got["landed"] == [a[0]]
+    assert got["downloads_failed"] == ["b/x run 1002: no artifact matches v3-out-*"]
+    assert set(b) <= set(got["not_reached"])
+    assert vc._state_path("pilot").exists() and (vc.home() / "pilot-collected.json").exists()
+    # the share stays collectable: once the download works, the same command lands it
+    _artifact(roots["b/x"], 0, [_rec(b[0], fleet.plan)],
+              [{"coin": b[0], "seconds": 1.0, "bytes": 5}])
+    monkeypatch.setattr(vc, "download", lambda run, repo: roots[repo])
+    again = vc.collect("pilot")
+    assert again["landed"] == sorted([a[0], b[0]]) and again["downloads_failed"] == []
+
+
+def test_a_retry_waits_for_a_failed_download_and_every_download_failing_collects_nothing(
+        fleet, monkeypatch):
+    import subprocess
+
+    st, roots = _dispatched(fleet, monkeypatch)
+
+    def boom(run, repo):
+        raise subprocess.TimeoutExpired("gh", 3600)
+
+    monkeypatch.setattr(vc, "download", boom)
+    with pytest.raises(RuntimeError, match=r"no run could be downloaded: a/x run 1001: "
+                                            r"TimeoutExpired"):
+        vc.collect("pilot")
+    assert not (vc.home() / "pilot-collected.json").exists()
+    a = st["dealt"]["a/x"]["coin_list"].split(",")
+    _artifact(roots["a/x"], 0, [], [{"coin": a[0], "error": "ValueError: x", "tries": 3}])
+    _artifact(roots["b/x"], 0, [], [])
+
+    def half(run, repo):
+        if repo == "b/x":
+            raise OSError("disk")
+        return roots[repo]
+
+    monkeypatch.setattr(vc, "download", half)
+    got = vc.collect("pilot")
+    assert got["downloads_failed"] == ["b/x run 1002: OSError: disk"]
+    with pytest.raises(RuntimeError, match="a download failed .*collect it again first"):
+        vc.retry("pilot", now=NOON)
+    fleet.fail = set()
+    assert vc.retry("pilot", now=NOON, abandon=True)["name"] == "pilot-redo1"
+
+
+def test_a_name_whose_runs_are_going_is_never_dispatched_again(fleet, monkeypatch):
+    started = fleet.started
+    st = vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
+    before = vc.load_state("pilot")
+    with pytest.raises(RuntimeError, match=r"pilot still has 3 run\(s\) going: collect or "
+                                           r"retry them first"):
+        vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
+    assert vc.load_state("pilot") == before and len(started) == 3
+    # a collected run is finished: the name can be used again, and its old summary goes
+    roots = {}
+    for repo, r in st["runs"].items():
+        roots[repo] = fleet.tmp / f"art-{r['run']}"
+        _artifact(roots[repo], 0, [], [])
+    monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "completed"})
+    monkeypatch.setattr(vc, "download", lambda run, repo: roots[repo])
+    vc.collect("pilot")
+    assert (vc.home() / "pilot-collected.json").exists()
+    vc.dispatch("pilot", plan_path=fleet.path, now=NOON)
+    assert len(started) == 6 and not (vc.home() / "pilot-collected.json").exists()
+
+
+def test_every_machine_of_an_account_refusing_for_one_cause_is_one_line(fleet, monkeypatch):
+    def fill(st, roots, plan):
+        why = "the plan file changed between the dispatch and this machine's checkout"
+        for n in range(4):
+            _artifact(roots["a/x"], n, [], [], refused=why)
+        _artifact(roots["a/x"], 9, [], [], refused="TA_VENUE is 'mexc'")
+        _artifact(roots["b/x"], 0, [], [])
+
+    _st, got, _p, _t = _collected(fleet, monkeypatch, fill)
+    # the machines name themselves c/x in _artifact's header
+    assert got["machines_refused"] == [
+        "c/x shards 0-3 (4 machines): the plan file changed between the dispatch and this "
+        "machine's checkout", "c/x shard 9: TA_VENUE is 'mexc'"]
+
+
+def test_a_run_is_labelled_with_the_runs_that_exist(fleet):
+    st = vc.dispatch("pilot", coins=["BTC", "ETH"], plan_path=fleet.path, now=NOON)
+    assert [i["label"] for i in st["dealt"].values()] == ["pilot · 1 of 2", "pilot · 2 of 2"]
+
+
+def test_a_left_out_coin_loses_its_old_record_and_no_coin_is_in_two_buckets(fleet, monkeypatch):
+    plan = fleet.plan
+    vrs.save_coin(vrs.home("pilot"), _rec("SOL_USDT", plan))
+
+    def fill(st, roots, plan_):
+        left = "the exchange is not trading it now"
+        _artifact(roots["a/x"], 0, [], [{"coin": "SOL_USDT", "why": left},
+                                        {"coin": "BTC_USDT", "why": left},
+                                        {"coin": "BTC_USDT", "error": "ValueError: x", "tries": 3}])
+        _artifact(roots["b/x"], 0, [], [])
+
+    st, got, _p, _t = _collected(fleet, monkeypatch, fill)
+    assert not vrs.coin_file(vrs.home("pilot"), "SOL_USDT").exists()
+    assert got["left_out"] == ["SOL_USDT: the exchange is not trading it now"]
+    assert got["failed"] == ["BTC_USDT: ValueError: x"]
+    buckets = [got["landed"], [x.split(": ")[0] for x in got["failed"]],
+               [x.split(": ")[0] for x in got["unmeasured"]],
+               [x.split(": ")[0] for x in got["left_out"]], got["not_reached"]]
+    every = [c for b in buckets for c in b]
+    assert len(every) == len(set(every))
+
+
+def test_collect_sweeps_old_run_folders_in_its_own_directory_only(fleet):
+    import os
+    import time as _t
+
+    home = vc.home()
+    old, new, other, notrun = (home / "run-111", home / "run-222", home / "keep-me",
+                               home / "run-abc")
+    for d in (old, new, other, notrun):
+        d.mkdir()
+        (d / "f").write_text("x")
+    ten_days = _t.time() - 10 * 86400
+    for d in (old, other, notrun):
+        os.utime(d, (ten_days, ten_days))
+    stranger = fleet.tmp / "run-333"          # beside the cloud folder, not in it
+    stranger.mkdir()
+    os.utime(stranger, (ten_days, ten_days))
+    assert vc.sweep_runs() == ["run-111"]
+    assert not old.exists() and new.exists() and other.exists() and notrun.exists()
+    assert stranger.exists()
+
+
+def test_collect_calls_the_sweep_before_it_downloads(fleet, monkeypatch):
+    order = []
+    st, roots = _dispatched(fleet, monkeypatch)
+    for r in roots.values():
+        _artifact(r, 0, [], [])
+    monkeypatch.setattr(vc, "sweep_runs", lambda now=None: order.append("sweep") or [])
+    monkeypatch.setattr(vc, "download", lambda run, repo: order.append("download") or roots[repo])
+    vc.collect("pilot")
+    assert order[0] == "sweep" and "download" in order
+
+
+def test_a_second_retry_before_the_first_is_collected_is_refused_by_name(fleet, monkeypatch):
+    def fill(st, roots, plan):
+        a = st["dealt"]["a/x"]["coin_list"].split(",")
+        _artifact(roots["a/x"], 0, [_rec(a[0], plan)],
+                  [{"coin": a[1], "error": "ConnectionError: cut", "tries": 3}])
+        _artifact(roots["b/x"], 0, [], [])
+
+    _collected(fleet, monkeypatch, fill)
+    fleet.fail = set()
+    assert vc.retry("pilot", now=NOON)["name"] == "pilot-redo1"
+    started = len(fleet.started)
+    with pytest.raises(RuntimeError, match="pilot-redo1 has not been collected"):
+        vc.retry("pilot", now=NOON)
+    assert len(fleet.started) == started
+
+
+def test_a_coin_that_landed_since_is_not_redone_and_nothing_left_is_named(fleet, monkeypatch):
+    def fill(st, roots, plan):
+        a = st["dealt"]["a/x"]["coin_list"].split(",")
+        _artifact(roots["a/x"], 0, [], [{"coin": a[0], "error": "ValueError: x", "tries": 3}])
+        _artifact(roots["b/x"], 0, [], [])
+
+    st, got, plan, _t = _collected(fleet, monkeypatch, fill)
+    fleet.fail = set()
+    todo = got["not_reached"] + [x.split(": ")[0] for x in got["failed"]]
+    assert len(todo) > 2
+    for c in todo[1:]:
+        vrs.save_coin(vrs.home("pilot"), _rec(c, plan))      # landed by a redo since
+    fleet.started.clear()
+    vc.retry("pilot", now=NOON)
+    redone = [c for _r, i, _s in fleet.started for c in i["coin_list"].split(",")]
+    assert redone == [todo[0]]
+
+
+def test_a_retry_with_every_coin_landed_since_has_nothing_to_redo(fleet, monkeypatch):
+    def fill(st, roots, plan):
+        a = st["dealt"]["a/x"]["coin_list"].split(",")
+        _artifact(roots["a/x"], 0, [], [{"coin": a[0], "error": "ValueError: x", "tries": 3}])
+        _artifact(roots["b/x"], 0, [], [])
+
+    st, got, plan, _t = _collected(fleet, monkeypatch, fill)
+    for c in got["not_reached"] + [x.split(": ")[0] for x in got["failed"]]:
+        vrs.save_coin(vrs.home("pilot"), _rec(c, plan))
+    started = len(fleet.started)
+    with pytest.raises(ValueError, match="nothing to redo"):
+        vc.retry("pilot", now=NOON)
+    assert len(fleet.started) == started
+
+
+def test_a_corrupt_record_is_named_and_the_landing_goes_on(fleet, monkeypatch):
+    def fill(st, roots, plan):
+        a = st["dealt"]["a/x"]["coin_list"].split(",")
+        _artifact(roots["a/x"], 0, [_rec(a[0], plan), _rec(a[2], plan)],
+                  [{"coin": a[0], "seconds": 1.0, "bytes": 5},
+                   {"coin": a[2], "seconds": 1.0, "bytes": 5}])
+        bad = vrs.coin_file(roots["a/x"] / "v3-out-0" / "v3", a[2])
+        bad.write_bytes(b"\x1f\x8b\x08 not a real gzip")
+        _artifact(roots["b/x"], 0, [], [])
+
+    st, got, _p, _t = _collected(fleet, monkeypatch, fill)
+    a = st["dealt"]["a/x"]["coin_list"].split(",")
+    assert got["landed"] == [a[0]]
+    assert len(got["refused_records"]) == 1 and got["refused_records"][0].startswith(
+        "unreadable record ")
+    assert a[2] not in got["landed"]
+
+
+def test_the_summary_is_swapped_whole_and_the_swap_is_retried(fleet, monkeypatch):
+    target = vc.home() / "x.json"
+    real = Path.replace
+    calls = []
+
+    def flaky(self, dest):
+        calls.append(1)
+        if len(calls) < 3:
+            raise PermissionError("in use")
+        return real(self, dest)
+
+    monkeypatch.setattr(Path, "replace", flaky)
+    vc._write_whole(target, '{"a": 1}')
+    assert json.loads(target.read_text()) == {"a": 1} and len(calls) == 3
+    assert not list(vc.home().glob("*.tmp"))
+
+
+def test_the_progress_command_before_any_run_says_so(fleet, capsys):
+    assert vc.main(["progress"]) == 0
+    assert capsys.readouterr().out.strip() == "no run yet"
+
+
+def test_a_retry_under_a_plan_that_is_no_longer_on_main_says_so_not_rebuild_it(fleet,
+                                                                              monkeypatch):
+    def fill(st, roots, plan):
+        a = st["dealt"]["a/x"]["coin_list"].split(",")
+        _artifact(roots["a/x"], 0, [], [{"coin": a[0], "error": "ValueError: x", "tries": 3}])
+        _artifact(roots["b/x"], 0, [], [])
+
+    _collected(fleet, monkeypatch, fill)
+    monkeypatch.setattr(vc, "_git", lambda *a: "local-blob" if a[0] == "hash-object"
+                        else "main-blob")
+    with pytest.raises(RuntimeError, match="a retry cannot run under another plan"):
+        vc.retry("pilot", now=NOON)

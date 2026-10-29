@@ -47,11 +47,13 @@ import json
 import shutil
 import subprocess
 import time
+import zlib
 from pathlib import Path
 
 WORKFLOW = "v3.yml"
 SHARDS = 20                         # machines per account (MACHINES_PER_ACCOUNT)
 ARTIFACTS = ("v3-out-*",)
+RUN_TTL_S = 7 * 86400               # a downloaded run folder older than this is swept (collect only)
 PLAN_REL = "research/v3/plan.json"
 # a record's fields that say WHEN and WHERE it was measured, never WHAT: `parity` ignores them
 TIMING = ("seconds", "machine")
@@ -81,7 +83,7 @@ def _git(*args: str) -> str:
     return out.stdout.strip()
 
 
-def plan_on_main(path: Path) -> str:
+def plan_on_main(path: Path, retrying: bool = False) -> str:
     """"" when the plan file at `path` is the one committed on origin/main (what
     every machine's checkout reads); else why not."""
     try:
@@ -89,6 +91,10 @@ def plan_on_main(path: Path) -> str:
         main = _git("rev-parse", f"origin/main:{PLAN_REL}")
     except RuntimeError as exc:
         return f"the committed plan could not be read: {exc}"
+    if here != main and retrying:
+        return ("the plan this run was dispatched with is no longer the plan on origin/main: a "
+                "retry cannot run under another plan - start a new run with the current plan "
+                "(the failed coins can be named with --coins)")
     if here != main:
         return (f"{path} is not the plan on origin/main: rebuild it, commit it and push it to "
                 "every account first (every machine reads the plan from its own checkout)")
@@ -101,11 +107,28 @@ def _state_path(name: str) -> Path:
     return home() / f"{vrs.plain_label(name)}.json"
 
 
-def _save(name: str, state: dict) -> None:
-    p = _state_path(name)
+def _swap(tmp: Path, p: Path, wait: float = 3.0) -> None:
+    """tmp over p, retried for a few seconds: Windows refuses the swap while a reader (the tab,
+    another command) has the file open."""
+    end = time.time() + wait
+    while True:
+        try:
+            tmp.replace(p)
+            return
+        except PermissionError:
+            if time.time() >= end:
+                raise
+            time.sleep(0.05)
+
+
+def _write_whole(p: Path, text: str) -> None:
     tmp = p.with_name(p.name + ".tmp")
-    tmp.write_text(json.dumps(state, indent=1), encoding="utf-8")
-    tmp.replace(p)
+    tmp.write_text(text, encoding="utf-8")
+    _swap(tmp, p)
+
+
+def _save(name: str, state: dict) -> None:
+    _write_whole(_state_path(name), json.dumps(state, indent=1))
 
 
 def load_state(name: str) -> dict:
@@ -130,9 +153,7 @@ def progress(stage: str, **extra) -> dict:
     cur.setdefault("log", []).append(f"{fmt_when(now)} {stage}")
     cur.update(extra)
     cur["updated"] = fmt_when(now)
-    tmp = p.with_name("progress.tmp")
-    tmp.write_text(json.dumps(cur, indent=1, default=str), encoding="utf-8")
-    tmp.replace(p)
+    _write_whole(p, json.dumps(cur, indent=1, default=str))
     return cur
 
 
@@ -144,9 +165,24 @@ def _start(repo: str, inputs: dict, since: float | None = None) -> int:
     return fd.dispatch(WORKFLOW, inputs, repo, since=since)
 
 
+def _refuse_reuse(name: str) -> None:
+    """A name whose runs are still to be collected is never dispatched again: its state would be
+    overwritten and the first run's machines forgotten (a run collected is finished)."""
+    p = _state_path(name)
+    if not p.exists() or (home() / f"{name}-collected.json").exists():
+        return
+    try:
+        runs = json.loads(p.read_text(encoding="utf-8")).get("runs") or {}
+    except ValueError:
+        raise RuntimeError(f"{p} is unreadable: not overwritten; move it aside first") from None
+    if runs:
+        raise RuntimeError(f"{name} still has {len(runs)} run(s) going: collect or retry them "
+                           "first")
+
+
 def dispatch(name: str, *, coins: list | None = None, plan_path: Path | str | None = None,
              label: str | None = None, folder: str | None = None, force: bool = False,
-             now: float | None = None) -> dict:
+             now: float | None = None, retrying: bool = False) -> dict:
     """Deal the plan's coins (or `coins`, every one of them in the plan) between
     every account that can run now and start one run on each. An account that
     refuses, or cannot be brought up to this code, is NAMED and the others still
@@ -164,12 +200,13 @@ def dispatch(name: str, *, coins: list | None = None, plan_path: Path | str | No
 
     vrs.plain_label(name)
     folder = vrs.plain_label(folder or name)
+    _refuse_reuse(name)
     if cq_search.quiet_hours(now) and not force:
         raise RuntimeError("not dispatched: between 12:45am and 5:00am the nightly room "
                            "re-test and backtest update need every machine")
     path = Path(plan_path or vu.PLAN_FILE)
     plan = vu.load(path)
-    why = plan_on_main(path)
+    why = plan_on_main(path, retrying)
     if why:
         raise RuntimeError(f"not dispatched: {why}")
     if coins:
@@ -183,6 +220,8 @@ def dispatch(name: str, *, coins: list | None = None, plan_path: Path | str | No
     if not ready:
         raise RuntimeError("no GitHub account can run the research: " + "; ".join(refused))
     piles = cs.split_coins(board, len(ready))
+    # a finished run's summary under a name being used again would be read as the new run's
+    (home() / f"{name}-collected.json").unlink(missing_ok=True)
     t0 = time.time() if now is None else float(now)
     label = label or name
     state = {"name": name, "label": label, "folder": folder, "started": t0,
@@ -193,7 +232,7 @@ def dispatch(name: str, *, coins: list | None = None, plan_path: Path | str | No
     for k, (repo, pile) in enumerate(zip(ready, piles, strict=False)):
         state["dealt"][repo] = {"shards": str(min(SHARDS, len(pile))),
                                 "coin_list": ",".join(pile),
-                                "label": f"{label} · {k + 1} of {len(ready)}",
+                                "label": f"{label} · {k + 1} of {len(piles)}",
                                 "plan_id": plan["id"]}
     # the plan as dispatched, kept beside the state: research/v3/plan.json may be rebuilt before
     # this run is judged, and its records are judged under THEIR plan (v3_verdicts)
@@ -261,27 +300,60 @@ def download(run: int, repo: str) -> Path:
     return root
 
 
+def sweep_runs(now: float | None = None) -> list:
+    """Remove the downloaded run folders (`run-<id>`, directly in home() and nowhere else) not
+    touched for RUN_TTL_S: a killed download leaves one for ever otherwise. Returns the names."""
+    cut = (time.time() if now is None else now) - RUN_TTL_S
+    gone = []
+    for d in home().iterdir():
+        if (d.is_dir() and d.name.startswith("run-") and d.name[4:].isdigit()
+                and d.stat().st_mtime < cut):
+            shutil.rmtree(d, ignore_errors=True)
+            gone.append(d.name)
+    return gone
+
+
+def _shards(nums: list) -> str:
+    """[0, 1, 2, 5] -> "shards 0-2, 5 (4 machines)"; [3] -> "shard 3"."""
+    nums = sorted({n for n in nums if n is not None}, key=lambda n: (not isinstance(n, int), n))
+    if len(nums) == 1:
+        return f"shard {nums[0]}"
+    spans, i = [], 0
+    while i < len(nums):
+        j = i
+        while j + 1 < len(nums) and isinstance(nums[j], int) and nums[j + 1] == nums[j] + 1:
+            j += 1
+        spans.append(str(nums[i]) if i == j else f"{nums[i]}-{nums[j]}")
+        i = j + 1
+    return f"shards {', '.join(spans)} ({len(nums)} machines)"
+
+
 def _reports(roots) -> tuple[list, list]:
-    """(every machine's report entries, the machines that refused to measure,
-    each "account shard N: why")."""
+    """(every machine's report entries, the machines that refused to measure: ONE line per
+    account and cause, "account shards 0-19 (20 machines): why")."""
     from tradingagents import pro_search as ps
 
-    entries, refused = [], []
+    entries, causes = [], {}
     for f in ps.files(roots, "v3-report-*.json"):
         d = json.loads(Path(f).read_text(encoding="utf-8"))
         entries += d.get("report") or []
         if d.get("refused"):
             m = d.get("machine") or {}
-            refused.append(f"{m.get('repo') or '?'} shard {d.get('shard')}: {d['refused']}")
-    return entries, refused
+            causes.setdefault((m.get("repo") or "?", str(d["refused"])), []).append(d.get("shard"))
+    return entries, [f"{repo} {_shards(nums)}: {why}" for (repo, why), nums in causes.items()]
 
 
 def _held(root: Path) -> list:
     """The records already in a landing folder: [(coin, plan_id, risk, runs)]."""
-    from tradingagents import v3_research as vrs
-
-    return [(r.get("coin"), r.get("plan_id"), r.get("risk_usd"), r.get("runs"))
-            for r in vrs.load_coins(root)]
+    out = []
+    for p in sorted(Path(root).glob("*.json.gz")):
+        try:
+            with gzip.open(p, "rt", encoding="utf-8") as fh:
+                r = json.load(fh)
+        except (OSError, EOFError, ValueError, zlib.error):
+            continue                       # named by whoever lands it; never stops a collect
+        out.append((r.get("coin"), r.get("plan_id"), r.get("risk_usd"), r.get("runs")))
+    return out
 
 
 def land(state: dict, roots) -> dict:
@@ -311,12 +383,19 @@ def land(state: dict, roots) -> dict:
     # a coin the machine never measured says why (its report entry has no record size); a coin
     # measured into "no family's universe" has a record, which is landed like any other
     left = {e["coin"]: e["why"] for e in entries if e.get("why") and "bytes" not in e}
-    for coin in [*failed, *unmeasured]:
+    for coin in [*failed, *unmeasured]:    # a coin is in ONE bucket: a failure or a placeholder
+        left.pop(coin, None)               # outranks "left out"
+    for coin in [*failed, *unmeasured, *left]:
         vrs.drop_coin(root, coin)          # DELETE first: never an old record beside a failure
     landed, refused, seen = [], [], set()
     for f in ps.files(roots, "*.json.gz"):
-        with gzip.open(f, "rt", encoding="utf-8") as fh:
-            rec = json.load(fh)
+        try:
+            with gzip.open(f, "rt", encoding="utf-8") as fh:
+                rec = json.load(fh)
+        except (OSError, EOFError, ValueError, zlib.error) as exc:
+            refused.append(f"unreadable record {Path(f).name}: {type(exc).__name__}: "
+                           f"{str(exc)[:100]}")
+            continue
         coin = rec.get("coin")
         why = vrs.differences(rec, plan, want[2], want[1])
         if coin not in board:
@@ -329,6 +408,7 @@ def land(state: dict, roots) -> dict:
         seen.add(coin)
         failed.pop(coin, None)             # a coin that failed once and was redone on a machine
         unmeasured.pop(coin, None)         # a record saved just before the machine was stopped
+        left.pop(coin, None)
         vrs.save_coin(root, rec)
         landed.append(coin)
     reached = set(landed) | set(failed) | set(left) | set(unmeasured)
@@ -357,39 +437,71 @@ def collect(name: str) -> dict:
             unfinished.append(f"{repo} run {r['run']} is {st.get('status')}")
     if unfinished:
         raise RuntimeError("not collected, still running: " + "; ".join(unfinished))
-    roots = [download(int(r["run"]), repo) for repo, r in state["runs"].items()]
+    sweep_runs()
+    roots, downloads_failed = [], []
+    for repo, r in state["runs"].items():
+        # one account's download failing names the account and the cause; every other account's
+        # records are still landed, and `collect` can be run again for this one
+        try:
+            roots.append(download(int(r["run"]), repo))
+        except subprocess.CalledProcessError as exc:
+            said = (exc.stderr or exc.stdout or str(exc)).strip()[-200:] or str(exc)
+            downloads_failed.append(f"{repo} run {r['run']}: {said}")
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            downloads_failed.append(f"{repo} run {r['run']}: {type(exc).__name__}: "
+                                    f"{str(exc)[:160]}")
+    if not roots:
+        raise RuntimeError("not collected, no run could be downloaded: "
+                           + "; ".join(downloads_failed))
     got = land(state, roots)
     summary = {"name": name, "label": state["label"], "plan_id": state["plan_id"],
                "runs": {k: v["run"] for k, v in state["runs"].items()},
-               "shares_refused": list(state["refused"]), "roots": [str(r) for r in roots],
-               **got}
-    (home() / f"{name}-collected.json").write_text(json.dumps(summary, indent=1),
-                                                   encoding="utf-8")
+               "shares_refused": list(state["refused"]), "downloads_failed": downloads_failed,
+               "roots": [str(r) for r in roots], **got}
+    _write_whole(home() / f"{name}-collected.json", json.dumps(summary, indent=1))
     progress(f"collected {name}: {len(got['landed'])} of {state['coins']} coin(s) landed in "
              f"{got['folder']}; {len(got['not_reached'])} not reached, {len(got['failed'])} "
-             f"failed, {len(got['unmeasured'])} unmeasured, {len(got['left_out'])} left out, {len(got['refused_records'])} refused "
-             f"(each named in {name}-collected.json)")
+             f"failed, {len(got['unmeasured'])} unmeasured, {len(got['left_out'])} left out, "
+             f"{len(got['refused_records'])} refused"
+             + (f", {len(downloads_failed)} download(s) failed: {'; '.join(downloads_failed)}"
+                if downloads_failed else "")
+             + f" (each named in {name}-collected.json)")
     return summary
 
 
-def retry(name: str, *, now: float | None = None, force: bool = False) -> dict:
+def retry(name: str, *, now: float | None = None, force: bool = False,
+          abandon: bool = False) -> dict:
     """Redo ONLY the coins a collected run failed or never reached, as a new run
     whose records land in the SAME folder (`<name>-redo<N>`), under the plan
     the run was dispatched with."""
+    from tradingagents import v3_research as vrs
+
     state = load_state(name)
-    summary = json.loads((home() / f"{name}-collected.json").read_text(encoding="utf-8"))
+    try:
+        summary = json.loads((home() / f"{name}-collected.json").read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise ValueError(f"{name} has not been collected: collect it first") from None
+    if summary.get("downloads_failed") and not abandon:
+        raise RuntimeError(f"{name}: a download failed ({'; '.join(summary['downloads_failed'])})"
+                           ": collect it again first - that share may hold the coins a redo would "
+                           "measure twice - or pass --abandon to redo them anyway")
     coins = summary["not_reached"] + [x.split(": ", 1)[0]
                                       for x in summary["failed"] + summary.get("unmeasured", [])]
-    if not coins:
-        raise ValueError(f"{name}: every coin landed or was left out with why; nothing to redo")
     n = 1
     while _state_path(f"{name}-redo{n}").exists():
         n += 1
+    if n > 1 and not (home() / f"{name}-redo{n - 1}-collected.json").exists():
+        raise RuntimeError(f"{name}-redo{n - 1} has not been collected: collect it first (a second "
+                           "redo would measure its coins twice)")
+    root = vrs.home(state["folder"])      # a coin that has landed since needs no redo
+    coins = [c for c in dict.fromkeys(coins) if not vrs.coin_file(root, c).exists()]
+    if not coins:
+        raise ValueError(f"{name}: every coin landed or was left out with why; nothing to redo")
     # the plan the run was dispatched with: once research/v3/plan.json is rebuilt no redo can
     # measure under it any more, and `plan_on_main` refuses by name
     return dispatch(f"{name}-redo{n}", coins=coins, plan_path=state["plan_copy"],
                     label=f"{state['label']} redo {n}", folder=state["folder"], force=force,
-                    now=now)
+                    now=now, retrying=True)
 
 
 def same_measure(a: dict, b: dict, path: str = "") -> list[str]:
@@ -441,6 +553,7 @@ def main(argv=None) -> int:
     t = sub.add_parser("retry")
     t.add_argument("name")
     t.add_argument("--force", action="store_true")
+    t.add_argument("--abandon", action="store_true")
     sub.add_parser("progress")
     q = sub.add_parser("parity")
     q.add_argument("folder")
@@ -455,13 +568,14 @@ def main(argv=None) -> int:
     elif a.cmd == "collect":
         got = collect(a.name)
     elif a.cmd == "retry":
-        got = retry(a.name, force=a.force)
+        got = retry(a.name, force=a.force, abandon=a.abandon)
     elif a.cmd == "parity":
         diff = parity(a.folder, a.coin.upper(), a.local_label)
         print("the same measurement" if not diff else "differs at: " + ", ".join(diff[:20]))
         return 1 if diff else 0
     else:
-        print((home() / "progress.json").read_text(encoding="utf-8"))
+        f = home() / "progress.json"
+        print(f.read_text(encoding="utf-8") if f.exists() else "no run yet")
         return 0
     print(json.dumps(got, indent=1, default=str))
     return 0

@@ -172,6 +172,41 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-28-C — Backtest v3's GitHub dispatcher would have lost a whole run's machines on a repeated name, and one account's failed download would have stopped every other account's results from coming home: NEVER HAPPENED YET
+
+**CEO**
+
+* Nothing wrong was shown yet (it NEVER HAPPENED YET, no run was started): typing the same dispatch twice would have made the PC forget the first run's 20-60 machines while they kept working for an hour, and one account whose results could not be fetched would have stopped the other two accounts' results from being brought home, without saying which account or why.
+* Why: the dispatcher saved its state under the run's name without checking that name was already in use, and the collect fetched every account before landing any, with the reason for a failed fetch thrown away.
+* What stops it now: a name whose runs are still to be collected is refused by name ("pilot still has 3 run(s) going: collect or retry them first"); a failed download names the account and the reason, every other account's records still land, and the failed share can be collected again later.
+
+**DEV**
+
+* `v3_cloud.dispatch` ended in `_save(name, state)` with no check of `_state_path(name)`, overwriting `runs`; `collect` did `roots = [download(...) for ...]` before `land`, and `download` ran `subprocess.run(..., check=True, capture_output=True)`, so a `CalledProcessError` (message: "non-zero exit status 1", stderr never shown) left the list comprehension and the whole command. Eight smaller edges beside them: one line per machine in `machines_refused`, run labels "k of N" counting accounts instead of runs, a left-out coin's old record kept (and the same coin in two buckets), old `cloud/run-<id>` folders never swept, `retry` starting a duplicate redo and redoing coins already landed, a corrupt `.json.gz` aborting the landing, `-collected.json` not swapped atomically, and `plan_on_main` telling a retry to "rebuild" a plan it can never get back.
+* Invariant broken: **an account that refuses is named and the others still run (CLAUDE.md "Every GitHub job uses ALL machines")**, extended to the PC's side of the run (fetching and landing), and **a state the PC keeps must never be replaced while something it names is still running** (the same family as RCA-2026-10-02-C: a count is not a location).
+* Guard: `tests/test_v3_cloud.py::test_one_accounts_failed_download_is_named_and_the_others_still_land`, `::test_a_retry_waits_for_a_failed_download_and_every_download_failing_collects_nothing`, `::test_a_name_whose_runs_are_going_is_never_dispatched_again`, `::test_every_machine_of_an_account_refusing_for_one_cause_is_one_line`, `::test_a_run_is_labelled_with_the_runs_that_exist`, `::test_a_left_out_coin_loses_its_old_record_and_no_coin_is_in_two_buckets`, `::test_collect_sweeps_old_run_folders_in_its_own_directory_only`, `::test_a_second_retry_before_the_first_is_collected_is_refused_by_name`, `::test_a_coin_that_landed_since_is_not_redone_and_nothing_left_is_named`, `::test_a_corrupt_record_is_named_and_the_landing_goes_on`, `::test_the_summary_is_swapped_whole_and_the_swap_is_retried`, `::test_the_progress_command_before_any_run_says_so`, `::test_a_retry_under_a_plan_that_is_no_longer_on_main_says_so_not_rebuild_it`.
+
+**SAW** - NEVER HAPPENED YET: found by the task review of Part 2b Task 3 (`Oct 28, 2026`, `task-3-review.txt`, Important 1 and 2 and Minor 1-8), reading `collect` and `dispatch` against CLAUDE.md's rule that an account that refuses is named while the others run.
+
+**TIMELINE** (NEVER HAPPENED YET: hypothetical; the numbers come from running the committed and the fixed dispatcher on made-up coins in `tests/test_v3_cloud.py`)
+
+1. `Oct 28, 2026` - commits `2a31a287068f` and `b6e2db00d115` add `v3_cloud`; `dispatch("pilot")` starts runs 1001, 1002, 1003 on a/x, b/x, c/x and saves them in `pilot.json`.
+2. Before the fix, `dispatch("pilot")` typed again saved a new `pilot.json`: runs 1001-1003 were no longer named anywhere, `collect pilot` could only ever collect the second set, and the first set's 60 machines kept running for an hour. After the fix the second command raises "pilot still has 3 run(s) going: collect or retry them first" and `pilot.json` is byte for byte as it was.
+3. Before the fix, with b/x's run holding no artifact, `collect("pilot")` raised after a/x's download and before `land`: a/x's coins were not landed, no summary was written, and the error said only "returned non-zero exit status 1". After the fix: a/x's coin lands, the summary holds `downloads_failed: ["b/x run 1002: no artifact matches v3-out-*"]`, b/x's coins are in `not_reached`, and a second `collect pilot` lands b/x's records once they can be fetched; `retry` refuses until that is done unless `--abandon` is passed, so the same coins are not measured twice.
+4. Before the fix, an account whose 20 machines all refused for one cause printed 20 lines; it prints "c/x shards 0-19 (20 machines): ..." now. A dispatch of 2 coins on 3 accounts titled its runs "x - 1 of 3" and "x - 2 of 3"; they are "1 of 2" and "2 of 2".
+
+**ROOT CAUSE** - The dispatcher was written for the all-accounts-answer path: nothing in it asked whether the name was taken, and the collect treated the three accounts' downloads as one step.
+
+**WHY IT WAS NOT CAUGHT** - Every test of the dispatcher dispatched a name once and collected accounts whose downloads all worked; no test reused a name, and the download was always a stub that returned a folder, so the one call that can fail on a real account (a run with no artifact, a 3,600-second timeout) was never made to fail. A test that stubs the only failing call to succeed cannot see what its failure does to the others.
+
+**COST** - none: NEVER HAPPENED YET. No run was dispatched.
+
+**FIX** - this commit: `dispatch` refuses a name whose state still holds runs (`_refuse_reuse`, deleting a collected run's stale summary when the name is used again); `collect` catches each download's failure, names "account run id: stderr tail", lands the others, raises only when none could be fetched, and `retry` refuses while a download failed unless `--abandon`; plus the eight smaller edges above.
+
+**GUARD** - the tests above in `tests/test_v3_cloud.py` (15 new tests, all 15 red on the committed code, all green after).
+
+---
+
 ## RCA-2026-10-28-B — Backtest v3's GitHub machine would have measured the whole market on an account that was dealt no coins, and a coin it was "not redone" on never reached its report: NEVER HAPPENED YET
 
 **CEO**

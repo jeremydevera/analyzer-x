@@ -30,7 +30,8 @@ Plan: docs/superpowers/plans/2026-10-27-backtest-v3-part2b-github.md.
   and random-run count, and refuses to land into a folder holding another
   plan's records; every coin it did not land is NAMED: not reached (a share
   GitHub refused), failed (with its error), left out by the machine (with
-  why), or refused at landing (with what differs).
+  why), or refused at landing (with what differs), or unmeasured (claimed by a machine
+  that stopped before it finished it: named once, redone by `retry`).
 * `retry` redoes only the coins a collected run failed or never reached, into
   the SAME folder (CLAUDE.md: a failed coin is redone alone).
 
@@ -299,11 +300,18 @@ def land(state: dict, roots) -> dict:
     plan = {"id": state["plan_id"], "end_ms": int(state["plan_end_ms"])}
     entries, machines_refused = _reports(roots)
     board = set(state["board"])
-    failed = {e["coin"]: e["error"] for e in entries if e.get("error")}
+    failed = {e["coin"]: e["error"] for e in entries if e.get("error") and not e.get("unfinished")}
+    # a coin a machine claimed and did not finish (the claim cutoff, GitHub's time limit) was NOT
+    # MEASURED: named once however many reports hold it, redone by `retry`, never an error that
+    # stops the collect and never a measured coin
+    unmeasured = {e["coin"]: e["error"] for e in entries if e.get("unfinished")}
+    for e in entries:
+        if "bytes" in e or e.get("error") and not e.get("unfinished"):
+            unmeasured.pop(e["coin"], None)
     # a coin the machine never measured says why (its report entry has no record size); a coin
     # measured into "no family's universe" has a record, which is landed like any other
     left = {e["coin"]: e["why"] for e in entries if e.get("why") and "bytes" not in e}
-    for coin in failed:
+    for coin in [*failed, *unmeasured]:
         vrs.drop_coin(root, coin)          # DELETE first: never an old record beside a failure
     landed, refused, seen = [], [], set()
     for f in ps.files(roots, "*.json.gz"):
@@ -320,15 +328,17 @@ def land(state: dict, roots) -> dict:
             continue
         seen.add(coin)
         failed.pop(coin, None)             # a coin that failed once and was redone on a machine
+        unmeasured.pop(coin, None)         # a record saved just before the machine was stopped
         vrs.save_coin(root, rec)
         landed.append(coin)
-    reached = set(landed) | set(failed) | set(left)
+    reached = set(landed) | set(failed) | set(left) | set(unmeasured)
     secs = sorted(float(e["seconds"]) for e in entries if e.get("seconds") is not None)
     size = sum(int(e.get("bytes") or 0) for e in entries)
     return {"folder": str(root), "landed": sorted(landed),
             "not_reached": sorted(board - reached),
             "failed": [f"{c}: {e}" for c, e in sorted(failed.items())],
             "left_out": [f"{c}: {w}" for c, w in sorted(left.items())],
+            "unmeasured": [f"{c}: {w}" for c, w in sorted(unmeasured.items())],
             "refused_records": refused, "machines_refused": machines_refused,
             "seconds": ({"median": secs[len(secs) // 2], "max": secs[-1],
                          "total": round(sum(secs), 1)} if secs else None),
@@ -357,7 +367,7 @@ def collect(name: str) -> dict:
                                                    encoding="utf-8")
     progress(f"collected {name}: {len(got['landed'])} of {state['coins']} coin(s) landed in "
              f"{got['folder']}; {len(got['not_reached'])} not reached, {len(got['failed'])} "
-             f"failed, {len(got['left_out'])} left out, {len(got['refused_records'])} refused "
+             f"failed, {len(got['unmeasured'])} unmeasured, {len(got['left_out'])} left out, {len(got['refused_records'])} refused "
              f"(each named in {name}-collected.json)")
     return summary
 
@@ -368,7 +378,8 @@ def retry(name: str, *, now: float | None = None, force: bool = False) -> dict:
     the run was dispatched with."""
     state = load_state(name)
     summary = json.loads((home() / f"{name}-collected.json").read_text(encoding="utf-8"))
-    coins = summary["not_reached"] + [x.split(": ", 1)[0] for x in summary["failed"]]
+    coins = summary["not_reached"] + [x.split(": ", 1)[0]
+                                      for x in summary["failed"] + summary.get("unmeasured", [])]
     if not coins:
         raise ValueError(f"{name}: every coin landed or was left out with why; nothing to redo")
     n = 1

@@ -304,6 +304,32 @@ def test_a_coin_every_machine_names_as_left_out_is_one_line(fleet, monkeypatch):
     st, got, _p, _t = _collected(fleet, monkeypatch, fill)
     a = st["dealt"]["a/x"]["coin_list"].split(",")
     assert got["left_out"] == [f"{a[1]}: the exchange is not trading it now"]
-    assert got["failed"] == [f"{a[2]}: claimed, not finished: the machine stopped before this "
-                             "coin was measured"]
+    # claimed and not finished = NOT MEASURED: one line, not an error, not landed
+    assert got["failed"] == []
+    assert got["unmeasured"] == [f"{a[2]}: claimed, not finished: the machine stopped before "
+                                 "this coin was measured"]
     assert got["landed"] == [a[0]]
+    assert a[2] not in got["not_reached"]
+    # ... and the retry redoes it (with the share GitHub refused), never the left-out coin
+    fleet.started.clear()
+    fleet.fail = set()
+    vc.retry("pilot", now=NOON)
+    redone = sorted(c for _r, i, _s in fleet.started for c in i["coin_list"].split(","))
+    assert a[2] in redone and a[1] not in redone and a[0] not in redone
+
+
+def test_an_unfinished_coin_that_has_a_record_or_a_final_entry_is_not_unmeasured(fleet,
+                                                                                 monkeypatch):
+    def fill(st, roots, plan):
+        a = st["dealt"]["a/x"]["coin_list"].split(",")
+        held = {"unfinished": True, "error": "claimed, not finished: x", "tries": 1}
+        # a[0]: killed after its record was saved; a[1]: its placeholder replaced by a final error
+        _artifact(roots["a/x"], 0, [_rec(a[0], plan)],
+                  [{"coin": a[0], **held}, {"coin": a[1], **held},
+                   {"coin": a[1], "error": "ValueError: x", "tries": 3}])
+        _artifact(roots["b/x"], 0, [], [])
+
+    st, got, _p, _t = _collected(fleet, monkeypatch, fill)
+    a = st["dealt"]["a/x"]["coin_list"].split(",")
+    assert got["landed"] == [a[0]] and got["unmeasured"] == []
+    assert got["failed"] == [f"{a[1]}: ValueError: x"]

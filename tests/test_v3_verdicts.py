@@ -148,7 +148,7 @@ def test_the_tab_lists_every_stored_verdict_and_says_a_pilot_is_not_the_proof(ru
     # the kit's columns: the rules in words, their sizes, leverage, trades a day
     assert snap["target"].startswith("the 20-candle average at the signal, resting")
     assert snap["stop"].startswith("an emergency stop 3 x ATR(20)")
-    assert snap["stop_pct"] == "0.70% (0.40%-1.00%)" and snap["lev"] == "20x-20x"
+    assert snap["stop_pct"] == "0.70% (0.40%-1.00%)" and snap["lev"] == "20x", "one leverage: 20x (M6)"
     assert snap["per_day"] == round(400 / 90, 2) and snap["trades"] == 400
     for row in s["verdicts"]:
         for k, v in row.items():

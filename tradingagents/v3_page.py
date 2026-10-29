@@ -210,13 +210,18 @@ def level_words(lv: dict, which: str) -> str:
     return got
 
 
+NO_COSTS = "not recorded: judged before the share was kept - judge again"
+
+
 def check_row(v: dict) -> dict:
     """One verdict as the tab's tables print it - the kit's columns: id,
     profit, the target and stop rules (and, from the store's `levels`, their
     sizes), leverage, wins and losses, the worst losing run, trades and trades
-    a day. A number the verdict does not have is None with `blank` saying why,
-    so no cell is ever empty."""
-    from tradingagents import v3_research as vrs
+    a day, wins and losses a day, and beside the verdict its typical-cost share
+    (`costs`, COVERAGE FIRST: the unseen days of the chosen setting and the
+    older days of every setting compared). A number the verdict does not have is
+    None with `blank` saying why, so no cell is ever empty."""
+    from tradingagents import v3_coverage as vcv, v3_research as vrs
     from tradingagents.v3_measure import UNSEEN_DAYS
 
     chose = v.get("failed") == "choose"
@@ -235,7 +240,9 @@ def check_row(v: dict) -> dict:
         target, stop = vrs.exit_words(v["family"], v["setting"], v["tf"])
     lv = v.get("levels") or {}
     lev = v.get("lev") if has else None
-    return {"id": v["id"], "family": v["family"], "tf": v["tf"], "filter": v["filter"],
+    costs = v.get("costs")
+    unseen_c = (costs or {}).get("unseen")
+    out = {"id": v["id"], "family": v["family"], "tf": v["tf"], "filter": v["filter"],
             "setting": v.get("setting"), "passed": bool(v.get("passed")),
             "failed": v.get("failed") or "",
             "verdict": "PASSED" if v.get("passed") else f"FAILED at {v.get('failed')}",
@@ -244,17 +251,29 @@ def check_row(v: dict) -> dict:
             "win_rate": s.get("win_rate") if has else None,
             "profit": cents(s["profit"]) if has and s.get("profit") is not None else None,
             "per_day": round(trades / UNSEEN_DAYS, 2) if has else None,
+            "wins_per_day": round(int(s.get("wins") or 0) / UNSEEN_DAYS, 2) if has else None,
+            "losses_per_day": round(int(s.get("losses") or 0) / UNSEEN_DAYS, 2) if has else None,
             "worst_run_usd": cents(s.get("worst_run_usd") or 0.0) if has else None,
             "worst_run_trades": int(s.get("worst_run_trades") or 0) if has else None,
             "target": target, "stop": stop,
             "target_pct": level_words(lv, "target") if has else None,
             "stop_pct": level_words(lv, "stop") if has else None,
-            "lev": f"{lev[0]}x-{lev[1]}x" if lev else None,
+            # one leverage is "20x", as the results page prints it (M6)
+            "lev": (f"{lev[0]}x" if lev[0] == lev[1] else f"{lev[0]}x-{lev[1]}x") if lev else None,
+            # COVERAGE FIRST beside every verdict (I3); a verdict judged before it was kept says so
+            "cost_unseen": (NO_COSTS if costs is None else vcv.share_words(unseen_c) if unseen_c
+                            else "no setting chosen"),
+            "cost_older": NO_COSTS if costs is None else vcv.share_words(costs.get("older")),
+
             "random_median_trades": None if chose else rr.get("median_trades"),
             "real_trades": None if chose else rr.get("real_trades"),
             "why": (v.get("why") or "") if chose else f"chose {v.get('setting')} on the older days",
             "blank": blank or ("" if rr.get("median_trades") is not None
                                else "the random runs' trades were not recorded")}
+    if unseen_c and unseen_c.get("legs"):
+        # what the tab's typical-cost column sorts by; a row with no trade has no share to sort
+        out["cost_share"] = round(unseen_c["typical_low"] / unseen_c["legs"], 4)
+    return out
 
 
 def options(*, fx=None, store_file=None, check_file=None) -> dict:

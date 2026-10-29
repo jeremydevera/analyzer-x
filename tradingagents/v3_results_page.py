@@ -19,9 +19,13 @@ and the page says so), the window box re-adds every row over the trades that
 CLOSED in its last N days and drops the month columns outside it (kit G; the
 minutes cannot ride in a page, so it is a re-add of the measured trades, never
 a new walk - said beside the count), and a click opens the trade-by-trade log
-with its TOTAL PROFIT (kit B, D). Max TP % and max SL % read each row's median
-target and stop (a trailing stop has no target, so any max TP % leaves it
-out, said beside the count).
+with its TOTAL PROFIT (kit B, D). Max TP % and max SL % are ceilings on every
+trade's own target and stop (the row prints the tightest to the widest and the
+box cuts on the widest; a trailing stop has no target, so any max TP % leaves
+it out, said beside the count). Beside every verdict stands its typical-cost
+share (COVERAGE FIRST, the store's `costs`): of its filled trades' entries and
+exits, those settled without their own minute's book - the unseen days as a
+column, the older days in the row's panel - and wins and losses a day (kit 6).
 """
 from __future__ import annotations
 
@@ -30,14 +34,19 @@ import json
 import re
 from pathlib import Path
 
-STORE_VERSION = 2        # v3_verdicts.build's shape; another version is refused by name
+STORE_VERSION = 3        # v3_verdicts.VERSION, build's shape; another version is refused by name
 WHYS = ("TP", "SL", "TRAIL", "MA", "TIME", "END", "RANK")
 
 
 def payload(store: dict, records: list[dict]) -> dict:
     """The page's data: every judged group with every field (kit F) and its
     chosen setting's pooled unseen trades in the compact encoding above."""
-    from tradingagents import v3_families as vf, v3_page as vpg, v3_research as vrs
+    from tradingagents import (
+        v3_coverage as vcv,
+        v3_families as vf,
+        v3_page as vpg,
+        v3_research as vrs,
+    )
 
     if store.get("version") != STORE_VERSION:
         raise ValueError(f"verdict store version {store.get('version')}: this page reads version "
@@ -70,6 +79,8 @@ def payload(store: dict, records: list[dict]) -> dict:
                         else (None, None))
         row = vpg.check_row(v)
         rnd = v.get("random") or {}
+        costs = v["costs"]
+        uc = costs.get("unseen")
         rows.append({"id": v["id"], "family": v["family"], "tf": v["tf"], "filter": v["filter"],
                      "setting": v.get("setting"), "passed": bool(v.get("passed")),
                      "failed": v.get("failed") or "", "verdict": row["verdict"],
@@ -81,7 +92,13 @@ def payload(store: dict, records: list[dict]) -> dict:
                                 rnd.get("runs")],
                      "boot": (v.get("bootstrap") or {}).get("low"),
                      "rand_trades": [row["random_median_trades"], row["real_trades"]],
-                     "notes": list(v.get("notes") or []), "t": trades})
+                     "notes": list(v.get("notes") or []),
+                     # COVERAGE FIRST beside the verdict: words from the store's own counts
+                     "cost": {"unseen": vcv.share_words(uc) if uc else "no setting chosen",
+                              "older": vcv.share_words(costs.get("older")),
+                              "share": (round(uc["typical_low"] / uc["legs"], 4)
+                                        if uc and uc.get("legs") else None)},
+                     "t": trades})
     return {"name": store["name"], "venue": store.get("venue") or "", "risk": store["risk_usd"],
             "runs": store["runs"], "tried": store["tried"], "z": store["z"],
             "plan_id": store["plan_id"], "dispatched": store.get("dispatched"),
@@ -264,7 +281,7 @@ const levWords=lev=>lev?(lev[0]===lev[1]?`${lev[0]}x`:`${lev[0]}x-${lev[1]}x`):n
 // a blank sorts last both ways
 function sortVal(x,c){const m=x.m,r=x.r,t=m.trades;
  const v={profit:m.profit,tp:m.target,sl:m.stop,trades:t||null,perday:t||null,wins:t?m.wins:null,losses:t?m.losses:null,win:m.win,
-  worst:t?m.worst:null,green:m.green,per:m.per,bar:r.random[1]};
+  worst:t?m.worst:null,green:m.green,per:m.per,bar:r.random[1],wlday:t?m.wins:null,cost:r.cost?r.cost.share:null};
  return c in v?v[c]:String(r[c]??"")}
 function sortRows(xs,k,dir){return [...xs].sort((a,b)=>{const p=sortVal(a,k),q=sortVal(b,k);if(p==null&&q==null)return 0;if(p==null)return 1;if(q==null)return -1;
  return (typeof p==="number"&&typeof q==="number"?p-q:String(p).localeCompare(String(q)))*dir})}
@@ -275,9 +292,10 @@ function heading(D){const n=D.coins.length;
  return `Every idea's verdict — ${n} coins`}
 const WHY_WORDS={not_reached:"not reached",failed:"failed",unmeasured:"claimed by a machine and not finished",
  left_out:"left out by the machine",refused_records:"record refused at landing",downloads_failed:"on an account whose download failed",
- shares_refused:"on an account that refused its share",other_records:"measured under another plan or risk",no_walk:"no timeframe measured",
- not_dispatched:"not sent (a pilot)"};
-const ACCOUNT_WORDS={downloads_failed:"Download failed",shares_refused:"Share refused",machines_refused:"Machines refused",unreadable_records:"Unreadable record"};
+ shares_refused:"on an account that refused its share",machines_refused:"on an account whose machines refused to measure",
+ other_records:"measured under another plan or risk",no_walk:"no timeframe measured",not_dispatched:"not sent (a pilot)"};
+const ACCOUNT_WORDS={downloads_failed:"Download failed",shares_refused:"Share refused",machines_refused:"Machines refused",
+ runs_without_artifact:"No artifact",unreadable_records:"Unreadable record"};
 // every coin of the plan not judged, one bucket each, then the accounts that failed; empty buckets print nothing
 function notJudged(D){const out=[];
  for(const [key,items] of Object.entries(D.not_judged||{}))if(items.length)out.push({key,label:WHY_WORDS[key]||key.replace(/_/g," "),items,account:false});
@@ -294,8 +312,9 @@ const state={risk:D.risk,f:{},days:null,pass:"",id:"",opened:"",cur:"",log:0,sor
 const idKey=()=>state.id.replace(/^#/,"").toUpperCase();
 const COLS=[["id","ID",1],["family","Idea",1],["tf","Timeframe",1],["filter","Filter",1],["setting","Setting",1],
  ["verdict","Verdict",1],["profit","PROFIT (total $)"],["target","TP (target rule)",1],["tp","TP % (target on every trade)"],["stop","SL (stop rule)",1],
- ["sl","SL % (stop on every trade)"],["lev","Leverage",1],["trades","Trades"],["perday","Trades a day"],["wins","W"],["losses","L"],["win","Win %"],
- ["worst","Worst losing run"],["green","Months green"],["per","$ a trade"],["bar","Random bar $ a trade"]];
+ ["sl","SL % (stop on every trade)"],["lev","Leverage",1],["trades","Trades"],["perday","Trades a day"],["wins","W"],["losses","L"],["wlday","W / L a day"],["win","Win %"],
+ ["worst","Worst losing run"],["green","Months green"],["per","$ a trade"],["bar","Random bar $ a trade"],
+ ["cost","Typical cost (all unseen days)"]];
 function view(){const end=D.end/1000,w=windowOf(D,state.days),k=state.risk/D.risk;
  const months=monthsIn(monthList(D),end,state.days);
  const rows=D.rows.map(r=>({r,m:measure(r,w.from,k)}));
@@ -310,7 +329,8 @@ function cellOf(x,c,span,k){const r=x.r,m=x.m;const why=`<span class="muted">${e
   case"tp":return m.target!=null?rng(m.targetLeast,m.target):(m.trades?'<span class="muted">none (trailing stop)</span>':why);
   case"sl":return m.stop!=null?rng(m.stopLeast,m.stop):why;case"lev":return r.lev?levWords(r.lev):why;
   case"trades":return m.trades?m.trades:why;case"perday":return m.trades?perDay(m.trades,span):why;case"wins":return m.trades?m.wins:why;
-  case"losses":return m.trades?m.losses:why;case"win":return m.win!=null?m.win.toFixed(1)+"%":why;
+  case"losses":return m.trades?m.losses:why;case"wlday":return m.trades?`${perDay(m.wins,span)} / ${perDay(m.losses,span)}`:why;
+  case"cost":return esc(r.cost.unseen);case"win":return m.win!=null?m.win.toFixed(1)+"%":why;
   case"worst":return m.trades?(m.worstN?`${money(m.worst)} over ${m.worstN}`:"no losses"):why;
   case"green":return m.trades?`${m.green}/${x.months.length}`:why;case"per":return m.trades?money(m.per):why;
   case"bar":return r.random[1]!=null?money(r.random[1]*k):why}}
@@ -331,7 +351,7 @@ function render(){const v=view();v.shown.forEach(x=>x.months=v.months);
   +(id?(v.shown.length?` · found by ID (the other filters are off)`:` · no row has #${esc(id)} (the other filters are off)`):"")
   +(names.length&&!id?" · "+esc(names.join(" AND ")):"")
   +` · window ${fmtWhen(w.start*1000)} to ${fmtWhen(D.end)} (${Math.round(w.span)} days)`
-  +(state.days?(w.clamped?` · last ${state.days} days is longer than the ${Math.round(w.window_days)} days measured: all unseen days, every row re-added from its trades`:" (every row re-added from its trades that closed in it)"):"")
+  +(state.days?(w.clamped?` · last ${state.days} days is longer than the ${Math.round(w.window_days)} days measured: all unseen days, every row re-added from its trades`:" (every row re-added from its trades that closed in it: no minutes ride in a page, so it is not a new walk)"):"")
   +` · at ${usd(state.risk)} risk a trade`+(state.risk!==D.risk?` (scaled from the ${usd(D.risk)} measured: at another risk some trades would be sized differently or be under one lot)`:"")
   +(noTarget?` · max TP % leaves out ${noTarget} row(s) with a trailing stop, which has no target`:"")+(idle.length?" · "+esc(idle.join("; ")):"");
  drawProv();
@@ -347,7 +367,7 @@ function drawLog(show){const v=view(),x=v.rows.find(y=>y.r.id===state.cur);if(!x
  <div class="sum"><span>TOTAL PROFIT <b class="total ${m.profit>0?"pos":"neg"}">${m.trades?money(m.profit):"$0.00"}</b></span>
  <span>${m.trades} trades · ${m.wins} won · ${m.losses} lost${m.win!=null?" · "+m.win.toFixed(1)+"%":""}</span>
  <span>worst losing run <b>${m.worstN?`${money(m.worst)} over ${m.worstN}`:"none"}</b></span></div>
- <p class="note">Setting ${esc(r.setting||"none chosen")} - ${esc(r.why)}. Older days: ${older||"no trades"}. Random runs: median ${money(r.random[0]==null?null:r.random[0]*v.k)}, bar ${money(r.random[1]==null?null:r.random[1]*v.k)} a trade (${r.random[2]??0} of ${r.random[3]??0} traded; their median ${r.rand_trades[0]??"-"} trades against the real run's ${r.rand_trades[1]??"-"}). Bootstrap low ${money(r.boot==null?null:r.boot*v.k)} a trade.
+ <p class="note">Setting ${esc(r.setting||"none chosen")} - ${esc(r.why)}. Older days: ${older||"no trades"}. Random runs: median ${money(r.random[0]==null?null:r.random[0]*v.k)}, bar ${money(r.random[1]==null?null:r.random[1]*v.k)} a trade (${r.random[2]??0} of ${r.random[3]??0} traded; their median ${r.rand_trades[0]??"-"} trades against the real run's ${r.rand_trades[1]??"-"}). Bootstrap low ${money(r.boot==null?null:r.boot*v.k)} a trade. Typical cost - entries and exits settled without their own minute's order book (a coin's usual cost paid, or a post-only check that could not be made): unseen days ${esc(r.cost.unseen)}; older days ${esc(r.cost.older)} (every setting compared). ${m.trades?`${perDay(m.wins,v.w.span)} won and ${perDay(m.losses,v.w.span)} lost a day.`:""}
  Target: ${esc(r.target||"-")}. Stop: ${esc(r.stop||"-")}. Leverage ${r.lev?levWords(r.lev):"-"}, ${r.notional?`${usd(r.notional[0]*v.k)}-${usd(r.notional[1]*v.k)} of coin a trade (margin = the coin bought ÷ its leverage)`:"no trade"}. ${r.notes.map(esc).join(" ")}</p>
  <p class="note">Trades ${m.t.length?a+1:0}-${b} of ${m.t.length} <button id="log-prev"${state.log?"":" disabled"}>Previous ${LOG_PAGE}</button> <button id="log-next"${state.log<pages-1?"":" disabled"}>Next ${LOG_PAGE}</button> (the total above is every trade, not this page)</p>
  <div class="wrap"><table><thead><tr><th class="l">#</th><th class="l">Coin</th><th class="l">Side</th><th class="l">In</th><th class="l">Out</th><th class="l">Exit</th><th>SL %</th><th>TP %</th><th>Profit</th><th>Running</th></tr></thead><tbody>

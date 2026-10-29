@@ -19,7 +19,10 @@ and writes:
 
 Each verdict carries its chosen setting's stop and target sizes on the unseen
 days (`levels`: the smallest, the median and the largest, as fractions of the
-entry), read from the records' trade rows. The file says what it was judged
+entry), read from the records' trade rows, and its typical-cost share
+(`costs`, `v3_coverage.verdict_costs`: of the filled trades' entries and
+exits, those settled without their own minute's book - the older days over
+every setting the choice compared, the unseen days of the chosen one). The file says what it was judged
 under - the run, the plan build and its window, the risk, the random runs,
 the coins pooled out of the plan's, and every coin of the plan that was NOT
 judged, with why - so a page that shows it never has to guess.
@@ -42,6 +45,10 @@ import re
 import statistics
 import time
 from pathlib import Path
+
+# the shape `build` writes; a reader of another version refuses it by name (v3_results_page).
+# 3 (Oct 29, 2026): every verdict carries `costs`, its typical-cost share (COVERAGE FIRST)
+VERSION = 3
 
 
 def store_path() -> Path:
@@ -183,6 +190,7 @@ def build(name: str, *, now: float | None = None) -> dict:
     recomputed from the records actually landed, against the plan."""
     from tradingagents import (
         v3_cloud as vc,
+        v3_coverage as vcv,
         v3_proof as vp,
         v3_research as vrs,
         v3_universe as vu,
@@ -212,6 +220,9 @@ def build(name: str, *, now: float | None = None) -> dict:
     lines, verdicts = vrs.report(records, plan, runs, risk)
     for v in verdicts:
         v["levels"] = levels(records, v)
+        # COVERAGE FIRST beside every verdict (I3): the share of its entries and exits settled
+        # without their own minute's book, older and unseen days apart
+        v["costs"] = vcv.verdict_costs(records, v)
     start, split, end = windows(plan)
     t = time.time() if now is None else float(now)
     # judged = a coin with at least one measured timeframe; every other coin of the plan is named
@@ -238,7 +249,7 @@ def build(name: str, *, now: float | None = None) -> dict:
     for m, _st, su in members:
         for repo, run in (su.get("runs") or {}).items():
             github_runs[repo if m == name else f"{repo} ({m})"] = run
-    return {"version": 2, "name": name, "family": names, "folder": state["folder"],
+    return {"version": VERSION, "name": name, "family": names, "folder": state["folder"],
             "label": state["label"], "venue": plan.get("venue") or "", "plan_id": plan["id"],
             "plan_start": start, "plan_split": split, "plan_end": end, "risk_usd": risk,
             "runs": runs, "tried": vp.TRIED, "z": vp.Z, "judged_at": t,

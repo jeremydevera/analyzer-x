@@ -176,9 +176,11 @@ def test_the_page_is_built_from_the_newest_kept_verdicts(monkeypatch, tmp_path):
 
 def test_a_store_of_another_version_is_refused_by_name(page):
     store, records, _html, _data = page
-    assert store["version"] == 2
-    with pytest.raises(ValueError, match=r"verdict store version 1.*reads version 2"):
-        vrp.payload({**store, "version": 1}, records)
+    from tradingagents import v3_verdicts as vv
+
+    assert store["version"] == vv.VERSION == vrp.STORE_VERSION == 3
+    with pytest.raises(ValueError, match=r"verdict store version 2.*reads version 3"):
+        vrp.payload({**store, "version": 2}, records)
     with pytest.raises(ValueError, match="verdict store version None"):
         vrp.build({k: v for k, v in store.items() if k != "version"}, records)
 
@@ -361,3 +363,73 @@ def test_the_log_is_paged_and_the_provenance_follows_the_risk_box(page):
     _store, _records, html, _data = page
     assert "const LOG_PAGE=" in html and "log-next" in html
     assert "function drawProv" in html and "no row has #" in html
+
+
+# ---- the final fix wave (Oct 29, 2026) ---------------------------------------------------------
+
+def _counted_run(monkeypatch, tmp_path):
+    """make_run's pilot with XAU's chosen unseen walk counting 20 exits at a usual cost and 10
+    orders placed with no book, 4 of which never filled."""
+    import tests.test_v3_proof as tp
+    from tradingagents import v3_research as vrs
+
+    run = tv.make_run(monkeypatch, tmp_path)
+    rec = next(r for r in vrs.load_coins(run.folder) if r["coin"] == "XAU_USDT")
+    rec["combos"][tp.KEY]["unseen"]["counts"] = {"cost_unmeasured": 20,
+                                                 "placement_unmeasured": 10, "missed": 4}
+    vrs.save_coin(run.folder, rec)
+    return run
+
+
+def test_every_verdict_carries_its_typical_cost_share_and_page_and_tab_print_it(monkeypatch,
+                                                                              tmp_path):
+    """I3: COVERAGE FIRST beside every verdict - kept in the store, a column on the page, a
+    column on the tab. 400 unseen trades are 800 entries and exits: 20 exits at a usual cost,
+    and 6 to 10 of the 10 orders placed with no book were filled entries (4 never filled)."""
+    run = _counted_run(monkeypatch, tmp_path)
+    store = vv.build("pilot", now=1_793_000_000.0)
+    snap = next(v for v in store["verdicts"] if v["family"] == "v3_snap" and v["tf"] == "1h"
+                and v["filter"] == "none")
+    u = snap["costs"]["unseen"]
+    assert (u["legs"], u["typical_low"], u["typical_high"]) == (800, 26, 30)
+    assert snap["costs"]["older"]["legs"] == 320, "both settings the choice compared, 2 coins"
+    assert "unseen days 3.2%-3.8% of 800 entries and exits" in snap["costs"]["words"]
+    assert all("costs" in v for v in store["verdicts"]), "beside EVERY verdict"
+    records = vv_records(run)
+    data = vrp.payload(store, records)
+    row = data["rows"][_snap(data)]
+    assert row["cost"] == {"unseen": "3.2%-3.8% of 800 entries and exits",
+                           "older": "0.0% of 320 entries and exits", "share": 0.0325}
+    chose = next(r for r in data["rows"] if r["failed"] == "choose")
+    assert chose["cost"]["unseen"] == "no setting chosen"
+    html = vrp.build(store, records)
+    assert '["cost","Typical cost (all unseen days)"]' in html
+    assert "settled without their own minute's order book" in html
+    tab = vpg.check_row(snap)
+    assert tab["cost_unseen"] == "3.2%-3.8% of 800 entries and exits"
+    assert tab["cost_older"] == "0.0% of 320 entries and exits" and tab["cost_share"] == 0.0325
+
+
+def test_wins_and_losses_a_day_and_one_leverage_as_one_number(page):
+    """M12 (kit item 6: wins and losses a day for intraday) and M6 (the tab prints one leverage
+    as "20x", like the page)."""
+    from tradingagents.v3_measure import UNSEEN_DAYS
+
+    store, _records, html, _data = page
+    snap = next(v for v in store["verdicts"] if v["family"] == "v3_snap" and v["tf"] == "1h"
+                and v["filter"] == "none")
+    tab = vpg.check_row(snap)
+    s = snap["unseen"]
+    assert tab["wins_per_day"] == round(s["wins"] / UNSEEN_DAYS, 2)
+    assert tab["losses_per_day"] == round(s["losses"] / UNSEEN_DAYS, 2)
+    assert tab["lev"] == "20x"
+    assert vpg.check_row({**snap, "lev": [12, 20]})["lev"] == "12x-20x"
+    assert '["wlday","W / L a day"]' in html and "won and" in html and "lost a day" in html
+
+
+def test_the_window_says_on_the_page_why_it_is_a_re_add_not_a_new_walk(page):
+    """Task 7 review Minor 4: the reason ("no minutes ride in a page") is printed beside the
+    count, not only in the module's docstring."""
+    _store, _records, html, _data = page
+    assert ("every row re-added from its trades that closed in it: no minutes ride in a page, so "
+            "it is not a new walk") in html

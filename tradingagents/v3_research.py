@@ -400,7 +400,13 @@ def verdicts_file(plan: dict, risk: float, runs: int, records: list[dict],
     under - the plan build and its end (ms), the risk, the random runs, the
     coins pooled and when (seconds) - so a reader (the Backtest v3 tab's check
     card) says what it shows without guessing. A file written before this
-    (a bare list) carries none of it, and the tab says to judge again."""
+    (a bare list) carries none of it, and the tab says to judge again. Every
+    verdict carries its typical-cost share (`costs`, COVERAGE FIRST), as the
+    verdict store's do."""
+    from tradingagents import v3_coverage as vcv
+
+    for v in verdicts:
+        v["costs"] = vcv.verdict_costs(records, v)
     return {"plan_id": plan.get("id") or vu.plan_id(plan), "plan_end": int(plan["end_ms"]),
             "risk_usd": float(risk), "runs": int(runs),
             "coins": [r["coin"] for r in records], "judged_at": time.time(),

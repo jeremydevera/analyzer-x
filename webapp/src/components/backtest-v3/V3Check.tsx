@@ -21,6 +21,10 @@ export type CheckRow = {
   // Part 2b: the kit's remaining columns (v3_page.check_row)
   per_day?: number | null; target?: string | null; stop?: string | null;
   target_pct?: string | null; stop_pct?: string | null; lev?: string | null;
+  // the final fix wave: wins and losses a day (kit item 6), and beside the verdict the share of
+  // its entries and exits settled without their own minute's book (COVERAGE FIRST)
+  wins_per_day?: number | null; losses_per_day?: number | null;
+  cost_unseen?: string | null; cost_older?: string | null; cost_share?: number | null;
 };
 export type Check = {
   state: string; words?: string; coins?: string[]; risk_usd?: number | null; runs?: number | null;
@@ -58,11 +62,13 @@ const NOT_JUDGED: Record<string, string> = {
   not_reached: "not reached", failed: "failed", unmeasured: "claimed by a machine and not finished",
   left_out: "left out by the machine", refused_records: "record refused at landing",
   downloads_failed: "on an account whose download failed", shares_refused: "on an account that refused its share",
+  machines_refused: "on an account whose machines refused to measure",
   other_records: "measured under another plan or risk", no_walk: "no timeframe measured",
   not_dispatched: "not sent (a pilot)",
 };
 const ACCOUNTS: Record<string, string> = {
   downloads_failed: "Download failed", shares_refused: "Share refused", machines_refused: "Machines refused",
+  runs_without_artifact: "No artifact",
   unreadable_records: "Unreadable record",
 };
 function money(v: number): string {
@@ -126,7 +132,8 @@ export default function V3Check({ check, kind = "check" }: { check: Check; kind?
   const cell = (r: CheckRow, v: ReactNode | null) =>
     v == null ? <TableCell className={why}>{r.blank || "not recorded"}</TableCell> : <TableCell className={td}>{v}</TableCell>;
   const risk = check.risk_usd != null ? `$${check.risk_usd.toFixed(2)}` : "an unrecorded risk";
-  const lev = check.lev ? `${check.lev[0]}x–${check.lev[1]}x` : "none traded";
+  // one leverage is "20x", as the results page prints it
+  const lev = check.lev ? (check.lev[0] === check.lev[1] ? `${check.lev[0]}x` : `${check.lev[0]}x–${check.lev[1]}x`) : "none traded";
   const notional = check.notional ? `$${check.notional[0].toFixed(0)}–$${check.notional[1].toFixed(0)}` : "none traded";
 
   return (
@@ -155,6 +162,9 @@ export default function V3Check({ check, kind = "check" }: { check: Check; kind?
         Universe plan {check.plan_id ?? "not recorded"}, ending {fmtWhen(check.plan_end != null ? check.plan_end / 1000 : null)}
         {" "}· {rows.length} judged groups
         {" "}· leverage {lev} · {notional} of coin a trade (margin = the coin bought ÷ its leverage).
+        {" "}Typical cost: the share of each verdict&apos;s entries and exits settled without their own minute&apos;s order
+        book (a coin&apos;s usual cost paid, or a post-only check that could not be made) - a range when some orders
+        placed with no book never filled.
       </p>
       <div className="mt-2 overflow-x-auto">
         <Table>
@@ -164,8 +174,9 @@ export default function V3Check({ check, kind = "check" }: { check: Check; kind?
               {head("setting", "Setting chosen")}{head("verdict", "Verdict")}{head("profit", "PROFIT (total $)")}
               {head("target", "Target (TP rule)")}{head("target_pct", "Target size")}{head("stop", "Stop (SL rule)")}
               {head("stop_pct", "Stop size")}{head("lev", "Leverage")}{head("trades", "Unseen trades")}{head("per_day", "Trades a day")}
-              {head("wins", "Won / lost")}{head("win_rate", "Win rate")}
+              {head("wins", "Won / lost")}{head("wins_per_day", "Won / lost a day")}{head("win_rate", "Win rate")}
               {head("worst_run_usd", "Worst losing run")}{head("random_median_trades", "Random runs' median trades vs the real run's")}
+              {head("cost_share", "Typical cost, unseen days")}{head("cost_older", "Typical cost, older days")}
               {head("why", "Why")}
             </TableRow>
           </TableHeader>
@@ -183,11 +194,13 @@ export default function V3Check({ check, kind = "check" }: { check: Check; kind?
                 {cell(r, r.stop_pct ?? null)}{cell(r, r.lev ?? null)}
                 {cell(r, r.trades)}{cell(r, r.per_day ?? null)}
                 {cell(r, r.wins != null && r.losses != null ? `${r.wins} / ${r.losses}` : null)}
+                {cell(r, r.wins_per_day != null && r.losses_per_day != null ? `${r.wins_per_day.toFixed(2)} / ${r.losses_per_day.toFixed(2)}` : null)}
                 {cell(r, r.win_rate != null ? `${(r.win_rate * 100).toFixed(1)}%` : null)}
                 {cell(r, r.worst_run_usd != null && r.worst_run_trades != null
                   ? (r.worst_run_trades ? `${money(r.worst_run_usd)} over ${r.worst_run_trades} trade${r.worst_run_trades === 1 ? "" : "s"}` : "no losses")
                   : null)}
                 {cell(r, r.random_median_trades != null && r.real_trades != null ? `${r.random_median_trades} vs ${r.real_trades}` : null)}
+                {cell(r, r.cost_unseen ?? null)}{cell(r, r.cost_older ?? null)}
                 <TableCell className={`${td} whitespace-normal min-w-64`}>{r.why}</TableCell>
               </TableRow>
             ))}

@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 _PROG = r'''
 import json, os, sys
 ROOT, PLAN, PLAN_ID, COINS = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+MODE = sys.argv[6]
 sys.path.insert(0, os.path.join(ROOT, ".github", "scripts"))
 sys.path.insert(0, ROOT)
 os.environ.update({"GITHUB_TOKEN": "", "GITHUB_REPOSITORY": "acct/analyzer-x",
@@ -45,25 +46,34 @@ cost_store.engine_book = lambda *a, **k: tm._book(tm.START_A // 1000)
 import v3_shard as sh
 sh.ss.report = lambda *a, **k: None
 sh.ss.log = lambda *a, **k: None
+if MODE == "cutoff":
+    sh.RETRY_CUTOFF_S = -1          # the 4.8 h cutoff has passed: no coin is redone
 # the exchange trades every coin asked for but GONE_USDT
 sh.ss.eligible = lambda: sorted(c for c in sh.ss.COIN_LIST if c != "GONE_USDT")
 calls = {}
 
 
 class World(tm.FakeFx):
-    """XAU_USDT and SLOW_USDT read the calm metal; FLAKY_USDT's first candle read is cut
-    mid-body, then it reads like the others; DEAD_USDT's never answers."""
+    """XAU_USDT and the Chinese-named coin read the calm metal; FLAKY_USDT's first candle read
+    is cut mid-body, then it reads like the others; DEAD_USDT's never answers; KILL_USDT's
+    read is the runner being killed (GitHub's time limit)."""
 
     def klines(self, sym, iv, limit):
         calls[sym] = calls.get(sym, 0) + 1
+        if sym == "KILL_USDT":
+            raise KeyboardInterrupt
         if sym == "DEAD_USDT" or (sym == "FLAKY_USDT" and calls[sym] == 1):
             raise ConnectionError(f"{sym}: IncompleteRead(183452 bytes read)")
         return super().klines(sym, iv, limit)
 
 
 sh.FX = World(tm.START_A, tm.END_A, tm._dips(tm.OLD_DIP, tm.NEW_DIP))
-code = sh.main()
-print(json.dumps({"code": code, "calls": calls}))
+try:
+    code = sh.main()
+except KeyboardInterrupt:
+    code = "killed"
+print(json.dumps({"code": code, "calls": calls,
+                  "finished": getattr(sh.ss.report, "finished", None)}))
 '''
 
 
@@ -80,11 +90,12 @@ def _plan(tmp, coins):
     return path, plan["id"]
 
 
-def _run(tmp, asked, plan_id=None, venue="gate", inside=None):
-    path, pid = _plan(tmp, inside or [c for c in asked if c not in ("OUT_USDT", "GONE_USDT")])
+def _run(tmp, asked, plan_id=None, venue="gate", inside=None, mode=""):
+    path, pid = _plan(tmp, inside or [c for c in asked if c not in ("OUT_USDT", "GONE_USDT")]
+                      or ["XAU_USDT"])
     out = subprocess.run([sys.executable, "-c", _PROG, str(ROOT), str(path), plan_id or pid,
-                          ",".join(asked), venue], cwd=str(tmp), capture_output=True,
-                         text=True, timeout=900)
+                          ",".join(asked), venue, mode], cwd=str(tmp), capture_output=True,
+                         text=True, timeout=900, encoding="utf-8")
     assert out.returncode == 0, out.stderr[-3000:]
     got = json.loads(out.stdout.strip().splitlines()[-1])
     rep = json.loads((Path(tmp) / "out" / "v3-report-0.json").read_text(encoding="utf-8"))
@@ -94,8 +105,12 @@ def _run(tmp, asked, plan_id=None, venue="gate", inside=None):
 @pytest.fixture(scope="module")
 def world(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("v3shard")
-    got, rep, pid = _run(tmp, ["XAU_USDT", "FLAKY_USDT", "DEAD_USDT", "OUT_USDT", "GONE_USDT"])
+    got, rep, pid = _run(tmp, ["XAU_USDT", "FLAKY_USDT", "DEAD_USDT", "OUT_USDT", "GONE_USDT",
+                               CHINESE])
     return tmp, got, rep, pid
+
+
+CHINESE = "龙虾_USDT"          # a coin the exchange names in Chinese
 
 
 def _record(tmp, sym):
@@ -136,7 +151,51 @@ def test_every_coin_left_out_is_named_with_why(world):
     assert why["GONE_USDT"] == "the exchange is not trading it now"
     assert why["OUT_USDT"] == "not in the plan's universe"
     assert {e["coin"] for e in rep["report"]} == {"XAU_USDT", "FLAKY_USDT", "DEAD_USDT",
-                                                   "OUT_USDT", "GONE_USDT"}
+                                                   "OUT_USDT", "GONE_USDT", CHINESE}
+
+
+def test_a_coin_named_in_chinese_is_claimed_measured_and_named_in_the_report(world):
+    tmp, got, rep, _pid = world
+    path = vrs.coin_file(Path(tmp) / "out" / "v3", CHINESE)
+    assert re.fullmatch(r"x[0-9a-f]+\.json\.gz", path.name) and path.exists()
+    assert path.name == "x" + CHINESE.encode("utf-8").hex() + ".json.gz"
+    assert _record(tmp, CHINESE)["coin"] == CHINESE
+    entry = next(e for e in rep["report"] if e["coin"] == CHINESE)
+    assert entry["combos"] > 0 and "error" not in entry and not entry.get("unfinished")
+
+
+def test_progress_counts_the_coins_finished_as_they_finish(world):
+    _tmp, got, rep, _pid = world
+    # XAU, FLAKY (on its redo) and the Chinese-named coin; never the dead one or the left-out two
+    assert got["finished"] == 3
+    assert not [e for e in rep["report"] if e.get("unfinished")],         "a finished run leaves no placeholder behind"
+
+
+def test_a_coin_claimed_when_the_machine_is_killed_is_named_in_the_report_on_disk(tmp_path):
+    got, rep, _pid = _run(tmp_path, ["KILL_USDT", "XAU_USDT"], mode="kill")
+    assert got["code"] == "killed"
+    kill = next(e for e in rep["report"] if e["coin"] == "KILL_USDT")
+    assert kill["unfinished"] is True and kill["error"].startswith("claimed, not finished")
+    assert kill["tries"] == 1
+    assert not vrs.coin_file(tmp_path / "out" / "v3", "KILL_USDT").exists()
+
+
+def test_a_coin_still_queued_when_the_retry_cutoff_passes_is_named_not_redone(tmp_path):
+    got, rep, _pid = _run(tmp_path, ["XAU_USDT", "FLAKY_USDT", "DEAD_USDT"], mode="cutoff")
+    assert got["code"] == 0
+    by = {e["coin"]: e for e in rep["report"]}
+    for coin in ("FLAKY_USDT", "DEAD_USDT"):
+        assert by[coin]["error"] == "not redone: out of time" and by[coin]["tries"] == 1
+        assert not by[coin].get("unfinished")
+    assert got["calls"]["FLAKY_USDT"] == 1 and got["calls"]["DEAD_USDT"] == 1
+    assert "error" not in by["XAU_USDT"] and by["XAU_USDT"]["combos"] > 0
+
+
+def test_a_machine_dealt_no_coins_measures_nothing(tmp_path):
+    got, rep, _pid = _run(tmp_path, [], inside=["XAU_USDT"])
+    assert got["code"] == 2 and rep["report"] == []
+    assert rep["refused"].startswith("no coins were dealt to this machine's account")
+    assert not (tmp_path / "out" / "v3").exists() or not list((tmp_path / "out" / "v3").iterdir())
 
 
 def test_a_machine_whose_plan_is_not_the_dispatchs_measures_nothing(tmp_path):

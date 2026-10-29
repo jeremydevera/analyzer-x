@@ -172,6 +172,42 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-28-B — Backtest v3's GitHub machine would have measured the whole market on an account that was dealt no coins, and a coin it was "not redone" on never reached its report: NEVER HAPPENED YET
+
+**CEO**
+
+* Nothing wrong was shown yet (it NEVER HAPPENED YET, no run was started): if one of the three GitHub accounts had been handed no coins, all twenty of its machines would have measured every coin of the research again beside the other two accounts, and the same coin would have come home twice.
+* Why: an empty list of coins means "the whole market" to the shared machine code, and the new Backtest v3 machine trusted the dispatch to always name coins without checking it.
+* What stops it now: a machine with no coins refuses by name ("no coins were dealt to this machine's account") and measures nothing, and every coin a machine has claimed and not finished stays named in its report, including after the machine is killed or stops at its cutoff.
+
+**DEV**
+
+* `.github/scripts/v3_shard.py` `board_of` read `ss.COIN_LIST`, which `sweep_shard.py:96` leaves empty when `COIN_LIST` is empty, and `ss.eligible()` then returns the whole market; `refusal` checked only the venue, the plan and the plan id. Second fault, found while pinning the cutoff: `run()` appended the "not redone: out of time" entries after its loop and returned without `save_report`, so those names never reached `out/v3-report-N.json`; and a coin claimed but not yet finished (a kill at GitHub's 350-minute limit) was in no entry at all.
+* Invariant broken: **a dispatch's input that the shared code reads as "everything" when empty must be refused when empty by the one who acts on it**, and a report that is the only record of what a machine did must be written after the last thing it records (the same family as RCA-2026-10-02-C: a count is not a location).
+* Guard: `tests/test_v3_shard.py::test_a_machine_dealt_no_coins_measures_nothing`, `::test_a_coin_claimed_when_the_machine_is_killed_is_named_in_the_report_on_disk`, `::test_a_coin_still_queued_when_the_retry_cutoff_passes_is_named_not_redone`, `::test_progress_counts_the_coins_finished_as_they_finish`, `::test_a_coin_named_in_chinese_is_claimed_measured_and_named_in_the_report`.
+
+**SAW** - NEVER HAPPENED YET: found by the task review of Part 2b Task 2 (`Oct 28, 2026`, `task-2-review.txt`, Important 1 and Minor 3), reading `refusal` and the end of `run()` against `sweep_shard.COIN_LIST`.
+
+**TIMELINE** (NEVER HAPPENED YET: hypothetical; the numbers are from running the committed and the fixed machine on made-up coins in `tests/test_v3_shard.py`)
+
+1. `Oct 28, 2026` - commit `e9869c6d76cc` adds the machine; `refusal` checks venue, plan and plan id.
+2. A dispatch with 3 accounts and fewer coins than accounts would send one account `coin_list=""`. The machine's `ss.COIN_LIST` is `[]`, `ss.eligible()` is every coin of the market, and `board_of` keeps the plan's coins: 228 coins on 20 machines, all measured again.
+3. The same machine, with `RETRY_CUTOFF_S` passed, queued FLAKY_USDT and DEAD_USDT after their first failure; the stream ended, `late()` was true, `run()` put "not redone: out of time" in memory and returned. Report on disk: no entry saying so (before the fix: the placeholder-less list had neither coin).
+4. A machine killed on a coin's first candle read left that coin in no entry (before the fix); it now leaves `{"coin": "KILL_USDT", "tries": 1, "unfinished": true, "error": "claimed, not finished: ..."}`.
+5. After the fix an empty list gives exit 2 and `refused: "no coins were dealt to this machine's account (COIN_LIST is empty)..."`, the cutoff coins are on disk as "not redone: out of time" with `tries` 1, and `ss.report.finished` reads 3 of 3 measured instead of staying 0.
+
+**ROOT CAUSE** - The machine reused a shared claim board whose empty input means "all", and wrote its report inside the loop only, so the entries made on the loop's way out (and the coins in flight when it stopped) were never saved.
+
+**WHY IT WAS NOT CAUGHT** - Every test of the machine handed it a list of coins and ran it to the end of its stream: no test gave it none, none stopped it on a coin, and the cutoff path was never run because `RETRY_CUTOFF_S` is hours. A test that reads the report after a clean finish cannot see an entry made after the last save.
+
+**COST** - none: NEVER HAPPENED YET. No run was dispatched.
+
+**FIX** - this commit: `refusal` refuses an empty `COIN_LIST` by name; `hold`/`settle` write a placeholder for every claimed coin as it is claimed and replace it with the final entry; `save_report` runs again after the loop; `ss.report.finished` advances as coins finish.
+
+**GUARD** - the five tests above in `tests/test_v3_shard.py` (the no-coins, kill and cutoff tests were red on `e9869c6d76cc`, as was the progress test).
+
+---
+
 ## RCA-2026-10-28-A — Backtest v3's research records got a second shape (record version 2, trade rows with a stop and a target) while nothing checked the version, so old and new results would have been judged together without a word: NEVER HAPPENED YET
 
 **CEO**

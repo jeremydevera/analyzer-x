@@ -91,7 +91,9 @@ def save_report(report: list, **head) -> None:
 
 def refusal(plan: dict | None, load_error: str = "") -> str:
     """Why this machine may not measure, or "": the plan it holds is the one the
-    dispatch named, and the run trades on Gate."""
+    dispatch named, the run trades on Gate, and the dispatch dealt this machine's
+    account some coins (an empty list means "the whole market" to `sweep_shard`,
+    and three accounts would each measure every coin)."""
     if _venue.current() != "gate":
         return f"TA_VENUE is {_venue.current()!r}: Backtest v3 measures on Gate only"
     if plan is None:
@@ -101,6 +103,10 @@ def refusal(plan: dict | None, load_error: str = "") -> str:
     if plan["id"] != PLAN_ID:
         return (f"this checkout's plan is {plan['id']}, the dispatch named {PLAN_ID}: the plan "
                 "file changed between the dispatch and this machine's checkout")
+    if not ss.COIN_LIST:
+        return ("no coins were dealt to this machine's account (COIN_LIST is empty): every "
+                "dispatch names its coins, and an empty list would measure the whole plan "
+                "again beside the other accounts")
     return ""
 
 
@@ -119,6 +125,22 @@ def board_of(plan: dict, report: list) -> list:
         if c not in inside:
             report.append({"coin": c, "why": "not in the plan's universe"})
     return [c for c in live if c in inside]
+
+
+def settle(report: list, entry: dict) -> None:
+    """A coin's entry in the report: its final one replaces the placeholder it was given
+    when it was claimed (`unfinished`), so a coin claimed and not finished - the machine
+    killed at GitHub's time limit, or stopped at the cutoff - stays NAMED in the report
+    written so far."""
+    report[:] = [e for e in report if not (e["coin"] == entry["coin"] and e.get("unfinished"))]
+    report.append(entry)
+
+
+def hold(report: list, sym: str, tries: int, said: str = "") -> None:
+    """The placeholder of a coin this machine holds and has not finished."""
+    settle(report, {"coin": sym, "tries": tries, "unfinished": True,
+                    "error": said or "claimed, not finished: the machine stopped before this "
+                                     "coin was measured"})
 
 
 def late() -> bool:
@@ -155,18 +177,21 @@ def run(plan: dict, report: list, head: dict) -> int:
         if sym is None:
             if not queue or late():
                 for q in queue:
-                    report.append({"coin": q, "error": "not redone: out of time",
-                                   "tries": tries[q]})
+                    settle(report, {"coin": q, "error": "not redone: out of time",
+                                    "tries": tries[q]})
                 break
             sym = queue.pop(0)
         tries[sym] = tries.get(sym, 0) + 1
         vrs.drop_coin(OUT_DIR, sym)                # never a half-run's file beside a redo
+        hold(report, sym, tries[sym])              # named on disk from the moment it is claimed
+        save_report(report, **head)
         try:
             entry = measure(sym, plan)
             if tries[sym] > 1:
                 entry["tries"] = tries[sym]
-            report.append(entry)
+            settle(report, entry)
             done += 1
+            ss.report.finished = done
         except Exception as exc:                               # noqa: BLE001
             vrs.drop_coin(OUT_DIR, sym)
             said = f"{type(exc).__name__}: {str(exc)[:200]}"
@@ -174,11 +199,13 @@ def run(plan: dict, report: list, head: dict) -> int:
             ss.log(traceback.format_exc()[-800:])
             if tries[sym] <= COIN_RETRIES:
                 queue.append(sym)
+                hold(report, sym, tries[sym], f"failed, waiting to be redone: {said}")
                 time.sleep(5 * tries[sym])
             else:
-                report.append({"coin": sym, "error": said, "tries": tries[sym]})
+                settle(report, {"coin": sym, "error": said, "tries": tries[sym]})
         save_report(report, **head)
         ss.report("testing", done, len(board), note=f"{sym} done")
+    save_report(report, **head)        # the coins named "not redone" are on disk too
     ss.log(f"done: {done} coin(s) in {(time.time() - T0) / 60:.0f} min")
     return 0
 

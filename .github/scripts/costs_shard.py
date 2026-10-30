@@ -35,6 +35,11 @@ REPO = os.environ.get("GITHUB_REPOSITORY", "")
 SHARD = int(os.environ.get("SHARD") or 0)
 NOTIONAL = float(os.environ.get("NOTIONAL") or 100.0)
 OUT = Path("out")
+# A COIN GATE PUBLISHES LATER THAN THE OTHERS (RCA-2026-10-30-D): a 404 hour the archive
+# already holds for another coin is owed to this coin when its own newest hour is at most
+# this far behind the archive's end - the run goes red and the day is pressed again; further
+# behind, Gate stopped publishing the coin (delisted) and the hour is final, named
+LAG_S = 6 * 3600
 
 
 def log(msg: str) -> None:
@@ -213,6 +218,8 @@ def main() -> int:
     # done for ever, so it may only end green when nothing was lost
     redo: list[str] = []
     shards = max(1, int(os.environ.get("SHARDS") or 1))
+    tails: list = []       # (coin, its 404 hours, its newest hour seen) - judged after every coin
+    run_top = None         # the newest hour this machine saw published or held, for any coin
     for sym in my_coins(board, todo, shards, redo):
         try:
             size = float(fx.contract_spec(sym).get("contractSize") or 0.0)
@@ -292,10 +299,15 @@ def main() -> int:
             else:
                 redo.append(f"{sym} {ym}: the upload failed")
             path.unlink(missing_ok=True)
-        late = _say_absent(sym, absent, latest)
+        tails.append((sym, absent, latest))
+        if latest is not None:
+            run_top = latest if run_top is None else max(run_top, latest)
+        log(f"{sym}: done")
+    top = _archive_top(run_top) if any(_later(a, lt) for _s, a, lt in tails) else None
+    for sym, absent, latest in tails:
+        late = _say_absent(sym, absent, latest, top=top, redo=redo)
         if late:
             waiting[sym] = late
-        log(f"{sym}: done")
     log(f"finished: {done} coin-month file(s) written, {skipped} coin(s) skipped "
         f"(named above), {len(redo)} to do again")
     for line in redo:
@@ -320,18 +332,92 @@ def _when(ts: int) -> str:
     return f"{fmt_when(ts)} UTC"
 
 
-def _say_absent(sym: str, absent: list, latest) -> tuple | None:
+def _later(absent: list, latest) -> list:
+    """The 404 hours of a coin with no later hour of it seen: the end of its archive."""
+    return sorted(h for h in absent if latest is None or h >= latest)
+
+
+def _archive_top(run_top):
+    """The newest hour Gate's archive holds for ANY coin (RCA-2026-10-30-D): the newer of
+    what this machine read or held and the archive's own probe (`bh.PROBE_SYMBOL`); a probe
+    that cannot be read leaves this machine's own coins as the yardstick, said."""
+    try:
+        probed = bh.newest_published_hour(_now())
+    except Exception as exc:                                   # noqa: BLE001
+        log(f"the archive's end could not be read on {bh.PROBE_SYMBOL} "
+            f"({str(exc)[:120]}) - judged on this machine's own coins")
+        probed = None
+    known = [h for h in (run_top, probed) if h is not None]
+    return max(known) if known else None
+
+
+def _say_holes(sym: str, hours) -> None:
+    """One line a DAY (a young coin pressed for a month has hundreds of hours before its
+    first file): "hour 06: ... it" for one hour, "12 hours, 00 to 11: ... them" for more."""
+    by_day: dict = {}
+    for h in sorted(hours):
+        by_day.setdefault(h - h % 86400, []).append(time.gmtime(h).tm_hour)
+    for d, hrs in by_day.items():
+        day = time.strftime('%Y-%m-%d', time.gmtime(d))
+        if len(hrs) == 1:
+            log(f"{sym} {day} hour {hrs[0]:02d}: Gate never published it (a later hour is "
+                f"published) - its minutes stay unmeasured")
+        else:
+            log(f"{sym} {day} {len(hrs)} hours, {hrs[0]:02d} to {hrs[-1]:02d}: Gate never "
+                f"published them (a later hour is published) - their minutes stay unmeasured")
+
+
+def _judge_behind(sym: str, behind: list, top: int, redo: list) -> None:
+    """404 hours of `sym` that Gate's archive holds for another coin (RCA-2026-10-30-D),
+    judged on the coin's OWN newest hour (`bh.newest_published_hour`, starting at `top`: one
+    HEAD when the coin is there): an hour before it is a hole; after it, the coin is LAGGING
+    when it is at most LAG_S behind - red, so the day is pressed again - and STOPPED when
+    further (final, named); a coin with no hour in the archive is final, named. A coin that
+    cannot be checked is red: unknown is not final."""
+    try:
+        own = bh.newest_published_hour(top + 3600, symbol=sym)
+    except Exception as exc:                                   # noqa: BLE001
+        redo.append(f"{sym}: {len(behind)} hour(s) Gate's archive holds for other coins "
+                    f"could not be checked for this coin ({str(exc)[:120]})")
+        return
+    if own is None:
+        log(f"{sym}: Gate's archive holds no hour of this coin in the last "
+            f"{bh.PROBE_BACK_HOURS // 24} days - {len(behind)} hour(s) stay unmeasured")
+        return
+    _say_holes(sym, [h for h in behind if h < own])
+    owed = [h for h in behind if h > own]
+    if not owed:
+        return
+    if top - own <= LAG_S:
+        log(f"{sym}: Gate's archive is behind for this coin - it holds hours to "
+            f"{_when(top)} for other coins and to {_when(own)} for this one; "
+            f"{len(owed)} hour(s) are read again by the next press")
+        for d in sorted({h - h % 86400 for h in owed}):
+            k = sum(1 for h in owed if h - h % 86400 == d)
+            redo.append(f"{sym} {time.strftime('%Y-%m-%d', time.gmtime(d))}: {k} hour(s) "
+                        f"Gate has not published for this coin yet, while it has for others")
+        return
+    log(f"{sym}: Gate stopped publishing this coin after {_when(own)} "
+        f"({(top - own) // 3600} hours before the archive's end, {_when(top)}) - "
+        f"{len(owed)} hour(s) stay unmeasured")
+
+
+def _say_absent(sym: str, absent: list, latest, *, top=None, redo=None) -> tuple | None:
     """Name each hour Gate's archive answered 404 for (RCA-2026-10-30-A). One with a LATER
     hour of the same coin published is a hole, final (Oct 08, 2026 06:00 UTC: 05 and 07 are
-    there). One at or after the newest published hour is NOT PUBLISHED YET: said plainly,
-    never red - a coin Gate stopped publishing would turn every run red for ever - and
-    never final. Returns (newest published hour or None, [the days waiting]) or None."""
+    there). One the archive holds for ANOTHER coin (`top`, the archive's end) is judged on
+    this coin's own newest hour (`_judge_behind`, RCA-2026-10-30-D). One after the archive's
+    end is NOT PUBLISHED YET: said plainly, never red - a coin Gate stopped publishing would
+    turn every run red for ever - and never final. Returns (newest published hour or None,
+    [the days waiting]) or None."""
     holes = sorted(h for h in absent if latest is not None and h < latest)
-    later = sorted(h for h in absent if latest is None or h >= latest)
-    for h in holes:
-        log(f"{sym} {time.strftime('%Y-%m-%d', time.gmtime(h))} hour "
-            f"{time.gmtime(h).tm_hour:02d}: Gate never published it (a later hour is "
-            f"published) - its minutes stay unmeasured")
+    later = _later(absent, latest)
+    _say_holes(sym, holes)
+    if top is not None:
+        behind = [h for h in later if h <= top]
+        later = [h for h in later if h > top]
+        if behind:
+            _judge_behind(sym, behind, top, [] if redo is None else redo)
     if not later:
         return None
     days = sorted({h - h % 86400 for h in later})

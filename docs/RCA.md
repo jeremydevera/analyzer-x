@@ -172,6 +172,41 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-30-D — the costs job judged "has Gate published this day" on Bitcoin alone, so a coin Gate published later than Bitcoin would have had its missing hours booked done for ever: NEVER HAPPENED YET
+
+**CEO**
+
+* Nothing wrong was shown yet (NEVER HAPPENED YET: on Oct 22, 2026, 56 of 58 coins sampled got their last order-book file in the same minute as Bitcoin, the other 2 were not listed then): if Gate had ever published one coin's hours later than Bitcoin's, the costs job would have finished green without them and never asked for them again.
+* Why: this PC asks Gate's archive where it ends on Bitcoin only, and the machine that reads each coin called that coin's missing hours "not published yet" without checking whether other coins already had them.
+* What stops it now: each machine compares every coin with what Gate already published for the other coins; a coin a few hours behind fails the run so the day is pressed again, and a coin Gate stopped publishing (or never had) is written down as finished, by name.
+
+**DEV**
+
+* `.github/scripts/costs_shard.py:_say_absent` (RCA-2026-10-30-A) called every 404 hour with no later hour of the same coin "not published by Gate yet" and never `redo`, while `costs_daily._settle` and `v3_coverage.settle` mark a day done once `book_history.newest_published_hour` - on `PROBE_SYMBOL` = BTC_USDT only - holds its last hour.
+* Invariant broken: **"published" is a fact about each coin, never about the archive as a whole** - one coin's end is not every coin's end.
+* Guard: `tests/test_costs_wait_for_gate_to_publish.py::test_a_coin_gate_publishes_later_than_the_others_is_read_again`, `::test_a_lagging_coin_alone_on_its_machine_is_judged_against_the_archives_probe`, `::test_a_coin_gate_stopped_publishing_or_never_had_is_final_not_red`, `::test_a_coin_listed_inside_the_day_is_a_hole_never_a_lag`, `::test_every_coin_on_time_asks_the_archive_nothing_more`.
+
+**SAW** - NEVER HAPPENED YET: the review of RCA-2026-10-30-A (Minor 1, "the archive probe reads only BTC_USDT") and its fix report's concern.
+
+**TIMELINE** (NEVER HAPPENED YET: hypothetical, UTC, on the tests' clock; the measured part is item 1)
+
+1. Measured Oct 30, 2026: Gate's last published hour, Oct 22, 2026 04:00, has Last-Modified Oct 22, 2026 06:09 on 56 of 58 coins sampled across the alphabet (0G to ZORA, BTC, ETH, XRP, SOL); EQT_USDT and ITUB_USDT have no file - listed Oct 27 and Oct 30, 2026, and the archive holds no hour of either.
+2. Oct 22, 2026 03:00: the daily press of Oct 21. Gate's archive holds BTC_USDT to 01:00 and a coin it publishes later only to Oct 21 22:00.
+3. Before the fix: the shard logs that coin's 23:00 as "not published by Gate yet", ends green; the PC's probe (BTC, 01:00) says Oct 21 is published, so Oct 21 is marked done - the coin's 23:00 is never asked for again.
+4. After the fix: the shard sees the archive at 01:00 (this machine's other coins, or the probe), reads the coin's own end (22:00, 3 hours behind, inside `LAG_S` = 6 hours), logs "Gate's archive is behind for this coin", and ends red with "TO DO AGAIN: <coin> 2026-10-21: 1 hour(s)"; the day is pressed again after the daily job's wait. A coin 15 hours behind is "Gate stopped publishing this coin after ..." and EQT_USDT is "Gate's archive holds no hour of this coin" - both final, green.
+
+**ROOT CAUSE** - The archive's end was read on one contract and applied to every contract, and the per-coin "not published yet" in the shard was never checked against the hours the same machine had just read for other coins.
+
+**WHY IT WAS NOT CAUGHT** - RCA-2026-10-30-A's tests faked one archive end shared by every coin (`_published(h)` with no coin in it), so a coin behind the others could not be built; the review named the gap as Minor and the fix shipped with it as a stated concern.
+
+**COST** - none: NEVER HAPPENED YET (item 1: every coin sampled was published in the same minute).
+
+**FIX** - this commit: `costs_shard` keeps each coin's 404 hours to the end of the run, takes the archive's end as the newer of what the machine read or held for ANY coin and `bh.newest_published_hour` (asked only when some coin has 404s at its end), and judges a coin's 404 hours at or before that end on the coin's OWN newest hour (one HEAD when it is there): before it, holes; after it, lagging (red, per day, `LAG_S` = 6 hours) or stopped (final); no hour at all, final. Holes are now one line a day, not one an hour (a young coin pressed for a month logged ~480 lines).
+
+**GUARD** - `tests/test_costs_wait_for_gate_to_publish.py`: the five tests named in DEV, `test_a_coin_gate_publishes_later_than_the_others_is_read_again` first (three red before the fix; the other two pin that a listing hole and an on-time coin ask nothing more).
+
+---
+
 ## RCA-2026-10-30-C — this PC kept its copy of a month's costs for ever 35 days after the month ended, while the daily costs job still rewrote that month for 61 days, so days GitHub held read as missing here
 
 **CEO**

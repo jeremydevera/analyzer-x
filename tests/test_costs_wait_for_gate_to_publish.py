@@ -111,18 +111,33 @@ def shard(monkeypatch, tmp_path):
     monkeypatch.setattr(mod.cs, "load_month", lambda *a, **k: None)
     monkeypatch.setattr(mod.fx, "contract_spec", lambda sym: {"contractSize": 0.0001})
     monkeypatch.setattr(mod, "upload", lambda path, tag: True)
+    # where Gate's archive ends for each coin (BTC_USDT: the archive measured Oct 30, 2026);
+    # a test that names a coin sets its own end, None = no hour of it in the archive
+    mod._ends = {}
+    mod._probed = []
+
+    def published(sym, h):
+        end = mod._ends.get(sym, LAST)
+        return end is not None and h <= end and h != HOLE
 
     def day_readings(sym, d, hours=None, **k):
         hrs = list(hours) if hours is not None else [d + H * h for h in range(24)]
-        got = [h for h in hrs if _published(h)]
+        got = [h for h in hrs if published(sym, h)]
         rows = [{"t": h + 60, "bid": 1.0, "ask": 1.0, "spread": 1e-4, "buy": 2e-4,
                  "sell": 2e-4, "exhausted": False, "source": "full", "at": bh.READ_AT_S}
                 for h in got]
         return {**bh.pack(rows), "hours_read": len(got),
-                "hours_missing": [h for h in hrs if not _published(h)],
+                "hours_missing": [h for h in hrs if not published(sym, h)],
                 "hours_failed": [], "hours_bad": []}
 
+    def newest(now=None, *, symbol=bh.PROBE_SYMBOL, **k):
+        mod._probed.append(symbol)
+        top = int(now) - int(now) % H - H
+        end = mod._ends.get(symbol, LAST)
+        return None if end is None else min(end, top)
+
     monkeypatch.setattr(mod.bh, "day_readings", day_readings)
+    monkeypatch.setattr(mod.bh, "newest_published_hour", newest)
     yield mod
     sys.modules.pop("costs_shard_wait", None)
 
@@ -146,6 +161,86 @@ def test_a_404_with_a_later_hour_published_is_final(shard, monkeypatch, capsys):
     assert "BTC_USDT 2026-10-08 hour 06: Gate never published it" in out, out
     assert "not published by Gate yet" not in out
     assert "wait for it" not in out
+
+
+# ------------------------------------------- a coin Gate publishes later than the others
+# RCA-2026-10-30-D. Oct 22, 2026 03:00 UTC, the daily press of Oct 21: Gate's archive holds
+# BTC_USDT to 01:00, and a coin it publishes later holds only to Oct 21 22:00. The PC's probe
+# reads BTC, so the day is "published"; the shard used to call the coin's 22:00 and 23:00
+# "not published by Gate yet", end green, and the day was marked done for ever without them.
+PRESS = _utc(2026, 10, 22, 3)
+BTC_END = _utc(2026, 10, 22, 1)
+
+
+def _press_oct21(shard, monkeypatch, coins):
+    monkeypatch.setenv("COIN_LIST", ",".join(coins))
+    monkeypatch.setenv("DAYS_LIST", "2026-10-21")
+    monkeypatch.setattr(shard, "_now", lambda: PRESS)
+    shard._ends["BTC_USDT"] = BTC_END
+
+
+def test_a_coin_gate_publishes_later_than_the_others_is_read_again(shard, monkeypatch,
+                                                                    capsys):
+    _press_oct21(shard, monkeypatch, ["BTC_USDT", "LAGGY_USDT"])
+    shard._ends["LAGGY_USDT"] = _utc(2026, 10, 21, 22)
+    assert shard.main() == 1, "the day is not done while Gate still owes this coin hours"
+    out = capsys.readouterr().out
+    assert "LAGGY_USDT: Gate's archive is behind for this coin" in out, out
+    assert "TO DO AGAIN: LAGGY_USDT 2026-10-21: 1 hour(s)" in out, out
+    assert "BTC_USDT" not in [ln for ln in out.splitlines() if "TO DO AGAIN" in ln][0]
+
+
+def test_a_lagging_coin_alone_on_its_machine_is_judged_against_the_archives_probe(
+        shard, monkeypatch, capsys):
+    """No other coin on the machine: the archive's own end (BTC_USDT) is the yardstick."""
+    _press_oct21(shard, monkeypatch, ["LAGGY_USDT"])
+    shard._ends["LAGGY_USDT"] = _utc(2026, 10, 21, 22)
+    assert shard.main() == 1
+    assert "TO DO AGAIN: LAGGY_USDT" in capsys.readouterr().out
+
+
+def test_a_coin_gate_stopped_publishing_or_never_had_is_final_not_red(shard, monkeypatch,
+                                                                      capsys):
+    """A coin delisted at 10:00 (15 hours behind the archive) and one with no hour in the
+    archive at all (EQT_USDT, listed Oct 27, 2026) can never be read again: final, named,
+    never red - or every press would fail for ever."""
+    _press_oct21(shard, monkeypatch, ["BTC_USDT", "GONE_USDT", "EQT_USDT"])
+    shard._ends["GONE_USDT"] = _utc(2026, 10, 21, 10)
+    shard._ends["EQT_USDT"] = None
+    assert shard.main() == 0
+    out = capsys.readouterr().out
+    assert "GONE_USDT: Gate stopped publishing this coin after" in out, out
+    assert "EQT_USDT: Gate's archive holds no hour of this coin" in out, out
+    assert "TO DO AGAIN" not in out
+
+
+def test_a_coin_listed_inside_the_day_is_a_hole_never_a_lag(shard, monkeypatch, capsys):
+    """Hours before a coin's first file, with later hours published: holes, final."""
+    _press_oct21(shard, monkeypatch, ["BTC_USDT", "NEWB_USDT"])
+    real = shard.bh.day_readings
+
+    def listed_at_noon(sym, d, hours=None, **k):
+        got = real(sym, d, hours=hours, **k)
+        if sym == "NEWB_USDT":
+            noon = _utc(2026, 10, 21, 12)
+            keep = got["t"] >= noon
+            got = {**{k2: v[keep] for k2, v in got.items() if hasattr(v, "shape")},
+                   "hours_read": int(keep.sum()), "hours_failed": [], "hours_bad": [],
+                   "hours_missing": [h for h in (hours or []) if h < noon]}
+        return got
+
+    monkeypatch.setattr(shard.bh, "day_readings", listed_at_noon)
+    assert shard.main() == 0
+    out = capsys.readouterr().out
+    assert "NEWB_USDT 2026-10-21 12 hours, 00 to 11: Gate never published them" in out, out
+    assert "TO DO AGAIN" not in out and "NEWB_USDT" not in shard._probed
+
+
+def test_every_coin_on_time_asks_the_archive_nothing_more(shard, monkeypatch):
+    _press_oct21(shard, monkeypatch, ["BTC_USDT", "ETH_USDT"])
+    shard._ends["ETH_USDT"] = BTC_END
+    assert shard.main() == 0
+    assert shard._probed == [], "no 404 at a coin's end: no probe at all"
 
 
 # -------------------------------------------------------- the daily costs job

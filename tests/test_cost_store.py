@@ -119,17 +119,20 @@ def test_no_account_has_it_is_none_never_an_error(home):
 
 def test_an_old_month_is_read_once_and_a_recent_one_again_later(home, monkeypatch):
     """A month is FINAL only once it ended more than FINAL_AFTER_S ago: Sep 30
-    is written on Oct 01 and a red day is re-run later inside the 30-day
-    backfill, so September read on Oct 10 still changes (final review,
-    RCA-2026-10-10-F). August, ended 39 days before, never does."""
+    is written on Oct 01 and a red day is re-run later inside the daily job's
+    61-day backfill, so September read on Oct 10 still changes (final review,
+    RCA-2026-10-10-F). July, ended 70 days before, never does - August, ended
+    39 days before, still could (RCA-2026-10-30-C)."""
     n = []
-    AUG = calendar.timegm((2026, 8, 1, 0, 0, 0))
+    JUL1 = calendar.timegm((2026, 7, 1, 0, 0, 0))
 
     def fetch(url):
         n.append(url)
-        return 200, cs.to_bytes(packed([AUG if "202608" in url else SEP]))
-    cs.load_month("BTC_USDT", "202608", repos=("a/r",), fetch=fetch)
-    cs.load_month("BTC_USDT", "202608", repos=("a/r",), fetch=fetch)
+        return 200, cs.to_bytes(packed([JUL1 if "202607" in url else SEP]))
+    cs.load_month("BTC_USDT", "202607", repos=("a/r",), fetch=fetch)
+    monkeypatch.setattr(cs, "_now", lambda: OCT + 9 * 86400 + cs.CURRENT_TTL_S + 1)
+    cs.load_month("BTC_USDT", "202607", repos=("a/r",), fetch=fetch)
+    monkeypatch.setattr(cs, "_now", lambda: OCT + 9 * 86400)
     assert len(n) == 1, "a month long finished never changes"
     cs.load_month("BTC_USDT", "202609", repos=("a/r",), fetch=fetch)
     cs.load_month("BTC_USDT", "202610", repos=("a/r",), fetch=fetch)
@@ -168,3 +171,90 @@ def test_the_order_book_archive_address_is_quoted():
 
     u = bh.hour_url("龙虾_USDT", 1791504000)
     assert u.isascii() and "%E9%BE%99" in u
+
+
+# ------------------------------------------- a month the daily job still rewrites
+OCT30 = calendar.timegm((2026, 10, 30, 20, 0, 0))
+AUG = calendar.timegm((2026, 8, 1, 0, 0, 0))
+JUL = calendar.timegm((2026, 7, 1, 0, 0, 0))
+
+
+def test_no_month_is_final_while_the_daily_job_may_still_rewrite_it():
+    """RCA-2026-10-30-C: the cache froze a month 35 days after it ended while the
+    daily costs job rewrites every day of the last BACKFILL_DAYS (61)."""
+    from tradingagents import costs_daily
+
+    assert cs.FINAL_AFTER_S >= (costs_daily.BACKFILL_DAYS + 1) * 86400
+
+
+def test_a_rewritten_month_is_read_again_and_an_unchanged_one_is_not(tmp_path, monkeypatch):
+    """SIGN_USDT 202608 (RCA-2026-10-30-C): cached on this PC Oct 12, 2026 holding 0
+    days, rewritten on GitHub Oct 16 with Aug 16-31; August had ended 42 days before,
+    so the copy was 'final' and the 16 days read as missing on Oct 30. A month the
+    daily job may still rewrite is checked against each account's file once the copy
+    is older than CURRENT_TTL_S: a file changed since the copy is read again, an
+    unchanged one is not downloaded."""
+    monkeypatch.setattr(cs, "CACHE", tmp_path / "cost_cache")
+    clock = [calendar.timegm((2026, 10, 12, 12, 0, 0))]
+    monkeypatch.setattr(cs, "_now", lambda: clock[0])
+    content = [packed([AUG])]
+    changed = [calendar.timegm((2026, 8, 20, 0, 0, 0))]
+    got, asked = [], []
+
+    def fetch(url):
+        got.append(url)
+        return 200, cs.to_bytes(content[0])
+
+    def stamp(url):
+        asked.append(url)
+        return changed[0]
+
+    first = cs.load_month("SIGN_USDT", "202608", repos=("a/r",), fetch=fetch, stamp=stamp)
+    assert list(first["t"]) == [AUG] and len(got) == 1
+    # Oct 16: GitHub's file is rewritten with the second half of August
+    content[0] = packed([AUG, AUG + 15 * 86400])
+    changed[0] = calendar.timegm((2026, 10, 16, 20, 56, 3))
+    clock[0] = OCT30
+    again = cs.load_month("SIGN_USDT", "202608", repos=("a/r",), fetch=fetch, stamp=stamp)
+    assert list(again["t"]) == [AUG, AUG + 15 * 86400], "the rewritten file is read again"
+    assert len(got) == 2
+    # six hours on, nothing changed on GitHub: asked, not downloaded
+    clock[0] = OCT30 + cs.CURRENT_TTL_S + 1
+    same = cs.load_month("SIGN_USDT", "202608", repos=("a/r",), fetch=fetch, stamp=stamp)
+    assert list(same["t"]) == [AUG, AUG + 15 * 86400]
+    assert len(got) == 2 and len(asked) >= 2, "an unchanged file is not downloaded again"
+
+
+def test_a_file_that_cannot_be_asked_about_is_read_again(tmp_path, monkeypatch):
+    """Unknown is not "unchanged": a check that gets no answer downloads the month."""
+    monkeypatch.setattr(cs, "CACHE", tmp_path / "cost_cache")
+    clock = [OCT30]
+    monkeypatch.setattr(cs, "_now", lambda: clock[0])
+    got = []
+
+    def fetch(url):
+        got.append(url)
+        return 200, cs.to_bytes(packed([AUG]))
+    cs.load_month("SIGN_USDT", "202608", repos=("a/r",), fetch=fetch, stamp=lambda u: None)
+    clock[0] = OCT30 + cs.CURRENT_TTL_S + 1
+    cs.load_month("SIGN_USDT", "202608", repos=("a/r",), fetch=fetch, stamp=lambda u: None)
+    assert len(got) == 2
+
+
+def test_a_month_past_the_daily_jobs_window_stays_cached(tmp_path, monkeypatch):
+    """July ended 91 days before Oct 30, 2026: no job rewrites it, so it is never asked
+    about again (a v3 backfill press that rewrites it removes the copy itself)."""
+    monkeypatch.setattr(cs, "CACHE", tmp_path / "cost_cache")
+    clock = [OCT30]
+    monkeypatch.setattr(cs, "_now", lambda: clock[0])
+    got, asked = [], []
+
+    def fetch(url):
+        got.append(url)
+        return 200, cs.to_bytes(packed([JUL]))
+    cs.load_month("SIGN_USDT", "202607", repos=("a/r",), fetch=fetch,
+                  stamp=lambda u: asked.append(u) or OCT30 + 86400)
+    clock[0] = OCT30 + 30 * 86400
+    cs.load_month("SIGN_USDT", "202607", repos=("a/r",), fetch=fetch,
+                  stamp=lambda u: asked.append(u) or OCT30 + 86400)
+    assert len(got) == 1 and asked == []

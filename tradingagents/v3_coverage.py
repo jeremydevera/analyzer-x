@@ -770,8 +770,8 @@ def backfill(name: str | None = None, *, plan_path=None, days_per_press: int = D
 
 def stale_months(coins: list[str], days: list[str]) -> tuple[int, list[str]]:
     """Take this PC's cached copy of every coin-month a press wrote out of `cost_store`'s cache
-    (I5): a month that ended more than 35 days ago is served from the cache for ever
-    (`cost_store.FINAL_AFTER_S`), so without this every PC reader - the tab's run box, a parity
+    (I5): a month that ended more than 62 days ago is served from the cache for ever
+    (`cost_store.FINAL_AFTER_S`; a younger one only until its file is checked), so without this every PC reader - the tab's run box, a parity
     re-run, a v2 replay of those days - would keep the readings from BEFORE the press. Returns
     (copies removed, the ones that could not be, named)."""
     from tradingagents import cost_store

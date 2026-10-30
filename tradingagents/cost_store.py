@@ -10,14 +10,16 @@ one file per coin per month (`BTC_USDT-202610.npz`), in two releases a month
 (`costs-202610-a` for coins starting 0-9 or A-M, `-b` for N-Z) because one
 release holds at most 1,000 assets and Gate lists 1,027 contracts.
 
-A completed month never changes, so it is downloaded once and kept
-(`~/.tradingagents/cost_cache`); the current month grows every day and is
-read again after CURRENT_TTL_S. Nothing here raises for a month nobody has
+A month no job rewrites any more is downloaded once and kept
+(`~/.tradingagents/cost_cache`); a month the daily costs job may still
+rewrite is checked again after CURRENT_TTL_S and read again only when an
+account's file changed since the copy (RCA-2026-10-30-C). Nothing here raises for a month nobody has
 measured: that is `None`, and the engine counts every trade in it as
 `cost_unmeasured`.
 """
 from __future__ import annotations
 
+import contextlib
 import io
 import os
 import time
@@ -37,9 +39,16 @@ REPOS = tuple(r for r in os.environ.get(
                   "jeremydevera0903-gif/analyzer-x").split(",") if r)
 CACHE = Path(os.path.expanduser("~/.tradingagents")) / "cost_cache"
 CURRENT_TTL_S = 6 * 3600
-# a month is FINAL only once it ended this long ago: Sep 30 is written on
-# Oct 01 and a red day is re-run inside the 30-day backfill (RCA-2026-10-10-F)
-FINAL_AFTER_S = 35 * 86400
+# a month is FINAL only once NO job rewrites it: Sep 30 is written on Oct 01
+# and the daily costs job re-reads every day of its last BACKFILL_DAYS (61)
+# that is not done (RCA-2026-10-10-F). It was 35 days, and this PC kept
+# SIGN, PUMP and SAGA's August as cached Oct 12-15, 2026 - 0 days each -
+# after GitHub's copies were rewritten on Oct 16 with 16 days each
+# (RCA-2026-10-30-C). Held >= costs_daily.BACKFILL_DAYS + 1 day by a test.
+FINAL_AFTER_S = 62 * 86400
+# a file changed up to this long before the copy was written still counts
+# as newer: the copy is stamped by THIS PC's clock, the file by GitHub's
+STAMP_MARGIN_S = 3600
 FETCH_TRIES = 4
 LEAD_S = 3600            # a reading this old still answers a minute (book_history.MAX_AGE_S)
 KEYS = ("t", "bid", "ask", "spread", "buy", "sell", "exhausted", "source", "at")
@@ -202,23 +211,70 @@ def _month_end(ym: str) -> int:
     return calendar.timegm((y + (m == 12), m % 12 + 1, 1, 0, 0, 0))
 
 
+def _stamp(u: str) -> float | None:
+    """When an account's file was last written (its Last-Modified, unix s,
+    asked with a HEAD - no download), 0.0 when there is no such file, None
+    when the answer is unknown (a cut wire, a 5xx, no date)."""
+    import email.utils
+
+    req = urllib.request.Request(u, method="HEAD",
+                                 headers={"User-Agent": "tradingagents/0.3"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            when = r.headers.get("Last-Modified")
+    except urllib.error.HTTPError as exc:
+        return 0.0 if exc.code in (403, 404) else None
+    except (OSError, ValueError):
+        return None
+    try:
+        return email.utils.parsedate_to_datetime(when).timestamp() if when else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _unchanged_since(sym: str, ym: str, repos, since: float, stamp) -> bool:
+    """True only when EVERY account answered and none of their files was
+    written after `since` (less STAMP_MARGIN_S); unknown is never unchanged."""
+    for repo in repos:
+        when = stamp(url(repo, sym, ym))
+        if when is None or float(when) > since - STAMP_MARGIN_S:
+            return False
+    return True
+
+
 def load_month(sym: str, ym: str, *, repos=None, fetch=None,
-               cache: bool = True, strict: bool = False) -> dict | None:
+               cache: bool = True, strict: bool = False, stamp=None) -> dict | None:
     """One coin's readings for one month, MERGED from every account that has
     a file — the deal moves coins between accounts, so one coin-month can sit
     on both (RCA-2026-10-10-F). None only when every account answered "no
     such file". A read that FAILED (status 0, 429, 5xx after the retries)
     raises CostReadError when `strict` (the costs job, which uploads what it
-    read); a reader keeps what answered and caches nothing incomplete."""
+    read); a reader keeps what answered and caches nothing incomplete.
+
+    A cached copy is served while it is younger than CURRENT_TTL_S, or for
+    ever once the month is FINAL; in between, every account's file is asked
+    when it was last written (`stamp(url) -> unix s | 0.0 | None`, default
+    `_stamp` with the default `fetch`; none with a caller's own `fetch`, which
+    then reads again as before) and the month is downloaded again only when
+    one changed since the copy (RCA-2026-10-30-C)."""
     repos = tuple(repos or REPOS)
+    if stamp is None and fetch is None:
+        stamp = _stamp
     fetch = fetch or _fetch
     path = CACHE / asset(sym, ym)
     final = _now() - _month_end(ym) > FINAL_AFTER_S
     if cache and path.exists():
-        age = _now() - path.stat().st_mtime
-        if final or age < CURRENT_TTL_S:
+        written = path.stat().st_mtime
+        keep = final or _now() - written < CURRENT_TTL_S
+        checked = (not keep and stamp is not None
+                   and _unchanged_since(sym, ym, repos, written, stamp))
+        if keep or checked:
             try:
-                return from_bytes(path.read_bytes())
+                got = from_bytes(path.read_bytes())
+                if checked:     # asked just now: good for another CURRENT_TTL_S
+                    with contextlib.suppress(OSError):
+                        os.utime(path, (_now(), _now()))
+                return got
             except Exception:                                  # noqa: BLE001
                 pass            # a broken cache file is read again below
     got, failed = None, []

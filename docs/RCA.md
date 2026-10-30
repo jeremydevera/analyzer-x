@@ -172,6 +172,41 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-30-C — this PC kept its copy of a month's costs for ever 35 days after the month ended, while the daily costs job still rewrote that month for 61 days, so days GitHub held read as missing here
+
+**CEO**
+
+* What you saw: the cost check for Backtest v3 said SIGN, PUMP and SAGA had no costs for any day of August, while GitHub's copies held 16 days each - 48 coin-days counted missing that were not.
+* Why: this PC decided a month could no longer change 35 days after it ended and stopped looking at it, but the daily costs job goes back 61 days and had added those days later.
+* What stops it now: a month stays "may still change" for 62 days; in that time this PC asks GitHub every 6 hours when each copy was last written and downloads it again only when it changed.
+
+**DEV**
+
+* `tradingagents/cost_store.py:load_month` served the cache for ever once `_now() - _month_end(ym) > FINAL_AFTER_S` (35 days); `costs_daily.BACKFILL_DAYS` is 61, so a month that ended 36-61 days ago could be rewritten on GitHub after this PC froze its copy.
+* Invariant broken: **a copy may only be called final once nothing writes the original** - two windows that describe one fact (how long a month can change) were set in two files and drifted apart.
+* Guard: `tests/test_cost_store.py::test_no_month_is_final_while_the_daily_job_may_still_rewrite_it` (holds `FINAL_AFTER_S >= (BACKFILL_DAYS + 1) days`), `::test_a_rewritten_month_is_read_again_and_an_unchanged_one_is_not`, `::test_a_file_that_cannot_be_asked_about_is_read_again`, `::test_a_month_past_the_daily_jobs_window_stays_cached`.
+
+**SAW** - RCA-2026-10-30-A's investigation (finding B2 / R4): `report pilot` counted SIGN, PUMP and SAGA's whole August missing; a fresh read of each holds Aug 16-31.
+
+**TIMELINE** (New York time; measured Oct 30, 2026 on this PC's `~/.tradingagents/cost_cache` and GitHub's release files by HEAD)
+
+1. Oct 12-15, 2026: this PC caches SIGN_USDT-202608, PUMP_USDT-202608 (Oct 12) and SAGA_USDT-202608 (Oct 15), each holding 0 held days; August ended Sep 01, more than 35 days before, so each copy is "final".
+2. Oct 16, 2026 4:56pm: the daily costs job rewrites SIGN_USDT-202608 on jeremydevera/analyzer-x (Last-Modified Oct 16, 2026 4:56pm, 162,234 bytes) with Aug 16-31; PUMP and SAGA the same day. TOSHI_USDT-202608, cached Oct 12, 2026 3:01pm, was rewritten at the same minute.
+3. Oct 30, 2026: the v3 coverage report reads the frozen copies: 48 coin-days (3 coins x 16 days) counted missing that GitHub holds. The fix of RCA-2026-10-30-A removed those three copies by hand (each 0 days; a fresh read 16 each).
+4. After this fix: August (ended 59 days before Oct 30) is not final until Nov 02, 2026; a copy older than 6 hours is checked with one HEAD per account (SIGN: Oct 16, 2026 4:56pm on jeremydevera, no file on the other two) and read again because the file is newer than the copy; a month that ended more than 62 days ago is never asked about.
+
+**ROOT CAUSE** - `FINAL_AFTER_S` was set to 35 days for the 30-day backfill of Oct 10, 2026 and never followed `costs_daily.BACKFILL_DAYS` when that grew to 61; nothing tied the two numbers together.
+
+**WHY IT WAS NOT CAUGHT** - `test_an_old_month_is_read_once_and_a_recent_one_again_later` pinned the 35-day rule as correct with an August read on Oct 10 (39 days), a month the 61-day job could still rewrite; no test put the cache's window beside the job's, and no test rewrote a month on GitHub after the PC had cached it.
+
+**COST** - no money. 48 coin-days counted missing on the coverage report (corrected by hand on Oct 30, 2026); any PC reader of those months (Backtest a room, the trade list, a parity re-run) charged the coin's typical cost there instead of its own minute's book until the copy was removed.
+
+**FIX** - this commit: `cost_store.FINAL_AFTER_S` = 62 days (61 + 1); `load_month(stamp=)` asks each account's file when it was last written (`_stamp`, a HEAD that follows GitHub's redirect to Last-Modified, 0.0 for no file, None unknown) once the copy is older than `CURRENT_TTL_S`, keeps the copy (and restamps it) only when EVERY account answered and none is newer than the copy less `STAMP_MARGIN_S` (an hour, for the two clocks), else downloads. A caller's own `fetch` keeps the old behaviour (read again after the TTL).
+
+**GUARD** - `tests/test_cost_store.py::test_no_month_is_final_while_the_daily_job_may_still_rewrite_it`, `::test_a_rewritten_month_is_read_again_and_an_unchanged_one_is_not`, `::test_a_file_that_cannot_be_asked_about_is_read_again`, `::test_a_month_past_the_daily_jobs_window_stays_cached` (all 4 red before the fix).
+
+---
+
 ## RCA-2026-10-30-B — ETH, XRP and SOL got a cost reading for only about one minute in eight, because a price level emptied in tenths of a contract left a crumb behind and the replayed book read as crossed
 
 **CEO**

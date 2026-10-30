@@ -172,6 +172,41 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-30-B — ETH, XRP and SOL got a cost reading for only about one minute in eight, because a price level emptied in tenths of a contract left a crumb behind and the replayed book read as crossed
+
+**CEO**
+
+* What you saw: the cost check for Backtest v3 said ETH, XRP and SOL were missing most of their minutes (ETH 82 days, XRP 80, SOL 70) although Gate's files for those hours were full size, and a press of those days filled nothing.
+* Why: Gate lets 15 coins trade in tenths of a contract, and taking a price level away in tenths leaves a tiny leftover in the computer's arithmetic; the leftover kept a price that was really gone at the top of the book, so the book looked broken and the minute got no reading.
+* What stops it now: a level smaller than a millionth of a contract counts as empty, so every minute of those coins reads; the hours already stored keep their sparse readings until a press reads them again.
+
+**DEV**
+
+* `tradingagents/book_history.py:_apply` dropped a level only when it fell to `_EPS` (1e-12) contracts; on a decimal-size contract `60422.5 - 60000.1 - 422.2 - 0.2` leaves 1.47e-12, so the dead level stayed, `max(bids) >= min(asks)` and `_sample` returned None for the minute (`replay_hour`).
+* Invariant broken: **a level the archive has emptied is gone** - an absolute float cut is only right while every size is an integer, and BTC's are, so the replay was proved on the one shape that cannot leave a crumb.
+* Guard: `tests/test_book_history.py::test_a_decimal_size_level_taken_to_float_dust_is_gone` and `::test_a_real_tenth_of_a_contract_is_kept`; the cut is `book_history._DUST` (1e-6).
+
+**SAW** - the fix report for RCA-2026-10-30-A: "ETH, XRP and SOL hold readings in only ~12% of minutes despite full-size hour files", and the coverage report's 289 coin-days "a finished green backfill press already asked for and the store still lacks".
+
+**TIMELINE** (UTC; measured Oct 30, 2026 on Gate's archive files and this PC's cost cache)
+
+1. Oct 08, 2026 07:00: Gate's hour file `ETH_USDT-2026100807` is 20,710,562 bytes, 2,790,173 lines (39,174 `set`, 1,368,821 `make`, 1,382,178 `take`); its sizes are in tenths (smallest 0.1). BTC's file the same hour is whole contracts (smallest 1.0).
+2. The bid level 2565.15 opens at 60,422.500000000015 and, 131 changes later at 07:00:14, ends at 6.48e-12 contracts - above the 1e-12 cut, so it stays the best bid. At 07:01:03 the best ask is 2562.90: the book reads crossed, and 207 such crumbs sit at or above the best ask by minute 5.
+3. The replay before the fix: ETH 1 reading of 60 that hour (minute 0, the snapshot), XRP 0 of 60, SOL 1 of 60, BTC 60 of 60. Stored September: ETH 5,040 readings of 43,200 minutes (467 hours holding only the minute-0 reading, 172 hours none), XRP 5,407, SOL 5,529.
+4. After the fix, the same four files: 60 of 60 each, none crossed; ETH's book at the hour's end equals the 08:00 snapshot on 38,778 of 38,778 levels with the same level set (before: 40,037 levels, 1,259 of them crumbs the snapshot does not have). Gate's contract list: 15 contracts trade in decimals (ARIA, BTW, ESPORTS, ETH, LAB, M, PEPE, RAVE, RIVER, SIREN, SOL, SOXS, TRX, UB, XRP).
+
+**ROOT CAUSE** - `_apply` compared a level's size against an ABSOLUTE 1e-12, which is below the rounding error of subtracting tenths from a size of tens of thousands, so a level the archive had emptied survived as a crumb and crossed the book.
+
+**WHY IT WAS NOT CAUGHT** - The replay was proved on BTC (41,387 of 41,387 levels against the next snapshot), whose sizes are whole contracts, so the float arithmetic was exact and no crumb could form; every test fixture used whole or half sizes on small levels, where the leftover is under 1e-16. The snapshot proof would also have hidden it on ETH, because it compared sizes with a tolerance and never the SET of levels. A crossed minute is booked as "no reading", never as an error, so the gap looked like Gate's data.
+
+**COST** - no money. On those 15 contracts most minutes carried no reading of their own: a trade there paid the book of up to an hour before (the minute-0 snapshot, within `MAX_AGE_S`) or the coin's typical cost when the whole hour was crossed. A 60-machine press of RCA-2026-10-30-A's re-read 8 such coin-months and gave the same sparse readings.
+
+**FIX** - this commit: `book_history._DUST = 1e-6`, the cut `_apply` uses for `set`, `make` and `take` (0.1 is the smallest size the decimal files print; the biggest crumb measured is 7e-11). NOT repaired: the hours already stored. The costs job skips an hour a month file holds any reading in (`costs_shard.held_hours`), so ETH's 467 one-reading September hours stay as they are until those hours are read again; the hours with no reading are read again by any press of their days.
+
+**GUARD** - `tests/test_book_history.py::test_a_decimal_size_level_taken_to_float_dust_is_gone` (red before the fix: 59 of 60 minutes crossed) and `::test_a_real_tenth_of_a_contract_is_kept`.
+
+---
+
 ## RCA-2026-10-30-A — Gate stopped publishing its order books after Oct 22, 2026, and both cost jobs booked the missing days as done for ever; the v3 backfill then spent a whole 60-machine press on those days and filled 2 coin-days
 
 **CEO**

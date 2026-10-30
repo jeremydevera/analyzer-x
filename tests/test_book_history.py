@@ -118,3 +118,30 @@ def test_a_day_names_its_missing_failed_and_broken_hours_apart():
     assert got["hours_missing"] == [T0 + 3 * 3600]
     assert got["hours_failed"] == [T0 + 5 * 3600, T0 + 7 * 3600]
     assert [h for h, _why in got["hours_bad"]] == [T0 + 9 * 3600]
+
+
+def test_a_decimal_size_level_taken_to_float_dust_is_gone():
+    """ETH_USDT Oct 08, 2026 07:00 UTC (RCA-2026-10-30-B): Gate lets 15 contracts
+    trade in tenths (ETH, XRP, SOL ...), and a level emptied by tenths keeps a
+    float crumb - 2565.15's bid was 60422.5 and ended at 6.5e-12, above the
+    old 1e-12 cut - so the dead bid stayed best, the book read CROSSED from
+    minute 1 and 59 of 60 minutes gave no reading. Here: 60422.5 less 60000.1,
+    422.2 and 0.2 is 1.47e-12 in floats, then the price falls under it."""
+    assert 60422.5 - 60000.1 - 422.2 - 0.2 > 1e-12           # the crumb is real
+    raw = hour([f"{T0},set,100.5,60422.5,1,0", f"{T0},set,100.3,5.0,1,0",
+                f"{T0},set,100.6,-5.0,1,0",
+                f"{T0 + 20},take,100.5,60000.1,2,1", f"{T0 + 21},take,100.5,422.2,2,1",
+                f"{T0 + 22},take,100.5,0.2,2,1",            # the 100.5 bid is gone
+                f"{T0 + 30},make,100.4,-5.0,3,1"])          # a new ask under it
+    got = bh.replay_hour(raw, hour_start=T0, contract_size=1.0, notional_usd=100.0)
+    assert all(r is not None for r in got), \
+        f"{sum(r is None for r in got)} of 60 minutes read as a crossed book"
+    assert (got[1]["bid"], got[1]["ask"]) == (100.3, 100.4)
+
+
+def test_a_real_tenth_of_a_contract_is_kept():
+    """The crumb cut must never eat a real level: 0.1 is the smallest size Gate's
+    decimal contracts print (ETH's Oct 08, 2026 07:00 UTC file)."""
+    raw = hour(SNAP + [f"{T0 + 5},make,99.9,0.1,2,1"])
+    got = bh.replay_hour(raw, hour_start=T0, contract_size=1.0, notional_usd=10.0)
+    assert got[1]["bid"] == 99.9

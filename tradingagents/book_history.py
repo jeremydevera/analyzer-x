@@ -31,6 +31,14 @@ import heapq
 import io
 
 _EPS = 1e-12
+# A LEVEL UNDER THIS MANY CONTRACTS IS EMPTY (Oct 30, 2026, RCA-2026-10-30-B).
+# Gate lets 15 contracts trade in tenths (ETH, XRP, SOL, TRX, PEPE ...), and a
+# level emptied by tenths keeps a float crumb: ETH's 2565.15 bid was 60422.5 at
+# Oct 08, 2026 07:00 UTC and ended at 6.5e-12, above `_EPS`, so the dead bid
+# stayed the best one, the book read crossed and 59 of 60 minutes gave no
+# reading (ETH held 5,040 of September's 43,200). The smallest size those files
+# print is 0.1 and the biggest crumb measured 7e-11: 1e-6 sits between them.
+_DUST = 1e-6
 _KIND = {"set": 0, "make": 1, "take": 2}
 # "app": the book the APP can trade, recorded live by `app_books` (Oct 16,
 # 2026, RCA-2026-10-16-A) - Gate's archive ("full", "snapshot") also holds
@@ -62,16 +70,16 @@ def _events(raw_gz: bytes):
 def _apply(bids: dict, asks: dict, kind: int, p: float, s: float) -> None:
     side, size = (bids, s) if s > 0 else (asks, -s)
     if kind == 0:                       # set
-        if size > _EPS:
+        if size > _DUST:
             side[p] = size
         else:
             side.pop(p, None)
         return
     v = side.get(p, 0.0) + (size if kind == 1 else -size)
-    if v > _EPS:
+    if v > _DUST:
         side[p] = v
     else:
-        side.pop(p, None)               # a level taken past zero is gone
+        side.pop(p, None)               # a level taken to zero (or a float crumb of it) is gone
 
 
 def _walk(levels, want: float):

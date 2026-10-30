@@ -168,27 +168,27 @@ def my_coins(board, todo: list, shards: int, redo: list):
                         f"measured it")
 
 
-def held_hours(packed: dict) -> set[int]:
+def held_hours(packed: dict, sym: str | None = None) -> set[int]:
     """The hours (their first second) a month file has readings in. By the
     HOUR, not the day (RCA-2026-10-10-H): the 07:00 UTC press saves today so
     far, and a day "held" by its first reading would never get the rest.
 
-    Only readings taken when practice looks count (`bh.READ_AT_S`,
-    RCA-2026-10-15-G): an hour read at the close itself — every month written
-    before Oct 15, 2026 — is read again and replaced."""
+    Only readings that hold their hour count (`bh.holds_its_hour`): taken when
+    practice looks (`bh.READ_AT_S`, RCA-2026-10-15-G) - an hour read at the
+    close itself, every month written before Oct 15, 2026, is read again and
+    replaced - and, for `sym` one of the 15 contracts Gate lets trade in tenths,
+    made by the replay with the dust cut (RCA-2026-10-30-F): ETH's September
+    held 467 hours with only the minute-0 reading, which the old rule skipped."""
     t = packed.get("t") if packed else None
     if t is None or not len(t):
         return set()
-    at = packed.get("at")
-    if at is None:
-        return set()
-    return {int(x) - int(x) % 3600 for x, a in zip(t, at, strict=True)
-            if int(a) == bh.READ_AT_S}
+    ok = bh.holds_its_hour(sym, packed)
+    return {int(x) - int(x) % 3600 for x, keep in zip(t, ok, strict=True) if keep}
 
 
-def held_days(packed: dict) -> set[int]:
+def held_days(packed: dict, sym: str | None = None) -> set[int]:
     """The UTC days whose 24 hours a month file all holds."""
-    hrs = held_hours(packed)
+    hrs = held_hours(packed, sym)
     days = {h - h % 86400 for h in hrs}
     return {d for d in days if all(d + 3600 * k in hrs for k in range(24))}
 
@@ -249,7 +249,7 @@ def main() -> int:
             # day this month file already holds is skipped, so each press
             # picks up where the last one stopped (30 days x ~26 coins a
             # machine is past the 350-minute limit: BTC took 132 s a day)
-            held = held_hours(merged)
+            held = held_hours(merged, sym)
             if held:
                 latest = max(held) if latest is None else max(latest, max(held))
             now = _now()

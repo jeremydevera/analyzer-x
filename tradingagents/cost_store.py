@@ -51,7 +51,7 @@ FINAL_AFTER_S = 62 * 86400
 STAMP_MARGIN_S = 3600
 FETCH_TRIES = 4
 LEAD_S = 3600            # a reading this old still answers a minute (book_history.MAX_AGE_S)
-KEYS = ("t", "bid", "ask", "spread", "buy", "sell", "exhausted", "source", "at")
+KEYS = ("t", "bid", "ask", "spread", "buy", "sell", "exhausted", "source", "at", "rv")
 _now = time.time
 
 
@@ -88,17 +88,21 @@ def empty() -> dict:
     return {"t": np.zeros(0, "int64"), "bid": np.zeros(0), "ask": np.zeros(0),
             "spread": np.zeros(0, "float32"), "buy": np.zeros(0, "float32"),
             "sell": np.zeros(0, "float32"), "exhausted": np.zeros(0, "bool"),
-            "source": np.zeros(0, "int8"), "at": np.zeros(0, "int8")}
+            "source": np.zeros(0, "int8"), "at": np.zeros(0, "int8"),
+            "rv": np.zeros(0, "int8")}
 
 
 def _whole(packed: dict) -> dict:
     """Every key present: a month written before Oct 15, 2026 has no `at`,
-    and every one of its readings was taken at the close itself — 0."""
+    and every one of its readings was taken at the close itself — 0; one
+    written before Oct 30, 2026 has no `rv`, and every one of its readings was
+    made by the replay before the dust cut — 0 (RCA-2026-10-30-F)."""
     import numpy as np
 
-    if "at" in packed:
+    gone = [k for k in ("at", "rv") if k not in packed]
+    if not gone:
         return packed
-    return {**packed, "at": np.zeros(len(packed["t"]), "int8")}
+    return {**packed, **{k: np.zeros(len(packed["t"]), "int8") for k in gone}}
 
 
 def to_bytes(packed: dict) -> bytes:
@@ -136,7 +140,9 @@ def merge(a: dict | None, b: dict | None) -> dict:
     """Both, sorted by minute; where both hold a minute, the APP'S OWN book
     wins (`app_books`, source "app": RCA-2026-10-16-A, Gate's record holds RPI
     offers the API cannot fill), then the reading taken when practice looks
-    (`book_history.READ_AT_S`), and between two of one kind `b` (the newer).
+    (`book_history.READ_AT_S`), then the one the replay with the dust cut
+    made (`book_history.REPLAY_VERSION`, RCA-2026-10-30-F), and between two of
+    one kind `b` (the newer).
 
     THE KIND FIRST (RCA-2026-10-15-G): one coin-month can sit on both
     accounts and a reader merges them in a fixed order, so after the re-read
@@ -144,7 +150,7 @@ def merge(a: dict | None, b: dict | None) -> dict:
     on the first, minute for minute."""
     import numpy as np
 
-    from tradingagents.book_history import READ_AT_S, SOURCES
+    from tradingagents.book_history import READ_AT_S, REPLAY_VERSION, SOURCES
 
     parts = [_whole(p) for p in (a, b) if p is not None and len(p["t"])]
     if not parts:
@@ -154,8 +160,9 @@ def merge(a: dict | None, b: dict | None) -> dict:
     # rank: the new kind over the old, then the later file over the earlier
     later = np.concatenate([np.full(len(p["t"]), i, "int64")
                             for i, p in enumerate(parts)])
-    rank = ((np.asarray(cat["source"]) == SOURCES["app"]).astype("int64") * 4
-            + (np.asarray(cat["at"]) == READ_AT_S).astype("int64") * 2 + later)
+    rank = ((np.asarray(cat["source"]) == SOURCES["app"]).astype("int64") * 8
+            + (np.asarray(cat["at"]) == READ_AT_S).astype("int64") * 4
+            + (np.asarray(cat["rv"]) >= REPLAY_VERSION).astype("int64") * 2 + later)
     # sort by minute, then rank; the LAST row of each minute is the winner
     order = np.lexsort((rank, t))
     ts = t[order]

@@ -157,6 +157,12 @@ def _settle(st: dict, now: float) -> None:
                             f"{_read_at_s()} s after the close finished — its days "
                             "are read again")
         st["reds"] = 0
+    elif float(fl.get("at") or 0) < REPLAY_FIXED_AT <= now:
+        # pressed before the dust cut reached GitHub, settled after it (RCA-2026-10-30-F): green,
+        # but its shards read the 15 decimal contracts the old way, so its days stay to be asked
+        st["last_error"] = ("a costs run pressed before the decimal-contract fix finished - its "
+                            "days are read again")
+        st["reds"] = 0
     elif unread:
         st["last_error"] = (f"could not read which hours Gate's archive has published "
                             f"({unread}): no day of the finished costs run is marked done, "
@@ -242,6 +248,41 @@ def _repair_once(st: dict, now: float) -> None:
           "publishes them", flush=True)
 
 
+# THE DECIMAL-CONTRACT RE-READ (RCA-2026-10-30-F, the follow-up of RCA-2026-10-30-B): every day
+# this job marked done before the replay's dust cut reached GitHub (origin's main took 6d8f6c7 at
+# Oct 30, 2026 21:03:50 UTC; a minute later, so no run pressed before it is called fixed) was read
+# by the old replay, which gave the 15 contracts Gate lets trade in tenths about one minute in
+# eight. On the first tick at or after this instant those days come out of the done days ONCE and
+# are pressed again a week a press (MAX_DAYS_PER_PRESS, the job's own back-off): the shards skip
+# every hour that holds (`book_history.holds_its_hour`), so only those 15 coins' old hours are
+# read. A fixed instant, as OUTAGE_LAST_HOUR: never "the days done before this code ran".
+REPLAY_FIXED_AT = 1793394240
+REREAD_KEY = "reread_after_dust_cut"
+
+
+def _reread_once(st: dict, now: float) -> None:
+    """Take every done day out of the state once, at or after REPLAY_FIXED_AT: the file is copied
+    beside itself first, the count kept (`reread_after_dust_cut`) and said in the log."""
+    import shutil
+
+    from tradingagents import book_history as bh
+
+    if st.get(REREAD_KEY) or now < REPLAY_FIXED_AT:
+        return
+    before = list(st.get("done_days") or [])
+    if before and STATE.exists():
+        shutil.copy2(STATE, STATE.with_name(
+            f"{STATE.name}.{time.strftime('%Y%m%d-%H%M%S', time.gmtime(int(now)))}.bak"))
+    st["done_days"] = []
+    st[REREAD_KEY] = {"at": now, "before": len(before), "replay": bh.REPLAY_VERSION}
+    _write(st)
+    print(f"[costs-daily] decimal-contract fix (RCA-2026-10-30-F): the {len(before)} done day(s) "
+          f"of the last {BACKFILL_DAYS} are pressed again, {MAX_DAYS_PER_PRESS} a press, so the "
+          f"{len(bh.DECIMAL_CONTRACTS)} contracts Gate lets trade in tenths (ETH, XRP, SOL ...) "
+          "are read with the dust cut; every hour another coin holds is skipped by the shards",
+          flush=True)
+
+
 def forget_unpublished(newest: int, *, daily_path=None, backfill_path=None,
                        stamp: str | None = None) -> dict:
     """THE ONE-TIME REPAIR of Oct 30, 2026 (RCA-2026-10-30-A), by hand: every day after Gate's
@@ -324,6 +365,7 @@ def tick(now: float | None = None) -> dict:
     st = read()
     redo_if_read_differently(st)
     _repair_once(st, now)
+    _reread_once(st, now)
     _settle(st, now)
     if st.get("flight"):
         _write(st)

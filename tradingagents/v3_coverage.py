@@ -254,28 +254,45 @@ def _months(start_s: int, end_s: int) -> list[str]:
     return out
 
 
-def held_days_of(packed: dict | None) -> set:
-    """The UTC day KEYS whose 24 hours a coin-month file all holds, counting only readings taken
-    when practice looks (`book_history.READ_AT_S`): the costs job's own rule
-    (.github/scripts/costs_shard.py `held_days`), so "held" here is exactly what a press would
-    skip."""
+def held_days_of(packed: dict | None, sym: str | None = None) -> set:
+    """The UTC day KEYS whose 24 hours a coin-month file all holds, counting only the readings
+    that hold their hour (`book_history.holds_its_hour`: taken when practice looks and, for `sym`
+    one of the 15 contracts Gate lets trade in tenths, made by the replay with the dust cut,
+    RCA-2026-10-30-F): the costs job's own rule (.github/scripts/costs_shard.py `held_days`), so
+    "held" here is exactly what a press would skip."""
     from tradingagents import book_history as bh
 
     if not packed or packed.get("t") is None or packed.get("at") is None:
         return set()
-    hours = {int(x) - int(x) % 3600 for x, a in zip(packed["t"], packed["at"], strict=True)
-             if int(a) == bh.READ_AT_S}
+    hours = {int(x) - int(x) % 3600 for x, keep in zip(packed["t"], bh.holds_its_hour(sym, packed),
+                                                       strict=True) if keep}
     days = {h - h % DAY_S for h in hours}
     return {_day(d) for d in days if all(d + 3600 * k in hours for k in range(24))}
+
+
+def reread_days_of(packed: dict | None, sym: str | None) -> set:
+    """The UTC day KEYS of a coin-month file holding a reading the replay before the dust cut
+    made, on one of the 15 contracts Gate lets trade in tenths (RCA-2026-10-30-F): the days the
+    costs job reads again for that coin. Empty for every other coin."""
+    import numpy as np
+
+    from tradingagents import book_history as bh
+
+    if sym not in bh.DECIMAL_CONTRACTS or not packed or packed.get("t") is None:
+        return set()
+    t = np.asarray(packed["t"], dtype="int64")[bh.made_before_the_dust_cut(sym, packed)]
+    return {_day(int(d)) for d in np.unique(t - t % DAY_S)}
 
 
 def store_days(coins: list[str], start_s: int, end_s: int, *, load=None,
                workers: int = 8) -> dict:
     """What the COST STORE holds for each coin over [start_s, end_s) - the source of truth, read
     from its coin-month files (`cost_store.load_month`, every account merged; this PC's cache
-    first): {"by_coin": {coin: {day keys held}}, "unreadable": ["COIN YYYYMM: why"] (their days
-    counted missing, named), "coin_months": how many were read}. Backfilled days belong to the
-    coin and the day: no plan id or run name is part of it (I4)."""
+    first): {"by_coin": {coin: {day keys held}}, "reread": {coin: {day keys holding a reading the
+    replay before the dust cut made}} (only the 15 decimal contracts, RCA-2026-10-30-F),
+    "unreadable": ["COIN YYYYMM: why"] (their days counted missing, named), "coin_months": how
+    many were read}. Backfilled days belong to the coin and the day: no plan id or run name is
+    part of it (I4)."""
     from concurrent.futures import ThreadPoolExecutor
 
     if load is None:
@@ -294,6 +311,7 @@ def store_days(coins: list[str], start_s: int, end_s: int, *, load=None,
             return sym, ym, None, f"{type(exc).__name__}: {str(exc)[:120]}"
 
     by = {c: set() for c in coins}
+    reread: dict = {}
     unreadable = []
     jobs = [(c, ym) for c in coins for ym in months]
     with ThreadPoolExecutor(max(1, int(workers))) as ex:
@@ -301,8 +319,12 @@ def store_days(coins: list[str], start_s: int, end_s: int, *, load=None,
             if err:
                 unreadable.append(f"{sym} {ym}: {err}")
             else:
-                by[sym] |= held_days_of(packed)
-    return {"by_coin": by, "unreadable": sorted(unreadable), "coin_months": len(jobs)}
+                by[sym] |= held_days_of(packed, sym)
+                old = reread_days_of(packed, sym)
+                if old:
+                    reread.setdefault(sym, set()).update(old)
+    return {"by_coin": by, "reread": reread, "unreadable": sorted(unreadable),
+            "coin_months": len(jobs)}
 
 
 def archive_end(now: float) -> tuple[int | None, str]:
@@ -316,14 +338,32 @@ def archive_end(now: float) -> tuple[int | None, str]:
         return None, f"{type(exc).__name__}: {str(exc)[:160]}"
 
 
-def pressed_days(st: dict) -> dict:
+def pressed_days(st: dict, *, replayed: bool = False) -> dict:
     """{coin: {day keys}} every GREEN backfill press asked for (`presses`): a coin-day the store
-    still lacks after one is a day Gate's archive cannot complete, and is never asked again."""
+    still lacks after one is a day Gate's archive cannot complete, and is never asked again.
+    `replayed`: only the presses made with the replay with the dust cut (their record carries
+    `replay`, RCA-2026-10-30-F)."""
+    from tradingagents import book_history as bh
+
     out: dict = {}
     for p in st.get("presses") or []:
+        if replayed and int(p.get("replay") or 0) < bh.REPLAY_VERSION:
+            continue
         for c in p.get("coins") or []:
             out.setdefault(c, set()).update(p.get("days") or [])
     return out
+
+
+def asked_days(st: dict, coins) -> dict:
+    """{coin: {day keys}} a press already ASKED for, so never again: `pressed_days`, except that
+    for the 15 contracts Gate lets trade in tenths only a press made with the replay with the dust
+    cut counts (RCA-2026-10-30-F) - one before it read their hours the old way, and ETH's
+    September came back holding 467 hours with only the minute-0 reading."""
+    from tradingagents import book_history as bh
+
+    every, fixed = pressed_days(st), pressed_days(st, replayed=True)
+    return {c: set(fixed.get(c, ()) if c in bh.DECIMAL_CONTRACTS else every.get(c, ()))
+            for c in coins}
 
 
 def gaps(plan: dict, part: str | None, by_coin: dict, listings: dict,
@@ -505,7 +545,9 @@ def report(name: str | None = None, *, plan_path=None, runs: list[tuple[str, int
     listings = listings_of(coins) if listings is None else listings
     start, end = int(plan["start_ms"]) // 1000, int(plan["end_ms"]) // 1000
     store = store_days(coins, start, end, load=load)
-    pressed = pressed_days(read_state())
+    st_ = read_state()
+    pressed = asked_days(st_, coins)
+    before_fix = pressed_days(st_)
     lines.append(f"  read from the cost store: {store['coin_months']:,} coin-months of the plan's "
                  f"{len(coins)} coins (a day is held when all 24 of its hours hold a reading taken "
                  "when practice looks - the costs job's own rule)"
@@ -538,20 +580,30 @@ def report(name: str | None = None, *, plan_path=None, runs: list[tuple[str, int
                 asked = sum(1 for c, d in pairs if d in pressed.get(c, ())
                             and bh.day_published(d, newest))
             fill = g["coin_days"] - (wait or 0) - asked
+            # THE DECIMAL-CONTRACT RE-READ, ITS OWN LABEL (RCA-2026-10-30-F): coin-days of the 15
+            # contracts Gate lets trade in tenths that the replay before the dust cut wrote, or a
+            # press before it asked for - a part of the ones that can be filled now
+            redo = sum(1 for c, d in pairs if c in bh.DECIMAL_CONTRACTS
+                       and d not in pressed.get(c, ())
+                       and (bool(unread) or bh.day_published(d, newest))
+                       and (d in store["reread"].get(c, ()) or d in before_fix.get(c, ())))
+            redo_words = (f" ({redo:,} coin-day(s) to re-read after the decimal-contract fix: "
+                          "the 15 contracts Gate lets trade in tenths, whose hours the replay "
+                          "before Oct 30, 2026 read about one minute in eight)" if redo else "")
             asked_words = (f"{asked:,} of them a finished green backfill press already asked for "
                            "and the store still lacks (an hour Gate never published, or a replay "
                            "that gave too few readings: not asked again)")
             if unread:
                 split = (f"; could not read which hours Gate's archive has published ({unread}), "
                          f"so how many wait for Gate is unknown; {asked_words}; at most "
-                         f"{fill:,} of them can be filled now")
+                         f"{fill:,} of them can be filled now{redo_words}")
             else:
                 end = ("holds no order-book hour after the one starting "
                        f"{fmt_when(newest)} (this PC's clock)" if newest is not None
                        else f"holds no order-book hour in the last {bh.PROBE_BACK_HOURS // 24} "
                             "days")
                 split = (f"; {wait:,} of them wait for Gate to publish them (Gate's archive "
-                         f"{end}); {asked_words}; {fill:,} of them can be filled now")
+                         f"{end}); {asked_words}; {fill:,} of them can be filled now{redo_words}")
             lines.append(
                 f"  {part} days: {len(g['days'])} of {len(g['every'])} days lack a reading for at "
                 f"least one of the plan's coins in the cost store ({range_words(g['days'])}): "
@@ -711,7 +763,7 @@ def backfill(name: str | None = None, *, plan_path=None, days_per_press: int = D
     listings = listings_of(coins) if listings is None else listings
     start, end = int(plan["start_ms"]) // 1000, int(plan["end_ms"]) // 1000
     store = store_days(coins, start, end, load=load)
-    g = gaps(plan, part, store["by_coin"], listings, skip=pressed_days(st))
+    g = gaps(plan, part, store["by_coin"], listings, skip=asked_days(st, coins))
     newest, unread = archive_end(now)
     if unread:
         raise RuntimeError(f"not pressed: could not read which hours Gate's archive has "
@@ -739,7 +791,7 @@ def backfill(name: str | None = None, *, plan_path=None, days_per_press: int = D
     t0 = time.time()
     st["flight"] = {"at": now, "step_at": now, "days": days, "part": part, "plan_id": plan["id"],
                     "coins": press, "dispatching": True, "runs": [], "unrun": list(refused),
-                    "gate_newest": newest}
+                    "gate_newest": newest, "replay": bh.REPLAY_VERSION}
     if st.get("daily_ignored"):
         st["flight"]["notice"] = st["daily_ignored"]
     _write_state(st)                   # BEFORE the dispatch, as every dispatcher here
@@ -857,7 +909,10 @@ def settle(now: float | None = None) -> dict:
                                 "are not recorded as asked for: pressed again once it does")
         st.setdefault("presses", []).append({"days": asked, "part": fl.get("part"),
                                              "plan_id": fl.get("plan_id"),
-                                             "coins": fl.get("coins") or [], "runs": fl["runs"]})
+                                             "coins": fl.get("coins") or [], "runs": fl["runs"],
+                                             # the replay its shards ran (RCA-2026-10-30-F)
+                                             **({"replay": fl["replay"]} if fl.get("replay")
+                                                else {})})
     if stuck:
         st["last_error"] = ((st["last_error"] + "; ") if st["last_error"] else "") + (
             "this PC's cached copies of these coin-months could not be removed, so this PC would "

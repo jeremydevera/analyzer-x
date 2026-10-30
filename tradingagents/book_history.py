@@ -39,6 +39,21 @@ _EPS = 1e-12
 # reading (ETH held 5,040 of September's 43,200). The smallest size those files
 # print is 0.1 and the biggest crumb measured 7e-11: 1e-6 sits between them.
 _DUST = 1e-6
+# THE REPLAY THAT MADE A READING (Oct 30, 2026, RCA-2026-10-30-F). Every reading
+# `pack` writes carries `rv`, this number; a month written before carries none and
+# reads as 0 (`cost_store._whole`). 1 is the first replay with `_DUST`: an hour of a
+# DECIMAL_CONTRACTS coin made by replay 0 is not held (`holds_its_hour`), so the costs
+# job reads it again - ETH's stored September held 467 hours with only the minute-0
+# reading, and the job skipped any hour holding one.
+REPLAY_VERSION = 1
+# Gate's `enable_decimal` contracts, read from its contract list on Oct 30, 2026 (15 of
+# 1,070): the only ones whose sizes are tenths, so the only ones a crumb could cross.
+# Every other contract trades whole contracts, where the float arithmetic is exact and
+# replay 0 equals replay 1 (BTC Oct 08, 2026 07:00 UTC: 60 of 60, identical).
+DECIMAL_CONTRACTS = frozenset({
+    "ARIA_USDT", "BTW_USDT", "ESPORTS_USDT", "ETH_USDT", "LAB_USDT", "M_USDT", "PEPE_USDT",
+    "RAVE_USDT", "RIVER_USDT", "SIREN_USDT", "SOL_USDT", "SOXS_USDT", "TRX_USDT", "UB_USDT",
+    "XRP_USDT"})
 _KIND = {"set": 0, "make": 1, "take": 2}
 # "app": the book the APP can trade, recorded live by `app_books` (Oct 16,
 # 2026, RCA-2026-10-16-A) - Gate's archive ("full", "snapshot") also holds
@@ -164,11 +179,13 @@ def pack(readings) -> dict:
     ask (float64), spread, buy, sell (float32 fractions), exhausted (bool),
     source (int8: 1 full replay, 2 snapshot-only hour), at (int8: the second
     of its minute the book was read at; a reading that does not say is the
-    old kind, read at the close, 0)."""
+    old kind, read at the close, 0), rv (int8: REPLAY_VERSION, the replay that
+    made it; none in a file is 0)."""
     import numpy as np
 
     rows = [r for r in readings if r]
     return {
+        "rv": np.full(len(rows), REPLAY_VERSION, dtype="int8"),
         "t": np.asarray([r["t"] for r in rows], dtype="int64"),
         "bid": np.asarray([r["bid"] for r in rows], dtype="float64"),
         "ask": np.asarray([r["ask"] for r in rows], dtype="float64"),
@@ -179,6 +196,38 @@ def pack(readings) -> dict:
         "source": np.asarray([SOURCES[r["source"]] for r in rows], dtype="int8"),
         "at": np.asarray([int(r.get("at", 0)) for r in rows], dtype="int8"),
     }
+
+
+def holds_its_hour(sym: str | None, packed: dict):
+    """Per reading (a bool array): does it HOLD its hour, so the costs job does not read
+    that hour again? Taken when practice looks (`READ_AT_S`, RCA-2026-10-15-G) and, on a
+    DECIMAL_CONTRACTS coin, made by a replay with the dust cut (`rv` >= REPLAY_VERSION,
+    RCA-2026-10-30-F). THE ONE RULE `costs_shard.held_hours` and
+    `v3_coverage.held_days_of` read; `sym` None is the rule without the replay check."""
+    import numpy as np
+
+    at = packed.get("at") if packed else None
+    if at is None:
+        return np.zeros(len(packed["t"]) if packed and packed.get("t") is not None else 0, bool)
+    ok = np.asarray(at) == READ_AT_S
+    if sym in DECIMAL_CONTRACTS:
+        ok &= ~made_before_the_dust_cut(sym, packed)
+    return ok
+
+
+def made_before_the_dust_cut(sym: str | None, packed: dict):
+    """Per reading (a bool array): made by a replay before the dust cut on a
+    DECIMAL_CONTRACTS coin (`rv` below REPLAY_VERSION, or no `rv` at all) - a reading
+    of an hour the costs job reads again (RCA-2026-10-30-F)."""
+    import numpy as np
+
+    n = len(packed["t"]) if packed and packed.get("t") is not None else 0
+    if sym not in DECIMAL_CONTRACTS:
+        return np.zeros(n, bool)
+    rv = packed.get("rv")
+    if rv is None:
+        return np.ones(n, bool)
+    return np.asarray(rv) < REPLAY_VERSION
 
 
 MAX_AGE_S = 3600

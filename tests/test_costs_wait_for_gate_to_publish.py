@@ -393,6 +393,9 @@ def world(monkeypatch, tmp_path):
             store[key] = {"t": t if old is None else np.concatenate([old["t"], t])}
     for v in store.values():
         v["at"] = np.full(len(v["t"]), bh.READ_AT_S, "int8")
+        # written by the replay with the dust cut: ETH trades in tenths, and a month of it the old
+        # replay wrote is read again whole (RCA-2026-10-30-F, its own test file)
+        v["rv"] = np.full(len(v["t"]), bh.REPLAY_VERSION, "int8")
     monkeypatch.setattr(cost_store, "load_month", lambda sym, ym, **k: store.get((sym, ym)))
     probe = [LAST]
 
@@ -451,8 +454,11 @@ def test_the_report_names_what_waits_for_gate_what_was_asked_and_what_can_be_fil
         world, monkeypatch):
     vcv = world.vcv
     # a green press already asked for ETH's Sep 10 and every coin's Oct 08
+    # (made with the replay with the dust cut: one before it never counts as asked for ETH,
+    # RCA-2026-10-30-F)
     vcv._write_state({"presses": [{"days": ["2026-09-10", "2026-10-08"],
-                                   "coins": world.plan["coins"], "runs": []}]})
+                                   "coins": world.plan["coins"], "runs": [],
+                                   "replay": bh.REPLAY_VERSION}]})
     monkeypatch.setattr(vcv, "costs_speed", lambda runs: {"runs": 1, "machine_s": 3600,
                                                           "coin_days": 100,
                                                           "s_per_coin_day": 36.0,

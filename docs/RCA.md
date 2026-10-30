@@ -172,6 +172,41 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-30-F — the cost months already stored for the 15 contracts Gate lets trade in tenths kept the old replay's sparse readings after RCA-2026-10-30-B fixed it, and nothing would ever read them again
+
+**CEO**
+
+* What you saw: after the fix that made ETH, XRP and SOL read every minute, the months already saved still held about one reading in eight for those coins (ETH's September: 467 hours with a single reading), and neither the daily costs job nor the v3 fill would ever have read them again.
+* Why: both jobs skip any hour that already holds a reading, and the old sparse hours did hold one - the minute-0 reading.
+* What stops it now: every reading now carries a stamp saying which replay made it; for those 15 coins an hour without the new stamp counts as missing, so both jobs read it again once, a week (or a press) at a time, and the coverage report counts those days on their own line - Bitcoin and the other whole-contract coins are never touched.
+
+**DEV**
+
+* `.github/scripts/costs_shard.py:held_hours` (and `v3_coverage.held_days_of`, the same rule) held an hour on ANY reading with `at == READ_AT_S`; `costs_daily.done_days` and `v3_coverage.pressed_days` held a pressed day for ever; so RCA-2026-10-30-B's `_DUST` reached only hours never read before.
+* Invariant broken: **a fix to how data is MADE is not done until the data made before it is re-made or named** - a replay fix without a mark on its readings cannot tell its own output from the bug's.
+* Guard: `tests/test_decimal_contracts_are_read_again.py` (11): `::test_an_old_sparse_hour_of_a_decimal_contract_is_due_and_a_new_one_is_held`, `::test_the_shard_reads_an_old_eth_day_again_and_leaves_btc_alone`, `::test_the_report_counts_them_apart_with_their_own_label`, `::test_the_backfill_presses_them_once_after_the_fix_never_again`, `::test_the_daily_job_presses_its_done_days_again_once_after_the_fix`, `::test_a_run_pressed_before_the_fix_never_marks_its_days_done_after_it`.
+
+**SAW** - the fix report of RCA-2026-10-30-B: "NOT repaired: stored hours with >= 1 reading are 'held' and not re-read (ETH Sep: 467 one-reading hours)".
+
+**TIMELINE** (measured Oct 30, 2026 on this PC's cost cache, GitHub's release files and the two jobs' records)
+
+1. Oct 30, 2026 5:03pm: RCA-2026-10-30-B's dust cut reaches origin's main (6d8f6c7, pushed 5:03:50pm New York, 21:03:50 UTC); ETH, XRP and SOL read 60 of 60 minutes of Oct 08, 2026 07:00 UTC from then on.
+2. The stored month ETH_USDT-202609: 5,040 readings in 548 hours, 467 of them holding only the minute-0 reading, and no mark of which replay made them.
+3. Before this fix: the shard held all 548 hours; the daily costs job held 67 done days (Aug 16 - Oct 21, 2026); the v3 coverage report counted 467 unseen coin-days missing for the plan's 13 decimal coins (of its 228) - every sparse day called held.
+4. After this fix, a dry count over the same store and plan: 1,170 unseen coin-days missing for those 13 coins, of which 946 are labelled "to re-read after the decimal-contract fix" (72 a coin, RIVER 82), 104 wait for Gate (after Oct 22, 2026 04:00 UTC) and 120 were never filled; the older range's 3,313 missing coin-days are unchanged (never filled, so the fixed replay reads them when they are). On its first tick at or after Oct 30, 2026 5:04pm the daily job takes its 67 done days out once and presses the 53 published days of its 61-day window again, 7 a press; the shards skip every held hour, so only the decimal coins' old hours are read.
+
+**ROOT CAUSE** - "held" was judged on the presence of a reading, never on which replay made it, and the readings carried nothing that could say.
+
+**WHY IT WAS NOT CAUGHT** - RCA-2026-10-30-B's guard tests `replay_hour` on one hour's file, and every costs-job test builds its month files fresh from `bh.pack` with the current code, so no test held a month written by an older replay; the gap was seen only because the fix report counted ETH's stored September by hand and said so.
+
+**COST** - no money. Until the re-read lands, a trade on those 15 coins in the stored months pays the book of up to an hour before (the minute-0 reading) or the coin's usual cost, as RCA-2026-10-30-B describes.
+
+**FIX** - this commit: `book_history.pack` stamps every reading `rv` = `REPLAY_VERSION` (1); `cost_store` keeps `rv` (a file without it reads 0, `_whole`) and ranks the new replay's reading above the old one of the same minute (`merge`); `book_history.holds_its_hour` (one rule for `costs_shard.held_hours`/`held_days` and `v3_coverage.held_days_of`) holds an hour of a `DECIMAL_CONTRACTS` coin (Gate's 15 `enable_decimal` contracts on Oct 30, 2026) only with `rv` >= 1; `v3_coverage.store_days` names those days (`reread`), `asked_days` counts only presses stamped `replay` for those coins, and the report labels them; `costs_daily._reread_once` takes the done days out once at or after `REPLAY_FIXED_AT` (Oct 30, 2026 21:04 UTC), and a run pressed before it never marks its days done after it.
+
+**GUARD** - `tests/test_decimal_contracts_are_read_again.py` (11, all red before the fix); `tests/test_costs_wait_for_gate_to_publish.py`'s store fixture now carries the stamp, as every month the fixed replay writes does.
+
+---
+
 ## RCA-2026-10-30-E — Backtest v3 coins measured on GitHub carried their window dates in GitHub's clock (UTC), so gold measured on GitHub and on this PC disagreed on every date although the measurement was identical
 
 **CEO**
@@ -306,7 +341,7 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 **COST** - no money. On those 15 contracts most minutes carried no reading of their own: a trade there paid the book of up to an hour before (the minute-0 snapshot, within `MAX_AGE_S`) or the coin's typical cost when the whole hour was crossed. A 60-machine press of RCA-2026-10-30-A's re-read 8 such coin-months and gave the same sparse readings.
 
-**FIX** - this commit: `book_history._DUST = 1e-6`, the cut `_apply` uses for `set`, `make` and `take` (0.1 is the smallest size the decimal files print; the biggest crumb measured is 7e-11). NOT repaired: the hours already stored. The costs job skips an hour a month file holds any reading in (`costs_shard.held_hours`), so ETH's 467 one-reading September hours stay as they are until those hours are read again; the hours with no reading are read again by any press of their days.
+**FIX** - this commit: `book_history._DUST = 1e-6`, the cut `_apply` uses for `set`, `make` and `take` (0.1 is the smallest size the decimal files print; the biggest crumb measured is 7e-11). NOT repaired: the hours already stored. The costs job skips an hour a month file holds any reading in (`costs_shard.held_hours`), so ETH's 467 one-reading September hours stay as they are until those hours are read again; the hours with no reading are read again by any press of their days. (Repaired by RCA-2026-10-30-F: readings are stamped with their replay, and those coins' old hours are read again.)
 
 **GUARD** - `tests/test_book_history.py::test_a_decimal_size_level_taken_to_float_dust_is_gone` (red before the fix: 59 of 60 minutes crossed) and `::test_a_real_tenth_of_a_contract_is_kept`.
 

@@ -254,6 +254,13 @@ def test_the_coins_own_flat_gap_and_the_books_coverage_come_first(monkeypatch, g
     assert rec["windows"]["1h"]["older_candles"] == 7 * 24
     assert rec["windows"]["1h"]["unseen_candles"] == 3 * 24
     assert rec["windows"]["1h"]["split"].endswith(("am", "pm"))
+    from tradingagents.positions_view import fmt_when
+
+    # the instants themselves ride beside the labels (RCA-2026-10-30-E): a label is printed in the
+    # measuring machine's clock, so GitHub's records read UTC; every reader prints from the ms
+    w = rec["windows"]["1h"]
+    assert (w["start_ms"], w["split_ms"], w["end_ms"]) == (START_A, SPLIT_A, END_A)
+    assert vm.window_when(w, "split") == fmt_when(SPLIT_A / 1000)
     # the unseen days, Oct 01 - Oct 04, 2026, fall in one month
     assert rec["unseen_months"] == ["2026-10"]
 

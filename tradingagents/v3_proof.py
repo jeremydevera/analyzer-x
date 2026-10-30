@@ -309,14 +309,19 @@ def verdict(family: str, tf: str, filt: str, coins: list[dict], *, z: float | No
         table[k]["cost_unmeasured"] = sum(int(w.get("counts", {}).get("cost_unmeasured", 0))
                                           for w in _walks(used, ck[k], "older"))
     wins =[c["windows"][tf] for c in used if tf in c.get("windows", {})]
-    # One plan end - `_refuse_mixed` has seen to it - is one split and one end, so the window's text
-    # is the first coin's label of that one instant. The texts are never compared: each machine
-    # prints them in its own time zone, and a coin measured on this PC and one measured on GitHub
-    # print the same instant two ways
-    window = ({"split": wins[0].get("split"), "end": wins[0].get("end"),
-               "older_candles": sum(int(w.get("older_candles", 0)) for w in wins),
-               "unseen_candles": sum(int(w.get("unseen_candles", 0)) for w in wins)}
-              if wins else None)
+    # One plan end - `_refuse_mixed` has seen to it - is one split and one end. The window is
+    # printed from the instants through this PC's clock (`window_when`, RCA-2026-10-30-E): each
+    # machine labels them in its own time zone, so a GitHub coin and a PC coin print one instant
+    # two ways. Only coins recorded before the instants were kept fall back to the first coin's label
+    window = None
+    if wins:
+        from tradingagents.v3_measure import window_when
+
+        w0 = next((w for w in wins if w.get("split_ms") is not None), wins[0])
+        window = {"split": window_when(w0, "split"), "end": window_when(w0, "end"),
+                  **{k: int(w0[k]) for k in ("split_ms", "end_ms") if w0.get(k) is not None},
+                  "older_candles": sum(int(w.get("older_candles", 0)) for w in wins),
+                  "unseen_candles": sum(int(w.get("unseen_candles", 0)) for w in wins)}
     notes = [vu.SURVIVORSHIP] + ([NOTES[filt]] if filt in NOTES else [])
     base = {"id": vf.verdict_id(family, tf, filt), "family": family, "tf": tf, "filter": filt,
             "tried": tried, "alpha": alpha, "z": z, "coins": [c["coin"] for c in used],

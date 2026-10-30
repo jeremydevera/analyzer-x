@@ -337,6 +337,26 @@ def test_two_coins_of_one_plan_pool_whatever_time_zone_their_dates_were_printed_
                                                                  "Oct 22, 2026 8:00pm")
 
 
+def test_a_window_measured_on_github_prints_in_this_pcs_clock_from_its_instants():
+    """RCA-2026-10-30-E: gold measured on GitHub and on this PC was identical except every window
+    label - a runner prints UTC. A record carrying the instants is printed from them through this
+    PC's `fmt_when`, whichever coin comes first; the stored UTC text is never shown."""
+    from tradingagents.positions_view import fmt_when
+
+    split_ms, end_ms = PLAN_END - 90 * DAY, PLAN_END
+    coins = _two_coins(_rows(STEADY))
+    for c in coins:
+        c["plan_end_ms"] = PLAN_END
+        c["windows"]["1h"].update(split_ms=split_ms, end_ms=end_ms)
+    coins[0]["windows"]["1h"].update(split="Jul 25, 2026 12:00am", end="Oct 23, 2026 12:00am")
+    coins[1]["windows"]["1h"].update(split="Jul 24, 2026 8:00pm", end="Oct 22, 2026 8:00pm")
+    want = {"split": fmt_when(split_ms / 1000), "end": fmt_when(end_ms / 1000),
+            "split_ms": split_ms, "end_ms": end_ms}
+    for order in (coins, coins[::-1]):
+        w = vp.verdict("v3_snap", "1h", "none", order)["window"]
+        assert {k: w[k] for k in want} == want
+
+
 def test_the_bootstrap_low_end_uses_the_verdicts_own_z_not_the_63_count_z():
     # days alternate +1.335 and -0.665 a trade (four trades a day, 80 days): profit a trade +0.335;
     # the day averages' sd is 1.0, so the error is about 0.11 (sqrt(1 / 80) = 0.1118, less the

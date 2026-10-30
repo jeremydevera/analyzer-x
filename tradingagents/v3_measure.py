@@ -77,6 +77,22 @@ def windows(plan: dict) -> tuple[int, int, int]:
     return int(plan["start_ms"]), end - UNSEEN_DAYS * DAY_MS, end
 
 
+def window_when(w: dict | None, key: str) -> str | None:
+    """One date of a record's timeframe window ("start", "split" or "end") as THIS PC prints it.
+    A record carries the instant (`<key>_ms`) beside a label printed in the clock of the machine
+    that measured it - a GitHub runner's is UTC, this PC's New York time, so gold measured on
+    both had every label differ (RCA-2026-10-30-E). The label is the answer only for a record
+    written before the instants were kept."""
+    if not w:
+        return None
+    ms = w.get(f"{key}_ms")
+    if ms is None:
+        return w.get(key)
+    from tradingagents.positions_view import fmt_when
+
+    return fmt_when(int(ms) / 1000)
+
+
 def bars_of(df, bar_ms: int, end_ms: int) -> dict:
     """A candle frame -> {"t" (opens ms), "o", "h", "l", "c"}, only the
     candles that CLOSED by `end_ms` (the plan's end, never the clock)."""
@@ -304,8 +320,10 @@ def _measure_tf(rec: dict, sym: str, kind: str, tf: str, fams: list, pre: dict, 
     order = [x + bar_ms for x in t]
     masks = {f: vfl.masks(f, sym=sym, kind=kind, order_ms=order, funding=pre["funding"],
                           cycle_h=pre["cycle_h"], plan=plan) for f in vf.filters_for(tf)}
+    # the labels are this machine's clock; the instants are every machine's (`window_when`)
     rec["windows"][tf] = {"start": fmt_when(t[i0] / 1000), "split": fmt_when(split / 1000),
-                          "end": fmt_when(end / 1000), "older_candles": i1 - i0,
+                          "end": fmt_when(end / 1000), "start_ms": int(t[i0]),
+                          "split_ms": int(split), "end_ms": int(end), "older_candles": i1 - i0,
                           "unseen_candles": len(t) - i1}
     data = {"older": _before(pre, split),
             "unseen": {"fine": pre["fine"], "book": pre["book"], "funding": pre["funding"]}}

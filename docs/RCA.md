@@ -172,6 +172,41 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-30-E — Backtest v3 coins measured on GitHub carried their window dates in GitHub's clock (UTC), so gold measured on GitHub and on this PC disagreed on every date although the measurement was identical
+
+**CEO**
+
+* What you saw: the gold check between GitHub and this PC (the same coin measured both ways) came back with 9 differences, and all 9 were dates - Aug 01, 2026 12:00am on GitHub against Jul 31, 2026 8:00pm here, the same moment.
+* Why: each machine wrote the window's dates as words in its own clock, and GitHub's machines run on UTC while this PC runs on New York time.
+* What stops it now: every coin's record also keeps the exact moments, every screen prints those moments in this PC's clock, and the gold check compares the moments, never the words.
+
+**DEV**
+
+* `tradingagents/v3_measure.py:_measure_tf` stored `windows[tf]` start/split/end as `fmt_when` text only, made on the measuring machine; `v3_cloud.same_measure` compared that text, and `v3_proof.verdict` printed the group's window as the FIRST coin's text, so a verdict's dates depended on which coin sorted first and where it was measured.
+* Invariant broken: **a record stores facts, a screen prints them** - a label made at write time carries the writer's clock into every reader.
+* Guard: `tests/test_v3_measure.py::test_the_coins_own_flat_gap_and_the_books_coverage_come_first` (the instants in the record), `tests/test_v3_proof.py::test_a_window_measured_on_github_prints_in_this_pcs_clock_from_its_instants`, `tests/test_v3_cloud.py::test_parity_compares_the_windows_instants_never_their_printed_dates`.
+
+**SAW** - the Backtest v3 Part 2b pilot's gold parity (`python -m tradingagents.v3_cloud parity pilot XAU_USDT parity`): every window label differed while every measured number agreed.
+
+**TIMELINE** (measured Oct 30, 2026 on the two XAU_USDT records in `~/.tradingagents/v3/research/`)
+
+1. Oct 30, 2026: XAU_USDT measured on this PC (label `parity`) and on GitHub (folder `pilot`, run 41105396544 on jeremydevera/analyzer-x, machine 5, sha 80e364c314e2) under plans ending Oct 30, 2026 00:00 UTC.
+2. GitHub's record: 1h start "Jan 14, 2026 9:00am", split "Aug 01, 2026 12:00am", end "Oct 30, 2026 12:00am"; this PC's: "Jan 14, 2026 4:00am", "Jul 31, 2026 8:00pm", "Oct 29, 2026 8:00pm" - the same instants, five hours apart in January and four in summer.
+3. `parity` returned 9 paths, `windows.{1h,4h,1d}.{start,split,end}`, and nothing else.
+4. After the fix: a new record carries `start_ms`, `split_ms`, `end_ms` beside the labels (record version unchanged, old records still read); a verdict's window is printed from them through this PC's `fmt_when` whichever coin comes first, and `parity` skips a label whose instant both records carry. The two records above predate the fix and still differ on their 9 labels: they carry no instants to compare.
+
+**ROOT CAUSE** - The window was stored as printed text, and text printed by `fmt_when` is in the clock of the machine that ran it.
+
+**WHY IT WAS NOT CAUGHT** - Every v3 test runs on this PC, in one clock, so a record and its reader always agreed; `test_two_coins_of_one_plan_pool_whatever_time_zone_their_dates_were_printed_in` saw two clocks and pinned the first coin's text as the answer, and the parity test's records had no dates at all.
+
+**COST** - no money. The gold parity check could not show "identical" for an identical measurement, and a verdict judged from GitHub's records stored UTC dates labelled as this PC's.
+
+**FIX** - this commit: `v3_measure._measure_tf` adds `start_ms`/`split_ms`/`end_ms` to each window; `v3_measure.window_when(w, key)` prints a window date from its instant through this PC's `fmt_when`, falling back to the stored label only for a record without it; `v3_proof.verdict` builds the window from the first coin carrying instants and stores `split_ms`/`end_ms` with it; `v3_cloud.same_measure` compares `<key>_ms` and skips the label when both records carry it. The coin line, the tab and the results page print no record's window (the page prints the store's `plan_start`/`plan_split`/`plan_end`, already instants).
+
+**GUARD** - `tests/test_v3_proof.py::test_a_window_measured_on_github_prints_in_this_pcs_clock_from_its_instants` (a record whose text is UTC, both orders), `tests/test_v3_cloud.py::test_parity_compares_the_windows_instants_never_their_printed_dates`, and the instants asserted in `tests/test_v3_measure.py::test_the_coins_own_flat_gap_and_the_books_coverage_come_first` (all three red before the fix).
+
+---
+
 ## RCA-2026-10-30-D — the costs job judged "has Gate published this day" on Bitcoin alone, so a coin Gate published later than Bitcoin would have had its missing hours booked done for ever: NEVER HAPPENED YET
 
 **CEO**

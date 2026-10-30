@@ -274,6 +274,22 @@ def test_parity_ignores_when_and_where_and_names_what_differs():
     assert vc.same_measure(a, b) == ["combos.k.older.rows[0][4]"]
 
 
+def test_parity_compares_the_windows_instants_never_their_printed_dates():
+    """XAU_USDT's pilot parity (RCA-2026-10-30-E): the same measurement on GitHub and on this PC,
+    and every window label differed - the runner prints UTC, this PC New York time."""
+    split, end = 1784937600000, 1792713600000          # Jul 25 and Oct 23, 2026 00:00 UTC
+    gh = {"coin": "XAU_USDT", "windows": {"1h": {
+        "start": "Oct 23, 2025 12:00am", "split": "Jul 25, 2026 12:00am",
+        "end": "Oct 23, 2026 12:00am", "start_ms": 1761177600000, "split_ms": split,
+        "end_ms": end, "older_candles": 6600}}}
+    pc = json.loads(json.dumps(gh))
+    pc["windows"]["1h"].update(start="Oct 22, 2025 8:00pm", split="Jul 24, 2026 8:00pm",
+                               end="Oct 22, 2026 8:00pm")
+    assert vc.same_measure(gh, pc) == []
+    pc["windows"]["1h"]["split_ms"] = split + 3_600_000
+    assert vc.same_measure(gh, pc) == ["windows.1h.split_ms"]
+
+
 # ---- Task 3 review pins: an account with no coins, and the same coin named by every machine ----
 
 def test_an_account_dealt_no_coins_is_never_dispatched(fleet):

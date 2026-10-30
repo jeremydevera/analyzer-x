@@ -68,6 +68,8 @@ RUN_TTL_S = 7 * 86400               # a downloaded run folder older than this is
 PLAN_REL = "research/v3/plan.json"
 # a record's fields that say WHEN and WHERE it was measured, never WHAT: `parity` ignores them
 TIMING = ("seconds", "machine")
+# a window's dates as the measuring machine printed them: `parity` compares their `_ms` instead
+WINDOW_LABELS = ("start", "split", "end")
 # the name `retry` gives a redo of a run: `<name>-redo<N>`, ONE run family with it (v3_verdicts)
 REDO = re.compile(r"^(?P<base>.+)-redo(?P<n>\d+)$")
 
@@ -643,11 +645,19 @@ def same_measure(a: dict, b: dict, path: str = "") -> list[str]:
     """Where two records of one coin differ in WHAT they measured - every field
     but those that say when and where (`TIMING`): [] when they agree, else the
     paths that differ. A GitHub record and this PC's of one coin under one plan
-    must agree (the pilot's parity check)."""
+    must agree (the pilot's parity check).
+
+    A date LABEL is compared only when either side lacks its instant: a window's
+    "start" / "split" / "end" text is printed in the measuring machine's clock
+    (UTC on GitHub), so where both records carry `<key>_ms` the instants are
+    compared and the texts never are (RCA-2026-10-30-E)."""
     if isinstance(a, dict) and isinstance(b, dict):
         out = []
         for k in sorted(set(a) | set(b), key=str):
             if k in TIMING:
+                continue
+            if (k in WINDOW_LABELS and a.get(f"{k}_ms") is not None
+                    and b.get(f"{k}_ms") is not None):
                 continue
             out += same_measure(a.get(k), b.get(k), f"{path}.{k}" if path else str(k))
         return out

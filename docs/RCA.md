@@ -172,6 +172,43 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-30-A — Gate stopped publishing its order books after Oct 22, 2026, and both cost jobs booked the missing days as done for ever; the v3 backfill then spent a whole 60-machine press on those days and filled 2 coin-days
+
+**CEO**
+
+* What you saw: the order-book backfill for Backtest v3 ran green on all three accounts and the missing days barely moved (5,598 to 5,596 coin-days), and the coverage report said 3,483 beside 5,596 without saying what it had taken away; behind it, Oct 22-29 had been written down as finished in both cost jobs, so they would never have been fetched once Gate put them out.
+* Why: when Gate's archive answered "no such file" for an hour, the job read it as "Gate will never have this hour", even for hours Gate simply had not put out yet; and the backfill always picked the newest missing days, which were exactly the days Gate did not have.
+* What stops it now: a day counts as finished only once Gate's archive holds its last hour (checked before every press with a few quick look-ups); neither job ever asks for a day Gate has not put out; the backfill fills the oldest missing days first; and the report splits the missing days into "waiting for Gate", "already asked for" and "can be filled now".
+
+**DEV**
+
+* `.github/scripts/costs_shard.py:254` took `bh.day_readings`' `hours_missing` (`book_history.py:259`, any 403/404) as final and never `redo`, so every run ended 0; `costs_daily._settle` (:147) and `v3_coverage.settle` (:783) then wrote the pressed days into `done_days` / `presses`; `v3_coverage.backfill` (:664) took `g["days"][-days_per_press:]`, the NEWEST days any coin lacked; `report` (:509-537) printed `coin_days - stuck` as "filling" with no word for the subtraction and blamed all of `stuck` on "Gate's archive does not complete them".
+* Invariants broken: **"not published yet" is not "never published" - unknown is not final**, and **a label names every number it subtracts and the real cause of each part** (`label-must-match-data`).
+* Guard: `tests/test_costs_wait_for_gate_to_publish.py` (15): `::test_a_404_at_the_archives_end_is_not_yet_published_and_said_so`, `::test_a_404_with_a_later_hour_published_is_final`, `::test_the_daily_press_never_asks_for_a_day_gate_has_not_published`, `::test_a_green_run_marks_done_only_the_days_published_when_it_was_pressed`, `::test_the_backfill_presses_the_fillable_oldest_days_never_the_unpublished`, `::test_the_report_names_what_waits_for_gate_what_was_asked_and_what_can_be_filled`, `::test_the_daily_jobs_own_file_is_repaired_once_on_the_first_tick_of_this_code`.
+
+**SAW** - `report pilot` after the backfill press: "unseen 5,596 missing ... 2,113 of them a green backfill press already asked for (Gate's archive does not complete them ...)" and "filling 3,483"; the three runs green; the operator was told the press had filled the gap.
+
+**TIMELINE** (UTC unless named; measured Oct 30, 2026 by HEAD requests on Gate's archive, the runs' full logs and the cost store - `scratchpad/costfill/findings.txt`)
+
+1. Oct 08, 2026 06:00: Gate never publishes this hour on any coin (BTC_USDT and ETH_USDT 404; 05 and 07 are 200, BTC 07 29,825,890 bytes) - a permanent hole, so Oct 08 can never count as held.
+2. Oct 22, 2026 06:09: Gate publishes its last hour, `2026102204` (BTC 23,560,542 bytes); every later hour checked (05 on Oct 22, Oct 23 00, Oct 26 12, Oct 29 00 and 20) is 404 on BTC and ETH.
+3. Oct 22-30: the daily costs job runs green every day on 404s; `~/.tradingagents/costs_daily.json` ends with 75 `done_days`, Aug 16 - Oct 29, Oct 22-29 among them, `last_error` "".
+4. Oct 30, 2026 2:44pm New York: `backfill --part unseen --days-per-press 30` presses the NEWEST 30 missing days (Sep 22-29, Oct 08-29) for all 228 coins; runs 41109468102, 41109491700, 41109509888 end green at 2:56pm, 3:23pm, 2:55pm. 223 of 228 coins log "no order-book hour published" for October; 8 coin-month files are rewritten, all re-reads of ETH/XRP/SOL-type months. `settle` records 6,840 coin-days as asked for.
+5. The report after: 5,596 missing (2 fewer), 2,113 "a green press already asked for", "filling 3,483" = 5,596 - 2,113, unsaid; 1,824 of the 2,113 are Oct 22 (hours 05-23) to Oct 29 x 228 coins, which Gate has simply not published. Meanwhile Aug 01-15 for 221 coins (3,315 coin-days, Gate serves them: HEAD 200, 10-24 MB an hour) was never pressed because it is the oldest. Three cached August months on this PC (SIGN, PUMP, SAGA, cached Oct 12-15, rewritten on GitHub Oct 16) held 0 days where a fresh read holds 16 each: 48 coin-days that were never missing.
+6. After the fix, Oct 30, 2026 4:00pm New York: the probe finds the archive's newest hour in 26 HEADs (7 s) - Oct 22, 2026 04:00 UTC; `backfill.json`'s green press went from 30 days / 6,840 coin-days to 22 days / 5,016 (Oct 22-29 out, backed up as `backfill.json.20261030-160040.bak`); the three stale months removed (fresh reads: 16 held days each). `report pilot` now reads: unseen 5,548 missing - 1,824 wait for Gate to publish them, 289 a finished green backfill press already asked for and the store still lacks, 3,435 can be filled now. The next press would take Aug 01 - Aug 30 for 224 coins: 3,364 missing coin-days, against 2 filled by the last one.
+
+**ROOT CAUSE** - `book_history.day_readings` named every 403/404 "Gate never published it; final", and `costs_shard` trusted it without asking whether any LATER hour of that coin existed - so the end of the archive and a hole in it were the same answer, and "the run ended green" became "the day is done" in two bookkeepers.
+
+**WHY IT WAS NOT CAUGHT** - The 404 path was written (RCA-2026-10-10-F) for the one shape it had seen, a hole inside a published day, and its tests fake `day_readings` with hours that are either all read or missing in the middle; no fixture ever had an archive that STOPS, so "missing" and "not yet" could not differ. The backfill's tests built stores where every missing day was fillable, so newest-first and oldest-first gave the same work; and the report's test had no green press, so the subtraction it never named was 0.
+
+**COST** - no money. One 60-machine backfill press (three runs, 11 to 39 minutes) filled 2 of 5,598 coin-days; Oct 22-29 (1,824 coin-days of the plan, every coin in the daily job) were booked done and would never have been fetched when Gate publishes them; the coverage report under-stated what can be filled now by 48 coin-days and mis-stated the cause of 1,824. Every backtest of Oct 22-29 pays a coin's typical cost for those days because Gate has published no book for them - that is Gate's gap, not this bug's, and it now waits to be filled instead of being forgotten.
+
+**FIX** - this commit: `book_history.newest_published_hour` (HEADs, doubling back then halving, a one-hour hole never read as the end; anything but 200/403/404 raises) and `day_published`; `costs_shard` judges each 404 hour per coin after every month is read - a later hour published or held makes it a hole ("Gate never published it"), otherwise "not published by Gate yet", named per coin and in one run line, never red; `costs_daily.tick` probes at most every `PROBE_EVERY_S`, never presses a day after the archive's end (nor today until Gate has published an hour of it), keeps the probe in the flight, and `_settle` marks done only days the archive held at the press (an unreadable archive marks nothing); `v3_coverage.backfill` refuses by name when the archive cannot be read, presses the OLDEST fillable days, and `settle` records only days published at the press; `report` splits the missing coin-days into waiting for Gate / a finished press already asked for / can be filled now and the filling line names the subtraction. Repair: `costs_daily._repair_once` takes every done day after Oct 22, 2026 04:00 UTC out of `costs_daily.json` ONCE, on the first tick of this code (backed up beside it, counts in the log) - the build still running would otherwise press them at once and mark them done again; `forget_unpublished` did the same to `backfill.json` by hand.
+
+**GUARD** - `tests/test_costs_wait_for_gate_to_publish.py` (15, all red on 80e364c314e2), with `tests/test_v3_coverage.py`'s backfill tests now pinning oldest first; `tests/test_costs_daily.py` and `tests/test_v3_coverage.py` fixtures fake the archive as normally published.
+
+---
+
 ## RCA-2026-10-29-B — Backtest v3's coverage check kept the order-book days it had filled against one plan's id, so a rebuilt plan would have called them missing, and this PC would have kept reading the months it filled from before they were filled: NEVER HAPPENED YET
 
 **CEO**

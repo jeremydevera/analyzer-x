@@ -21,7 +21,12 @@ def env(monkeypatch, tmp_path):
     monkeypatch.setenv("TA_VENUE", "gate")
     monkeypatch.setattr(cd, "_under_pytest", lambda: False)
     monkeypatch.setattr(cd, "STATE", tmp_path / "costs_daily.json")
-    from tradingagents import cloud_sweep as cs, forecast_v2_daily as f2d
+    from tradingagents import book_history as bh, cloud_sweep as cs, forecast_v2_daily as f2d
+
+    # Gate's archive as it normally stands: every hour published up to two hours ago
+    # (RCA-2026-10-30-A; tests/test_costs_wait_for_gate_to_publish.py holds the outage)
+    monkeypatch.setattr(bh, "newest_published_hour",
+                        lambda now=None, **k: int(now) - int(now) % 3600 - 2 * 3600)
     from tradingagents.dataflows import gate_futures as gf
 
     monkeypatch.setattr(gf, "trading_symbols", lambda: [f"C{i}_USDT" for i in range(6)])

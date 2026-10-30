@@ -76,6 +76,12 @@ def world(monkeypatch, tmp_path):
     # THE COST STORE, faked: {(coin, "YYYYMM"): packed month} - nothing here reaches GitHub
     store = {}
     monkeypatch.setattr(cost_store, "load_month", lambda sym, ym, **k: store.get((sym, ym)))
+    # Gate's archive as it normally stands: every hour published up to two hours ago
+    # (RCA-2026-10-30-A; tests/test_costs_wait_for_gate_to_publish.py holds the outage)
+    from tradingagents import book_history as bh
+
+    monkeypatch.setattr(bh, "newest_published_hour",
+                        lambda now=None, **k: int(now) - int(now) % 3600 - 2 * 3600)
     return SimpleNamespace(plan=plan, tmp=tmp_path, flights=flights, store=store)
 
 
@@ -511,7 +517,9 @@ def test_a_backfill_that_finds_the_daily_press_coming_after_writing_its_own_flig
     assert not sent and not vcv.read_state().get("flight"), "its flight was taken back"
 
 
-def test_the_backfill_presses_the_newest_missing_days_for_the_plans_coins(world, monkeypatch):
+def test_the_backfill_presses_the_oldest_missing_days_for_the_plans_coins(world, monkeypatch):
+    """OLDEST first since Oct 30, 2026 (RCA-2026-10-30-A): newest first spent a 30-day press
+    on days Gate had not published and left Aug 01-15 for 221 coins unpressed."""
     sent = []
     monkeypatch.setattr(cs, "usable_fleets", lambda: (["a/x", "b/x"], []))
     monkeypatch.setattr(cs, "sync_fleet", lambda slug: "")
@@ -527,11 +535,11 @@ def test_the_backfill_presses_the_newest_missing_days_for_the_plans_coins(world,
     now = _utc(2026, 10, 27, 12)
     lst = _listings(world.plan)
     got = vcv.backfill("pilot", days_per_press=3, now=now, force=True, listings=lst)
-    assert got["days"] == ["2026-10-08", "2026-10-09", "2026-10-10"], "newest first"
+    assert got["days"] == ["2026-10-01", "2026-10-02", "2026-10-03"], "oldest first"
     assert [s[:2] for s in sent] == [("costs.yml", "a/x"), ("costs.yml", "b/x")]
     assert sorted(c for _w, _s, i in sent for c in i["coin_list"].split(",")) == \
         world.plan["coins"]
-    assert all(i["days"] == "2026-10-08,2026-10-09,2026-10-10" for _w, _s, i in sent)
+    assert all(i["days"] == "2026-10-01,2026-10-02,2026-10-03" for _w, _s, i in sent)
     with pytest.raises(RuntimeError, match="still in the air"):
         vcv.backfill("pilot", now=now, force=True, listings=lst)
     # one share red: the days go back, named; then both green: the days are asked for once
@@ -540,19 +548,19 @@ def test_the_backfill_presses_the_newest_missing_days_for_the_plans_coins(world,
     assert vcv.settle(now=now)["red"] == ["b/x (run 502): failure"]
     assert not vcv.read_state().get("presses")
     assert vcv.backfill("pilot", days_per_press=3, now=now, force=True, listings=lst)["days"] == \
-        ["2026-10-08", "2026-10-09", "2026-10-10"]
+        ["2026-10-01", "2026-10-02", "2026-10-03"]
     monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "completed",
                                                              "conclusion": "success"})
     assert vcv.settle(now=now)["red"] == []
     press = vcv.read_state()["presses"][-1]
-    assert press["days"] == ["2026-10-08", "2026-10-09", "2026-10-10"]
+    assert press["days"] == ["2026-10-01", "2026-10-02", "2026-10-03"]
     assert press["coins"] == world.plan["coins"]
     # the store now holds those days for two coins; ZEC's never completed (an hour missing at
     # Gate) and a green press already asked for them, so they are not asked again
     for coin in ("BTC_USDT", "XAU_USDT"):
-        _hold(world, coin, "2026-10-08", "2026-10-09", "2026-10-10")
+        _hold(world, coin, "2026-10-01", "2026-10-02", "2026-10-03")
     assert vcv.backfill("pilot", days_per_press=3, now=now, force=True, listings=lst)["days"] == \
-        ["2026-10-05", "2026-10-06", "2026-10-07"]
+        ["2026-10-04", "2026-10-05", "2026-10-06"]
 
 
 def test_filled_days_belong_to_the_coin_and_the_day_so_a_rebuilt_plan_never_calls_them_missing(
@@ -585,7 +593,7 @@ def test_filled_days_belong_to_the_coin_and_the_day_so_a_rebuilt_plan_never_call
 
 
 def test_a_coin_already_holding_the_days_is_not_in_the_press(world, monkeypatch):
-    _hold(world, "BTC_USDT", "2026-10-10")
+    _hold(world, "BTC_USDT", "2026-10-01")
     sent = []
     monkeypatch.setattr(cs, "usable_fleets", lambda: (["a/x"], []))
     monkeypatch.setattr(cs, "sync_fleet", lambda slug: "")
@@ -593,7 +601,7 @@ def test_a_coin_already_holding_the_days_is_not_in_the_press(world, monkeypatch)
                         sent.append(dict(inputs)) or 802)
     got = vcv.backfill("pilot", days_per_press=1, now=_utc(2026, 10, 27, 12), force=True,
                        listings=_listings(world.plan))
-    assert got["days"] == ["2026-10-10"] and got["coins"] == ["XAU_USDT", "ZEC_USDT"]
+    assert got["days"] == ["2026-10-01"] and got["coins"] == ["XAU_USDT", "ZEC_USDT"]
 
 
 def test_a_day_is_held_only_when_all_24_hours_were_read_when_practice_looks():
@@ -873,9 +881,9 @@ def test_a_backfill_names_its_range_and_stays_inside_it(world, monkeypatch):
     now = _utc(2026, 10, 27, 12)
     lst = _listings(plan)
     got = vcv.backfill("long", days_per_press=3, now=now, force=True, part="older", listings=lst)
-    assert got["days"] == ["2026-07-25", "2026-07-26", "2026-07-27"], "the older range's newest"
+    assert got["days"] == ["2026-06-28", "2026-06-29", "2026-06-30"], "the older range's oldest"
     assert got["part"] == "older" and vcv.read_state()["flight"]["part"] == "older"
-    assert sent[0]["days"] == "2026-07-25,2026-07-26,2026-07-27"
+    assert sent[0]["days"] == "2026-06-28,2026-06-29,2026-06-30"
     # once the older range is filled the press says so instead of reaching into the other range
     monkeypatch.setattr(fd, "run_status", lambda run, repo: {"status": "completed",
                                                              "conclusion": "success"})
@@ -885,7 +893,7 @@ def test_a_backfill_names_its_range_and_stays_inside_it(world, monkeypatch):
     assert vcv.backfill("long", now=now, force=True, part="older",
                         listings=lst)["started"] is False
     assert vcv.backfill("long", days_per_press=2, now=now, force=True, part="unseen",
-                        listings=lst)["days"] == ["2026-10-24", "2026-10-25"]
+                        listings=lst)["days"] == ["2026-07-28", "2026-07-29"]
 
 
 def test_the_costs_job_deals_to_every_account_the_backfill_presses_to():

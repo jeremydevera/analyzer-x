@@ -204,6 +204,10 @@ def main() -> int:
     log(f"{len(todo)} coin(s) on the board, {len(want)} day(s): "
         + ", ".join(time.strftime("%Y-%m-%d", time.gmtime(d)) for d in want))
     done = skipped = 0
+    # coins with hours Gate has NOT PUBLISHED YET (RCA-2026-10-30-A): {sym:
+    # (its newest published hour or None, the days waiting)} - never red, never
+    # "never published"; the PC marks a day done only once the archive holds it
+    waiting: dict = {}
     # what must keep the run RED so the next press tries again (final
     # review, RCA-2026-10-10-F): a run that ends green has its days marked
     # done for ever, so it may only end green when nothing was lost
@@ -220,6 +224,8 @@ def main() -> int:
             log(f"{sym}: contract size {size} — no cost can be walked; skipped, named")
             skipped += 1
             continue
+        latest = None          # the newest hour of this coin seen published, read or held
+        absent: list = []      # its 404 hours, judged against `latest` once every month is read
         for ym, ds in sorted(months.items()):
             # EVERY ACCOUNT'S FILE, merged, and STRICT: the deal moves coins
             # between accounts, so the month may sit on either; and a read
@@ -237,6 +243,8 @@ def main() -> int:
             # picks up where the last one stopped (30 days x ~26 coins a
             # machine is past the 350-minute limit: BTC took 132 s a day)
             held = held_hours(merged)
+            if held:
+                latest = max(held) if latest is None else max(latest, max(held))
             now = _now()
             ask = {d: [d + 3600 * h for h in range(24)
                        if d + 3600 * h not in held and d + 3600 * (h + 1) <= now]
@@ -257,6 +265,10 @@ def main() -> int:
                 # what the month already held
                 read = (set(want_hours) - set(failed) - set(missing)
                         - {hs for hs, _why in bad})
+                there = set(want_hours) - set(failed) - set(missing)   # a bad file is there
+                if there:
+                    latest = max(there) if latest is None else max(latest, max(there))
+                absent += missing
                 if merged is not None:
                     merged = cs.without_hours(merged, read)
                 for hs, why in bad:
@@ -271,7 +283,7 @@ def main() -> int:
                 hours += int(part.pop("hours_read", 0))
                 merged = cs.merge(merged, part)
             if not hours:
-                log(f"{sym} {ym}: no order-book hour published for these days")
+                log(f"{sym} {ym}: no order-book hour of these days was read")
                 continue
             path = OUT / cs.asset(sym, ym)
             path.write_bytes(cs.to_bytes(merged))
@@ -280,12 +292,54 @@ def main() -> int:
             else:
                 redo.append(f"{sym} {ym}: the upload failed")
             path.unlink(missing_ok=True)
+        late = _say_absent(sym, absent, latest)
+        if late:
+            waiting[sym] = late
         log(f"{sym}: done")
     log(f"finished: {done} coin-month file(s) written, {skipped} coin(s) skipped "
         f"(named above), {len(redo)} to do again")
     for line in redo:
         log(f"TO DO AGAIN: {line}")
+    if waiting:
+        known = sorted({h for h, _d in waiting.values() if h is not None})
+        after = ("for any hour asked" if not known
+                 else f"after the hour starting {_when(known[0])}" if len(known) == 1
+                 else f"after the hours starting {_when(known[0])} to {_when(known[-1])}")
+        log(f"Gate has published no order book {after} for {len(waiting)} coin(s); "
+            f"{sum(len(d) for _h, d in waiting.values())} coin-day(s) wait for it. Not a "
+            f"failure: the PC marks a day done only once Gate's archive (read on "
+            f"{bh.PROBE_SYMBOL}) holds its last hour, so a day Gate has published for no "
+            f"coin yet is asked for again")
     return 1 if redo else 0
+
+
+def _when(ts: int) -> str:
+    """THE date format (CLAUDE.md "Date format"); a GitHub machine's clock is UTC."""
+    from tradingagents.positions_view import fmt_when
+
+    return f"{fmt_when(ts)} UTC"
+
+
+def _say_absent(sym: str, absent: list, latest) -> tuple | None:
+    """Name each hour Gate's archive answered 404 for (RCA-2026-10-30-A). One with a LATER
+    hour of the same coin published is a hole, final (Oct 08, 2026 06:00 UTC: 05 and 07 are
+    there). One at or after the newest published hour is NOT PUBLISHED YET: said plainly,
+    never red - a coin Gate stopped publishing would turn every run red for ever - and
+    never final. Returns (newest published hour or None, [the days waiting]) or None."""
+    holes = sorted(h for h in absent if latest is not None and h < latest)
+    later = sorted(h for h in absent if latest is None or h >= latest)
+    for h in holes:
+        log(f"{sym} {time.strftime('%Y-%m-%d', time.gmtime(h))} hour "
+            f"{time.gmtime(h).tm_hour:02d}: Gate never published it (a later hour is "
+            f"published) - its minutes stay unmeasured")
+    if not later:
+        return None
+    days = sorted({h - h % 86400 for h in later})
+    since = (f"after the hour starting {_when(latest)}" if latest is not None
+             else "for any of the hours asked")
+    log(f"{sym}: Gate has published no order-book hour {since}; {len(later)} hour(s) of "
+        f"{len(days)} day(s) wait for it - not published by Gate yet")
+    return latest, days
 
 
 if __name__ == "__main__":

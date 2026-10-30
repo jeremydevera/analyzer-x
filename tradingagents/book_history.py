@@ -226,13 +226,116 @@ def hour_url(symbol: str, hour_start: int) -> str:
             f"{g.tm_year:04d}{g.tm_mon:02d}{g.tm_mday:02d}{g.tm_hour:02d}.csv.gz")
 
 
+# WHERE GATE'S ARCHIVE ENDS (Oct 30, 2026, RCA-2026-10-30-A): Gate published no
+# order-book hour after Oct 22, 2026 04:00 UTC for eight days, and a 404 read
+# as "never published, final" marked those days done in both bookkeepers. A
+# day is DONE only when its last hour is at or before the newest hour the
+# archive holds, read with HEAD requests (a few dozen, never a download) on
+# one contract.
+PROBE_SYMBOL = "BTC_USDT"
+PROBE_BACK_HOURS = 62 * 24        # past the daily job's 61-day backfill
+
+
+def archive_status(url: str, *, tries: int = 3) -> int:
+    """The archive's HTTP status for one file, by a HEAD (no body). A cut
+    wire, a 429 and a 5xx are asked again; a wire that never answers RAISES -
+    an archive that cannot be read is unknown, never "not published"."""
+    import time as _t
+    import urllib.error
+    import urllib.request
+
+    last, status = "", None
+    for k in range(tries):
+        req = urllib.request.Request(url, method="HEAD",
+                                     headers={"User-Agent": "analyzer-x costs probe"})
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                return int(resp.status)
+        except urllib.error.HTTPError as exc:
+            if exc.code != 429 and exc.code < 500:
+                return int(exc.code)
+            last, status = f"answered {exc.code}", int(exc.code)
+        except OSError as exc:
+            last, status = f"{type(exc).__name__}: {exc}", None
+        if k < tries - 1:
+            _t.sleep(1 + 2 * k)
+    if status is not None:
+        return status
+    raise RuntimeError(f"Gate's archive could not be reached ({last}): {url}")
+
+
+def newest_published_hour(now: float | None = None, *, symbol: str = PROBE_SYMBOL,
+                          probe=None, back_hours: int = PROBE_BACK_HOURS) -> int | None:
+    """The first second of the newest hour Gate's archive holds for `symbol`,
+    looking back at most `back_hours` from the last hour that has ended; None
+    when none of them is published. RAISES when the archive answers anything
+    but 200 / 403 / 404 (`probe(url) -> status`, default `archive_status`):
+    unknown is not "not published".
+
+    Back in doubling steps, then halving: a few dozen HEADs across an 8-day
+    silence. An hour counts as reached when it OR the hour before it is
+    published, so a one-hour hole (Oct 08, 2026 06:00 UTC, 404 on every coin
+    while 05 and 07 are there) is never taken for the archive's end."""
+    import time as _t
+
+    probe = archive_status if probe is None else probe
+    now = _t.time() if now is None else float(now)
+    seen: dict = {}
+
+    def ok(h: int) -> bool:
+        if h not in seen:
+            st = int(probe(hour_url(symbol, h)))
+            if st not in (200, 403, 404):
+                raise RuntimeError(f"Gate's archive answered {st} for {hour_url(symbol, h)}")
+            seen[h] = st == 200
+        return seen[h]
+
+    def reached(h: int) -> bool:
+        return ok(h) or ok(h - 3600)
+
+    top = int(now) - int(now) % 3600 - 3600
+    if ok(top):
+        return top
+    floor = top - int(back_hours) * 3600
+    bad, step = top, 1
+    while True:
+        cand = top - step * 3600
+        if cand < floor:
+            return None
+        if reached(cand):
+            good = cand
+            break
+        bad, step = cand, step * 2
+    while bad - good > 3600:
+        mid = good + ((bad - good) // 3600 // 2) * 3600
+        if reached(mid):
+            good = mid
+        else:
+            bad = mid
+    return good if ok(good) else good - 3600
+
+
+def day_published(day_key: str, newest: int | None) -> bool:
+    """Is every hour of a UTC day KEY ("2026-10-21") at or before the archive's
+    newest published hour? None (unknown) is never published."""
+    import calendar
+
+    if newest is None:
+        return False
+    y, m, d = (int(x) for x in day_key.split("-"))
+    return calendar.timegm((y, m, d, 23, 0, 0)) <= int(newest)
+
+
 def day_readings(symbol: str, day_start: int, *, contract_size: float,
                  notional_usd: float, fetch=None, hours=None) -> dict:
     """Every minute of one UTC day for one contract, packed, with every hour
     that gave nothing NAMED by why (final review, RCA-2026-10-10-F):
 
-    * `hours_missing` — 403/404: Gate never published it; final, its minutes
-      stay unmeasured and the caller counts them.
+    * `hours_missing` — 403/404: not in Gate's archive. FINAL only when a
+      later hour of the same contract is published (a hole: Oct 08, 2026
+      06:00 UTC); one at the archive's end is "not published yet"
+      (`costs_shard` says which, RCA-2026-10-30-A). Its minutes stay
+      unmeasured either way, and the caller counts them.
     * `hours_failed` — any other status, or a wire that never answered after
       the fetch's own retries: the day is incomplete and must be read again.
     * `hours_bad` — a file that arrived but does not parse (cut gzip, a bad

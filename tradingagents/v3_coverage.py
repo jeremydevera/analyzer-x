@@ -27,10 +27,15 @@ every minute it tests": COVERAGE FIRST, fill or say so BEFORE running).
   `--plan` and no run it says the days alone.
 * `backfill` presses `costs.yml` - the existing order-book replay, the same
   job, files and readers - for the coins of a run's plan copy, or of a plan
-  file before any run of it exists, over the next `--days-per-press` days the
-  store lacks, newest first, dealt between every account (the 60-machine
-  rule). A coin-day a green press already asked for is not asked again (Gate's
-  archive may lack an hour of it for good). One press at a time; `settle` ends
+  file before any run of it exists, over the OLDEST `--days-per-press` days the
+  store lacks that Gate's archive has published (its newest hour read once a
+  press, `book_history.newest_published_hour`; a day after it is never pressed
+  and never recorded, RCA-2026-10-30-A), dealt between every account (the
+  60-machine rule). A coin-day a green press already asked for is not asked
+  again (Gate's archive may lack an hour of it for good, or the replay may give
+  too few readings). The report counts the missing coin-days in three labelled
+  parts: waiting for Gate to publish, already asked for by a finished press,
+  and fillable now. One press at a time; `settle` ends
   it and marks this PC's cached copies of every coin-month it pressed stale, so
   the next read here fetches what the press wrote (`cost_store` keeps a month
   older than 35 days for ever). It never presses while the daily costs job has
@@ -300,6 +305,17 @@ def store_days(coins: list[str], start_s: int, end_s: int, *, load=None,
     return {"by_coin": by, "unreadable": sorted(unreadable), "coin_months": len(jobs)}
 
 
+def archive_end(now: float) -> tuple[int | None, str]:
+    """(the newest hour Gate's archive holds, or None; "" or why it could not be read), read once
+    (`book_history.newest_published_hour`): a day after it waits for Gate (RCA-2026-10-30-A)."""
+    from tradingagents import book_history as bh
+
+    try:
+        return bh.newest_published_hour(now), ""
+    except Exception as exc:                                   # noqa: BLE001
+        return None, f"{type(exc).__name__}: {str(exc)[:160]}"
+
+
 def pressed_days(st: dict) -> dict:
     """{coin: {day keys}} every GREEN backfill press asked for (`presses`): a coin-day the store
     still lacks after one is a day Gate's archive cannot complete, and is never asked again."""
@@ -497,6 +513,10 @@ def report(name: str | None = None, *, plan_path=None, runs: list[tuple[str, int
                     f"missing: {', '.join(store['unreadable'][:5])}"
                     + (" ..." if len(store["unreadable"]) > 5 else "")
                     if store["unreadable"] else ""))
+    from tradingagents import book_history as bh
+    from tradingagents.positions_view import fmt_when
+
+    newest, unread = archive_end(time.time())
     found = []
     for part in ("unseen", "older"):
         g = gaps(plan, part, store["by_coin"], listings)
@@ -506,17 +526,40 @@ def report(name: str | None = None, *, plan_path=None, runs: list[tuple[str, int
             lines.append(f"  {part} days: the cost store holds every one of its {len(g['every'])} "
                          "days for every coin listed by then: nothing to fill")
         else:
-            stuck = sum(1 for c, ds in g["coins"].items() for d in ds if d in pressed.get(c, ()))
+            # THREE LABELLED PARTS (RCA-2026-10-30-A): "a green press already asked for" was
+            # subtracted from the filling line unsaid, and blamed on Gate's archive for 1,824
+            # coin-days Gate had simply not published yet
+            pairs = [(c, d) for c, ds in g["coins"].items() for d in ds]
+            if unread:
+                wait = None
+                asked = sum(1 for c, d in pairs if d in pressed.get(c, ()))
+            else:
+                wait = sum(1 for _c, d in pairs if not bh.day_published(d, newest))
+                asked = sum(1 for c, d in pairs if d in pressed.get(c, ())
+                            and bh.day_published(d, newest))
+            fill = g["coin_days"] - (wait or 0) - asked
+            asked_words = (f"{asked:,} of them a finished green backfill press already asked for "
+                           "and the store still lacks (an hour Gate never published, or a replay "
+                           "that gave too few readings: not asked again)")
+            if unread:
+                split = (f"; could not read which hours Gate's archive has published ({unread}), "
+                         f"so how many wait for Gate is unknown; {asked_words}; at most "
+                         f"{fill:,} of them can be filled now")
+            else:
+                end = ("holds no order-book hour after the one starting "
+                       f"{fmt_when(newest)} (this PC's clock)" if newest is not None
+                       else f"holds no order-book hour in the last {bh.PROBE_BACK_HOURS // 24} "
+                            "days")
+                split = (f"; {wait:,} of them wait for Gate to publish them (Gate's archive "
+                         f"{end}); {asked_words}; {fill:,} of them can be filled now")
             lines.append(
                 f"  {part} days: {len(g['days'])} of {len(g['every'])} days lack a reading for at "
                 f"least one of the plan's coins in the cost store ({range_words(g['days'])}): "
                 f"{g['coin_days']:,} coin-days missing over the plan's {len(coins)} coins (an "
                 f"upper bound: {g['before']:,} coin-days before a coin's listing are left out; "
-                f"listing unknown for {g['unknown']} coins, counted whole)"
-                + (f"; {stuck:,} of them a green backfill press already asked for (Gate's "
-                   "archive does not complete them, so they are not asked again)" if stuck else ""))
-            found.append((part, g["coin_days"] - stuck))
-    gaps_ = [(p, n) for p, n in found if n > 0]
+                f"listing unknown for {g['unknown']} coins, counted whole)" + split)
+            found.append((part, fill, g["coin_days"], wait, asked))
+    gaps_ = [f for f in found if f[1] > 0]
     if not gaps_:
         return lines
     if not runs:
@@ -532,11 +575,16 @@ def report(name: str | None = None, *, plan_path=None, runs: list[tuple[str, int
     lines.append(f"  the costs job measured {sp['s_per_coin_day']} machine-seconds a coin-day "
                  f"over {sp['runs']} of its runs of two days or more ({sp['coin_days']:,} "
                  "coin-days)")
-    for part, n in gaps_:
+    for part, n, total, wait, asked in gaps_:
         est = estimate(n, sp["s_per_coin_day"], machines)
+        less = (f"{total:,} missing, less {wait:,} waiting for Gate and {asked:,} a finished "
+                "press already asked for" if wait is not None else
+                f"{total:,} missing, less {asked:,} a finished press already asked for; how many "
+                "wait for Gate is unknown")
         lines.append(f"  filling the {part} days' {n:,} coin-days: about "
                      f"{est['machine_hours']:,} machine-hours, at least {est['wall_hours']} "
-                     f"hours of all {machines} machines")
+                     f"hours of all {machines} machines (the coin-days that can be filled now: "
+                     f"{less})")
     return lines
 
 
@@ -641,10 +689,13 @@ def backfill(name: str | None = None, *, plan_path=None, days_per_press: int = D
              now: float | None = None, force: bool = False, part: str | None = None,
              load=None, listings: dict | None = None) -> dict:
     """Press costs.yml over the next days the COST STORE lacks for a plan's coins (a run's plan
-    copy, or a plan file before any run of it exists), newest first, for the coins that lack them,
+    copy, or a plan file before any run of it exists), OLDEST first, for the coins that lack them,
     dealt between every account; one press at a time. `part` keeps a press inside one named range
     ("unseen" or "older", see `missing_days`). A coin-day a green press already asked for is never
-    asked again (`pressed_days`)."""
+    asked again (`pressed_days`). A day Gate's archive has not published (its newest hour read
+    once, here) is never pressed - newest first spent a 30-day press on Oct 22-29, 2026, which
+    Gate had not published, and left Aug 01-15 for 221 coins unpressed (RCA-2026-10-30-A) - and
+    an archive that cannot be read refuses the press by name."""
     from tradingagents import cloud_sweep as cs, cq_search, forecast_v2_daily as fd
 
     now = time.time() if now is None else float(now)
@@ -661,11 +712,20 @@ def backfill(name: str | None = None, *, plan_path=None, days_per_press: int = D
     start, end = int(plan["start_ms"]) // 1000, int(plan["end_ms"]) // 1000
     store = store_days(coins, start, end, load=load)
     g = gaps(plan, part, store["by_coin"], listings, skip=pressed_days(st))
-    days = g["days"][-int(days_per_press):]
+    newest, unread = archive_end(now)
+    if unread:
+        raise RuntimeError(f"not pressed: could not read which hours Gate's archive has "
+                           f"published ({unread})")
+    from tradingagents import book_history as bh
+
+    late = [d for d in g["days"] if not bh.day_published(d, newest)]
+    days = [d for d in g["days"] if d not in late][:int(days_per_press)]
     if not days:
-        return {"started": False, "part": part,
+        return {"started": False, "part": part, "gate_newest": newest,
                 "why": f"the cost store holds every day of the plan's {part or 'whole'} window "
-                       "for every coin listed by then (or a green press already asked for it)"}
+                       "that Gate's archive has published, for every coin listed by then (or a "
+                       "green press already asked for it)"
+                       + (f"; {len(late)} day(s) wait for Gate to publish them" if late else "")}
     want = set(days)
     press = [c for c in coins if want & set(g["coins"].get(c, ()))]
     why = clash(days, now, st)
@@ -678,7 +738,8 @@ def backfill(name: str | None = None, *, plan_path=None, days_per_press: int = D
     piles = cs.split_coins(press, len(ready))
     t0 = time.time()
     st["flight"] = {"at": now, "step_at": now, "days": days, "part": part, "plan_id": plan["id"],
-                    "coins": press, "dispatching": True, "runs": [], "unrun": list(refused)}
+                    "coins": press, "dispatching": True, "runs": [], "unrun": list(refused),
+                    "gate_newest": newest}
     if st.get("daily_ignored"):
         st["flight"]["notice"] = st["daily_ignored"]
     _write_state(st)                   # BEFORE the dispatch, as every dispatcher here
@@ -779,8 +840,22 @@ def settle(now: float | None = None) -> dict:
     if red:
         st["last_error"] = "not every share finished green: " + "; ".join(red)
     else:
+        from tradingagents import book_history as bh
+
+        # ONLY A DAY GATE HAD PUBLISHED WHEN THE PRESS WENT OUT is recorded as asked for: its
+        # shards got 404 for every hour of a later one (RCA-2026-10-30-A). A flight from before
+        # this rule is judged by the archive now; one that cannot be read records no day
+        newest, unread = ((fl["gate_newest"], "") if "gate_newest" in fl else archive_end(now))
+        asked = [d for d in fl["days"] if bh.day_published(d, newest)]
+        late = [d for d in fl["days"] if d not in asked]
         st["last_error"] = ""
-        st.setdefault("presses", []).append({"days": fl["days"], "part": fl.get("part"),
+        if unread:
+            st["last_error"] = (f"could not read which hours Gate's archive has published "
+                                f"({unread}): none of the press's days is recorded as asked for")
+        elif late:
+            st["last_error"] = (f"{len(late)} of the press's days Gate had not published "
+                                "are not recorded as asked for: pressed again once it does")
+        st.setdefault("presses", []).append({"days": asked, "part": fl.get("part"),
                                              "plan_id": fl.get("plan_id"),
                                              "coins": fl.get("coins") or [], "runs": fl["runs"]})
     if stuck:

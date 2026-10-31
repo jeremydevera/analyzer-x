@@ -417,3 +417,22 @@ def test_the_store_swap_is_retried_under_a_reader_and_a_failed_one_keeps_no_copy
     kept = sorted(p.name for p in (run.tmp / "v3" / "verdicts").iterdir())
     assert kept == ["pilot-1793000000000.json"], "the refused publish kept no copy"
     assert not list((run.tmp / "v3").glob("*.tmp"))
+
+
+def test_publish_prints_coin_names_this_pcs_console_cannot_spell(monkeypatch, tmp_path):
+    """Oct 30, 2026 9:38pm: `publish universe` judged 221 coins, kept the store, then died
+    printing it - 牛来_USDT on a cp1252 console (RCA-2026-10-30-G)."""
+    import io
+    import sys
+
+    p = tmp_path / "verdicts.json"
+    p.write_text(json.dumps({"lines": ["not judged: 牛来_USDT: no timeframe was measured"],
+                             "verdicts": [], "coins": [], "plan_coins": 228}),
+                 encoding="utf-8")
+    monkeypatch.setattr(vv, "publish", lambda name: p)
+    raw = io.BytesIO()
+    out = io.TextIOWrapper(raw, encoding="cp1252")
+    monkeypatch.setattr(sys, "stdout", out)
+    assert vv.main(["publish", "universe"]) == 0
+    out.flush()
+    assert "牛来_USDT" in raw.getvalue().decode("utf-8")

@@ -172,6 +172,41 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-10-30-G — `v3_verdicts publish universe` judged all 221 coins, kept the store, then died printing the result: three coin names in Chinese on this PC's console
+
+**CEO**
+
+* What you saw: nothing - the all-coins verdicts were saved, but the command that saves them ended in an error instead of printing its summary.
+* Why: this PC's command window can only spell Western letters, and three of Gate's coins are named in Chinese (for example 牛来_USDT).
+* What stops it now: the command switches its output to a form that can spell any name before it prints, as the v3 research command already did.
+
+**DEV**
+
+* `tradingagents/v3_verdicts.py:main` printed `data["lines"]` to a cp1252 `sys.stdout`; `UnicodeEncodeError` at position 91,274 - after `publish()` had already swapped `verdicts.json` and kept `verdicts/universe-1793410683887.json`.
+* Invariant broken: **a command that prints coin names prints in UTF-8** - `v3_research.main` reconfigured stdout on Oct 23, 2026; the Part 2b command written after it did not.
+* Guard: `tests/test_v3_verdicts.py::test_publish_prints_coin_names_this_pcs_console_cannot_spell` (red before the fix).
+
+**SAW** - `UnicodeEncodeError: 'charmap' codec can't encode characters in position 91274-91277` from `python -m tradingagents.v3_verdicts publish universe`.
+
+**TIMELINE**
+
+1. Oct 30, 2026 9:27pm: universe dispatched, 228 coins on 60 machines; collected 9:37pm, 228 of 228 landed.
+2. 9:38pm: `publish universe` judged 221 coins (7 with no timeframe measured, among them 牛来_USDT), 0 of 27 passed, wrote the store - then the summary print raised.
+3. The pilot's publish (Oct 30, 2026 4:52pm) printed fine: its 20 coins held no Chinese name.
+4. After the fix: the same command prints the line naming 牛来_USDT.
+
+**ROOT CAUSE** - the console's code page, not the data: Windows' default cp1252 cannot encode CJK characters, and the command never asked for UTF-8.
+
+**WHY IT WAS NOT CAUGHT** - pytest captures stdout in UTF-8, so no test of `main` could meet cp1252, and every test fixture's coins were Latin names; the pilot, the only real run before this, had none either.
+
+**COST** - none: the store and its kept copy were written before the print; only the summary on screen was lost.
+
+**FIX** - this commit: `v3_verdicts.main` reconfigures `sys.stdout` to UTF-8 before printing, as `v3_research.main` does.
+
+**GUARD** - `tests/test_v3_verdicts.py::test_publish_prints_coin_names_this_pcs_console_cannot_spell`: a cp1252 stdout and a line naming 牛来_USDT.
+
+---
+
 ## RCA-2026-10-30-F — the cost months already stored for the 15 contracts Gate lets trade in tenths kept the old replay's sparse readings after RCA-2026-10-30-B fixed it, and nothing would ever read them again
 
 **CEO**

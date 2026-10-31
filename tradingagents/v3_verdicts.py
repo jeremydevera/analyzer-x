@@ -39,10 +39,12 @@ failed are named beside, as `accounts`.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import re
 import statistics
+import sys
 import time
 from pathlib import Path
 
@@ -300,6 +302,8 @@ def main(argv=None) -> int:
     sub.add_parser("publish", help="judge a collected run and keep its verdicts").add_argument(
         "name")
     a = p.parse_args(argv)
+    with contextlib.suppress(AttributeError, ValueError):
+        sys.stdout.reconfigure(encoding="utf-8")        # coin names in Chinese (RCA-2026-10-30-G)
     path = publish(a.name)
     data = json.loads(path.read_text(encoding="utf-8"))
     print("\n".join(data["lines"]))

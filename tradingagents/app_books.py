@@ -28,6 +28,14 @@ day of writes, where rewriting each day file every five minutes measured
 
 A minute the feed did not answer for a coin has no reading, and the backtest
 falls back to Gate's record for it - never an invented book.
+
+EVERY HOUR, NOT ONCE A DAY (operator, Oct 31, 2026: "Go"). Gate's own
+archive ends Oct 22, 2026 04:00 UTC, so these readings are the only
+per-minute cost since, and the nightly v2 update (~05:47 UTC) used to find
+today's hours unpublished. `PARTIAL_AFTER_S` past every hour the day so far
+goes up as ONE bundle (`publish_partial`), cut at the hour; the finished day
+still goes up coin by coin at 00:20 UTC (`publish_day`), and that is what
+every reader takes once the list names the day finished.
 """
 from __future__ import annotations
 
@@ -36,6 +44,7 @@ import contextlib
 import json
 import logging
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -56,7 +65,8 @@ LOG_EVERY_S = 3600
 WARN_EVERY_S = 600         # the same failure is logged once in ten minutes
 # THE BACKTEST READS THESE WHERE EVERY MACHINE CAN (harddev round 3, Oct 16,
 # 2026): the nightly v2 update measures on GitHub, which cannot see this
-# PC's files, so a day counts only once `publish_day` has put it on GitHub
+# PC's files, so a day counts only once `publish_day` has put it on GitHub -
+# or, for today, only up to the cut `publish_partial` last put there
 # (`book_for(published_only=True)` here, a release download there) - one
 # strategy, one result, wherever it was measured ("the analysis and the
 # button run the same grid"). False switches the app's books out of every
@@ -188,9 +198,11 @@ def book_for(sym: str, start_s: int, end_s: int, *,
     ONLY PUBLISHED DAYS (RCA-2026-10-16-A, harddev round 3): the nightly v2
     update measures on GitHub, which reads a day only once `publish_day` put
     it there, so this PC reads the same days and no others - one strategy,
-    one result, wherever it was measured. A day with no file here (GitHub's
-    machines) is downloaded from its release; `published_only=False` reads
-    this PC's files as they are (the recorder's own checks)."""
+    one result, wherever it was measured. Today is read up to the cut of its
+    last hourly upload (`publish_partial`), on both sides. A day with no file
+    here (GitHub's machines) is downloaded from its release - or, while it is
+    not finished, from its hourly bundle; `published_only=False` reads this
+    PC's files as they are (the recorder's own checks)."""
     import numpy as np
 
     from tradingagents import cost_store as cs
@@ -201,8 +213,13 @@ def book_for(sym: str, start_s: int, end_s: int, *,
         day = _day(d)
         local = _day_file(sym, day)
         if local.exists():
-            part = (_read(local) if not published_only or sym in _published(day)
-                    else None)
+            cut = None if not published_only else _cut_here(day, sym)
+            part = _read(local) if not published_only or cut else None
+            if part is not None and cut:
+                # an hourly upload is read up to its cut and no further: the
+                # minutes after it are on this disk, not on GitHub
+                keep = np.asarray(part["t"], dtype="int64") < int(cut)
+                part = {k: np.asarray(v)[keep] for k, v in part.items()}
         elif HOME.exists():
             part = None          # the recorder's own PC: what it did not record, nobody did
         else:
@@ -228,7 +245,33 @@ PUBLISH_AFTER_UTC_S = 20 * 60      # the recorder's last flush of a day is ~5 mi
 PUBLISH_DAYS = 61                  # as far back as the costs job keeps (BACKFILL_DAYS)
 UPLOAD_BATCH = 100
 UPLOAD_TRIES = 5
-SCAN_EVERY_S = 3600
+# THE DAY SO FAR, EVERY HOUR (operator, Oct 31, 2026: "Go"): ten minutes past
+# each hour, cut at the hour. The recorder appends every FLUSH_S (5 min), so
+# by :05 every minute before :00 is on disk; :10 leaves five more, and a
+# coin whose file was last written earlier is cut where its file proves it
+# complete (`publish_partial`). The nightly v2 update (~05:47 UTC) then reads
+# through 05:00 instead of yesterday's 23:59. ONE bundle an hour - every
+# coin of the day so far, ~12 MB for a whole day of 1,070 coins (measured
+# Oct 31, 2026: 1,524,750 readings, 11,972,368 bytes) - in the list's own
+# release: two uploads and a clean-up an hour, where 1,070 files an hour
+# would be ~25,700 uploads a day on one account.
+PARTIAL_AFTER_S = 10 * 60
+# a bundle is kept this long after its hour: a GitHub job runs at most 6 h
+# and reads the list again every INDEX_TTL_S, so none still reads it then
+KEEP_PARTIAL_S = 12 * 3600
+# a long-running reader asks for the list again after this long, so a newer
+# hourly upload replaces the one it read (RCA-2026-10-30-C's shape: a copy
+# that is never asked again is frozen)
+INDEX_TTL_S = 1800
+RETRY_LIST_S = 60          # a list never read is asked again this soon
+# a reading reaches the recorder's memory well inside this long after its
+# minute starts (asked 2.5 s in, at most WAIT_S to answer; an hourly contract
+# list refresh can hold one burst back), so a file last appended at F holds
+# every minute before floor(F) - PROOF_S. Under the 4 minutes between :10 and
+# the last 5-minute flush before it, so a coin that is being recorded is
+# never cut short of the hour.
+PROOF_S = 120
+_PARTIAL_RE = re.compile(r"partial-(\d{8})-(\d{2})\.npz")
 # THE LIST OF PUBLISHED DAYS, one small file GitHub's machines read first:
 # without it a replay reaching back to Jul 01, 2026 asked for ~110 days of
 # each of ~26 coins a machine, nearly all "no such file". A day is published
@@ -237,7 +280,10 @@ INDEX_TAG = "appbook-index"
 INDEX_ASSET = "days.json"
 _REMOTE: dict = {}
 _REMOTE_DAYS: dict = {}
-_TICKED: dict = {"at": 0.0}
+_BUNDLES: dict = {}            # asset name -> ({sym: packed} | None, when asked)
+_TICKED: dict = {}             # "final" / "partial" -> the UTC hour last done
+_PARTIAL_FAIL: dict = {}       # the failing streak of the hourly upload
+_clock = time.time
 
 
 def tag(day: str, sym: str) -> str:
@@ -271,7 +317,31 @@ def _marker_of(day: str) -> dict:
 
 
 def _published(day: str) -> set:
+    """The coins of a FINISHED day that went up whole (`publish_day`)."""
     return set(_marker_of(day).get("coins") or [])
+
+
+def _cut_here(day: str, sym: str) -> int | None:
+    """Up to which second (exclusive) this PC may read `sym`'s `day`: the
+    whole day once it went up whole, the coin's cut in the day's last hourly
+    upload while it has not, None while nothing of it is on GitHub. The
+    marker mirrors the list GitHub's machines read (`_publish_index`), so the
+    two sides read the same minutes."""
+    m = _marker_of(day)
+    if m.get("coins"):
+        if sym not in set(m["coins"]):
+            return None
+        return _day_start(day) + 86400
+    cut = ((m.get("partial") or {}).get("coins") or {}).get(sym)
+    return int(cut) if cut else None
+
+
+def _day_start(day: str) -> int:
+    """`YYYYMMDD` -> its first second, UTC (no strptime: its first call in a
+    thread can race the module's own import)."""
+    import calendar
+
+    return calendar.timegm((int(day[:4]), int(day[4:6]), int(day[6:8]), 0, 0, 0))
 
 
 def index_url(repo: str | None = None) -> str:
@@ -279,29 +349,98 @@ def index_url(repo: str | None = None) -> str:
             f"{INDEX_TAG}/{INDEX_ASSET}")
 
 
-def _remote_days() -> set:
-    """The published days, from the list, once per process; none when the
-    list cannot be read (then no day is read from GitHub at all)."""
+def _remote_index() -> dict:
+    """The list of published days - `days` finished, `partial` {day: {asset,
+    through}} the hourly bundles of days not finished - read again after
+    INDEX_TTL_S, so a long-running reader moves on to a newer hourly upload.
+    Nothing when the list was never read (then no day is read from GitHub at
+    all); a list that cannot be read again keeps the one read before."""
     from tradingagents import cost_store as cs
 
-    if "days" not in _REMOTE_DAYS:
+    if "days" not in _REMOTE_DAYS or _clock() - _REMOTE_DAYS.get("at", 0.0) > INDEX_TTL_S:
         status, raw = cs._fetch(index_url())
+        days, partial = set(), {}
         try:
-            days = set(json.loads(raw.decode("utf-8"))["days"]) if status == 200 else set()
-        except (ValueError, KeyError, TypeError, UnicodeDecodeError):
-            days = set()
-        _REMOTE_DAYS["days"] = days
-    return _REMOTE_DAYS["days"]
+            if status == 200:
+                got = json.loads(raw.decode("utf-8"))
+                days = set(got["days"])
+                partial = {str(d): e for d, e in (got.get("partial") or {}).items()
+                           if isinstance(e, dict) and e.get("asset")}
+        except (ValueError, KeyError, TypeError, AttributeError, UnicodeDecodeError):
+            status = 0
+        first = not _REMOTE_DAYS.get("read")
+        if status == 200 or first:
+            _REMOTE_DAYS.update(days=days, partial=partial, read=status == 200)
+        # a list that could not be read AGAIN keeps the one read before: a
+        # cut wire mid-run must not take every app book out of the coins left
+        _REMOTE_DAYS["at"] = _clock()
+        if status != 200 and first:
+            # never read at all (the second the hourly upload swaps it in, or
+            # a cut wire): asked again in a minute, not after INDEX_TTL_S
+            _REMOTE_DAYS["at"] -= INDEX_TTL_S - RETRY_LIST_S
+    return _REMOTE_DAYS
+
+
+def _remote_days() -> set:
+    """The FINISHED published days, from the list."""
+    return _remote_index()["days"]
+
+
+def _bundle(name: str) -> dict | None:
+    """An hourly bundle from the list's release, once per process: {sym:
+    packed}, each coin already cut at its own `cut` (and cut again here, so a
+    bundle can never hand a reader a minute past its promise). The newest
+    few are kept; None when it cannot be read."""
+    import io
+    import urllib.parse as _up
+
+    import numpy as np
+
+    from tradingagents import cost_store as cs
+
+    held = _BUNDLES.get(name)
+    if held is not None and (held[0] is not None or _clock() - held[1] <= INDEX_TTL_S):
+        return held[0]
+    status, raw = cs._fetch(f"https://github.com/{PUBLISH_REPO}/releases/download/"
+                            f"{INDEX_TAG}/{_up.quote(name)}")
+    coins = None
+    if status == 200 and raw:
+        try:
+            with np.load(io.BytesIO(raw)) as z:
+                cols = cs._whole({k: z[k] for k in cs.KEYS if k in z.files})
+                names = [str(s) for s in z["coins"].tolist()]
+                start = z["start"].astype("int64")
+                cut = z["cut"].astype("int64")
+            coins = {}
+            for i, sym in enumerate(names):
+                a, b = int(start[i]), int(start[i + 1])
+                part = {k: np.asarray(cols[k])[a:b] for k in cs.KEYS}
+                keep = np.asarray(part["t"], dtype="int64") < int(cut[i])
+                coins[sym] = {k: v[keep] for k, v in part.items()}
+        except (OSError, ValueError, KeyError, IndexError):
+            coins = None
+    _BUNDLES.pop(name, None)
+    while len(_BUNDLES) >= 3:
+        _BUNDLES.pop(next(iter(_BUNDLES)))
+    # one that could not be read is asked again after INDEX_TTL_S, never on
+    # every coin (a cut wire is four tries and ~18 s each)
+    _BUNDLES[name] = (coins, _clock())
+    return coins
 
 
 def _remote(day: str, sym: str) -> dict | None:
     """A published coin-day from its release, once per process; None when it
     was never published (404) or cannot be read - the record answers then.
-    Only a day the published list names is asked for."""
+    Only a day the published list names is asked for: a finished day from its
+    coin's own file, a day not finished yet from its newest hourly bundle."""
     from tradingagents import cost_store as cs
 
-    if day not in _remote_days():
-        return None
+    idx = _remote_index()
+    if day not in idx["days"]:
+        entry = idx["partial"].get(day)
+        if not entry:
+            return None
+        return (_bundle(str(entry["asset"])) or {}).get(sym)
     key = (day, sym)
     if key not in _REMOTE:
         status, raw = cs._fetch(url(day, sym))
@@ -341,9 +480,11 @@ def _gh(*args: str):
                           env=_gh_env())
 
 
-def _upload(tag_: str, files: list) -> bool:
+def _upload(tag_: str, files: list, *, quiet: bool = False) -> bool:
     """`files` into release `tag_`, creating it the first time; a refusal
-    for the rate limit waits, never loses the files."""
+    for the rate limit waits, never loses the files. `quiet`: the caller
+    says a failure itself (the hourly upload, once per failing streak); the
+    reason is kept in `_LAST_UPLOAD_ERROR` either way."""
     r = None
     for attempt in range(UPLOAD_TRIES):
         r = _gh("release", "upload", tag_, *[str(f) for f in files], "--clobber",
@@ -360,9 +501,14 @@ def _upload(tag_: str, files: list) -> bool:
                 "The order book the app can trade, recorded every minute 3 s in "
                 "(tradingagents/app_books.py). One file per coin for one UTC day.")
         time.sleep(2 + 3 * attempt)
-    logger.warning("could not upload %d file(s) to %s: %s", len(files), tag_,
-                   (r.stderr if r else "").strip()[:200])
+    _LAST_UPLOAD_ERROR["text"] = (r.stderr if r else "").strip()[:200]
+    if not quiet:
+        logger.warning("could not upload %d file(s) to %s: %s", len(files), tag_,
+                       _LAST_UPLOAD_ERROR["text"])
     return False
+
+
+_LAST_UPLOAD_ERROR: dict = {"text": ""}
 
 
 def publish_day(day: str, only: set | None = None) -> dict:
@@ -417,26 +563,208 @@ def publish_day(day: str, only: set | None = None) -> dict:
         return {"day": day, "coins": 0, "failed": sorted(coins | set(failed)),
                 "why": "the list of published days did not go up"}
     if failed:
-        _write_marker(day, coins=set(), failed=set(failed))
+        # every coin refused: the day is not finished anywhere, so the hourly
+        # upload GitHub's list still names stays what this PC reads as well
+        _write_marker(day, coins=set(), failed=set(failed),
+                      partial=_marker_of(day).get("partial"))
     return {"day": day, "coins": 0, "failed": failed}
 
 
-def _write_marker(day: str, *, coins: set, failed: set) -> None:
+def _write_marker(day: str, *, coins: set, failed: set,
+                  partial: dict | None = None) -> None:
+    """What this PC may read of `day`, written only once GitHub's list says
+    the same: `coins` went up whole (the day is finished for them), else
+    `partial` - the newest hourly upload, {asset, through, coins: {sym:
+    cut}}. Swapped in whole: the readers parse it on every read."""
     m = _marker(day)
     m.parent.mkdir(parents=True, exist_ok=True)
-    m.write_text(json.dumps({"coins": sorted(coins), "failed": sorted(failed),
-                             "at": time.time()}), encoding="utf-8")
+    body = {"coins": sorted(coins), "failed": sorted(failed), "at": time.time()}
+    if partial and not coins:
+        body["partial"] = partial
+    tmp = m.with_name(f"{m.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(body), encoding="utf-8")
+    # Windows refuses a swap while a reader has the file open: retried for
+    # 3 s, then written in place - a marker left behind GitHub's list would
+    # make this PC read another cut than GitHub for an hour
+    for _ in range(30):
+        try:
+            os.replace(tmp, m)
+            return
+        except PermissionError:
+            time.sleep(0.1)
+    m.write_text(json.dumps(body), encoding="utf-8")
+    with contextlib.suppress(OSError):
+        tmp.unlink()
 
 
-def _publish_index(out: Path, *, extra: set) -> bool:
-    """Every published day (the markers) plus `extra`, as the one list
+def _index_partials(*, finished: set, extra: dict | None = None) -> dict:
+    """{day: {asset, through}} for every day read from its newest hourly
+    bundle, i.e. not finished: the markers', then `extra`."""
+    folder = HOME / "published"
+    known = {q.stem for q in folder.glob("*.json")} if folder.exists() else set()
+    out = {}
+    for d in sorted(known):
+        p = _marker_of(d).get("partial") or {}
+        if p.get("asset") and d not in finished:
+            out[d] = {"asset": p["asset"], "through": p.get("through")}
+    for d, e in (extra or {}).items():
+        if d not in finished:
+            out[d] = {"asset": e["asset"], "through": e.get("through")}
+    return out
+
+
+def _publish_index(out: Path, *, extra: set = frozenset(),
+                   partial: dict | None = None, quiet: bool = False) -> bool:
+    """Every finished day (the markers) plus `extra`, and every day not
+    finished with its newest hourly bundle (plus `partial`), as the one list
     GitHub's machines read first."""
     folder = HOME / "published"
     known = {q.stem for q in folder.glob("*.json")} if folder.exists() else set()
     days = sorted({d for d in known if _published(d)} | set(extra))
+    part = _index_partials(finished=set(days), extra=partial)
     f = out / INDEX_ASSET
-    f.write_text(json.dumps({"days": days, "at": time.time()}), encoding="utf-8")
-    return _upload(INDEX_TAG, [f])
+    f.write_text(json.dumps({"days": days, "partial": part, "at": time.time()}),
+                 encoding="utf-8")
+    return _upload(INDEX_TAG, [f], quiet=quiet)
+
+
+def _bundle_bytes(parts: list) -> bytes:
+    """[(sym, cut, packed), ...] -> one compressed file: every coin's
+    columns end to end, `coins`, `start` (each coin's first row, then the
+    end) and `cut` (each coin's promise: no reading at or after it)."""
+    import io
+
+    import numpy as np
+
+    from tradingagents import cost_store as cs
+
+    cols = {k: np.concatenate([np.asarray(p[k]) for _s, _c, p in parts])
+            for k in cs.KEYS}
+    start = np.cumsum([0] + [len(p["t"]) for _s, _c, p in parts]).astype("int64")
+    buf = io.BytesIO()
+    np.savez_compressed(buf, coins=np.array([s for s, _c, _p in parts]),
+                        start=start,
+                        cut=np.array([c for _s, c, _p in parts], dtype="int64"),
+                        **cols)
+    return buf.getvalue()
+
+
+def publish_partial(now: float | None = None) -> dict:
+    """TODAY SO FAR, as one bundle: every coin's readings before the hour
+    (`now` floored), in `partial-<day>-<HH>.npz` in the list's own release,
+    then the list naming it, then this PC's marker - the order a finished day
+    goes up in, so this PC never reads a cut GitHub's list does not name.
+
+    A coin whose file was last appended before the hour (its feed stopped,
+    or a flush failed) is cut where the file proves it complete - the minute
+    before the minute of its last write - never promised further. A failed
+    upload is tried again at the next hour; a failing streak is said once,
+    and once more when it ends."""
+    import numpy as np
+
+    from tradingagents import cost_store as cs
+    from tradingagents.positions_view import fmt_when
+
+    now = time.time() if now is None else float(now)
+    day = _day(now)
+    start = int(now) - int(now) % 86400
+    cut = int(now) - int(now) % 3600
+    out = {"day": day, "through": cut, "coins": 0}
+    if cut <= start:
+        return {**out, "why": "no hour of today has finished yet"}
+    if _published(day):
+        return {**out, "why": "the day already went up whole"}
+    if ((_marker_of(day).get("partial") or {}).get("through")) == cut:
+        # a restart inside the hour: never the same name up twice (a reader
+        # asking for it between the delete and the upload would get nothing)
+        return {**out, "why": "this hour already went up"}
+    parts = []
+    folders = sorted(p for p in HOME.iterdir() if p.is_dir()) if HOME.exists() else []
+    for folder in folders:
+        if folder.name in ("published", "outbox"):
+            continue
+        f = folder / f"{day}.bin"
+        try:
+            flushed = int(f.stat().st_mtime)
+        except OSError:
+            continue
+        c = min(cut, flushed - flushed % 60 - PROOF_S)
+        if c <= start:
+            continue
+        packed = _read(f)
+        if packed is None:
+            continue
+        packed = cs.merge(None, packed)
+        keep = np.asarray(packed["t"], dtype="int64") < c
+        if not keep.any():
+            continue
+        parts.append((_sym_of_folder(folder.name), c,
+                      {k: np.asarray(packed[k])[keep] for k in cs.KEYS}))
+    if not parts:
+        return {**out, "why": "no reading before the cut"}
+    name = f"partial-{day}-{(cut - start) // 3600:02d}.npz"
+    box = HOME / "outbox" / f"partial-{day}"
+    box.mkdir(parents=True, exist_ok=True)
+    entry = {"asset": name, "through": cut}
+    try:
+        target = box / name
+        target.write_bytes(_bundle_bytes(parts))
+        size = target.stat().st_size
+        if not _upload(INDEX_TAG, [target], quiet=True):
+            return _partial_failed(out, "the bundle did not go up", now)
+        if not _publish_index(box, partial={day: entry}, quiet=True):
+            return _partial_failed(out, "the list of published days did not go up", now)
+    finally:
+        for p in list(box.iterdir()):
+            with contextlib.suppress(OSError):
+                p.unlink()
+        with contextlib.suppress(OSError):
+            box.rmdir()
+    _write_marker(day, coins=set(), failed=set(),
+                  partial={**entry, "coins": {s: c for s, c, _p in parts}})
+    if _PARTIAL_FAIL.get("hours"):
+        logger.info("the order books so far today went up again after %d failed "
+                    "hour(s)", _PARTIAL_FAIL["hours"])
+    _PARTIAL_FAIL.clear()
+    logger.info("%s so far: %d coins up to %s (%.1f MB), read here and on GitHub",
+                day, len(parts), fmt_when(cut), size / 1e6)
+    try:
+        _prune_partials(cut, keep={e["asset"] for e in
+                                   _index_partials(finished=set()).values()})
+    except Exception as exc:                                   # noqa: BLE001
+        logger.debug("old hourly bundles not cleaned (%s) - next hour", exc)
+    return {**out, "coins": len(parts), "bytes": size, "asset": name}
+
+
+def _partial_failed(out: dict, why: str, now: float) -> dict:
+    """One line for a failing streak, never one an hour: the count goes on
+    in `_PARTIAL_FAIL` and is said when the upload goes up again."""
+    if not _PARTIAL_FAIL.get("hours"):
+        logger.warning("the order books so far today did not go up: %s (%s) - "
+                       "tried again every hour, said again only once it goes up",
+                       why, _LAST_UPLOAD_ERROR.get("text") or "no reason given")
+    _PARTIAL_FAIL["hours"] = int(_PARTIAL_FAIL.get("hours") or 0) + 1
+    _PARTIAL_FAIL.setdefault("since", now)
+    return {**out, "why": why}
+
+
+def _prune_partials(cut: int, *, keep: set) -> int:
+    """Remove hourly bundles more than KEEP_PARTIAL_S older than `cut`, never
+    one the list names; a removal that fails is tried at the next hour."""
+    r = _gh("release", "view", INDEX_TAG, "-R", PUBLISH_REPO, "--json", "assets")
+    if r.returncode != 0:
+        return 0
+    gone = 0
+    for a in (json.loads(r.stdout or "{}").get("assets") or []):
+        name = str(a.get("name") or "")
+        m = _PARTIAL_RE.fullmatch(name)
+        if not m or name in keep:
+            continue
+        if cut - (_day_start(m[1]) + int(m[2]) * 3600) > KEEP_PARTIAL_S:
+            rr = _gh("release", "delete-asset", INDEX_TAG, name, "-y",
+                     "-R", PUBLISH_REPO)
+            gone += rr.returncode == 0
+    return gone
 
 
 def _sym_of_folder(name: str) -> str:
@@ -458,43 +786,59 @@ def _days_here() -> set:
 
 
 def publish_tick(now: float | None = None) -> dict:
-    """Once a UTC day, `PUBLISH_AFTER_UTC_S` past midnight: every finished
-    day of the last `PUBLISH_DAYS` that holds readings here and is not
-    published yet, oldest first (a PC that was off catches up). Runs in the
-    API's supervisor, on its own thread; never under pytest."""
+    """Two jobs, each at most once a UTC hour. From `PUBLISH_AFTER_UTC_S`
+    past midnight: every finished day of the last `PUBLISH_DAYS` that holds
+    readings here and has not gone up whole, oldest first (a PC that was off
+    catches up). From `PARTIAL_AFTER_S` past every hour: today so far
+    (`publish_partial`). Runs in the API's supervisor, on its own thread;
+    never under pytest."""
     from tradingagents import venue
 
     if os.environ.get("PYTEST_CURRENT_TEST"):
-        return {"published": [], "why": "never under pytest"}
+        return {"published": [], "partial": None, "why": "never under pytest"}
     if venue.current() != "gate":
-        return {"published": [], "why": "the app trades MEXC"}
+        return {"published": [], "partial": None, "why": "the app trades MEXC"}
     now = time.time() if now is None else float(now)
-    if int(now) % 86400 < PUBLISH_AFTER_UTC_S:
-        return {"published": [], "why": "waiting for the last minutes of yesterday"}
+    hour = int(now) // 3600
+    got, partial, did = [], None, False
     # the supervisor asks every 30 s; walking ~1,000 coin folders that often
-    # would churn the store's disk for nothing, so once an hour
-    if now - _TICKED["at"] < SCAN_EVERY_S:
-        return {"published": [], "why": "looked less than an hour ago"}
-    _TICKED["at"] = now
-    today = _day(now)
-    oldest = _day(now - PUBLISH_DAYS * 86400)
-    want = sorted(d for d in _days_here()
-                  if oldest <= d < today
-                  and (not _marker(d).exists() or _marker_of(d).get("failed")))
-    got = []
-    for d in want:
+    # would churn the store's disk for nothing, so once an hour each
+    if int(now) % 86400 >= PUBLISH_AFTER_UTC_S and _TICKED.get("final") != hour:
+        _TICKED["final"] = hour
+        did = True
+        today = _day(now)
+        oldest = _day(now - PUBLISH_DAYS * 86400)
+        want = sorted(d for d in _days_here()
+                      if oldest <= d < today
+                      and (not _published(d) or _marker_of(d).get("failed")))
+        for d in want:
+            try:
+                # a day that went up whole sends only the coins that failed;
+                # one with only an hourly upload (or nothing) sends every coin
+                left = ((set(_marker_of(d).get("failed") or []) or None)
+                        if _published(d) else None)
+                got.append(publish_day(d, only=left))
+            except Exception as exc:                           # noqa: BLE001
+                logger.error("could not publish %s (%s)", d, exc)
+                got.append({"day": d, "coins": 0, "failed": [], "error": str(exc)})
+        if got:
+            logger.info("published %s", "; ".join(f"{g['day']}: {g['coins']} coins"
+                                                  + (f", {len(g['failed'])} failed"
+                                                     if g.get("failed") else "")
+                                                  for g in got))
+    if int(now) % 3600 >= PARTIAL_AFTER_S and _TICKED.get("partial") != hour:
+        _TICKED["partial"] = hour
+        did = True
         try:
-            left = set(_marker_of(d).get("failed") or []) or None
-            got.append(publish_day(d, only=left))
+            partial = publish_partial(now)
         except Exception as exc:                               # noqa: BLE001
-            logger.error("could not publish %s (%s)", d, exc)
-            got.append({"day": d, "coins": 0, "failed": [], "error": str(exc)})
-    if got:
-        logger.info("published %s", "; ".join(f"{g['day']}: {g['coins']} coins"
-                                              + (f", {len(g['failed'])} failed"
-                                                 if g.get("failed") else "")
-                                              for g in got))
-    return {"published": got}
+            partial = _partial_failed({"day": _day(now), "coins": 0},
+                                      f"{type(exc).__name__}: {exc}", now)
+    if not did:
+        why = ("waiting for the last minutes of yesterday"
+               if int(now) % 86400 < PUBLISH_AFTER_UTC_S else "already looked this hour")
+        return {"published": [], "partial": None, "why": why}
+    return {"published": got, "partial": partial}
 
 
 # ------------------------------------------------------------ the snapshots

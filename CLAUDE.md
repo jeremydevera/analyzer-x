@@ -274,6 +274,23 @@ own `maintenance_rate`.
   through ONE function, `cost_store.with_app_books` — reads a day only once
   it is published, so one strategy never gets two results by where it was
   measured. `app_books.IN_BACKTEST = False` takes them out everywhere.
+  **AND TODAY GOES UP EVERY HOUR** (operator, Oct 31, 2026: *"Go"*; Gate's
+  archive ends Oct 22, 2026 04:00 UTC, so these readings are the only
+  per-minute cost since, and the ~05:47 UTC nightly update found today's
+  hours unpublished): 10 minutes past each hour (`PARTIAL_AFTER_S`, after
+  the recorder's 5-minute flush) the day so far goes up as ONE bundle,
+  `partial-<day>-<HH>.npz` in the `appbook-index` release (11.6 MB at
+  11:00pm for 1,070 coins, measured Oct 31, 2026 — never 1,070 files an
+  hour), each coin cut at the hour, or earlier where its file was last
+  written (`PROOF_S`); then `days.json` names it under `partial` with its
+  cut; then this PC's marker. A partial day is read up to its cut and no
+  further, on both sides (`book_for` → `_cut_here` here, `_bundle` there);
+  the finished day's coin-by-coin upload replaces it once `days` names the
+  day. A reader re-reads the list every `INDEX_TTL_S` (30 min), so a newer
+  hour replaces an older one; a bundle is removed 12 hours after its hour
+  (`KEEP_PARTIAL_S`), never one the list names; a failed hour is tried at
+  the next hour and said once per failing streak. Guard:
+  `tests/test_app_books_go_up_every_hour.py`.
 * **AND IT SKIPS WHAT PRACTICE SKIPS (Oct 11, 2026: *"i said it should
   behave like practice, meaning backtest should know wether to skip a trade
   or not"*).** One function, `auto_trader.entry_refusal`, for the engine and

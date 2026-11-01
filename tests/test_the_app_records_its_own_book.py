@@ -345,7 +345,7 @@ def test_the_tick_publishes_finished_days_only_after_twenty_past_midnight(home, 
     assert ab.publish_tick(now=T + 600)["published"] == [], "00:10 UTC: too early"
     got = ab.publish_tick(now=T + 1500)                 # 00:25 UTC
     assert [g["day"] for g in got["published"]] == ["20261015"], "never today"
-    assert ab.publish_tick(now=T + 1600)["why"] == "looked less than an hour ago"
+    assert ab.publish_tick(now=T + 1600)["why"] == "already looked this hour"
 
 
 def test_github_reads_a_published_day_from_its_release(tmp_path, monkeypatch):

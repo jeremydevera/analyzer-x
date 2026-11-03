@@ -28,8 +28,9 @@ collect`) and judges them pooled (`python -m tradingagents.v3_verdicts
 publish`).
 
 The machine refuses to measure anything - exit 2, the reason in its report -
-when its checkout's plan is not the plan the dispatch named (PLAN_ID), or the
-run does not trade on Gate (TA_VENUE).
+when its checkout holds no plan with the id the dispatch named (PLAN_ID: the
+universe plan research/v3/plan.json or the "all" plan research/v3/plan-all.json,
+found by its id), or the run does not trade on Gate (TA_VENUE).
 """
 # ruff: noqa: E402  (sweep_shard is imported after RES is cleared, below)
 from __future__ import annotations
@@ -61,7 +62,6 @@ from tradingagents import (
     venue as _venue,
 )
 
-PLAN_FILE = os.environ.get("PLAN_FILE") or str(vu.PLAN_FILE)     # tests name their own
 PLAN_ID = (os.environ.get("PLAN_ID") or "").strip()
 RUNS = int(os.environ.get("RUNS") or vrn.RUNS)                     # tests only
 OUT_DIR = Path("out") / "v3"
@@ -70,6 +70,20 @@ COIN_RETRIES = 2
 RETRY_CUTOFF_S = 4.8 * 3600      # no retry starts after this (GitHub ends a job at 6 h)
 T0 = time.time()
 FX = None                        # the exchange door; tests hand in their own
+
+
+def plan_file() -> str:
+    """The plan this machine reads: PLAN_FILE when set (tests name their own), else the plan file
+    of this checkout's research/v3 whose id is the dispatch's PLAN_ID (`v3_universe.find_plan`:
+    plan.json, the universe plan, or plan-all.json, the "all" plan - v3.yml has no input for the
+    file, and needs none), else plan.json, whose own id `refusal` then names beside PLAN_ID."""
+    if os.environ.get("PLAN_FILE"):
+        return os.environ["PLAN_FILE"]
+    found = vu.find_plan(PLAN_ID, vu.PLAN_FILE.parent) if PLAN_ID else None
+    return str(found or vu.PLAN_FILE)
+
+
+PLAN_FILE = plan_file()
 
 
 def machine() -> dict:

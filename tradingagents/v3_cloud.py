@@ -102,22 +102,40 @@ def title_of(label: str) -> str:
     return f"Backtest v3 research · {label}"
 
 
-def _git(*args: str) -> str:
+def repo_root() -> Path:
+    """This checkout's root: where `git` runs and what a plan's path on origin/main is read from."""
     from tradingagents.v3_universe import PLAN_FILE
 
-    out = subprocess.run(["git", *args], cwd=str(PLAN_FILE.parent.parent.parent),
+    return PLAN_FILE.parent.parent.parent
+
+
+def rel_of(path: Path | str) -> str:
+    """A plan file's path inside this checkout as git names it (`research/v3/plan-all.json`), the
+    path its blob on origin/main is read at; a file outside the checkout (a run's kept plan copy)
+    is `PLAN_REL`, the universe plan's - the caller that has a better one passes it."""
+    try:
+        return Path(path).resolve().relative_to(repo_root().resolve()).as_posix()
+    except ValueError:
+        return PLAN_REL
+
+
+def _git(*args: str) -> str:
+    out = subprocess.run(["git", *args], cwd=str(repo_root()),
                          capture_output=True, text=True, timeout=60)
     if out.returncode:
         raise RuntimeError(f"git {' '.join(args)}: {(out.stderr or out.stdout).strip()[:200]}")
     return out.stdout.strip()
 
 
-def plan_on_main(path: Path, retrying: bool = False) -> str:
-    """"" when the plan file at `path` is the one committed on origin/main (what
-    every machine's checkout reads); else why not."""
+def plan_on_main(path: Path, retrying: bool = False, rel: str | None = None) -> str:
+    """"" when the plan file at `path` is the one committed on origin/main at `rel` (default: the
+    file's own path in this checkout, `rel_of`) - what every machine's checkout reads; else why
+    not. A machine finds the plan its dispatch named by its id among research/v3/plan*.json
+    (`v3_universe.find_plan`), so the "all" plan (research/v3/plan-all.json) travels as the
+    universe plan does."""
     try:
         here = _git("hash-object", str(path))
-        main = _git("rev-parse", f"origin/main:{PLAN_REL}")
+        main = _git("rev-parse", f"origin/main:{rel or rel_of(path)}")
     except RuntimeError as exc:
         return f"the committed plan could not be read: {exc}"
     if here != main and retrying:
@@ -246,7 +264,8 @@ def no_run_words(name: str, state: dict) -> str:
 
 def dispatch(name: str, *, coins: list | None = None, plan_path: Path | str | None = None,
              label: str | None = None, folder: str | None = None, force: bool = False,
-             now: float | None = None, retrying: bool = False) -> dict:
+             now: float | None = None, retrying: bool = False,
+             plan_rel: str | None = None) -> dict:
     """Deal the plan's coins (or `coins`, every one of them in the plan) between
     every account that can run now and start one run on each. An account that
     refuses, or cannot be brought up to this code, is NAMED and the others still
@@ -270,7 +289,10 @@ def dispatch(name: str, *, coins: list | None = None, plan_path: Path | str | No
                            "re-test and backtest update need every machine")
     path = Path(plan_path or vu.PLAN_FILE)
     plan = vu.load(path)
-    why = plan_on_main(path, retrying)
+    # where the plan sits on origin/main: the file's own path, or - for a retry under the kept
+    # copy - the path the run was first dispatched from (`plan_rel` in its state)
+    rel = plan_rel or rel_of(path)
+    why = plan_on_main(path, retrying, rel)
     if why:
         raise RuntimeError(f"not dispatched: {why}")
     if coins:
@@ -288,7 +310,8 @@ def dispatch(name: str, *, coins: list | None = None, plan_path: Path | str | No
     label = label or name
     state = {"name": name, "label": label, "folder": folder, "started": t0,
              "started_at": fmt_when(t0), "plan_id": plan["id"], "plan_end_ms": int(plan["end_ms"]),
-             "plan_path": str(path), "risk_usd": vr.RESEARCH_RISK_USD, "runs_per_combo": vrn.RUNS,
+             "plan_path": str(path), "plan_rel": rel, "plan_kind": vu.kind_of(plan),
+             "risk_usd": vr.RESEARCH_RISK_USD, "runs_per_combo": vrn.RUNS,
              "coins": len(board), "board": board, "runs": {}, "refused": list(refused),
              "dealt": {}}
     for k, (repo, pile) in enumerate(zip(ready, piles, strict=False)):
@@ -342,7 +365,8 @@ def redo(name: str, repo: str, *, now: float | None = None, force: bool = False)
     if cq_search.quiet_hours(now) and not force:
         raise RuntimeError("not redone: between 12:45am and 5:00am the nightly room re-test and "
                            "backtest update need every machine")
-    why = plan_on_main(Path(state.get("plan_copy") or state["plan_path"]), retrying=True)
+    why = plan_on_main(Path(state.get("plan_copy") or state["plan_path"]), retrying=True,
+                       rel=state.get("plan_rel") or PLAN_REL)
     if why:
         raise RuntimeError(f"not redone: {why}")
     if repo != cs.origin_fleet():
@@ -638,7 +662,7 @@ def retry(name: str, *, now: float | None = None, force: bool = False,
     # measure under it any more, and `plan_on_main` refuses by name
     return dispatch(f"{name}-redo{n}", coins=coins, plan_path=state["plan_copy"],
                     label=f"{state['label']} redo {n}", folder=state["folder"], force=force,
-                    now=now, retrying=True)
+                    now=now, retrying=True, plan_rel=state.get("plan_rel") or PLAN_REL)
 
 
 def same_measure(a: dict, b: dict, path: str = "") -> list[str]:

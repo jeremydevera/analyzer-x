@@ -10,9 +10,9 @@ run-name: "Backtest v3 research · ${{ inputs.label }}"
 # market grid's pair-done markers, saved positions or the store. Public market
 # data only - no credentials are read. Dealt between every account by
 # tradingagents/v3_cloud.py (each account gets its own coin_list). Every
-# machine reads the universe from the plan file in its own checkout
-# (research/v3/plan.json) and refuses to measure when that file is not the
-# plan the dispatch named (plan_id).
+# machine reads the universe from the plan file in its own checkout whose id
+# is the dispatch's plan_id (research/v3/plan.json, or plan-all.json for the
+# "all" plan, Nov 03, 2026) and refuses to measure when none is.
 
 on:
   workflow_dispatch:
@@ -27,7 +27,7 @@ on:
         description: "A name for this run (its title)"
         default: "manual"
       plan_id:
-        description: "The id of research/v3/plan.json the dispatch was made with"
+        description: "The id of the plan the dispatch was made with (research/v3/plan*.json, found by its id)"
         default: ""
 
 permissions:

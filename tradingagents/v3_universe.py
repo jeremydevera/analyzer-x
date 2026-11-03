@@ -194,7 +194,92 @@ def left_out_why(sym: str) -> str:
     return ""
 
 
+def _ranks(dailies: dict, members: dict, start_ms: int, end_ms: int) -> dict:
+    """Each Monday 00:00 UTC from the week before the window to its end: that month's `members`
+    ({month: [symbol]}) by 14-day return, best first; a coin whose return cannot be worked out
+    (a close missing at the Monday or 14 days before) is not ranked."""
+    strength = {}
+    for monday in mondays_between(start_ms - 7 * DAY_MS, end_ms):
+        rets = [(return_14(dailies[s], monday), s) for s in members.get(month_key(monday), [])]
+        strength[str(monday)] = [s for r, s in sorted(((r, s) for r, s in rets if r is not None),
+                                                      key=lambda x: (-x[0], x[1]))]
+    return strength
+
+
 ID_LEAVES_OUT = ("built", "built_s", "id")
+# The plan kinds. "universe" (the default, and every plan built before Nov 03, 2026, which carries
+# no `kind` key - so its file and its id stay byte for byte what they were); "all" (`build_all`)
+KINDS = ("universe", "all")
+ALL_FILE = PLAN_FILE.with_name("plan-all.json")
+ALL_NOTE = ("Every contract the exchange trades today is in every family's universe, both groups "
+            "(liquid and calm), in every month it has a closed daily candle; a family's own "
+            "lookback decides when its first signal can hold.")
+
+
+def kind_of(plan: dict) -> str:
+    """The plan's kind: "all" or "universe" (a plan with no `kind` key)."""
+    return plan.get("kind", "universe")
+
+
+def build_all(dailies: dict, kinds: dict, end_ms: int, *, skipped=None, venue_name: str = "",
+              built_s: float | None = None) -> dict:
+    """The "all" plan (operator, Nov 03, 2026: "all coins all time frame and all strategy"): every
+    contract of `dailies` (`kinds` {symbol: venue kind}) is a member of BOTH groups - so of every
+    family's universe, long and short where the family takes each - in every month of the window
+    in which it has a daily candle that OPENED in that month and closed by `end_ms`. The left-out
+    rules are the universe plan's (`left_out_why`: a volatility index, a stablecoin), over every
+    kind. The Monday ranks are taken over that month's whole membership; BTC's mood is the
+    universe plan's. The plan carries `kind` "all", inside its id."""
+    from tradingagents.positions_view import fmt_when
+
+    end_ms = int(end_ms)
+    start_ms = end_ms - WINDOW_DAYS * DAY_MS
+    left_out = {s: why for s in sorted(kinds) if (why := left_out_why(s))}
+    cands = sorted(s for s in dailies if s not in left_out)
+    members = {}
+    for m in months_between(start_ms, end_ms):
+        nxt = _next_month(m)
+        members[month_key(m)] = [s for s in cands if _has_candle(dailies[s], m, nxt, end_ms)]
+    if BTC not in dailies:
+        raise ValueError(f"{BTC} has no daily candles: its mood cannot be worked out"
+                         + (f" ({skipped[BTC]})" if skipped and BTC in skipped else ""))
+    coins = sorted({s for ms in members.values() for s in ms})
+    built = time.time() if built_s is None else float(built_s)
+    plan = {"version": VERSION, "kind": "all", "venue": venue_name, "built": fmt_when(built),
+            "built_s": built, "start_ms": start_ms, "end_ms": end_ms,
+            "start": fmt_when(start_ms / 1000), "end": fmt_when(end_ms / 1000),
+            "months": sorted(members), "liquid": members, "calm": {k: list(v) for k, v in
+                                                                   members.items()},
+            "value": {}, "vol": {}, "strength": _ranks(dailies, members, start_ms, end_ms),
+            "mood": mood_of(dailies[BTC], start_ms - 7 * DAY_MS),
+            "kinds": {s: kinds[s] for s in sorted(set(coins) | {BTC}) if s in kinds},
+            "sizes": {}, "coins": coins, "skipped": dict(skipped or {}), "left_out": left_out,
+            "notes": [SURVIVORSHIP, ALL_NOTE, LEFT_OUT_NOTE]}
+    plan["id"] = plan_id(plan)
+    return plan
+
+
+def _has_candle(daily: dict, lo_ms: int, hi_ms: int, end_ms: int) -> bool:
+    """Did a daily candle open in [lo_ms, hi_ms) and close by `end_ms`."""
+    k = bisect.bisect_left(daily["t"], int(lo_ms))
+    return (k < len(daily["t"]) and daily["t"][k] < int(hi_ms)
+            and daily["t"][k] + DAY_MS <= int(end_ms))
+
+
+def find_plan(pid: str, folder: Path | str | None = None) -> Path | None:
+    """The plan file in `folder` (default research/v3) whose id is `pid`: `plan.json` first, then
+    every other `plan*.json` by name; None when none is. A file that cannot be read as a plan is
+    passed over. How a GitHub machine finds the plan its dispatch named (`plan_id`) without a
+    workflow input for the file."""
+    root = Path(folder) if folder is not None else PLAN_FILE.parent
+    names = sorted(root.glob("plan*.json"), key=lambda p: (p.name != PLAN_FILE.name, p.name))
+    for p in names:
+        try:
+            if load(p)["id"] == pid:
+                return p
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            continue
+    return None
 
 
 def plan_id(plan: dict) -> str:
@@ -245,11 +330,7 @@ def build(dailies: dict, kinds: dict, sizes: dict, end_ms: int, *, skipped=None,
         calmest = vols[:math.ceil(len(vols) / 3)]
         calm[key] = calm_kind + [s for _v, s in calmest]
         vol[key] = {s: round(v, 6) for v, s in vols}
-    strength = {}
-    for monday in mondays_between(start_ms - 7 * DAY_MS, end_ms):
-        rets = [(return_14(dailies[s], monday), s) for s in liquid.get(month_key(monday), [])]
-        strength[str(monday)] = [s for r, s in sorted(((r, s) for r, s in rets if r is not None),
-                                                      key=lambda x: (-x[0], x[1]))]
+    strength = _ranks(dailies, liquid, start_ms, end_ms)
     if BTC not in dailies:
         raise ValueError(f"{BTC} has no daily candles: its mood cannot be worked out"
                          + (f" ({skipped[BTC]})" if skipped and BTC in skipped else ""))
@@ -269,12 +350,17 @@ def build(dailies: dict, kinds: dict, sizes: dict, end_ms: int, *, skipped=None,
     return plan
 
 
-def collect(*, fx=None, end_ms: int | None = None, kind_of=None, log=print) -> dict:
+def collect(*, fx=None, end_ms: int | None = None, kind_of=None, log=print,
+            kind: str = "universe") -> dict:
     """Read every candidate's daily candles from the exchange and build the
-    plan. A candidate whose candles or listing cannot be read is NAMED in
-    `skipped`, never dropped quietly."""
+    plan of `kind` ("universe": `build`, the crypto contracts' candles and
+    sizes; "all": `build_all`, every contract's candles but the left-out
+    ones, which are named and never read). A candidate whose candles or
+    listing cannot be read is NAMED in `skipped`, never dropped quietly."""
     from tradingagents import venue
 
+    if kind not in KINDS:
+        raise ValueError(f"plan kind {kind!r}: this code builds {', '.join(KINDS)}")
     if fx is None:
         from tradingagents.dataflows import exchange as fx
     kind_of = kind_of or venue.kind
@@ -285,6 +371,16 @@ def collect(*, fx=None, end_ms: int | None = None, kind_of=None, log=print) -> d
     syms = sorted(fx.trading_symbols())
     kinds = {s: kind_of(s) for s in syms}
     dailies, sizes, skipped = {}, {}, {}
+    if kind == "all":
+        read = [s for s in syms if not left_out_why(s)]
+        for n, s in enumerate(read, 1):
+            try:
+                dailies[s] = daily_of(fx.klines(s, "Day1", days), end_ms)
+            except Exception as exc:                           # noqa: BLE001
+                skipped[s] = f"{type(exc).__name__}: {str(exc)[:160]}"
+            if n % 100 == 0:
+                log(f"  daily candles: {n} of {len(read)} contracts")
+        return build_all(dailies, kinds, end_ms, skipped=skipped, venue_name=venue.name())
     crypto = [s for s in syms if kinds[s] == "crypto"]
     for n, s in enumerate(crypto, 1):
         try:

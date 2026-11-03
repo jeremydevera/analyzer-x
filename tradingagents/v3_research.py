@@ -430,7 +430,11 @@ def main(argv=None) -> int:
                  f"research's own; the tab's is ${v3_rules.RISK_USD:,.2f})")
     runs_help = f"random runs a combination (default {vrn.RUNS})"
     pl = sub.add_parser("plan", help="build the universe plan from daily candles")
-    pl.add_argument("--out", default=str(vu.PLAN_FILE))
+    pl.add_argument("--kind", choices=vu.KINDS, default="universe",
+                    help="universe (the liquid and calm groups) or all (every contract in every "
+                         "family's universe, research/v3/plan-all.json)")
+    pl.add_argument("--out", default=None,
+                    help="default research/v3/plan.json, or plan-all.json for --kind all")
     ru = sub.add_parser("run", help="measure coins end to end and print every verdict")
     ru.add_argument("coins", nargs="+")
     ru.add_argument("--plan", default=str(vu.PLAN_FILE))
@@ -447,9 +451,9 @@ def main(argv=None) -> int:
         sys.stdout.reconfigure(encoding="utf-8")        # coin names in Chinese
     if a.cmd == "plan":
         t0 = time.time()
-        plan = vu.collect(log=print)
-        path = vu.save(plan, a.out)
-        print(f"plan {path}: {plan['start']} to {plan['end']}, {len(plan['months'])} months, "
+        plan = vu.collect(log=print, kind=a.kind)
+        path = vu.save(plan, a.out or (vu.ALL_FILE if a.kind == "all" else vu.PLAN_FILE))
+        print(f"plan {path} ({vu.kind_of(plan)}, id {plan.get('id') or vu.plan_id(plan)}): {plan['start']} to {plan['end']}, {len(plan['months'])} months, "
               f"{len(plan['coins'])} coins in a group; liquid {len(plan['liquid'][plan['months'][-1]])}"
               f" and calm {len(plan['calm'][plan['months'][-1]])} in {plan['months'][-1]}; "
               f"{len(plan.get('left_out', {}))} left out; "

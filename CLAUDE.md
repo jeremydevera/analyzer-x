@@ -2847,6 +2847,51 @@ behaviour), and the Part 2b tests in `tests/test_v3_engine.py`,
 `tests/test_v3_measure.py`, `tests/test_v3_proof.py` and
 `tests/test_v3_research.py`.
 
+## Backtest v3 — all coins, per coin (Nov 03, 2026)
+
+The operator: *"can you run backtest for v3 for all coins all time frame and
+all strategy and tell me which are profitable? even winrate is low as long as
+the win ratio is high, its ok"*, choosing: fill the older days' per-minute
+costs first, each idea on its own timeframes (the 63 combinations as built),
+and "profitable" = money after every fee on the 90 unseen days with 20+
+trades, beside random buys on the same coin.
+
+* **A second plan kind, "all"** (`v3_universe.build_all`, `collect(kind=
+  "all")`, `python -m tradingagents.v3_research plan --kind all` →
+  `research/v3/plan-all.json`): every contract the exchange trades today but
+  the left-out ones (volatility indices, stablecoins, named) is in BOTH groups
+  - so every family's universe, long and short where the family takes each -
+  in every month it has a daily candle that opened in that month and closed by
+  the plan's end; the Monday ranks run over that whole membership; BTC's mood
+  is unchanged. `kind: "all"` is inside the plan's id; a plan with no `kind`
+  is the universe plan, its file and id byte for byte as before.
+* **One dispatch, any plan file**: `v3_cloud dispatch <name> --plan FILE`
+  checks THAT file's blob on origin/main (`rel_of`) and keeps its path in the
+  state (`plan_rel`); `redo` and `retry` check the same path (a state without
+  it reads `research/v3/plan.json`). A machine finds the plan by the id the
+  dispatch named among `research/v3/plan*.json` (`v3_universe.find_plan`,
+  `v3_shard.plan_file`): v3.yml keeps its four inputs.
+* **Per-coin verdicts** (`python -m tradingagents.v3_per_coin publish <name>`
+  → `stores.V3.home/verdicts-per-coin.json`, kept in `verdicts-per-coin/`):
+  each coin x judged group chooses on THAT coin's older walk (best profit a
+  trade among settings with 10+ older trades, ties to the simplest; none =
+  "could not choose", with why) and is PROFITABLE when its unseen profit after
+  every fee is above 0 with 20+ trades; beside it the coin's own random runs'
+  median profit, the share that made as much (`luck_share`) and the share
+  profitable by the same rule (`luck_profitable`, added up = what luck alone
+  gives). The pooled verdict store and the tab are untouched; both stores
+  share `v3_verdicts.load_family`, `unjudged` and `keep_and_swap`.
+* **The page** (`python -m tradingagents.v3_per_coin_page <name>` →
+  `pages/<name>-per-coin.html`): every coin x idea row with the kit, the
+  judged / profitable / luck counts above the table, a "profitable only" box
+  and a win ÷ loss size filter; refused when a row's trades are not the ones
+  it was judged on. The payload is gzipped + base64 in the page (inflated by
+  `DecompressionStream`), never trimmed: universe-2's 4,207 rows and 21,566
+  trades are 2.24 MB of JSON and a 0.31 MB page.
+
+Guards: `tests/test_v3_all_plan.py`, `tests/test_v3_all_coins_cloud.py`,
+`tests/test_v3_per_coin.py`, `tests/test_v3_per_coin_page.py`.
+
 ## The daytime rule (MANDATORY — Oct 07, 2026; trial on #4FC03172)
 
 The operator: *"so what do you think is the correct, because its seems like i

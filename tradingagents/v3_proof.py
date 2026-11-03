@@ -96,15 +96,17 @@ def summary(rows) -> dict:
             "open_at_end": sum(1 for r in rows if r[5] == "END")}
 
 
-def choose(older: dict, order) -> tuple[str | None, dict]:
-    """(the chosen setting or None, every setting's older figures)."""
+def choose(older: dict, order, min_trades: int = MIN_CHOOSE) -> tuple[str | None, dict]:
+    """(the chosen setting or None, every setting's older figures): the best profit a trade among
+    the settings with at least `min_trades` older trades (MIN_CHOOSE pooled; the per-coin verdicts,
+    `v3_per_coin`, pass their own), a tie to the first in `order`, the simplest."""
     table, best = {}, None
     for key in order:
         rows = older.get(key, [])
         n, profit = len(rows), sum(float(r[4]) for r in rows)
         table[key] = {"trades": n, "profit": profit, "per_trade": profit / n if n else None,
-                      "eligible": n >= MIN_CHOOSE}
-        if n >= MIN_CHOOSE and (best is None or table[key]["per_trade"] > table[best]["per_trade"]):
+                      "eligible": n >= min_trades}
+        if n >= min_trades and (best is None or table[key]["per_trade"] > table[best]["per_trade"]):
             best = key
     return best, table
 

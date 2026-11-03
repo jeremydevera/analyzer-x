@@ -184,54 +184,12 @@ def _reasons(members: list) -> tuple[dict, set, dict]:
     return reasons, boards, accounts
 
 
-def build(name: str, *, now: float | None = None) -> dict:
-    """The verdict store's content for the collected run `name` and every redo of
-    it (see the module doc). Refuses a redo's name, a run or redo not collected
-    yet, a plan copy that is missing or is not the plan the run was dispatched
-    with, and a folder with no record under that plan. What was not judged is
-    recomputed from the records actually landed, against the plan."""
-    from tradingagents import (
-        v3_cloud as vc,
-        v3_coverage as vcv,
-        v3_proof as vp,
-        v3_research as vrs,
-        v3_universe as vu,
-    )
-    from tradingagents.v3_measure import windows
-
-    names = family(name)
-    members = []
-    for m in names:
-        state, summary, copy = _member(vc, m)
-        members.append((m, state, summary))
-        plan_m = vu.load(copy)
-        if plan_m["id"] != state["plan_id"]:
-            raise ValueError(f"{copy} is plan {plan_m['id']}, the run was dispatched with "
-                             f"{state['plan_id']}")
-        if state["plan_id"] != members[0][1]["plan_id"]:
-            raise ValueError(f"{m} was dispatched with plan {state['plan_id']}, not {name}'s "
-                             f"{members[0][1]['plan_id']}: one family is judged under one plan")
-    state = members[0][1]
-    plan = vu.load(state["plan_copy"])
-    root = vrs.home(state["folder"])
-    runs, risk = int(state["runs_per_combo"]), float(state["risk_usd"])
-    records, other = vrs.split_records(vrs.load_coins(root), plan, runs, risk)
-    if not records:
-        raise ValueError(f"{root} holds no record measured under plan {plan['id']}: collect "
-                         f"{name} first")
-    lines, verdicts = vrs.report(records, plan, runs, risk)
-    if len(state["board"]) >= len(plan["coins"]):
-        # a run sent every coin of its plan is not "a few coins" (RCA-2026-10-30-H)
-        lines = [ln for ln in lines if ln != vrs.FEW_COINS]
-    for v in verdicts:
-        v["levels"] = levels(records, v)
-        # COVERAGE FIRST beside every verdict (I3): the share of its entries and exits settled
-        # without their own minute's book, older and unseen days apart
-        v["costs"] = vcv.verdict_costs(records, v)
-    start, split, end = windows(plan)
-    t = time.time() if now is None else float(now)
-    # judged = a coin with at least one measured timeframe; every other coin of the plan is named
-    # once, in the one bucket that is true, from what is LANDED
+def unjudged(members: list, plan: dict, records: list[dict],
+             other: list) -> tuple[list[str], dict, dict]:
+    """(the coins judged, every other coin of the plan named once in the one bucket that is true,
+    the account-level lists), from what is LANDED (`records` and `other`, `split_records`'
+    halves): judged = a coin with at least one measured timeframe. The pooled store and the
+    per-coin store (`v3_per_coin`) both read this."""
     measured = sorted(r["coin"] for r in records if not r.get("why") and r.get("windows"))
     idle = {r["coin"]: r.get("why") or "no timeframe was measured" for r in records
             if r["coin"] not in measured}
@@ -250,10 +208,103 @@ def build(name: str, *, now: float | None = None) -> dict:
         else:
             key, why = "not_reached", "no record in the folder and no reason recorded"
         not_judged[key].append(f"{coin}: {why}" if key != "not_dispatched" else coin)
-    github_runs = {}
+    return measured, not_judged, accounts
+
+
+def runs_of(name: str, members: list) -> dict:
+    """{account (a redo's named beside it): GitHub run} of every member of the family."""
+    out = {}
     for m, _st, su in members:
         for repo, run in (su.get("runs") or {}).items():
-            github_runs[repo if m == name else f"{repo} ({m})"] = run
+            out[repo if m == name else f"{repo} ({m})"] = run
+    return out
+
+
+def load_family(name: str) -> tuple[list, dict, list[dict], list]:
+    """(the family's members [(name, state, collected summary)], the plan the run was dispatched
+    with, the records measured under it, every other record as (coin, what differs)), each refused
+    by name: a redo's name, a member not collected, a plan copy missing or of another plan, a
+    family dispatched under two plans, a folder with no record of the plan. `build` and the
+    per-coin store (`v3_per_coin`) both read this."""
+    from tradingagents import v3_cloud as vc, v3_research as vrs, v3_universe as vu
+
+    members = []
+    for m in family(name):
+        state, summary, copy = _member(vc, m)
+        members.append((m, state, summary))
+        plan_m = vu.load(copy)
+        if plan_m["id"] != state["plan_id"]:
+            raise ValueError(f"{copy} is plan {plan_m['id']}, the run was dispatched with "
+                             f"{state['plan_id']}")
+        if state["plan_id"] != members[0][1]["plan_id"]:
+            raise ValueError(f"{m} was dispatched with plan {state['plan_id']}, not {name}'s "
+                             f"{members[0][1]['plan_id']}: one family is judged under one plan")
+    state = members[0][1]
+    plan = vu.load(state["plan_copy"])
+    root = vrs.home(state["folder"])
+    records, other = vrs.split_records(vrs.load_coins(root), plan, int(state["runs_per_combo"]),
+                                       float(state["risk_usd"]))
+    if not records:
+        raise ValueError(f"{root} holds no record measured under plan {plan['id']}: collect "
+                         f"{name} first")
+    return members, plan, records, other
+
+
+def keep_and_swap(text: str, name: str, judged_at: float, store: Path, hist: Path) -> Path:
+    """Keep `text` for good in `hist` (`<name>-<ms>.json`, never over another: a name taken gets a
+    counter), then swap it whole into `store` with a temp of its own, the swap retried while the
+    site has the file open (Windows refuses a replace under a reader: `v3_cloud._swap`); a swap
+    that still fails takes its kept copy back, so a publish run again keeps ONE copy (M10)."""
+    from tradingagents import v3_cloud as vc
+
+    hist.mkdir(parents=True, exist_ok=True)
+    stamp, k = int(judged_at * 1000), 0
+    while True:
+        kept = hist / (f"{name}-{stamp}.json" if not k else f"{name}-{stamp}-{k}.json")
+        try:
+            with open(kept, "x", encoding="utf-8") as fh:
+                fh.write(text)
+            break
+        except FileExistsError:
+            k += 1
+    store.parent.mkdir(parents=True, exist_ok=True)
+    tmp = store.with_name(f"{store.name}.{os.getpid()}.{time.time_ns()}.tmp")
+    try:
+        tmp.write_text(text, encoding="utf-8")
+        vc._swap(tmp, store)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        kept.unlink(missing_ok=True)
+        raise
+    return store
+
+
+def build(name: str, *, now: float | None = None) -> dict:
+    """The verdict store's content for the collected run `name` and every redo of
+    it (see the module doc). Refuses a redo's name, a run or redo not collected
+    yet, a plan copy that is missing or is not the plan the run was dispatched
+    with, and a folder with no record under that plan. What was not judged is
+    recomputed from the records actually landed, against the plan."""
+    from tradingagents import v3_coverage as vcv, v3_proof as vp, v3_research as vrs
+    from tradingagents.v3_measure import windows
+
+    members, plan, records, other = load_family(name)
+    names = [m for m, _st, _su in members]
+    state = members[0][1]
+    runs, risk = int(state["runs_per_combo"]), float(state["risk_usd"])
+    lines, verdicts = vrs.report(records, plan, runs, risk)
+    if len(state["board"]) >= len(plan["coins"]):
+        # a run sent every coin of its plan is not "a few coins" (RCA-2026-10-30-H)
+        lines = [ln for ln in lines if ln != vrs.FEW_COINS]
+    for v in verdicts:
+        v["levels"] = levels(records, v)
+        # COVERAGE FIRST beside every verdict (I3): the share of its entries and exits settled
+        # without their own minute's book, older and unseen days apart
+        v["costs"] = vcv.verdict_costs(records, v)
+    start, split, end = windows(plan)
+    t = time.time() if now is None else float(now)
+    measured, not_judged, accounts = unjudged(members, plan, records, other)
+    github_runs = runs_of(name, members)
     return {"version": VERSION, "name": name, "family": names, "folder": state["folder"],
             "label": state["label"], "venue": plan.get("venue") or "", "plan_id": plan["id"],
             "plan_start": start, "plan_split": split, "plan_end": end, "risk_usd": risk,
@@ -269,34 +320,9 @@ def publish(name: str, *, now: float | None = None) -> Path:
     """Write the verdict store and its kept copy (never over another: a name taken
     gets a counter); the store's path."""
     data = build(name, now=now)
-    text = json.dumps(data, default=str)
-    hist = history_dir()
-    hist.mkdir(parents=True, exist_ok=True)
-    stamp, k = int(data["judged_at"] * 1000), 0
-    while True:
-        kept = hist / (f"{name}-{stamp}.json" if not k else f"{name}-{stamp}-{k}.json")
-        try:
-            with open(kept, "x", encoding="utf-8") as fh:
-                fh.write(text)
-            break
-        except FileExistsError:
-            k += 1
-    # the store the tab reads, swapped whole with a temp of its own and the swap retried while the
-    # site has the file open (Windows refuses a replace under a reader: `v3_cloud._swap`); a swap
-    # that still fails takes its kept copy back, so a publish run again keeps ONE copy (M10)
-    from tradingagents import v3_cloud as vc
-
-    p = store_path()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_name(f"{p.name}.{os.getpid()}.{time.time_ns()}.tmp")
-    try:
-        tmp.write_text(text, encoding="utf-8")
-        vc._swap(tmp, p)
-    except OSError:
-        tmp.unlink(missing_ok=True)
-        kept.unlink(missing_ok=True)
-        raise
-    return p
+    # the store the tab reads, and its kept copy
+    return keep_and_swap(json.dumps(data, default=str), name, data["judged_at"], store_path(),
+                         history_dir())
 
 
 def main(argv=None) -> int:

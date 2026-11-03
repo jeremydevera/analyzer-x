@@ -130,18 +130,21 @@ def build(store: dict, records: list[dict]) -> str:
                          json.dumps(payload(store, records), separators=(",", ":")))
 
 
-def newest_kept(name: str) -> Path:
-    """The run `name`'s newest kept verdict copy: `<name>-<ms>.json` or `<name>-<ms>-<k>.json`
-    (two publishes in one millisecond), newest stamp then highest counter. Another run whose name
-    starts with this one's (`pilot-2` beside `pilot`) is never taken for it."""
+def newest_kept(name: str, hist: Path | None = None,
+                publish: str = "python -m tradingagents.v3_verdicts publish") -> Path:
+    """The run `name`'s newest kept verdict copy in `hist` (default the pooled store's
+    `v3_verdicts.history_dir()`; the per-coin page passes `v3_per_coin.history_dir()`):
+    `<name>-<ms>.json` or `<name>-<ms>-<k>.json` (two publishes in one millisecond), newest stamp
+    then highest counter. Another run whose name starts with this one's (`pilot-2` beside `pilot`)
+    is never taken for it."""
     from tradingagents import v3_verdicts as vv
 
+    hist = vv.history_dir() if hist is None else Path(hist)
     mine = re.compile(rf"^{re.escape(name)}-(\d+)(?:-(\d+))?$")
-    kept = [(int(m[1]), int(m[2] or 0), p) for p in vv.history_dir().glob(f"{name}-*.json")
+    kept = [(int(m[1]), int(m[2] or 0), p) for p in hist.glob(f"{name}-*.json")
             if (m := mine.match(p.stem))]
     if not kept:
-        raise ValueError(f"no verdicts kept for {name}: python -m tradingagents.v3_verdicts "
-                         f"publish {name}")
+        raise ValueError(f"no verdicts kept for {name}: {publish} {name}")
     return max(kept, key=lambda k: k[:2])[2]
 
 

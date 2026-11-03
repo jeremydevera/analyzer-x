@@ -150,3 +150,9 @@ def test_write_builds_from_the_newest_kept_copy(page, monkeypatch, tmp_path):
     out = vpp.write("pilot")
     assert out.name == "pilot-per-coin.html" and out.parent == tmp_path / "v3" / "pages"
     assert len(vpp.unpack(out.read_text(encoding="utf-8"))["R"]) == 3
+
+
+def test_the_page_says_a_row_that_could_not_choose_adds_no_luck(page):
+    store, _r, html, data, _run = page
+    assert "each chosen row's share" in html and "adds nothing" in html
+    assert "that made money there" in data["rule"] == store["rule"]

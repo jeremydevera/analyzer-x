@@ -2874,12 +2874,15 @@ trades, beside random buys on the same coin.
 * **Per-coin verdicts** (`python -m tradingagents.v3_per_coin publish <name>`
   → `stores.V3.home/verdicts-per-coin.json`, kept in `verdicts-per-coin/`):
   each coin x judged group chooses on THAT coin's older walk (best profit a
-  trade among settings with 10+ older trades, ties to the simplest; none =
-  "could not choose", with why) and is PROFITABLE when its unseen profit after
-  every fee is above 0 with 20+ trades; beside it the coin's own random runs'
-  median profit, the share that made as much (`luck_share`) and the share
-  profitable by the same rule (`luck_profitable`, added up = what luck alone
-  gives). The pooled verdict store and the tab are untouched; both stores
+  trade among settings with 10+ older trades that MADE MONEY there - older
+  profit after fees above 0, ruled Nov 03, 2026 - ties to the simplest; none =
+  "could not choose", with why: too few trades, or "no setting made money on
+  the older days (best: <setting> <$ a trade> over N trades)") and is
+  PROFITABLE when its unseen profit after every fee is above 0 with 20+
+  trades; beside it the coin's own random runs' median profit, the share that
+  made as much (`luck_share`) and the share profitable by the same rule
+  (`luck_profitable`, added up = what luck alone gives - over the SAME
+  selection: a row that could not choose adds no luck). The pooled verdict store and the tab are untouched; both stores
   share `v3_verdicts.load_family`, `unjudged` and `keep_and_swap`.
 * **The page** (`python -m tradingagents.v3_per_coin_page <name>` →
   `pages/<name>-per-coin.html`): every coin x idea row with the kit, the

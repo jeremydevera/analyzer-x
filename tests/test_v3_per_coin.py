@@ -197,3 +197,38 @@ def test_a_record_left_unjudged_is_named_in_its_bucket(run):
     vrs.save_coin(run.folder, tv._record("XPT_USDT", run.plan, [], risk=1.0))
     data = json.loads(vpc.publish("pilot").read_text(encoding="utf-8"))
     assert data["not_judged"]["other_records"] == ["XPT_USDT: risk $1.00, not $5.00"]
+
+
+# ---- ruling, Nov 03, 2026: a setting is chosen only when it made money on the older days ---------
+
+
+def test_a_best_setting_that_lost_on_the_older_days_is_not_chosen():
+    # k1.5 -0.05 a trade over 40, k2 -0.02 over 12: k2 is the best, and it lost
+    rec = _rec("AAA_USDT", tp._rows([-0.05] * 40), tp._rows([-0.02] * 12), tp._rows([0.3] * 25))
+    r = _row(rec)
+    assert r["setting"] is None and r["verdict"] == "could not choose" and not r["profitable"]
+    assert r["why"] == ("no setting made money on the older days "
+                        "(best: k2 -$0.02 a trade over 12 trades)")
+    assert r["blank"] == "could not choose: " + r["why"]
+    assert r["trades"] is None and r["luck_profitable"] is None and r["luck_share"] is None
+
+
+def test_a_setting_that_made_money_is_chosen_over_a_better_one_with_too_few_trades():
+    # k2 +1.00 a trade over 9 (too few), k1.5 +0.01 over 10: k1.5 made money, it is chosen
+    rec = _rec("AAA_USDT", tp._rows([0.01] * 10), tp._rows([1.0] * 9), [],
+               unseen15=tp._rows([0.2] * 21))
+    assert _row(rec)["setting"] == "k1.5"
+    # zero on the older days is not money made
+    rec = _rec("AAA_USDT", tp._rows([0.0] * 40), tp._rows([-0.1] * 40), [])
+    assert _row(rec)["setting"] is None
+
+
+def test_the_luck_total_counts_only_the_rows_whose_setting_was_chosen():
+    good = _row(_rec("AAA_USDT", tp._rows([0.05] * 40), tp._rows([0.10] * 40),
+                     tp._rows([0.30] * 20)))
+    # the same random runs, but the coin's settings all lost on the older days
+    bad = _row(_rec("BBB_USDT", tp._rows([-0.05] * 40), tp._rows([-0.10] * 40),
+                    tp._rows([0.30] * 20)))
+    t = vpc.totals([good, bad])
+    assert (t["rows"], t["profitable"], t["could_not_choose"]) == (2, 1, 1)
+    assert t["luck_profitable"] == pytest.approx(0.4), "BBB's runs are never luck's"

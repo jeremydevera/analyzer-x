@@ -15,8 +15,11 @@ ONE run family, under the plan it was dispatched with, as the pooled store judge
 `v3_families.judged`, 27) the coin measured (`judge`):
 
 1. CHOOSE on THAT coin's older walk: the best profit a trade after every fee among the settings
-   with at least MIN_OLDER older trades, a tie to the simplest (the family's first setting); none
-   with MIN_OLDER -> "could not choose", with why.
+   with at least MIN_OLDER older trades that MADE MONEY there (older profit after fees above 0,
+   the coordinator's ruling of Nov 03, 2026), a tie to the simplest (the family's first setting);
+   none -> "could not choose", with why (too few trades, or the best of them and what it lost).
+   A row that could not choose has no luck share: the luck total counts a random run's row only
+   where the real row was chosen.
 2. JUDGE it on that coin's unseen walk: PROFITABLE when its profit after every fee is above 0 and
    it made at least MIN_UNSEEN trades.
 3. Beside it, from the coin's own random runs of that setting (`v3_random`, `RUNS` of them, on
@@ -43,8 +46,9 @@ VERSION = 1
 MIN_OLDER = 10
 MIN_UNSEEN = 20
 RULE = (f"Each coin by itself: the setting with the best profit a trade after every fee on that "
-        f"coin's older days, among the settings with at least {MIN_OLDER} older trades (a tie goes "
-        f"to the simplest, the family's first setting; none with {MIN_OLDER} = could not choose), "
+        f"coin's older days, among the settings with at least {MIN_OLDER} older trades that made "
+        f"money there (a tie goes to the simplest, the family's first setting; none = could not "
+        f"choose, and luck counts no random run for that row), "
         f"judged on the coin's 90 unseen days, never tuned on: PROFITABLE when it made money after "
         f"every fee with at least {MIN_UNSEEN} trades. Beside it, the coin's own random runs of "
         "that setting on the same days: their median profit, the share that made at least as "
@@ -95,7 +99,14 @@ def judge(rec: dict, family: str, tf: str, filt: str) -> dict | None:
     if not any(ck[k] in combos for k in keys):
         return None
     older = {k: list(combos.get(ck[k], {}).get("older", {}).get("rows") or []) for k in keys}
-    chosen, table = vp.choose(older, keys, min_trades=MIN_OLDER)
+    _best, table = vp.choose(older, keys, min_trades=MIN_OLDER)
+    # only a setting that made money on the older days may be chosen (ruling, Nov 03, 2026)
+    chosen = None
+    for k in keys:
+        o = table[k]
+        if o["eligible"] and o["profit"] > 0 and (chosen is None
+                                                  or o["per_trade"] > table[chosen]["per_trade"]):
+            chosen = k
     win = rec.get("windows", {}).get(tf) or {}
     days = (int(win["unseen_candles"]) / vf.BARS_PER_DAY[tf]
             if win.get("unseen_candles") is not None else float(vm.UNSEEN_DAYS))
@@ -115,6 +126,10 @@ def judge(rec: dict, family: str, tf: str, filt: str) -> dict | None:
         counts = vp.tally([combos[ck[k]]["older"] for k in keys if ck[k] in combos])["counts"]
         if most is not None:
             why = f"{filt} blocked all {most:,} signals on the older days"
+        elif _best is not None:
+            o = table[_best]
+            why = (f"no setting made money on the older days (best: {_best} "
+                   f"{money(o['per_trade'])} a trade over {o['trades']:,} trades)")
         else:
             why = f"no setting had {MIN_OLDER} trades on the older days"
             refused = vp._refusal_words(counts, rec.get("risk_usd"), len(keys))
@@ -266,7 +281,7 @@ def lines_of(data: dict, top: int = 40) -> list[str]:
            f"{data['plan_coins']:,} ({data['groups']} ideas a coin, {data['tried']} combinations "
            f"each): {t['profitable']:,} profitable (made money after every fee with "
            f"{data['min_unseen']}+ trades on the unseen days); luck alone would make "
-           f"{t['luck_profitable']:,.1f} of them profitable (each row's share of its "
+           f"{t['luck_profitable']:,.1f} of them profitable (each chosen row's share of its "
            f"{data['runs']} random runs that pass the same rule, added up); "
            f"{t['could_not_choose']:,} could not choose a setting, {t['no_trade']:,} made no "
            "unseen trade.", data["rule"]]

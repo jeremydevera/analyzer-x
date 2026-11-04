@@ -55,6 +55,16 @@ from pathlib import Path
 
 DAY_S = 86_400
 DAYS_PER_PRESS = 30
+# Each account's share goes up cut into SLICES slices (operator, Nov 04, 2026: "if its done it
+# should take another job"). GitHub runs 20 jobs an account at once and queues the rest, so a
+# machine that finishes its slice starts the next one; 20 slices left 25 of 60 machines idle
+# while 35 still worked. Never more slices than coins (an empty slice is a machine for nothing).
+SLICES = 60
+
+
+def slices_for(coins: int) -> str:
+    """The `shards` input of a press of `coins` coins: SLICES, or one slice a coin below it."""
+    return str(max(1, min(SLICES, int(coins))))
 # A press (this module's or the daily costs job's) is judged IN THE AIR by its runs' own status,
 # never a pid. Past STALE_S a run whose status cannot be read no longer holds the other job, and
 # past AIR_MAX_S nothing does: GitHub cancels a job queued 24 hours and stops one that ran 6, so
@@ -807,7 +817,7 @@ def backfill(name: str | None = None, *, plan_path=None, days_per_press: int = D
         if drift:
             st["flight"]["unrun"].append(f"{slug}: {len(pile)} coins never ran ({drift})")
             continue
-        inputs = {"shards": "20", "days": ",".join(days), "coin_list": ",".join(pile),
+        inputs = {"shards": slices_for(len(pile)), "days": ",".join(days), "coin_list": ",".join(pile),
                   "label": f"v3 backfill {slug.split('/')[0]} {len(pile)} coins"}
         try:
             st["flight"]["runs"].append({"repo": slug, "coins": len(pile),

@@ -2807,8 +2807,9 @@ before the first real run).
   missing (RCA-2026-10-29-B) - and the time to fill them at the costs job's
   own measured speed, an unknown speed said as unknown. `backfill [<name> |
   --plan FILE] [--part unseen|older]` presses the existing costs.yml for the
-  coins lacking the newest missing days, dealt between every account, one
-  press at a time, never asking again for a coin-day a green press asked for
+  coins lacking the newest missing days, dealt between every account (each
+  share cut into `SLICES` = 60 slices, so a machine that finishes its slice
+  takes the next: operator, Nov 04, 2026), one press at a time, never asking again for a coin-day a green press asked for
   (Gate's archive may never complete it); `settle` ends a press and removes
   this PC's cached copy of every coin-month it pressed, since `cost_store`
   keeps a month older than 35 days for ever. The operator's order is `--part

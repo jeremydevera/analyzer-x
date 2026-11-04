@@ -871,6 +871,25 @@ def test_the_two_ranges_are_the_unseen_days_and_the_older_days_apart(world):
         vcv.missing_days(plan, [], part="newest")
 
 
+def test_a_backfill_cuts_each_share_into_more_slices_than_machines(world, monkeypatch):
+    """A machine that finishes its slice takes the next one (operator, Nov 04, 2026: "if its
+    done it should take another job"): 20 slices on 20 machines left 25 of 60 idle by 9:36am
+    while 35 still worked. GitHub runs 20 jobs an account at once and queues the rest, so a
+    share cut into SLICES slices keeps every machine busy; never more slices than coins."""
+    sent = []
+    monkeypatch.setattr(cs, "usable_fleets", lambda: (["a/x", "b/x"], []))
+    monkeypatch.setattr(cs, "sync_fleet", lambda slug: "")
+    monkeypatch.setattr(fd, "dispatch", lambda wf, inputs, slug, since=None:
+                        sent.append(dict(inputs)) or 700 + len(sent))
+    assert vcv.SLICES >= 3 * 20
+    assert vcv.slices_for(1_000) == str(vcv.SLICES)
+    assert vcv.slices_for(7) == "7" and vcv.slices_for(0) == "1"
+    vcv.backfill("pilot", days_per_press=3, now=_utc(2026, 10, 27, 12), force=True,
+                 listings=_listings(world.plan))
+    assert sent and all(i["shards"] == vcv.slices_for(len(i["coin_list"].split(",")))
+                        for i in sent)
+
+
 def test_a_backfill_names_its_range_and_stays_inside_it(world, monkeypatch):
     plan = _long_plan(world)
     sent = []

@@ -292,6 +292,17 @@ def _keep_the_row_index_current() -> None:
                         _th.Thread(target=_cd.tick, name="costs-daily", daemon=True).start()
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[costs per minute] could not start its thread: {exc!r}", flush=True)
+                # THE FORWARD-TESTED v3 STRATEGIES (operator, Nov 05, 2026:
+                # "go"): walked to now once an hour by the research's own
+                # engine, from the day they were chosen; reads only, no order.
+                # Its own thread: a pass takes ~20 minutes of candle reads
+                try:
+                    from tradingagents import v3_forward as _vfw
+
+                    if not any(t.name == "v3-forward" for t in _th.enumerate()):
+                        _th.Thread(target=_vfw.tick, name="v3-forward", daemon=True).start()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[v3 forward] could not start its thread: {exc!r}", flush=True)
                 # NO AUTOMATIC CANDLE TOP-UP. candle_autopilot.tick() ran here
                 # from 2026-09-06 to 2026-09-09 and started an UPDATE by itself
                 # whenever the store was 3h stale. The operator saw
@@ -737,6 +748,20 @@ def v3_options() -> dict:
     from tradingagents import v3_page
 
     return v3_page.options()
+
+
+@app.get("/api/v3/forward")
+def v3_forward_state() -> dict:
+    """The forward-tested v3 strategies followed since the day they were
+    chosen (operator, Nov 05, 2026: "go"): every trade they opened after it,
+    walked each hour by the research's own engine (tradingagents/v3_forward.py).
+    Reads only — it places no order."""
+    from tradingagents import v3_forward
+
+    st = v3_forward.read_state()
+    if st is None:
+        return {"ready": False, "why": "the first pass has not finished yet"}
+    return {"ready": True, **st}
 
 
 @app.post("/api/v3/run")

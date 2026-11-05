@@ -1,0 +1,1192 @@
+{
+ "made_s": 1793894829,
+ "since_ms": 1793894829000,
+ "risk_usd": 5.0,
+ "rule": "profitable on 2025's unseen days AND the same setting chosen again by 2026's older days (Backtest v3, per coin)",
+ "strategies": [
+  {
+   "id": "C7C7M3BA",
+   "coin": "ACT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n50"
+  },
+  {
+   "id": "UX2839ZU",
+   "coin": "ACT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n50"
+  },
+  {
+   "id": "GTP4G5WT",
+   "coin": "ACT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n50"
+  },
+  {
+   "id": "8JEZRN2G",
+   "coin": "ACT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n50"
+  },
+  {
+   "id": "RFSD6S9T",
+   "coin": "AERO_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "JWAPJU4R",
+   "coin": "AGLD_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "k2"
+  },
+  {
+   "id": "J9EYBXT5",
+   "coin": "AGT_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "k2"
+  },
+  {
+   "id": "G538FDCJ",
+   "coin": "AGT_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "k2"
+  },
+  {
+   "id": "AVDQ92TT",
+   "coin": "AIOT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "NEJWU32R",
+   "coin": "AIOT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "FKEZ86ZM",
+   "coin": "AKT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "A4FP9KUC",
+   "coin": "AKT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "V52KT4AH",
+   "coin": "AKT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "GKHYXTMC",
+   "coin": "AKT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "P8U4W56N",
+   "coin": "API3_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n50"
+  },
+  {
+   "id": "LWHDL3YY",
+   "coin": "ARC_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "k2"
+  },
+  {
+   "id": "2RAT7U3L",
+   "coin": "ARC_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "k2"
+  },
+  {
+   "id": "466HYRGB",
+   "coin": "ARC_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "k2"
+  },
+  {
+   "id": "8T2UVEJF",
+   "coin": "ARK_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "k1.5"
+  },
+  {
+   "id": "HGPRCKN2",
+   "coin": "ATH_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "7ABR5UUV",
+   "coin": "ATOM_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "BGWFS8SM",
+   "coin": "ATOM_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "WRFKUY39",
+   "coin": "ATOM_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "WPY855CH",
+   "coin": "ATOM_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "K4FGHPRV",
+   "coin": "ATOM_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_minutes",
+   "setting": "n20"
+  },
+  {
+   "id": "T297E6MH",
+   "coin": "A_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "k2"
+  },
+  {
+   "id": "3THGQ62W",
+   "coin": "BIGTIME_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "VP6X7TUW",
+   "coin": "BIGTIME_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "6LRFXKR2",
+   "coin": "BIGTIME_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "UV7S3AVM",
+   "coin": "BIGTIME_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "EHHU27J8",
+   "coin": "BIO_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "46BKVW3U",
+   "coin": "BLUR_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "NXD7S2E5",
+   "coin": "BLUR_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "778Z2AM3",
+   "coin": "BLUR_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "SYVEYTCH",
+   "coin": "BLUR_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "B83RVGKB",
+   "coin": "BNT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_minutes",
+   "setting": "n50"
+  },
+  {
+   "id": "X288NRCF",
+   "coin": "BOME_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "4FEYUUA8",
+   "coin": "BSV_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n50"
+  },
+  {
+   "id": "F7BPRGL3",
+   "coin": "CGPT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "4KE8FK66",
+   "coin": "CGPT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "7X6D4H7X",
+   "coin": "CGPT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "PAYWF6UQ",
+   "coin": "CGPT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "H7XSVKCR",
+   "coin": "DOGS_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "USVLQR3D",
+   "coin": "DOGS_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "9VALKU73",
+   "coin": "DOGS_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "Y8FVWP69",
+   "coin": "DOOD_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "UGM539RB",
+   "coin": "ENJ_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "B7BU5K8R",
+   "coin": "ENJ_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "AU4G5ARD",
+   "coin": "ENJ_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "A3XM39LD",
+   "coin": "EPIC_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "KZAG99G4",
+   "coin": "ETH_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "G722WD7R",
+   "coin": "ETH_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_minutes",
+   "setting": "n20"
+  },
+  {
+   "id": "MVSM42MV",
+   "coin": "FARTCOIN_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "VHY6PRXS",
+   "coin": "FARTCOIN_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "FUZ9J4B4",
+   "coin": "FARTCOIN_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "2MU7LLY3",
+   "coin": "FLOKI_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n50"
+  },
+  {
+   "id": "V2EXHR9E",
+   "coin": "FLOKI_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n50"
+  },
+  {
+   "id": "4A9WPNER",
+   "coin": "FLOKI_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_minutes",
+   "setting": "n50"
+  },
+  {
+   "id": "FCEWDSK6",
+   "coin": "FLOW_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "CTBX6ZFD",
+   "coin": "GMT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n50"
+  },
+  {
+   "id": "JZJF8STJ",
+   "coin": "GMT_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "k2"
+  },
+  {
+   "id": "KMQUE5UR",
+   "coin": "GMX_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "k2"
+  },
+  {
+   "id": "QFTZZMRG",
+   "coin": "GMX_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "k2"
+  },
+  {
+   "id": "PJBT4KYP",
+   "coin": "GMX_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "funding_minutes",
+   "setting": "k2"
+  },
+  {
+   "id": "75C4HKBQ",
+   "coin": "IMX_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "CQ3UJJST",
+   "coin": "IMX_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "FBXU7P9C",
+   "coin": "IMX_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "9VTZJUR8",
+   "coin": "IMX_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "9MGSE93H",
+   "coin": "IOTX_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "k2"
+  },
+  {
+   "id": "T4K4SZCA",
+   "coin": "JUP_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "E5EWP5V4",
+   "coin": "JUP_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "k2"
+  },
+  {
+   "id": "SXW2Y23M",
+   "coin": "KAS_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "BZHSMATV",
+   "coin": "KAS_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "796RKDYQ",
+   "coin": "LINK_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "J7M52UJN",
+   "coin": "LINK_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_minutes",
+   "setting": "n20"
+  },
+  {
+   "id": "3D4JMWJK",
+   "coin": "LISTA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n100"
+  },
+  {
+   "id": "NMQR2RZX",
+   "coin": "LISTA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n100"
+  },
+  {
+   "id": "UQYLQNGZ",
+   "coin": "LUMIA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "ZBV46JK6",
+   "coin": "LUMIA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "YGSH9XFS",
+   "coin": "LUNA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "2VA438R9",
+   "coin": "LUNA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "MD2N54V7",
+   "coin": "LUNA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "PV2VDXPJ",
+   "coin": "MAGIC_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n50"
+  },
+  {
+   "id": "L3UDGKYW",
+   "coin": "METIS_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "SDXDBV9P",
+   "coin": "METIS_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "LZWE4M9Q",
+   "coin": "METIS_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "9ACG6Z78",
+   "coin": "ME_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "XUFLR8C4",
+   "coin": "ME_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "LFPPNF26",
+   "coin": "ME_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "QS3JK4XD",
+   "coin": "ME_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "RDSKABLP",
+   "coin": "MOVR_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "EX638T4K",
+   "coin": "MOVR_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "WB66BBWG",
+   "coin": "MOVR_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "DMZFGJMC",
+   "coin": "NMR_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "k1.5"
+  },
+  {
+   "id": "UZT6T9QE",
+   "coin": "NMR_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "k1.5"
+  },
+  {
+   "id": "9P3VXU57",
+   "coin": "OGN_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "k2"
+  },
+  {
+   "id": "RT66VKU5",
+   "coin": "ONT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "WB4YMVSN",
+   "coin": "ORCA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "HH4NTBC9",
+   "coin": "ORDI_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "9Z7LWMUU",
+   "coin": "ORDI_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "FGTX2QR8",
+   "coin": "ORDI_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "XZZLT5YK",
+   "coin": "PARTI_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "k2"
+  },
+  {
+   "id": "JQYY8YT3",
+   "coin": "PENDLE_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "k1.5"
+  },
+  {
+   "id": "N2REQDAV",
+   "coin": "PENDLE_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "k1.5"
+  },
+  {
+   "id": "RX8GU8LJ",
+   "coin": "POPCAT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n50"
+  },
+  {
+   "id": "J546C8PZ",
+   "coin": "POPCAT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n50"
+  },
+  {
+   "id": "8UUAQCU5",
+   "coin": "POPCAT_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n50"
+  },
+  {
+   "id": "8UZW4855",
+   "coin": "PYTH_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "49ZUTEW4",
+   "coin": "RATS_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "k1.5"
+  },
+  {
+   "id": "PG7YYVQJ",
+   "coin": "RATS_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "k1.5"
+  },
+  {
+   "id": "UGGKMK7Q",
+   "coin": "RENDER_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "NK345BKD",
+   "coin": "RENDER_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "4F2KPH8M",
+   "coin": "RESOLV_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "k2"
+  },
+  {
+   "id": "HNE6M7S2",
+   "coin": "RESOLV_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "k2"
+  },
+  {
+   "id": "VCU4CTV5",
+   "coin": "RPL_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "R5B8QVYC",
+   "coin": "RPL_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "6XDSMMNR",
+   "coin": "RPL_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "Q7K2ZGXR",
+   "coin": "RUNE_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "NV79A9PY",
+   "coin": "RUNE_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "HCVZ8CWD",
+   "coin": "RUNE_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "EUS48R5T",
+   "coin": "RUNE_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_minutes",
+   "setting": "n20"
+  },
+  {
+   "id": "ZEGP6YVK",
+   "coin": "SAGA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n100"
+  },
+  {
+   "id": "5635N59Y",
+   "coin": "SAGA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n100"
+  },
+  {
+   "id": "4EALQXK4",
+   "coin": "SHIB_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_minutes",
+   "setting": "n50"
+  },
+  {
+   "id": "X7LKQLW5",
+   "coin": "SIGN_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "k1.5"
+  },
+  {
+   "id": "6F4E4TT2",
+   "coin": "SIREN_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "4X7F3LGU",
+   "coin": "SIREN_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "Y5VWTDQG",
+   "coin": "SIREN_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "2F4FNBFY",
+   "coin": "SLP_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "LMFDVRQJ",
+   "coin": "SLP_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "65BNEDFG",
+   "coin": "SLP_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "QG2UMS9Z",
+   "coin": "SUI_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_minutes",
+   "setting": "n50"
+  },
+  {
+   "id": "52SVYB5K",
+   "coin": "SYRUP_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "k2"
+  },
+  {
+   "id": "CW28QHK4",
+   "coin": "THETA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "T52V9KUB",
+   "coin": "THETA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "HRLDPE5X",
+   "coin": "THETA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n20"
+  },
+  {
+   "id": "E5V79CJG",
+   "coin": "THETA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "SCSK2HL6",
+   "coin": "THETA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_minutes",
+   "setting": "n20"
+  },
+  {
+   "id": "ZRXZCSQ9",
+   "coin": "TIA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "n20"
+  },
+  {
+   "id": "U94J66R6",
+   "coin": "TIA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "n20"
+  },
+  {
+   "id": "TT5VMM2F",
+   "coin": "TIA_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "n20"
+  },
+  {
+   "id": "K6U8YSJV",
+   "coin": "TRB_USDT",
+   "family": "v3_trend",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "n50"
+  },
+  {
+   "id": "WNVZ6BEP",
+   "coin": "TURBO_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "k2"
+  },
+  {
+   "id": "DLP9T9HA",
+   "coin": "TURBO_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "busy_hours",
+   "setting": "k2"
+  },
+  {
+   "id": "RRJAMJVK",
+   "coin": "TURBO_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "k2"
+  },
+  {
+   "id": "FAXAPURQ",
+   "coin": "TUT_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "none",
+   "setting": "k2"
+  },
+  {
+   "id": "GNRVY89M",
+   "coin": "TUT_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "btc_mood",
+   "setting": "k2"
+  },
+  {
+   "id": "JC48K3AY",
+   "coin": "TUT_USDT",
+   "family": "v3_snap",
+   "tf": "4h",
+   "filter": "funding_side",
+   "setting": "k2"
+  }
+ ]
+}

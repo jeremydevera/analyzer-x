@@ -3102,3 +3102,17 @@ coin, never one timeframe, never one winner, unless they name one.
   KAS, ORCA). Four variants were tried before it (picked in 2025 alone:
   −$0.165 a trade, ≈ random), so it is one year's forward evidence, not proof:
   practice before real money. The page's "FORWARD-TESTED" filter shows them.
+* **AND THEY ARE FOLLOWED FROM TODAY (operator, Nov 05, 2026: *"go"*).** The
+  practice runner trades v2 rows only (no v3 waiting order, trailing stop or
+  forced exit), so `tradingagents/v3_forward.py` follows them with no second
+  set of rules: once an hour, 10 minutes past (the API supervisor's
+  `v3-forward` thread, under `forward.lock`), every strategy on
+  `research/v3/forward.json` (148 rows = 119 trade lists, 67 coins, all 4h,
+  made Nov 05, 2026) is walked to NOW by `v3_page.run_family` - the
+  research's own engine, $5 risk, every cost, `plan-all.json` with BTC's mood
+  worked out again from today's daily candles - and only trades OPENED after
+  the list was made count; one still open is shown open, a coin that fails is
+  retried alone and named, keeping the last pass's trades marked stale. It
+  places no order. Backtest v3 tab → "Forward test" (`/api/v3/forward`,
+  `V3Forward.tsx`); `python -m tradingagents.v3_forward pass|status`. Guard:
+  `tests/test_v3_forward.py`.

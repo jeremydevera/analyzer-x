@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import V3Runner from "@/components/backtest-v3/V3Runner";
+import V3Forward from "@/components/backtest-v3/V3Forward";
 
 export const metadata: Metadata = {
   title: "Backtest v3 | TradingAgents",
@@ -14,6 +15,8 @@ export default function BacktestV3Page() {
   return (
     <div className="flex flex-col gap-5">
       <V3Runner />
+      {/* the forward test (operator, Nov 05, 2026: "go") - tradingagents/v3_forward.py */}
+      <V3Forward />
     </div>
   );
 }

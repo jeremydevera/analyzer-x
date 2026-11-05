@@ -246,8 +246,9 @@ function wire(){
  const notes=[];
  if(D.missing.length)notes.push(`<details><summary>v2 picks with no trade list (left out, named): ${D.missing.length}</summary><ul>${D.missing.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
  if(D.failed.length)notes.push(`<details><summary>Coin-timeframes that failed on GitHub: ${D.failed.length}</summary><ul>${D.failed.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
- if(D.skill&&D.skill.failed.length)notes.push(`<details><summary>Skill run: coin-timeframes that failed: ${D.skill.failed.length}</summary><ul>${D.skill.failed.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
+ if(D.skill&&D.skill.failed.length)notes.push(`<details><summary>Skill run: coin-timeframes the exchange has no candles for: ${D.skill.failed.length}</summary><ul>${D.skill.failed.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
  if(D.skill&&D.skill.skipped.length)notes.push(`<details><summary>Skill run: too few candles (under 60): ${D.skill.skipped.length}</summary><ul>${D.skill.skipped.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
+ if(D.skill&&D.skill.no_trade&&D.skill.no_trade.length)notes.push(`<details><summary>Skill run: coin-timeframes where no strategy could trade: ${D.skill.no_trade.length}</summary><ul>${D.skill.no_trade.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
  if(D.skill&&D.skill.not_reached.length)notes.push(`<details><summary>Skill run: coins no machine reached: ${D.skill.not_reached.length}</summary><ul>${D.skill.not_reached.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
  if(D.not_reached.length)notes.push(`<details><summary>Coins no machine reached: ${D.not_reached.length}</summary><ul>${D.not_reached.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
  $("notes").innerHTML=notes.length?notes.join(""):"Every pick came back with its trades.";

@@ -217,6 +217,9 @@ def payload(picks: dict, trades: dict, v3_names=("all-coins", "all-2025"), skill
             "v3_names": list(v3_names),
             "skill": ({"pairs": len(skill["lines"]), "failed": skill.get("failed") or [],
                        "skipped": skill.get("skipped") or [], "not_reached": skill.get("not_reached") or [],
+                       "no_trade": sorted(f"{x['coin']} {x['tf']}: {x['bars']} candles, fewer than any "
+                                          "of the skill's strategies needs to make a trade"
+                                          for x in skill["lines"].values() if not x["picks"]),
                        "collected_s": skill.get("collected_s"),
                        "combos": next(iter(skill["lines"].values()))["combos"] if skill["lines"] else 0}
                       if skill else None)}

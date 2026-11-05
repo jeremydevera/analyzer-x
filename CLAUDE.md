@@ -3075,11 +3075,12 @@ coin, never one timeframe, never one winner, unless they name one.
   A-H, every row opening its trades). Guard: `tests/test_acs.py`,
   `tests/test_acs_page.py`.
 * **First run (Nov 05, 2026):** https://claude.ai/artifact/1CkQKpamRnvEqXQqp3vn4c
-  (version 3) — 36,705 strategies on 1,070 coins and 5,243 coin-timeframes
-  (5,233 with 3 or more): 12,985 v2 strategies with GitHub's re-measured
-  trades, 15,675 from the skill run (5,227 coin-timeframes; 158 with under 60
-  candles and 10 that failed, all named), 5,556 v3 2026 and 2,489 v3 2025. 546
-  pass all 7 checks. On the days they were not chosen on the v2 strategies
-  made −$0.36 a trade (an average row −$0.43) and the skill's −$0.89 (an
-  average setting −$1.30): choosing beats the average setting, and still
-  loses after fees.
+  (version 4) — 36,963 strategies on 1,078 coins and 5,318 coin-timeframes
+  (5,302 with 3 or more): 12,985 v2 strategies with GitHub's re-measured
+  trades, 15,933 from the skill run (5,385 of 5,395 coin-timeframes measured;
+  the 10 left have no daily candle on the exchange, and 69 have fewer candles
+  than any of the skill's strategies needs — all named), 5,556 v3 2026 and
+  2,489 v3 2025. 548 pass all 7 checks. On the days they were not chosen on
+  the v2 strategies made −$0.36 a trade (an average row −$0.43) and the
+  skill's −$0.89 (an average setting −$1.37): choosing beats the average
+  setting, and still loses after fees.

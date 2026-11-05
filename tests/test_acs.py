@@ -115,3 +115,22 @@ def test_a_skill_redo_replaces_its_lines_and_clears_their_reasons(tmp_path, monk
     assert set(saved["lines"]) == {"BTC|1h", "NEW|4h"}
     assert saved["skipped"] == [] and saved["failed"] == ["NEW 1d: no Day1 candles"]
     assert got == {"redone": 1, "failed": 1, "skipped": 0}
+
+
+def test_a_whole_market_skill_run_keeps_its_own_state_apart_from_a_redo():
+    # the dealt coin list replaced the "named coins" argument, so every skill dispatch looked like a
+    # redo and a whole-market run would have written skill-redo-state.json (found Nov 05, 2026)
+    assert acs._state_name(True, False) == "skill-state.json"
+    assert acs._state_name(True, True) == "skill-redo-state.json"
+    assert acs._state_name(True, False, "ta") == "skillta-state.json"
+    assert acs._state_name(False, False) == "state.json"
+
+
+def test_a_redo_of_the_ta_set_is_refused_before_anything_is_sent(monkeypatch):
+    import pytest
+
+    from tradingagents import cq_search
+
+    monkeypatch.setattr(cq_search, "quiet_hours", lambda: False)
+    with pytest.raises(ValueError, match="bt set only"):
+        acs.dispatch(skill=True, coins=["BTC"], skill_set="ta")

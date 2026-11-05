@@ -102,7 +102,10 @@ def v2_rows(picks: dict, trades: dict, per_pair: int = 3) -> tuple[list, list, l
 
 def skill_rows(skill: dict) -> tuple[list, list]:
     """The backtesting-trading-strategies skill's picks of every coin-timeframe (skill_bt.py), each
-    with every trade, chosen on the older 70% of the candles and judged on the newest 30%."""
+    with every trade, chosen on the older 70% of the candles and judged on the newest 30%; the
+    technical-analysis and backtesting-frameworks run (skill_ta.py) the same way, each strategy's
+    label naming its skill and a pattern's target (2x its stop) riding on every trade."""
+    from tradingagents import skill_ta
     from tradingagents import backtest_report as br
     from tradingagents.positions_view import fmt_when
 
@@ -111,14 +114,20 @@ def skill_rows(skill: dict) -> tuple[list, list]:
         x = skill["lines"][key]
         for c in x["picks"]:
             o, n = c["older"], c["newer"]
-            rid = br.row_code(x["coin"], x["tf"], c["strategy"], 0, c["stop"] * 100, 0, "flat",
+            tg = c.get("target")
+            who = skill_ta.SKILL_OF.get(c["strategy"], "backtesting-trading-strategies")
+            name = c["label"] if who == "backtesting-trading-strategies" else f"{who}: {c['label']}"
+            rid = br.row_code(x["coin"], x["tf"], c["strategy"], 0, c["stop"] * 100, (tg or 0) * 100, "flat",
                               plan=c["label"], res="skill")
             ts = [[int(t[0]) // 1000, int(t[1]) // 1000, int(t[2]), _why(t[3]),
-                   int(round(float(t[4]) * 10_000)), int(round(c["stop"] * 100 * 1000)), -1]
+                   int(round(float(t[4]) * 10_000)), int(round(c["stop"] * 100 * 1000)),
+                   int(round(tg * 100 * 1000)) if tg else -1]
                   for t in c["trades"]]
             ts.sort(key=lambda t: (t[1], t[0]))
-            rows.append({"id": rid, "src": "skill", "coin": x["coin"], "tf": x["tf"], "strategy": c["label"],
-                         "tp_rule": "none: out on the strategy's own exit signal",
+            rows.append({"id": rid, "src": "skill", "coin": x["coin"], "tf": x["tf"], "strategy": name,
+                         "tp_rule": (f"{tg * 100:g}% (2x the stop, the technical-analysis skill's 2:1), "
+                                     "checked on the close; or the strategy's own exit signal" if tg else
+                                     "none: out on the strategy's own exit signal"),
                          "sl_rule": f"{c['stop'] * 100:g}% fixed, checked on the close", "lev": "20x",
                          "chosen_on": (("LOST on " if c["older_lost"] else "made money on ")
                                        + f"the older 70% ({fmt_when(x['start_ms'] / 1000)} to "
@@ -187,12 +196,26 @@ def _v3_inputs(name: str):
     return store, records
 
 
-def payload(picks: dict, trades: dict, v3_names=("all-coins", "all-2025"), skill: dict | None = None) -> dict:
+def _skill_meta(skill: dict | None) -> dict | None:
+    if not skill:
+        return None
+    return {"pairs": len(skill["lines"]), "failed": skill.get("failed") or [],
+            "skipped": skill.get("skipped") or [], "not_reached": skill.get("not_reached") or [],
+            "no_trade": sorted(f"{x['coin']} {x['tf']}: {x['bars']} candles, fewer than any "
+                               "of the skill's strategies needs to make a trade"
+                               for x in skill["lines"].values() if not x["picks"]),
+            "collected_s": skill.get("collected_s"),
+            "combos": next(iter(skill["lines"].values()))["combos"] if skill["lines"] else 0}
+
+
+def payload(picks: dict, trades: dict, v3_names=("all-coins", "all-2025"), skill: dict | None = None,
+            skill_ta: dict | None = None) -> dict:
     rows, tl, missing = v2_rows(picks, trades)
-    if skill:
-        rs, ts = skill_rows(skill)
-        rows += rs
-        tl += ts
+    for sk in (skill, skill_ta):
+        if sk:
+            rs, ts = skill_rows(sk)
+            rows += rs
+            tl += ts
     v3 = {}
     for name in v3_names:
         r3, t3 = v3_rows(name)
@@ -223,14 +246,7 @@ def payload(picks: dict, trades: dict, v3_names=("all-coins", "all-2025"), skill
             "v2_empty": sum(1 for p in picks["pairs"].values() if not p["picks"]),
             "rule": picks["rule"], "made_s": picks["made_s"], "collected_s": trades.get("collected_s"),
             "v3_names": list(v3_names),
-            "skill": ({"pairs": len(skill["lines"]), "failed": skill.get("failed") or [],
-                       "skipped": skill.get("skipped") or [], "not_reached": skill.get("not_reached") or [],
-                       "no_trade": sorted(f"{x['coin']} {x['tf']}: {x['bars']} candles, fewer than any "
-                                          "of the skill's strategies needs to make a trade"
-                                          for x in skill["lines"].values() if not x["picks"]),
-                       "collected_s": skill.get("collected_s"),
-                       "combos": next(iter(skill["lines"].values()))["combos"] if skill["lines"] else 0}
-                      if skill else None)}
+            "skill": _skill_meta(skill), "skill_ta": _skill_meta(skill_ta)}
 
 
 def merged(root: Path) -> dict:
@@ -262,9 +278,12 @@ def write() -> Path:
 
     picks = json.loads((acs.home() / "picks.json").read_text(encoding="utf-8"))
     trades = merged(acs.home())
-    sk = acs.home() / "skill.json"
-    skill = json.loads(sk.read_text(encoding="utf-8")) if sk.exists() else None
-    html = _HTML.read_text(encoding="utf-8").replace('const Z="";', f'const Z="{pack(payload(picks, trades, skill=skill))}";', 1)
+    def _load(name):
+        f = acs.home() / name
+        return json.loads(f.read_text(encoding="utf-8")) if f.exists() else None
+
+    data = payload(picks, trades, skill=_load("skill.json"), skill_ta=_load("skillta.json"))
+    html = _HTML.read_text(encoding="utf-8").replace('const Z="";', f'const Z="{pack(data)}";', 1)
     out = acs.home() / "all-coins-strategies.html"
     out.write_text(html, encoding="utf-8")
     return out

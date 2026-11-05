@@ -71,9 +71,19 @@ def window(params: dict) -> int:
     return max(300, 3 * longest + 5)
 
 
+def _strategy(name: str):
+    """The backtesting-trading-strategies skill's eight, or the other two skills' (skill_ta.py)."""
+    from tradingagents import skill_ta
+
+    return skill_ta.STRATEGIES.get(name) or ss.get_strategy(name)
+
+
 def signals(df, name: str, params: dict) -> list:
-    """The skill's signal at every candle, from the trailing `window(params)` candles."""
-    st = ss.get_strategy(name)
+    """The skill's signal at every candle, from the trailing `window(params)` candles; a strategy
+    that works out every candle at once (`signals_all`, skill_ta.py) is asked for them in one go."""
+    st = _strategy(name)
+    if hasattr(st, "signals_all"):
+        return st.signals_all(df, params)
     w = window(params)
     out = []
     for i in range(len(df)):
@@ -84,9 +94,11 @@ def signals(df, name: str, params: dict) -> list:
     return out
 
 
-def walk(df, sigs: list, *, stop: float, fee: float, slip: float) -> list[dict]:
+def walk(df, sigs: list, *, stop: float, fee: float, slip: float, target: float | None = None) -> list[dict]:
     """The skill's bar loop over precomputed signals: stop on the close, exit before entry, an open
-    trade closed at the last candle. Each trade: entry/exit ms, side, net dollars on $100, its stop."""
+    trade closed at the last candle. Each trade: entry/exit ms, side, net dollars on $100, its stop.
+    `target` (skill_ta.py's 2x the stop) closes a trade whose close reached it, checked like the stop;
+    a signal's `exit_dir` limits its exit to that side. Neither given = the skill's loop as before."""
     close = df["close"].to_numpy()
     when = _ms(df.index).tolist()
     trades, pos = [], None
@@ -97,19 +109,21 @@ def walk(df, sigs: list, *, stop: float, fee: float, slip: float) -> list[dict]:
         pnl = NOTIONAL * move - NOTIONAL * fee - NOTIONAL * (px / pos["px"]) * fee
         trades.append({"entry_ms": pos["t"], "exit_ms": when[i], "side": side,
                        "entry_px": pos["px"], "exit_px": px, "pnl": round(pnl, 4),
-                       "why": pos.get("why_out", "SIGNAL"), "stop": stop})
+                       "why": pos.get("why_out", "SIGNAL"), "stop": stop, "target": target})
 
     for i, sig in enumerate(sigs):
         if sig is None:
             continue
         c = close[i]
         buy, sell = c * (1 + slip), c * (1 - slip)
-        force = False
+        force = won = False
         if pos is not None:
             ret = (c - pos["px"]) / pos["px"] * (1 if pos["dir"] == "long" else -1)
             force = ret <= -stop
-        if pos is not None and (sig.exit or force):
-            pos["why_out"] = "SL" if force else "SIGNAL"
+            won = target is not None and ret >= target
+        mine = sig.exit and getattr(sig, "exit_dir", None) in (None, pos and pos["dir"])
+        if pos is not None and (mine or force or won):
+            pos["why_out"] = "SL" if force else "TP" if won else "SIGNAL"
             close_out(i, sell if pos["dir"] == "long" else buy)
             pos = None
         if sig.entry and pos is None:
@@ -138,21 +152,26 @@ def stats(trades: list[dict]) -> dict:
             "expectancy": s["expectancy"], "profit": round(sum(t["pnl"] for t in trades), 4)}
 
 
-def pair(df, *, fee: float, slip: float, k: int = PER_PAIR) -> dict:
+def pair(df, *, fee: float, slip: float, k: int = PER_PAIR, grid: dict | None = None,
+         targets: dict | None = None) -> dict:
     """Every setting x stop of the skill on one coin-timeframe, chosen on the older SPLIT of the
     candles (by its expectancy there, MIN_OLDER+ trades, made money there) and judged on the rest;
-    fewer than `k` that qualify are filled by the next best older expectancy, flagged `older_lost`."""
+    fewer than `k` that qualify are filled by the next best older expectancy, flagged `older_lost`.
+    `grid`/`targets` run another skill's strategies (skill_ta.GRID, skill_ta.TARGETS: a target as a
+    multiple of the stop, None = none); left out, the backtesting-trading-strategies skill's own."""
     ms = _ms(df.index)
     split_ms = int(ms[int(len(df) * SPLIT)])
     combos = []
-    for name, settings in GRID.items():
+    for name, settings in (grid or GRID).items():
+        r = (targets or {}).get(name)
         for params in settings:
             sigs = signals(df, name, params)
             for stop in STOPS:
-                tr = walk(df, sigs, stop=stop, fee=fee, slip=slip)
+                tg = round(stop * r, 6) if r else None
+                tr = walk(df, sigs, stop=stop, fee=fee, slip=slip, target=tg)
                 old = [t for t in tr if t["entry_ms"] < split_ms]
                 new = [t for t in tr if t["entry_ms"] >= split_ms]
-                combos.append({"strategy": name, "params": params, "stop": stop, "trades": tr,
+                combos.append({"strategy": name, "params": params, "stop": stop, "target": tg, "trades": tr,
                                "older": stats(old), "newer": stats(new)})
     newer = [c["newer"] for c in combos if c["newer"]["trades"]]
     n_tr = sum(s["trades"] for s in newer)
@@ -171,7 +190,8 @@ def pair(df, *, fee: float, slip: float, k: int = PER_PAIR) -> dict:
 def label(c: dict) -> str:
     p = ",".join(f"{k}={v:g}" if isinstance(v, (int, float)) and not isinstance(v, bool) else f"{k}={v}"
                  for k, v in c["params"].items())
-    return f"{c['strategy']}({p}) stop {c['stop'] * 100:g}%"
+    tg = c.get("target")
+    return f"{c['strategy']}({p}) stop {c['stop'] * 100:g}%" + (f" target {tg * 100:g}%" if tg else "")
 
 
 def finite(x):

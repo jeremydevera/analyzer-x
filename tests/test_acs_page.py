@@ -47,3 +47,32 @@ def test_the_page_script_parses():
             "new Function(s.split('<script>')[1].split('</script>')[0]);")
     r = subprocess.run([node, "-e", code, str(ap._HTML)], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
+
+
+def _skill_line(strategy, target):
+    tr = [[1_000_000, 2_000_000, 1, "TP" if target else "SIGNAL", 2.9]]
+    c = {"label": f"{strategy}(lookback=50) stop 1.5%" + (" target 3%" if target else ""),
+         "strategy": strategy, "params": {"lookback": 50}, "stop": 0.015, "target": target,
+         "older": {"trades": 12, "win_rate": 60.0, "profit": 4.0, "expectancy": 0.33},
+         "newer": {"trades": 1, "profit": 2.9}, "older_lost": False, "trades": tr}
+    return {"lines": {"BTC|1h": {"coin": "BTC", "tf": "1h", "bars": 2160, "combos": 42, "split_ms": 1_500_000,
+                                 "start_ms": 0, "end_ms": 3_000_000, "bar": -0.1, "picks": [c]}}}
+
+
+def test_a_technical_analysis_row_names_its_skill_and_carries_its_target():
+    rows, tl = ap.skill_rows(_skill_line("ta_wyckoff_spring", 0.03))
+    assert rows[0]["strategy"].startswith("technical-analysis: ta_wyckoff_spring")
+    assert rows[0]["tp_rule"].startswith("3% (2x the stop")
+    assert tl[0][0][5:] == [1500, 3000]
+    rows, tl = ap.skill_rows(_skill_line("bf_momentum", None))
+    assert rows[0]["strategy"].startswith("backtesting-frameworks: bf_momentum")
+    assert tl[0][0][6] == -1 and rows[0]["tp_rule"].startswith("none")
+
+
+def test_the_backtesting_skills_rows_keep_their_old_label_and_id():
+    rows, tl = ap.skill_rows(_skill_line("sma_crossover", None))
+    from tradingagents import backtest_report as br
+
+    assert rows[0]["strategy"] == "sma_crossover(lookback=50) stop 1.5%"
+    assert rows[0]["id"] == br.row_code("BTC", "1h", "sma_crossover", 0, 1.5, 0, "flat",
+                                        plan="sma_crossover(lookback=50) stop 1.5%", res="skill")

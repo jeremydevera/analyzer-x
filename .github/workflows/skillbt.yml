@@ -21,6 +21,9 @@ on:
       label:
         description: "A name for this run (its title)"
         default: "manual"
+      set:
+        description: "bt = the backtesting skill's 8 strategies; ta = the technical-analysis and backtesting-frameworks skills' own (skill_ta.py)"
+        default: "bt"
 
 permissions:
   contents: write        # claims and progress on the sweep-progress branch
@@ -72,6 +75,7 @@ jobs:
           SHARD: ${{ matrix.shard }}
           SHARDS: ${{ github.event.inputs.shards }}
           COIN_LIST: ${{ github.event.inputs.coin_list }}
+          SKILL_SET: ${{ github.event.inputs.set }}
           DAYS: "30"
           BASE_MARGIN: "5"
         run: python .github/scripts/skill_shard.py
@@ -84,5 +88,7 @@ jobs:
           path: |
             out/skill-*.jsonl
             out/skill-report-*.json
+            out/skillta-*.jsonl
+            out/skillta-report-*.json
           if-no-files-found: warn
           retention-days: 30

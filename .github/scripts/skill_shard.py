@@ -2,6 +2,9 @@
 tradingagents/skill_bt.py). Each claimed coin's 15m, 30m, 1h, 4h and 1d candles from the exchange,
 the skill's eight strategies x three settings x two stops chosen on the older 70% and judged on the
 newest 30%, every trade paying the coin's fee both ways and its usual gap. One line per coin-timeframe.
+
+SKILL_SET=ta runs the technical-analysis and backtesting-frameworks skills' own strategies instead
+(tradingagents/skill_ta.py), the same way, into skillta-*.jsonl.
 """
 # ruff: noqa: E402
 from __future__ import annotations
@@ -20,13 +23,18 @@ os.environ.setdefault("MODE", "full")
 import sweep_shard as ss  # noqa: E402
 
 import tradingagents.auto_trader as at  # noqa: E402
-from tradingagents import backtest_report as br, skill_bt as sb  # noqa: E402
+from tradingagents import backtest_report as br, skill_bt as sb, skill_ta as sta  # noqa: E402
 from tradingagents.dataflows import exchange as fx  # noqa: E402
 
 # candles a timeframe is walked over: 30 days of 15m, 60 of 30m, 90 of 1h, 180 of 4h, two years of 1d
 BARS = {"15m": 2880, "30m": 2880, "1h": 2160, "4h": 1080, "1d": 730}
-OUT = os.path.join("out", f"skill-{ss.SHARD}.jsonl")
-REPORT_OUT = os.path.join("out", f"skill-report-{ss.SHARD}.json")
+SET = os.environ.get("SKILL_SET", "bt") or "bt"
+if SET not in ("bt", "ta"):
+    raise SystemExit(f"SKILL_SET must be bt or ta, not {SET!r}")
+PREFIX = "skill" if SET == "bt" else "skillta"
+GRID, TARGETS = (None, None) if SET == "bt" else (sta.GRID, sta.TARGETS)
+OUT = os.path.join("out", f"{PREFIX}-{ss.SHARD}.jsonl")
+REPORT_OUT = os.path.join("out", f"{PREFIX}-report-{ss.SHARD}.json")
 COIN_RETRIES = 2
 
 
@@ -54,7 +62,7 @@ def line(coin: str, tf: str, res: dict, fee: float, slip: float) -> dict:
     picks = []
     for c in res["picks"]:
         picks.append({"label": sb.label(c), "strategy": c["strategy"], "params": c["params"],
-                      "stop": c["stop"], "older": c["older"], "newer": c["newer"],
+                      "stop": c["stop"], "target": c.get("target"), "older": c["older"], "newer": c["newer"],
                       "older_lost": c["older_lost"],
                       "trades": [[t["entry_ms"], t["exit_ms"], t["side"], t["why"], t["pnl"]]
                                  for t in c["trades"]]})
@@ -95,7 +103,7 @@ def main() -> int:
                         if len(df) < 2:          # CLAUDE.md: no bar floor but the physical one
                             entry["skipped"] = f"{len(df)} candles"
                         else:
-                            out.write(json.dumps(line(coin, tf, sb.pair(df, fee=fee, slip=slip), fee, slip),
+                            out.write(json.dumps(line(coin, tf, sb.pair(df, fee=fee, slip=slip, grid=GRID, targets=TARGETS), fee, slip),
                                                  separators=(",", ":")) + "\n")
                             n += 1
                     except Exception as exc:                       # noqa: BLE001
@@ -115,7 +123,7 @@ def main() -> int:
             _save(report)
             ss.report("testing", done, len(coins), rows=n, note=f"{coin} done")
     _save(report)
-    ss.log(f"skill run done: {done} coin(s), {n} coin-timeframe(s) in {(time.time() - t0) / 60:.0f} min")
+    ss.log(f"skill run ({SET}) done: {done} coin(s), {n} coin-timeframe(s) in {(time.time() - t0) / 60:.0f} min")
     return 0
 
 

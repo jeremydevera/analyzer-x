@@ -232,7 +232,7 @@ SKILL_WORKFLOW = "skillbt.yml"
 
 
 def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=(), skill: bool = False,
-             coins=None) -> dict:
+             coins=None, skill_set: str = "bt") -> dict:
     """Deal the plan's coins between every account that can run (cloud_sweep.split_coins) and start
     one acs.yml run on each; an account that refuses or cannot be brought up to this code is named
     and the others still run (CLAUDE.md: every GitHub job uses every account). The plan must be the
@@ -242,7 +242,14 @@ def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=(), ski
 
     if cq_search.quiet_hours():
         raise RuntimeError("no press between 12:45am and 5:00am (the nightly jobs' hours)")
-    # the skill run measures the exchange's whole market and needs no plan (skill_bt.py)
+    # the skill run measures the exchange's whole market and needs no plan (skill_bt.py); `skill_set`
+    # "ta" runs the technical-analysis and backtesting-frameworks skills' strategies (skill_ta.py)
+    if skill_set not in ("bt", "ta"):
+        raise ValueError(f"skill_set must be bt or ta, not {skill_set!r}")
+    redo = bool(coins)            # named coins = a redo; `coins` is the dealt list from here on
+    if redo and skill and skill_set == "ta":
+        raise ValueError("a redo of named coins is for the bt set only: its state would replace the "
+                         "ta run's whole-market state")
     plan = ({"id": "", "configs": {c.replace("_USDT", ""): 1 for c in (coins or fd.market())}} if skill
             else json.loads(Path(plan_path).read_text(encoding="utf-8")))
     workflow = SKILL_WORKFLOW if skill else WORKFLOW
@@ -268,6 +275,8 @@ def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=(), ski
         inputs = {"shards": str(SHARDS), "coin_list": ",".join(pile), "label": title}
         if not skill:
             inputs["plan_id"] = plan["id"]
+        elif skill_set != "bt":
+            inputs["set"] = skill_set
         before = {r["databaseId"] for r in json.loads(_gh(
             "run", "list", "-R", repo, "-w", workflow, "-L", "20", "--json", "databaseId"))}
         try:
@@ -288,11 +297,19 @@ def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=(), ski
         except Exception as exc:                                   # noqa: BLE001
             named.append(f"{repo}: {str(exc)[:160]}")
     state = {"label": label, "plan_id": plan["id"], "started_s": int(time.time()),
-             "coins": len(coins), "runs": runs, "refused": named}
-    (home() / ("skill-redo-state.json" if skill and coins else "skill-state.json" if skill
-               else "state.json")).write_text(json.dumps(state, indent=1),
-                                                                          encoding="utf-8")
+             "coins": len(coins), "runs": runs, "refused": named, "set": skill_set if skill else None}
+    (home() / _state_name(skill, redo, skill_set)).write_text(json.dumps(state, indent=1), encoding="utf-8")
     return state
+
+
+def _state_name(skill: bool, redo: bool, skill_set: str = "bt") -> str:
+    """Where a dispatch's state is kept: a whole-market skill run and a redo of named coins apart,
+    and each skill set apart (a redo of the "ta" set is not supported: redo it whole)."""
+    if not skill:
+        return "state.json"
+    if skill_set == "ta":
+        return "skillta-state.json"
+    return "skill-redo-state.json" if redo else "skill-state.json"
 
 
 def answered() -> set:
@@ -363,16 +380,18 @@ def collect_redo() -> dict:
     return out
 
 
-def collect_skill() -> dict:
+def collect_skill(skill_set: str = "bt") -> dict:
     """The skill run's lines from every account, keyed 'COIN|tf' (skill_bt.py); a coin no machine
-    reported is named in `not_reached`, a coin-timeframe that raised in `failed`."""
+    reported is named in `not_reached`, a coin-timeframe that raised in `failed`. `skill_set` "ta"
+    collects the technical-analysis and backtesting-frameworks run into skillta.json."""
     import shutil
 
-    state = json.loads((home() / "skill-state.json").read_text(encoding="utf-8"))
+    pre = "skill" if skill_set == "bt" else "skillta"
+    state = json.loads((home() / f"{pre}-state.json").read_text(encoding="utf-8"))
     lines, failed, reported, dl_failed, skipped = {}, [], set(), [], []
     for key, r in state["runs"].items():
         repo = r.get("repo", key)
-        root = home() / f"skill-run-{r['run']}"
+        root = home() / f"{pre}-run-{r['run']}"
         if root.exists():
             shutil.rmtree(root)
         root.mkdir(parents=True)
@@ -382,13 +401,13 @@ def collect_skill() -> dict:
         except Exception as exc:                                   # noqa: BLE001
             dl_failed.append(f"{repo}: {str(exc)[:160]}")
             continue
-        for f in root.rglob("skill-*.jsonl"):
+        for f in root.rglob(f"{pre}-*.jsonl"):
             for text in f.read_text(encoding="utf-8").splitlines():
                 if text.strip():
                     x = json.loads(text)
                     lines.setdefault(f"{x['coin']}|{x['tf']}", x)
                     reported.add(x["coin"])
-        for f in root.rglob("skill-report-*.json"):
+        for f in root.rglob(f"{pre}-report-*.json"):
             for e in json.loads(f.read_text(encoding="utf-8")):
                 reported.add(e.get("coin"))
                 if e.get("error"):
@@ -397,8 +416,8 @@ def collect_skill() -> dict:
                     skipped.append(f"{e['coin']} {e['tf']}: only {e['skipped']}")
     board = {c for r in state["runs"].values() for c in r["coin_list"]}
     out = {"lines": lines, "failed": failed, "skipped": skipped, "not_reached": sorted(board - reported),
-           "downloads_failed": dl_failed, "collected_s": int(time.time())}
-    (home() / "skill.json").write_text(json.dumps(out), encoding="utf-8")
+           "downloads_failed": dl_failed, "collected_s": int(time.time()), "set": skill_set}
+    (home() / f"{pre}.json").write_text(json.dumps(out), encoding="utf-8")
     return out
 
 
@@ -440,8 +459,11 @@ def main(argv=None) -> int:
     d.add_argument("--skip", action="append", default=[], help="owner/repo whose machines are busy")
     d.add_argument("--skill", action="store_true", help="the backtesting skill on the whole market")
     d.add_argument("--coins", default="", help="comma-separated coins (a redo of named ones)")
+    d.add_argument("--set", dest="skill_set", default="bt", choices=("bt", "ta"),
+                   help="with --skill: bt = the backtesting skill, ta = technical-analysis + backtesting-frameworks")
     c = sub.add_parser("collect")
     c.add_argument("--skill", action="store_true")
+    c.add_argument("--set", dest="skill_set", default="bt", choices=("bt", "ta"))
     c.add_argument("--merge", default=None, help="a skill redo's out folder to lay over the saved run")
     sub.add_parser("page")
     a = p.parse_args(argv)
@@ -459,7 +481,7 @@ def main(argv=None) -> int:
         return 0
     if a.cmd == "dispatch":
         st = dispatch(a.label, skip=tuple(a.skip), skill=a.skill,
-                      coins=[c for c in a.coins.split(",") if c] or None)
+                      coins=[c for c in a.coins.split(",") if c] or None, skill_set=a.skill_set)
         print(json.dumps({k: v for k, v in st.items() if k != "runs"} | {
             "runs": {r: {k: v for k, v in x.items() if k != "coin_list"} for r, x in st["runs"].items()}},
             indent=1))
@@ -471,7 +493,7 @@ def main(argv=None) -> int:
         print(merge_skill(a.merge))
         return 0
     if a.cmd == "collect" and a.skill:
-        out = collect_skill()
+        out = collect_skill(a.skill_set)
         print(f"{len(out['lines']):,} coin-timeframes; failed {len(out['failed'])}; too few candles "
               f"{len(out['skipped'])}; not reached {len(out['not_reached'])}; downloads failed "
               f"{len(out['downloads_failed'])}")

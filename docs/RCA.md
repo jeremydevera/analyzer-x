@@ -172,6 +172,40 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-05-E — every skill dispatch filed its state as a "redo of named coins", so a whole-market skill run would have been collected from the wrong file: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing yet - found while adding the technical-analysis and backtesting-frameworks strategies to the all-coins run.
+* Why: the start button for the skill run treated every run as a re-run of a few named coins, so the next whole-market run's record would have gone into the re-run's file and "collect" would have read the old run.
+* What stops it now: whole runs and re-runs keep separate records, and a test holds it.
+
+**DEV**
+
+* `tradingagents/acs.py:dispatch` replaced its `coins` argument with the dealt coin list before choosing the state file (`"skill-redo-state.json" if skill and coins`), so the test was always true.
+* Invariant broken: **a decision reads the caller's argument, never a variable the function has since reused**.
+* Guard: `tests/test_acs.py::test_a_whole_market_skill_run_keeps_its_own_state_apart_from_a_redo`.
+
+**SAW** - nothing on screen; `skill-state.json` (run 42033072148, Nov 05, 2026 8:08am) was written by the code before the redo branch existed, and the redo (`skill-redo-young`, 9:11am) went where it should.
+
+**TIMELINE**
+
+1. Nov 05, 2026 ~9:10am: the redo branch was added to `dispatch`, after `coins` had become the dealt list.
+2. 9:11am: the redo of 118 young coins wrote `skill-redo-state.json` - correct by accident.
+3. Nov 05, 2026 evening: about to start the technical-analysis run, the state name was read and found always "redo".
+
+**ROOT CAUSE** - `coins = sorted(plan["configs"])` reused the argument's name, and the later test read the reused one.
+
+**WHY IT WAS NOT CAUGHT** - the only skill dispatch after the branch was added WAS a redo, so the wrong answer and the right one were the same file; no test asked where a whole-market run's state goes.
+
+**COST** - none.
+
+**FIX** - this commit (`redo = bool(coins)` before the list is dealt; `_state_name`).
+
+**GUARD** - `tests/test_acs.py::test_a_whole_market_skill_run_keeps_its_own_state_apart_from_a_redo`.
+
+---
+
 ## RCA-2026-11-05-D — the daily backtest update died in the 5:20am power cut and read as RUNNING for 6.5 hours, because Chrome got its process number
 
 **CEO**

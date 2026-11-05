@@ -413,6 +413,18 @@ def verdicts_file(plan: dict, risk: float, runs: int, records: list[dict],
             "verdicts": verdicts}
 
 
+def _day_arg(text: str) -> int:
+    """A UTC day YYYY-MM-DD as the midnight that starts it, in ms: every daily candle a plan reads
+    must have closed by its end."""
+    import calendar
+    import time as _time
+
+    try:
+        return calendar.timegm(_time.strptime(text, "%Y-%m-%d")) * 1000
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{text!r} is not a UTC day written YYYY-MM-DD") from None
+
+
 def _label_arg(text: str) -> str:
     try:
         return plain_label(text)
@@ -435,6 +447,9 @@ def main(argv=None) -> int:
                          "family's universe, research/v3/plan-all.json)")
     pl.add_argument("--out", default=None,
                     help="default research/v3/plan.json, or plan-all.json for --kind all")
+    pl.add_argument("--end", type=_day_arg, default=None,
+                    help="the plan's end, a UTC day YYYY-MM-DD (default: today's UTC midnight): an "
+                         "earlier plan is another year's window, the same 365 days with 90 unseen")
     ru = sub.add_parser("run", help="measure coins end to end and print every verdict")
     ru.add_argument("coins", nargs="+")
     ru.add_argument("--plan", default=str(vu.PLAN_FILE))
@@ -451,7 +466,7 @@ def main(argv=None) -> int:
         sys.stdout.reconfigure(encoding="utf-8")        # coin names in Chinese
     if a.cmd == "plan":
         t0 = time.time()
-        plan = vu.collect(log=print, kind=a.kind)
+        plan = vu.collect(log=print, kind=a.kind, end_ms=a.end)
         path = vu.save(plan, a.out or (vu.ALL_FILE if a.kind == "all" else vu.PLAN_FILE))
         print(f"plan {path} ({vu.kind_of(plan)}, id {plan.get('id') or vu.plan_id(plan)}): {plan['start']} to {plan['end']}, {len(plan['months'])} months, "
               f"{len(plan['coins'])} coins in a group; liquid {len(plan['liquid'][plan['months'][-1]])}"

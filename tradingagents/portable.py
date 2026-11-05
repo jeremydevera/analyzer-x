@@ -162,6 +162,46 @@ def pid_alive(pid) -> bool:
         kernel32.CloseHandle(handle)
 
 
+def pid_started(pid) -> float | None:
+    """When the process with this pid started (epoch seconds), or None.
+
+    None when there is no such process or the platform will not say. A live
+    pid is only a number Windows may have handed to another program since the
+    pid file was written (Nov 05, 2026: a dead backtest job's 19776 became
+    Chrome); the start time tells the two apart (RCA-2026-11-05-D).
+    """
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return None
+    if pid <= 0:
+        return None
+    if not WINDOWS:
+        try:
+            with open(f"/proc/{pid}/stat", encoding="utf-8") as fh:
+                ticks = int(fh.read().rsplit(")", 1)[1].split()[19])
+            with open("/proc/stat", encoding="utf-8") as fh:
+                boot = next(float(ln.split()[1]) for ln in fh
+                            if ln.startswith("btime"))
+            return boot + ticks / os.sysconf("SC_CLK_TCK")
+        except (OSError, ValueError, IndexError, StopIteration):
+            return None
+    kernel32 = ctypes.windll.kernel32                       # type: ignore[attr-defined]
+    handle = kernel32.OpenProcess(0x1000, False, pid)       # QUERY_LIMITED_INFORMATION
+    if not handle:
+        return None
+    try:
+        made, gone, kern, user = (ctypes.c_ulonglong() for _ in range(4))
+        if not kernel32.GetProcessTimes(handle, ctypes.byref(made),
+                                        ctypes.byref(gone), ctypes.byref(kern),
+                                        ctypes.byref(user)):
+            return None
+        # FILETIME: 100 ns ticks since Jan 01, 1601
+        return (made.value - 116444736000000000) / 1e7
+    finally:
+        kernel32.CloseHandle(handle)
+
+
 def kill_hard(pid: int) -> None:
     """SIGKILL on unix. On Windows every os.kill is already TerminateProcess.
     Raises ProcessLookupError / PermissionError like os.kill does."""

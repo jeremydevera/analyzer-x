@@ -233,6 +233,32 @@ def _alive(pid: int) -> bool:
     return portable.pid_alive(pid)
 
 
+# `start()` writes the pid file milliseconds after the process is created, so
+# a process born later than this past the file's write is a stranger
+PID_BIRTH_SLACK_S = 30.0
+
+
+def _job_alive(kind: str, pid: int) -> bool:
+    """The job's OWN process is alive — not just some process with its pid.
+
+    Nov 05, 2026: the daily update died in the 5:20am power cut and Windows
+    gave its pid 19776 to Chrome at 5:25am, so the job read as running for
+    hours, blocking every collect and the next daily press (RCA-2026-11-05-D).
+    A process that started after the pid file was written is not the job.
+    When the start time cannot be read, the old answer stands.
+    """
+    if not (pid and _alive(pid)):
+        return False
+    born = portable.pid_started(pid)
+    if born is None:
+        return True
+    try:
+        written = FILES[kind]["pid"].stat().st_mtime
+    except OSError:
+        return True
+    return born <= written + PID_BIRTH_SLACK_S
+
+
 def status(kind: str) -> dict:
     """Progress plus whether the process is actually alive — a stale JSON
     from a crashed job must never read as RUNNING."""
@@ -241,7 +267,7 @@ def status(kind: str) -> dict:
     pid = 0
     with contextlib.suppress(Exception):
         pid = int(f["pid"].read_text().strip())
-    if prog.get("running") and not (pid and _alive(pid)):
+    if prog.get("running") and not _job_alive(kind, pid):
         prog["running"] = False       # crashed or killed: say so, not RUNNING
         prog.setdefault("note", "process died before finishing")
     prog["pid"] = pid
@@ -576,7 +602,7 @@ def died_unfinished(kind: str) -> bool:
         pid = int(FILES[kind]["pid"].read_text().strip())
     except Exception:
         return False
-    return not _alive(pid)
+    return not _job_alive(kind, pid)
 
 
 def resume_if_died(kind: str) -> dict:

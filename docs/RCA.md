@@ -172,6 +172,43 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-05-D — the daily backtest update died in the 5:20am power cut and read as RUNNING for 6.5 hours, because Chrome got its process number
+
+**CEO**
+
+* What you saw: at Nov 05, 2026 11:59am the site said it could not collect a finished GitHub backtest because "btupdate_v2 is running", and the daily UPDATE ALL BACKTESTS said it was "already running" - but nothing was running.
+* Why: the update started at 5:18am, the power went at 5:20am and killed it, and at 5:25am Windows gave its process number to Chrome; the site checked only "is a program with that number alive?".
+* What stops it now: the site also checks WHEN that program started - one that started after the job was launched is someone else - so a dead job reads as dead, is resumed, and stops blocking the other jobs.
+
+**DEV**
+
+* `tradingagents/db_jobs.py` `status()` / `died_unfinished()` judged a job by `portable.pid_alive(pid)` alone; `db_btupdate_v2.pid` = 19776 (written 5:18:57am) was `chrome.exe`, created 5:25:33am, so `status("btupdate_v2")["running"]` stayed True and `disk_holder` refused `collect_v2` (`cloud_autopilot.collect_finished` → `dj.start` → "could not start").
+* Invariant broken: **a pid is not an identity** (RCA-2026-09-12-B, RCA-2026-10-10-A's twin in `venue_switch`) - here enforced by the process's start time against the pid file's write time (`portable.pid_started`, `db_jobs._job_alive`, `PID_BIRTH_SLACK_S` = 30 s).
+* Guard: `tests/test_a_recycled_pid_is_not_a_job.py` (4 tests, a real live process with an aged pid file; red before the fix).
+
+**SAW** - `.run/api.log`, Nov 05, 2026 11:59am: `[cloud-autopilot] could not start: btupdate_v2 is running — one job at a time, across both versions; stop it or wait for it to finish`; earlier in the same log `[daily-update] UPDATE ALL BACKTESTS is already running` and `[watcher] 4FC03172: switch-on pass waiting: the daytime rule waits for btupdate_v2`.
+
+**TIMELINE**
+
+1. Nov 05, 2026 5:17am - the PC wakes; the site's daily update presses UPDATE ALL BACKTESTS, which writes pid 19776 at 5:18:57am; its log's last line (5:19:12am) reads the exchange's market, 1,079 contracts.
+2. 5:20:28am - Kernel-Power 41: the power goes; the job dies with its progress file still saying `running: true`, `done: 0`.
+3. 5:25:33am - Windows starts Chrome as pid 19776.
+4. 11:40am - the site comes back; `status("btupdate_v2")` says running (progress running + pid alive), so the daily update waits, the daytime-rule room's switch-on pass waits, and nothing resumes the dead job.
+5. 11:59am - the autopilot finds a finished GitHub run and cannot start its collect: the filed error.
+6. After the fix, on the same files: pid 19776 started Nov 05, 2026 5:25am, `running` False ("process died before finishing"), `died_unfinished` True, nothing holding the disk.
+
+**ROOT CAUSE** - `db_jobs.status` trusted a recorded pid as the job's identity.
+
+**WHY IT WAS NOT CAUGHT** - every job test wrote either a pid that cannot exist (999999) or the test's own pid, so "alive" and "ours" never disagreed; the recycled-pid guards written for the runner, the indexer, the rebuild and the venue switch each fixed their own caller, and `db_jobs.status` - the one every job button reads - was never given one.
+
+**COST** - none in money; about 6.5 hours (5:20am-11:59am+) with the daily Backtest v2 update not run, a finished GitHub run left uncollected, and room #4FC03172's switch-on pass held.
+
+**FIX** - this commit.
+
+**GUARD** - `tests/test_a_recycled_pid_is_not_a_job.py`.
+
+---
+
 ## RCA-2026-11-05-C — the skill backtest skipped 158 coin-timeframes for having "only" under 60 candles, against the standing no-bar-floor rule
 
 **CEO**

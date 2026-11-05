@@ -1,0 +1,123 @@
+"""THE backtesting-trading-strategies SKILL ON EVERY COIN x EVERY TIMEFRAME (Nov 05, 2026;
+tradingagents/skill_bt.py). Each claimed coin's 15m, 30m, 1h, 4h and 1d candles from the exchange,
+the skill's eight strategies x three settings x two stops chosen on the older 70% and judged on the
+newest 30%, every trade paying the coin's fee both ways and its usual gap. One line per coin-timeframe.
+"""
+# ruff: noqa: E402
+from __future__ import annotations
+
+import json
+import os
+import sys
+import time
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+sys.path.insert(0, ROOT)
+sys.path.insert(0, HERE)
+os.environ.setdefault("MODE", "full")
+
+import sweep_shard as ss  # noqa: E402
+
+import tradingagents.auto_trader as at  # noqa: E402
+from tradingagents import backtest_report as br, skill_bt as sb  # noqa: E402
+from tradingagents.dataflows import exchange as fx  # noqa: E402
+
+# candles a timeframe is walked over: 30 days of 15m, 60 of 30m, 90 of 1h, 180 of 4h, two years of 1d
+BARS = {"15m": 2880, "30m": 2880, "1h": 2160, "4h": 1080, "1d": 730}
+OUT = os.path.join("out", f"skill-{ss.SHARD}.jsonl")
+REPORT_OUT = os.path.join("out", f"skill-report-{ss.SHARD}.json")
+COIN_RETRIES = 2
+
+
+def frame(sym: str, tf: str):
+    import pandas as pd
+
+    iv, bs, _cap = br.TFS[tf]
+    df = at._closed_bars(fx.klines(sym, iv, BARS[tf] + 5), bs).tail(BARS[tf])
+    out = pd.DataFrame({"open": df["Open"].to_numpy(), "high": df["High"].to_numpy(),
+                        "low": df["Low"].to_numpy(), "close": df["Close"].to_numpy(),
+                        "volume": df["Volume"].to_numpy()},
+                       index=pd.DatetimeIndex(pd.to_datetime(df["Date"]).to_numpy()))
+    return out
+
+
+def costs(sym: str) -> tuple[float, float]:
+    """The coin's fee a side and its usual gap a side (the searches' own reads)."""
+    fee = at.taker_fee(sym, fx=fx)
+    book = fx.book_cost(sym, ss.BASE_MARGIN * at.LEVERAGE)
+    slip = br.charged_slippage([float(book.get("slippage") or 0.0) or 0.0003])
+    return float(fee), float(slip)
+
+
+def line(coin: str, tf: str, res: dict, fee: float, slip: float) -> dict:
+    picks = []
+    for c in res["picks"]:
+        picks.append({"label": sb.label(c), "strategy": c["strategy"], "params": c["params"],
+                      "stop": c["stop"], "older": c["older"], "newer": c["newer"],
+                      "older_lost": c["older_lost"],
+                      "trades": [[t["entry_ms"], t["exit_ms"], t["side"], t["why"], t["pnl"]]
+                                 for t in c["trades"]]})
+    return {"coin": coin, "tf": tf, "fee": fee, "slip": slip, "bars": res["bars"],
+            "combos": res["combos"], "split_ms": res["split_ms"], "start_ms": res["start_ms"],
+            "end_ms": res["end_ms"], "bar": res["bar"], "picks": picks}
+
+
+def _save(report):
+    tmp = REPORT_OUT + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(report, fh)
+    os.replace(tmp, REPORT_OUT)
+
+
+def main() -> int:
+    os.makedirs("out", exist_ok=True)
+    t0 = time.time()
+    coins = ss.eligible()
+    ss.report.board = len(coins)
+    report, failed, queue, done, n = [], {}, [], 0, 0
+    with open(OUT, "w", encoding="utf-8") as out:
+        stream = ss.coin_stream(coins, t0)
+        while True:
+            sym = next(stream, None)
+            if sym is None:
+                if not queue:
+                    break
+                sym = queue.pop(0)
+            coin = sym.replace("_USDT", "")
+            try:
+                fee, slip = costs(sym)
+                for tf in BARS:
+                    t1 = time.time()
+                    entry = {"coin": coin, "tf": tf}
+                    try:
+                        df = frame(sym, tf)
+                        if len(df) < 60:
+                            entry["skipped"] = f"{len(df)} candles"
+                        else:
+                            out.write(json.dumps(line(coin, tf, sb.pair(df, fee=fee, slip=slip), fee, slip),
+                                                 separators=(",", ":")) + "\n")
+                            n += 1
+                    except Exception as exc:                       # noqa: BLE001
+                        entry["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
+                        ss.log(f"{coin} {tf}: FAILED {entry['error']}")
+                    entry["seconds"] = round(time.time() - t1, 1)
+                    report.append(entry)
+                out.flush()
+                done += 1
+            except Exception as exc:                               # noqa: BLE001
+                failed[sym] = failed.get(sym, 0) + 1
+                ss.log(f"{sym}: FAILED ({type(exc).__name__}: {exc}) try {failed[sym]}")
+                if failed[sym] <= COIN_RETRIES:
+                    queue.append(sym)
+                else:
+                    report.append({"coin": coin, "tf": "*", "error": f"{type(exc).__name__}: {str(exc)[:200]}"})
+            _save(report)
+            ss.report("testing", done, len(coins), rows=n, note=f"{coin} done")
+    _save(report)
+    ss.log(f"skill run done: {done} coin(s), {n} coin-timeframe(s) in {(time.time() - t0) / 60:.0f} min")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

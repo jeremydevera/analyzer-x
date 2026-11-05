@@ -20,9 +20,9 @@ import gzip
 import json
 from pathlib import Path
 
-WHYS = ("TP", "SL", "TRAIL", "MA", "TIME", "END", "RANK", "OTHER")
+WHYS = ("TP", "SL", "TRAIL", "MA", "TIME", "END", "RANK", "SIGNAL", "OTHER")
 FIELDS = ("id", "src", "coin", "tf", "strategy", "tp_rule", "sl_rule", "lev", "chosen_on", "check",
-          "bar", "both", "luck", "end", "days", "lost")
+          "bar", "both", "luck", "end", "days", "lost", "split")
 BASE = 5.0
 
 
@@ -86,7 +86,8 @@ def v2_rows(picks: dict, trades: dict, per_pair: int = 3) -> tuple[list, list, l
                                                         "rows did better there)" if lost else "")),
                          "check": f"stored newest 15 days: {r['t15']} trades, {r['w15']} won, {float(r['p15']):+.2f}",
                          "bar": bar["per_trade"], "both": None, "luck": None, "end": end,
-                         "days": float(line["row"].get("days") or 30), "lost": 2 if young else 1 if lost else 0})
+                         "days": float(line["row"].get("days") or 30), "lost": 2 if young else 1 if lost else 0,
+                         "split": end - 15 * 86_400})
             tlists.append(ts)
             shown += 1
         if shown < per_pair:
@@ -97,6 +98,39 @@ def v2_rows(picks: dict, trades: dict, per_pair: int = 3) -> tuple[list, list, l
                               f" - none of its {p['rows']:,} rows has a stop, a target and a trade")
                            + ("; " + "; ".join(why_not) if why_not else ""))
     return rows, tlists, missing
+
+
+def skill_rows(skill: dict) -> tuple[list, list]:
+    """The backtesting-trading-strategies skill's picks of every coin-timeframe (skill_bt.py), each
+    with every trade, chosen on the older 70% of the candles and judged on the newest 30%."""
+    from tradingagents import backtest_report as br
+    from tradingagents.positions_view import fmt_when
+
+    rows, tlists = [], []
+    for key in sorted(skill["lines"]):
+        x = skill["lines"][key]
+        for c in x["picks"]:
+            o, n = c["older"], c["newer"]
+            rid = br.row_code(x["coin"], x["tf"], c["strategy"], 0, c["stop"] * 100, 0, "flat",
+                              plan=c["label"], res="skill")
+            ts = [[int(t[0]) // 1000, int(t[1]) // 1000, int(t[2]), _why(t[3]),
+                   int(round(float(t[4]) * 10_000)), int(round(c["stop"] * 100 * 1000)), -1]
+                  for t in c["trades"]]
+            ts.sort(key=lambda t: (t[1], t[0]))
+            rows.append({"id": rid, "src": "skill", "coin": x["coin"], "tf": x["tf"], "strategy": c["label"],
+                         "tp_rule": "none: out on the strategy's own exit signal",
+                         "sl_rule": f"{c['stop'] * 100:g}% fixed, checked on the close", "lev": "20x",
+                         "chosen_on": (("LOST on " if c["older_lost"] else "made money on ")
+                                       + f"the older 70% ({fmt_when(x['start_ms'] / 1000)} to "
+                                       f"{fmt_when(x['split_ms'] / 1000)}): {o['trades']} trades, "
+                                       f"{o['win_rate']:.0f}% won, {o['profit']:+.2f}, expectancy "
+                                       f"{o['expectancy']:+.3f} a trade (the skill's own statistics)"),
+                         "check": f"newest 30%: {n['trades']} trades, {n['profit']:+.2f}",
+                         "bar": x["bar"], "both": None, "luck": None, "end": int(x["end_ms"]) // 1000,
+                         "days": (x["end_ms"] - x["start_ms"]) / 86_400_000,
+                         "lost": 1 if c["older_lost"] else 0, "split": int(x["split_ms"]) // 1000})
+            tlists.append(ts)
+    return rows, tlists
 
 
 def v3_rows(name: str) -> tuple[list, list]:
@@ -128,7 +162,7 @@ def v3_rows(name: str) -> tuple[list, list]:
                      "chosen_on": f"older days: {r['older']}", "check": r["verdict"],
                      "bar": r["random_median"], "both": None, "luck": r["luck_share"],
                      "end": int(pay["end"]) // 1000, "days": float(r["days"] or 90),
-                     "lost": 0, "_key": (r["coin"], r["family"], r["tf"], r["filter"]),
+                     "lost": 0, "split": None, "_key": (r["coin"], r["family"], r["tf"], r["filter"]),
                      "_prof": bool(r["profitable"])})
         tlists.append(out)
     return rows, tlists
@@ -152,8 +186,12 @@ def _v3_inputs(name: str):
     return store, records
 
 
-def payload(picks: dict, trades: dict, v3_names=("all-coins", "all-2025")) -> dict:
+def payload(picks: dict, trades: dict, v3_names=("all-coins", "all-2025"), skill: dict | None = None) -> dict:
     rows, tl, missing = v2_rows(picks, trades)
+    if skill:
+        rs, ts = skill_rows(skill)
+        rows += rs
+        tl += ts
     v3 = {}
     for name in v3_names:
         r3, t3 = v3_rows(name)
@@ -176,7 +214,12 @@ def payload(picks: dict, trades: dict, v3_names=("all-coins", "all-2025")) -> di
             "v2_rows_read": picks["rows"], "v2_pairs": len(picks["pairs"]),
             "v2_empty": sum(1 for p in picks["pairs"].values() if not p["picks"]),
             "rule": picks["rule"], "made_s": picks["made_s"], "collected_s": trades.get("collected_s"),
-            "v3_names": list(v3_names)}
+            "v3_names": list(v3_names),
+            "skill": ({"pairs": len(skill["lines"]), "failed": skill.get("failed") or [],
+                       "skipped": skill.get("skipped") or [], "not_reached": skill.get("not_reached") or [],
+                       "collected_s": skill.get("collected_s"),
+                       "combos": next(iter(skill["lines"].values()))["combos"] if skill["lines"] else 0}
+                      if skill else None)}
 
 
 def merged(root: Path) -> dict:
@@ -208,7 +251,9 @@ def write() -> Path:
 
     picks = json.loads((acs.home() / "picks.json").read_text(encoding="utf-8"))
     trades = merged(acs.home())
-    html = _HTML.read_text(encoding="utf-8").replace('const Z="";', f'const Z="{pack(payload(picks, trades))}";', 1)
+    sk = acs.home() / "skill.json"
+    skill = json.loads(sk.read_text(encoding="utf-8")) if sk.exists() else None
+    html = _HTML.read_text(encoding="utf-8").replace('const Z="";', f'const Z="{pack(payload(picks, trades, skill=skill))}";', 1)
     out = acs.home() / "all-coins-strategies.html"
     out.write_text(html, encoding="utf-8")
     return out

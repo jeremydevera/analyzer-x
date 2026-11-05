@@ -34,7 +34,7 @@ dialog{max-width:min(1100px,100vw - 32px);width:100%;border:1px solid var(--rule
  <label>Base $ a trade<input id="f-base" type="number" min="0.5" step="0.5"></label>
  <label>Source<select id="f-src"><option value="">all</option></select></label>
  <label>Timeframe<select id="f-tf"><option value="">all</option><option>15m</option><option>30m</option><option>1h</option><option>4h</option><option>1d</option></select></label>
- <label>Held up<select id="f-held"><option value="">all rows</option><option value="new">v2: made money on the newest 15 days</option><option value="both">v3: profitable in both years</option><option value="prof">made money in its window</option></select></label>
+ <label>Held up<select id="f-held"><option value="">all rows</option><option value="new">made money on the days it was NOT chosen on (v2, skill)</option><option value="both">v3: profitable in both years</option><option value="prof">made money in its window</option></select></label>
  <label>Min win %<input id="f-wr" type="number" min="0" max="100" placeholder="any"></label>
  <label>Min win ÷ loss size<input id="f-ratio" type="number" min="0" step="0.1" placeholder="any"></label>
  <label>Min profit $<input id="f-pr" type="number" step="1" placeholder="any"></label>
@@ -78,7 +78,7 @@ function rowsOf(D){return D.R.map((a,i)=>{const r={i};D.F.forEach((f,j)=>r[f]=a[
 function measure(r,days,k){
  const from=days?r.end-days*DAY:null;const t=from==null?r.t:r.t.filter(x=>x[1]>=from);
  let profit=0,wins=0,winSum=0,lossSum=0,run=0,runN=0,worst=0,worstN=0,noStop=false,noTgt=false,sLo=null,sHi=null,gLo=null,gHi=null,newP=0,newN=0;const months={};
- const newFrom=r.end-15*DAY;
+ const newFrom=r.split!=null?r.split:r.end-15*DAY;
  for(const x of t){const p=x[4]/1e4*k;profit+=p;
   if(p>0){wins++;winSum+=p;run=0;runN=0}else{lossSum-=p;run+=p;runN++;if(run<worst){worst=run;worstN=runN}}
   const m=monthKey(x[1]);months[m]=(months[m]||0)+p;if(x[1]>=newFrom){newP+=p;newN++}
@@ -111,7 +111,7 @@ const CHECKS=[["sample","30+ trades (technical-analysis: sample size)"],["stop",
  ["pf","profit factor 1.2+ (backtesting-trading-strategies)"],["mc","80%+ of Monte Carlo draws end in profit (backtesting-frameworks)"],
  ["htf","the next bigger timeframe of the coin also made money (multiple-timeframe agreement)"]];
 function checksOf(x,htf){const m=x.m,r=x.r;
- const unseen=r.src==="v2"?(m.newP!=null&&m.newP>0):(m.profit!=null&&m.profit>0);
+ const unseen=r.split!=null?(m.newP!=null&&m.newP>0):(m.profit!=null&&m.profit>0);
  return {sample:m.trades>=30,stop:m.allStops,unseen,rr:m.ratio!=null&&m.ratio>=1,pf:m.pf!=null&&m.pf>=1.2,mc:r.mc!=null&&r.mc>=0.8,
   htf:NEXT_TF[r.tf]?!!htf[r.src+"|"+r.coin+"|"+NEXT_TF[r.tf]]:false}}
 function fails(r,m,f){const out=[];
@@ -125,13 +125,13 @@ function fails(r,m,f){const out=[];
  if(f.sl!=null&&!(m.stop!=null&&m.stop<=f.sl))out.push("max SL %");
  return out}
 const LIMITS={wr:"min win %",ratio:"min win ÷ loss size",pr:"min profit $",nt:"min trades",gm:"min months green",dd:"max worst dip $",tp:"max TP %",sl:"max SL %"};
-function heldOk(r,m){if(state.held==="new")return r.src==="v2"&&m.newP!=null&&m.newP>0;
+function heldOk(r,m){if(state.held==="new")return r.split!=null&&m.newP!=null&&m.newP>0;
  if(state.held==="both")return r.both===1;if(state.held==="prof")return m.profit!=null&&m.profit>0;return true}
 function filterNames(){const f=state.f,w={wr:v=>`win at least ${v}%`,ratio:v=>`a win at least ${v}x a loss`,pr:v=>`profit at least ${money(v)}`,
  nt:v=>`${v}+ trades`,gm:v=>`${v} or more months green`,dd:v=>`worst dip no worse than −${usd(v)}`,tp:v=>`target at most ${v}% on every trade`,sl:v=>`stop at most ${v}% on every trade`};
  const out=Object.keys(w).filter(k=>f[k]!=null).map(k=>w[k](f[k]));if(f.cn!=null)out.push(`${f.cn}+ of the 7 checks passed`);
  if(state.src)out.unshift(`source ${state.src}`);if(state.tf)out.unshift(`timeframe ${state.tf}`);
- if(state.held)out.push({new:"v2 made money on the newest 15 days",both:"v3 profitable in both years",prof:"made money in its window"}[state.held]);
+ if(state.held)out.push({new:"made money on the days it was not chosen on",both:"v3 profitable in both years",prof:"made money in its window"}[state.held]);
  if(state.coin)out.push(`coin contains "${state.coin}"`);return out}
 function view(){const k=state.base/D.base;const rows=ROWS.map(r=>({r,m:measure(r,state.days,k)}));
  const htf={};for(const x of rows)if(x.m.profit!=null&&x.m.profit>0)htf[x.r.src+"|"+x.r.coin+"|"+x.r.tf]=1;
@@ -153,9 +153,9 @@ const COLS=[["id","ID",1],["src","Source",1],["coin","Coin",1],["tf","Timeframe"
  ["tp_rule","TP (target rule)",1],["tp","TP % (every trade)"],["sl_rule","SL (stop rule)",1],["sl","SL % (every trade)"],["lev","Leverage",1],
  ["trades","Trades"],["perday","Trades a day"],["wins","W"],["losses","L"],["wlday","W / L a day"],["win","Win %"],["avgwin","Avg win $"],["avgloss","Avg loss $"],
  ["ratio","Win size ÷ loss size"],["worst","Worst losing run"],["green","Months green"],["per","$ a trade"],
- ["newp","Newest 15 days $ (v2: days it was NOT chosen on)"],["bar","Luck bar (v2: average row $ a trade, newest 15 days · v3: random median $)"],["both","v3: profitable both years"],
+ ["newp","Days it was NOT chosen on $ (v2: newest 15 days · skill: newest 30%)"],["bar","Luck bar (v2 and skill: average setting $ a trade on those days · v3: random median $)"],["both","v3: profitable both years"],
  ["cn","Checks passed (of 7)"],["sharpe","Sharpe (a year)"],["sortino","Sortino (a year)"],["mdd","Max drawdown $"],["pf","Profit factor"],
- ["mc","Monte Carlo: draws in profit"],["lost","v2: lost on the older days"]];
+ ["mc","Monte Carlo: draws in profit"],["lost","Lost on the older days (v2, skill)"]];
 function cellOf(x,c,k){const r=x.r,m=x.m,none='<span class="muted">no trade in this window</span>';
  switch(c){case"id":return `<span class="id">#${esc(r.id)}</span>`;case"src":case"coin":case"tf":case"strategy":case"tp_rule":case"sl_rule":case"lev":return esc(r[c]);
   case"profit":return m.trades?`<b class="${m.profit>0?"pos":"neg"}">${money(m.profit)}</b>`:none;
@@ -169,13 +169,13 @@ function cellOf(x,c,k){const r=x.r,m=x.m,none='<span class="muted">no trade in t
   case"ratio":return m.ratio!=null?m.ratio.toFixed(2)+"x":(m.trades?(m.avgLoss?"no win":"no loss"):none);
   case"worst":return m.trades?(m.worstN?`${money(m.worst)} over ${m.worstN}`:"no losses"):none;
   case"green":return m.trades?`${m.green}/${m.nmonths}`:none;case"per":return m.trades?money(m.per):none;
-  case"newp":return r.src!=="v2"?'<span class="muted">its whole window is unseen days</span>':(m.newN?`<span class="${m.newP>0?"pos":"neg"}">${money(m.newP)}</span> over ${m.newN}`:"no trade");
-  case"bar":return r.bar==null?'<span class="muted">none</span>':money(r.bar*k)+(r.src==="v2"?" a trade":"");
+  case"newp":return r.split==null?'<span class="muted">its whole window is unseen days</span>':(m.newN?`<span class="${m.newP>0?"pos":"neg"}">${money(m.newP)}</span> over ${m.newN}`:"no trade");
+  case"bar":return r.bar==null?'<span class="muted">none</span>':money(r.bar*k)+(r.split!=null?" a trade":"");
   case"both":return r.both==null?'<span class="muted">one year only</span>':(r.both?'<b class="pos">yes</b>':"no");
   case"cn":return `<b>${x.cn}</b>/7`;case"sharpe":return m.sharpe==null?none:m.sharpe.toFixed(2);case"sortino":return m.sortino==null?none:m.sortino.toFixed(2);
   case"mdd":return m.trades?money(m.mdd):none;case"pf":return m.pf==null?(m.trades?"no loss":none):m.pf.toFixed(2);
   case"mc":return r.mc==null?'<span class="muted">under 2 trades</span>':(r.mc*100).toFixed(0)+"%";
-  case"lost":return r.src!=="v2"?"":(r.lost===2?'<b class="neg">too new to check</b>':r.lost?'<b class="neg">yes</b> (filler)':"no")}}
+  case"lost":return r.split==null?"":(r.lost===2?'<b class="neg">too new to check</b>':r.lost?'<b class="neg">yes</b> (filler)':"no")}}
 function render(){const v=view(),s=state.sort;const sorted=sortRows(v.shown,s.k,s.dir);
  const pages=Math.max(1,Math.ceil(sorted.length/PAGE));state.page=Math.min(Math.max(state.page,0),pages-1);
  const a=state.page*PAGE,page=sorted.slice(a,a+PAGE);
@@ -223,8 +223,12 @@ function head(){const v2=ROWS.filter(r=>r.src==="v2");let p=0,n=0,held=0,heldOf=
   +`Over the newest 15 days the ${v2.length.toLocaleString()} v2 picks made <b class="${p>0?"pos":"neg"}">${money(p)}</b> over ${n.toLocaleString()} trades (${n?money(p/n):"-"} a trade); ${held.toLocaleString()} of ${heldOf.toLocaleString()} made money. `
   +`An average strategy of the same coin-timeframes made ${bars.length?money(bars.reduce((s,r)=>s+r.bar,0)/bars.length):"-"} a trade on the stored backtest's newest 15 days (averaged over the picks' coin-timeframes). `
   +`On ${D.v2_rows_read.toLocaleString()} rows, 8 ways of choosing were tried before this page was built and every one lost money on the newest 15 days; this page ranks by the least bad (the trading cost against the target, lowest first). `
-  +`v3: <b>${both.toLocaleString()}</b> coin x idea groups were profitable in BOTH years.`}
-function drawProv(){$("prov").innerHTML=`<b>${D.v2_rows_read.toLocaleString()}</b> Backtest v2 strategies read on <b>${D.v2_pairs.toLocaleString()}</b> coin-timeframes (every coin x 15m, 30m, 1h, 4h, 1d), up to ${D.rule.per_pair} picked on each, chosen on the OLDER 15 days of each 30-day backtest (at least ${Object.entries(D.rule.min_old).map(([t,n])=>`${n} trades on ${t}`).join(", ")}), ${D.v2_empty.toLocaleString()} coin-timeframes had no strategy that made money there; every v2 pick re-measured on GitHub with every trade kept, ${D.collected_s?fmtWhen(D.collected_s*1000):"-"}. Plus every Backtest v3 per-coin strategy whose setting could be chosen (${D.v3_names.join(", ")}: 1h, 4h, 1d, 63 combinations a coin, 90 unseen days each). v2: <b>${usd(state.base)}</b> margin at 20x = ${usd(state.base*20)} of coin a trade; v3: ${usd(state.base)} risked to the stop. Every trade pays both fees, its minutes' order book where one was recorded, and funding. Picked ${fmtWhen(D.made_s*1000)}.`}
+  +`v3: <b>${both.toLocaleString()}</b> coin x idea groups were profitable in BOTH years.`
+  +(()=>{const sk=ROWS.filter(r=>r.src==="skill");if(!sk.length)return "";let p=0,n=0,held=0,of=0;
+   for(const r of sk){const m=measure(r,null,1);if(m.newN){p+=m.newP;n+=m.newN;of++;if(m.newP>0)held++}}
+   const bars=sk.filter(r=>r.bar!=null);
+   return ` <b>The backtesting-trading-strategies skill</b> (its own 8 strategies x 3 settings x 2 stops, ${D.skill.combos} a coin-timeframe, chosen on the older 70% of the candles - the backtesting-frameworks walk-forward): its ${sk.length.toLocaleString()} picks made <b class="${p>0?"pos":"neg"}">${money(p)}</b> over ${n.toLocaleString()} trades (${n?money(p/n):"-"} a trade) on the newest 30% they were not chosen on; ${held.toLocaleString()} of ${of.toLocaleString()} made money; an average setting of the same coin-timeframes made ${bars.length?money(bars.reduce((s,r)=>s+r.bar,0)/bars.length):"-"} a trade there.`})()}
+function drawProv(){$("prov").innerHTML=`<b>${D.v2_rows_read.toLocaleString()}</b> Backtest v2 strategies read on <b>${D.v2_pairs.toLocaleString()}</b> coin-timeframes (every coin x 15m, 30m, 1h, 4h, 1d), up to ${D.rule.per_pair} picked on each, chosen on the OLDER 15 days of each 30-day backtest (at least ${Object.entries(D.rule.min_old).map(([t,n])=>`${n} trades on ${t}`).join(", ")}), ${D.v2_empty.toLocaleString()} coin-timeframes had no strategy that made money there; every v2 pick re-measured on GitHub with every trade kept, ${D.collected_s?fmtWhen(D.collected_s*1000):"-"}. ${D.skill?`Plus the backtesting-trading-strategies skill run on ${D.skill.pairs.toLocaleString()} coin-timeframes (${D.skill.combos} settings each: 30 days of 15m, 60 of 30m, 90 of 1h, 180 of 4h, two years of 1d; the coin's fee both ways and its usual gap). `:""}Plus every Backtest v3 per-coin strategy whose setting could be chosen (${D.v3_names.join(", ")}: 1h, 4h, 1d, 63 combinations a coin, 90 unseen days each). v2: <b>${usd(state.base)}</b> margin at 20x = ${usd(state.base*20)} of coin a trade; v3: ${usd(state.base)} risked to the stop. Every trade pays both fees, its minutes' order book where one was recorded, and funding. Picked ${fmtWhen(D.made_s*1000)}.`}
 function wire(){
  $("dlg-close").onclick=()=>$("dlg").close();$("f-base").value=D.base;
  for(const s of [...new Set(ROWS.map(r=>r.src))])$("f-src").insertAdjacentHTML("beforeend",`<option>${esc(s)}</option>`);
@@ -242,6 +246,9 @@ function wire(){
  const notes=[];
  if(D.missing.length)notes.push(`<details><summary>v2 picks with no trade list (left out, named): ${D.missing.length}</summary><ul>${D.missing.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
  if(D.failed.length)notes.push(`<details><summary>Coin-timeframes that failed on GitHub: ${D.failed.length}</summary><ul>${D.failed.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
+ if(D.skill&&D.skill.failed.length)notes.push(`<details><summary>Skill run: coin-timeframes that failed: ${D.skill.failed.length}</summary><ul>${D.skill.failed.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
+ if(D.skill&&D.skill.skipped.length)notes.push(`<details><summary>Skill run: too few candles (under 60): ${D.skill.skipped.length}</summary><ul>${D.skill.skipped.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
+ if(D.skill&&D.skill.not_reached.length)notes.push(`<details><summary>Skill run: coins no machine reached: ${D.skill.not_reached.length}</summary><ul>${D.skill.not_reached.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
  if(D.not_reached.length)notes.push(`<details><summary>Coins no machine reached: ${D.not_reached.length}</summary><ul>${D.not_reached.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
  $("notes").innerHTML=notes.length?notes.join(""):"Every pick came back with its trades.";
  drawProv();head();render()}

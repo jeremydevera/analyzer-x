@@ -228,7 +228,10 @@ def _gh(*args: str, timeout: int = 120) -> str:
     return r.stdout
 
 
-def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=()) -> dict:
+SKILL_WORKFLOW = "skillbt.yml"
+
+
+def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=(), skill: bool = False) -> dict:
     """Deal the plan's coins between every account that can run (cloud_sweep.split_coins) and start
     one acs.yml run on each; an account that refuses or cannot be brought up to this code is named
     and the others still run (CLAUDE.md: every GitHub job uses every account). The plan must be the
@@ -238,7 +241,10 @@ def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=()) -> 
 
     if cq_search.quiet_hours():
         raise RuntimeError("no press between 12:45am and 5:00am (the nightly jobs' hours)")
-    plan = json.loads(Path(plan_path).read_text(encoding="utf-8"))
+    # the skill run measures the exchange's whole market and needs no plan (skill_bt.py)
+    plan = ({"id": "", "configs": {c.replace("_USDT", ""): 1 for c in fd.market()}} if skill
+            else json.loads(Path(plan_path).read_text(encoding="utf-8")))
+    workflow = SKILL_WORKFLOW if skill else WORKFLOW
     ready, refused = fd.fleets_now()
     # an account whose machines are all held by another job (`--skip`) is named, never queued behind it
     refused = list(refused) + [f"{r}: skipped - its machines are busy with another job" for r in ready
@@ -258,17 +264,18 @@ def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=()) -> 
                 named.append(f"{repo}: not brought up to this code ({drift})")
                 continue
         title = f"{label} · {n + 1} of {len(ready)}"
-        inputs = {"shards": str(SHARDS), "coin_list": ",".join(pile), "label": title,
-                  "plan_id": plan["id"]}
+        inputs = {"shards": str(SHARDS), "coin_list": ",".join(pile), "label": title}
+        if not skill:
+            inputs["plan_id"] = plan["id"]
         before = {r["databaseId"] for r in json.loads(_gh(
-            "run", "list", "-R", repo, "-w", WORKFLOW, "-L", "20", "--json", "databaseId"))}
+            "run", "list", "-R", repo, "-w", workflow, "-L", "20", "--json", "databaseId"))}
         try:
-            _gh("workflow", "run", WORKFLOW, "-R", repo, *sum([["-f", f"{k}={v}"]
+            _gh("workflow", "run", workflow, "-R", repo, *sum([["-f", f"{k}={v}"]
                                                               for k, v in inputs.items()], []))
             run = None
             for _ in range(30):
                 time.sleep(4)
-                fresh = [r for r in json.loads(_gh("run", "list", "-R", repo, "-w", WORKFLOW, "-L",
+                fresh = [r for r in json.loads(_gh("run", "list", "-R", repo, "-w", workflow, "-L",
                                                    "20", "--json", "databaseId,displayTitle"))
                          if r["databaseId"] not in before and title in r["displayTitle"]]
                 if fresh:
@@ -281,7 +288,8 @@ def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=()) -> 
             named.append(f"{repo}: {str(exc)[:160]}")
     state = {"label": label, "plan_id": plan["id"], "started_s": int(time.time()),
              "coins": len(coins), "runs": runs, "refused": named}
-    (home() / "state.json").write_text(json.dumps(state, indent=1), encoding="utf-8")
+    (home() / ("skill-state.json" if skill else "state.json")).write_text(json.dumps(state, indent=1),
+                                                                          encoding="utf-8")
     return state
 
 
@@ -334,6 +342,45 @@ def collect() -> dict:
     return out
 
 
+def collect_skill() -> dict:
+    """The skill run's lines from every account, keyed 'COIN|tf' (skill_bt.py); a coin no machine
+    reported is named in `not_reached`, a coin-timeframe that raised in `failed`."""
+    import shutil
+
+    state = json.loads((home() / "skill-state.json").read_text(encoding="utf-8"))
+    lines, failed, reported, dl_failed, skipped = {}, [], set(), [], []
+    for key, r in state["runs"].items():
+        repo = r.get("repo", key)
+        root = home() / f"skill-run-{r['run']}"
+        if root.exists():
+            shutil.rmtree(root)
+        root.mkdir(parents=True)
+        try:
+            _gh("run", "download", str(r["run"]), "-R", repo, "-D", str(root), "-p", "skill-lines-*",
+                timeout=1800)
+        except Exception as exc:                                   # noqa: BLE001
+            dl_failed.append(f"{repo}: {str(exc)[:160]}")
+            continue
+        for f in root.rglob("skill-*.jsonl"):
+            for text in f.read_text(encoding="utf-8").splitlines():
+                if text.strip():
+                    x = json.loads(text)
+                    lines.setdefault(f"{x['coin']}|{x['tf']}", x)
+                    reported.add(x["coin"])
+        for f in root.rglob("skill-report-*.json"):
+            for e in json.loads(f.read_text(encoding="utf-8")):
+                reported.add(e.get("coin"))
+                if e.get("error"):
+                    failed.append(f"{e['coin']} {e.get('tf')}: {e['error']}")
+                if e.get("skipped"):
+                    skipped.append(f"{e['coin']} {e['tf']}: only {e['skipped']}")
+    board = {c for r in state["runs"].values() for c in r["coin_list"]}
+    out = {"lines": lines, "failed": failed, "skipped": skipped, "not_reached": sorted(board - reported),
+           "downloads_failed": dl_failed, "collected_s": int(time.time())}
+    (home() / "skill.json").write_text(json.dumps(out), encoding="utf-8")
+    return out
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="python -m tradingagents.acs")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -341,7 +388,9 @@ def main(argv=None) -> int:
     d = sub.add_parser("dispatch")
     d.add_argument("--label", default=None)
     d.add_argument("--skip", action="append", default=[], help="owner/repo whose machines are busy")
-    sub.add_parser("collect")
+    d.add_argument("--skill", action="store_true", help="the backtesting skill on the whole market")
+    c = sub.add_parser("collect")
+    c.add_argument("--skill", action="store_true")
     sub.add_parser("page")
     a = p.parse_args(argv)
     if a.cmd == "pick":
@@ -357,10 +406,16 @@ def main(argv=None) -> int:
               f"yet; plan {path} id {plan['id']}")
         return 0
     if a.cmd == "dispatch":
-        st = dispatch(a.label, skip=tuple(a.skip))
+        st = dispatch(a.label, skip=tuple(a.skip), skill=a.skill)
         print(json.dumps({k: v for k, v in st.items() if k != "runs"} | {
             "runs": {r: {k: v for k, v in x.items() if k != "coin_list"} for r, x in st["runs"].items()}},
             indent=1))
+        return 0
+    if a.cmd == "collect" and a.skill:
+        out = collect_skill()
+        print(f"{len(out['lines']):,} coin-timeframes; failed {len(out['failed'])}; too few candles "
+              f"{len(out['skipped'])}; not reached {len(out['not_reached'])}; downloads failed "
+              f"{len(out['downloads_failed'])}")
         return 0
     if a.cmd == "collect":
         out = collect()

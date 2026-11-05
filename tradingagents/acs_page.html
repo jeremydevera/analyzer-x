@@ -159,7 +159,7 @@ const COLS=[["id","ID",1],["src","Source",1],["coin","Coin",1],["tf","Timeframe"
 function cellOf(x,c,k){const r=x.r,m=x.m,none='<span class="muted">no trade in this window</span>';
  switch(c){case"id":return `<span class="id">#${esc(r.id)}</span>`;case"src":case"coin":case"tf":case"strategy":case"tp_rule":case"sl_rule":case"lev":return esc(r[c]);
   case"profit":return m.trades?`<b class="${m.profit>0?"pos":"neg"}">${money(m.profit)}</b>`:none;
-  case"tp":return m.target!=null?rng(m.targetLeast,m.target):(m.trades?'<span class="muted">none (trailing stop)</span>':none);
+  case"tp":return m.target!=null?rng(m.targetLeast,m.target):(m.trades?`<span class="muted">none (${r.src==="skill"?"exits on its own signal":"trailing stop"})</span>`:none);
   case"sl":return m.stop!=null?rng(m.stopLeast,m.stop):none;
   case"trades":return m.trades||none;case"perday":return m.trades?(m.trades/m.span).toFixed(2):none;
   case"wins":return m.trades?m.wins:none;case"losses":return m.trades?m.losses:none;

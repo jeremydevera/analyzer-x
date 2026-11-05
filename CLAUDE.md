@@ -3053,13 +3053,21 @@ coin, never one timeframe, never one winner, unless they name one.
   to 5 per pair (the ones that made money on the older 15 days first, then the
   next by the same rank, flagged "lost on the older days") and the page shows
   the first 3 that came back; a pair still short is named with why.
-* **The three skills' own tests run on every row** (operator: *"use these
-  skills technical-analysis, backtesting-trading-strategies,
-  backtesting-framework"*): 30+ trades, a stop on every trade, money on days it
-  was not chosen on, a win at least a loss, profit factor 1.2+, 80%+ of 200
-  Monte Carlo draws in profit, the coin's next bigger timeframe also in profit
-  — shown as "Checks passed (of 7)" with a filter, beside Sharpe, Sortino and
-  max drawdown, all worked out in the page from the row's trades.
+* **The three skills are RUN, not only read** (operator: *"use these skills
+  technical-analysis, backtesting-trading-strategies, backtesting-framework"*).
+  `tradingagents/skill_bt.py` runs the backtesting-trading-strategies skill's
+  OWN eight strategies (copied, MIT, `tradingagents/vendor/btstrat`) x 3
+  settings x 2 stops on every coin x timeframe on GitHub (`skillbt.yml`,
+  `python -m tradingagents.acs dispatch --skill`, then `collect --skill`),
+  each chosen on the older 70% of the candles and judged on the newest 30%
+  (backtesting-frameworks' walk-forward), a stop on every trade and 10+ older
+  trades (technical-analysis). Its signals are computed over a trailing window
+  and are tested equal to the skill's whole-history signals. Every row of the
+  page then carries the skills' 7 checks — 30+ trades, a stop on every trade,
+  money on days it was not chosen on, a win at least a loss, profit factor
+  1.2+, 80%+ of 200 Monte Carlo draws in profit, the coin's next bigger
+  timeframe also in profit — as "Checks passed (of 7)" with a filter, beside
+  Sharpe, Sortino and max drawdown, all worked out from the row's trades.
 * **The tool:** `python -m tradingagents.acs pick` (writes
   `research/acs/plan.json` — commit and push it), `dispatch` (acs.yml on
   every account rebuilds each pick's trades like a Backtest v2 row,
@@ -3067,12 +3075,11 @@ coin, never one timeframe, never one winner, unless they name one.
   A-H, every row opening its trades). Guard: `tests/test_acs.py`,
   `tests/test_acs_page.py`.
 * **First run (Nov 05, 2026):** https://claude.ai/artifact/1CkQKpamRnvEqXQqp3vn4c
-  (version 2) — 20,830 strategies on 1,007 coins and 4,623 coin-timeframes:
-  12,985 v2 strategies with GitHub's re-measured trades (4,233 coin-timeframes
-  with 3, 99 with 2, 88 with 1; 1,228 flagged "lost on the older days", 820
-  "too new to check"; 642 coin-timeframes have no usable v2 strategy and are
-  named, as is SOXX, not reached), 5,556 v3 2026 and 2,489 v3 2025. 123 pass
-  all 7 checks. Over the newest 15 days the v2 strategies made −$37,447.43 over
-  102,653 trades (−$0.36 a trade, 3,508 of 11,764 made money) against −$0.43
-  for an average row: no way of choosing found an edge on days it was not
-  chosen on.
+  (version 3) — 36,705 strategies on 1,070 coins and 5,243 coin-timeframes
+  (5,233 with 3 or more): 12,985 v2 strategies with GitHub's re-measured
+  trades, 15,675 from the skill run (5,227 coin-timeframes; 158 with under 60
+  candles and 10 that failed, all named), 5,556 v3 2026 and 2,489 v3 2025. 546
+  pass all 7 checks. On the days they were not chosen on the v2 strategies
+  made −$0.36 a trade (an average row −$0.43) and the skill's −$0.89 (an
+  average setting −$1.30): choosing beats the average setting, and still
+  loses after fees.

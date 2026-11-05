@@ -34,7 +34,7 @@ dialog{max-width:min(1100px,100vw - 32px);width:100%;border:1px solid var(--rule
  <label>Base $ a trade<input id="f-base" type="number" min="0.5" step="0.5"></label>
  <label>Source<select id="f-src"><option value="">all</option></select></label>
  <label>Timeframe<select id="f-tf"><option value="">all</option><option>15m</option><option>30m</option><option>1h</option><option>4h</option><option>1d</option></select></label>
- <label>Held up<select id="f-held"><option value="">all rows</option><option value="new">made money on the days it was NOT chosen on (v2, skill)</option><option value="both">v3: profitable in both years</option><option value="prof">made money in its window</option></select></label>
+ <label>Held up<select id="f-held"><option value="">all rows</option><option value="new">made money on the days it was NOT chosen on (v2, skill)</option><option value="both">v3: profitable in both years</option><option value="prof">made money in its window</option><option value="best">BEST for each coin-timeframe (one each)</option></select></label>
  <label>Min win %<input id="f-wr" type="number" min="0" max="100" placeholder="any"></label>
  <label>Min win ÷ loss size<input id="f-ratio" type="number" min="0" step="0.1" placeholder="any"></label>
  <label>Min profit $<input id="f-pr" type="number" step="1" placeholder="any"></label>
@@ -126,13 +126,25 @@ function fails(r,m,f){const out=[];
  return out}
 const LIMITS={wr:"min win %",ratio:"min win ÷ loss size",pr:"min profit $",nt:"min trades",gm:"min months green",dd:"max worst dip $",tp:"max TP %",sl:"max SL %"};
 function heldOk(r,m){if(state.held==="new")return r.split!=null&&m.newP!=null&&m.newP>0;
- if(state.held==="both")return r.both===1;if(state.held==="prof")return m.profit!=null&&m.profit>0;return true}
+ if(state.held==="both")return r.both===1;if(state.held==="prof")return m.profit!=null&&m.profit>0;if(state.held==="best")return r.best===1;return true}
 function filterNames(){const f=state.f,w={wr:v=>`win at least ${v}%`,ratio:v=>`a win at least ${v}x a loss`,pr:v=>`profit at least ${money(v)}`,
  nt:v=>`${v}+ trades`,gm:v=>`${v} or more months green`,dd:v=>`worst dip no worse than −${usd(v)}`,tp:v=>`target at most ${v}% on every trade`,sl:v=>`stop at most ${v}% on every trade`};
  const out=Object.keys(w).filter(k=>f[k]!=null).map(k=>w[k](f[k]));if(f.cn!=null)out.push(`${f.cn}+ of the 7 checks passed`);
  if(state.src)out.unshift(`source ${state.src}`);if(state.tf)out.unshift(`timeframe ${state.tf}`);
- if(state.held)out.push({new:"made money on the days it was not chosen on",both:"v3 profitable in both years",prof:"made money in its window"}[state.held]);
+ if(state.held)out.push({best:"BEST for each coin-timeframe",new:"made money on the days it was not chosen on",both:"v3 profitable in both years",prof:"made money in its window"}[state.held]);
  if(state.coin)out.push(`coin contains "${state.coin}"`);return out}
+// the BEST strategy of every coin-timeframe, chosen on its OLDER days only (never on the days it is
+// then judged on): the most of the skills' checks passed on those trades - profit, a win at least a loss,
+// profit factor 1.2+, 80%+ of Monte Carlo draws in profit, a stop on every trade, 10+ trades - then the
+// most money a trade there. v2 and skill rows only: a v3 row's window is all unseen days.
+function markBest(){const best={};
+ for(const r of ROWS){if(r.split==null)continue;const t=r.t.filter(x=>x[0]<r.split);if(!t.length)continue;
+  let p=0,w=0,ws=0,ls=0,stops=true;for(const x of t){const v=x[4]/1e4;p+=v;if(v>0){w++;ws+=v}else ls-=v;if(x[5]<0)stops=false}
+  const n=t.length,aw=w?ws/w:null,al=n-w?ls/(n-w):null,mc=monteCarlo(t);
+  const cn=[p>0,aw!=null&&al?aw/al>=1:false,ls>0?ws/ls>=1.2:ws>0,mc!=null&&mc>=0.8,stops,n>=10].filter(Boolean).length;
+  const x={r,cn,per:p/n},key=r.coin+"|"+r.tf,b=best[key];
+  if(!b||cn>b.cn||(cn===b.cn&&x.per>b.per))best[key]=x}
+ for(const x of Object.values(best))x.r.best=1;return Object.keys(best).length}
 function view(){const k=state.base/D.base;const rows=ROWS.map(r=>({r,m:measure(r,state.days,k)}));
  const htf={};for(const x of rows)if(x.m.profit!=null&&x.m.profit>0)htf[x.r.src+"|"+x.r.coin+"|"+x.r.tf]=1;
  for(const x of rows){x.c=checksOf(x,htf);x.cn=Object.values(x.c).filter(Boolean).length}
@@ -145,7 +157,7 @@ function view(){const k=state.base/D.base;const rows=ROWS.map(r=>({r,m:measure(r
 function sortVal(x,c){const m=x.m,r=x.r,t=m.trades;
  const v={profit:m.profit,tp:m.target,sl:m.stop,trades:t||null,perday:t?t/m.span:null,wins:t?m.wins:null,losses:t?m.losses:null,win:m.win,
   avgwin:m.avgWin,avgloss:m.avgLoss,ratio:m.ratio,worst:t?m.worst:null,green:m.green,per:m.per,newp:m.newP,bar:r.bar,wlday:t?m.wins/m.span:null,both:r.both,
-  sharpe:m.sharpe,sortino:m.sortino,mdd:m.mdd,pf:m.pf,mc:r.mc,cn:x.cn,lost:r.lost};
+  sharpe:m.sharpe,sortino:m.sortino,mdd:m.mdd,pf:m.pf,mc:r.mc,cn:x.cn,lost:r.lost,best:r.best||0};
  return c in v?v[c]:String(r[c]??"")}
 function sortRows(xs,k,dir){return [...xs].sort((a,b)=>{const p=sortVal(a,k),q=sortVal(b,k);if(p==null&&q==null)return 0;if(p==null)return 1;if(q==null)return -1;
  return (typeof p==="number"&&typeof q==="number"?p-q:String(p).localeCompare(String(q)))*dir})}
@@ -155,7 +167,7 @@ const COLS=[["id","ID",1],["src","Source",1],["coin","Coin",1],["tf","Timeframe"
  ["ratio","Win size ÷ loss size"],["worst","Worst losing run"],["green","Months green"],["per","$ a trade"],
  ["newp","Days it was NOT chosen on $ (v2: newest 15 days · skill: newest 30%)"],["bar","Luck bar (v2 and skill: average setting $ a trade on those days · v3: random median $)"],["both","v3: profitable both years"],
  ["cn","Checks passed (of 7)"],["sharpe","Sharpe (a year)"],["sortino","Sortino (a year)"],["mdd","Max drawdown $"],["pf","Profit factor"],
- ["mc","Monte Carlo: draws in profit"],["lost","Lost on the older days (v2, skill)"]];
+ ["mc","Monte Carlo: draws in profit"],["lost","Lost on the older days (v2, skill)"],["best","BEST for its coin-timeframe"]];
 function cellOf(x,c,k){const r=x.r,m=x.m,none='<span class="muted">no trade in this window</span>';
  switch(c){case"id":return `<span class="id">#${esc(r.id)}</span>`;case"src":case"coin":case"tf":case"strategy":case"tp_rule":case"sl_rule":case"lev":return esc(r[c]);
   case"profit":return m.trades?`<b class="${m.profit>0?"pos":"neg"}">${money(m.profit)}</b>`:none;
@@ -175,6 +187,7 @@ function cellOf(x,c,k){const r=x.r,m=x.m,none='<span class="muted">no trade in t
   case"cn":return `<b>${x.cn}</b>/7`;case"sharpe":return m.sharpe==null?none:m.sharpe.toFixed(2);case"sortino":return m.sortino==null?none:m.sortino.toFixed(2);
   case"mdd":return m.trades?money(m.mdd):none;case"pf":return m.pf==null?(m.trades?"no loss":none):m.pf.toFixed(2);
   case"mc":return r.mc==null?'<span class="muted">under 2 trades</span>':(r.mc*100).toFixed(0)+"%";
+  case"best":return r.best?'<b class="pos">BEST</b>':"";
   case"lost":return r.split==null?"":(r.lost===2?'<b class="neg">too new to check</b>':r.lost?'<b class="neg">yes</b> (filler)':"no")}}
 function render(){const v=view(),s=state.sort;const sorted=sortRows(v.shown,s.k,s.dir);
  const pages=Math.max(1,Math.ceil(sorted.length/PAGE));state.page=Math.min(Math.max(state.page,0),pages-1);
@@ -216,10 +229,12 @@ function drawLog(show){const k=state.base/D.base,r=ROWS[state.cur];if(!r)return;
  </tbody></table></div>`;
  $("log-prev").onclick=()=>{state.log--;drawLog(false)};$("log-next").onclick=()=>{state.log++;drawLog(false)};
  if(show)$("dlg").showModal();$("dlg").scrollTop=0}
-function head(){const v2=ROWS.filter(r=>r.src==="v2");let p=0,n=0,held=0,heldOf=0;
+function head(){const bests=ROWS.filter(r=>r.best);let bp=0,bn=0,bheld=0,bof=0;
+ for(const r of bests){const m=measure(r,null,1);if(r.split!=null&&m.newN){bp+=m.newP;bn+=m.newN;bof++;if(m.newP>0)bheld++}}
+ const bestLine=`<b>BEST for every coin-timeframe:</b> ${bests.length.toLocaleString()} strategies, one for each coin on each timeframe it trades - chosen on its OLDER days only - the most of the skills' checks passed there, then the most money a trade there (pick "BEST for each coin-timeframe" under Held up). On those unseen days the BEST picks made <b class="${bp>0?"pos":"neg"}">${money(bp)}</b> over ${bn.toLocaleString()} trades (${bn?money(bp/bn):"-"} a trade); ${bheld.toLocaleString()} of ${bof.toLocaleString()} made money. `;const v2=ROWS.filter(r=>r.src==="v2");let p=0,n=0,held=0,heldOf=0;
  for(const r of v2){const m=measure(r,null,1);if(m.newN){p+=m.newP;n+=m.newN;heldOf++;if(m.newP>0)held++}}
  const bars=v2.filter(r=>r.bar!=null);const both=ROWS.filter(r=>r.both===1).length/2;
- $("head").innerHTML=`<b>Read this first.</b> Choosing works only if a strategy picked on older days keeps making money on days it was not picked on. `
+ $("head").innerHTML=bestLine+`<b>Read this first.</b> Choosing works only if a strategy picked on older days keeps making money on days it was not picked on. `
   +`Over the newest 15 days the ${v2.length.toLocaleString()} v2 picks made <b class="${p>0?"pos":"neg"}">${money(p)}</b> over ${n.toLocaleString()} trades (${n?money(p/n):"-"} a trade); ${held.toLocaleString()} of ${heldOf.toLocaleString()} made money. `
   +`An average strategy of the same coin-timeframes made ${bars.length?money(bars.reduce((s,r)=>s+r.bar,0)/bars.length):"-"} a trade on the stored backtest's newest 15 days (averaged over the picks' coin-timeframes). `
   +`On ${D.v2_rows_read.toLocaleString()} rows, 8 ways of choosing were tried before this page was built and every one lost money on the newest 15 days; this page ranks by the least bad (the trading cost against the target, lowest first). `
@@ -255,5 +270,5 @@ function wire(){
  drawProv();head();render()}
 async function inflate(b64){const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
  const s=new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"));return JSON.parse(await new Response(s).text())}
-inflate(Z).then(d=>{D=d;ROWS=rowsOf(D);for(const r of ROWS)r.mc=monteCarlo(r.t);state.base=D.base;wire()}).catch(e=>{$("prov").textContent="The page's data could not be opened: "+e})
+inflate(Z).then(d=>{D=d;ROWS=rowsOf(D);for(const r of ROWS)r.mc=monteCarlo(r.t);markBest();state.base=D.base;wire()}).catch(e=>{$("prov").textContent="The page's data could not be opened: "+e})
 </script></body></html>

@@ -3084,3 +3084,10 @@ coin, never one timeframe, never one winner, unless they name one.
   the v2 strategies made −$0.36 a trade (an average row −$0.43) and the
   skill's −$0.89 (an average setting −$1.37): choosing beats the average
   setting, and still loses after fees.
+* **One BEST per coin-timeframe, chosen on older days only** (page version 5):
+  the row passing the most of the skills' checks on its OLDER trades, then the
+  most money a trade there — never on the days it is then judged on (a first
+  draft ranked by unseen profit, which would have made BEST look better than it
+  is). 5,316 BEST, one for each coin-timeframe; on their unseen days they made
+  −$36,185.09 over 54,238 trades (−$0.67 a trade), 1,637 of 5,104 in profit.
+  Say that number beside the word "best", every time.

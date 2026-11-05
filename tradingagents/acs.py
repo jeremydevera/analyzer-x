@@ -232,7 +232,8 @@ def collect() -> dict:
 
     state = json.loads((home() / "state.json").read_text(encoding="utf-8"))
     lines, failed, reported, dl_failed = {}, [], set(), []
-    for repo, r in state["runs"].items():
+    for key, r in state["runs"].items():
+        repo = r.get("repo", key)     # a share moved to another account is keyed apart, its repo named
         root = home() / f"run-{r['run']}"
         if root.exists():
             shutil.rmtree(root)

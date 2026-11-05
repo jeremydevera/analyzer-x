@@ -172,6 +172,40 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-05-C — the skill backtest skipped 158 coin-timeframes for having "only" under 60 candles, against the standing no-bar-floor rule
+
+**CEO**
+
+* What you saw: the strategies page listed 158 coin-timeframes as "too few candles (under 60)" - young coins with no strategy on some timeframes.
+* Why: the new skill run refused any coin-timeframe with fewer than 60 candles, while your rule (Sep 09, 2026: "use what's available") allows anything with 2.
+* What stops it now: the floor is 2 candles, the 158 were run again, and a test holds the floor.
+
+**DEV**
+
+* `.github/scripts/skill_shard.py:main` skipped `len(df) < 60`; CLAUDE.md "Never cap the grid with a default nobody chose" sets `backtest_report.MIN_BARS` = 2 and says a rule whose lookback exceeds the history simply makes no trades.
+* Invariant broken: **no bar floor but the physical one** - depth is the row's own `bars`, the reader decides trust.
+* Guard: `tests/test_skill_bt.py::test_the_skill_shard_has_no_bar_floor_but_two`.
+
+**SAW** - the page's notes, Nov 05, 2026 8:38am: "Skill run: too few candles (under 60): 158" (108 of them 1d, 20 4h, 10 each 15m/30m/1h).
+
+**TIMELINE**
+
+1. Nov 05, 2026 8:07am: cb4b3d3 shipped the shard with the 60 floor; the run (8:08am-8:33am) measured 5,227 coin-timeframes and skipped 158.
+2. 8:40am: the floor became 2; the 118 coins holding those 158 were run again on this PC and merged (`acs collect --merge`).
+3. The 10 coin-timeframes with no daily candle at all on the exchange (TWDELTA, XP, LNG, ... 1d) stay named: there is nothing to measure.
+
+**ROOT CAUSE** - a guard against tiny frames was typed into a new shard instead of the repo's one floor (`MIN_BARS`).
+
+**WHY IT WAS NOT CAUGHT** - the shard was tested on BTC, which has years of candles on every timeframe; no test asked what a young coin's frame does.
+
+**COST** - none in money; 158 coin-timeframes shown without the skill's strategies for about 30 minutes.
+
+**FIX** - this commit.
+
+**GUARD** - `tests/test_skill_bt.py::test_the_skill_shard_has_no_bar_floor_but_two`.
+
+---
+
 ## RCA-2026-11-05-B — the all-coins strategies page built in commit e044c3d opened blank: one legend sentence ended its script early: NEVER REACHED YOU (caught before publishing)
 
 **CEO**

@@ -92,7 +92,7 @@ def main() -> int:
                     entry = {"coin": coin, "tf": tf}
                     try:
                         df = frame(sym, tf)
-                        if len(df) < 60:
+                        if len(df) < 2:          # CLAUDE.md: no bar floor but the physical one
                             entry["skipped"] = f"{len(df)} candles"
                         else:
                             out.write(json.dumps(line(coin, tf, sb.pair(df, fee=fee, slip=slip), fee, slip),

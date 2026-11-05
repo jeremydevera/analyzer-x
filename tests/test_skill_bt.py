@@ -65,3 +65,16 @@ def test_trade_times_are_real_whatever_unit_the_candles_carry(unit):
     assert any(p["newer"]["trades"] for p in out["picks"]) or out["bar"] is not None
     for p in out["picks"]:
         assert all(t["entry_ms"] >= first for t in p["trades"])
+
+
+def test_the_skill_shard_has_no_bar_floor_but_two():
+    # RCA-2026-11-05-C: a 60-candle floor skipped 158 young coin-timeframes against CLAUDE.md's
+    # "no bar floor" rule; a strategy whose lookback exceeds the history simply makes no trade
+    import re
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parent.parent / ".github" / "scripts" / "skill_shard.py"
+    floors = [int(n) for n in re.findall(r"len\(df\) < (\d+)", src.read_text(encoding="utf-8"))]
+    assert floors == [2]
+    out = sb.pair(_df(40), fee=0.00075, slip=0.0003)      # shorter than most lookbacks
+    assert out["bars"] == 40

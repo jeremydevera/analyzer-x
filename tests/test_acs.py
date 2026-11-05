@@ -97,3 +97,21 @@ def test_a_coin_too_new_for_older_days_still_gets_strategies_flagged_unchecked()
     got = acs.candidates(rows, "1h")
     assert [g["id"] for g in got] == ["R3", "R2", "R1"]
     assert all(g.get("unchecked") for g in got)
+
+
+def test_a_skill_redo_replaces_its_lines_and_clears_their_reasons(tmp_path, monkeypatch):
+    import json as _j
+
+    monkeypatch.setattr(acs, "home", lambda: tmp_path)
+    (tmp_path / "skill.json").write_text(_j.dumps({"lines": {"BTC|1h": {"coin": "BTC", "tf": "1h"}},
+                                                   "failed": ["NEW 1d: no Day1 candles"],
+                                                   "skipped": ["NEW 4h: only 30 candles"]}))
+    out = tmp_path / "redo"
+    out.mkdir()
+    (out / "skill-0.jsonl").write_text(_j.dumps({"coin": "NEW", "tf": "4h", "picks": []}) + "\n")
+    (out / "skill-report-0.json").write_text(_j.dumps([{"coin": "NEW", "tf": "1d", "error": "no Day1 candles"}]))
+    got = acs.merge_skill(out)
+    saved = _j.loads((tmp_path / "skill.json").read_text())
+    assert set(saved["lines"]) == {"BTC|1h", "NEW|4h"}
+    assert saved["skipped"] == [] and saved["failed"] == ["NEW 1d: no Day1 candles"]
+    assert got == {"redone": 1, "failed": 1, "skipped": 0}

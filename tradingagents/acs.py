@@ -231,7 +231,8 @@ def _gh(*args: str, timeout: int = 120) -> str:
 SKILL_WORKFLOW = "skillbt.yml"
 
 
-def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=(), skill: bool = False) -> dict:
+def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=(), skill: bool = False,
+             coins=None) -> dict:
     """Deal the plan's coins between every account that can run (cloud_sweep.split_coins) and start
     one acs.yml run on each; an account that refuses or cannot be brought up to this code is named
     and the others still run (CLAUDE.md: every GitHub job uses every account). The plan must be the
@@ -242,7 +243,7 @@ def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=(), ski
     if cq_search.quiet_hours():
         raise RuntimeError("no press between 12:45am and 5:00am (the nightly jobs' hours)")
     # the skill run measures the exchange's whole market and needs no plan (skill_bt.py)
-    plan = ({"id": "", "configs": {c.replace("_USDT", ""): 1 for c in fd.market()}} if skill
+    plan = ({"id": "", "configs": {c.replace("_USDT", ""): 1 for c in (coins or fd.market())}} if skill
             else json.loads(Path(plan_path).read_text(encoding="utf-8")))
     workflow = SKILL_WORKFLOW if skill else WORKFLOW
     ready, refused = fd.fleets_now()
@@ -288,7 +289,8 @@ def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=(), ski
             named.append(f"{repo}: {str(exc)[:160]}")
     state = {"label": label, "plan_id": plan["id"], "started_s": int(time.time()),
              "coins": len(coins), "runs": runs, "refused": named}
-    (home() / ("skill-state.json" if skill else "state.json")).write_text(json.dumps(state, indent=1),
+    (home() / ("skill-redo-state.json" if skill and coins else "skill-state.json" if skill
+               else "state.json")).write_text(json.dumps(state, indent=1),
                                                                           encoding="utf-8")
     return state
 
@@ -342,6 +344,25 @@ def collect() -> dict:
     return out
 
 
+def collect_redo() -> dict:
+    """A redo of named coins (`dispatch --skill --coins`): each account's lines downloaded and laid
+    over the saved skill run (`merge_skill`)."""
+    import shutil
+
+    state = json.loads((home() / "skill-redo-state.json").read_text(encoding="utf-8"))
+    out = {}
+    for key, r in state["runs"].items():
+        repo = r.get("repo", key)
+        root = home() / f"skill-run-{r['run']}"
+        if root.exists():
+            shutil.rmtree(root)
+        root.mkdir(parents=True)
+        _gh("run", "download", str(r["run"]), "-R", repo, "-D", str(root), "-p", "skill-lines-*",
+            timeout=1800)
+        out[repo] = merge_skill(root)
+    return out
+
+
 def collect_skill() -> dict:
     """The skill run's lines from every account, keyed 'COIN|tf' (skill_bt.py); a coin no machine
     reported is named in `not_reached`, a coin-timeframe that raised in `failed`."""
@@ -381,6 +402,35 @@ def collect_skill() -> dict:
     return out
 
 
+def merge_skill(folder) -> dict:
+    """A redo's lines (a skill_shard run's `out` folder) laid over the saved skill run: a redone
+    coin-timeframe replaces its line and leaves the skipped and failed lists; one the redo could not
+    measure keeps its reason (CLAUDE.md: a failed coin is redone alone, never the whole run)."""
+    folder = Path(folder)
+    path = home() / "skill.json"
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    got, still_failed, still_skipped = {}, [], []
+    for f in folder.rglob("skill-*.jsonl"):
+        for text in f.read_text(encoding="utf-8").splitlines():
+            if text.strip():
+                x = json.loads(text)
+                got[f"{x['coin']}|{x['tf']}"] = x
+    for f in folder.rglob("skill-report-*.json"):
+        for e in json.loads(f.read_text(encoding="utf-8")):
+            if e.get("error"):
+                still_failed.append(f"{e['coin']} {e.get('tf')}: {e['error']}")
+            if e.get("skipped"):
+                still_skipped.append(f"{e['coin']} {e['tf']}: only {e['skipped']}")
+    saved["lines"].update(got)
+    done = {k.replace("|", " ") for k in got}
+    keep = lambda xs: [x for x in xs if x.split(":")[0] not in done]
+    saved["failed"] = sorted(set(keep(saved.get("failed") or []) + still_failed))
+    saved["skipped"] = sorted(set(keep(saved.get("skipped") or []) + still_skipped))
+    saved["redone_s"] = int(time.time())
+    path.write_text(json.dumps(saved), encoding="utf-8")
+    return {"redone": len(got), "failed": len(saved["failed"]), "skipped": len(saved["skipped"])}
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="python -m tradingagents.acs")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -389,8 +439,10 @@ def main(argv=None) -> int:
     d.add_argument("--label", default=None)
     d.add_argument("--skip", action="append", default=[], help="owner/repo whose machines are busy")
     d.add_argument("--skill", action="store_true", help="the backtesting skill on the whole market")
+    d.add_argument("--coins", default="", help="comma-separated coins (a redo of named ones)")
     c = sub.add_parser("collect")
     c.add_argument("--skill", action="store_true")
+    c.add_argument("--merge", default=None, help="a skill redo's out folder to lay over the saved run")
     sub.add_parser("page")
     a = p.parse_args(argv)
     if a.cmd == "pick":
@@ -406,10 +458,17 @@ def main(argv=None) -> int:
               f"yet; plan {path} id {plan['id']}")
         return 0
     if a.cmd == "dispatch":
-        st = dispatch(a.label, skip=tuple(a.skip), skill=a.skill)
+        st = dispatch(a.label, skip=tuple(a.skip), skill=a.skill,
+                      coins=[c for c in a.coins.split(",") if c] or None)
         print(json.dumps({k: v for k, v in st.items() if k != "runs"} | {
             "runs": {r: {k: v for k, v in x.items() if k != "coin_list"} for r, x in st["runs"].items()}},
             indent=1))
+        return 0
+    if a.cmd == "collect" and a.merge == "redo":
+        print(collect_redo())
+        return 0
+    if a.cmd == "collect" and a.merge:
+        print(merge_skill(a.merge))
         return 0
     if a.cmd == "collect" and a.skill:
         out = collect_skill()

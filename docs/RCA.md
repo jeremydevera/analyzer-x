@@ -172,6 +172,40 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-05-B — the all-coins strategies page built in commit e044c3d opened blank: one legend sentence ended its script early: NEVER REACHED YOU (caught before publishing)
+
+**CEO**
+
+* What you saw: nothing - the broken page was never published; version 2 went out after the fix.
+* Why: a sentence in the page's notes used double quotes inside text that was itself in double quotes, so the browser stopped reading the page's program there.
+* What stops it now: a test runs the page's program through a JavaScript reader on every change.
+
+**DEV**
+
+* `tradingagents/acs_page.html:241` - the legend string `"... A v2 row marked "lost on the older days" is a filler ..."` closed at the inner quote; the browser reported `Unexpected identifier 'lost'` and no function of the page existed.
+* Invariant broken: **a page's script must parse before any of its rows can be checked** - every test drove `acs_page.payload` (rows), none ran the script.
+* Guard: `tests/test_acs_page.py::test_the_page_script_parses` (node `new Function` over the script; red on the e044c3d file).
+
+**SAW** - opening the rebuilt page in the browser before publishing, Nov 05, 2026 7:53am: console `Unexpected identifier 'lost'`, `view is not defined`.
+
+**TIMELINE**
+
+1. Nov 05, 2026 7:34am: e044c3d added the checks and the legend sentence; pushed to all three accounts.
+2. 7:53am: the rebuilt page (4.9 MB) opened with no rows.
+3. 7:55am: the quotes became single quotes, the script parses, and version 2 (20,830 strategies) was published.
+
+**ROOT CAUSE** - text added inside a JavaScript string literal by a patch script, with no parse step between writing the file and building the page.
+
+**WHY IT WAS NOT CAUGHT** - the page tests asserted on the payload's rows; nothing executed or parsed the HTML template's script.
+
+**COST** - none: about 3 minutes, nothing published broken.
+
+**FIX** - 5692165.
+
+**GUARD** - `tests/test_acs_page.py::test_the_page_script_parses`.
+
+---
+
 ## RCA-2026-11-05-A — the all-coins trade-list dispatch said "GitHub took the run but did not list it" on all three accounts while all three runs were running
 
 **CEO**

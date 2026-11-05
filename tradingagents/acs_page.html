@@ -34,7 +34,7 @@ dialog{max-width:min(1100px,100vw - 32px);width:100%;border:1px solid var(--rule
  <label>Base $ a trade<input id="f-base" type="number" min="0.5" step="0.5"></label>
  <label>Source<select id="f-src"><option value="">all</option></select></label>
  <label>Timeframe<select id="f-tf"><option value="">all</option><option>15m</option><option>30m</option><option>1h</option><option>4h</option><option>1d</option></select></label>
- <label>Held up<select id="f-held"><option value="">all rows</option><option value="new">made money on the days it was NOT chosen on (v2, skill)</option><option value="both">v3: profitable in both years</option><option value="prof">made money in its window</option><option value="best">BEST for each coin-timeframe (one each)</option></select></label>
+ <label>Held up<select id="f-held"><option value="">all rows</option><option value="new">made money on the days it was NOT chosen on (v2, skill)</option><option value="both">v3: profitable in both years</option><option value="prof">made money in its window</option><option value="best">BEST for each coin-timeframe (one each)</option><option value="fwd">FORWARD-TESTED: profitable in 2025 and chosen again for 2026 (v3)</option></select></label>
  <label>Min win %<input id="f-wr" type="number" min="0" max="100" placeholder="any"></label>
  <label>Min win ÷ loss size<input id="f-ratio" type="number" min="0" step="0.1" placeholder="any"></label>
  <label>Min profit $<input id="f-pr" type="number" step="1" placeholder="any"></label>
@@ -126,12 +126,12 @@ function fails(r,m,f){const out=[];
  return out}
 const LIMITS={wr:"min win %",ratio:"min win ÷ loss size",pr:"min profit $",nt:"min trades",gm:"min months green",dd:"max worst dip $",tp:"max TP %",sl:"max SL %"};
 function heldOk(r,m){if(state.held==="new")return r.split!=null&&m.newP!=null&&m.newP>0;
- if(state.held==="both")return r.both===1;if(state.held==="prof")return m.profit!=null&&m.profit>0;if(state.held==="best")return r.best===1;return true}
+ if(state.held==="both")return r.both===1;if(state.held==="prof")return m.profit!=null&&m.profit>0;if(state.held==="best")return r.best===1;if(state.held==="fwd")return r.fwd===1;return true}
 function filterNames(){const f=state.f,w={wr:v=>`win at least ${v}%`,ratio:v=>`a win at least ${v}x a loss`,pr:v=>`profit at least ${money(v)}`,
  nt:v=>`${v}+ trades`,gm:v=>`${v} or more months green`,dd:v=>`worst dip no worse than −${usd(v)}`,tp:v=>`target at most ${v}% on every trade`,sl:v=>`stop at most ${v}% on every trade`};
  const out=Object.keys(w).filter(k=>f[k]!=null).map(k=>w[k](f[k]));if(f.cn!=null)out.push(`${f.cn}+ of the 7 checks passed`);
  if(state.src)out.unshift(`source ${state.src}`);if(state.tf)out.unshift(`timeframe ${state.tf}`);
- if(state.held)out.push({best:"BEST for each coin-timeframe",new:"made money on the days it was not chosen on",both:"v3 profitable in both years",prof:"made money in its window"}[state.held]);
+ if(state.held)out.push({fwd:"forward-tested: profitable in 2025 and chosen again for 2026",best:"BEST for each coin-timeframe",new:"made money on the days it was not chosen on",both:"v3 profitable in both years",prof:"made money in its window"}[state.held]);
  if(state.coin)out.push(`coin contains "${state.coin}"`);return out}
 // the BEST strategy of every coin-timeframe, chosen on its OLDER days only (never on the days it is
 // then judged on): the most of the skills' checks passed on those trades - profit, a win at least a loss,
@@ -157,7 +157,7 @@ function view(){const k=state.base/D.base;const rows=ROWS.map(r=>({r,m:measure(r
 function sortVal(x,c){const m=x.m,r=x.r,t=m.trades;
  const v={profit:m.profit,tp:m.target,sl:m.stop,trades:t||null,perday:t?t/m.span:null,wins:t?m.wins:null,losses:t?m.losses:null,win:m.win,
   avgwin:m.avgWin,avgloss:m.avgLoss,ratio:m.ratio,worst:t?m.worst:null,green:m.green,per:m.per,newp:m.newP,bar:r.bar,wlday:t?m.wins/m.span:null,both:r.both,
-  sharpe:m.sharpe,sortino:m.sortino,mdd:m.mdd,pf:m.pf,mc:r.mc,cn:x.cn,lost:r.lost,best:r.best||0};
+  sharpe:m.sharpe,sortino:m.sortino,mdd:m.mdd,pf:m.pf,mc:r.mc,cn:x.cn,lost:r.lost,best:r.best||0,fwd:r.fwd||0};
  return c in v?v[c]:String(r[c]??"")}
 function sortRows(xs,k,dir){return [...xs].sort((a,b)=>{const p=sortVal(a,k),q=sortVal(b,k);if(p==null&&q==null)return 0;if(p==null)return 1;if(q==null)return -1;
  return (typeof p==="number"&&typeof q==="number"?p-q:String(p).localeCompare(String(q)))*dir})}
@@ -167,7 +167,7 @@ const COLS=[["id","ID",1],["src","Source",1],["coin","Coin",1],["tf","Timeframe"
  ["ratio","Win size ÷ loss size"],["worst","Worst losing run"],["green","Months green"],["per","$ a trade"],
  ["newp","Days it was NOT chosen on $ (v2: newest 15 days · skill: newest 30%)"],["bar","Luck bar (v2 and skill: average setting $ a trade on those days · v3: random median $)"],["both","v3: profitable both years"],
  ["cn","Checks passed (of 7)"],["sharpe","Sharpe (a year)"],["sortino","Sortino (a year)"],["mdd","Max drawdown $"],["pf","Profit factor"],
- ["mc","Monte Carlo: draws in profit"],["lost","Lost on the older days (v2, skill)"],["best","BEST for its coin-timeframe"]];
+ ["mc","Monte Carlo: draws in profit"],["lost","Lost on the older days (v2, skill)"],["best","BEST for its coin-timeframe"],["fwd","Forward-tested (won 2025, chosen again 2026)"]];
 function cellOf(x,c,k){const r=x.r,m=x.m,none='<span class="muted">no trade in this window</span>';
  switch(c){case"id":return `<span class="id">#${esc(r.id)}</span>`;case"src":case"coin":case"tf":case"strategy":case"tp_rule":case"sl_rule":case"lev":return esc(r[c]);
   case"profit":return m.trades?`<b class="${m.profit>0?"pos":"neg"}">${money(m.profit)}</b>`:none;
@@ -188,6 +188,7 @@ function cellOf(x,c,k){const r=x.r,m=x.m,none='<span class="muted">no trade in t
   case"mdd":return m.trades?money(m.mdd):none;case"pf":return m.pf==null?(m.trades?"no loss":none):m.pf.toFixed(2);
   case"mc":return r.mc==null?'<span class="muted">under 2 trades</span>':(r.mc*100).toFixed(0)+"%";
   case"best":return r.best?'<b class="pos">BEST</b>':"";
+  case"fwd":return r.fwd?'<b class="pos">FORWARD-TESTED</b>':"";
   case"lost":return r.split==null?"":(r.lost===2?'<b class="neg">too new to check</b>':r.lost?'<b class="neg">yes</b> (filler)':"no")}}
 function render(){const v=view(),s=state.sort;const sorted=sortRows(v.shown,s.k,s.dir);
  const pages=Math.max(1,Math.ceil(sorted.length/PAGE));state.page=Math.min(Math.max(state.page,0),pages-1);
@@ -234,7 +235,12 @@ function head(){const bests=ROWS.filter(r=>r.best);let bp=0,bn=0,bheld=0,bof=0;
  const bestLine=`<b>BEST for every coin-timeframe:</b> ${bests.length.toLocaleString()} strategies, one for each coin on each timeframe it trades - chosen on its OLDER days only - the most of the skills' checks passed there, then the most money a trade there (pick "BEST for each coin-timeframe" under Held up). On those unseen days the BEST picks made <b class="${bp>0?"pos":"neg"}">${money(bp)}</b> over ${bn.toLocaleString()} trades (${bn?money(bp/bn):"-"} a trade); ${bheld.toLocaleString()} of ${bof.toLocaleString()} made money. `;const v2=ROWS.filter(r=>r.src==="v2");let p=0,n=0,held=0,heldOf=0;
  for(const r of v2){const m=measure(r,null,1);if(m.newN){p+=m.newP;n+=m.newN;heldOf++;if(m.newP>0)held++}}
  const bars=v2.filter(r=>r.bar!=null);const both=ROWS.filter(r=>r.both===1).length/2;
- $("head").innerHTML=bestLine+`<b>Read this first.</b> Choosing works only if a strategy picked on older days keeps making money on days it was not picked on. `
+ const fw=ROWS.filter(r=>r.fwd);let fp=0,ft=0,fr=0,fpos=0;const fc=new Set();
+ const fseen=new Set();let fdist=0;
+ for(const r of fw){const m=measure(r,null,1);const d=[r.coin,r.tf,r.strategy.split(" ").slice(-1)[0],m.trades,(m.profit||0).toFixed(2)].join("|");
+  if(fseen.has(d))continue;fseen.add(d);fdist++;fp+=m.profit||0;ft+=m.trades;fr+=r.bar||0;if(m.profit>0)fpos++;fc.add(r.coin)}
+ const fwdLine=fw.length?`<b>FORWARD-TESTED - the strategies that held up:</b> ${fw.length.toLocaleString()} v3 rows (${fdist} distinct trade lists - filters that change nothing counted once below) on ${fc.size} coins that were profitable on 2025's unseen days AND whose setting 2026's own older days chose again (both known before 2026's unseen days began). On 2026's unseen days they made <b class="${fp>0?"pos":"neg"}">${money(fp)}</b> over ${ft.toLocaleString()} trades (${ft?money(fp/ft):"-"} a trade), ${fpos} of ${fdist} in profit, against ${money(fr)} for their random runs' medians - the one way of choosing in this research that beat random entries forward (pick FORWARD-TESTED under Held up). `:"";
+ $("head").innerHTML=fwdLine+bestLine+`<b>Read this first.</b> Choosing works only if a strategy picked on older days keeps making money on days it was not picked on. `
   +`Over the newest 15 days the ${v2.length.toLocaleString()} v2 picks made <b class="${p>0?"pos":"neg"}">${money(p)}</b> over ${n.toLocaleString()} trades (${n?money(p/n):"-"} a trade); ${held.toLocaleString()} of ${heldOf.toLocaleString()} made money. `
   +`An average strategy of the same coin-timeframes made ${bars.length?money(bars.reduce((s,r)=>s+r.bar,0)/bars.length):"-"} a trade on the stored backtest's newest 15 days (averaged over the picks' coin-timeframes). `
   +`On ${D.v2_rows_read.toLocaleString()} rows, 8 ways of choosing were tried before this page was built and every one lost money on the newest 15 days; this page ranks by the least bad (the trading cost against the target, lowest first). `

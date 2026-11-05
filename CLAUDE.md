@@ -3091,3 +3091,14 @@ coin, never one timeframe, never one winner, unless they name one.
   is). 5,316 BEST, one for each coin-timeframe; on their unseen days they made
   −$36,185.09 over 54,238 trades (−$0.67 a trade), 1,637 of 5,104 in profit.
   Say that number beside the word "best", every time.
+* **THE ONE RULE THAT HELD FORWARD (Nov 05, 2026) — "forward-tested":** a v3
+  strategy PROFITABLE on 2025's unseen days AND whose setting 2026's own older
+  days chose again (both known before 2026's unseen days began), judged on
+  2026's unseen days: 119 distinct trade lists on 67 coins, +$589.78 over
+  2,684 trades (+$0.22 a trade), 75 in profit, against +$171.98 for their
+  random runs; per coin +$3.86 over random, 90% range +$1.21 to +$6.50, ahead
+  on 46 of 67 — the confluence research's bar (the range's low end above zero
+  over 10+ coins), passed. Almost all trend on 4h (MOVR, MAGIC, THETA, RUNE,
+  KAS, ORCA). Four variants were tried before it (picked in 2025 alone:
+  −$0.165 a trade, ≈ random), so it is one year's forward evidence, not proof:
+  practice before real money. The page's "FORWARD-TESTED" filter shows them.

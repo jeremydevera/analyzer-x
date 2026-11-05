@@ -3016,3 +3016,41 @@ won, −$672.37; the daytime rule 1,655 bets, 60.1% won, +$394.82, green 16 of 1
     `tests/test_backtest_v2_keeps_flat_only.py` holds it.
 20. **Never drop a dimension silently.** Pre-filter coins by the liquidity gate per
     timeframe and state how many were excluded and why. A capped grid says what it capped.
+
+## Strategies for every coin and every timeframe (MANDATORY — Nov 05, 2026)
+
+The operator, Nov 05, 2026: *"use all my existing data from v2 , v3 and
+generate me the best strateigioes for all coins for all time frame / make i
+rule for this becaues i keep on repeating to generate a strategy for all coins
+all time frame example: bitcoin / 15m time frame - generate multiple
+strategies / 30m ... / 1hr ... / 4hr ... / 1 day timeframe - generate multiple
+strategies"*.
+
+**Whenever they ask for strategies — "best strategy", "generate strategies",
+"what should I run" — the answer is ALWAYS every coin x every timeframe
+(15m, 30m, 1h, 4h, 1d) x SEVERAL strategies per coin-timeframe.** Never one
+coin, never one timeframe, never one winner, unless they name one.
+
+* **From the stores already measured, first:** Backtest v2's list
+  (`stores.V2.rows_db`, all five timeframes, 30 days with the newest 15 inside
+  each row) and Backtest v3's per-coin verdicts (1h/4h/1d, each year's 90
+  unseen days, kept in `verdicts-per-coin/`). A new grid only when they ask.
+* **Chosen on days it is then checked against — never on all of them.** A v2
+  pick is chosen on its OLDER 15 days (its 30 less its `t15`/`w15`/`p15`) and
+  every pick shows what it did on the newest 15, beside the pair's AVERAGE row
+  over the same days (the luck bar). A v3 pick is its year's per-coin verdict,
+  beside its own 200 random runs, and a group profitable in BOTH years says
+  so.
+* **Say whether choosing works at all, with the number, every time.** Measured
+  Nov 05, 2026 over 12,527,659 v2 rows on 5,114 coin-timeframes: 8 ways of
+  choosing on the older 15 days were tried and EVERY one lost money over the
+  newest 15; the least bad was the lowest trading cost against the target
+  (`acs.RANK`; 15m −$0.171, 30m −$0.187, 1h −$0.188, 4h −$0.202 a trade,
+  against −$0.232, −$0.254, −$0.273, −$0.215 for an average row). v3: 122 coin
+  x idea groups profitable in both 2025 and 2026 where luck alone gives about
+  4 (understated for 4h: its random runs trade less).
+* **The tool:** `python -m tradingagents.acs pick` (writes
+  `research/acs/plan.json` — commit and push it), `dispatch` (acs.yml on
+  every account rebuilds each pick's trades like a Backtest v2 row,
+  `.github/scripts/acs_shard.py`), `collect`, `page` (the artifact, kit
+  A-H, every row opening its trades). Guard: `tests/test_acs.py`.

@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>All Coins Strategies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{color-scheme:light;--bg:#f6f7f5;--panel:#fff;--ink:#15191a;--ink2:#4b5355;--ink3:#7a8386;--rule:#dde2df;
+ --accent:#0f6b62;--gain:#2a78d6;--loss:#e34948;--warn:#9a6300;
+ --sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--mono:"JetBrains Mono",ui-monospace,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#111514;--panel:#181d1c;--ink:#eef2f0;
+ --ink2:#b3bcb9;--ink3:#86908d;--rule:#2b3331;--accent:#4fb3a7;--gain:#3987e5;--loss:#e66767;--warn:#e0a53a}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#111514;--panel:#181d1c;--ink:#eef2f0;--ink2:#b3bcb9;--ink3:#86908d;
+ --rule:#2b3331;--accent:#4fb3a7;--gain:#3987e5;--loss:#e66767;--warn:#e0a53a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans)}
+main{max-width:1400px;margin:0 auto;padding:16px}h1{font-size:20px;margin:0 0 6px}
+.prov,.count,.note{color:var(--ink2);font-size:13px;margin:6px 0}.head{font-size:15px;margin:10px 0;max-width:110ch}
+.warnbox{border-left:3px solid var(--warn);padding:6px 10px;background:color-mix(in srgb,var(--warn) 8%,transparent);border-radius:4px}
+.filters{display:flex;flex-wrap:wrap;gap:8px 12px;margin:12px 0}
+.filters label{display:flex;flex-direction:column;font-size:12px;color:var(--ink2)}
+input,select,button{font:13px var(--sans);padding:4px 6px;border:1px solid var(--rule);border-radius:6px;background:var(--panel);color:var(--ink)}
+input[type=number]{width:96px}.wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--rule);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}
+th{cursor:pointer;font-size:12px;color:var(--ink2);position:sticky;top:0;background:var(--panel)}
+td.l,th.l{text-align:left}.id{font-family:var(--mono)}.pos{color:var(--gain)}.neg{color:var(--loss)}.muted{color:var(--ink3);font-style:italic}
+tr.row:hover{background:color-mix(in srgb,var(--accent) 8%,transparent);cursor:pointer}
+dialog{max-width:min(1100px,100vw - 32px);width:100%;border:1px solid var(--rule);border-radius:10px;background:var(--panel);color:var(--ink)}
+.sum{display:flex;flex-wrap:wrap;gap:6px 18px;margin:8px 0}.total{font-size:18px}.pager{display:flex;gap:8px;align-items:center;margin:8px 0}
+</style></head><body><main>
+<h1 id="h">Strategies for every coin and every timeframe</h1>
+<p class="prov" id="prov">Opening the data...</p>
+<p class="head warnbox" id="head"></p>
+<div class="filters">
+ <label>Base $ a trade<input id="f-base" type="number" min="0.5" step="0.5"></label>
+ <label>Source<select id="f-src"><option value="">all</option></select></label>
+ <label>Timeframe<select id="f-tf"><option value="">all</option><option>15m</option><option>30m</option><option>1h</option><option>4h</option><option>1d</option></select></label>
+ <label>Held up<select id="f-held"><option value="">all rows</option><option value="new">v2: made money on the newest 15 days</option><option value="both">v3: profitable in both years</option><option value="prof">made money in its window</option></select></label>
+ <label>Min win %<input id="f-wr" type="number" min="0" max="100" placeholder="any"></label>
+ <label>Min win ÷ loss size<input id="f-ratio" type="number" min="0" step="0.1" placeholder="any"></label>
+ <label>Min profit $<input id="f-pr" type="number" step="1" placeholder="any"></label>
+ <label>Min trades<input id="f-nt" type="number" min="0" step="1" placeholder="any"></label>
+ <label>Min months green<input id="f-gm" type="number" min="0" step="1" placeholder="any"></label>
+ <label>Max worst dip $<input id="f-dd" type="number" min="0" step="1" placeholder="any"></label>
+ <label>Max TP %<input id="f-tp" type="number" min="0" step="0.1" placeholder="any"></label>
+ <label>Max SL %<input id="f-sl" type="number" min="0" step="0.1" placeholder="any"></label>
+ <label>Last N days<input id="f-days" type="number" min="1" step="1" placeholder="whole window"></label>
+ <label>Coin<input id="f-coin" type="text" placeholder="any"></label>
+ <label>Find by ID<input id="f-id" type="text" placeholder="#XXXXXXXX"></label>
+ <label>&nbsp;<button id="clear">Clear all filters</button></label>
+</div>
+<p class="count" id="count"></p>
+<div class="pager"><button id="p-prev">Previous 100</button><span id="p-at"></span><button id="p-next">Next 100</button></div>
+<div class="wrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+<div class="note" id="notes"></div>
+<p class="note" id="legend"></p>
+</main>
+<dialog id="dlg"><div id="dlg-body"></div><p><button id="dlg-close">Close</button></p></dialog>
+<script>
+const Z="";
+const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtWhen(ms){const d=new Date(ms);let h=d.getHours();const ap=h<12?"am":"pm";h=h%12||12;
+ return `${MON[d.getMonth()]} ${String(d.getDate()).padStart(2,"0")}, ${d.getFullYear()} ${h}:${String(d.getMinutes()).padStart(2,"0")}${ap}`}
+const usd=v=>"$"+Math.abs(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const money=v=>v==null?"":(v>0?"+":"")+(v<0?"-":"")+usd(v);
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pct=v=>v==null?"":v.toFixed(2)+"%";
+const rng=(lo,hi)=>lo==null||hi==null?"":(Math.abs(hi-lo)<1e-9?pct(hi):pct(lo)+" to "+pct(hi));
+const num=s=>{const v=parseFloat(s);return Number.isFinite(v)?v:null};
+function monthKey(s){const d=new Date(s*1000);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`}
+const PAGE=100,LOG_PAGE=100,DAY=86400;
+let D=null,ROWS=[];
+const state={base:5,f:{},src:"",tf:"",held:"",days:null,coin:"",id:"",opened:"",cur:-1,log:0,page:0,sort:{k:"profit",dir:-1}};
+const idKey=()=>state.id.replace(/^#/,"").toUpperCase();
+function rowsOf(D){return D.R.map((a,i)=>{const r={i};D.F.forEach((f,j)=>r[f]=a[j]);r.t=D.T[i];return r})}
+// one row over its trades that CLOSED in the last N days of ITS OWN window (null = the whole window), dollars x k
+function measure(r,days,k){
+ const from=days?r.end-days*DAY:null;const t=from==null?r.t:r.t.filter(x=>x[1]>=from);
+ let profit=0,wins=0,winSum=0,lossSum=0,run=0,runN=0,worst=0,worstN=0,noStop=false,noTgt=false,sLo=null,sHi=null,gLo=null,gHi=null,newP=0,newN=0;const months={};
+ const newFrom=r.end-15*DAY;
+ for(const x of t){const p=x[4]/1e4*k;profit+=p;
+  if(p>0){wins++;winSum+=p;run=0;runN=0}else{lossSum-=p;run+=p;runN++;if(run<worst){worst=run;worstN=runN}}
+  const m=monthKey(x[1]);months[m]=(months[m]||0)+p;if(x[1]>=newFrom){newP+=p;newN++}
+  if(x[5]>=0){const v=x[5]/1e3;sLo=sLo==null?v:Math.min(sLo,v);sHi=sHi==null?v:Math.max(sHi,v)}else noStop=true;
+  if(x[6]>=0){const v=x[6]/1e3;gLo=gLo==null?v:Math.min(gLo,v);gHi=gHi==null?v:Math.max(gHi,v)}else noTgt=true}
+ const n=t.length,losses=n-wins,aw=wins?winSum/wins:null,al=losses?lossSum/losses:null;
+ const span=Math.max(1/24,days?Math.min(days,r.days):r.days);
+ return {trades:n,wins,losses,win:n?wins/n*100:null,profit:n?profit:null,per:n?profit/n:null,avgWin:aw,avgLoss:al,
+  ratio:aw!=null&&al?aw/al:null,worst:worstN?worst:0,worstN,months,green:n?Object.values(months).filter(v=>v>0).length:null,
+  nmonths:Object.keys(months).length,stop:n&&!noStop?sHi:null,stopLeast:n&&!noStop?sLo:null,target:n&&!noTgt?gHi:null,
+  targetLeast:n&&!noTgt?gLo:null,newP:newN?newP:null,newN,span,t}}
+function fails(r,m,f){const out=[];
+ if(f.wr!=null&&!(m.win!=null&&m.win>=f.wr))out.push("min win %");
+ if(f.ratio!=null&&!(m.ratio!=null&&m.ratio>=f.ratio))out.push("min win ÷ loss size");
+ if(f.pr!=null&&!(m.profit!=null&&m.profit>=f.pr))out.push("min profit $");
+ if(f.nt!=null&&!(m.trades>=f.nt))out.push("min trades");
+ if(f.gm!=null&&!(m.green!=null&&m.green>=f.gm))out.push("min months green");
+ if(f.dd!=null&&!(m.trades>0&&-m.worst<=f.dd))out.push("max worst dip $");
+ if(f.tp!=null&&!(m.target!=null&&m.target<=f.tp))out.push("max TP %");
+ if(f.sl!=null&&!(m.stop!=null&&m.stop<=f.sl))out.push("max SL %");
+ return out}
+const LIMITS={wr:"min win %",ratio:"min win ÷ loss size",pr:"min profit $",nt:"min trades",gm:"min months green",dd:"max worst dip $",tp:"max TP %",sl:"max SL %"};
+function heldOk(r,m){if(state.held==="new")return r.src==="v2"&&m.newP!=null&&m.newP>0;
+ if(state.held==="both")return r.both===1;if(state.held==="prof")return m.profit!=null&&m.profit>0;return true}
+function filterNames(){const f=state.f,w={wr:v=>`win at least ${v}%`,ratio:v=>`a win at least ${v}x a loss`,pr:v=>`profit at least ${money(v)}`,
+ nt:v=>`${v}+ trades`,gm:v=>`${v} or more months green`,dd:v=>`worst dip no worse than −${usd(v)}`,tp:v=>`target at most ${v}% on every trade`,sl:v=>`stop at most ${v}% on every trade`};
+ const out=Object.keys(w).filter(k=>f[k]!=null).map(k=>w[k](f[k]));
+ if(state.src)out.unshift(`source ${state.src}`);if(state.tf)out.unshift(`timeframe ${state.tf}`);
+ if(state.held)out.push({new:"v2 made money on the newest 15 days",both:"v3 profitable in both years",prof:"made money in its window"}[state.held]);
+ if(state.coin)out.push(`coin contains "${state.coin}"`);return out}
+function view(){const k=state.base/D.base;const rows=ROWS.map(r=>({r,m:measure(r,state.days,k)}));
+ const id=idKey(),coin=state.coin.toUpperCase();let shown;
+ if(id)shown=rows.filter(x=>x.r.id===id);
+ else shown=rows.filter(x=>(!state.src||x.r.src===state.src)&&(!state.tf||x.r.tf===state.tf)&&heldOk(x.r,x.m)
+  &&!fails(x.r,x.m,state.f).length&&(!coin||x.r.coin.toUpperCase().includes(coin)));
+ const ms=new Set();for(const x of shown)for(const key of Object.keys(x.m.months))ms.add(key);
+ return {rows,shown,months:[...ms].sort(),k}}
+function sortVal(x,c){const m=x.m,r=x.r,t=m.trades;
+ const v={profit:m.profit,tp:m.target,sl:m.stop,trades:t||null,perday:t?t/m.span:null,wins:t?m.wins:null,losses:t?m.losses:null,win:m.win,
+  avgwin:m.avgWin,avgloss:m.avgLoss,ratio:m.ratio,worst:t?m.worst:null,green:m.green,per:m.per,newp:m.newP,bar:r.bar,wlday:t?m.wins/m.span:null,both:r.both};
+ return c in v?v[c]:String(r[c]??"")}
+function sortRows(xs,k,dir){return [...xs].sort((a,b)=>{const p=sortVal(a,k),q=sortVal(b,k);if(p==null&&q==null)return 0;if(p==null)return 1;if(q==null)return -1;
+ return (typeof p==="number"&&typeof q==="number"?p-q:String(p).localeCompare(String(q)))*dir})}
+const COLS=[["id","ID",1],["src","Source",1],["coin","Coin",1],["tf","Timeframe",1],["strategy","Strategy",1],["profit","PROFIT (total $)"],
+ ["tp_rule","TP (target rule)",1],["tp","TP % (every trade)"],["sl_rule","SL (stop rule)",1],["sl","SL % (every trade)"],["lev","Leverage",1],
+ ["trades","Trades"],["perday","Trades a day"],["wins","W"],["losses","L"],["wlday","W / L a day"],["win","Win %"],["avgwin","Avg win $"],["avgloss","Avg loss $"],
+ ["ratio","Win size ÷ loss size"],["worst","Worst losing run"],["green","Months green"],["per","$ a trade"],
+ ["newp","Newest 15 days $ (v2: days it was NOT chosen on)"],["bar","Luck bar (v2: average row $ a trade, newest 15 days · v3: random median $)"],["both","v3: profitable both years"]];
+function cellOf(x,c,k){const r=x.r,m=x.m,none='<span class="muted">no trade in this window</span>';
+ switch(c){case"id":return `<span class="id">#${esc(r.id)}</span>`;case"src":case"coin":case"tf":case"strategy":case"tp_rule":case"sl_rule":case"lev":return esc(r[c]);
+  case"profit":return m.trades?`<b class="${m.profit>0?"pos":"neg"}">${money(m.profit)}</b>`:none;
+  case"tp":return m.target!=null?rng(m.targetLeast,m.target):(m.trades?'<span class="muted">none (trailing stop)</span>':none);
+  case"sl":return m.stop!=null?rng(m.stopLeast,m.stop):none;
+  case"trades":return m.trades||none;case"perday":return m.trades?(m.trades/m.span).toFixed(2):none;
+  case"wins":return m.trades?m.wins:none;case"losses":return m.trades?m.losses:none;
+  case"wlday":return m.trades?`${(m.wins/m.span).toFixed(2)} / ${(m.losses/m.span).toFixed(2)}`:none;
+  case"win":return m.win!=null?m.win.toFixed(1)+"%":none;case"avgwin":return m.avgWin!=null?money(m.avgWin):(m.trades?"no win":none);
+  case"avgloss":return m.avgLoss!=null?money(-m.avgLoss):(m.trades?"no loss":none);
+  case"ratio":return m.ratio!=null?m.ratio.toFixed(2)+"x":(m.trades?(m.avgLoss?"no win":"no loss"):none);
+  case"worst":return m.trades?(m.worstN?`${money(m.worst)} over ${m.worstN}`:"no losses"):none;
+  case"green":return m.trades?`${m.green}/${m.nmonths}`:none;case"per":return m.trades?money(m.per):none;
+  case"newp":return r.src!=="v2"?'<span class="muted">its whole window is unseen days</span>':(m.newN?`<span class="${m.newP>0?"pos":"neg"}">${money(m.newP)}</span> over ${m.newN}`:"no trade");
+  case"bar":return r.bar==null?'<span class="muted">none</span>':money(r.bar*k)+(r.src==="v2"?" a trade":"");
+  case"both":return r.both==null?'<span class="muted">one year only</span>':(r.both?'<b class="pos">yes</b>':"no")}}
+function render(){const v=view(),s=state.sort;const sorted=sortRows(v.shown,s.k,s.dir);
+ const pages=Math.max(1,Math.ceil(sorted.length/PAGE));state.page=Math.min(Math.max(state.page,0),pages-1);
+ const a=state.page*PAGE,page=sorted.slice(a,a+PAGE);
+ $("thead").innerHTML="<tr>"+COLS.map(([c,l,left])=>`<th data-k="${c}" class="${left?"l":""}">${esc(l)}${s.k===c?(s.dir>0?" ▲":" ▼"):""}</th>`).join("")
+  +v.months.map(m=>`<th>${MON[+m.slice(5)-1]} ${m.slice(0,4)} $</th>`).join("")+"</tr>";
+ $("tbody").innerHTML=page.map(x=>`<tr class="row" data-i="${x.r.i}">`+COLS.map(([c,_l,left])=>`<td class="${left?"l":""}">${cellOf(x,c,v.k)}</td>`).join("")
+  +v.months.map(m=>{const p=x.m.months[m];return `<td class="${p>0?"pos":p<0?"neg":""}">${p==null?'<span class="muted">no trade</span>':money(p)}</td>`}).join("")+"</tr>").join("");
+ $("p-at").textContent=`rows ${sorted.length?a+1:0}-${a+page.length} of ${sorted.length.toLocaleString()} (page ${state.page+1} of ${pages})`;
+ $("p-prev").disabled=!state.page;$("p-next").disabled=state.page>=pages-1;
+ const names=filterNames(),id=idKey();
+ const idle=Object.keys(LIMITS).filter(key=>state.f[key]!=null&&v.rows.every(x=>!fails(x.r,x.m,{[key]:state.f[key]}).length)).map(key=>`${LIMITS[key]} cuts nothing here: every row already meets it`);
+ const pairs=new Set(v.shown.map(x=>x.r.coin+"|"+x.r.tf)).size,coins=new Set(v.shown.map(x=>x.r.coin)).size;
+ const v2n=v.shown.filter(x=>x.r.src==="v2"),held=v2n.filter(x=>x.m.newP!=null&&x.m.newP>0).length;
+ $("count").innerHTML=`<b>${v.shown.length.toLocaleString()}</b> of ${ROWS.length.toLocaleString()} strategies, on ${coins.toLocaleString()} coins and ${pairs.toLocaleString()} coin-timeframes`
+  +(id?(v.shown.length?" · found by ID (the other filters are off)":` · no strategy has #${esc(id)} (the other filters are off)`):"")
+  +(names.length&&!id?" · "+esc(names.join(" AND ")):"")
+  +(v2n.length?` · of the ${v2n.length.toLocaleString()} v2 shown, ${held.toLocaleString()} made money on the newest 15 days`:"")
+  +(state.days?` · last ${state.days} days of each row's own window (every row re-added from its trades that closed in it: no minutes ride in a page, so it is not a new walk)`:"")
+  +` · at ${usd(state.base)} a trade`+(state.base!==D.base?` (scaled from the ${usd(D.base)} measured)`:"")+(idle.length?" · "+esc(idle.join("; ")):"");
+ document.querySelectorAll("#thead th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;state.sort={k,dir:state.sort.k===k?-state.sort.dir:-1};state.page=0;render()});
+ document.querySelectorAll("#tbody tr").forEach(tr=>tr.onclick=()=>open(+tr.dataset.i))}
+function open(i){state.cur=i;state.log=0;drawLog(true)}
+function drawLog(show){const k=state.base/D.base,r=ROWS[state.cur];if(!r)return;const m=measure(r,state.days,k);
+ const pages=Math.max(1,Math.ceil(m.t.length/LOG_PAGE));state.log=Math.min(Math.max(state.log,0),pages-1);
+ const a=state.log*LOG_PAGE,b=Math.min(m.t.length,a+LOG_PAGE);let run=0;for(let i=0;i<a;i++)run+=m.t[i][4]/1e4*k;
+ $("dlg-body").innerHTML=`<h3><span class="id">#${esc(r.id)}</span> ${esc(r.coin)} ${esc(r.tf)} ${esc(r.strategy)} · ${esc(r.src)}</h3>
+ <div class="sum"><span>TOTAL PROFIT <b class="total ${m.profit>0?"pos":"neg"}">${m.trades?money(m.profit):"$0.00"}</b></span>
+ <span>${m.trades} trades · ${m.wins} won · ${m.losses} lost${m.win!=null?" · "+m.win.toFixed(1)+"%":""}</span>
+ <span>a win ${m.avgWin!=null?money(m.avgWin):"-"} · a loss ${m.avgLoss!=null?money(-m.avgLoss):"-"}${m.ratio!=null?` · ${m.ratio.toFixed(2)}x`:""}</span>
+ <span>worst losing run <b>${m.worstN?`${money(m.worst)} over ${m.worstN}`:"none"}</b></span></div>
+ <p class="note">Chosen on: ${esc(r.chosen_on)}. Check: ${esc(r.check)}. Target: ${esc(r.tp_rule)}. Stop: ${esc(r.sl_rule)}. Leverage ${esc(r.lev)}. ${r.src==="v2"?`Margin ${usd(state.base)} at 20x = ${usd(state.base*20)} of coin a trade.`:`Risk ${usd(state.base)} to the stop a trade, at the leverage shown.`} Window ends ${fmtWhen(r.end*1000)} (${r.days.toFixed(0)} days). ${m.trades?`${(m.wins/m.span).toFixed(2)} won and ${(m.losses/m.span).toFixed(2)} lost a day.`:""}</p>
+ <p class="note">Trades ${m.t.length?a+1:0}-${b} of ${m.t.length} <button id="log-prev"${state.log?"":" disabled"}>Previous ${LOG_PAGE}</button> <button id="log-next"${state.log<pages-1?"":" disabled"}>Next ${LOG_PAGE}</button> (the total above is every trade, not this page)</p>
+ <div class="wrap"><table><thead><tr><th class="l">#</th><th class="l">Side</th><th class="l">In</th><th class="l">Out</th><th class="l">Exit</th><th>SL %</th><th>TP %</th><th>Profit</th><th>Running</th></tr></thead><tbody>
+ ${m.t.slice(a,b).map((t,j)=>{const p=t[4]/1e4*k;run+=p;return `<tr><td class="l">${a+j+1}</td><td class="l">${t[2]>0?"long":"short"}</td><td class="l">${fmtWhen(t[0]*1000)}</td><td class="l">${fmtWhen(t[1]*1000)}</td><td class="l">${esc(D.whys[t[3]])}</td><td>${t[5]>=0?pct(t[5]/1e3):""}</td><td>${t[6]>=0?pct(t[6]/1e3):"none"}</td><td class="${p>0?"pos":"neg"}">${money(p)}</td><td>${money(run)}</td></tr>`}).join("")}
+ </tbody></table></div>`;
+ $("log-prev").onclick=()=>{state.log--;drawLog(false)};$("log-next").onclick=()=>{state.log++;drawLog(false)};
+ if(show)$("dlg").showModal();$("dlg").scrollTop=0}
+function head(){const v2=ROWS.filter(r=>r.src==="v2");let p=0,n=0,held=0,heldOf=0;
+ for(const r of v2){const m=measure(r,null,1);if(m.newN){p+=m.newP;n+=m.newN;heldOf++;if(m.newP>0)held++}}
+ const bars=v2.filter(r=>r.bar!=null);const both=ROWS.filter(r=>r.both===1).length/2;
+ $("head").innerHTML=`<b>Read this first.</b> Choosing works only if a strategy picked on older days keeps making money on days it was not picked on. `
+  +`Over the newest 15 days the ${v2.length.toLocaleString()} v2 picks made <b class="${p>0?"pos":"neg"}">${money(p)}</b> over ${n.toLocaleString()} trades (${n?money(p/n):"-"} a trade); ${held.toLocaleString()} of ${heldOf.toLocaleString()} made money. `
+  +`An average strategy of the same coin-timeframes made ${bars.length?money(bars.reduce((s,r)=>s+r.bar,0)/bars.length):"-"} a trade on those days. `
+  +`On ${D.v2_rows_read.toLocaleString()} rows, 8 ways of choosing were tried before this page was built and every one lost money on the newest 15 days; this page ranks by the least bad (the trading cost against the target, lowest first). `
+  +`v3: <b>${both.toLocaleString()}</b> coin x idea groups were profitable in BOTH years.`}
+function drawProv(){$("prov").innerHTML=`<b>${D.v2_rows_read.toLocaleString()}</b> Backtest v2 strategies read on <b>${D.v2_pairs.toLocaleString()}</b> coin-timeframes (every coin x 15m, 30m, 1h, 4h, 1d), up to ${D.rule.per_pair} picked on each, chosen on the OLDER 15 days of each 30-day backtest (at least ${Object.entries(D.rule.min_old).map(([t,n])=>`${n} trades on ${t}`).join(", ")}), ${D.v2_empty.toLocaleString()} coin-timeframes had no strategy that made money there; every v2 pick re-measured on GitHub with every trade kept, ${D.collected_s?fmtWhen(D.collected_s*1000):"-"}. Plus every Backtest v3 per-coin strategy whose setting could be chosen (${D.v3_names.join(", ")}: 1h, 4h, 1d, 63 combinations a coin, 90 unseen days each). v2: <b>${usd(state.base)}</b> margin at 20x = ${usd(state.base*20)} of coin a trade; v3: ${usd(state.base)} risked to the stop. Every trade pays both fees, its minutes' order book where one was recorded, and funding. Picked ${fmtWhen(D.made_s*1000)}.`}
+function wire(){
+ $("dlg-close").onclick=()=>$("dlg").close();$("f-base").value=D.base;
+ for(const s of [...new Set(ROWS.map(r=>r.src))])$("f-src").insertAdjacentHTML("beforeend",`<option>${esc(s)}</option>`);
+ for(const [el,key] of [["f-wr","wr"],["f-ratio","ratio"],["f-pr","pr"],["f-nt","nt"],["f-gm","gm"],["f-dd","dd"],["f-tp","tp"],["f-sl","sl"]])$(el).addEventListener("input",e=>{state.f[key]=num(e.target.value);state.page=0;render()});
+ for(const [el,key] of [["f-src","src"],["f-tf","tf"],["f-held","held"]])$(el).addEventListener("change",e=>{state[key]=e.target.value;state.page=0;render()});
+ $("f-base").addEventListener("input",e=>{const v=num(e.target.value);state.base=v&&v>0?v:D.base;drawProv();render()});
+ $("f-days").addEventListener("input",e=>{const v=num(e.target.value);state.days=v&&v>0?Math.floor(v):null;state.page=0;render()});
+ $("f-coin").addEventListener("input",e=>{state.coin=e.target.value.trim();state.page=0;render()});
+ $("f-id").addEventListener("input",e=>{state.id=e.target.value.trim();state.page=0;render();const id=idKey();
+  const hit=ROWS.find(r=>r.id===id);if(hit){if(state.opened!==id){state.opened=id;open(hit.i)}}else state.opened=""});
+ $("clear").onclick=()=>{state.f={};state.days=null;state.coin="";state.id="";state.opened="";state.src="";state.tf="";state.held="";state.page=0;
+  for(const el of ["f-wr","f-ratio","f-pr","f-nt","f-gm","f-dd","f-tp","f-sl","f-days","f-coin","f-id","f-src","f-tf","f-held"])$(el).value="";render()};
+ $("p-prev").onclick=()=>{state.page--;render()};$("p-next").onclick=()=>{state.page++;render()};
+ $("legend").textContent="Month columns are calendar months of your own time zone; only months a shown row traded in are columns. SL % and TP % show the tightest to the widest stop and target among the row's trades, and the max boxes cut on the widest. Win size ÷ loss size is the average win against the average loss, after every fee. Last N days counts back from each row's own window end (v2 rows end in Nov 2026, v3 rows at the end of their year's unseen days).";
+ const notes=[];
+ if(D.missing.length)notes.push(`<details><summary>v2 picks with no trade list (left out, named): ${D.missing.length}</summary><ul>${D.missing.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
+ if(D.failed.length)notes.push(`<details><summary>Coin-timeframes that failed on GitHub: ${D.failed.length}</summary><ul>${D.failed.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
+ if(D.not_reached.length)notes.push(`<details><summary>Coins no machine reached: ${D.not_reached.length}</summary><ul>${D.not_reached.map(i=>`<li>${esc(i)}</li>`).join("")}</ul></details>`);
+ $("notes").innerHTML=notes.length?notes.join(""):"Every pick came back with its trades.";
+ drawProv();head();render()}
+async function inflate(b64){const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+ const s=new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"));return JSON.parse(await new Response(s).text())}
+inflate(Z).then(d=>{D=d;ROWS=rowsOf(D);state.base=D.base;wire()}).catch(e=>{$("prov").textContent="The page's data could not be opened: "+e})
+</script></body></html>

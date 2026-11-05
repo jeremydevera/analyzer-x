@@ -1,0 +1,93 @@
+name: All coins strategies - trade lists
+run-name: "All coins strategies · ${{ inputs.label }}"
+
+# The operator, Nov 05, 2026: "use all my existing data from v2 , v3 and generate me the best
+# strateigioes for all coins for all time frame". tradingagents/acs.py chooses several Backtest v2
+# rows per coin and timeframe and commits them as research/acs/plan.json; every machine measures its
+# coins' picks AGAIN like a Backtest v2 row with every trade kept (.github/scripts/acs_shard.py ->
+# sweep_shard.run_pair), so each row of the results page opens its trades (CLAUDE.md kit item B).
+# Its own workflow: a research run never writes the market grid's pair-done markers or saved
+# positions. Public market data only - no credentials are read. Dealt between every account by
+# `python -m tradingagents.acs dispatch` (each account gets its own coin_list).
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: "How many runners to split the work across"
+        default: "20"
+      coin_list:
+        description: "Comma-separated coins (BTC,ETH); the plan's coins this account measures"
+        default: ""
+      label:
+        description: "A name for this run (its title)"
+        default: "manual"
+      plan_id:
+        description: "The id of research/acs/plan.json the dispatch was made from; another plan measures nothing"
+        default: ""
+
+permissions:
+  contents: write        # claims and progress on the sweep-progress branch
+  actions: read
+
+env:
+  TA_VENUE: gate
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.mk.outputs.shards }}
+    steps:
+      - id: mk
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          n = int(os.environ["N"])
+          print("shards=" + json.dumps(list(range(n))))
+          PY
+        env:
+          N: ${{ github.event.inputs.shards }}
+
+  measure:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 350          # runners are killed at 6h; stop before that
+    strategy:
+      fail-fast: false            # one bad machine must not bin the others
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests numpy
+
+      - name: Trade lists, shard ${{ matrix.shard }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ github.event.inputs.shards }}
+          COIN_LIST: ${{ github.event.inputs.coin_list }}
+          DAYS: "30"
+          BASE_MARGIN: "5"
+          PLAN_ID: ${{ github.event.inputs.plan_id }}
+        run: python .github/scripts/acs_shard.py
+
+      # always(): a machine stopped at the time limit still hands over every coin it finished
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: acs-trades-${{ matrix.shard }}
+          path: |
+            out/acs-trades-*.jsonl
+            out/acs-report-*.json
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,0 +1,60 @@
+"""Strategies for every coin and every timeframe (CLAUDE.md, Nov 05, 2026): a v2 pick is CHOSEN on its
+older 15 days only, ranked by its cost against its target, identical results kept once, and the
+newest 15 days are left to check it. `tradingagents.acs`."""
+from tradingagents import acs
+
+
+def _row(i, *, trades=20, wins=12, profit=5.0, t15=10, w15=5, p15=-1.0, tp=2.0, sl=1.0, rt=0.2,
+         rt_paid=None):
+    return {"id": f"R{i}", "coin": "BTC", "tf": "1h", "signal": "rsi2", "th": 0.0, "sl": sl, "tp": tp,
+            "trades": trades, "wins": wins, "profit": profit, "t15": t15, "w15": w15, "p15": p15,
+            "rt": rt, "rt_paid": rt_paid}
+
+
+def test_older_is_the_thirty_days_less_the_newest_fifteen():
+    assert acs.older(_row(1)) == {"trades": 10, "wins": 7, "profit": 6.0}
+
+
+def test_a_pick_is_chosen_on_the_older_days_never_the_newest():
+    # R1 lost on the older 15 days and won big on the newest: it must NOT be chosen
+    rows = [_row(1, profit=30.0, p15=40.0), _row(2, profit=5.0, p15=-1.0)]
+    got = [p["id"] for p in acs.pick_pair(rows, "1h")]
+    assert got == ["R2"]
+
+
+def test_too_few_older_trades_is_not_a_pick():
+    rows = [_row(1, trades=10, t15=5)]           # 5 older trades, 1h needs 6
+    assert acs.pick_pair(rows, "1h") == []
+    assert len(acs.pick_pair(rows, "4h")) == 1   # 4h needs 4
+
+
+def test_ranked_by_cost_against_target_lowest_first_and_rt_paid_wins_over_the_estimate():
+    rows = [_row(1, tp=2.0, rt=0.4), _row(2, tp=4.0, rt=0.4, wins=13), _row(3, tp=2.0, rt=0.4,
+                                                                              rt_paid=0.1, wins=11)]
+    assert [p["id"] for p in acs.pick_pair(rows, "1h")] == ["R3", "R2", "R1"]
+
+
+def test_identical_results_are_kept_once_and_at_most_per_pair():
+    rows = [_row(i, tp=2.0 + i * 0.1) for i in range(6)]     # same trades, wins, profit on both halves
+    assert len(acs.pick_pair(rows, "1h")) == 1
+    rows = [_row(i, wins=10 + i) for i in range(6)]
+    assert len(acs.pick_pair(rows, "1h")) == acs.PER_PAIR
+
+
+def test_a_row_without_the_newest_count_is_never_a_pick():
+    assert acs.pick_pair([_row(1, t15=None)], "1h") == []
+
+
+def test_the_pair_bar_is_the_average_rows_newest_fifteen_days():
+    bar = acs.pair_bar([_row(1, t15=10, p15=-2.0), _row(2, t15=10, p15=1.0), _row(3, t15=None)])
+    assert bar == {"rows": 2, "trades": 20, "profit": -1.0, "per_trade": -0.05, "share_positive": 0.5}
+
+
+def test_the_plan_lists_every_pick_and_its_id_follows_the_configs():
+    picks = {"made_s": 1, "pairs": {"BTC-1h": {"coin": "BTC", "tf": "1h", "picks": [
+        {"signal": "rsi2", "th": 0.0, "sl": 1.2, "tp": 4.0}, {"signal": "mom6", "th": 0.2, "sl": 0.3,
+                                                              "tp": 0.4}]}}}
+    plan = acs.plan_of(picks)
+    assert plan["configs"] == {"BTC": {"1h": ["rsi2:0:1.2:4", "mom6:0.2:0.3:0.4"]}}
+    picks["pairs"]["BTC-1h"]["picks"].pop()
+    assert acs.plan_of(picks)["id"] != plan["id"]

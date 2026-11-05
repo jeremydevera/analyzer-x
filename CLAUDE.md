@@ -3053,4 +3053,12 @@ coin, never one timeframe, never one winner, unless they name one.
   `research/acs/plan.json` — commit and push it), `dispatch` (acs.yml on
   every account rebuilds each pick's trades like a Backtest v2 row,
   `.github/scripts/acs_shard.py`), `collect`, `page` (the artifact, kit
-  A-H, every row opening its trades). Guard: `tests/test_acs.py`.
+  A-H, every row opening its trades). Guard: `tests/test_acs.py`,
+  `tests/test_acs_page.py`.
+* **First run (Nov 05, 2026):** https://claude.ai/artifact/1CkQKpamRnvEqXQqp3vn4c
+  — 17,831 strategies on 925 coins and 3,773 coin-timeframes: 9,786 v2 picks
+  with GitHub's re-measured trades (381 named without a list: 369 made no row
+  on the re-measure a day later, SOXX not reached), 5,556 v3 2026 and 2,489
+  v3 2025. Over the newest 15 days the v2 picks made −$29,156.06 over 88,954
+  trades (−$0.33 a trade, 2,702 of 9,042 made money) against −$0.36 for an
+  average row: no way of choosing found an edge on days it was not chosen on.

@@ -231,7 +231,7 @@ def collect() -> dict:
     import shutil
 
     state = json.loads((home() / "state.json").read_text(encoding="utf-8"))
-    lines, failed, reported, dl_failed = {}, [], set(), []
+    lines, failed, reported, dl_failed, no_row = {}, [], set(), [], []
     for key, r in state["runs"].items():
         repo = r.get("repo", key)     # a share moved to another account is keyed apart, its repo named
         root = home() / f"run-{r['run']}"
@@ -253,10 +253,11 @@ def collect() -> dict:
         for f in root.rglob("acs-report-*.json"):
             for e in json.loads(f.read_text(encoding="utf-8")):
                 reported.add(e.get("coin"))
+                no_row += [f"{e['coin']}|{e['tf']}|{x}" for x in e.get("no_row", [])]
                 if e.get("error"):
                     failed.append(f"{e['coin']} {e.get('tf')}: {e['error']}")
     board = {c for r in state["runs"].values() for c in r["coin_list"]}
-    out = {"plan_id": state["plan_id"], "lines": lines, "failed": failed,
+    out = {"plan_id": state["plan_id"], "lines": lines, "failed": failed, "no_row": sorted(set(no_row)),
            "not_reached": sorted(board - reported), "downloads_failed": dl_failed,
            "collected_s": int(time.time())}
     (home() / "trades.json").write_text(json.dumps(out), encoding="utf-8")

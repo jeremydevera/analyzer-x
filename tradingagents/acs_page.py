@@ -38,6 +38,8 @@ def v2_rows(picks: dict, trades: dict) -> tuple[list, list, list]:
     """The v2 picks with their re-measured trades. A pick GitHub returned no line for is NAMED in
     the third list with why, never dropped silently (rule 20)."""
     lines = trades["lines"]
+    no_row = set(trades.get("no_row") or [])
+    gone = set(trades.get("not_reached") or [])
     rows, tlists, missing = [], [], []
     for pair in sorted(picks["pairs"]):
         p = picks["pairs"][pair]
@@ -46,7 +48,12 @@ def v2_rows(picks: dict, trades: dict) -> tuple[list, list, list]:
             cfg = f"{r['signal']}:{float(r['th']):g}:{float(r['sl']):g}:{float(r['tp']):g}"
             line = lines.get(f"{p['coin']}|{p['tf']}|{cfg}")
             if line is None:
-                missing.append(f"#{r['id']} {p['coin']} {p['tf']} {cfg}: no trade list came back")
+                key = f"{p['coin']}|{p['tf']}|{cfg}"
+                why = ("GitHub's re-measure a day later made no row: no trade in the moved window, or it "
+                       "no longer passes the list's 2:1 after fees" if key in no_row else
+                       "its coin was not reached (the exchange no longer listed it to the machines)"
+                       if p["coin"] in gone else "no trade list came back")
+                missing.append(f"#{r['id']} {p['coin']} {p['tf']} {cfg}: {why}")
                 continue
             ts = [[int(t[0]) // 1000, int(t[1]) // 1000, int(t[2]), _why(t[3]),
                    int(round(float(t[4]) * 10_000)), int(round(float(r["sl"]) * 1000)),
@@ -82,7 +89,7 @@ def v3_rows(name: str) -> tuple[list, list]:
     F = pay["F"]
     split = int(pay["split"]) // 60_000 * 60
     rows, tlists = [], []
-    year = name
+    year = {"all-coins": "2026", "all-2025": "2025"}.get(name, name)
     for arr, ts in zip(pay["R"], pay["T"], strict=True):
         r = dict(zip(F, arr))
         if not r["setting"] or not ts:

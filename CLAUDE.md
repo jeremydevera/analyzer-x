@@ -3067,9 +3067,12 @@ coin, never one timeframe, never one winner, unless they name one.
   A-H, every row opening its trades). Guard: `tests/test_acs.py`,
   `tests/test_acs_page.py`.
 * **First run (Nov 05, 2026):** https://claude.ai/artifact/1CkQKpamRnvEqXQqp3vn4c
-  — 17,831 strategies on 925 coins and 3,773 coin-timeframes: 9,786 v2 picks
-  with GitHub's re-measured trades (381 named without a list: 369 made no row
-  on the re-measure a day later, SOXX not reached), 5,556 v3 2026 and 2,489
-  v3 2025. Over the newest 15 days the v2 picks made −$29,156.06 over 88,954
-  trades (−$0.33 a trade, 2,702 of 9,042 made money) against −$0.36 for an
-  average row: no way of choosing found an edge on days it was not chosen on.
+  (version 2) — 20,830 strategies on 1,007 coins and 4,623 coin-timeframes:
+  12,985 v2 strategies with GitHub's re-measured trades (4,233 coin-timeframes
+  with 3, 99 with 2, 88 with 1; 1,228 flagged "lost on the older days", 820
+  "too new to check"; 642 coin-timeframes have no usable v2 strategy and are
+  named, as is SOXX, not reached), 5,556 v3 2026 and 2,489 v3 2025. 123 pass
+  all 7 checks. Over the newest 15 days the v2 strategies made −$37,447.43 over
+  102,653 trades (−$0.36 a trade, 3,508 of 11,764 made money) against −$0.43
+  for an average row: no way of choosing found an edge on days it was not
+  chosen on.

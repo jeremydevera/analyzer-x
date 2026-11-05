@@ -32,3 +32,18 @@ def test_a_pick_carries_its_trades_and_one_without_a_list_is_named():
 def test_trades_that_do_not_add_up_to_the_row_are_refused():
     with pytest.raises(ValueError, match="AAAA1111"):
         ap.v2_rows(_picks(), _trades(profit=9.0))
+
+
+def test_the_page_script_parses():
+    # Nov 05, 2026: a legend sentence with "double quotes" inside a double-quoted string broke the
+    # whole page ("Unexpected identifier 'lost'"); every row test passed, because none runs the script
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    code = ("const s=require('fs').readFileSync(process.argv[1],'utf8');"
+            "new Function(s.split('<script>')[1].split('</script>')[0]);")
+    r = subprocess.run([node, "-e", code, str(ap._HTML)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr

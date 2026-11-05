@@ -22,7 +22,7 @@ from pathlib import Path
 
 WHYS = ("TP", "SL", "TRAIL", "MA", "TIME", "END", "RANK", "OTHER")
 FIELDS = ("id", "src", "coin", "tf", "strategy", "tp_rule", "sl_rule", "lev", "chosen_on", "check",
-          "bar", "both", "luck", "end", "days")
+          "bar", "both", "luck", "end", "days", "lost")
 BASE = 5.0
 
 
@@ -34,9 +34,11 @@ def _why(text: str) -> int:
     return WHYS.index("OTHER")
 
 
-def v2_rows(picks: dict, trades: dict) -> tuple[list, list, list]:
-    """The v2 picks with their re-measured trades. A pick GitHub returned no line for is NAMED in
-    the third list with why, never dropped silently (rule 20)."""
+def v2_rows(picks: dict, trades: dict, per_pair: int = 3) -> tuple[list, list, list]:
+    """The first `per_pair` candidates of every coin-timeframe that came back with their re-measured
+    trades, in the candidates' own order (made money on the older 15 days first, then the rest,
+    flagged). A coin-timeframe left with fewer is NAMED in the third list with why, never dropped
+    silently (rule 20)."""
     lines = trades["lines"]
     no_row = set(trades.get("no_row") or [])
     gone = set(trades.get("not_reached") or [])
@@ -44,16 +46,18 @@ def v2_rows(picks: dict, trades: dict) -> tuple[list, list, list]:
     for pair in sorted(picks["pairs"]):
         p = picks["pairs"][pair]
         bar = p["bar"]
+        shown, why_not = 0, []
         for r in p["picks"]:
+            if shown >= per_pair:
+                break
             cfg = f"{r['signal']}:{float(r['th']):g}:{float(r['sl']):g}:{float(r['tp']):g}"
-            line = lines.get(f"{p['coin']}|{p['tf']}|{cfg}")
+            key = f"{p['coin']}|{p['tf']}|{cfg}"
+            line = lines.get(key)
             if line is None:
-                key = f"{p['coin']}|{p['tf']}|{cfg}"
-                why = ("GitHub's re-measure a day later made no row: no trade in the moved window, or it "
-                       "no longer passes the list's 2:1 after fees" if key in no_row else
-                       "its coin was not reached (the exchange no longer listed it to the machines)"
-                       if p["coin"] in gone else "no trade list came back")
-                missing.append(f"#{r['id']} {p['coin']} {p['tf']} {cfg}: {why}")
+                why_not.append(f"#{r['id']} {cfg}: " + (
+                    "GitHub's re-measure a day later made no row (no trade in the moved window, or it "
+                    "no longer passes the list's 2:1 after fees)" if key in no_row else
+                    "its coin was not reached" if p["coin"] in gone else "no trade list came back"))
                 continue
             ts = [[int(t[0]) // 1000, int(t[1]) // 1000, int(t[2]), _why(t[3]),
                    int(round(float(t[4]) * 10_000)), int(round(float(r["sl"]) * 1000)),
@@ -66,16 +70,32 @@ def v2_rows(picks: dict, trades: dict) -> tuple[list, list, list]:
                                  f"{len(ts)}, its re-measured row says {said:+.2f} over "
                                  f"{line['row'].get('trades')} - collect again")
             o = r["older"]
+            lost = bool(r.get("older_lost"))
+            young = bool(r.get("unchecked"))
             end = int(line["row"].get("last_ms") or (ts[-1][1] * 1000 if ts else 0)) // 1000
             rows.append({"id": r["id"], "src": "v2", "coin": p["coin"], "tf": p["tf"],
                          "strategy": f"{r['signal']}" + (f" th {float(r['th']):g}" if float(r["th"]) else ""),
                          "tp_rule": f"{float(r['tp']):g}% fixed", "sl_rule": f"{float(r['sl']):g}% fixed",
-                         "lev": "20x", "chosen_on": (f"older 15 days of the stored backtest: {o['trades']} "
-                                                     f"trades, {o['wins']} won, {o['profit']:+.2f}"),
+                         "lev": "20x", "chosen_on": ("TOO NEW TO CHECK: every trade of the coin falls in the "
+                                                     "newest 15 days, so nothing was left to check it on; shown "
+                                                     "by its 30-day profit" if young else
+                                                     ("LOST on " if lost else "made money on ")
+                                                     + f"the older 15 days of the stored backtest: "
+                                                     f"{o['trades']} trades, {o['wins']} won, {o['profit']:+.2f}"
+                                                     + (" (shown so the pair has strategies: none of its "
+                                                        "rows did better there)" if lost else "")),
                          "check": f"stored newest 15 days: {r['t15']} trades, {r['w15']} won, {float(r['p15']):+.2f}",
                          "bar": bar["per_trade"], "both": None, "luck": None, "end": end,
-                         "days": float(line["row"].get("days") or 30)})
+                         "days": float(line["row"].get("days") or 30), "lost": 2 if young else 1 if lost else 0})
             tlists.append(ts)
+            shown += 1
+        if shown < per_pair:
+            missing.append(f"{p['coin']} {p['tf']}: {shown} of {per_pair} shown"
+                           + (f" - {len(p['picks'])} candidates" if p["picks"] else
+                              " - the Backtest v2 list holds no strategy for it (none passed a target above "
+                              "the stop and a win paying two losses after fees)" if not p["rows"] else
+                              f" - none of its {p['rows']:,} rows has a stop, a target and a trade")
+                           + ("; " + "; ".join(why_not) if why_not else ""))
     return rows, tlists, missing
 
 
@@ -108,7 +128,7 @@ def v3_rows(name: str) -> tuple[list, list]:
                      "chosen_on": f"older days: {r['older']}", "check": r["verdict"],
                      "bar": r["random_median"], "both": None, "luck": r["luck_share"],
                      "end": int(pay["end"]) // 1000, "days": float(r["days"] or 90),
-                     "_key": (r["coin"], r["family"], r["tf"], r["filter"]),
+                     "lost": 0, "_key": (r["coin"], r["family"], r["tf"], r["filter"]),
                      "_prof": bool(r["profitable"])})
         tlists.append(out)
     return rows, tlists
@@ -159,6 +179,25 @@ def payload(picks: dict, trades: dict, v3_names=("all-coins", "all-2025")) -> di
             "v3_names": list(v3_names)}
 
 
+def merged(root: Path) -> dict:
+    """Every collected run's trade lists together (one file per plan, `acs.collect`); a later run's
+    line for the same strategy wins, a coin is "not reached" only if no run brought any of its lines."""
+    files = sorted(root.glob("trades-*.json"), key=lambda f: f.stat().st_mtime)
+    if not files:
+        raise ValueError(f"no collected trade lists in {root}: python -m tradingagents.acs collect")
+    lines, no_row, failed, gone, at = {}, set(), [], set(), None
+    for f in files:
+        t = json.loads(f.read_text(encoding="utf-8"))
+        lines.update(t["lines"])
+        no_row |= set(t.get("no_row") or [])
+        failed += t.get("failed") or []
+        gone |= set(t.get("not_reached") or [])
+        at = t.get("collected_s") or at
+    have = {k.split("|", 1)[0] for k in lines}
+    return {"lines": lines, "no_row": sorted(no_row - set(lines)), "failed": failed,
+            "not_reached": sorted(gone - have), "collected_s": at}
+
+
 def pack(data: dict) -> str:
     raw = json.dumps(data, separators=(",", ":")).encode("utf-8")
     return base64.b64encode(gzip.compress(raw, 9, mtime=0)).decode("ascii")
@@ -168,7 +207,7 @@ def write() -> Path:
     from tradingagents import acs
 
     picks = json.loads((acs.home() / "picks.json").read_text(encoding="utf-8"))
-    trades = json.loads((acs.home() / "trades.json").read_text(encoding="utf-8"))
+    trades = merged(acs.home())
     html = _HTML.read_text(encoding="utf-8").replace('const Z="";', f'const Z="{pack(payload(picks, trades))}";', 1)
     out = acs.home() / "all-coins-strategies.html"
     out.write_text(html, encoding="utf-8")

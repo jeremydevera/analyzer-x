@@ -74,3 +74,26 @@ def test_github_answers_are_read_as_utf8_so_a_run_title_with_a_dot_matches(monke
     monkeypatch.setattr(acs.subprocess, "run", fake)
     assert "· 1 of 3" in acs._gh("run", "list")
     assert seen.get("encoding") == "utf-8"
+
+
+def test_every_pair_gets_candidates_and_a_strategy_that_lost_where_it_was_chosen_says_so():
+    rows = [_row(1, profit=5.0, p15=-1.0)] + [_row(i, profit=-2.0 - i, wins=5 + i, p15=1.0)
+                                             for i in range(2, 9)]
+    got = acs.candidates(rows, "1h")
+    assert len(got) == acs.CANDIDATES
+    assert got[0]["id"] == "R1" and not got[0]["older_lost"]
+    assert all(g["older_lost"] for g in got[1:])
+    # filled best older profit first: R2 lost least on the older days
+    assert got[1]["id"] == "R2"
+
+
+def test_a_pair_with_no_usable_row_has_no_candidates():
+    assert acs.candidates([_row(1, tp=0), _row(2, trades=0, wins=0, t15=0, w15=0)], "1h") == []
+
+
+def test_a_coin_too_new_for_older_days_still_gets_strategies_flagged_unchecked():
+    rows = [_row(i, trades=12 + i, wins=6, t15=12 + i, w15=6, profit=float(i), p15=float(i))
+            for i in range(1, 4)]
+    got = acs.candidates(rows, "1h")
+    assert [g["id"] for g in got] == ["R3", "R2", "R1"]
+    assert all(g.get("unchecked") for g in got)

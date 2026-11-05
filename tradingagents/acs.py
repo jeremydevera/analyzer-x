@@ -93,6 +93,54 @@ def pick_pair(rows: list[dict], tf: str, k: int = PER_PAIR) -> list[dict]:
     return [{**r, "older": o, "rank": round(c, 6)} for c, _p, _i, r, o in cands[:k]]
 
 
+CANDIDATES = 5                    # per pair sent to GitHub: the page shows the first PER_PAIR that come back
+
+
+def candidates(rows: list[dict], tf: str, n: int = CANDIDATES) -> list[dict]:
+    """Up to `n` strategies for EVERY coin-timeframe (operator, Nov 05, 2026: "generate multiple
+    strategies" for each timeframe): the picks first (`pick_pair`), then, when fewer than `n` made
+    money on the older 15 days, the next rows by the same rank flagged `older_lost` - so a pair is
+    never left empty, and a strategy that lost where it was chosen says so. Rows without the
+    newest-15-day count, or with fewer than half MIN_OLD[tf] older trades, are never shown."""
+    out = [{**p, "older_lost": False} for p in pick_pair(rows, tf, n)]
+    if len(out) >= n:
+        return out
+    taken = {p["id"] for p in out}
+    seen = {(p["older"]["trades"], p["older"]["wins"], round(p["older"]["profit"], 2)) for p in out}
+    rest = []
+    for r in rows:
+        if r.get("t15") is None or not r.get("tp") or not r.get("sl") or r["id"] in taken:
+            continue
+        o = older(r)
+        key = (o["trades"], o["wins"], round(o["profit"], 2))
+        if o["trades"] < max(1, MIN_OLD[tf] // 2) or key in seen:
+            continue
+        seen.add(key)
+        rest.append((-o["profit"], RANK(r), str(r["id"]), r, o))
+    rest.sort(key=lambda c: c[:3])
+    out += [{**r, "older": o, "rank": round(rk, 6), "older_lost": o["profit"] <= 0}
+            for _p, rk, _i, r, o in rest[: n - len(out)]]
+    if len(out) >= n:
+        return out
+    # a coin too new to have older days (every trade in the newest 15): its best 30-day rows, flagged
+    # `unchecked` - nothing can say whether they hold up, and the page says so
+    taken = {p["id"] for p in out}
+    young = []
+    for r in rows:
+        if r["id"] in taken or not r.get("tp") or not r.get("sl") or int(r.get("trades") or 0) < 1:
+            continue
+        key = (int(r["trades"]), int(r["wins"]), round(float(r["profit"]), 2))
+        if key in seen:
+            continue
+        seen.add(key)
+        young.append((-float(r["profit"]), RANK(r), str(r["id"]), r))
+    young.sort(key=lambda c: c[:3])
+    out += [{**r, "older": older(r) if r.get("t15") is not None else {"trades": 0, "wins": 0, "profit": 0.0},
+             "rank": round(rk, 6), "older_lost": False, "unchecked": True}
+            for _p, rk, _i, r in young[: n - len(out)]]
+    return out
+
+
 def pair_bar(rows: list[dict]) -> dict:
     """What an AVERAGE strategy of the pair did on the newest 15 days: the bar a pick is read
     against (a pick that did no better than the pair's average row was chosen by luck)."""
@@ -115,7 +163,7 @@ FIELDS = ("id", "coin", "tf", "signal", "th", "sl", "tp", "sizing", "lev", "base
           "worst", "dd", "green", "months", "res")
 
 
-def v2_picks(db_path=None, *, k: int = PER_PAIR, log=print) -> dict:
+def v2_picks(db_path=None, *, k: int = CANDIDATES, log=print) -> dict:
     """Every coin-timeframe of the Backtest v2 list, read once, pair by pair."""
     from tradingagents import stores
 
@@ -132,23 +180,31 @@ def v2_picks(db_path=None, *, k: int = PER_PAIR, log=print) -> dict:
                 con.execute(f"select {','.join(want)} from rows where pair=?", (pair,))]
         total_rows += len(rows)
         out[pair] = {"coin": coin, "tf": tf, "last_ms": last_ms, "bar": pair_bar(rows),
-                     "picks": pick_pair(rows, tf, k), "rows": len(rows)}
+                     "picks": candidates(rows, tf, k), "rows": len(rows)}
         if i % 500 == 0:
             log(f"  {i} of {len(pairs)} coin-timeframes ({time.time() - t0:.0f} s)")
     con.close()
     return {"made_s": int(time.time()), "db": str(db), "rows": total_rows, "pairs": out,
-            "rule": {"per_pair": k, "min_old": MIN_OLD, "rank": "cost share (rt_paid / tp), lowest "
+            "rule": {"per_pair": PER_PAIR, "candidates": k, "min_old": MIN_OLD, "rank": "cost share (rt_paid / tp), lowest "
                      "first, among rows that made money on the older 15 days", "recent_days": RECENT_DAYS}}
 
 
-def plan_of(picks: dict) -> dict:
+def cfg_of(r: dict) -> str:
+    return f"{r['signal']}:{float(r['th']):g}:{float(r['sl']):g}:{float(r['tp']):g}"
+
+
+def plan_of(picks: dict, done: set | None = None) -> dict:
     """What GitHub rebuilds: {coin: {tf: ["signal:th:sl:tp", ...]}}, with an `id` over the
-    configs so a machine can refuse a plan it was not sent."""
+    configs so a machine can refuse a plan it was not sent. `done` ('COIN|tf|cfg' keys an earlier
+    run already answered, with a list or with no row) is left out: a second run measures only what
+    is new."""
+    done = done or set()
     cfg: dict = {}
     for p in picks["pairs"].values():
         for r in p["picks"]:
-            cfg.setdefault(p["coin"], {}).setdefault(p["tf"], []).append(
-                f"{r['signal']}:{float(r['th']):g}:{float(r['sl']):g}:{float(r['tp']):g}")
+            if f"{p['coin']}|{p['tf']}|{cfg_of(r)}" in done:
+                continue
+            cfg.setdefault(p["coin"], {}).setdefault(p["tf"], []).append(cfg_of(r))
     body = json.dumps(cfg, sort_keys=True, separators=(",", ":"))
     return {"id": hashlib.blake2b(body.encode(), digest_size=8).hexdigest(),
             "made_s": picks["made_s"], "configs": cfg}
@@ -225,6 +281,15 @@ def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE) -> dict:
     return state
 
 
+def answered() -> set:
+    """Every 'COIN|tf|cfg' a collected run already answered: a trade list, or no row."""
+    out: set = set()
+    for f in home().glob("trades-*.json"):
+        t = json.loads(f.read_text(encoding="utf-8"))
+        out |= set(t["lines"]) | set(t.get("no_row") or [])
+    return out
+
+
 def collect() -> dict:
     """Every account's trade lines, keyed 'COIN|tf|signal:th:sl:tp'. A coin no machine reported is
     named in `not_reached`, a coin-timeframe that raised in `failed` (rule 20)."""
@@ -260,7 +325,8 @@ def collect() -> dict:
     out = {"plan_id": state["plan_id"], "lines": lines, "failed": failed, "no_row": sorted(set(no_row)),
            "not_reached": sorted(board - reported), "downloads_failed": dl_failed,
            "collected_s": int(time.time())}
-    (home() / "trades.json").write_text(json.dumps(out), encoding="utf-8")
+    # one file per plan: a second run (only what the first did not answer) never replaces the first
+    (home() / f"trades-{state['plan_id']}.json").write_text(json.dumps(out), encoding="utf-8")
     return out
 
 
@@ -276,13 +342,14 @@ def main(argv=None) -> int:
     if a.cmd == "pick":
         picks = v2_picks()
         (home() / "picks.json").write_text(json.dumps(picks), encoding="utf-8")
-        plan = plan_of(picks)
+        plan = plan_of(picks, answered())
         path = save_plan(plan)
         n = sum(len(v["picks"]) for v in picks["pairs"].values())
         empty = sum(1 for v in picks["pairs"].values() if not v["picks"])
         print(f"{picks['rows']:,} rows on {len(picks['pairs']):,} coin-timeframes: {n:,} picks, "
-              f"{empty:,} coin-timeframes with none (no row made money on the older 15 days with "
-              f"enough trades); plan {path} id {plan['id']}")
+              f"{empty:,} coin-timeframes with none (the v2 list holds no usable strategy for them); "
+              f"{sum(len(t) for c in plan['configs'].values() for t in c.values()):,} not measured "
+              f"yet; plan {path} id {plan['id']}")
         return 0
     if a.cmd == "dispatch":
         print(json.dumps(dispatch(a.label), indent=1))

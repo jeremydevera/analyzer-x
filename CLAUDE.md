@@ -3049,6 +3049,17 @@ coin, never one timeframe, never one winner, unless they name one.
   against −$0.232, −$0.254, −$0.273, −$0.215 for an average row). v3: 122 coin
   x idea groups profitable in both 2025 and 2026 where luck alone gives about
   4 (understated for 4h: its random runs trade less).
+* **Every coin-timeframe gets several, never none.** `acs.candidates` sends up
+  to 5 per pair (the ones that made money on the older 15 days first, then the
+  next by the same rank, flagged "lost on the older days") and the page shows
+  the first 3 that came back; a pair still short is named with why.
+* **The three skills' own tests run on every row** (operator: *"use these
+  skills technical-analysis, backtesting-trading-strategies,
+  backtesting-framework"*): 30+ trades, a stop on every trade, money on days it
+  was not chosen on, a win at least a loss, profit factor 1.2+, 80%+ of 200
+  Monte Carlo draws in profit, the coin's next bigger timeframe also in profit
+  — shown as "Checks passed (of 7)" with a filter, beside Sharpe, Sortino and
+  max drawdown, all worked out in the page from the row's trades.
 * **The tool:** `python -m tradingagents.acs pick` (writes
   `research/acs/plan.json` — commit and push it), `dispatch` (acs.yml on
   every account rebuilds each pick's trades like a Backtest v2 row,

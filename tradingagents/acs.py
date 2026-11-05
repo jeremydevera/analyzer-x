@@ -228,7 +228,7 @@ def _gh(*args: str, timeout: int = 120) -> str:
     return r.stdout
 
 
-def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE) -> dict:
+def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=()) -> dict:
     """Deal the plan's coins between every account that can run (cloud_sweep.split_coins) and start
     one acs.yml run on each; an account that refuses or cannot be brought up to this code is named
     and the others still run (CLAUDE.md: every GitHub job uses every account). The plan must be the
@@ -240,6 +240,10 @@ def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE) -> dict:
         raise RuntimeError("no press between 12:45am and 5:00am (the nightly jobs' hours)")
     plan = json.loads(Path(plan_path).read_text(encoding="utf-8"))
     ready, refused = fd.fleets_now()
+    # an account whose machines are all held by another job (`--skip`) is named, never queued behind it
+    refused = list(refused) + [f"{r}: skipped - its machines are busy with another job" for r in ready
+                               if r in skip]
+    ready = [r for r in ready if r not in skip]
     if not ready:
         raise RuntimeError("no GitHub account can run it: " + "; ".join(refused))
     coins = sorted(plan["configs"])
@@ -336,6 +340,7 @@ def main(argv=None) -> int:
     sub.add_parser("pick")
     d = sub.add_parser("dispatch")
     d.add_argument("--label", default=None)
+    d.add_argument("--skip", action="append", default=[], help="owner/repo whose machines are busy")
     sub.add_parser("collect")
     sub.add_parser("page")
     a = p.parse_args(argv)
@@ -352,7 +357,10 @@ def main(argv=None) -> int:
               f"yet; plan {path} id {plan['id']}")
         return 0
     if a.cmd == "dispatch":
-        print(json.dumps(dispatch(a.label), indent=1))
+        st = dispatch(a.label, skip=tuple(a.skip))
+        print(json.dumps({k: v for k, v in st.items() if k != "runs"} | {
+            "runs": {r: {k: v for k, v in x.items() if k != "coin_list"} for r, x in st["runs"].items()}},
+            indent=1))
         return 0
     if a.cmd == "collect":
         out = collect()

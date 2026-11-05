@@ -58,3 +58,19 @@ def test_the_plan_lists_every_pick_and_its_id_follows_the_configs():
     assert plan["configs"] == {"BTC": {"1h": ["rsi2:0:1.2:4", "mom6:0.2:0.3:0.4"]}}
     picks["pairs"]["BTC-1h"]["picks"].pop()
     assert acs.plan_of(picks)["id"] != plan["id"]
+
+
+def test_github_answers_are_read_as_utf8_so_a_run_title_with_a_dot_matches(monkeypatch):
+    # RCA-2026-11-05-A: read in this PC's code page, "·" in the title never matched
+    seen = {}
+
+    class Done:
+        returncode, stdout, stderr = 0, "All coins strategies · x · 1 of 3", ""
+
+    def fake(cmd, **kw):
+        seen.update(kw)
+        return Done()
+
+    monkeypatch.setattr(acs.subprocess, "run", fake)
+    assert "· 1 of 3" in acs._gh("run", "list")
+    assert seen.get("encoding") == "utf-8"

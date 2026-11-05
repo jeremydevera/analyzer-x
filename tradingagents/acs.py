@@ -163,7 +163,10 @@ def save_plan(plan: dict, path: Path = PLAN_FILE) -> Path:
 # ------------------------------------------------------------------- GitHub
 
 def _gh(*args: str, timeout: int = 120) -> str:
-    r = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=timeout)
+    # utf-8, never this PC's code page: the run title carries "·", and read as cp1252 it never
+    # matched, so three runs GitHub had taken were reported as not listed (Nov 05, 2026)
+    r = subprocess.run(["gh", *args], capture_output=True, encoding="utf-8", errors="replace",
+                       timeout=timeout)
     if r.returncode:
         raise RuntimeError((r.stderr or r.stdout).strip()[:300])
     return r.stdout

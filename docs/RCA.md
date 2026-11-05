@@ -172,6 +172,40 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-05-A — the all-coins trade-list dispatch said "GitHub took the run but did not list it" on all three accounts while all three runs were running
+
+**CEO**
+
+* What you saw: nothing - it was caught at once - but the start of the all-coins strategies run said every account had refused it.
+* Why: the answers from GitHub were read in this PC's old text code, so the "·" in each run's name came back garbled and never matched.
+* What stops it now: GitHub's answers are read as UTF-8, and a test holds it.
+
+**DEV**
+
+* `tradingagents/acs.py:_gh` ran `subprocess.run(..., text=True)`, which decodes with the locale's code page (cp1252 here); `dispatch` then looked for `title in r["displayTitle"]`, and the title carries "·" (U+00B7).
+* Invariant broken: **text from another program is decoded as what it is, never as this PC's default** (the same shape as RCA-2026-10-30-G, Chinese coin names on this console).
+* Guard: `tests/test_acs.py::test_github_answers_are_read_as_utf8_so_a_run_title_with_a_dot_matches`.
+
+**SAW** - `python -m tradingagents.acs dispatch --label all-coins-strategies`, Nov 05, 2026 6:32am: `runs: {}` and three lines "GitHub took the run but did not list it within 2 minutes".
+
+**TIMELINE**
+
+1. Nov 05, 2026 6:24am-6:30am: runs 42018756210, 42019108158 and 42019454637 were created, one per account, each titled "All coins strategies · all-coins-strategies · N of 3".
+2. 6:32am: the dispatch saved a state with no runs; `gh run list` at 6:35am showed all three, one in progress.
+3. After the fix: the three run ids were written into `state.json` by hand (the same coin piles, `cloud_sweep.split_coins` over the plan's 820 coins: 274, 273, 273), and the code reads UTF-8.
+
+**ROOT CAUSE** - a new `_gh` helper was written with `text=True`; the cpw dispatcher it was modelled on matches runs by id, not by a title holding "·".
+
+**WHY IT WAS NOT CAUGHT** - the only test of the dispatch path would have needed GitHub; the shard was tested locally (BTC, 12 of 12 trade lists), the dispatcher was not.
+
+**COST** - none: no run was started twice; about 5 minutes.
+
+**FIX** - this commit.
+
+**GUARD** - `tests/test_acs.py::test_github_answers_are_read_as_utf8_so_a_run_title_with_a_dot_matches`.
+
+---
+
 ## RCA-2026-10-30-H — the verdicts of a full run, kept and printed, still ended with the trial run's sentence "A few coins is a check of the machinery, never the proof"
 
 **CEO**

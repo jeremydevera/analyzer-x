@@ -39,7 +39,8 @@ function val(r: Row, k: Key): number | string {
   if (k === "win_rate") return r.closed.length ? r.wins / r.closed.length : -1;
   return r[k] as number | string;
 }
-const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const plural = (n: number, w: string) =>
+  `${n} ${n === 1 ? w : w.endsWith("y") ? `${w.slice(0, -1)}ies` : `${w}s`}`;
 
 export default function V3Forward() {
   const [st, setSt] = useState<State | null>(null);
@@ -131,7 +132,7 @@ export default function V3Forward() {
                   <TableCell className={td}>{r.closed.length}</TableCell>
                   <TableCell className={td}>{r.wins} / {r.losses}</TableCell>
                   <TableCell className={td}>{r.closed.length ? `${((r.wins / r.closed.length) * 100).toFixed(1)}%` : "—"}</TableCell>
-                  <TableCell className={td}>{r.worst_run_trades ? `${money(r.worst_run_usd)} over ${plural(r.worst_run_trades, "trade")}` : "no losses"}</TableCell>
+                  <TableCell className={td}>{!r.closed.length ? "—" : r.worst_run_trades ? `${money(r.worst_run_usd)} over ${plural(r.worst_run_trades, "trade")}` : "no losses"}</TableCell>
                   <TableCell className={td}>{r.open.length ? `${r.open.length} (${money(r.open.reduce((a, t) => a + t.pnl, 0))})` : r.carried ? "in a trade from before" : "0"}</TableCell>
                 </TableRow>
                 {open === r.id && (

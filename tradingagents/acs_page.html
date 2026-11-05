@@ -159,6 +159,8 @@ function render(){const v=view(),s=state.sort;const sorted=sortRows(v.shown,s.k,
   +(id?(v.shown.length?" · found by ID (the other filters are off)":` · no strategy has #${esc(id)} (the other filters are off)`):"")
   +(names.length&&!id?" · "+esc(names.join(" AND ")):"")
   +(v2n.length?` · of the ${v2n.length.toLocaleString()} v2 shown, ${held.toLocaleString()} made money on the newest 15 days`:"")
+  +(()=>{const w={};for(const x of v.shown){const e=x.r.end,s=e-(state.days?Math.min(state.days,x.r.days):x.r.days)*DAY;const o=w[x.r.src]||(w[x.r.src]={s,e});o.s=Math.min(o.s,s);o.e=Math.max(o.e,e)}
+   return Object.keys(w).length?" · windows "+Object.entries(w).map(([k,o])=>`${esc(k)} ${fmtWhen(o.s*1000)} to ${fmtWhen(o.e*1000)}`).join("; "):""})()
   +(state.days?` · last ${state.days} days of each row's own window (every row re-added from its trades that closed in it: no minutes ride in a page, so it is not a new walk)`:"")
   +` · at ${usd(state.base)} a trade`+(state.base!==D.base?` (scaled from the ${usd(D.base)} measured)`:"")+(idle.length?" · "+esc(idle.join("; ")):"");
  document.querySelectorAll("#thead th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;state.sort={k,dir:state.sort.k===k?-state.sort.dir:-1};state.page=0;render()});
@@ -184,7 +186,7 @@ function head(){const v2=ROWS.filter(r=>r.src==="v2");let p=0,n=0,held=0,heldOf=
  const bars=v2.filter(r=>r.bar!=null);const both=ROWS.filter(r=>r.both===1).length/2;
  $("head").innerHTML=`<b>Read this first.</b> Choosing works only if a strategy picked on older days keeps making money on days it was not picked on. `
   +`Over the newest 15 days the ${v2.length.toLocaleString()} v2 picks made <b class="${p>0?"pos":"neg"}">${money(p)}</b> over ${n.toLocaleString()} trades (${n?money(p/n):"-"} a trade); ${held.toLocaleString()} of ${heldOf.toLocaleString()} made money. `
-  +`An average strategy of the same coin-timeframes made ${bars.length?money(bars.reduce((s,r)=>s+r.bar,0)/bars.length):"-"} a trade on those days. `
+  +`An average strategy of the same coin-timeframes made ${bars.length?money(bars.reduce((s,r)=>s+r.bar,0)/bars.length):"-"} a trade on the stored backtest's newest 15 days (averaged over the picks' coin-timeframes). `
   +`On ${D.v2_rows_read.toLocaleString()} rows, 8 ways of choosing were tried before this page was built and every one lost money on the newest 15 days; this page ranks by the least bad (the trading cost against the target, lowest first). `
   +`v3: <b>${both.toLocaleString()}</b> coin x idea groups were profitable in BOTH years.`}
 function drawProv(){$("prov").innerHTML=`<b>${D.v2_rows_read.toLocaleString()}</b> Backtest v2 strategies read on <b>${D.v2_pairs.toLocaleString()}</b> coin-timeframes (every coin x 15m, 30m, 1h, 4h, 1d), up to ${D.rule.per_pair} picked on each, chosen on the OLDER 15 days of each 30-day backtest (at least ${Object.entries(D.rule.min_old).map(([t,n])=>`${n} trades on ${t}`).join(", ")}), ${D.v2_empty.toLocaleString()} coin-timeframes had no strategy that made money there; every v2 pick re-measured on GitHub with every trade kept, ${D.collected_s?fmtWhen(D.collected_s*1000):"-"}. Plus every Backtest v3 per-coin strategy whose setting could be chosen (${D.v3_names.join(", ")}: 1h, 4h, 1d, 63 combinations a coin, 90 unseen days each). v2: <b>${usd(state.base)}</b> margin at 20x = ${usd(state.base*20)} of coin a trade; v3: ${usd(state.base)} risked to the stop. Every trade pays both fees, its minutes' order book where one was recorded, and funding. Picked ${fmtWhen(D.made_s*1000)}.`}

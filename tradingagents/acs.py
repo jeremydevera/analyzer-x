@@ -250,9 +250,6 @@ def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=(), ski
     if skill_set not in SKILL_PREFIX:
         raise ValueError(f"skill_set must be one of {sorted(SKILL_PREFIX)}, not {skill_set!r}")
     redo = bool(coins)            # named coins = a redo; `coins` is the dealt list from here on
-    if redo and skill and skill_set != "bt":
-        raise ValueError("a redo of named coins is for the bt set only: its state would replace the "
-                         "ta run's whole-market state")
     plan = ({"id": "", "configs": {c.replace("_USDT", ""): 1 for c in (coins or fd.market())}} if skill
             else json.loads(Path(plan_path).read_text(encoding="utf-8")))
     workflow = SKILL_WORKFLOW if skill else WORKFLOW
@@ -307,12 +304,10 @@ def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=(), ski
 
 def _state_name(skill: bool, redo: bool, skill_set: str = "bt") -> str:
     """Where a dispatch's state is kept: a whole-market skill run and a redo of named coins apart,
-    and each skill set apart (a redo of the "ta" set is not supported: redo it whole)."""
+    and each skill set apart."""
     if not skill:
         return "state.json"
-    if skill_set != "bt":
-        return f"{SKILL_PREFIX[skill_set]}-state.json"
-    return "skill-redo-state.json" if redo else "skill-state.json"
+    return f"{SKILL_PREFIX[skill_set]}-{'redo-' if redo else ''}state.json"
 
 
 def answered() -> set:
@@ -364,22 +359,23 @@ def collect() -> dict:
     return out
 
 
-def collect_redo() -> dict:
+def collect_redo(skill_set: str = "bt") -> dict:
     """A redo of named coins (`dispatch --skill --coins`): each account's lines downloaded and laid
     over the saved skill run (`merge_skill`)."""
     import shutil
 
-    state = json.loads((home() / "skill-redo-state.json").read_text(encoding="utf-8"))
+    pre = SKILL_PREFIX[skill_set]
+    state = json.loads((home() / f"{pre}-redo-state.json").read_text(encoding="utf-8"))
     out = {}
     for key, r in state["runs"].items():
         repo = r.get("repo", key)
-        root = home() / f"skill-run-{r['run']}"
+        root = home() / f"{pre}-run-{r['run']}"
         if root.exists():
             shutil.rmtree(root)
         root.mkdir(parents=True)
         _gh("run", "download", str(r["run"]), "-R", repo, "-D", str(root), "-p", "skill-lines-*",
             timeout=1800)
-        out[repo] = merge_skill(root)
+        out[repo] = merge_skill(root, skill_set)
     return out
 
 
@@ -424,26 +420,28 @@ def collect_skill(skill_set: str = "bt") -> dict:
     return out
 
 
-def merge_skill(folder) -> dict:
+def merge_skill(folder, skill_set: str = "bt") -> dict:
     """A redo's lines (a skill_shard run's `out` folder) laid over the saved skill run: a redone
     coin-timeframe replaces its line and leaves the skipped and failed lists; one the redo could not
     measure keeps its reason (CLAUDE.md: a failed coin is redone alone, never the whole run)."""
     folder = Path(folder)
-    path = home() / "skill.json"
+    pre = SKILL_PREFIX[skill_set]
+    path = home() / f"{pre}.json"
     saved = json.loads(path.read_text(encoding="utf-8"))
     got, still_failed, still_skipped = {}, [], []
-    for f in folder.rglob("skill-*.jsonl"):
+    for f in folder.rglob(f"{pre}-*.jsonl"):
         for text in f.read_text(encoding="utf-8").splitlines():
             if text.strip():
                 x = json.loads(text)
                 got[f"{x['coin']}|{x['tf']}"] = x
-    for f in folder.rglob("skill-report-*.json"):
+    for f in folder.rglob(f"{pre}-report-*.json"):
         for e in json.loads(f.read_text(encoding="utf-8")):
             if e.get("error"):
                 still_failed.append(f"{e['coin']} {e.get('tf')}: {e['error']}")
             if e.get("skipped"):
                 still_skipped.append(f"{e['coin']} {e['tf']}: only {e['skipped']}")
     saved["lines"].update(got)
+    saved["not_reached"] = sorted(set(saved.get("not_reached") or []) - {x["coin"] for x in got.values()})
     done = {k.replace("|", " ") for k in got}
     keep = lambda xs: [x for x in xs if x.split(":")[0] not in done]
     saved["failed"] = sorted(set(keep(saved.get("failed") or []) + still_failed))
@@ -490,10 +488,10 @@ def main(argv=None) -> int:
             indent=1))
         return 0
     if a.cmd == "collect" and a.merge == "redo":
-        print(collect_redo())
+        print(collect_redo(a.skill_set))
         return 0
     if a.cmd == "collect" and a.merge:
-        print(merge_skill(a.merge))
+        print(merge_skill(a.merge, a.skill_set))
         return 0
     if a.cmd == "collect" and a.skill:
         out = collect_skill(a.skill_set)

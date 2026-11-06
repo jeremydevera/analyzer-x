@@ -321,4 +321,80 @@ def write() -> Path:
     return out
 
 
+CHUNK = 15_000_000                # characters a data file: an artifact text file may be 16 MB
+TFS = ("15m", "30m", "1h", "4h", "1d")
+
+
+def split_payloads(skill: dict) -> tuple[dict, dict]:
+    """EVERY strategy of a skill run (`acs dispatch --skill --set ta_all`, operator Nov 05, 2026:
+    "i dont want top 3 show me all 226,380"), one payload per timeframe - 226,380 strategies with all
+    their trades do not fit one page, nor one browser tab at once - plus {id: tf} so Find by ID can
+    open a strategy of another timeframe. `totals` are worked out from each strategy's own `newer`
+    figures (the trades that OPENED after its split, skill_bt.pair), the same clock the page's isNew
+    uses for a skill row."""
+    from tradingagents.positions_view import fmt_when  # noqa: F401  (rows print dates in the page)
+
+    rows, tl = skill_rows(skill)
+    totals = {}
+    for x in skill["lines"].values():
+        t = totals.setdefault(x["tf"], {"rows": 0, "trades": 0, "profit": 0.0, "held": 0, "of": 0})
+        for c in x["picks"]:
+            n = c["newer"]
+            t["rows"] += 1
+            t["trades"] += n["trades"]
+            t["profit"] = round(t["profit"] + n["profit"], 4)
+            if n["trades"]:
+                t["of"] += 1
+                t["held"] += n["profit"] > 0
+    totals = {tf: totals[tf] for tf in TFS if tf in totals}
+    if len(rows) != sum(t["rows"] for t in totals.values()):
+        raise ValueError(f"{len(rows):,} rows against {sum(t['rows'] for t in totals.values()):,} in the totals")
+    meta = _skill_meta(skill)
+    out, ids = {}, {}
+    for tf in totals:
+        keep = [i for i, r in enumerate(rows) if r["tf"] == tf]
+        for i in keep:
+            ids[rows[i]["id"]] = tf
+        out[tf] = {"F": list(FIELDS), "R": [[rows[i][f] for f in FIELDS] for i in keep],
+                   "T": columns([tl[i] for i in keep]), "whys": list(WHYS), "base": BASE,
+                   "mode": "skill_all", "tf": tf, "all_rows": len(rows), "totals": totals,
+                   "pairs": len(skill["lines"]), "combos": meta["combos"] if meta else 0,
+                   "missing": [], "failed": [], "not_reached": [], "skill": None, "skill_ta": meta,
+                   "collected_s": skill.get("collected_s"), "v3_names": []}
+    if len(ids) != len(rows):
+        raise ValueError(f"{len(rows) - len(ids):,} strategies share an id with another")
+    return out, ids
+
+
+def write_split(skill_file: str = "skilltaall.json", folder: str = "all-skill-strategies") -> Path:
+    """The every-strategy page: index.html + one or more data files per timeframe (each under
+    CHUNK characters) + ids; publish the folder's files with the page (Artifact `files`)."""
+    from tradingagents import acs
+
+    skill = json.loads((acs.home() / skill_file).read_text(encoding="utf-8"))
+    payloads, ids = split_payloads(skill)
+    root = acs.home() / folder
+    root.mkdir(parents=True, exist_ok=True)
+    for f in root.glob("*.txt"):
+        f.unlink()
+    zf = {}
+
+    def put(name, data):
+        text = pack(data)
+        files = []
+        for k in range(0, len(text), CHUNK):
+            fn = f"{name}-{k // CHUNK}.txt"
+            (root / fn).write_text(text[k:k + CHUNK], encoding="ascii")
+            files.append(fn)
+        zf[name] = files
+
+    for tf, data in payloads.items():
+        put(tf, data)
+    put("_ids", ids)
+    html = _HTML.read_text(encoding="utf-8").replace("const ZF={};", f"const ZF={json.dumps(zf)};", 1)
+    html = html.replace("<title>All Coins Strategies</title>", "<title>All Skill Strategies</title>", 1)
+    (root / "index.html").write_text(html, encoding="utf-8")
+    return root
+
+
 _HTML = Path(__file__).with_name("acs_page.html")

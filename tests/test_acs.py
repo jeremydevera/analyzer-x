@@ -126,16 +126,27 @@ def test_a_whole_market_skill_run_keeps_its_own_state_apart_from_a_redo():
     assert acs._state_name(False, False) == "state.json"
 
 
-def test_a_redo_of_the_ta_set_is_refused_before_anything_is_sent(monkeypatch):
-    import pytest
-
-    from tradingagents import cq_search
-
-    monkeypatch.setattr(cq_search, "quiet_hours", lambda: False)
-    with pytest.raises(ValueError, match="bt set only"):
-        acs.dispatch(skill=True, coins=["BTC"], skill_set="ta")
+def test_a_redo_of_any_set_keeps_its_own_state():
+    # a machine lost mid-run on Nov 05, 2026 left 15 coins of the every-strategy run unmeasured;
+    # they are redone alone, so the set's redo needs a state of its own beside the whole run's
+    assert acs._state_name(True, True, "ta_all") == "skilltaall-redo-state.json"
+    assert acs._state_name(True, True, "ta") == "skillta-redo-state.json"
 
 
 def test_the_every_strategy_set_keeps_its_own_files():
     assert acs._state_name(True, False, "ta_all") == "skilltaall-state.json"
     assert acs.SKILL_PREFIX == {"bt": "skill", "ta": "skillta", "ta_all": "skilltaall"}
+
+
+def test_a_redone_coin_leaves_the_not_reached_list(tmp_path, monkeypatch):
+    import json as _j
+
+    monkeypatch.setattr(acs, "home", lambda: tmp_path)
+    (tmp_path / "skilltaall.json").write_text(_j.dumps({"lines": {}, "failed": [], "skipped": [],
+                                                        "not_reached": ["GE", "HLT"]}))
+    out = tmp_path / "redo"
+    out.mkdir()
+    (out / "skilltaall-0.jsonl").write_text(_j.dumps({"coin": "GE", "tf": "1h", "picks": []}) + "\n")
+    acs.merge_skill(out, "ta_all")
+    saved = _j.loads((tmp_path / "skilltaall.json").read_text())
+    assert saved["not_reached"] == ["HLT"] and "GE|1h" in saved["lines"]

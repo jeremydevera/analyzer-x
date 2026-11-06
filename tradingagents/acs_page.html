@@ -58,6 +58,9 @@ dialog{max-width:min(1100px,100vw - 32px);width:100%;border:1px solid var(--rule
 <dialog id="dlg"><div id="dlg-body"></div><p><button id="dlg-close">Close</button></p></dialog>
 <script>
 const Z="";
+// a page too big for one file rides in data files, one timeframe at a time (acs_page.write_split):
+// ZF = {tf: [files], _ids: [files]}; empty = the data is Z above
+const ZF={};
 const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function fmtWhen(ms){const d=new Date(ms);let h=d.getHours();const ap=h<12?"am":"pm";h=h%12||12;
  return `${MON[d.getMonth()]} ${String(d.getDate()).padStart(2,"0")}, ${d.getFullYear()} ${h}:${String(d.getMinutes()).padStart(2,"0")}${ap}`}
@@ -209,7 +212,7 @@ function render(){const v=view(),s=state.sort;const sorted=sortRows(v.shown,s.k,
  const idle=Object.keys(LIMITS).filter(key=>state.f[key]!=null&&v.rows.every(x=>!fails(x.r,x.m,{[key]:state.f[key]}).length)).map(key=>`${LIMITS[key]} cuts nothing here: every row already meets it`);
  const pairs=new Set(v.shown.map(x=>x.r.coin+"|"+x.r.tf)).size,coins=new Set(v.shown.map(x=>x.r.coin)).size;
  const v2n=v.shown.filter(x=>x.r.src==="v2"),held=v2n.filter(x=>x.m.newP!=null&&x.m.newP>0).length;
- $("count").innerHTML=`<b>${v.shown.length.toLocaleString()}</b> of ${ROWS.length.toLocaleString()} strategies, on ${coins.toLocaleString()} coins and ${pairs.toLocaleString()} coin-timeframes`
+ $("count").innerHTML=`<b>${v.shown.length.toLocaleString()}</b> of ${ROWS.length.toLocaleString()} strategies${SPLIT?` on ${esc(D.tf)} (${D.all_rows.toLocaleString()} on all 5 timeframes - pick another under Timeframe)`:""}, on ${coins.toLocaleString()} coins and ${pairs.toLocaleString()} coin-timeframes`
   +(id?(v.shown.length?" · found by ID (the other filters are off)":` · no strategy has #${esc(id)} (the other filters are off)`):"")
   +(names.length&&!id?" · "+esc(names.join(" AND ")):"")
   +(v2n.length?` · of the ${v2n.length.toLocaleString()} v2 shown, ${held.toLocaleString()} made money on the newest 15 days`:"")
@@ -236,7 +239,13 @@ function drawLog(show){const k=state.base/D.base,r=ROWS[state.cur];if(!r)return;
  </tbody></table></div>`;
  $("log-prev").onclick=()=>{state.log--;drawLog(false)};$("log-next").onclick=()=>{state.log++;drawLog(false)};
  if(show)$("dlg").showModal();$("dlg").scrollTop=0}
-function head(){const bests=ROWS.filter(r=>r.best);let bp=0,bn=0,bheld=0,bof=0;
+function headSplit(){const bests=ROWS.filter(r=>r.best);let bp=0,bn=0,bheld=0,bof=0;
+ for(const r of bests){const m=measure(r,null,1);if(m.newN){bp+=m.newP;bn+=m.newN;bof++;if(m.newP>0)bheld++}}
+ const all=Object.entries(D.totals).map(([tf,t])=>`${esc(tf)} ${t.rows.toLocaleString()} strategies: <span class="${t.profit>0?"pos":"neg"}">${money(t.profit)}</span> over ${t.trades.toLocaleString()} trades (${t.trades?money(t.profit/t.trades):"-"} a trade), ${t.held.toLocaleString()} of ${t.of.toLocaleString()} made money`).join(" · ");
+ $("head").innerHTML=`<b>Every strategy, not only the best 3.</b> All ${D.all_rows.toLocaleString()} technical-analysis and backtesting-frameworks strategies (${D.combos} on every coin-timeframe), each with every trade. On the newest 30% of the candles - days no strategy was chosen on - by timeframe, at $5 a trade: ${all}. `
+  +`<b>BEST on ${esc(D.tf)}:</b> ${bests.length.toLocaleString()} strategies, one per coin, chosen on its OLDER days only (the most of the skills' checks passed there, then the most money a trade there); on the unseen days they made <b class="${bp>0?"pos":"neg"}">${money(bp)}</b> over ${bn.toLocaleString()} trades (${bn?money(bp/bn):"-"} a trade), ${bheld.toLocaleString()} of ${bof.toLocaleString()} made money. `
+  +`A strategy marked "lost on the older days" did not make money where it was chosen; it is here because you asked for every one.`}
+function head(){if(SPLIT)return headSplit();const bests=ROWS.filter(r=>r.best);let bp=0,bn=0,bheld=0,bof=0;
  for(const r of bests){const m=measure(r,null,1);if(r.split!=null&&m.newN){bp+=m.newP;bn+=m.newN;bof++;if(m.newP>0)bheld++}}
  const bestLine=`<b>BEST for every coin-timeframe:</b> ${bests.length.toLocaleString()} strategies, one for each coin on each timeframe it trades - chosen on its OLDER days only - the most of the skills' checks passed there, then the most money a trade there (pick "BEST for each coin-timeframe" under Held up). On those unseen days the BEST picks made <b class="${bp>0?"pos":"neg"}">${money(bp)}</b> over ${bn.toLocaleString()} trades (${bn?money(bp/bn):"-"} a trade); ${bheld.toLocaleString()} of ${bof.toLocaleString()} made money. `;const v2=ROWS.filter(r=>r.src==="v2");let p=0,n=0,held=0,heldOf=0;
  for(const r of v2){const m=measure(r,null,1);if(m.newN){p+=m.newP;n+=m.newN;heldOf++;if(m.newP>0)held++}}
@@ -259,19 +268,24 @@ function skillLine(sk,meta,who,what){if(!sk.length||!meta)return "";let p=0,n=0,
  for(const r of sk){const m=measure(r,null,1);if(m.newN){p+=m.newP;n+=m.newN;of++;if(m.newP>0)held++}}
  const bars=sk.filter(r=>r.bar!=null);
  return ` <b>${who}</b> (${what}, ${meta.combos} a coin-timeframe, chosen on the older 70% of the candles - the backtesting-frameworks walk-forward): ${sk.length.toLocaleString()} picks made <b class="${p>0?"pos":"neg"}">${money(p)}</b> over ${n.toLocaleString()} trades (${n?money(p/n):"-"} a trade) on the newest 30% they were not chosen on; ${held.toLocaleString()} of ${of.toLocaleString()} made money; an average setting of the same coin-timeframes made ${bars.length?money(bars.reduce((s,r)=>s+r.bar,0)/bars.length):"-"} a trade there.`}
-function drawProv(){$("prov").innerHTML=`<b>${D.v2_rows_read.toLocaleString()}</b> Backtest v2 strategies read on <b>${D.v2_pairs.toLocaleString()}</b> coin-timeframes (every coin x 15m, 30m, 1h, 4h, 1d), up to ${D.rule.per_pair} picked on each, chosen on the OLDER 15 days of each 30-day backtest (at least ${Object.entries(D.rule.min_old).map(([t,n])=>`${n} trades on ${t}`).join(", ")}), ${D.v2_empty.toLocaleString()} coin-timeframes had no strategy that made money there; every v2 pick re-measured on GitHub with every trade kept, ${D.collected_s?fmtWhen(D.collected_s*1000):"-"}. ${D.skill?`Plus the backtesting-trading-strategies skill run on ${D.skill.pairs.toLocaleString()} coin-timeframes (${D.skill.combos} settings each: 30 days of 15m, 60 of 30m, 90 of 1h, 180 of 4h, two years of 1d; the coin's fee both ways and its usual gap). `:""}${D.skill_ta?`Plus the technical-analysis and backtesting-frameworks skills' own setups run the same way on ${D.skill_ta.pairs.toLocaleString()} coin-timeframes (${D.skill_ta.combos} settings each). `:""}Plus every Backtest v3 per-coin strategy whose setting could be chosen (${D.v3_names.join(", ")}: 1h, 4h, 1d, 63 combinations a coin, 90 unseen days each). v2: <b>${usd(state.base)}</b> margin at 20x = ${usd(state.base*20)} of coin a trade; v3: ${usd(state.base)} risked to the stop. Every trade pays both fees, its minutes' order book where one was recorded, and funding. Picked ${fmtWhen(D.made_s*1000)}.`}
+function drawProv(){if(SPLIT){$("prov").innerHTML=`<b>${D.all_rows.toLocaleString()}</b> strategies: the technical-analysis skill's own setups (Wyckoff spring and upthrust, RSI divergence with a structure break, market structure break, VWAP band fade, filtered average cross, pullback to the average; target 2x the stop where the setup has one) and the backtesting-frameworks skill's momentum rule, 3 settings x 2 stops each, on ${D.pairs.toLocaleString()} coin-timeframes (30 days of 15m, 60 of 30m, 90 of 1h, 180 of 4h, two years of 1d), measured on GitHub ${D.collected_s?fmtWhen(D.collected_s*1000):"-"}. Every trade pays the exchange's 0.075% fee both ways and the coin's usual gap; <b>${usd(state.base)}</b> margin at 20x = ${usd(state.base*20)} of coin a trade. Showing ${esc(D.tf)}.`;return}
+ $("prov").innerHTML=`<b>${D.v2_rows_read.toLocaleString()}</b> Backtest v2 strategies read on <b>${D.v2_pairs.toLocaleString()}</b> coin-timeframes (every coin x 15m, 30m, 1h, 4h, 1d), up to ${D.rule.per_pair} picked on each, chosen on the OLDER 15 days of each 30-day backtest (at least ${Object.entries(D.rule.min_old).map(([t,n])=>`${n} trades on ${t}`).join(", ")}), ${D.v2_empty.toLocaleString()} coin-timeframes had no strategy that made money there; every v2 pick re-measured on GitHub with every trade kept, ${D.collected_s?fmtWhen(D.collected_s*1000):"-"}. ${D.skill?`Plus the backtesting-trading-strategies skill run on ${D.skill.pairs.toLocaleString()} coin-timeframes (${D.skill.combos} settings each: 30 days of 15m, 60 of 30m, 90 of 1h, 180 of 4h, two years of 1d; the coin's fee both ways and its usual gap). `:""}${D.skill_ta?`Plus the technical-analysis and backtesting-frameworks skills' own setups run the same way on ${D.skill_ta.pairs.toLocaleString()} coin-timeframes (${D.skill_ta.combos} settings each). `:""}Plus every Backtest v3 per-coin strategy whose setting could be chosen (${D.v3_names.join(", ")}: 1h, 4h, 1d, 63 combinations a coin, 90 unseen days each). v2: <b>${usd(state.base)}</b> margin at 20x = ${usd(state.base*20)} of coin a trade; v3: ${usd(state.base)} risked to the stop. Every trade pays both fees, its minutes' order book where one was recorded, and funding. Picked ${fmtWhen(D.made_s*1000)}.`}
 function wire(){
  $("dlg-close").onclick=()=>$("dlg").close();$("f-base").value=D.base;
  for(const s of [...new Set(ROWS.map(r=>r.src))])$("f-src").insertAdjacentHTML("beforeend",`<option>${esc(s)}</option>`);
  for(const [el,key] of [["f-wr","wr"],["f-ratio","ratio"],["f-pr","pr"],["f-nt","nt"],["f-cn","cn"],["f-gm","gm"],["f-dd","dd"],["f-tp","tp"],["f-sl","sl"]])$(el).addEventListener("input",e=>{state.f[key]=num(e.target.value);state.page=0;render()});
- for(const [el,key] of [["f-src","src"],["f-tf","tf"],["f-held","held"]])$(el).addEventListener("change",e=>{state[key]=e.target.value;state.page=0;render()});
+ if(SPLIT){$("f-tf").querySelector('option[value=""]')?.remove();$("f-tf").addEventListener("change",e=>loadTf(e.target.value).catch(err=>{$("prov").textContent="Could not open "+e.target.value+": "+err}));
+  $("h").textContent="Every technical-analysis and backtesting-frameworks strategy, every coin and timeframe"}
+ for(const [el,key] of [["f-src","src"],...(SPLIT?[]:[["f-tf","tf"]]),["f-held","held"]])$(el).addEventListener("change",e=>{state[key]=e.target.value;state.page=0;render()});
  $("f-base").addEventListener("input",e=>{const v=num(e.target.value);state.base=v&&v>0?v:D.base;drawProv();render()});
  $("f-days").addEventListener("input",e=>{const v=num(e.target.value);state.days=v&&v>0?Math.floor(v):null;state.page=0;render()});
  $("f-coin").addEventListener("input",e=>{state.coin=e.target.value.trim();state.page=0;render()});
  $("f-id").addEventListener("input",e=>{state.id=e.target.value.trim();state.page=0;render();const id=idKey();
-  const hit=ROWS.find(r=>r.id===id);if(hit){if(state.opened!==id){state.opened=id;open(hit.i)}}else state.opened=""});
+  const hit=ROWS.find(r=>r.id===id);if(hit){if(state.opened!==id){state.opened=id;open(hit.i)}}
+  else if(SPLIT&&IDS&&IDS[id]&&IDS[id]!==state.tf){loadTf(IDS[id],id)}else state.opened=""});
  $("clear").onclick=()=>{state.f={};state.days=null;state.coin="";state.id="";state.opened="";state.src="";state.tf="";state.held="";state.page=0;
-  for(const el of ["f-wr","f-ratio","f-pr","f-nt","f-cn","f-gm","f-dd","f-tp","f-sl","f-days","f-coin","f-id","f-src","f-tf","f-held"])$(el).value="";render()};
+  for(const el of ["f-wr","f-ratio","f-pr","f-nt","f-cn","f-gm","f-dd","f-tp","f-sl","f-days","f-coin","f-id","f-src","f-tf","f-held"])$(el).value="";
+  if(SPLIT){state.tf=D.tf;$("f-tf").value=D.tf}render()};
  $("p-prev").onclick=()=>{state.page--;render()};$("p-next").onclick=()=>{state.page++;render()};
  $("legend").textContent="Month columns are calendar months of your own time zone; only months a shown row traded in are columns. SL % and TP % show the tightest to the widest stop and target among the row's trades, and the max boxes cut on the widest. Win size ÷ loss size is the average win against the average loss, after every fee. Last N days counts back from each row's own window end (v2 rows end in Nov 2026, v3 rows at the end of their year's unseen days). The 7 checks are the tests the technical-analysis, backtesting-trading-strategies and backtesting-frameworks skills ask of a strategy; every trade already pays both fees and its order book (the eighth check, always passed). Sharpe and Sortino are a year's worth, from the trades' own returns; the Monte Carlo draws are over the whole window. A v2 row marked 'lost on the older days' is a filler: shown so every coin and timeframe has strategies, though none of its rows made money where it was chosen.";
  const notes=[];
@@ -289,5 +303,14 @@ function wire(){
  drawProv();head();render()}
 async function inflate(b64){const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
  const s=new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"));return JSON.parse(await new Response(s).text())}
-inflate(Z).then(d=>{D=d;ROWS=rowsOf(D);for(const r of ROWS)r.mc=monteCarlo(r.t);markBest();state.base=D.base;wire()}).catch(e=>{$("prov").textContent="The page's data could not be opened: "+e})
+const SPLIT=Object.keys(ZF).some(k=>k!=="_ids");let IDS=null,WIRED=false;
+async function fetchJoin(files){const parts=await Promise.all(files.map(f=>fetch(f).then(r=>{if(!r.ok)throw new Error(f+": HTTP "+r.status);return r.text()})));return inflate(parts.join(""))}
+// one timeframe's strategies at a time; `thenId` opens that strategy's trade log once it is loaded (Find by ID)
+async function loadTf(tf,thenId){$("prov").textContent=`Opening ${tf}...`;
+ D=await fetchJoin(ZF[tf]);ROWS=rowsOf(D);for(const r of ROWS)r.mc=monteCarlo(r.t);markBest();state.tf=tf;state.page=0;
+ if(!WIRED){state.base=D.base;wire();WIRED=true}else{drawProv();head();render()}
+ $("f-tf").value=tf;if(thenId){const hit=ROWS.find(r=>r.id===thenId);if(hit){state.opened=thenId;render();open(hit.i)}}}
+if(SPLIT){fetchJoin(ZF._ids).then(m=>{IDS=m}).catch(()=>{});
+ loadTf(Object.keys(ZF).filter(k=>k!=="_ids")[0]).catch(e=>{$("prov").textContent="The page's data could not be opened: "+e})}
+else inflate(Z).then(d=>{D=d;ROWS=rowsOf(D);for(const r of ROWS)r.mc=monteCarlo(r.t);markBest();state.base=D.base;wire()}).catch(e=>{$("prov").textContent="The page's data could not be opened: "+e})
 </script></body></html>

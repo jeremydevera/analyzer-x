@@ -105,3 +105,17 @@ def test_a_row_is_judged_by_the_clock_it_was_chosen_by():
     r = subprocess.run([node, "-e", code], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
     assert r.stdout.strip() == "[false,true,true,false]"
+
+
+def test_every_strategy_is_split_by_timeframe_and_none_is_lost():
+    line = _skill_line("ta_wyckoff_spring", 0.03)
+    x = dict(line["lines"]["BTC|1h"])
+    other = dict(x, tf="4h", picks=[dict(x["picks"][0], label="ta_wyckoff_spring(lookback=20) stop 1.5% target 3%",
+                                         params={"lookback": 20}, stop=0.015)])
+    skill = {"lines": {"BTC|1h": x, "BTC|4h": other}, "collected_s": 1}
+    out, ids = ap.split_payloads(skill)
+    assert set(out) == {"1h", "4h"} and all(len(p["R"]) == 1 for p in out.values())
+    assert sorted(ids.values()) == ["1h", "4h"]
+    assert out["1h"]["all_rows"] == 2 and out["1h"]["totals"]["1h"] == {"rows": 1, "trades": 1, "profit": 2.9,
+                                                                         "held": 1, "of": 1}
+    assert ap.uncolumns(out["4h"]["T"])[0][0][5] == 1500

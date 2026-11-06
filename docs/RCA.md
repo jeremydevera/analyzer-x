@@ -172,6 +172,40 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-05-G — a coin redone alone would still have been listed "no machine reached" on the strategies page: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing yet - found when one GitHub machine was lost mid-run (Nov 05, 2026 ~8:20pm) and its 15 coins (GE ... HLT) had to be redone.
+* Why: putting a redone coin's results back did not take its name off the "coins no machine reached" list, so the page would have shown its strategies AND called it missing.
+* What stops it now: a redone coin leaves that list, and a test holds it.
+
+**DEV**
+
+* `tradingagents/acs.py:merge_skill` updated `lines`, `failed` and `skipped` but never `not_reached`; the only redo before (young coins, Nov 05, 2026 9:11am) fixed `skipped` rows, so it never showed.
+* Invariant broken: **a merge updates every list that names the thing it replaces**.
+* Guard: `tests/test_acs.py::test_a_redone_coin_leaves_the_not_reached_list`.
+
+**SAW** - nothing on screen.
+
+**TIMELINE**
+
+1. Nov 05, 2026 7:59pm: the every-strategy run (`--set ta_all`) started on 60 machines.
+2. ~8:20pm: jeremydvera's machine 7 "lost communication with the server"; the other 59 finished; collect named 15 coins not reached.
+3. Before the redo was collected, `merge_skill` was read and found to leave them listed.
+
+**ROOT CAUSE** - the merge was written for the one kind of redo that had happened (too few candles).
+
+**WHY IT WAS NOT CAUGHT** - its test redid a coin listed under `skipped`, never one listed under `not_reached`.
+
+**COST** - none.
+
+**FIX** - this commit.
+
+**GUARD** - `tests/test_acs.py::test_a_redone_coin_leaves_the_not_reached_list`.
+
+---
+
 ## RCA-2026-11-05-F — the all-coins page judged the skill strategies on trades they were chosen with, so their "unseen days" loss read $0.89 a trade instead of $1.10
 
 **CEO**

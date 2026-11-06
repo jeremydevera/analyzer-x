@@ -3068,6 +3068,21 @@ coin, never one timeframe, never one winner, unless they name one.
   1.2+, 80%+ of 200 Monte Carlo draws in profit, the coin's next bigger
   timeframe also in profit — as "Checks passed (of 7)" with a filter, beside
   Sharpe, Sortino and max drawdown, all worked out from the row's trades.
+  **The other two skills MAKE strategies too** (`tradingagents/skill_ta.py`,
+  Nov 05, 2026, after "the two skills only graded"): technical-analysis'
+  own setups from its `references/patterns.md` — Wyckoff spring/upthrust (its
+  `detect_spring`, tested equal), RSI divergence with a structure break,
+  market structure break, VWAP band fade, ADX+volume filtered average cross,
+  pullback to the average, each with a target at 2x its stop — and
+  backtesting-frameworks' `momentum_signal` (tested equal), x 3 settings x 2
+  stops = 42 a coin-timeframe, through the same `skill_bt.pair`
+  (`skillbt.yml` `set=ta`, `acs dispatch --skill --set ta`, `acs collect
+  --skill --set ta` → `skillta.json`). Left out, named: Fibonacci confluence
+  and the volume-profile value area (no stated entry rule). Guard:
+  `tests/test_skill_ta.py`.
+  **A row is judged by the clock it was chosen by** (RCA-2026-11-05-F): a
+  skill row by the trades that OPENED after its split, a v2 row by the trades
+  that CLOSED in its last 15 days (`isNew` in the page).
 * **The tool:** `python -m tradingagents.acs pick` (writes
   `research/acs/plan.json` — commit and push it), `dispatch` (acs.yml on
   every account rebuilds each pick's trades like a Backtest v2 row,
@@ -3082,14 +3097,23 @@ coin, never one timeframe, never one winner, unless they name one.
   than any of the skill's strategies needs — all named), 5,556 v3 2026 and
   2,489 v3 2025. 548 pass all 7 checks. On the days they were not chosen on
   the v2 strategies made −$0.36 a trade (an average row −$0.43) and the
-  skill's −$0.89 (an average setting −$1.37): choosing beats the average
-  setting, and still loses after fees.
+  skill's −$1.10 (an average setting −$1.37; −$0.89 until RCA-2026-11-05-F):
+  choosing beats the average setting, and still loses after fees.
+  **Version 6 (Nov 05, 2026 7:00pm), 52,820 strategies:** + 15,857 from the
+  technical-analysis and backtesting-frameworks run (run 42131947740 and its
+  two siblings, 12 minutes on 60 machines, 5,390 coin-timeframes, the same 10
+  with no daily candle named): −$125,994.81 over 115,383 unseen trades
+  (−$1.09 a trade, an average setting −$1.32), 4,571 of 14,254 in profit; by
+  setup the least bad was the pullback to the average (−$0.55 a trade), the
+  worst the filtered average cross (−$1.79).
 * **One BEST per coin-timeframe, chosen on older days only** (page version 5):
   the row passing the most of the skills' checks on its OLDER trades, then the
   most money a trade there — never on the days it is then judged on (a first
   draft ranked by unseen profit, which would have made BEST look better than it
-  is). 5,316 BEST, one for each coin-timeframe; on their unseen days they made
-  −$36,185.09 over 54,238 trades (−$0.67 a trade), 1,637 of 5,104 in profit.
+  is). Version 6: 5,324 BEST, one for each coin-timeframe; on their unseen
+  days they made −$37,087.77 over 38,219 trades (−$0.97 a trade), 1,532 of
+  4,924 in profit (version 5 said −$0.67 over 54,238 - inflated by
+  RCA-2026-11-05-F).
   Say that number beside the word "best", every time.
 * **THE ONE RULE THAT HELD FORWARD (Nov 05, 2026) — "forward-tested":** a v3
   strategy PROFITABLE on 2025's unseen days AND whose setting 2026's own older

@@ -172,6 +172,40 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-05-F — the all-coins page judged the skill strategies on trades they were chosen with, so their "unseen days" loss read $0.89 a trade instead of $1.10
+
+**CEO**
+
+* What you saw: the strategies page said the backtesting skill's picks lost $0.89 a trade on days they were not chosen on, and the BEST picks $0.67 a trade.
+* Why: a trade that opened on the choosing days but closed on the later days was counted on BOTH sides - it helped pick the strategy, then counted again as proof - so the proof looked better than it was. The real figures are −$1.10 and −$0.97 a trade.
+* What stops it now: each strategy is judged by the same clock it was chosen by, and a test checks the rule.
+
+**DEV**
+
+* `tradingagents/acs_page.html:measure` counted a trade "new" when `x[1]` (exit) >= `r.split`, while `skill_bt.pair` chose a row on `entry_ms < split_ms`; `markBest` used the entry, so the two halves of the page disagreed too.
+* Invariant broken: **the days a row is judged on are the complement of the days it was chosen on, measured with the same clock**.
+* Guard: `tests/test_acs_page.py::test_a_row_is_judged_by_the_clock_it_was_chosen_by` (fails on the old file: it has no `isNew`).
+
+**SAW** - the page's head line, version 4/5 (Nov 05, 2026): "15,933 picks made ... (−$0.89 a trade) on the newest 30%"; BEST "−$36,185.09 over 54,238 trades (−$0.67 a trade)".
+
+**TIMELINE**
+
+1. Nov 05, 2026 ~8:40am: the skill rows went on the page with `split` = their 70% point, read by the v2 rule (by close).
+2. Nov 05, 2026 7:00pm: the technical-analysis run's page line said −$83,793.54 over 121,040 trades (−$0.69); the collected file said −$125,994.81 over 115,383 (−$1.09) - 5,657 more trades on the page, each one a trade that straddled the split.
+3. After the fix the page equals the file to the cent for both skill runs: −$244,182.32 over 221,446 (−$1.10) and −$125,994.81 over 115,383 (−$1.09); BEST −$37,087.77 over 38,219 (−$0.97).
+
+**ROOT CAUSE** - one "is this trade unseen" rule was written for v2 (whose 15-day window counts by close) and reused for a source that chooses by open.
+
+**WHY IT WAS NOT CAUGHT** - the page's numbers were never compared with the run's own `newer` totals; every test checked rows and trade lists, none the head line's sum against its source (label-must-match-data: the itemised rows must sum to the total shown).
+
+**COST** - none in money; the published page overstated the skill picks by $0.21 a trade and BEST by $0.30 a trade for about 10 hours.
+
+**FIX** - this commit.
+
+**GUARD** - `tests/test_acs_page.py::test_a_row_is_judged_by_the_clock_it_was_chosen_by`.
+
+---
+
 ## RCA-2026-11-05-E — every skill dispatch filed its state as a "redo of named coins", so a whole-market skill run would have been collected from the wrong file: NEVER HAPPENED YET
 
 **CEO**

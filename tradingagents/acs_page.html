@@ -73,15 +73,21 @@ const PAGE=100,LOG_PAGE=100,DAY=86400;
 let D=null,ROWS=[];
 const state={base:5,f:{},src:"",tf:"",held:"",days:null,coin:"",id:"",opened:"",cur:-1,log:0,page:0,sort:{k:"profit",dir:-1}};
 const idKey=()=>state.id.replace(/^#/,"").toUpperCase();
-function rowsOf(D){return D.R.map((a,i)=>{const r={i};D.F.forEach((f,j)=>r[f]=a[j]);r.t=D.T[i];return r})}
+// trades ride by column (acs_page.columns): entry = seconds after the row's previous entry, exit = after its own entry
+function untable(P){const out=[],c=P.c;let k=0;for(const n of P.n){const tl=[];let prev=0;
+ for(let j=k;j<k+n;j++){const e=prev+c[0][j];tl.push([e,e+c[1][j],c[2][j],c[3][j],c[4][j],c[5][j],c[6][j]]);prev=e}out.push(tl);k+=n}return out}
+// a trade is on the days a row was NOT chosen on by the same clock it was chosen by: a skill row was
+// chosen on the trades that OPENED before its split (skill_bt.pair), a v2 row on the trades that CLOSED
+// before its last 15 days (backtest_strategy recent_from_ms) - RCA-2026-11-05-F
+function isNew(r,x){return r.src==="skill"?x[0]>=r.split:x[1]>=(r.split!=null?r.split:r.end-15*DAY)}
+function rowsOf(D){const T=Array.isArray(D.T)?D.T:untable(D.T);return D.R.map((a,i)=>{const r={i};D.F.forEach((f,j)=>r[f]=a[j]);r.t=T[i];return r})}
 // one row over its trades that CLOSED in the last N days of ITS OWN window (null = the whole window), dollars x k
 function measure(r,days,k){
  const from=days?r.end-days*DAY:null;const t=from==null?r.t:r.t.filter(x=>x[1]>=from);
  let profit=0,wins=0,winSum=0,lossSum=0,run=0,runN=0,worst=0,worstN=0,noStop=false,noTgt=false,sLo=null,sHi=null,gLo=null,gHi=null,newP=0,newN=0;const months={};
- const newFrom=r.split!=null?r.split:r.end-15*DAY;
  for(const x of t){const p=x[4]/1e4*k;profit+=p;
   if(p>0){wins++;winSum+=p;run=0;runN=0}else{lossSum-=p;run+=p;runN++;if(run<worst){worst=run;worstN=runN}}
-  const m=monthKey(x[1]);months[m]=(months[m]||0)+p;if(x[1]>=newFrom){newP+=p;newN++}
+  const m=monthKey(x[1]);months[m]=(months[m]||0)+p;if(isNew(r,x)){newP+=p;newN++}
   if(x[5]>=0){const v=x[5]/1e3;sLo=sLo==null?v:Math.min(sLo,v);sHi=sHi==null?v:Math.max(sHi,v)}else noStop=true;
   if(x[6]>=0){const v=x[6]/1e3;gLo=gLo==null?v:Math.min(gLo,v);gHi=gHi==null?v:Math.max(gHi,v)}else noTgt=true}
  const n=t.length,losses=n-wins,aw=wins?winSum/wins:null,al=losses?lossSum/losses:null;
@@ -138,7 +144,7 @@ function filterNames(){const f=state.f,w={wr:v=>`win at least ${v}%`,ratio:v=>`a
 // profit factor 1.2+, 80%+ of Monte Carlo draws in profit, a stop on every trade, 10+ trades - then the
 // most money a trade there. v2 and skill rows only: a v3 row's window is all unseen days.
 function markBest(){const best={};
- for(const r of ROWS){if(r.split==null)continue;const t=r.t.filter(x=>x[0]<r.split);if(!t.length)continue;
+ for(const r of ROWS){if(r.split==null)continue;const t=r.t.filter(x=>!isNew(r,x));if(!t.length)continue;
   let p=0,w=0,ws=0,ls=0,stops=true;for(const x of t){const v=x[4]/1e4;p+=v;if(v>0){w++;ws+=v}else ls-=v;if(x[5]<0)stops=false}
   const n=t.length,aw=w?ws/w:null,al=n-w?ls/(n-w):null,mc=monteCarlo(t);
   const cn=[p>0,aw!=null&&al?aw/al>=1:false,ls>0?ws/ls>=1.2:ws>0,mc!=null&&mc>=0.8,stops,n>=10].filter(Boolean).length;

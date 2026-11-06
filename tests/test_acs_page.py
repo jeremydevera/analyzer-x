@@ -76,3 +76,32 @@ def test_the_backtesting_skills_rows_keep_their_old_label_and_id():
     assert rows[0]["strategy"] == "sma_crossover(lookback=50) stop 1.5%"
     assert rows[0]["id"] == br.row_code("BTC", "1h", "sma_crossover", 0, 1.5, 0, "flat",
                                         plan="sma_crossover(lookback=50) stop 1.5%", res="skill")
+
+
+def test_trades_stored_by_column_come_back_exactly():
+    tl = [[[1000, 2000, 1, 0, 37800, 1000, 4000], [3000, 3500, -1, 1, -7800, 1000, -1]], [],
+          [[50, 60, 1, 7, 5, 1500, 3000]]]
+    packed = ap.columns(tl)
+    assert packed["n"] == [2, 0, 1] and len(packed["c"]) == 7
+    assert ap.uncolumns(packed) == tl
+
+
+def test_a_row_is_judged_by_the_clock_it_was_chosen_by():
+    # RCA-2026-11-05-F: the page called a skill trade "unseen" when it CLOSED after the split, while
+    # skill_bt chose the row on the trades that OPENED before it - a straddling trade counted twice
+    import re
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    src = ap._HTML.read_text(encoding="utf-8")
+    fn = re.search(r"function isNew\(r,x\)\{.*?\}\n", src).group(0)
+    code = ("const DAY=86400;" + fn +
+            "const t=[100,300];"
+            "console.log(JSON.stringify([isNew({src:'skill',split:200},t),isNew({src:'v2',split:200},t),"
+            "isNew({src:'skill',split:200},[250,300]),isNew({src:'v2',split:200},[50,150])]))")
+    r = subprocess.run([node, "-e", code], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "[false,true,true,false]"

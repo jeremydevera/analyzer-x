@@ -239,7 +239,7 @@ def payload(picks: dict, trades: dict, v3_names=("all-coins", "all-2025"), skill
         r.pop("_key", None)
         r.pop("_prof", None)
         r.pop("_set", None)
-    return {"F": list(FIELDS), "R": [[r[f] for f in FIELDS] for r in rows], "T": tl,
+    return {"F": list(FIELDS), "R": [[r[f] for f in FIELDS] for r in rows], "T": columns(tl),
             "whys": list(WHYS), "base": BASE, "missing": missing,
             "failed": trades.get("failed") or [], "not_reached": trades.get("not_reached") or [],
             "v2_rows_read": picks["rows"], "v2_pairs": len(picks["pairs"]),
@@ -247,6 +247,38 @@ def payload(picks: dict, trades: dict, v3_names=("all-coins", "all-2025"), skill
             "rule": picks["rule"], "made_s": picks["made_s"], "collected_s": trades.get("collected_s"),
             "v3_names": list(v3_names),
             "skill": _skill_meta(skill), "skill_ta": _skill_meta(skill_ta)}
+
+
+def columns(tlists: list) -> dict:
+    """Every trade of every row, stored by COLUMN (kit F: compress the encoding, never drop a
+    field): `n` the trades of each row, then the 7 fields as 7 lists - an entry time as seconds
+    after the row's previous entry (the first after 0), an exit as seconds after its own entry.
+    The 52,820-row page of Nov 05, 2026 was 18.1 MB as one list per trade, over the 16 MB an
+    artifact may be; by column it gzips to 7.2 MB. `uncolumns` (and the page's `untable`) undo it."""
+    cols = [[] for _ in range(7)]
+    for tl in tlists:
+        prev = 0
+        for t in tl:
+            cols[0].append(t[0] - prev)
+            cols[1].append(t[1] - t[0])
+            for i in range(2, 7):
+                cols[i].append(t[i])
+            prev = t[0]
+    return {"n": [len(tl) for tl in tlists], "c": cols}
+
+
+def uncolumns(packed: dict) -> list:
+    out, k = [], 0
+    c = packed["c"]
+    for n in packed["n"]:
+        tl, prev = [], 0
+        for j in range(k, k + n):
+            e = prev + c[0][j]
+            tl.append([e, e + c[1][j]] + [c[i][j] for i in range(2, 7)])
+            prev = e
+        out.append(tl)
+        k += n
+    return out
 
 
 def merged(root: Path) -> dict:

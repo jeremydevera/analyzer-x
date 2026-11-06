@@ -3106,6 +3106,15 @@ coin, never one timeframe, never one winner, unless they name one.
   (−$1.09 a trade, an average setting −$1.32), 4,571 of 14,254 in profit; by
   setup the least bad was the pullback to the average (−$0.55 a trade), the
   worst the filtered average cross (−$1.79).
+  **EVERY one of them, not the best 3** (operator, Nov 05, 2026: *"i dont
+  want top 3 show me all 226,380"*): https://claude.ai/artifact/8egaYi4Abxb9BgXDFZcQ8w
+  — all 226,380 (42 on each of 5,390 coin-timeframes, the 10 with one daily
+  candle named), every trade (6.4 million), one timeframe loaded at a time
+  from its own data file (`acs dispatch --skill --set ta_all`, `acs collect
+  --skill --set ta_all`, `acs_page.write_split()`; a data file never starts
+  with "_", the artifact service refuses it). On the unseen newest 30%:
+  −$2,463,746.13 over 2,039,703 trades (−$1.21 a trade), 53,329 of 188,683
+  that traded made money.
 * **One BEST per coin-timeframe, chosen on older days only** (page version 5):
   the row passing the most of the skills' checks on its OLDER trades, then the
   most money a trade there — never on the days it is then judged on (a first

@@ -59,7 +59,7 @@ dialog{max-width:min(1100px,100vw - 32px);width:100%;border:1px solid var(--rule
 <script>
 const Z="";
 // a page too big for one file rides in data files, one timeframe at a time (acs_page.write_split):
-// ZF = {tf: [files], _ids: [files]}; empty = the data is Z above
+// ZF = {tf: [files], ids: [files]}; empty = the data is Z above
 const ZF={};
 const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function fmtWhen(ms){const d=new Date(ms);let h=d.getHours();const ap=h<12?"am":"pm";h=h%12||12;
@@ -303,14 +303,14 @@ function wire(){
  drawProv();head();render()}
 async function inflate(b64){const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
  const s=new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"));return JSON.parse(await new Response(s).text())}
-const SPLIT=Object.keys(ZF).some(k=>k!=="_ids");let IDS=null,WIRED=false;
+const SPLIT=Object.keys(ZF).some(k=>k!=="ids");let IDS=null,WIRED=false;
 async function fetchJoin(files){const parts=await Promise.all(files.map(f=>fetch(f).then(r=>{if(!r.ok)throw new Error(f+": HTTP "+r.status);return r.text()})));return inflate(parts.join(""))}
 // one timeframe's strategies at a time; `thenId` opens that strategy's trade log once it is loaded (Find by ID)
 async function loadTf(tf,thenId){$("prov").textContent=`Opening ${tf}...`;
  D=await fetchJoin(ZF[tf]);ROWS=rowsOf(D);for(const r of ROWS)r.mc=monteCarlo(r.t);markBest();state.tf=tf;state.page=0;
  if(!WIRED){state.base=D.base;wire();WIRED=true}else{drawProv();head();render()}
  $("f-tf").value=tf;if(thenId){const hit=ROWS.find(r=>r.id===thenId);if(hit){state.opened=thenId;render();open(hit.i)}}}
-if(SPLIT){fetchJoin(ZF._ids).then(m=>{IDS=m}).catch(()=>{});
- loadTf(Object.keys(ZF).filter(k=>k!=="_ids")[0]).catch(e=>{$("prov").textContent="The page's data could not be opened: "+e})}
+if(SPLIT){fetchJoin(ZF.ids).then(m=>{IDS=m}).catch(()=>{});
+ loadTf(Object.keys(ZF).filter(k=>k!=="ids")[0]).catch(e=>{$("prov").textContent="The page's data could not be opened: "+e})}
 else inflate(Z).then(d=>{D=d;ROWS=rowsOf(D);for(const r of ROWS)r.mc=monteCarlo(r.t);markBest();state.base=D.base;wire()}).catch(e=>{$("prov").textContent="The page's data could not be opened: "+e})
 </script></body></html>

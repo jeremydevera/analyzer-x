@@ -390,7 +390,7 @@ def write_split(skill_file: str = "skilltaall.json", folder: str = "all-skill-st
 
     for tf, data in payloads.items():
         put(tf, data)
-    put("_ids", ids)
+    put("ids", ids)          # never "_...": the artifact service reserves those names
     html = _HTML.read_text(encoding="utf-8").replace("const ZF={};", f"const ZF={json.dumps(zf)};", 1)
     html = html.replace("<title>All Coins Strategies</title>", "<title>All Skill Strategies</title>", 1)
     (root / "index.html").write_text(html, encoding="utf-8")

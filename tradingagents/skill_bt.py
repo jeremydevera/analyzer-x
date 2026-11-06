@@ -152,13 +152,15 @@ def stats(trades: list[dict]) -> dict:
             "expectancy": s["expectancy"], "profit": round(sum(t["pnl"] for t in trades), 4)}
 
 
-def pair(df, *, fee: float, slip: float, k: int = PER_PAIR, grid: dict | None = None,
+def pair(df, *, fee: float, slip: float, k: int | None = PER_PAIR, grid: dict | None = None,
          targets: dict | None = None) -> dict:
     """Every setting x stop of the skill on one coin-timeframe, chosen on the older SPLIT of the
     candles (by its expectancy there, MIN_OLDER+ trades, made money there) and judged on the rest;
     fewer than `k` that qualify are filled by the next best older expectancy, flagged `older_lost`.
     `grid`/`targets` run another skill's strategies (skill_ta.GRID, skill_ta.TARGETS: a target as a
-    multiple of the stop, None = none); left out, the backtesting-trading-strategies skill's own."""
+    multiple of the stop, None = none); left out, the backtesting-trading-strategies skill's own.
+    `k=None` keeps EVERY setting x stop (operator, Nov 05, 2026: "i dont want top 3 show me all"),
+    the qualifying ones first, then every other one flagged `older_lost` - one with no trade too."""
     ms = _ms(df.index)
     split_ms = int(ms[int(len(df) * SPLIT)])
     combos = []
@@ -178,6 +180,12 @@ def pair(df, *, fee: float, slip: float, k: int = PER_PAIR, grid: dict | None = 
     bar = sum(s["profit"] for s in newer) / n_tr if n_tr else None
     ok = [c for c in combos if c["older"]["trades"] >= MIN_OLDER and c["older"]["profit"] > 0]
     ok.sort(key=lambda c: -c["older"]["expectancy"])
+    if k is None:
+        rest = [c for c in combos if c not in ok]
+        rest.sort(key=lambda c: -(c["older"]["expectancy"] if c["older"]["trades"] else -1e9))
+        picks = [{**c, "older_lost": False} for c in ok] + [{**c, "older_lost": True} for c in rest]
+        return {"split_ms": split_ms, "bars": len(df), "combos": len(combos), "bar": bar, "picks": picks,
+                "start_ms": int(ms[0]), "end_ms": int(ms[-1])}
     picks = [{**c, "older_lost": False} for c in ok[:k]]
     if len(picks) < k:
         rest = [c for c in combos if c not in ok and c["older"]["trades"] > 0]

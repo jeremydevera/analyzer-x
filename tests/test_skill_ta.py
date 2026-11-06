@@ -103,3 +103,14 @@ def test_the_backtesting_skill_run_is_unchanged_without_a_grid():
     out = sb.pair(df, fee=0.00075, slip=0.0003)
     assert out["combos"] == sum(len(v) for v in sb.GRID.values()) * len(sb.STOPS)
     assert all(p["target"] is None and "target" not in sb.label(p) for p in out["picks"])
+
+
+def test_keep_all_returns_every_setting_and_stop_with_its_trades():
+    # operator, Nov 05, 2026: "i dont want top 3 show me all"
+    out = sb.pair(_df(1200, seed=7), fee=0.00075, slip=0.0003, grid=st.GRID, targets=st.TARGETS, k=None)
+    assert len(out["picks"]) == out["combos"] == 42
+    keys = {(p["strategy"], tuple(sorted(p["params"].items())), p["stop"]) for p in out["picks"]}
+    assert len(keys) == 42
+    ok = [p for p in out["picks"] if not p["older_lost"]]
+    assert all(p["older"]["trades"] >= sb.MIN_OLDER and p["older"]["profit"] > 0 for p in ok)
+    assert out["picks"][: len(ok)] == ok

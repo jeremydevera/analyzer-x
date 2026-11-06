@@ -4,7 +4,8 @@ the skill's eight strategies x three settings x two stops chosen on the older 70
 newest 30%, every trade paying the coin's fee both ways and its usual gap. One line per coin-timeframe.
 
 SKILL_SET=ta runs the technical-analysis and backtesting-frameworks skills' own strategies instead
-(tradingagents/skill_ta.py), the same way, into skillta-*.jsonl.
+(tradingagents/skill_ta.py), the same way, into skillta-*.jsonl; ta_all keeps EVERY one of their 42
+settings x stops of each coin-timeframe, not the best 3, into skilltaall-*.jsonl.
 """
 # ruff: noqa: E402
 from __future__ import annotations
@@ -29,9 +30,10 @@ from tradingagents.dataflows import exchange as fx  # noqa: E402
 # candles a timeframe is walked over: 30 days of 15m, 60 of 30m, 90 of 1h, 180 of 4h, two years of 1d
 BARS = {"15m": 2880, "30m": 2880, "1h": 2160, "4h": 1080, "1d": 730}
 SET = os.environ.get("SKILL_SET", "bt") or "bt"
-if SET not in ("bt", "ta"):
-    raise SystemExit(f"SKILL_SET must be bt or ta, not {SET!r}")
-PREFIX = "skill" if SET == "bt" else "skillta"
+if SET not in ("bt", "ta", "ta_all"):
+    raise SystemExit(f"SKILL_SET must be bt, ta or ta_all, not {SET!r}")
+PREFIX = {"bt": "skill", "ta": "skillta", "ta_all": "skilltaall"}[SET]
+KEEP = None if SET == "ta_all" else sb.PER_PAIR
 GRID, TARGETS = (None, None) if SET == "bt" else (sta.GRID, sta.TARGETS)
 OUT = os.path.join("out", f"{PREFIX}-{ss.SHARD}.jsonl")
 REPORT_OUT = os.path.join("out", f"{PREFIX}-report-{ss.SHARD}.json")
@@ -103,7 +105,7 @@ def main() -> int:
                         if len(df) < 2:          # CLAUDE.md: no bar floor but the physical one
                             entry["skipped"] = f"{len(df)} candles"
                         else:
-                            out.write(json.dumps(line(coin, tf, sb.pair(df, fee=fee, slip=slip, grid=GRID, targets=TARGETS), fee, slip),
+                            out.write(json.dumps(line(coin, tf, sb.pair(df, fee=fee, slip=slip, grid=GRID, targets=TARGETS, k=KEEP), fee, slip),
                                                  separators=(",", ":")) + "\n")
                             n += 1
                     except Exception as exc:                       # noqa: BLE001

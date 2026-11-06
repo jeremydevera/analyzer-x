@@ -229,6 +229,9 @@ def _gh(*args: str, timeout: int = 120) -> str:
 
 
 SKILL_WORKFLOW = "skillbt.yml"
+# each skill set's files: bt = the backtesting skill, ta = technical-analysis + backtesting-frameworks
+# (best 3 a coin-timeframe), ta_all = every one of their 42 a coin-timeframe
+SKILL_PREFIX = {"bt": "skill", "ta": "skillta", "ta_all": "skilltaall"}
 
 
 def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=(), skill: bool = False,
@@ -244,10 +247,10 @@ def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=(), ski
         raise RuntimeError("no press between 12:45am and 5:00am (the nightly jobs' hours)")
     # the skill run measures the exchange's whole market and needs no plan (skill_bt.py); `skill_set`
     # "ta" runs the technical-analysis and backtesting-frameworks skills' strategies (skill_ta.py)
-    if skill_set not in ("bt", "ta"):
-        raise ValueError(f"skill_set must be bt or ta, not {skill_set!r}")
+    if skill_set not in SKILL_PREFIX:
+        raise ValueError(f"skill_set must be one of {sorted(SKILL_PREFIX)}, not {skill_set!r}")
     redo = bool(coins)            # named coins = a redo; `coins` is the dealt list from here on
-    if redo and skill and skill_set == "ta":
+    if redo and skill and skill_set != "bt":
         raise ValueError("a redo of named coins is for the bt set only: its state would replace the "
                          "ta run's whole-market state")
     plan = ({"id": "", "configs": {c.replace("_USDT", ""): 1 for c in (coins or fd.market())}} if skill
@@ -307,8 +310,8 @@ def _state_name(skill: bool, redo: bool, skill_set: str = "bt") -> str:
     and each skill set apart (a redo of the "ta" set is not supported: redo it whole)."""
     if not skill:
         return "state.json"
-    if skill_set == "ta":
-        return "skillta-state.json"
+    if skill_set != "bt":
+        return f"{SKILL_PREFIX[skill_set]}-state.json"
     return "skill-redo-state.json" if redo else "skill-state.json"
 
 
@@ -386,7 +389,7 @@ def collect_skill(skill_set: str = "bt") -> dict:
     collects the technical-analysis and backtesting-frameworks run into skillta.json."""
     import shutil
 
-    pre = "skill" if skill_set == "bt" else "skillta"
+    pre = SKILL_PREFIX[skill_set]
     state = json.loads((home() / f"{pre}-state.json").read_text(encoding="utf-8"))
     lines, failed, reported, dl_failed, skipped = {}, [], set(), [], []
     for key, r in state["runs"].items():
@@ -459,11 +462,11 @@ def main(argv=None) -> int:
     d.add_argument("--skip", action="append", default=[], help="owner/repo whose machines are busy")
     d.add_argument("--skill", action="store_true", help="the backtesting skill on the whole market")
     d.add_argument("--coins", default="", help="comma-separated coins (a redo of named ones)")
-    d.add_argument("--set", dest="skill_set", default="bt", choices=("bt", "ta"),
+    d.add_argument("--set", dest="skill_set", default="bt", choices=("bt", "ta", "ta_all"),
                    help="with --skill: bt = the backtesting skill, ta = technical-analysis + backtesting-frameworks")
     c = sub.add_parser("collect")
     c.add_argument("--skill", action="store_true")
-    c.add_argument("--set", dest="skill_set", default="bt", choices=("bt", "ta"))
+    c.add_argument("--set", dest="skill_set", default="bt", choices=("bt", "ta", "ta_all"))
     c.add_argument("--merge", default=None, help="a skill redo's out folder to lay over the saved run")
     sub.add_parser("page")
     a = p.parse_args(argv)

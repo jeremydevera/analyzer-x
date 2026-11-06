@@ -22,7 +22,7 @@ on:
         description: "A name for this run (its title)"
         default: "manual"
       set:
-        description: "bt = the backtesting skill's 8 strategies; ta = the technical-analysis and backtesting-frameworks skills' own (skill_ta.py)"
+        description: "bt = the backtesting skill's 8 strategies; ta = the technical-analysis and backtesting-frameworks skills' own (skill_ta.py), best 3 a coin-timeframe; ta_all = every one of their 42"
         default: "bt"
 
 permissions:
@@ -90,5 +90,7 @@ jobs:
             out/skill-report-*.json
             out/skillta-*.jsonl
             out/skillta-report-*.json
+            out/skilltaall-*.jsonl
+            out/skilltaall-report-*.json
           if-no-files-found: warn
           retention-days: 30

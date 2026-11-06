@@ -134,3 +134,8 @@ def test_a_redo_of_the_ta_set_is_refused_before_anything_is_sent(monkeypatch):
     monkeypatch.setattr(cq_search, "quiet_hours", lambda: False)
     with pytest.raises(ValueError, match="bt set only"):
         acs.dispatch(skill=True, coins=["BTC"], skill_set="ta")
+
+
+def test_the_every_strategy_set_keeps_its_own_files():
+    assert acs._state_name(True, False, "ta_all") == "skilltaall-state.json"
+    assert acs.SKILL_PREFIX == {"bt": "skill", "ta": "skillta", "ta_all": "skilltaall"}

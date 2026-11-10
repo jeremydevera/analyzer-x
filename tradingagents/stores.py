@@ -81,7 +81,16 @@ V3 = Store(name="v3", home=_HOME / "v3", candles=_HOME / "v3" / "candles",
            rows_db=_HOME / "v3" / "rows.db", parquet=_HOME / "parquet-v3",
            fine_tf="v3", download_kind="", backtest_kind="backtest_v3")
 
-_BY_NAME = {"v1": V1, "v2": V2, "v3": V3}
+# BACKTEST V4 (Nov 10, 2026): the strategies of the Claude skills (technical-analysis,
+# backtesting-frameworks, backtesting-trading-strategies) with every trade, in a folder of their own
+# (`tradingagents/v4_store.py`). It is a FILE of finished measurements read by the API, never a job
+# or a sweep: no job runs with V4.env_for(), `fine_tf` "skill" is the RESOLUTION its row ids hash
+# (`row_code(res="skill")`, the id the all-coins page already printed), never a candle frame.
+V4 = Store(name="v4", home=_HOME / "v4", candles=_HOME / "v4" / "candles",
+           rows_db=_HOME / "v4" / "rows.db", parquet=_HOME / "parquet-v4",
+           fine_tf="skill", download_kind="", backtest_kind="")
+
+_BY_NAME = {"v1": V1, "v2": V2, "v3": V3, "v4": V4}
 
 
 def by_name(name: str) -> Store:

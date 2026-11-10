@@ -79,6 +79,15 @@ const navItems: NavItem[] = [
     name: "Backtest v3",
     path: "/backtest-v3",
   },
+  // BACKTEST V4 (operator, Nov 10, 2026: "can you do backtest v4 i want the
+  // strategies stored there, then follow the format like backtest v2 where i
+  // can see winrate and filter by day etc"): the Claude skills' strategies
+  // with every trade, listed with Backtest v2's filters.
+  {
+    icon: <TableIcon />,
+    name: "Backtest v4",
+    path: "/backtest-v4",
+  },
   // CLAUDE SKILLS (operator, Oct 15, 2026: "can you create a tab called
   // 'Claude skills' then categorize them for their function and what do
   // they do"). The page reads the skill folders through /api/claude-skills.

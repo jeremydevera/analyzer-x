@@ -3017,6 +3017,46 @@ won, −$672.37; the daytime rule 1,655 bets, 60.1% won, +$394.82, green 16 of 1
 20. **Never drop a dimension silently.** Pre-filter coins by the liquidity gate per
     timeframe and state how many were excluded and why. A capped grid says what it capped.
 
+## Backtest v4 — the Claude skills' strategies, stored (Nov 10, 2026)
+
+The operator, Nov 10, 2026: *"can you do backtest v4 i want the strategies stored there / then follow
+the format like backtest v2 where i can see winrate and filter by day etc"* — after being told the
+Nov 05 skill runs were only on a published page and in files, not in the app.
+
+* **What it holds:** every strategy the skills measured on every coin x timeframe, with ALL its
+  trades — `skilltaall.json` (technical-analysis + backtesting-frameworks, all 42 a coin-timeframe,
+  226,380) and `skill.json` (backtesting-trading-strategies, its best 3 a coin-timeframe, 15,933) =
+  **242,313 strategies, 7,145,966 trades** (built Nov 10, 2026). Its ids are the all-coins page's ids
+  (`row_code(res="skill")`); a strategy in two files keeps the first.
+* **One file of its own:** `stores.V4` -> `~/.tradingagents/v4/rows.db` (SQLite, 0.7 GB): `strat` (one
+  row per strategy with whole-history figures and its older-70% / unseen-30% figures), `trade` (every
+  trade, `trade_ex` covering index for windows), `meta`. NOT v2's index and NOT a job kind: nothing
+  measures here, `python -m tradingagents.v4_store build` files finished run files and swaps the new
+  database in whole (refuses to swap in an empty one). To add the backtesting skill's other strategies,
+  collect a `bt_all` run (not built yet) and build again.
+* **Every filter is in the QUERY** (kit item G, "filter where the data is"): `/api/v4/strategies`
+  takes min win rate (percent), min trades, min profit (dollars at the base margin), min months green (a
+  count), max worst dip, max TP % and max SL % (both CEILINGS, inclusive; a strategy with no target is
+  left out by max TP and the page says how many), last N days / months (EVERY row re-added over the
+  trades that CLOSED in the window `(end - N days, end]`, so profit, trades, wins, losses and win rate are
+  the window's own), "unseen days only" (only trades that OPENED after the row's split — the judging
+  clock of RCA-2026-11-05-F), made-money boxes, find by ID (overrides the rest) and base margin (the
+  server scales every dollar, filters included). Sorting and paging are the server's. Worst losing run,
+  worst dip and green months are worked out over the window for the rows SHOWN; the max-dip and
+  min-green boxes read each row's whole history, and the page says so.
+* **Measured:** an unwindowed list is ~0.01-0.1 s; a window or unseen list over all 7.1M trades 5-6 s.
+* **Say what the page is:** the skills' trades are $100 of coin ($5 margin x 20x) after 0.075% fee each
+  way and the coin's usual gap, a stop and a target checked on the CANDLE'S CLOSE (not minute-exact like
+  Backtest v2). Chosen on older days, judged on unseen ones: on the unseen 30% they lost money
+  (-$1.21 a trade over 2,039,703 trades for the 226,380); 977 of 226,380 made money on both halves with
+  20+ trades in each. A strategy listed here is a measurement, never a recommendation, and nothing is
+  switched on from this tab.
+
+Guards: `tests/test_backtest_v4_store.py` (14, on a tiny built database), `tests/test_backtest_v4_tab.py`
+(the tab, the menu entry, every filter and column, no client-side filter of a served list, one date
+format). Page: `webapp/src/components/backtest-v4/V4Strategies.tsx`; routes `/api/v4/strategies`,
+`/api/v4/facets`, `/api/v4/strategies/trades`.
+
 ## Strategies for every coin and every timeframe (MANDATORY — Nov 05, 2026)
 
 The operator, Nov 05, 2026: *"use all my existing data from v2 , v3 and

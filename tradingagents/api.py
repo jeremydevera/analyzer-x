@@ -782,6 +782,55 @@ def v3_run(body: dict) -> dict:
         raise HTTPException(502, f"{type(exc).__name__}: {exc}") from exc
 
 
+# -------------------------------------------------------------- backtest v4
+@app.get("/api/v4/strategies")
+def v4_strategies(coin: str | None = None, tf: str | None = None,
+                  strategy: str | None = None, skill: str | None = None,
+                  older_ok: bool = False, profitable: bool = False,
+                  min_trades: int = 0, min_winrate: float = 0.0,
+                  min_profit: float | None = None, min_green: int = 0,
+                  max_dip: float = 0.0, max_tp: float = 0.0, max_sl: float = 0.0,
+                  tp_over_sl: bool = False, days: int = 0, months: int = 0,
+                  unseen: bool = False, row_id: str | None = None,
+                  base_margin: float = 5.0, sort: str = "profit",
+                  desc: bool | None = None, limit: int = 50, offset: int = 0) -> dict:
+    """Backtest v4 (operator, Nov 10, 2026): the Claude skills' strategies with
+    every trade, listed with Backtest v2's filters. Every filter is in the
+    QUERY (tradingagents/v4_store.py), so "last N days" re-adds every row over
+    that slice instead of cutting a page the server already took."""
+    from tradingagents import v4_store
+
+    return v4_store.query({
+        "coin": coin, "tf": tf, "strategy": strategy, "skill": skill,
+        "older_ok": older_ok, "profitable": profitable, "min_trades": min_trades,
+        "min_winrate": min_winrate, "min_profit": min_profit, "min_green": min_green,
+        "max_dip": max_dip, "max_tp": max_tp, "max_sl": max_sl,
+        "tp_over_sl": tp_over_sl, "days": days, "months": months, "unseen": unseen,
+        "row_id": row_id, "base_margin": base_margin, "sort": sort, "desc": desc,
+        "limit": limit, "offset": offset})
+
+
+@app.get("/api/v4/facets")
+def v4_facets() -> dict:
+    """The coins, timeframes, strategies and skills Backtest v4 holds."""
+    from tradingagents import v4_store
+
+    return {**v4_store.facets(), "meta": v4_store.meta()}
+
+
+@app.get("/api/v4/strategies/trades")
+def v4_trades(row_id: str, base_margin: float = 5.0, days: int = 0,
+              unseen: bool = False) -> dict:
+    """Every trade one v4 strategy made, in closing order, with the TOTAL
+    PROFIT of exactly the trades listed (the row's own window if it has one)."""
+    from tradingagents import v4_store
+
+    got = v4_store.trade_log(row_id, base_margin=base_margin, days=days, unseen=unseen)
+    if not got.get("found"):
+        raise HTTPException(404, got.get("why", "not found"))
+    return got
+
+
 # -------------------------------------------------------------- strategies
 @app.get("/api/strategies")
 def strategies(coin: str | None = None, tf: str | None = None,

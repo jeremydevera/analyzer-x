@@ -26,9 +26,8 @@ import sweep_shard as ss  # noqa: E402
 import tradingagents.auto_trader as at  # noqa: E402
 from tradingagents import backtest_report as br, skill_bt as sb, skill_ta as sta  # noqa: E402
 from tradingagents.dataflows import exchange as fx  # noqa: E402
+from tradingagents.skill_frames import BARS, frame  # noqa: E402,F401  (the candle frame lives there)
 
-# candles a timeframe is walked over: 30 days of 15m, 60 of 30m, 90 of 1h, 180 of 4h, two years of 1d
-BARS = {"15m": 2880, "30m": 2880, "1h": 2160, "4h": 1080, "1d": 730}
 SET = os.environ.get("SKILL_SET", "bt") or "bt"
 if SET not in ("bt", "ta", "ta_all"):
     raise SystemExit(f"SKILL_SET must be bt, ta or ta_all, not {SET!r}")
@@ -38,18 +37,6 @@ GRID, TARGETS = (None, None) if SET == "bt" else (sta.GRID, sta.TARGETS)
 OUT = os.path.join("out", f"{PREFIX}-{ss.SHARD}.jsonl")
 REPORT_OUT = os.path.join("out", f"{PREFIX}-report-{ss.SHARD}.json")
 COIN_RETRIES = 2
-
-
-def frame(sym: str, tf: str):
-    import pandas as pd
-
-    iv, bs, _cap = br.TFS[tf]
-    df = at._closed_bars(fx.klines(sym, iv, BARS[tf] + 5), bs).tail(BARS[tf])
-    out = pd.DataFrame({"open": df["Open"].to_numpy(), "high": df["High"].to_numpy(),
-                        "low": df["Low"].to_numpy(), "close": df["Close"].to_numpy(),
-                        "volume": df["Volume"].to_numpy()},
-                       index=pd.DatetimeIndex(pd.to_datetime(df["Date"]).to_numpy()))
-    return out
 
 
 def costs(sym: str) -> tuple[float, float]:

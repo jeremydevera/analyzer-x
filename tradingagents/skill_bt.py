@@ -94,45 +94,114 @@ def signals(df, name: str, params: dict) -> list:
     return out
 
 
-def walk(df, sigs: list, *, stop: float, fee: float, slip: float, target: float | None = None) -> list[dict]:
-    """The skill's bar loop over precomputed signals: stop on the close, exit before entry, an open
-    trade closed at the last candle. Each trade: entry/exit ms, side, net dollars on $100, its stop.
-    `target` (skill_ta.py's 2x the stop) closes a trade whose close reached it, checked like the stop;
-    a signal's `exit_dir` limits its exit to that side. Neither given = the skill's loop as before."""
+class Funding:
+    """A coin's funding settlements (`fx.funding_history`'s shape: `settle_ms`, `rate`), cumulated so
+    `paid(a, b)` - the sum of the rates settled in (a, b] - is two bisects. A positive rate means the
+    longs pay, so a long's cost is `+paid`, a short's is `-paid`."""
+
+    def __init__(self, settlements: list[dict]):
+        import bisect
+
+        self._bisect = bisect.bisect_right
+        rows = sorted(((int(s["settle_ms"]), float(s["rate"])) for s in settlements or []),
+                      key=lambda r: r[0])
+        self._at = [r[0] for r in rows]
+        self._cum = [0.0]
+        for _, rate in rows:
+            self._cum.append(self._cum[-1] + rate)
+
+    def paid(self, from_ms: int, to_ms: int) -> float:
+        if to_ms <= from_ms or not self._at:
+            return 0.0
+        return self._cum[self._bisect(self._at, to_ms)] - self._cum[self._bisect(self._at, from_ms)]
+
+
+def close_position(pos: dict, px: float, when_ms: int, *, why: str, stop: float, fee: float,
+                   target: float | None = None, bar_ms: int = 0, funding: "Funding | None" = None) -> dict:
+    """The trade a position becomes when it is closed at `px` on the candle opening at `when_ms`:
+    net dollars on $100 after the fee both ways and, when `funding` is given, the funding settled
+    between the entry fill and the exit fill (a candle's open + its length)."""
+    side = 1 if pos["dir"] == "long" else -1
+    move = (px - pos["px"]) / pos["px"] * side
+    pnl = NOTIONAL * move - NOTIONAL * fee - NOTIONAL * (px / pos["px"]) * fee
+    trade = {"entry_ms": pos["t"], "exit_ms": when_ms, "side": side, "entry_px": pos["px"],
+             "exit_px": px, "pnl": round(pnl, 4), "why": why, "stop": stop, "target": target}
+    if funding is not None:
+        fill = pos.get("fill_ms", pos["t"] + bar_ms)
+        fund = -side * funding.paid(fill, when_ms + bar_ms) * NOTIONAL
+        trade["fund"] = round(fund, 4)
+        trade["pnl"] = round(pnl + fund, 4)
+    return trade
+
+
+def step(pos: dict | None, sig, *, close: float, when_ms: int, bar_ms: int, stop: float, fee: float,
+         slip: float, target: float | None = None, funding: "Funding | None" = None):
+    """ONE candle of the skill's bar loop - stop, target, the strategy's own exit, close, then entry -
+    so the backtest, the daily shard and a room following the strategy live run one set of rules.
+    Returns `(position after, the trade it closed or None)`. A `None` signal (warm-up) changes nothing.
+    `pos` is never changed in place; an opened position remembers its entry fill (`fill_ms`)."""
+    if sig is None:
+        return pos, None
+    buy, sell = close * (1 + slip), close * (1 - slip)
+    force = won = False
+    if pos is not None:
+        ret = (close - pos["px"]) / pos["px"] * (1 if pos["dir"] == "long" else -1)
+        force = ret <= -stop
+        won = target is not None and ret >= target
+    mine = sig.exit and getattr(sig, "exit_dir", None) in (None, pos and pos["dir"])
+    trade = None
+    if pos is not None and (mine or force or won):
+        why = "SL" if force else "TP" if won else "SIGNAL"
+        trade = close_position(pos, sell if pos["dir"] == "long" else buy, when_ms, why=why, stop=stop,
+                               fee=fee, target=target, bar_ms=bar_ms, funding=funding)
+        pos = None
+    if sig.entry and pos is None:
+        pos = {"t": when_ms, "dir": sig.direction, "px": buy if sig.direction == "long" else sell,
+               "fill_ms": when_ms + bar_ms}
+    return pos, trade
+
+
+def run(df, sigs: list, *, stop: float, fee: float, slip: float, target: float | None = None,
+        funding: "Funding | None" = None, bar_ms: int = 0):
+    """`step()` over every candle: the trades closed, and the position still open (NOT closed)."""
     close = df["close"].to_numpy()
     when = _ms(df.index).tolist()
     trades, pos = [], None
-
-    def close_out(i, px):
-        side = 1 if pos["dir"] == "long" else -1
-        move = (px - pos["px"]) / pos["px"] * side
-        pnl = NOTIONAL * move - NOTIONAL * fee - NOTIONAL * (px / pos["px"]) * fee
-        trades.append({"entry_ms": pos["t"], "exit_ms": when[i], "side": side,
-                       "entry_px": pos["px"], "exit_px": px, "pnl": round(pnl, 4),
-                       "why": pos.get("why_out", "SIGNAL"), "stop": stop, "target": target})
-
     for i, sig in enumerate(sigs):
-        if sig is None:
-            continue
-        c = close[i]
-        buy, sell = c * (1 + slip), c * (1 - slip)
-        force = won = False
-        if pos is not None:
-            ret = (c - pos["px"]) / pos["px"] * (1 if pos["dir"] == "long" else -1)
-            force = ret <= -stop
-            won = target is not None and ret >= target
-        mine = sig.exit and getattr(sig, "exit_dir", None) in (None, pos and pos["dir"])
-        if pos is not None and (mine or force or won):
-            pos["why_out"] = "SL" if force else "TP" if won else "SIGNAL"
-            close_out(i, sell if pos["dir"] == "long" else buy)
-            pos = None
-        if sig.entry and pos is None:
-            pos = {"t": when[i], "dir": sig.direction, "px": buy if sig.direction == "long" else sell}
+        pos, done = step(pos, sig, close=close[i], when_ms=when[i], bar_ms=bar_ms, stop=stop, fee=fee,
+                         slip=slip, target=target, funding=funding)
+        if done:
+            trades.append(done)
+    return trades, pos
+
+
+def walk(df, sigs: list, *, stop: float, fee: float, slip: float, target: float | None = None,
+         funding: "Funding | None" = None, bar_ms: int = 0) -> list[dict]:
+    """The skill's bar loop over precomputed signals: stop on the close, exit before entry, an open
+    trade closed at the last candle. Each trade: entry/exit ms, side, net dollars on $100, its stop.
+    `target` (skill_ta.py's 2x the stop) closes a trade whose close reached it, checked like the stop;
+    a signal's `exit_dir` limits its exit to that side. Neither given = the skill's loop as before.
+    `funding` (with `bar_ms`, the candle's length) adds each trade's funding as `fund`; without it a
+    trade is exactly what it always was. The loop body is `step()`, shared with the skill rooms."""
+    trades, pos = run(df, sigs, stop=stop, fee=fee, slip=slip, target=target, funding=funding, bar_ms=bar_ms)
     if pos is not None:
-        c = close[-1]
-        pos["why_out"] = "END"
-        close_out(len(close) - 1, c * (1 - slip) if pos["dir"] == "long" else c * (1 + slip))
+        c = df["close"].to_numpy()[-1]
+        trades.append(close_position(pos, c * (1 - slip) if pos["dir"] == "long" else c * (1 + slip),
+                                     _ms(df.index).tolist()[-1], why="END", stop=stop, fee=fee,
+                                     target=target, bar_ms=bar_ms, funding=funding))
     return trades
+
+
+def signal_at(df, name: str, params: dict, bars: int):
+    """The signal of `df`'s LAST candle, computed as the backtest computes it: a strategy that works
+    out every candle at once reads the last `bars` candles; the others the trailing `window(params)`
+    (None while the history is no longer than the strategy's lookback)."""
+    st = _strategy(name)
+    if hasattr(st, "signals_all"):
+        return st.signals_all(df.tail(bars), params)[-1]
+    if len(df) <= st.lookback:
+        return None
+    return st.generate_signals(df.tail(window(params)), params)
 
 
 def stats(trades: list[dict]) -> dict:

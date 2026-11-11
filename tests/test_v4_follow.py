@@ -1,0 +1,433 @@
+"""THE SKILL ROOMS' FOLLOWER (Nov 10, 2026; docs/superpowers/specs/2026-11-10-skill-rooms-design.md,
+"3. The follower" and "4. The daily refresh").
+
+The three practice rooms #D7EN8BNV, #RSS7CUKH and #7T3VJU82 trade Backtest v4's Claude-skill
+strategies EXACTLY as their backtest did: `tradingagents/v4_follow.py` replays every closed candle
+with the backtest's own engine (`skill_bt.step`) and writes the room's trade record and open
+positions in the practice runner's shapes. It places no order.
+
+ONE TIMELINE. Every candle, every day list, every funding settlement and every pass clock below is
+built from ONE clock, T0 = Nov 01, 2026 12:00am UTC: 1h candle k opens at T0 + k hours, day n's
+list is named by T0 + (n - 1) days, and a pass at `now` sees exactly the candles that CLOSED by
+`now` - the fake exchange cuts its frames at the pass's own clock, the way the real one serves
+closed candles only. Do not "simplify" a fixture onto two clocks: a candle clock and a position
+clock that disagree is how RCA-2026-09-12-A passed its tests.
+
+Everything is written under tmp_path: the room files through conftest's sandbox, the day lists and
+the follow lock under a Backtest v4 home moved into tmp_path. Nothing reaches the exchange: candles,
+funding and the contract list are injected.
+"""
+from __future__ import annotations
+
+import datetime as dt
+import json
+from types import SimpleNamespace
+
+import numpy as np
+import pandas as pd
+import pytest
+
+import tradingagents.auto_trader as at
+from tradingagents import profiles, stores
+from tradingagents import skill_bt as sb
+from tradingagents import v4_follow as vf
+from tradingagents.skill_frames import BARS
+
+pytestmark = pytest.mark.unit
+
+T0 = int(dt.datetime(2026, 11, 1, tzinfo=dt.timezone.utc).timestamp())    # day 1's midnight, seconds
+H = 3600
+DAY = 86400
+H_MS = H * 1000
+D1, D2, D3, D4 = T0, T0 + DAY, T0 + 2 * DAY, T0 + 3 * DAY
+ROOM = "D7EN8BNV"
+
+
+class Market:
+    """The exchange, on the one timeline: frames cut at the pass's clock (`now_ms`), funding every
+    8 hours, the contract list, and a switch that makes one coin's candles unreadable."""
+
+    def __init__(self):
+        self.frames: dict = {}
+        self.now_ms = 0
+        self.calls: list = []
+        self.fail: dict = {}          # sym -> how many reads fail (-1: every one)
+        self.coins: set | None = None
+
+    def add(self, sym: str, closes, first_ms: int, tf: str = "1h") -> None:
+        bar = H_MS if tf == "1h" else int({"15m": 900, "30m": 1800, "4h": 14400, "1d": 86400}[tf] * 1000)
+        c = np.asarray(closes, dtype=float)
+        idx = pd.to_datetime(np.arange(len(c), dtype=np.int64) * bar + first_ms, unit="ms")
+        self.frames[(sym, tf)] = pd.DataFrame({"open": c, "high": c, "low": c, "close": c,
+                                               "volume": 1.0}, index=idx)
+
+    def fetch(self, sym, tf, bars=None, end_ms=None):
+        self.calls.append((sym, tf, bars, end_ms))
+        n = self.fail.get(sym, 0)
+        if n:
+            if n > 0:
+                self.fail[sym] = n - 1
+            raise ConnectionError(f"{sym} cut")
+        df = self.frames[(sym, tf)]
+        ms = df.index.as_unit("ms").asi8
+        bar = int(ms[1] - ms[0])
+        keep = ms + bar <= self.now_ms
+        if end_ms is not None:
+            keep &= ms < int(end_ms)
+        return df[keep].tail(BARS[tf] if bars is None else int(bars))
+
+    def funding(self, sym):
+        return [{"settle_ms": T0 * 1000 + k * 8 * H_MS, "rate": 0.0001 * (1 if k % 3 else -2)}
+                for k in range(-200, 30)]
+
+    def listed(self):
+        return set(self.coins) if self.coins is not None else {s for s, _ in self.frames}
+
+
+def scripted(rises, before: int = 48, after: int = 4 * 24) -> list[float]:
+    """Closes for candles k = -before .. after-1 (k = hours from T0): rising 0.1 a candle inside
+    each [a, b) of `rises`, flat elsewhere. With bf_momentum lookback 2 (long while a close beats
+    the one before), that is ONE long trade per interval: entered on candle a's close, closed on
+    candle b's (`why` SIGNAL) - unless its stop is reached first."""
+    out, c = [], 100.0
+    for k in range(-before, after):
+        if any(a <= k < b for a, b in rises):
+            c += 0.1
+        out.append(c)
+    return out
+
+
+def row(sid: str, coin: str = "AAA", strategy: str = "bf_momentum", params=None, stop: float = 0.03,
+        target=None, fee: float = 0.00075, slip: float = 0.0005, tf: str = "1h") -> dict:
+    """One strategy as `forecast_v4.switched_on` hands it over (the day list's row)."""
+    return {"sid": 1, "id": sid, "coin": coin, "tf": tf, "strategy": strategy, "label": f"{strategy} test",
+            "skill": "backtesting-frameworks", "params": params or {"lookback": 2}, "stop": stop,
+            "target": target, "fee": fee, "slip": slip, "n": 25, "wins": 24}
+
+
+@pytest.fixture
+def world(tmp_path, monkeypatch):
+    home = tmp_path / "v4"
+    monkeypatch.setattr(stores, "V4", stores.Store(**{**stores.V4.__dict__, "home": home,
+                                                      "rows_db": home / "rows.db"}))
+    lists = home / "rooms"
+    lists.mkdir(parents=True)
+    m = Market()
+
+    def run(now_s, **kw):
+        m.now_ms = int(now_s * 1000)
+        return vf.pass_once(now_s, fetch=m.fetch, funding_of=m.funding, listed=m.listed, lists_dir=lists, **kw)
+
+    def put(day_s, rooms):
+        vf.list_path(day_s, lists).write_text(json.dumps({"day_s": day_s, "made_s": day_s + 300,
+                                                          "fallback_from": None, "rooms": rooms}),
+                                              encoding="utf-8")
+
+    return SimpleNamespace(m=m, lists=lists, run=run, put=put, home=home)
+
+
+def ledger(pid: str = ROOM) -> list[dict]:
+    with profiles.using(pid):
+        return at.ledger_trades(0)
+
+
+def trades(pid: str = ROOM) -> list[tuple]:
+    """(entry candle ms, exit candle ms or None, side, why, pnl) per trade id, in entry order."""
+    by: dict = {}
+    for r in ledger(pid):
+        by.setdefault(r["trade_id"], {})[r["action"]] = r
+    out = []
+    for tid, p in by.items():
+        e, x = p.get("enter"), p.get("exit")
+        assert e is not None, f"an exit with no entry: {tid}"
+        side = 1 if e["side"] == "LONG" else -1
+        out.append((e["entry_ts"] * 1000, None if x is None else x["ts"] * 1000 - H_MS, side,
+                    None if x is None else x["why"], None if x is None else round(x["pnl_est"], 4)))
+    return sorted(out)
+
+
+def open_slots(pid: str = ROOM) -> dict:
+    with profiles.using(pid):
+        st = at.load_state()
+    return {k: v["position"] for k, v in st.items()
+            if k != "_rev" and isinstance(v, dict) and v.get("position")}
+
+
+def follow_state(pid: str = ROOM) -> dict:
+    with profiles.using(pid):
+        return vf.load()
+
+
+# ------------------------------------------------------------------ the engine's own trades
+@pytest.mark.parametrize("strategy,params,stop,target", [
+    ("bf_momentum", {"lookback": 10}, 0.015, None),                              # signals_all path
+    ("sma_crossover", {"fast_period": 3, "slow_period": 8}, 0.015, 0.01),        # a target
+    ("rsi_reversal", {"period": 7, "overbought": 70, "oversold": 30}, 0.02, None),  # shorts, flips
+])
+def test_follower_trades_equal_the_engines_walk(world, strategy, params, stop, target):
+    rng = np.random.default_rng(11)        # every case: a carried trade, and SL plus SIGNAL or TP
+    before, after = 400, 3 * 24 + 6
+    closes = 100 * np.exp(np.cumsum(rng.normal(0, 0.006, before + after)))
+    world.m.add("AAA_USDT", closes, (T0 - before * H) * 1000)
+    r = row("TESTAAA1", strategy=strategy, params=params, stop=stop, target=target)
+    for d in (D1, D2, D3):
+        world.put(d, {ROOM: [r]})
+    now = T0 + 20
+    while now < D4:                     # a pass every 7 hours, across both midnights
+        world.run(now)
+        now += 7 * H
+    world.run(D4 + 20)
+
+    # THE BACKTEST: run() over the same frame - from the warm-up's first candle to the last closed one
+    world.m.now_ms = (D4 + 20) * 1000
+    warm = world.m.fetch("AAA_USDT", "1h", end_ms=T0 * 1000)
+    full = world.m.fetch("AAA_USDT", "1h", bars=10 ** 6)
+    ref = full[full.index >= warm.index[0]]
+    done, still = sb.run(ref, sb.signals(ref, strategy, params), stop=stop, fee=r["fee"], slip=r["slip"],
+                         target=target, funding=sb.Funding(world.m.funding("AAA_USDT")), bar_ms=H_MS)
+    want = [(t["entry_ms"], t["exit_ms"], t["side"], t["why"], round(t["pnl"], 4))
+            for t in done if t["entry_ms"] >= T0 * 1000]
+    if still is not None and still["t"] >= T0 * 1000:
+        want.append((still["t"], None, 1 if still["dir"] == "long" else -1, None, None))
+    carried = [t for t in done if t["entry_ms"] < T0 * 1000 <= t["exit_ms"]]
+    got = trades()
+    assert len(want) >= 5 and len(carried) == 1, (want, carried)
+    assert got == sorted(want), "the room's trades are the engine's walk, candle for candle"
+    assert all(t[0] >= T0 * 1000 for t in got), f"the warm-up's carried trade is never written: {carried}"
+
+
+# ------------------------------------------------------------------ the day lists
+def test_holds_at_midnight_until_the_list_lands(world):
+    world.m.add("AAA_USDT", scripted([(5, 8), (25, 27)]), (T0 - 48 * H) * 1000)
+    r = row("TESTAAA1")
+    world.put(D1, {ROOM: [r]})
+    world.run(T0 + 20)
+    world.run(T0 + 12 * H)
+    res = world.run(D2 + 5 * H)
+    assert res[ROOM]["held_at"] == D2
+    st = follow_state()
+    assert st["held_at"] == D2
+    assert st["strats"]["TESTAAA1"]["last_ms"] == (D2 - H) * 1000, "day 1's last candle, and no further"
+    assert trades() == [((T0 + 5 * H) * 1000, (T0 + 8 * H) * 1000, 1, "SIGNAL", trades()[0][4])]
+    assert all(e["ts"] <= D2 for e in ledger()), "nothing from a day whose list has not landed"
+    st_status = vf.status(ROOM, now_s=D2 + 5 * H, lists_dir=world.lists)
+    assert st_status["held_at"] == D2 and "waiting" in st_status["why"]
+
+    world.put(D2, {ROOM: [r]})                     # the list lands late
+    res = world.run(D2 + 5 * H + 15 * 60)
+    assert res[ROOM]["held_at"] is None
+    got = trades()
+    assert [t[:4] for t in got] == [((T0 + 5 * H) * 1000, (T0 + 8 * H) * 1000, 1, "SIGNAL"),
+                                    ((T0 + 25 * H) * 1000, (T0 + 27 * H) * 1000, 1, "SIGNAL")]
+    assert follow_state()["filled_in"] == 1, "the one trade since midnight was filled in"
+    assert vf.status(ROOM, now_s=D2 + 5 * H + 15 * 60, lists_dir=world.lists)["filled_in"] == 1
+    exit_row = [e for e in ledger() if e["action"] == "exit"][-1]
+    assert exit_row["ts"] == T0 + 28 * H, "a late trade keeps its candle's time"
+    assert exit_row["written_at"] == D2 + 5 * H + 15 * 60
+
+
+def test_carried_trade_is_never_written(world):
+    world.m.add("AAA_USDT", scripted([(-3, 2), (4, 6)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.run(T0 + 20)
+    s = follow_state()["strats"]["TESTAAA1"]
+    assert s["carried"] is True and s["pos"]["t"] == (T0 - 3 * H) * 1000, "the warm-up left it open"
+    assert open_slots() == {} and ledger() == [], "a carried trade has no slot and no row"
+    world.run(T0 + 3 * H)                          # it closes on candle 2: silently
+    assert follow_state()["strats"]["TESTAAA1"]["pos"] is None
+    assert ledger() == [] and open_slots() == {}
+    world.run(T0 + 8 * H)
+    assert [t[:4] for t in trades()] == [((T0 + 4 * H) * 1000, (T0 + 6 * H) * 1000, 1, "SIGNAL")]
+
+
+def test_switched_off_strategy_finishes_its_trade(world):
+    world.m.add("AAA_USDT", scripted([(22, 27), (30, 32)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.put(D2, {ROOM: []})                      # switched off at day 2's midnight
+    world.run(T0 + 20)
+    world.run(D2 + 20)
+    assert list(open_slots()) == ["AAA_USDT#paper#v4_TESTAAA1"], "still holding at midnight"
+    world.run(D2 + 12 * H)
+    assert [t[:4] for t in trades()] == [((T0 + 22 * H) * 1000, (T0 + 27 * H) * 1000, 1, "SIGNAL")], \
+        "the open trade exits by its own rule; the 6:00am signal of day 2 is not taken"
+    assert open_slots() == {}
+
+
+def test_a_strategy_on_two_days_lists_is_followed_once(world):
+    world.m.add("AAA_USDT", scripted([(22, 27)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.put(D2, {ROOM: [row("TESTAAA1")]})
+    now = T0 + 20
+    while now <= D2 + 12 * H:
+        world.run(now)
+        now += 3 * H
+    assert [t[:4] for t in trades()] == [((T0 + 22 * H) * 1000, (T0 + 27 * H) * 1000, 1, "SIGNAL")]
+    assert len(ledger()) == 2, "one entry, one exit"
+    warms = [c for c in world.m.calls if c[3] is not None]
+    assert warms == [("AAA_USDT", "1h", None, T0 * 1000)], "warmed up once, at its first midnight"
+
+
+def test_catch_up_across_midnight_uses_each_days_list(world):
+    world.m.add("AAA_USDT", scripted([(5, 7), (29, 31)]), (T0 - 48 * H) * 1000)
+    world.m.add("BBB_USDT", scripted([(5, 7), (29, 31)]), (T0 - 48 * H) * 1000)
+    a, b = row("TESTAAA1"), row("TESTBBB1", coin="BBB")
+    world.put(D1, {ROOM: [a]})
+    world.put(D2, {ROOM: [b]})
+    world.run(T0 + 20)
+    world.run(D2 + 12 * H)                          # the PC slept through midnight
+    by = {}
+    for e in ledger():
+        by.setdefault(e["strategy"], []).append((e["action"], e["entry_ts"]))
+    assert by == {"v4_TESTAAA1": [("enter", T0 + 5 * H), ("exit", T0 + 5 * H)],
+                  "v4_TESTBBB1": [("enter", T0 + 29 * H), ("exit", T0 + 29 * H)]}
+    assert ("BBB_USDT", "1h", None, D2 * 1000) in world.m.calls, "B warmed up at ITS midnight"
+
+
+def test_two_strategies_on_one_coin_are_two_trades(world):
+    world.m.add("AAA_USDT", scripted([(5, 9)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1", stop=0.03), row("TESTAAA2", stop=0.05)]})
+    world.run(T0 + 20)
+    world.run(T0 + 7 * H)
+    slots = open_slots()
+    assert sorted(slots) == ["AAA_USDT#paper#v4_TESTAAA1", "AAA_USDT#paper#v4_TESTAAA2"]
+    enters = [e for e in ledger() if e["action"] == "enter"]
+    assert len(enters) == 2 and len({e["trade_id"] for e in enters}) == 2
+    world.run(T0 + 12 * H)
+    assert open_slots() == {} and len([e for e in ledger() if e["action"] == "exit"]) == 2
+
+
+def test_late_written_exit_counts_on_its_candles_day(world):
+    world.m.add("AAA_USDT", scripted([(5, 9)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.run(D2 + 3 * H)                         # written the next day
+    x = [e for e in ledger() if e["action"] == "exit"]
+    assert len(x) == 1 and x[0]["ts"] == T0 + 10 * H and x[0]["written_at"] == D2 + 3 * H
+    with profiles.using(ROOM):
+        that_day = at.pnl_today(now=T0 + 10 * H, dry=True)
+        next_day = at.pnl_today(now=T0 + 10 * H + DAY, dry=True)
+    assert that_day["trades"] == 1 and that_day["total"] == round(x[0]["pnl_est"], 2)
+    assert next_day["trades"] == 0
+
+
+# ------------------------------------------------------------------ a coin that goes away
+def test_a_delisted_coin_closes_its_trade(world):
+    world.m.add("AAA_USDT", scripted([(5, 60)]), (T0 - 48 * H) * 1000)
+    world.m.add("BBB_USDT", scripted([]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.run(T0 + 20)
+    world.run(T0 + 8 * H)
+    assert list(open_slots()) == ["AAA_USDT#paper#v4_TESTAAA1"]
+    world.m.coins = {"BBB_USDT"}                   # the exchange no longer trades AAA
+    res = world.run(T0 + 10 * H)
+    x = [e for e in ledger() if e["action"] == "exit"]
+    assert len(x) == 1 and x[0]["why"] == "DELISTED" and x[0]["ts"] == T0 + 10 * H, \
+        "closed on the last candle the exchange served"
+    assert open_slots() == {}
+    assert any("AAA" in e and "delisted" in e for e in res[ROOM]["errors"]), res[ROOM]["errors"]
+    assert "TESTAAA1" not in follow_state()["strats"]
+
+
+def test_a_coin_unreadable_for_two_passes_closes_its_trade(world):
+    world.m.add("CCC_USDT", scripted([(5, 60)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTCCC1", coin="CCC")]})
+    world.run(T0 + 20)
+    world.run(T0 + 8 * H)
+    world.m.fail["CCC_USDT"] = -1
+    res = world.run(T0 + 9 * H)
+    assert list(open_slots()) == ["CCC_USDT#paper#v4_TESTCCC1"], "one failed pass is not a delisting"
+    assert any(e.startswith("CCC 1h TESTCCC1: ConnectionError") for e in res[ROOM]["errors"])
+    assert follow_state()["strats"]["TESTCCC1"]["last_ms"] == (T0 + 7 * H) * 1000, "state untouched"
+    world.run(T0 + 10 * H)
+    x = [e for e in ledger() if e["action"] == "exit"]
+    assert len(x) == 1 and x[0]["why"] == "DELISTED" and x[0]["ts"] == T0 + 8 * H, \
+        "closed at the last candle it read"
+    assert open_slots() == {}
+
+
+def test_a_failing_read_is_retried_once_in_the_same_pass(world):
+    world.m.add("AAA_USDT", scripted([(5, 8)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.run(T0 + 20)
+    world.m.fail["AAA_USDT"] = 1                   # the first read fails, the retry works
+    res = world.run(T0 + 12 * H)
+    assert res[ROOM]["errors"] == [] and len(ledger()) == 2
+
+
+# ------------------------------------------------------------------ what the screens read
+def test_ledger_rows_read_by_every_panel(world, monkeypatch):
+    world.m.add("AAA_USDT", scripted([(5, 9)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.run(T0 + 20)
+    world.run(T0 + 7 * H)
+    (enter,) = [e for e in ledger() if e["action"] == "enter"]
+    pos = open_slots()["AAA_USDT#paper#v4_TESTAAA1"]
+    assert at.trade_id_of("AAA_USDT", pos) == enter["trade_id"], "the id the screen computes is the row's"
+    assert pos["dry"] is True and pos["margin"] == 5.0 and pos["side"] == 1
+    assert enter["margin"] == 5.0 and enter["leverage"] == 20 and enter["dry_run"] is True
+    assert enter["ts"] == enter["opened_at"] == T0 + 6 * H and enter["entry_ts"] == T0 + 5 * H
+    assert enter["sl"] == pytest.approx(enter["entry"] * 0.97) and enter["tp"] is None
+    world.run(T0 + 12 * H)
+    rows = ledger()
+    x = rows[-1]
+    assert x["action"] == "exit" and x["trade_id"] == enter["trade_id"] and "pnl_est" in x
+    assert x["pnl_source"] == "v4_engine" and x["held_s"] == x["ts"] - enter["opened_at"]
+
+    from fastapi.testclient import TestClient
+
+    from tradingagents.api import app
+
+    monkeypatch.setattr(profiles, "shown", lambda: ["main", ROOM])
+    c = TestClient(app)
+    hist = c.get("/api/trade/history?dry=true", headers={"X-TA-Profile": ROOM}).json()["rows"]
+    assert [(h["strategy"], h["strategy_id"], h["id"]) for h in hist] == \
+        [("v4_TESTAAA1", "TESTAAA1", enter["trade_id"])]
+    every = c.get("/api/trade/history/rooms?dry=true").json()["rows"]
+    assert [h["strategy"] for h in every] == ["v4_TESTAAA1"]
+
+
+def test_status_is_a_heartbeat(world):
+    world.m.add("AAA_USDT", scripted([(5, 8)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.run(T0 + 12 * H)
+    s = vf.status(ROOM, now_s=T0 + 12 * H + 60, lists_dir=world.lists)
+    assert s["last_pass_s"] == T0 + 12 * H and s["why"] is None and s["held_at"] is None
+    assert s["last_candle_ms"] == (T0 + 12 * H) * 1000, "the newest candle it read closed at 12:00pm"
+    assert [r["id"] for r in s["switched_on"]] == ["TESTAAA1"]
+    late = vf.status(ROOM, now_s=T0 + 13 * H, lists_dir=world.lists)
+    assert late["why"] and "last pass" in late["why"], "a quiet follower says so"
+
+
+# ------------------------------------------------------------------ never twice
+def test_a_crash_after_writing_never_writes_a_row_twice(world, monkeypatch):
+    world.m.add("AAA_USDT", scripted([(5, 9), (12, 14)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.run(T0 + 20)
+
+    class Crash(BaseException):
+        """The process dies: no except clause in the follower may swallow it."""
+
+    real = at.append_ledger
+    seen = []
+
+    def dies_after_the_first(entry):
+        real(entry)
+        seen.append(entry)
+        raise Crash()
+
+    monkeypatch.setattr(at, "append_ledger", dies_after_the_first)
+    with pytest.raises(Crash):
+        world.run(T0 + 16 * H)
+    assert len(seen) == 1 and follow_state()["strats"]["TESTAAA1"]["last_ms"] < (T0 + 5 * H) * 1000, \
+        "the row is on disk, the follower's state is not"
+    monkeypatch.setattr(at, "append_ledger", real)
+    world.run(T0 + 16 * H)
+    world.run(T0 + 17 * H)
+    rows = ledger()
+    keys = [(e["trade_id"], e["action"]) for e in rows]
+    assert len(keys) == len(set(keys)) == 4, rows
+    assert open_slots() == {}
+
+
+def test_tick_does_nothing_under_pytest(monkeypatch):
+    monkeypatch.setattr(vf, "pass_once", lambda *a, **k: (_ for _ in ()).throw(AssertionError("ran")))
+    assert vf.tick() is None

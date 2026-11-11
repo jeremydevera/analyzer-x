@@ -685,9 +685,9 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 **COST** - none (never ran). Would have been a false "nothing passes" on every room every evening, and four labels that disagreed with their own numbers.
 
-**FIX** - this commit: `status()` returns `today_landed` / `today_list_error` / `fallback_day_s` (1294334); the route adds `today_why`, `fallback_words`, `window_days` and the check's `ended_s` / `yesterday`; the panel prints from them; `keep_first_copy` also keeps the Nov 10 forecast.
+**FIX** - this commit: `status()` returns `today_landed` / `today_list_error` / `fallback_day_s` (1294334); the route adds `today_why`, `fallback_words`, `window_days` and the check's `ended_s` / `yesterday`; the panel prints from them; `keep_first_copy` also keeps the Nov 10 forecast (91aa139). The next commit takes the last file name off the screens: an unreadable daily-refresh record printed its full path ("the daily refresh is stopped: G:\...\v4\daily_state.json cannot be read ...") through `words()`; it now names the reason only, and the log line and a command-line `start_now` add where the file is.
 
-**GUARD** - `tests/test_skill_rooms_screen.py::test_before_todays_list_lands_the_panel_never_says_nothing_passes`, `tests/test_skill_rooms_screen.py::test_the_panel_labels_come_from_the_data`, `tests/test_skill_rooms_screen.py::test_the_ribbon_never_prints_a_list_file_name`, `tests/test_v4_store_daily.py::test_first_daily_build_also_keeps_the_nov10_forecast_once`.
+**GUARD** - `tests/test_skill_rooms_screen.py::test_before_todays_list_lands_the_panel_never_says_nothing_passes`, `tests/test_skill_rooms_screen.py::test_the_panel_labels_come_from_the_data`, `tests/test_skill_rooms_screen.py::test_the_ribbon_never_prints_a_list_file_name`, `tests/test_v4_store_daily.py::test_first_daily_build_also_keeps_the_nov10_forecast_once`, `tests/test_v4_daily.py::test_an_unreadable_state_is_named_and_never_overwritten` (widened: no path in `why`, `words` or `error`).
 
 ---
 

@@ -197,18 +197,27 @@ def _load() -> tuple[dict | None, str | None]:
     p = state_path()
     if not p.exists():
         return {"phase": "idle"}, None
+    # NEVER THE FILE'S PATH in what a screen prints (final review, Nov 11, 2026): the reason only;
+    # the log line and a command-line start_now add where the file is (`_where`)
     try:
         st = json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
-        return None, f"{p} cannot be read ({type(exc).__name__}: {str(exc)[:160]})"
+    except OSError as exc:
+        return None, f"the record cannot be read ({type(exc).__name__}: {exc.strerror or exc.errno})"
+    except ValueError as exc:
+        return None, f"the record cannot be read ({type(exc).__name__}: {str(exc)[:160]})"
     if not isinstance(st, dict):
-        return None, f"{p} cannot be read (it holds a {type(st).__name__}, not a state)"
+        return None, f"the record cannot be read (it holds a {type(st).__name__}, not a state)"
     return st, None
 
 
 def _stopped(bad: str) -> str:
     return (f"the daily refresh is stopped: {bad} - it is never overwritten; repair it, or move it aside to "
             f"start clean")
+
+
+def _where() -> str:
+    """Where the daily refresh's record is - for the log and the command line, never a screen."""
+    return f" (the file is {state_path()})"
 
 
 def read() -> dict:
@@ -831,7 +840,7 @@ def _tick(now: float | None = None) -> dict:
         now = time.time() if now is None else float(now)
         st, bad = _load()
         if bad:                         # named once, nothing done, the file left exactly as it is
-            _tell(_stopped(bad))
+            _tell(_stopped(bad) + _where())
             return {"phase": "unreadable", "why": _stopped(bad)}
         try:
             _step(st, now)
@@ -859,7 +868,7 @@ def start_now(now: float | None = None) -> dict:
             raise RuntimeError(f"the daily refresh is in the middle of a step ({BUSY}); ask again in a minute")
         st, bad = _load()
         if bad:
-            raise RuntimeError(_stopped(bad))
+            raise RuntimeError(_stopped(bad) + _where())
         if (st.get("phase") or "idle") not in IDLE:
             raise RuntimeError(f"the refresh of {_said(st.get('day'))} is already under way ({st.get('phase')}): "
                                f"{st.get('why', '')}")

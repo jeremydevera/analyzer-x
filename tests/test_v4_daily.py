@@ -798,8 +798,14 @@ def test_an_unreadable_state_is_named_and_never_overwritten(world):
     assert vd.state_path().read_bytes() == before, "never overwritten"
     assert world.gh.sent == [], "no new chain, no dispatch"
     assert vd.status()["phase"] == "unreadable"
-    with pytest.raises(RuntimeError, match="cannot be read"):
+    # named on every screen WITHOUT its file name (final review, Nov 11, 2026); the log line and a
+    # command-line start_now still say where it is, for the repair
+    s = vd.status()
+    for said in (s["why"], s["words"], s["error"]):
+        assert "cannot be read" in said and str(vd.state_path()) not in said and "daily_state" not in said
+    with pytest.raises(RuntimeError, match="cannot be read") as err:
         vd.start_now(D + 15 * H)
+    assert str(vd.state_path()) in str(err.value)
     assert vd.state_path().read_bytes() == before
 
 

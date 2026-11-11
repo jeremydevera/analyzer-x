@@ -54,7 +54,11 @@ def restart_rooms() -> tuple[list, list]:
     """(the rooms restarted, one sentence per room that failed)."""
     done: list = []
     errors: list = []
+    from tradingagents import profiles
+
     for room in _ids():
+        if profiles.follows(room):
+            continue       # a skill room has a follower, never a runner
         with _using(room):
             at = _at()
             if not at.wants_runner():

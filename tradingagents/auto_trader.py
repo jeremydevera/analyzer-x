@@ -8131,6 +8131,13 @@ def runner_pid() -> int | None:
 
 def start_runner() -> int:
     """Spawn the loop as a detached process. Returns the PID."""
+    from tradingagents import profiles as _profiles
+
+    if _profiles.follows(_profile()):
+        # a skill room's trades are written by its follower; a runner here would
+        # book TP/SL exits and `paper_cleared` rows on positions it does not own
+        raise RuntimeError(f"{_profiles.name_of(_profile())} is followed by "
+                           "Backtest v4's engine; it has no runner")
     existing = runner_pid()
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     # record the INTENT before spawning: a supervisor keeps it up from here

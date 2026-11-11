@@ -428,6 +428,8 @@ def _keep_the_row_index_current() -> None:
 
                 for _pid in _pf.ids():
                     try:
+                        if _pf.follows(_pid):
+                            continue   # a skill room has a follower, never a runner
                         with _pf.using(_pid):
                             if (not _portable.MACOS and _at.wants_runner()
                                     and not _at.runner_pid()):
@@ -650,6 +652,8 @@ def row_id_for(key: str, coin: str | None, settings: dict) -> str:
     # An unknown key (an exchange position the bot never opened carries
     # "(not the bot's)") must NOT hash: it would print a real-looking id that
     # matches no combination in any report.
+    if key.startswith("v4_"):
+        return key[3:]      # a skill room's trade carries Backtest v4's own id
     if not coin or key not in at.STRATEGY_SPECS:
         return ""
     spec = at.STRATEGY_SPECS[key]

@@ -167,6 +167,8 @@ def mode_of(st: dict | None = None) -> str:
 
     if profiles.retired(profiles.current()):
         return "off"          # a retired room switches nothing on (Sep 30, 2026)
+    if profiles.follows(profiles.current()):
+        return "off"          # a skill room is followed, never switched (Nov 10, 2026)
     st = _read() if st is None else st
     m = st.get("mode") or "act"
     return m if m in MODES else "act"

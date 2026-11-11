@@ -100,7 +100,36 @@ BUILTIN[1:1] = [
     # against a loss -$1.03. The rooms' own 2:1 floor (watcher_policy min_pay).
     {"id": "BBE0A361", "name": "#BBE0A361",
      "rules": {**_rule(30, 65.0, 30), "tp_rule": "any", "max_sl": 1.0, "min_tp": 2.0}},
+    # THE SKILL ROOMS (Nov 10, 2026): Forecast v4's three best rule sets as
+    # practice rooms. They are FOLLOWED, never run: a separate follower (a later
+    # task) writes their trades from Backtest v4's own engine, so no runner may
+    # ever start here -- a normal runner would book TP/SL exits and write
+    # `paper_cleared` rows on positions it does not own. `rules` stays None (no
+    # watcher rules); `v4_rule` is forecast_v4.rule_id's input, so
+    # forecast_v4.rule_id(**v4_rule) == the room's id.
+    # docs/superpowers/specs/2026-11-10-skill-rooms-design.md
+    {"id": "D7EN8BNV", "name": "#D7EN8BNV", "rules": None, "follows": "v4",
+     "v4_rule": {"window": 30, "win_rate": 90, "min_trades": 20, "tp_rule": "any",
+                 "sl_cap": 0.0, "tf": "", "skill": ""}},
+    {"id": "RSS7CUKH", "name": "#RSS7CUKH", "rules": None, "follows": "v4",
+     "v4_rule": {"window": 30, "win_rate": 80, "min_trades": 20, "tp_rule": "any",
+                 "sl_cap": 1.5, "tf": "", "skill": ""}},
+    {"id": "7T3VJU82", "name": "#7T3VJU82", "rules": None, "follows": "v4",
+     "v4_rule": {"window": 30, "win_rate": 80, "min_trades": 20, "tp_rule": "any",
+                 "sl_cap": 0.0, "tf": "1h", "skill": ""}},
 ]
+
+
+def follows(pid: str) -> str | None:
+    """"v4" for a room whose trades a follower writes from Backtest v4 (no
+    runner, no watcher ever); None for every other room."""
+    return (get(pid) or {}).get("follows") or None
+
+
+def v4_rule(pid: str) -> dict | None:
+    """A copy of a follower room's rule set (forecast_v4.rule_id's arguments)."""
+    r = (get(pid) or {}).get("v4_rule")
+    return dict(r) if r else None
 
 
 def retired(pid: str) -> bool:

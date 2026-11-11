@@ -154,6 +154,11 @@ export const PROFILES: readonly { id: string; name: string; display_id?: string 
   // Oct 17, 2026: "Room for #BBE0A361" — the one rule set that pays 2:1
   // after real fees (prompt 4, BANANA 30m: +$2.15 a win, -$1.03 a loss)
   { id: "BBE0A361", name: "#BBE0A361" },
+  // Nov 10, 2026: Forecast v4's three best rule sets as practice rooms,
+  // traded by a follower from Backtest v4's engine (no runner ever)
+  { id: "D7EN8BNV", name: "#D7EN8BNV" },
+  { id: "RSS7CUKH", name: "#RSS7CUKH" },
+  { id: "7T3VJU82", name: "#7T3VJU82" },
 ];
 
 /** How a room is PRINTED — the one place in the browser, as

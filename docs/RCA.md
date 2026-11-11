@@ -306,7 +306,7 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 **FIX** - this commit: `_build` measures its own run (`_mono`), sets `built_day` on success and gives up at once on a failure ending after the deadline; `_step` exempts `lists` of a built day up to the next midnight; the collect gives up instead of redoing when it ends after the deadline.
 
-**GUARD** - the four tests above (the first three red on e21a8fa).
+**GUARD** - `tests/test_v4_daily.py::test_a_build_finishing_after_0600_writes_the_real_lists`, `::test_a_build_failing_after_0600_gives_up_at_once`, `::test_the_lists_still_give_up_at_the_next_midnight` (all red on e21a8fa), `::test_a_collect_ending_after_0600_sends_no_redo`.
 
 ---
 
@@ -340,7 +340,7 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 **FIX** - this commit: `redo_pending` saved before any dispatch, each with `since=_tried(...)`, refused twice -> `redo_refused` with its coins, falls through to the collect only when nothing is pending; quiet hours move the pending coins to `redo_skipped`; `status()` and every sentence after the collect carry `redo_refused`, `redo_skipped`, `redo_error`, `prev_error` (`_notes`).
 
-**GUARD** - the four tests above (all red on e21a8fa).
+**GUARD** - `tests/test_v4_daily.py::test_a_raising_redo_dispatch_is_retried_and_its_late_run_adopted`, `::test_a_restart_mid_redo_resumes_it`, `::test_a_redo_refused_twice_is_named_on_the_screen`, `::test_skipped_redo_and_a_lost_copy_reach_the_screen` (all red on e21a8fa).
 
 ---
 

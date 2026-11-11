@@ -472,6 +472,8 @@ def _keep_the_row_index_current() -> None:
 
                 for _pid in _pf.ids():
                     try:
+                        if _pf.follows(_pid):
+                            continue   # a skill room has no watcher (Nov 10, 2026)
                         with _pf.using(_pid):
                             _sw.tick()
                     except Exception as exc:                   # noqa: BLE001
@@ -2014,6 +2016,17 @@ def trade_profiles() -> dict:
     out = []
     # the rooms that HAVE a tab: a retired one has none (Oct 01, 2026)
     for pid in _pf.shown():
+        if _pf.follows(pid):
+            # a skill room has no watcher: nothing is read (sw._read would write a
+            # seed file for it) and the rules it follows are named instead
+            cfg0 = sw.cfg_of({})
+            out.append({"id": pid, "name": (_pf.get(pid) or {}).get("name", pid),
+                        "mode": "off", "live": False,
+                        "cfg": {k: cfg0[k] for k in sw.LIVE_RULES},
+                        "window_days": cfg0["window_days"], "running": 0, "rows": 0,
+                        "follows": _pf.follows(pid), "v4_rule": _pf.v4_rule(pid),
+                        "deployed_at": None})
+            continue
         with _pf.using(pid):
             st = sw._read()
             cfg = sw.cfg_of(st)

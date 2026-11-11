@@ -149,6 +149,9 @@ def compare(room: str, from_s: float, to_s: float, *, sort: str = "gap",
     now = time.time() if now is None else now
     if room not in profiles.shown():
         raise ValueError(f"no room {room!r}; the rooms are {profiles.shown()}")
+    if profiles.follows(room):
+        raise ValueError(f"{profiles.name_of(room)} is followed by Backtest v4's engine; "
+                         "Backtest a room replays watcher rules, which it does not have")
     if sort not in SORTS:
         raise ValueError(f"sort must be one of {SORTS}")
     with profiles.using(room):

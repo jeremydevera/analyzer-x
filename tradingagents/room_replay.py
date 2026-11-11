@@ -154,6 +154,9 @@ def _next_midnight(day: str) -> int:
 def _check_room(room: str) -> None:
     if room not in profiles.shown():
         raise ValueError(f"no room {room!r}; the rooms are {profiles.shown()}")
+    if profiles.follows(room):
+        raise ValueError(f"{profiles.name_of(room)} is followed by Backtest v4's engine; "
+                         "Backtest a room replays watcher rules, which it does not have")
 
 
 def _watcher_state(room: str) -> dict:

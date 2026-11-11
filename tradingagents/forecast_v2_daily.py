@@ -365,6 +365,8 @@ def room_rules() -> dict:
     for pid in profiles.ids():
         if profiles.retired(pid):
             continue
+        if profiles.follows(pid):
+            continue     # a skill room has no watcher rules to forecast (Nov 10, 2026)
         c = rs.rules_of(pid)
         cfg = fr.cfg_of(int(c.get("window_days") or 30), float(c["on_winrate"]),
                         int(c["min_trades"]), str(c.get("tp_rule") or ">"),

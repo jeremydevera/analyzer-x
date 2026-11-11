@@ -301,6 +301,19 @@ def rules_of(room: str) -> dict:
     return sw.cfg_of(st)
 
 
+def _rules_words(room_id: str) -> str:
+    """What the room runs on, in words: its watcher's rules, or -- for a skill
+    room, which has no watcher -- the Backtest v4 rule set it follows."""
+    from tradingagents import profiles
+
+    v4 = profiles.v4_rule(room_id)
+    if v4:
+        from tradingagents import forecast_v4
+
+        return forecast_v4.rule_words(**v4)
+    return rules_text(rules_of(room_id))
+
+
 def rules_text(cfg: dict) -> str:
     tp = {">": "TP wider than SL", ">=": "TP at least SL", "<": "TP narrower than SL"}
     w = int(cfg.get("window_days") or 30)
@@ -555,7 +568,7 @@ def room(room_id: str, now: float | None = None) -> dict:
     out = {
         "id": room_id, "name": profiles.name_of(room_id),
         "retired": profiles.retired(room_id),
-        "rules": rules_text(rules_of(room_id)),
+        "rules": _rules_words(room_id),
         "practice": {
             "closed": closed, "wins": len(wins), "losses": len(losses),
             "winrate": winrate, "profit": profit,

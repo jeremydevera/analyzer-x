@@ -103,3 +103,58 @@ def test_webapp_lists_the_rooms_in_order():
     ids = re.findall(r'\bid: "([^"]+)"', block)
     assert ids == profiles.shown()
     assert ids[-3:] == IDS
+
+
+# ---- the loops that walk every room (review of Task 4, Nov 10, 2026)
+def test_the_daily_forecast_sends_no_follower_room_to_github():
+    from tradingagents import forecast_v2_daily as fd
+
+    got = fd.room_rules()
+    assert not set(IDS) & set(got)
+    assert "BBE0A361" in got and "main" in got
+
+
+@pytest.mark.parametrize("pid", IDS)
+def test_backtest_a_room_refuses_a_follower_by_name(pid):
+    from tradingagents import room_backtest, room_replay
+
+    want = (f"#{pid} is followed by Backtest v4's engine; Backtest a room replays "
+            "watcher rules, which it does not have")
+    with pytest.raises(ValueError) as e:
+        room_backtest.compare(pid, 0, 1)
+    assert str(e.value) == want
+    with pytest.raises(ValueError) as e:
+        room_replay._check_room(pid)
+    assert str(e.value) == want
+    with pytest.raises(ValueError):
+        room_replay.rules_for(pid)
+    room_replay._check_room("BBE0A361")          # a watcher room still passes
+
+
+def test_the_watcher_and_30_day_loops_skip_a_follower_room():
+    from tradingagents import api, rolling30, strategy_watcher
+
+    src = inspect.getsource(api)
+    i = src.index("_sw.tick()")
+    assert "_pf.follows(_pid)" in src[i - 400:i]
+    assert "with _pf.using(_pid):\n                            _sw.tick()" in src
+    assert "profiles.follows(pid)" in inspect.getsource(rolling30.refresh)
+    assert "profiles.follows(pid)" in inspect.getsource(strategy_watcher.restore_backtest_notes)
+
+
+def test_the_room_list_says_what_a_follower_follows(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from tradingagents import api
+
+    got = {p["id"]: p for p in TestClient(api.app).get("/api/trade/profiles").json()["profiles"]}
+    for pid in IDS:
+        assert got[pid]["follows"] == "v4" and got[pid]["mode"] == "off"
+        assert got[pid]["v4_rule"] == profiles.v4_rule(pid)
+
+
+@pytest.mark.parametrize("pid", IDS)
+def test_a_follower_rooms_stats_name_its_v4_rule_not_default_watcher_rules(pid):
+    from tradingagents import forecast_v4, room_stats
+
+    assert room_stats._rules_words(pid) == forecast_v4.rule_words(**profiles.v4_rule(pid))

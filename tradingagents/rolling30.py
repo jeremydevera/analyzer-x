@@ -286,6 +286,8 @@ def refresh(settings: dict | None = None, *, pause: float = 0.3) -> dict:
 
         each = []
         for pid in profiles.ids():
+            if profiles.follows(pid):
+                continue    # a skill room deploys no rows
             with profiles.using(pid):
                 each.append(at.load_settings())
     else:

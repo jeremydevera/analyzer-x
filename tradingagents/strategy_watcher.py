@@ -637,6 +637,8 @@ def restore_backtest_notes() -> dict:
 
     done: dict = {}
     for pid in profiles.ids():
+        if profiles.follows(pid):
+            continue        # a skill room switches nothing on
         try:
             with profiles.using(pid):
                 on = _switched_on_ids()

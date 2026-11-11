@@ -731,7 +731,25 @@ def status(pid: str, now_s: float | None = None, lists_dir: Path | None = None) 
         pass
     return {"last_pass_s": last, "last_candle_ms": st.get("last_candle_ms"), "held_at": held, "why": why,
             "filled_in": int(st.get("filled_in") or 0), "errors": errs, "switched_on": on,
-            "fallback_from": fallback, "agreement": st.get("agreement")}
+            "fallback_from": fallback, "agreement": agreement_of(pid, lists_dir)}
+
+
+def agreement_of(pid: str, lists_dir: Path | None = None) -> dict | None:
+    """Room `pid`'s line of the NEWEST daily agreement check (`v4_daily` writes
+    `<lists>/agree-<YYYY-MM-DD>.json` = {room: result} beside the day lists - never into this module's
+    state, which only this thread writes). None when there is none, or the newest has no line for it."""
+    try:
+        files = sorted(Path(lists_dir or lists_home()).glob("agree-*.json"), key=lambda p: p.name)
+    except OSError:
+        return None
+    for p in reversed(files):
+        try:
+            doc = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue                      # half-written or unreadable: the one before it
+        got = doc.get(pid) if isinstance(doc, dict) else None
+        return got if isinstance(got, dict) else None
+    return None
 
 
 # ------------------------------------------------------------------ the supervisor's tick

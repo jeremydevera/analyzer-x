@@ -201,6 +201,8 @@ def title_of(workflow: str, inputs: dict) -> str:
     if workflow == "research.yml":       # its run-name (the daily room-strategy re-test, Oct 07, 2026)
         return (f"Watcher rules research · {inputs['scenarios']} · {inputs['output']} · "
                 f"replay {inputs['source_run']}")
+    if workflow == "skillbt.yml":        # its run-name (the skill rooms' daily refresh, Nov 10, 2026)
+        return f"Skill backtest · {inputs['label']}"
     return (f"Forecast v2 · {inputs['stage']} · replay {inputs['source_run']} "
             f"{inputs.get('custom') or ''}").rstrip()
 

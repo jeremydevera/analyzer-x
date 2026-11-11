@@ -43,10 +43,11 @@ def daily(first, last, pnl_of, hour=10):
     return out
 
 
-@pytest.fixture()
-def built(tmp_path, monkeypatch):
+def _make(tmp_path, monkeypatch, extra_taall=None, end_ms=None):
+    """File the fixture's strategies into a v4 store under tmp_path and work Forecast v4 out of it: the
+    ONE builder every test here shares. `extra_taall` adds lines; `end_ms` moves the store's last candle."""
     folder = tmp_path / "acs"
-    folder.mkdir()
+    folder.mkdir(exist_ok=True)
     # AAA 1h: a win every day from Jul 01 to Nov 04 - passes every rule its trade count allows
     always = _pick("ta_ma_pullback", 0.015, 0.03, daily(ms(2026, 7, 1), ms(2026, 11, 4), lambda i: 1.0))
     # LLL 30m: three wins and a loss that all OPEN and CLOSE on Sep 10, then one win on Sep 11. A day's
@@ -69,6 +70,10 @@ def built(tmp_path, monkeypatch):
         "RRR|4h": _line("RRR", "4h", [runs], ms(2026, 10, 1)),
         "SSS|1d": _line("SSS", "1d", [streak], ms(2026, 10, 1)),
     }
+    lines.update(extra_taall or {})
+    if end_ms:
+        for x in lines.values():
+            x["end_ms"] = end_ms
     (folder / "skilltaall.json").write_text(json.dumps({"lines": lines}), encoding="utf-8")
     (folder / "skill.json").write_text(json.dumps({"lines": {"CCC|1h": _line("CCC", "1h", [chosen],
                                                                              ms(2026, 10, 1))}}),
@@ -78,8 +83,12 @@ def built(tmp_path, monkeypatch):
                                                       "rows_db": db}))
     v4.build(folder, target=db, log=lambda *_: None)
     f4._CACHE.update(key=None, doc=None)
-    out = f4.build(log=lambda *_: None)
-    return out
+    return f4.build(log=lambda *_: None)
+
+
+@pytest.fixture()
+def built(tmp_path, monkeypatch):
+    return _make(tmp_path, monkeypatch)
 
 
 def rule(window, wr, n, tf="", skill="", tp="any", cap=0.0):
@@ -242,3 +251,89 @@ def test_best_worst_month_first_lists_rule_sets_with_every_whole_month_before_th
         page += 1
     thin = [bool((r["predicted"] or {}).get("thin")) for r in rows if r["rank"] is not None]
     assert thin == sorted(thin)                       # every False (3 whole months) before any True
+
+
+# ------------------------------------------------------------------ the daily run (Nov 10, 2026)
+def test_switched_on_matches_the_walk(built):
+    """The strategies `switched_on` names at each midnight, with the trades they OPEN that day, add up to
+    exactly what the walk reported for the rule set: the room and the forecast read ONE arithmetic."""
+    import sqlite3
+
+    doc = f4.load()
+    start, days = doc["walk"]["from_s"], doc["walk"]["days"]
+    con = sqlite3.connect(v4.db_path())
+    chosen_split = {sid: sp for sid, sk, sp in con.execute("SELECT sid, skill, split_s FROM strat")
+                    if sk == f4.CHOSEN_SKILL}
+
+    def opened(sid, lo, hi):
+        rows = con.execute("SELECT en, pnl, why FROM trade WHERE sid=? AND en>=? AND en<?", (sid, lo, hi))
+        return [pnl for en, pnl, why in rows if why != f4.END_CODE and en >= chosen_split.get(sid, 0)]
+
+    rules = [r for r in doc["rules"] if r["window"] in f4.WINDOWS and r["min_win_rate"] in (50, 90)
+             and r["min_trades"] in (3, 5)]
+    assert len(rules) >= 30
+    traded = 0
+    for r in rules:
+        rule = {"window": r["window"], "win_rate": r["min_win_rate"], "min_trades": r["min_trades"],
+                "tp_rule": r["tp_rule"], "sl_cap": r["sl_cap"], "tf": r["tf"], "skill": r["skill"]}
+        n = profit = 0
+        for d in range(days):
+            at = start + d * DAY // 1000
+            for s in f4.switched_on(rule, at):
+                got = opened(s["sid"], at, at + DAY // 1000)
+                n += len(got)
+                profit += sum(got)
+        assert n == r["trades"], (r["id"], n, r["trades"], rule)
+        assert round(profit, 4) == pytest.approx(r["profit"], abs=1e-3), r["id"]
+        traded += 1 if n else 0
+    con.close()
+    assert traded >= 10                      # not a vacuous pass: most of these rule sets traded
+
+
+def test_switched_on_names_the_strategy_with_its_numbers(built):
+    at = ms(2026, 10, 15) // 1000
+    on = f4.switched_on({"window": 7, "win_rate": 90, "min_trades": 5, "tp_rule": ">", "sl_cap": 1.5,
+                         "tf": "1h", "skill": ""}, at)
+    assert [s["coin"] for s in on] == ["AAA"]
+    s = on[0]
+    assert (s["tf"], s["n"], s["wins"], s["stop"], s["target"]) == ("1h", 7, 7, 0.015, 0.03)
+    assert s["params"] == {"n": 1} and s["fee"] == 0.00075 and s["slip"] == 0.001 and len(s["id"]) == 8
+    # a strategy with no target fails "TP wider than SL"; a stop wider than the ceiling is left out
+    assert f4.switched_on({"window": 7, "win_rate": 50, "min_trades": 3, "tp_rule": ">", "sl_cap": 0,
+                           "tf": "1d", "skill": ""}, ms(2026, 11, 3) // 1000) == []
+    assert f4.switched_on({"window": 7, "win_rate": 50, "min_trades": 3, "tp_rule": "any", "sl_cap": 1.5,
+                           "tf": "4h", "skill": ""}, at) == []
+
+
+def test_end_trades_never_count(tmp_path, monkeypatch):
+    """A trade still open when its run ended has made-up dollars: it is no part of a window and no part
+    of any month. DDD would pass 90% of 5 only WITH its END trade."""
+    pick = _pick("ta_ma_pullback", 0.015, 0.03, daily(ms(2026, 10, 10), ms(2026, 10, 13), lambda i: 1.0))
+    pick["trades"] += [[ms(2026, 10, 14, 10), ms(2026, 10, 14, 11), 1, "END", 777.0],
+                       [ms(2026, 10, 20, 10), ms(2026, 10, 20, 11), 1, "END", 555.0]]
+    out = _make(tmp_path, monkeypatch, {"DDD|1h": _line("DDD", "1h", [pick], ms(2026, 10, 1))})
+    assert out["used"]["left_open"] == 2
+    rule = {"window": 30, "win_rate": 90, "min_trades": 5, "tp_rule": "any", "sl_cap": 0, "tf": "1h",
+            "skill": ""}
+    ddd = lambda r, at: [s for s in f4.switched_on(r, at) if s["coin"] == "DDD"]
+    assert ddd(rule, ms(2026, 10, 15) // 1000) == []             # 4 finished trades; the 5th is END
+    got = ddd({**rule, "min_trades": 4, "win_rate": 100}, ms(2026, 10, 15) // 1000)
+    assert got and (got[0]["n"], got[0]["wins"]) == (4, 4)       # the four finished ones still count
+    # and an END trade's dollars are in no month of any rule set
+    assert all(abs(m["profit"]) < 500 for x in f4.load()["rules"] for m in x["months"])
+
+
+def test_a_dated_copy_is_kept_per_day(tmp_path, monkeypatch):
+    import gzip
+
+    out = _make(tmp_path, monkeypatch)                                       # data ends Nov 05, 2026
+    one = f4.dated_copy_path(out["store"]["data_end_s"])
+    assert one.name == "forecast-2026-11-05.json.gz" and one.parent == tmp_path / "v4" / "forecast-days"
+    doc = json.loads(gzip.decompress(one.read_bytes()).decode("utf-8"))
+    assert doc["built_s"] == out["built_s"] and doc["rules"] == f4.load()["rules"]
+    first = one.read_bytes()
+    # a store that ends the next day gets ITS OWN file; the first one is never touched or removed
+    _make(tmp_path, monkeypatch, end_ms=ms(2026, 11, 6, 12))
+    two = f4.dated_copy_path(ms(2026, 11, 6, 12) // 1000)
+    assert two.name == "forecast-2026-11-06.json.gz" and two.exists() and one.read_bytes() == first
+    assert sorted(p.name for p in one.parent.iterdir()) == [one.name, two.name]       # no stray temp file

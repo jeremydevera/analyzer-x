@@ -42,6 +42,11 @@ DAY_S = 86_400
 WHYS = ("SL", "TP", "SIGNAL", "END", "OTHER")
 SOURCES = (("skilltaall.json", "technical-analysis / backtesting-frameworks"),
            ("skill.json", "backtesting-trading-strategies"))
+# The daily re-measure (v4_daily): ONE collected file holding the pinned universe. Its strategies carry
+# their own `split_ms` (the bt skill's picks keep the Nov 05, 2026 split they were chosen at) and never an
+# `older_lost` flag - the daily run chooses nothing.
+DAILY_SOURCES = (("skilldaily.json", "daily re-measure"),)
+FIRST_COPY = "rows-2026-11-10.db"     # the Nov 10, 2026 store, kept once before the first daily refresh
 SORTS = {                         # the sort key -> its SQL (window figures are `a.*` when a window is on)
     "profit": "profit", "winrate": "win_rate", "trades": "trades", "wins": "wins", "losses": "losses",
     "tp": "tp", "sl": "sl", "worst_run": "worst_run", "dip": "dip", "green": "green",
@@ -185,7 +190,7 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
             tr = sorted(c["trades"], key=lambda t: (t[1], t[0]))
             exits = [int(t[1]) // 1000 for t in tr]
             f = figures([float(t[4]) for t in tr], exits)
-            split_s = int(x["split_ms"]) // 1000
+            split_s = int(c.get("split_ms", x["split_ms"])) // 1000
             old = [t for t in tr if int(t[0]) // 1000 < split_s]
             new = [t for t in tr if int(t[0]) // 1000 >= split_s]
             tg = c.get("target")
@@ -198,7 +203,7 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
                  f["green"], len(f["months"]), json.dumps({k: round(v, 4) for k, v in sorted(f["months"].items())}),
                  len(old), sum(1 for t in old if float(t[4]) > 0), round(sum(float(t[4]) for t in old), 4),
                  len(new), sum(1 for t in new if float(t[4]) > 0), round(sum(float(t[4]) for t in new), 4),
-                 1 if c["older_lost"] else 0, int(x["start_ms"]) // 1000, split_s, int(x["end_ms"]) // 1000,
+                 1 if c.get("older_lost", False) else 0, int(x["start_ms"]) // 1000, split_s, int(x["end_ms"]) // 1000,
                  (x["end_ms"] - x["start_ms"]) / 86_400_000, int(x["bars"]), x.get("fee"), x.get("slip")))
             if tr:
                 con.executemany("INSERT OR IGNORE INTO trade VALUES (?,?,?,?,?,?)",
@@ -233,6 +238,22 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
     os.replace(tmp, out)
     log(f"v4: {sid:,} strategies, {meta['trades']:,} trades, {time.time() - t0:.0f}s")
     return meta
+
+
+def keep_first_copy(db: Path | str | None = None) -> Path | None:
+    """Copy the store as it stands (the Nov 10, 2026 measurement) to `rows-2026-11-10.db` beside it, ONCE.
+    Returns the copy's path, or None when that file already exists (or there is no store to copy): a
+    daily refresh REPLACES the store, so this is what keeps the numbers the three rooms were chosen on."""
+    import shutil
+
+    src = Path(db) if db else db_path()
+    dst = src.with_name(FIRST_COPY)
+    if dst.exists() or not src.exists():
+        return None
+    tmp = dst.with_name(dst.name + ".copying")
+    shutil.copyfile(src, tmp)
+    os.replace(tmp, dst)
+    return dst
 
 
 # --------------------------------------------------------------------------- reading
@@ -505,6 +526,21 @@ def main(argv: list[str] | None = None) -> int:
     import sys
 
     args = sys.argv[1:] if argv is None else argv
+    if args[:1] == ["build"] and "--daily" in args[1:]:
+        # the daily refresh: keep the Nov 10 store once, file the pinned re-measure, work the forecast out.
+        # Any failure exits non-zero with its reason printed (v4_daily reads the code and the output).
+        try:
+            from tradingagents import forecast_v4
+
+            kept = keep_first_copy()
+            if kept:
+                print(f"v4: the Nov 10, 2026 store is kept as {kept}")
+            print(json.dumps(build(sources=DAILY_SOURCES), indent=1))
+            forecast_v4.build()
+        except Exception as e:                      # noqa: BLE001 - the reason is the product
+            print(f"v4 daily build FAILED: {type(e).__name__}: {e}")
+            return 1
+        return 0
     if args[:1] == ["build"]:
         meta_ = build()
         print(json.dumps(meta_, indent=1))
@@ -516,7 +552,7 @@ def main(argv: list[str] | None = None) -> int:
     if args[:1] == ["status"]:
         print(json.dumps(meta(), indent=1))
         return 0
-    print("usage: python -m tradingagents.v4_store build | status")
+    print("usage: python -m tradingagents.v4_store build [--daily] | status")
     return 2
 
 

@@ -30,8 +30,10 @@ account has traded these. Backtest v4 is filed once from finished runs and never
 """
 from __future__ import annotations
 
+import gzip
 import json
 import math
+import os
 import sqlite3
 import threading
 import time
@@ -63,6 +65,29 @@ RULE_SORTS = ("rank", "predicted", "profit", "per_trade", "beat", "winrate", "tr
 
 def out_path() -> Path:
     return Path(stores.V4.home) / "forecast.json"
+
+
+def days_dir() -> Path:
+    return Path(stores.V4.home) / "forecast-days"
+
+
+def dated_copy_path(data_end_s: int) -> Path:
+    """One kept copy per UTC day of the store's last candle: `forecast-2026-11-06.json.gz`."""
+    day = datetime.fromtimestamp(int(data_end_s), tz=timezone.utc).strftime("%Y-%m-%d")
+    return days_dir() / f"forecast-{day}.json.gz"
+
+
+def keep_dated_copy(text: str, data_end_s: int) -> Path:
+    """Write the day's forecast gzipped through a temp file and swap it in. The daily refresh REPLACES
+    the store, so the short timeframes' older months cannot be made again later; these copies are what
+    keeps them. Nothing here ever deletes one."""
+    dst = dated_copy_path(data_end_s)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_name(f"{dst.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    with gzip.open(tmp, "wb", compresslevel=6) as fh:
+        fh.write(text.encode("utf-8"))
+    os.replace(tmp, dst)
+    return dst
 
 
 def walk_from(end_s: int) -> int:
@@ -107,6 +132,9 @@ def rule_words(window: int, win_rate: float, min_trades: int, tp_rule: str, sl_c
 
 
 # ------------------------------------------------------------------ reading the store
+END_CODE = v4_store.WHYS.index("END")      # a trade still open when the run ended: its dollars are made up
+
+
 def _load(db: Path, log) -> dict:
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
@@ -131,7 +159,7 @@ def _load(db: Path, log) -> dict:
         exists[[r[0] for r in st]] = True
         chosen = skc == SKILLS.index(CHOSEN_SKILL) - 1
         parts = []
-        cur = con.execute("SELECT sid, ex, en, pnl FROM trade ORDER BY sid, ex, en")
+        cur = con.execute("SELECT sid, ex, en, pnl, why FROM trade ORDER BY sid, ex, en")
         got = 0
         while True:
             rows = cur.fetchmany(500_000)
@@ -148,11 +176,15 @@ def _load(db: Path, log) -> dict:
     ex = a[:, 1].astype(np.int64)
     en = a[:, 2].astype(np.int64)
     pnl = a[:, 3].astype(np.float64)
-    keep = ~chosen[sid] | (en >= split[sid])
-    left_out = int((~keep).sum())
+    # A trade still open at the end of a run (why END) is not a finished trade: it never counts towards a
+    # window and its made-up dollars are in no month (Nov 10, 2026: 44,174 of 7,145,966 were END)
+    open_ = a[:, 4].astype(np.int64) == END_CODE
+    keep = (~chosen[sid] | (en >= split[sid])) & ~open_
+    left_out = int((~(~chosen[sid] | (en >= split[sid]))).sum())
+    left_open = int(open_.sum())
     return {"meta": meta, "info": info, "exists": exists, "tfc": tfc, "skc": skc, "tp": tp, "sl": sl,
             "sid": sid[keep], "ex": ex[keep], "en": en[keep], "pnl": pnl[keep],
-            "all_trades": int(len(sid)), "left_out": left_out}
+            "all_trades": int(len(sid)), "left_out": left_out, "left_open": left_open}
 
 
 # ------------------------------------------------------------------ the walk
@@ -433,7 +465,8 @@ def build(db: Path | None = None, out: Path | None = None, log=print) -> dict:
                   "trades": int(meta.get("trades", 0) or 0),
                   "sources": json.loads(meta.get("sources", "{}") or "{}"),
                   "margin": v4_store.MEASURED_MARGIN, "leverage": v4_store.LEVERAGE},
-        "used": {"trades": int(len(d["sid"])), "left_out": d["left_out"],
+        "used": {"trades": int(len(d["sid"])), "left_out": d["left_out"], "left_open": d["left_open"],
+                 "left_open_why": "trades still open when their run ended: not finished, so never counted",
                  "left_out_why": (f"the {CHOSEN_SKILL} skill's trades opened before their split: its rows "
                                   "are its best 3 settings, chosen on those trades")},
         "walk": walk["walk"], "coverage": walk["coverage"],
@@ -447,10 +480,58 @@ def build(db: Path | None = None, out: Path | None = None, log=print) -> dict:
     }
     from tradingagents.forecast_v2 import publish
 
-    publish(out, json.dumps(doc, separators=(",", ":")))
+    text = json.dumps(doc, separators=(",", ":"))
+    publish(out, text)
+    kept = keep_dated_copy(text, end_s) if out == out_path() else None
     log(f"forecast v4: {len(rules):,} rule sets and {len(srows):,} streaks written to {out} "
-        f"in {doc['seconds']:.0f} s")
+        f"in {doc['seconds']:.0f} s" + (f"; dated copy {kept}" if kept else ""))
     return {k: doc[k] for k in ("built_s", "seconds", "store", "used", "walk", "grid")}
+
+
+# ------------------------------------------------------------------ what a rule set switches on
+def switched_on(rule: dict, at_s: int, db: Path | None = None) -> list[dict]:
+    """The strategies `rule` switches on at midnight `at_s` - the walk's own arithmetic (`_walk`), asked
+    of one midnight. `rule` carries `rule_id`'s parameter names: window, win_rate, min_trades, tp_rule,
+    sl_cap, tf, skill. A strategy is on when the trades that CLOSED in [at_s - window days, at_s) (a
+    trade's CLOSE is the window clock; END trades and the chosen skill's trades opened before its split
+    are not counted, as in `_load`) number at least min_trades and won (pnl above 0) win_rate percent or
+    more, and its kind passes: tf, skill, TP wider than SL (a strategy with no target fails it) and a
+    stop of sl_cap percent or tighter (0 = no ceiling). Each row: sid, id, coin, tf, strategy, label,
+    skill, params (dict), stop (a fraction), target (a fraction or None), fee, slip, n, wins."""
+    db = Path(db) if db else v4_store.db_path()
+    window = int(rule["window"])
+    tp_rule = rule.get("tp_rule", "any")
+    cap = float(rule.get("sl_cap") or 0)
+    tf = rule.get("tf") or ""
+    skill = rule.get("skill") or ""
+    lo, hi = int(at_s) - window * DAY_S, int(at_s)
+    where = ["t.ex >= ?", "t.ex < ?", "t.why <> ?", "(s.skill <> ? OR t.en >= s.split_s)"]
+    args: list = [lo, hi, END_CODE, CHOSEN_SKILL]
+    if tf:
+        where.append("s.tf = ?")
+        args.append(tf)
+    if skill:
+        where.append("s.skill = ?")
+        args.append(skill)
+    if tp_rule == ">":
+        where.append("s.tp IS NOT NULL AND s.tp > s.sl")
+    if cap:
+        where.append("s.sl <= ?")
+        args.append(cap + 1e-9)
+    sql = ("SELECT s.sid, s.id, s.coin, s.tf, s.strategy, s.label, s.skill, s.params, s.tp, s.sl, s.fee, "
+           "s.slip, COUNT(*) AS k_n, SUM(t.pnl > 0) AS k_wins FROM strat s JOIN trade t ON t.sid = s.sid "
+           "WHERE " + " AND ".join(where) + " GROUP BY s.sid HAVING k_n >= ? AND k_wins * 100 >= ? * k_n "
+           "ORDER BY s.sid")      # k_*: never `wins`, which is also a column of strat
+    args += [int(rule["min_trades"]), float(rule["win_rate"])]
+    con = sqlite3.connect(f"file:{Path(db).as_posix()}?mode=ro", uri=True, timeout=30)
+    try:
+        got = con.execute(sql, args).fetchall()
+    finally:
+        con.close()
+    return [{"sid": r[0], "id": r[1], "coin": r[2], "tf": r[3], "strategy": r[4], "label": r[5],
+             "skill": r[6], "params": json.loads(r[7]), "stop": r[9] / 100.0,
+             "target": None if r[8] is None else r[8] / 100.0, "fee": r[10], "slip": r[11],
+             "n": int(r[12]), "wins": int(r[13])} for r in got]
 
 
 # ------------------------------------------------------------------ reading it back

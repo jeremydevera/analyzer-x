@@ -501,34 +501,75 @@ def _practice_exit(sid, en, ex_close, why, pnl, side="LONG", tid=None):
             "dry_run": True, "v4_id": sid}
 
 
-def test_agreement_counts_same_and_names_the_rest(world):
+def test_agreement_judges_each_trade_on_the_day_it_closed_and_names_the_rest(world):
     pick = _pick([
-        [(Y - 5 * H) * 1000, (Y - 3 * H) * 1000, 1, "TP", 2.0],        # opened the day before: not this day's
+        [(Y - 5 * H) * 1000, (Y - 3 * H) * 1000, 1, "TP", 2.0],        # CLOSED the day before: not this day's
+        [(Y - 1 * H) * 1000, (Y + 2 * H) * 1000, 1, "TP", 0.70],        # opened the day before, closed today
         [(Y + 1 * H) * 1000, (Y + 3 * H) * 1000, 1, "TP", 1.00],        # the same in practice
         [(Y + 5 * H) * 1000, (Y + 6 * H) * 1000, -1, "SL", -0.80],      # practice closed a candle later
         [(Y + 10 * H) * 1000, (Y + 12 * H) * 1000, 1, "SIGNAL", 0.30],  # practice never made it
-        [(Y + 23 * H) * 1000, (Y + 24 * H) * 1000, 1, "TP", 0.50],      # closes AFTER midnight: not compared
+        [(Y + 22 * H) * 1000, (Y + 23 * H) * 1000, 1, "TP", 0.50],      # the day's LAST candle: closes at midnight
+        [(Y + 23 * H) * 1000, (Y + 24 * H) * 1000, 1, "TP", 0.40],      # closes tomorrow: tomorrow's check
         [(Y + 23 * H + 1800) * 1000, (D + 3 * H) * 1000, 1, "END", 0.1],  # still open: never a trade
     ])
     _build_store(world.tmp, {"AAA|1h": _line("AAA", "1h", [pick])})
     sid = v4_store.row_id("AAA", "1h", pick)
+    _put_list(Y - DAY, {ROOM: [_row(sid)]})
     _put_list(Y, {ROOM: [_row(sid)]})
     with profiles.using(ROOM):
-        for r in (_practice_exit(sid, Y + 1 * H, Y + 4 * H, "TP", 0.98, tid="SAME0001"),
+        for r in (_practice_exit(sid, Y - 1 * H, Y + 3 * H, "TP", 0.70, tid="OVERNGT0"),
+                  _practice_exit(sid, Y + 1 * H, Y + 4 * H, "TP", 0.98, tid="SAME0001"),
                   _practice_exit(sid, Y + 5 * H, Y + 8 * H, "SL", -0.85, side="SHORT", tid="LATER002"),
                   _practice_exit(sid, Y + 14 * H, Y + 16 * H, "SIGNAL", 0.10, tid="EXTRA003"),
-                  _practice_exit(sid, Y + 23 * H, D + H, "TP", 0.49, tid="AFTER004"),
-                  _practice_exit(sid, Y - 5 * H, Y - 2 * H, "TP", 2.0, tid="BEFORE05")):
+                  _practice_exit(sid, Y + 22 * H, D, "TP", 0.50, tid="LASTC004"),
+                  _practice_exit(sid, Y + 23 * H, D + H, "TP", 0.40, tid="TMRW0005"),
+                  _practice_exit(sid, Y - 5 * H, Y - 2 * H, "TP", 2.0, tid="BEFORE06")):
             at.append_ledger(r)
     res = vd.agreement(ROOM, Y)
     assert res["day"] == _iso(Y)
-    assert res["same"] == 1, "strategy, side, entry candle, exit candle and reason all match on one trade"
-    assert res["of"] == 4, "the trades either side made that day and closed by midnight, a pair counted once"
+    assert res["same"] == 3, "the overnight trade, the 1am trade and the day's last candle all match"
+    assert res["of"] == 6, "every trade either side CLOSED that day, a pair counted once"
     assert res["dollars_apart"] == 0.02, "the dollars beside the count, never hidden in a tolerance"
     assert sorted(res["only_practice"]) == ["EXTRA003", "LATER002"]
-    assert len(res["only_backtest"]) == 2
-    assert all(b.startswith(sid) for b in res["only_backtest"])
-    assert res["open_at_midnight"] == 2, "the trades not closed by midnight are counted, not compared"
+    assert len(res["only_backtest"]) == 2 and all(b.startswith(sid) for b in res["only_backtest"])
+    assert "open_at_midnight" not in res
+    assert vd.agreement(ROOM, Y + DAY)["same"] == 1, "the trade closing after midnight is the next day's"
+
+
+def test_a_1d_trade_opened_two_days_before_is_compared_on_the_day_it_closed(world):
+    pick = _pick([[(Y - 2 * DAY) * 1000, Y * 1000, 1, "TP", 3.0]])   # 1d candles: opened Y-2, exit candle Y
+    _build_store(world.tmp, {"AAA|1d": _line("AAA", "1d", [pick])})
+    sid = v4_store.row_id("AAA", "1d", pick)
+    _put_list(Y - 2 * DAY, {ROOM: [_row(sid, tf="1d")]})
+    with profiles.using(ROOM):
+        at.append_ledger(_practice_exit(sid, Y - 2 * DAY, Y + DAY, "TP", 3.01, tid="DAILY001"))
+    res = vd.agreement(ROOM, Y)
+    assert (res["same"], res["of"], res["dollars_apart"]) == (1, 1, 0.01)
+
+
+def test_a_trade_of_a_strategy_not_on_its_entry_days_list_is_not_expected(world):
+    pick = _pick([[(Y - 2 * H) * 1000, (Y + 1 * H) * 1000, 1, "TP", 1.0],   # opened on Y-1: not switched on then
+                  [(Y + 4 * H) * 1000, (Y + 5 * H) * 1000, 1, "SL", -1.0]])  # opened on Y: switched on
+    other = _pick([[(Y + 1 * H) * 1000, (Y + 2 * H) * 1000, 1, "TP", 1.0]], strategy="sma_crossover")
+    _build_store(world.tmp, {"AAA|1h": _line("AAA", "1h", [pick]), "BBB|1h": _line("BBB", "1h", [other])})
+    sid = v4_store.row_id("AAA", "1h", pick)
+    _put_list(Y - DAY, {ROOM: []})
+    _put_list(Y, {ROOM: [_row(sid)]})
+    res = vd.agreement(ROOM, Y)
+    assert res["of"] == 1 and res["only_backtest"] == [f"{sid} {vd._when(Y + 4 * H)}"], \
+        "only the trade opened while it was switched on; BBB was never switched on in this room"
+
+
+def test_the_agree_phase_catches_up_one_file_per_missed_day(world):
+    (vf.lists_home() / f"agree-{_iso(Y - 3 * DAY)}.json").write_text(json.dumps({ROOM: {"same": 1, "of": 1}}),
+                                                                     encoding="utf-8")
+    st = {"phase": "agree", "day": _iso(D), "day_s": D, "deadline_s": D + vd.GIVE_UP_AT_S, "landed_s": AT}
+    vd._step(st, AT)
+    for d in (Y - 2 * DAY, Y - DAY, Y):
+        doc = json.loads((vf.lists_home() / f"agree-{_iso(d)}.json").read_text(encoding="utf-8"))
+        assert set(doc) == set(ROOMS) and doc[ROOM]["day"] == _iso(d)
+    assert st["agreed_days"] == [_iso(Y - 2 * DAY), _iso(Y - DAY), _iso(Y)]
+    assert st["phase"] == "done"
 
 
 def test_a_side_that_differs_is_not_the_same(world):
@@ -590,5 +631,173 @@ def test_start_now_starts_today_at_once_but_never_in_quiet_hours(world, monkeypa
     st = vd.read()
     assert out["phase"] == "dispatch" and st["day"] == _iso(D)
     assert st["deadline_s"] >= D + 15 * H + vd.GIVE_UP_AT_S, "a late first refresh is not given up at 06:00"
-    with pytest.raises(RuntimeError, match="already"):
+    with pytest.raises(RuntimeError, match="already") as err:
         vd.start_now(D + 15 * H + 60)
+    from tradingagents.positions_view import fmt_when
+
+    assert fmt_when(D) in str(err.value) and _iso(D) not in str(err.value), "the one date format"
+
+
+# ------------------------------------------------------------------ the build against the 06:00 cut-off
+def _slow_build(monkeypatch, code: int, takes_s: int):
+    """A build that takes `takes_s` seconds of the chain's own clock and ends with `code`."""
+    clock = {"t": 0.0}
+    monkeypatch.setattr(vd, "_mono", lambda: clock["t"])
+
+    def spawn(args, **kw):
+        clock["t"] += takes_s
+        kw["stdout"].write("v4 daily build FAILED: RuntimeError: boom\n" if code else "v4: built\n")
+        return SimpleNamespace(returncode=code)
+
+    monkeypatch.setattr(vd, "_spawn", spawn)
+
+
+def test_a_build_finishing_after_0600_writes_the_real_lists(world, monkeypatch):
+    from tradingagents import forecast_v4 as f4
+
+    _put_list(Y, {r: [_row("YDAY")] for r in ROOMS})
+    monkeypatch.setattr(f4, "switched_on", lambda rule, at_s, db=None: [_row("FRESH")])
+    _slow_build(monkeypatch, 0, 3600)
+    start = D + vd.GIVE_UP_AT_S - 1800                 # 5:30am UTC, an hour's build
+    st = {"phase": "build", "day": _iso(D), "day_s": D, "deadline_s": D + vd.GIVE_UP_AT_S}
+    vd._step(st, start)
+    assert st["phase"] == "lists" and st["built_day"] == _iso(D)
+    vd._step(st, start + 3600 + vd.POLL_S)             # 6:32am: past the cut-off, the store is today's
+    doc = _read_list(D)
+    assert doc["fallback_from"] is None and doc["rooms"] == {r: [_row("FRESH")] for r in ROOMS}
+    assert st["phase"] == "agree"
+
+
+def test_a_build_failing_after_0600_gives_up_at_once(world, monkeypatch):
+    _put_list(Y, {r: [_row("YDAY")] for r in ROOMS})
+    _slow_build(monkeypatch, 1, 3600)
+    st = {"phase": "build", "day": _iso(D), "day_s": D, "deadline_s": D + vd.GIVE_UP_AT_S}
+    vd._step(st, D + vd.GIVE_UP_AT_S - 1800)
+    assert st["phase"] == "given_up" and "boom" in st["error"]
+    assert _read_list(D)["fallback_from"] == _iso(Y), "the day's list is yesterday's copy, said"
+
+
+def test_the_lists_still_give_up_at_the_next_midnight(world, monkeypatch):
+    from tradingagents import forecast_v4 as f4
+
+    def broken(rule, at_s, db=None):
+        raise RuntimeError("store locked")
+
+    monkeypatch.setattr(f4, "switched_on", broken)
+    _put_list(Y, {r: [_row("YDAY")] for r in ROOMS})
+    st = {"phase": "lists", "day": _iso(D), "day_s": D, "deadline_s": D + vd.GIVE_UP_AT_S, "built_day": _iso(D)}
+    with pytest.raises(RuntimeError):
+        vd._step(st, D + 8 * H)                          # past 06:00, built: still tried
+    vd._step(st, D + DAY)
+    assert st["phase"] == "given_up", "a list that cannot be worked out never holds the rooms past the day"
+
+
+def test_a_collect_ending_after_0600_sends_no_redo(world, monkeypatch):
+    world.acs.unreached = {"CCC"}
+    st = _started()
+    vd._step(st, AT + 2 * vd.POLL_S)             # -> collect
+    clock = {"t": 0.0}
+    monkeypatch.setattr(vd, "_mono", lambda: clock["t"])
+    real = vd._child
+
+    def slow(cmd, spec):
+        clock["t"] += vd.GIVE_UP_AT_S             # the downloads took six hours
+        return real(cmd, spec)
+
+    monkeypatch.setattr(vd, "_child", slow)
+    n0 = len(world.gh.sent)
+    vd._step(st, AT + 3 * vd.POLL_S)
+    assert st["phase"] == "given_up" and len(world.gh.sent) == n0, "no machines for a day already lost"
+
+
+# ------------------------------------------------------------------ the coin redo, adopted and resumed
+def _to_the_redo(world):
+    world.acs.failed = {"AAA": "1h: ConnectionError: cut"}
+    world.acs.unreached = {"CCC"}
+    st = _started()
+    vd._step(st, AT + 2 * vd.POLL_S)             # -> collect
+    vd._step(st, AT + 3 * vd.POLL_S)             # the collect: AAA failed, CCC not reached
+    return st
+
+
+def test_a_raising_redo_dispatch_is_retried_and_its_late_run_adopted(world):
+    st = _to_the_redo(world)
+    world.gh.refuse = {PAL: 1}
+    with pytest.raises(RuntimeError, match="redo"):
+        vd._step(st, AT + 4 * vd.POLL_S)
+    first = [s for s in world.gh.sent if s[2] == PAL][-1]
+    assert first[0] == "REFUSED" and first[3] is None
+    assert st["collect"]["redo_pending"] == {PAL: ["CCC"]}, "what is still to start is kept"
+    st["failed_at"] = AT + 4 * vd.POLL_S
+    vd._step(st, AT + 4 * vd.POLL_S + vd.RETRY_S)
+    again = [s for s in world.gh.sent if s[2] == PAL][-1]
+    assert again[0] == "skillbt.yml" and again[3] == AT + 4 * vd.POLL_S, "since= the first attempt: adopted"
+    assert set(st["collect"]["redo_runs"]) == {ME, PAL} and not st["collect"]["redo_pending"]
+    assert len([s for s in world.gh.ok() if s[2] == ME and "redo" in s[1]["label"]]) == 1, "ME is not asked twice"
+
+
+def test_a_restart_mid_redo_resumes_it(world):
+    st = _to_the_redo(world)
+
+    def killed(wf, inputs, repo, since):
+        if "redo" in inputs["label"] and repo == PAL:
+            world.gh.on_dispatch = None
+            raise SystemExit("the API was restarted during the 90 s wait")
+
+    world.gh.on_dispatch = killed
+    with pytest.raises(SystemExit):
+        vd._step(st, AT + 4 * vd.POLL_S)
+    on_disk = vd.read()                                   # the restarted process reads the state again
+    assert on_disk["collect"]["redo_pending"].get(PAL) == ["CCC"]
+    vd._step(on_disk, AT + 5 * vd.POLL_S)
+    resumed = [s for s in world.gh.ok() if s[2] == PAL and "redo" in s[1]["label"]]
+    assert len(resumed) == 1 and resumed[0][3] == AT + 4 * vd.POLL_S, "resumed, adopting what GitHub took"
+    assert set(on_disk["collect"]["redo_runs"]) == {ME, PAL}
+
+
+def test_a_redo_refused_twice_is_named_on_the_screen(world):
+    st = _to_the_redo(world)
+    world.gh.refuse = {PAL: -1}
+    with pytest.raises(RuntimeError):
+        vd._step(st, AT + 4 * vd.POLL_S)
+    st["failed_at"] = AT + 4 * vd.POLL_S
+    vd._step(st, AT + 4 * vd.POLL_S + vd.RETRY_S)      # refused again: named, ME's redo goes on
+    vd._step(st, AT + 4 * vd.POLL_S + vd.RETRY_S + vd.POLL_S)
+    assert st["phase"] == "build"
+    vd._write(st)
+    s = vd.status()
+    assert s["redo_refused"] and "pal" in s["redo_refused"][0] and "CCC" in s["redo_refused"][0]
+    assert "not redone" in s["why"]
+
+
+def test_skipped_redo_and_a_lost_copy_reach_the_screen(world, monkeypatch):
+    from tradingagents import cq_search
+
+    st = _to_the_redo(world)
+    monkeypatch.setattr(cq_search, "quiet_hours", lambda now=None: True)
+    vd._step(st, AT + 4 * vd.POLL_S)
+    vd._write(st)
+    assert "12:45am" in vd.status()["redo_skipped"] and "12:45am" in vd.status()["why"]
+
+    def broken():
+        raise OSError("disk full")
+
+    monkeypatch.setattr(vd, "_keep_prev", broken)
+    vd._step(st, AT + 5 * vd.POLL_S)
+    vd._write(st)
+    assert "disk full" in vd.status()["prev_error"] and "disk full" in vd.status()["why"]
+
+
+# ------------------------------------------------------------------ an unreadable state
+def test_an_unreadable_state_is_named_and_never_overwritten(world):
+    vd.state_path().parent.mkdir(parents=True, exist_ok=True)
+    vd.state_path().write_text('{"phase": "running", "runs": {"me/analy', encoding="utf-8")
+    before = vd.state_path().read_bytes()
+    out = vd._tick(AT)
+    assert out["phase"] == "unreadable" and "cannot be read" in out["why"]
+    assert vd.state_path().read_bytes() == before, "never overwritten"
+    assert world.gh.sent == [], "no new chain, no dispatch"
+    assert vd.status()["phase"] == "unreadable"
+    with pytest.raises(RuntimeError, match="cannot be read"):
+        vd.start_now(D + 15 * H)
+    assert vd.state_path().read_bytes() == before

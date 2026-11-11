@@ -67,6 +67,7 @@ RETRIES = 1                       # an account refusing / a run measuring nothin
 BUILD_TIMEOUT_S = 3 * 3600
 CHILD_TIMEOUT_S = 2 * 3600
 SHORT_LIST = 0.10                 # the exchange listing this much fewer coins than last time is a short answer
+CATCH_UP_DAYS = 31                # agreement days checked at most in one pass (the rest are named)
 LOG_MAX_BYTES = 10_000_000
 IDLE = ("idle", "done", "given_up")
 BEFORE_LIST = ("dispatch", "running", "collect", "build", "lists")
@@ -160,12 +161,32 @@ def _when(ts: float) -> str:
 
 
 # ------------------------------------------------------------------ the state
-def read() -> dict:
+def _load() -> tuple[dict | None, str | None]:
+    """(state, None), or (None, why) when the file EXISTS but cannot be read. A missing file is a
+    chain that never ran; an unreadable one is NAMED and never overwritten - reading it as "idle"
+    would start a new day's chain and dispatch every account's machines again."""
+    p = state_path()
+    if not p.exists():
+        return {"phase": "idle"}, None
     try:
-        st = json.loads(state_path().read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {"phase": "idle"}
-    return st if isinstance(st, dict) else {"phase": "idle"}
+        st = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return None, f"{p} cannot be read ({type(exc).__name__}: {str(exc)[:160]})"
+    if not isinstance(st, dict):
+        return None, f"{p} cannot be read (it holds a {type(st).__name__}, not a state)"
+    return st, None
+
+
+def _stopped(bad: str) -> str:
+    return (f"the daily refresh is stopped: {bad} - it is never overwritten; repair it, or move it aside to "
+            f"start clean")
+
+
+def read() -> dict:
+    st, bad = _load()
+    if bad:
+        return {"phase": "unreadable", "why": _stopped(bad), "error": bad}
+    return st
 
 
 def _write(st: dict) -> None:
@@ -475,7 +496,12 @@ def _collect(st: dict, now: float) -> None:
     if "got" not in c:
         _acs_state(st, st["runs"], st["deal"], redo=False)
         _say(st, "downloading every account's results and adding them up on this PC (in its own process)")
+        t0 = _mono()
         got = _child("collect", {})
+        if now + (_mono() - t0) >= _deadline(st, now):
+            # the collect held this thread past 06:00: no redo is sent for a day already lost
+            _give_up(st, now + (_mono() - t0), f"it had not landed by {_when(_deadline(st, now))}")
+            return
         lost = {s.split(": ")[0]: s for s in got.get("downloads_failed") or []}
         ended = st.get("ended") or {}
         # a run that ended RED with nothing to download measured nothing: it gets the one redo below;
@@ -510,29 +536,50 @@ def _collect(st: dict, now: float) -> None:
                      f"{' ...' if len(to_redo) > 10 else ''}) - redone alone next")
         return
     to_redo = list(c.get("to_redo") or [])
-    if "redo_runs" not in c:
-        c["redo_runs"], c["redo_piles"] = {}, {}
-        if cq_search.quiet_hours(now):
-            c["redo_skipped"] = "not redone: no press between 12:45am and 5:00am (the nightly jobs' hours)"
-        else:
-            fd = _fd()
-            repos = [r for r in st["deal"] if r in st["runs"]]
-            from tradingagents import cloud_sweep as cs
+    if "redo_pending" not in c:
+        # THE DEAL IS SAVED BEFORE ANY DISPATCH, like the day's own: a restart during a dispatch's
+        # 90-second wait finds what is still to start, and its retry adopts a run GitHub listed late
+        from tradingagents import cloud_sweep as cs
 
-            for repo, pile in zip(repos, cs.split_coins(to_redo, len(repos)), strict=False):
-                if not pile:            # an EMPTY coin_list is the whole market: never sent
-                    continue
-                try:
-                    c["redo_runs"][repo] = fd.dispatch(WF, _inputs(pile, _label(st, True), few=True), repo,
-                                                       since=_tried(st, f"redo {st['day']} {repo}", now))
-                    c["redo_piles"][repo] = list(pile)
-                except Exception as exc:                               # noqa: BLE001
-                    c.setdefault("redo_refused", []).append(f"{_owner(repo)}: {type(exc).__name__}: "
-                                                            f"{str(exc)[:160]}")
-                _write(st)
+        repos = [r for r in st["deal"] if r in st["runs"]]
+        c.update(redo_pending={repo: list(pile) for repo, pile in
+                               zip(repos, cs.split_coins(to_redo, len(repos)), strict=False)
+                               if pile},           # an EMPTY coin_list is the whole market: never sent
+                 redo_runs={}, redo_piles={}, redo_tries={})
+        _write(st)
+    pend = c["redo_pending"]
+    if pend and cq_search.quiet_hours(now):
+        c["redo_skipped"] = (f"{sum(len(p) for p in pend.values())} coin(s) not redone "
+                             f"({', '.join(sorted(x for p in pend.values() for x in p)[:10])}): no press between "
+                             f"12:45am and 5:00am (the nightly jobs' hours)")
+        pend.clear()
+        _write(st)
+    if pend:
+        fd = _fd()
+        errors = []
+        for repo, pile in list(pend.items()):
+            try:
+                c["redo_runs"][repo] = fd.dispatch(WF, _inputs(pile, _label(st, True), few=True), repo,
+                                                   since=_tried(st, f"redo {st['day']} {repo}", now))
+                c["redo_piles"][repo] = list(pile)
+                del pend[repo]
+            except Exception as exc:                                   # noqa: BLE001
+                n = c["redo_tries"][repo] = int(c["redo_tries"].get(repo, 0)) + 1
+                said = f"{_owner(repo)}: {type(exc).__name__}: {str(exc)[:160]}"
+                if n > RETRIES:          # refused twice: named, its coins keep yesterday's line or are absent
+                    c.setdefault("redo_refused", []).append(
+                        f"{said} - {len(pile)} coin(s) not redone ({', '.join(pile[:10])})")
+                    del pend[repo]
+                else:
+                    errors.append(said)
+            _write(st)
+        if pend:
+            raise RuntimeError(f"the redo was refused - tried again in {RETRY_S // 60} minutes "
+                               f"({'; '.join(errors)})")
         if c["redo_runs"]:
             st["why"] = (f"redoing {len(to_redo)} coin(s) alone: "
-                         + ", ".join(f"run {r} on {_owner(repo)}" for repo, r in c["redo_runs"].items()))
+                         + ", ".join(f"run {r} on {_owner(repo)}" for repo, r in c["redo_runs"].items())
+                         + _notes(st))
             return
     if c["redo_runs"] and not c.get("redo_finished"):
         fd = _fd()
@@ -549,37 +596,60 @@ def _collect(st: dict, now: float) -> None:
     got = _child("finish", {"redo": bool(c["redo_runs"]), "prev": str(_prev())})
     c["finish"] = {k: got.get(k) for k in ("redo_error", "lines")}
     st.update(phase="build", failed=list(got.get("failed") or []), missing=list(got.get("absent") or []),
-              stale=dict(got.get("stale") or {}), error="", failed_at=0)
+              stale=dict(got.get("stale") or {}), error="", failed_at=0,
+              redo_refused=list(c.get("redo_refused") or []), redo_skipped=c.get("redo_skipped") or "",
+              redo_error=got.get("redo_error") or "")
+    st["why"] = "collected - building the store next" + _notes(st)
+
+
+def _notes(st: dict) -> str:
+    """What today's store is missing or carried, said in every sentence after the collect: the
+    coins kept stale or absent, a redo refused or skipped, a kept copy that failed."""
+    c = st.get("collect") or {}
     bits = []
-    if st["stale"]:
-        bits.append(f"{len(st['stale'])} coin(s) keep yesterday's line, marked stale ({', '.join(sorted(st['stale'])[:10])})")
-    if st["missing"]:
+    if st.get("stale"):
+        bits.append(f"{len(st['stale'])} coin(s) keep yesterday's line, marked stale "
+                    f"({', '.join(sorted(st['stale'])[:10])})")
+    if st.get("missing"):
         bits.append(f"{len(st['missing'])} coin(s) absent today ({', '.join(st['missing'][:10])})")
-    if got.get("redo_error"):
-        bits.append(f"the redo could not be collected: {got['redo_error']}")
-    st["why"] = "collected - " + ("; ".join(bits) if bits else "every redone coin came back") + " - building next"
+    for r in st.get("redo_refused") or c.get("redo_refused") or []:
+        bits.append(f"redo refused twice on {r}")
+    if st.get("redo_skipped") or c.get("redo_skipped"):
+        bits.append(st.get("redo_skipped") or c.get("redo_skipped"))
+    if st.get("redo_error"):
+        bits.append(f"the redo could not be collected: {st['redo_error']}")
+    if st.get("prev_error"):
+        bits.append(st["prev_error"])
+    return (" - note: " + "; ".join(bits)) if bits else ""
 
 
 def _build(st: dict, now: float) -> None:
     _say(st, "building the Backtest v4 store and Forecast v4 from today's results (in its own process)")
     log = log_path()
     _rotate(log)
+    t0 = _mono()
     with log.open("a", encoding="utf-8") as fh:
-        fh.write(f"--- {_when(time.time())}: the daily build of {st['day']} ---\n")
+        fh.write(f"--- {_when(time.time())}: the daily build of {_said(st['day'])} ---\n")
         fh.flush()
         got = _spawn([sys.executable, "-m", "tradingagents.v4_store", "build", "--daily"], stdout=fh,
                      stderr=subprocess.STDOUT, timeout=BUILD_TIMEOUT_S, cwd=str(ROOT),
                      env={**os.environ, "PYTHONUNBUFFERED": "1"})
+    after = now + (_mono() - t0)         # the build holds this thread for up to 3 hours
     if got.returncode != 0:
-        raise RuntimeError(f"the build ended {got.returncode}: {_tail(log)}")
+        why = f"the build ended {got.returncode}: {_tail(log)}"
+        if after >= _deadline(st, now):  # no second try after 06:00: the day takes the earlier list now
+            _give_up(st, after, why)
+            return
+        raise RuntimeError(why)
+    st["built_day"] = st["day"]          # from here the 06:00 cut-off no longer applies to this day's lists
     try:
         _keep_prev()
         st.pop("prev_error", None)
     except OSError as exc:          # never a reason to build the store again: named instead
         st["prev_error"] = (f"the collected file could not be kept for tomorrow ({type(exc).__name__}: {exc}); "
                             f"a coin missing tomorrow will be absent rather than stale")
-    st.update(phase="lists", built_s=time.time(), error="", failed_at=0,
-              why="the store and Forecast v4 are rebuilt - switching on each room's strategies next")
+    st.update(phase="lists", built_s=time.time(), error="", failed_at=0)
+    st["why"] = "the store and Forecast v4 are rebuilt - switching on each room's strategies next" + _notes(st)
 
 
 def _lists(st: dict, now: float) -> None:
@@ -607,29 +677,52 @@ def _lists(st: dict, now: float) -> None:
     st.update(phase="agree", landed_s=now, counts=counts, error="", failed_at=0,
               why=(f"the list of {_when(day_s)} landed at {_when(now)}: "
                    + (", ".join(f"{profiles.name_of(p)} {n}" for p, n in counts.items()) + " switched on"
-                      if counts else st.get("list_note", "")) + " - checking yesterday next"))
+                      if counts else st.get("list_note", "")) + " - checking yesterday next" + _notes(st)))
+
+
+def _agreed_days() -> list[int]:
+    """The days an agreement file exists for, oldest first."""
+    from tradingagents import v4_follow as vf
+
+    try:
+        names = [p.stem[len("agree-"):] for p in vf.lists_home().glob("agree-*.json")]
+    except OSError:
+        return []
+    return sorted(d for d in (vf._day_of(n) for n in names) if d is not None)
 
 
 def _agree(st: dict, now: float) -> None:
+    """Yesterday's check - and every day after the newest check up to yesterday that was missed (the
+    PC off, a day given up), one file each, at most CATCH_UP_DAYS."""
     from tradingagents import forecast_v2 as f2
     from tradingagents import profiles
     from tradingagents import v4_follow as vf
 
     y = int(st["day_s"]) - DAY_S
+    done = [d for d in _agreed_days() if d < y]
+    first = done[-1] + DAY_S if done else y
+    skipped = max(0, (y - first) // DAY_S + 1 - CATCH_UP_DAYS)
+    days = list(range(max(first, y - (CATCH_UP_DAYS - 1) * DAY_S), y + DAY_S, DAY_S))
+    lists = _DayLists()
     out = {}
-    for pid in vf.rooms():
-        try:
-            out[pid] = agreement(pid, y)
-        except Exception as exc:                                       # noqa: BLE001
-            out[pid] = {"day": _iso(y), "day_s": y, "error": f"{type(exc).__name__}: {str(exc)[:300]}"}
-    f2.publish(agree_path(y), json.dumps(out))
+    for d in days:
+        out = {}
+        for pid in vf.rooms():
+            try:
+                out[pid] = agreement(pid, d, lists=lists)
+            except Exception as exc:                                   # noqa: BLE001
+                out[pid] = {"day": _iso(d), "day_s": d, "error": f"{type(exc).__name__}: {str(exc)[:300]}"}
+        f2.publish(agree_path(d), json.dumps(out))
+    st["agreed_days"] = [_iso(d) for d in days]
     st["agree"] = {pid: {k: r[k] for k in ("same", "of", "dollars_apart", "error") if k in r}
                    for pid, r in out.items()}
     words = [f"{profiles.name_of(p)} {r['same']} of {r['of']} the same (${r['dollars_apart']:.2f} apart)"
              if "error" not in r else f"{profiles.name_of(p)} not checked: {r['error']}" for p, r in out.items()]
+    caught = (f"; {len(days) - 1} earlier day(s) checked too" if len(days) > 1 else "") + (
+        f"; {skipped} day(s) before {_when(days[0])} were not checked" if skipped else "")
     st.update(phase="done", done_at=now, error="", failed_at=0,
               why=f"the list of {_when(int(st['day_s']))} landed at {_when(float(st.get('landed_s') or now))}; "
-                  f"yesterday's trades: " + "; ".join(words))
+                  f"yesterday's closed trades: " + "; ".join(words) + caught + _notes(st))
 
 
 _PHASES = {"dispatch": _dispatch, "running": _running, "collect": _collect, "build": _build,
@@ -646,8 +739,12 @@ def _step(st: dict, now: float) -> None:
         elif not st.get("why"):
             st["why"] = f"the next refresh starts at {_when(_next_due(now))}"
         return
-    # the deadline before the retry wait: a step that failed at 5:50am is not left waiting past 6:00am
-    deadline = float(st.get("deadline_s") or (int(st.get("day_s") or _midnight(now)) + GIVE_UP_AT_S))
+    # the deadline before the retry wait: a step that failed at 5:50am is not left waiting past 6:00am.
+    # A store BUILT for this day writes its real lists whenever the build ends - only a list that
+    # cannot be worked out by the next midnight gives the day up (the next day's chain needs the turn)
+    deadline = _deadline(st, now)
+    if phase == "lists" and st.get("built_day") == st.get("day"):
+        deadline = int(st.get("day_s") or _midnight(now)) + DAY_S
     if phase in BEFORE_LIST and now >= deadline:
         _give_up(st, now, f"it had not landed by {_when(deadline)}")
         return
@@ -659,6 +756,10 @@ def _step(st: dict, now: float) -> None:
     _PHASES[phase](st, now)
 
 
+def _deadline(st: dict, now: float) -> float:
+    return float(st.get("deadline_s") or (int(st.get("day_s") or _midnight(now)) + GIVE_UP_AT_S))
+
+
 def _next_due(now: float) -> float:
     d = _midnight(now)
     return d + DUE_AFTER_S if now < d + DUE_AFTER_S else d + DAY_S + DUE_AFTER_S
@@ -668,19 +769,30 @@ def tick(now: float | None = None) -> dict:
     """The supervisor's call, in its own thread: at most one phase. Nothing under pytest."""
     if os.environ.get("PYTEST_CURRENT_TEST"):
         return {"why": "never under a test run"}
+    return _tick(now)
+
+
+def _tell(why: str) -> None:
+    if why and why != _SAID["text"]:
+        _SAID["text"] = why
+        print(f"[v4-daily] {why}", flush=True)
+
+
+def _tick(now: float | None = None) -> dict:
     if not _LOCK.acquire(blocking=False):
         return {"why": "a step is already running"}
     try:
         now = time.time() if now is None else float(now)
-        st = read()
+        st, bad = _load()
+        if bad:                         # named once, nothing done, the file left exactly as it is
+            _tell(_stopped(bad))
+            return {"phase": "unreadable", "why": _stopped(bad)}
         try:
             _step(st, now)
         except Exception as exc:                                       # noqa: BLE001
             _fail(st, now, f"{type(exc).__name__}: {str(exc)[:300]}")
         _write(st)
-        if st.get("why") and st["why"] != _SAID["text"]:
-            _SAID["text"] = st["why"]
-            print(f"[v4-daily] {st['why']}", flush=True)
+        _tell(st.get("why") or "")
         return {"phase": st.get("phase"), "why": st.get("why", "")}
     finally:
         _LOCK.release()
@@ -698,9 +810,11 @@ def start_now(now: float | None = None) -> dict:
     if not _LOCK.acquire(blocking=False):
         raise RuntimeError("the daily refresh is in the middle of a step; ask again in a minute")
     try:
-        st = read()
+        st, bad = _load()
+        if bad:
+            raise RuntimeError(_stopped(bad))
         if (st.get("phase") or "idle") not in IDLE:
-            raise RuntimeError(f"the refresh of {st.get('day')} is already under way ({st.get('phase')}): "
+            raise RuntimeError(f"the refresh of {_said(st.get('day'))} is already under way ({st.get('phase')}): "
                                f"{st.get('why', '')}")
         _begin(st, now, max(_midnight(now) + GIVE_UP_AT_S, now + GIVE_UP_AT_S), manual=True)
     finally:
@@ -709,104 +823,125 @@ def start_now(now: float | None = None) -> dict:
 
 
 # ------------------------------------------------------------------ the agreement check
-def agreement(pid: str, day_s: int, db: Path | None = None) -> dict:
-    """Room `pid`'s practice trades that OPENED on the UTC day `day_s` against the re-measured
-    backtest's trades of the strategies on that day's list that opened that day (never END).
+class _DayLists:
+    """The day lists, each read once per agreement pass and shared by the rooms and the days."""
 
-    A pair is THE SAME when strategy id, side, entry candle (`entry_ts == en`), exit candle (the exit
-    row's `ts` is the exit candle's close: `ts - bar == ex`) and exit reason all match; `dollars_apart`
-    adds |practice - backtest| over those, to the cent. Compared are the trades CLOSED BY THE NEXT
-    MIDNIGHT on either side - the store was measured to then, and the follower holds there until the
-    next list lands - so a trade still open at midnight on either side is counted
-    (`open_at_midnight`), never called a difference. `of` counts the trades either side made (a pair
-    once); every trade that is not the same is listed - practice's by trade id, the backtest's by
-    strategy id and entry."""
+    def __init__(self):
+        self._docs: dict = {}
+        self._days: list | None = None
+
+    def days(self) -> list[int]:
+        if self._days is None:
+            self._days = _list_days()
+        return self._days
+
+    def ids(self, day_s: int, pid: str) -> dict:
+        """{id: row} switched on in room `pid` on the UTC day starting `day_s` ({} when it has no list)."""
+        from tradingagents import v4_follow as vf
+
+        day_s = int(day_s)
+        if day_s not in self._docs:
+            try:
+                doc = json.loads(vf.list_path(day_s).read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                doc = {}
+            self._docs[day_s] = doc if isinstance(doc, dict) else {}
+        rooms = self._docs[day_s].get("rooms")
+        return {str(r["id"]): r for r in ((rooms if isinstance(rooms, dict) else {}).get(pid) or [])
+                if isinstance(r, dict) and r.get("id")}
+
+    def ever(self, pid: str, upto_s: int) -> dict:
+        """Every strategy room `pid` had switched on on any day up to `upto_s`."""
+        out: dict = {}
+        for d in self.days():
+            if d <= upto_s:
+                out.update(self.ids(d, pid))
+        return out
+
+
+def agreement(pid: str, day_s: int, db: Path | None = None, lists: _DayLists | None = None) -> dict:
+    """Room `pid`'s practice trades that CLOSED on the UTC day `day_s` against the re-measured
+    backtest's trades that closed that day - judged by the day a trade CLOSED, so a trade held over
+    midnight, a 1d trade and the day's last candles are all compared once, on the day they end.
+
+    Practice: the room's exit rows (strategy v4_*) with `ts` (the exit candle's close) in
+    (day_s, day_s + 1 day], whatever day they opened. Backtest: the store's trades with
+    `ex + bar` in that window and why != END, kept only when the strategy was on the day list of its
+    OWN entry day (`en`'s UTC day) - the day lists read back as far as they go; a strategy not
+    switched on when the trade opened was never expected to take it.
+
+    A pair is THE SAME when strategy id, side, entry candle (`entry_ts == en`), exit candle
+    (`ts - bar == ex`) and exit reason all match; `dollars_apart` adds |practice - backtest| over
+    those, to the cent. `of` counts the trades either side closed that day (a pair once); every trade
+    that is not the same is listed - practice's by trade id, the backtest's by strategy id and entry."""
     import tradingagents.auto_trader as at
     from tradingagents import backtest_report as br
     from tradingagents import profiles, v4_store
-    from tradingagents import v4_follow as vf
 
     day_s = int(day_s)
     end = day_s + DAY_S
     end_code = v4_store.WHYS.index("END")
-    try:
-        doc = json.loads(vf.list_path(day_s).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        doc = {}
-    listed = {str(r["id"]): r for r in ((doc.get("rooms") if isinstance(doc, dict) else None) or {}).get(pid) or []
-              if isinstance(r, dict) and r.get("id")}
+    lists = lists or _DayLists()
+    ever = lists.ever(pid, day_s)                     # a trade closing today opened today or before
     with profiles.using(pid):
         rows = at.ledger_trades(day_s)
+    exits = [r for r in rows if r.get("action") == "exit" and str(r.get("strategy") or "").startswith("v4_")
+             and day_s < int(r.get("ts") or 0) <= end]
 
-    def ours(r):
-        return (str(r.get("strategy") or "").startswith("v4_")
-                and day_s <= int(r.get("entry_ts") or -1) < end)
-
-    exits = [r for r in rows if r.get("action") == "exit" and ours(r)]
-    enters = [r for r in rows if r.get("action") == "enter" and ours(r)]
-
-    def sid_of(r) -> str:
+    def rid_of(r) -> str:
         return str(r.get("v4_id") or str(r.get("strategy"))[3:])
 
-    ids = set(listed) | {sid_of(r) for r in exits + enters}
+    ids = set(ever) | {rid_of(r) for r in exits}
     p = Path(db) if db else v4_store.db_path()
     con = sqlite3.connect(f"file:{p.as_posix()}?mode=ro", uri=True, timeout=30)
-    tf_of, sids = {}, {}
+    tf_of, by_sid = {}, {}
     trades = []
     try:
         idl = sorted(ids)
-        for i in range(0, len(idl), 500):
-            part = idl[i:i + 500]
+        for i in range(0, len(idl), 900):
+            part = idl[i:i + 900]
             for sid, rid, tf in con.execute(f"SELECT sid, id, tf FROM strat WHERE id IN ({','.join('?' * len(part))})",
                                             part):
                 tf_of[rid] = tf
-                if rid in listed:
-                    sids[int(sid)] = rid
-        sl = sorted(sids)
-        for i in range(0, len(sl), 500):
-            part = sl[i:i + 500]
-            trades += con.execute(f"SELECT sid, ex, en, side, why, pnl FROM trade WHERE en >= ? AND en < ? "
-                                  f"AND sid IN ({','.join('?' * len(part))})", [day_s, end, *part]).fetchall()
+                if rid in ever:
+                    by_sid[int(sid)] = rid
+        sl = sorted(by_sid)
+        for i in range(0, len(sl), 900):
+            part = sl[i:i + 900]
+            # the exit candle OPENS at most one 1d candle before the window (trade_ex serves it)
+            trades += con.execute(f"SELECT sid, ex, en, side, why, pnl FROM trade WHERE ex > ? AND ex <= ? "
+                                  f"AND sid IN ({','.join('?' * len(part))})", [day_s - DAY_S, end, *part]).fetchall()
     finally:
         con.close()
-    for rid, r in listed.items():
+    for rid, r in ever.items():
         tf_of.setdefault(rid, r.get("tf"))
 
     def bar(rid):
         tf = tf_of.get(rid)
         return int(br.TFS[tf][1]) if tf in br.TFS else None
 
-    bt, bt_open = {}, set()
+    bt = {}
     for sid, ex, en, side, why, pnl in trades:
-        rid = sids[int(sid)]
-        k = (rid, int(side), int(en))
+        rid = by_sid[int(sid)]
         b = bar(rid)
-        if int(why) == end_code or b is None or int(ex) + b > end:
-            bt_open.add(k)
-        else:
-            bt[k] = (int(ex), int(why), float(pnl))
-    pr, pr_open = {}, set()
+        if int(why) == end_code or b is None or not (day_s < int(ex) + b <= end):
+            continue
+        if rid not in lists.ids(int(en) // DAY_S * DAY_S, pid):
+            continue                     # not switched on the day it opened: never expected
+        bt[(rid, int(side), int(en))] = (int(ex), int(why), float(pnl))
+    pr = {}
     for r in exits:
-        rid = sid_of(r)
-        k = (rid, 1 if str(r.get("side")).upper() == "LONG" else -1, int(r["entry_ts"]))
+        rid = rid_of(r)
         b = bar(rid)
         ts = int(r.get("ts") or 0)
-        if b is not None and ts > end:
-            pr_open.add(k)
-        else:
-            pr[k] = (ts - b if b is not None else None, v4_store.why_code(r.get("why") or ""),
-                     float(r.get("pnl_est") or 0.0), str(r.get("trade_id") or ""))
-    for r in enters:
-        k = (sid_of(r), 1 if str(r.get("side")).upper() == "LONG" else -1, int(r["entry_ts"]))
-        if k not in pr:
-            pr_open.add(k)
+        pr[(rid, 1 if str(r.get("side")).upper() == "LONG" else -1, int(r.get("entry_ts") or 0))] = (
+            ts - b if b is not None else None, v4_store.why_code(r.get("why") or ""),
+            float(r.get("pnl_est") or 0.0), str(r.get("trade_id") or ""))
     same = [k for k in bt if k in pr and pr[k][0] == bt[k][0] and pr[k][1] == bt[k][1]]
-    union = set(bt) | set(pr)
-    return {"day": _iso(day_s), "day_s": day_s, "same": len(same), "of": len(union),
+    return {"day": _iso(day_s), "day_s": day_s, "same": len(same), "of": len(set(bt) | set(pr)),
             "dollars_apart": round(sum(abs(pr[k][2] - bt[k][2]) for k in same), 2),
             "only_practice": sorted(pr[k][3] for k in pr if k not in same),
             "only_backtest": [f"{k[0]} {_when(k[2])}" for k in sorted(k for k in bt if k not in same)],
-            "open_at_midnight": len((bt_open | pr_open) - union), "listed": len(listed),
             "checked_s": time.time()}
 
 
@@ -822,7 +957,11 @@ def status() -> dict:
             "refused": st.get("refused") or [], "coins": st.get("coins"), "pinned": st.get("pinned"),
             "delisted": st.get("delisted") or [], "not_added": st.get("not_added"),
             "missing": st.get("missing") or [], "stale": st.get("stale") or {}, "failed": st.get("failed") or [],
-            "fallbacks": st.get("fallbacks") or [], "agree": st.get("agree") or {}, "last": st.get("last"),
+            "fallbacks": st.get("fallbacks") or [], "agree": st.get("agree") or {},
+            "agreed_days": st.get("agreed_days") or [], "last": st.get("last"),
+            "redo_refused": st.get("redo_refused") or (st.get("collect") or {}).get("redo_refused") or [],
+            "redo_skipped": st.get("redo_skipped") or (st.get("collect") or {}).get("redo_skipped") or "",
+            "redo_error": st.get("redo_error") or "", "prev_error": st.get("prev_error") or "",
             "next_s": _next_due(time.time())}
 
 
@@ -830,6 +969,11 @@ def status() -> dict:
 def _spawn(args: list, **kw):
     """One place a child process starts (a test replaces this, never `subprocess.run` itself)."""
     return subprocess.run(args, **kw)
+
+
+def _mono() -> float:
+    """How long a step took (a test advances it; `now` itself is the tick's clock)."""
+    return time.monotonic()
 
 
 def _rotate(log: Path) -> None:

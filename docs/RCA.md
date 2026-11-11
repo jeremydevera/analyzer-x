@@ -241,6 +241,143 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-11-C — the skill rooms' daily "same as the backtest" check would never have looked at a daily trade, the day's last candles, or anything held past midnight: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the code review before the daily check was switched on.
+* Why: the check only looked at trades that OPENED yesterday and had CLOSED by midnight, so a 1-day trade, a trade opened in the evening, and every day the PC was off were never checked at all.
+* What stops it now: each trade is checked on the day it CLOSED, whatever day it opened, and missed days are caught up, one file each.
+
+**DEV**
+
+* `tradingagents/v4_daily.py:agreement` (e21a8fa) selected `day_s <= entry_ts < day_s + 1d` and dropped any trade whose `ex + bar > day_s + 1d` into `open_at_midnight`; `_agree` checked only `day_s - 1d`.
+* Invariant broken: **a daily check of trades partitions them by the day they END - each trade is compared exactly once - never by the day they start, which leaves every long trade between two days**.
+* Guard: `tests/test_v4_daily.py::test_agreement_judges_each_trade_on_the_day_it_closed_and_names_the_rest`, `::test_a_1d_trade_opened_two_days_before_is_compared_on_the_day_it_closed`, `::test_the_agree_phase_catches_up_one_file_per_missed_day`.
+
+**SAW** - nothing on screen: the daily chain is not wired to the supervisor until Task 7.
+
+**TIMELINE** (test timeline, D = Nov 11, 2026 12:00am UTC, Y = the day before)
+
+1. Nov 11, 2026: e21a8fa ships the check by entry day.
+2. A 1d trade opens on the Y-2 candle and its exit candle (Y) closes at D: checked on Y-2 it was still open at Y-1 midnight, so it was never compared (old result: 0 of 0).
+3. A 1h trade on the candle opening 10:00pm UTC (5:00pm here) closes at midnight; one on 11:00pm closes at 1:00am the next day: the first was compared only by chance of the bound, the second never.
+4. Nov 11, 2026 (this commit): the same 1d trade is "1 of 1 the same, $0.01 apart" on Y; the overnight 1h trade is checked on the day it closes.
+
+**ROOT CAUSE** - the brief's "compare the trades whose entry falls on the day" was built literally, and a trade whose life crosses midnight belongs to no day under it.
+
+**WHY IT WAS NOT CAUGHT** - every agreement test placed its trades inside one day (entries at 1:00am-2:00pm, exits hours later), and `open_at_midnight` made the dropped trades LOOK accounted for: a count of what was not compared reads as a feature until you ask which of those ever get compared later (none).
+
+**COST** - none (never ran). Every 1d trade of all three rooms would have gone unchecked for good.
+
+**FIX** - this commit: practice exit rows with `ts` in (Y, Y+1d] against store trades with `ex + bar` in that window, why != END, queried by `ex` + `sid IN` (the `trade_ex` index), each kept only when its strategy was on the list of its OWN entry day (`_DayLists`, every list read once per pass); every day after the newest `agree-<day>.json` up to yesterday is checked (at most 31, the rest named); `open_at_midnight` removed.
+
+**GUARD** - the three tests above and `tests/test_v4_daily.py::test_a_trade_of_a_strategy_not_on_its_entry_days_list_is_not_expected` (the first three red on e21a8fa).
+
+---
+
+## RCA-2026-11-11-D — a build that finished after 6:00am would have thrown away that day's fresh strategy list for yesterday's: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the code review.
+* Why: the "give up at 6:00am" check could only run between steps, and the build step can take hours, so a build ending at 6:30am was followed straight away by "too late, use yesterday's list".
+* What stops it now: once today's numbers are built, today's real list is always written; only a build that FAILS after 6:00am gives up at once, and a download ending after 6:00am sends no more machines.
+
+**DEV**
+
+* `tradingagents/v4_daily.py:_step` (e21a8fa) gave up any phase in `BEFORE_LIST` at `deadline_s` - `lists` included - while `_build` (up to `BUILD_TIMEOUT_S` 3 h) and `_child` (2 h) hold `_LOCK`, so the check only ran after them.
+* Invariant broken: **a deadline is judged against the work it protects - once the measurement it waits for exists, the cut-off no longer applies; a check that runs between steps cannot cut a step**.
+* Guard: `tests/test_v4_daily.py::test_a_build_finishing_after_0600_writes_the_real_lists`, `::test_a_build_failing_after_0600_gives_up_at_once`, `::test_the_lists_still_give_up_at_the_next_midnight`, `::test_a_collect_ending_after_0600_sends_no_redo`.
+
+**SAW** - nothing: not wired yet.
+
+**TIMELINE** (D = Nov 11, 2026 12:00am UTC)
+
+1. 5:30am UTC (12:30am here): the build starts, one hour long.
+2. 6:30am UTC: it succeeds; e21a8fa's next tick sees `lists` past 6:00am and writes yesterday's list as the day's fallback - the fresh store unused for the rooms that day.
+3. This commit: `built_day` is set and the 6:32am tick writes the real list; a build failing at 6:30am gives up at once with yesterday's copy.
+
+**ROOT CAUSE** - the deadline was checked per phase name, not per what the phase still needs.
+
+**WHY IT WAS NOT CAUGHT** - the give-up test put the chain in `running` (a phase that never blocks), and the fake build returned instantly, so no test ever saw a step END after the deadline it started before.
+
+**COST** - none (never ran). A late build would have cost the rooms one day on yesterday's list.
+
+**FIX** - this commit: `_build` measures its own run (`_mono`), sets `built_day` on success and gives up at once on a failure ending after the deadline; `_step` exempts `lists` of a built day up to the next midnight; the collect gives up instead of redoing when it ends after the deadline.
+
+**GUARD** - the four tests above (the first three red on e21a8fa).
+
+---
+
+## RCA-2026-11-11-E — a coin redo GitHub took but listed late would never have been collected, and a restart mid-redo would have skipped it for good: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the code review.
+* Why: the redo of failed coins wrote "no redo runs" before asking GitHub, gave up on the first refusal, and a restart during the 90-second wait found that note and never asked again - and none of it reached the screen.
+* What stops it now: what is still to start is saved first and retried, taking over a run GitHub did start; a redo refused twice, skipped at night, or a kept copy that failed is said on the screen.
+
+**DEV**
+
+* `tradingagents/v4_daily.py:_collect` (e21a8fa) set `c["redo_runs"] = {}` before the dispatch loop; a raising `fd.dispatch` went to `redo_refused` with no retry, so `since=` was never used; `"redo_runs" in c` then skipped the whole block after any restart. `status()` carried none of `redo_refused`, `redo_skipped`, `prev_error`.
+* Invariant broken: **a dispatch saves WHAT IS STILL TO START before it starts it, and retries with `since=` - the shape `_dispatch` and `_zero` already had - and every refusal a day carries is on the screen**.
+* Guard: `tests/test_v4_daily.py::test_a_raising_redo_dispatch_is_retried_and_its_late_run_adopted`, `::test_a_restart_mid_redo_resumes_it`, `::test_a_redo_refused_twice_is_named_on_the_screen`, `::test_skipped_redo_and_a_lost_copy_reach_the_screen`.
+
+**SAW** - nothing: not wired yet.
+
+**TIMELINE** (D = Nov 11, 2026 12:00am UTC, tick clock)
+
+1. 00:16 UTC: AAA failed and CCC was not reached; the redo goes to two accounts; jeremydvera's dispatch raises "did not appear within 90 seconds" (GitHub took it).
+2. e21a8fa: CCC is named refused, never retried; the late run measures CCC on GitHub and is never collected; CCC is absent that day.
+3. This commit: 00:46 UTC the retry passes `since=` 00:16 and adopts that run; killed mid-wait instead, the restarted process finds `redo_pending` and does the same.
+
+**ROOT CAUSE** - the redo was written as a one-shot loop, unlike the two dispatchers beside it.
+
+**WHY IT WAS NOT CAUGHT** - the redo test's fake GitHub never refused a redo, and no test re-read the state from disk mid-step; `_dispatch`'s adoption test covered the day's own dispatch only.
+
+**COST** - none (never ran). Each late-listed redo would have cost its coins a day (stale or absent).
+
+**FIX** - this commit: `redo_pending` saved before any dispatch, each with `since=_tried(...)`, refused twice -> `redo_refused` with its coins, falls through to the collect only when nothing is pending; quiet hours move the pending coins to `redo_skipped`; `status()` and every sentence after the collect carry `redo_refused`, `redo_skipped`, `redo_error`, `prev_error` (`_notes`).
+
+**GUARD** - the four tests above (all red on e21a8fa).
+
+---
+
+## RCA-2026-11-11-F — a damaged daily-refresh state file would have been read as "never ran", starting the whole day again on all 60 machines: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the code review.
+* Why: when the refresh's own status file could not be read, the program treated it as a fresh start, so it would have measured the whole market again over a half-finished day.
+* What stops it now: an unreadable status file stops the refresh, is named once on screen, and is never overwritten.
+
+**DEV**
+
+* `tradingagents/v4_daily.py:read` (e21a8fa) returned `{"phase": "idle"}` on `OSError`/`ValueError`; `tick` then ran `_step`, `due()` saw no `day`, and `_begin` + `_write` replaced the file.
+* Invariant broken: **an unreadable state is NAMED and never overwritten - a missing file and a damaged one are different facts** (CLAUDE.md, the error filer's own rule: "an unreadable state file is never overwritten").
+* Guard: `tests/test_v4_daily.py::test_an_unreadable_state_is_named_and_never_overwritten`.
+
+**SAW** - nothing: not wired yet.
+
+**TIMELINE** (D = Nov 11, 2026 12:00am UTC)
+
+1. A chain is `running` with runs on three accounts; the state file is cut mid-write (a full disk, a killed copy).
+2. e21a8fa: the next tick reads it as idle, begins the day again and dispatches every account's 20 machines a second time.
+3. This commit: the tick prints "the daily refresh is stopped: ... cannot be read" once, leaves the bytes as they were, and `start_now` refuses with the same words.
+
+**ROOT CAUSE** - one `except` handled "no file" and "bad file" the same way.
+
+**WHY IT WAS NOT CAUGHT** - every test started from a missing state or a dict passed in; none wrote a broken file, because `tick()` does nothing under pytest and the step tests never read from disk.
+
+**COST** - none (never ran). Would have been a second full run on 60 machines.
+
+**FIX** - this commit: `_load()` tells a missing file from an unreadable one; `tick()` -> `_tick()` refuses and says why once; `start_now` raises; `status()` shows phase "unreadable".
+
+**GUARD** - `tests/test_v4_daily.py::test_an_unreadable_state_is_named_and_never_overwritten` (red on e21a8fa).
+
+---
+
 ## RCA-2026-11-05-G — a coin redone alone would still have been listed "no machine reached" on the strategies page: NEVER HAPPENED YET
 
 **CEO**

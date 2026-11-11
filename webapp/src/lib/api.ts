@@ -139,21 +139,10 @@ export const PROFILES: readonly { id: string; name: string; display_id?: string;
   // #09439DC2 — the id of its rules, as profiles.MAIN_DISPLAY_ID says. The
   // word "Main" names the all-rooms past trades tab (AutoTradeScreen).
   { id: "main", name: "#09439DC2", display_id: "09439DC2" },
-  { id: "55D32617", name: "#55D32617" },
-  { id: "4FC03172", name: "#4FC03172" },
-  { id: "B2404C0B", name: "#B2404C0B" },
-  { id: "6B08FF64", name: "#6B08FF64" },
-  { id: "CC94D9FB", name: "#CC94D9FB" },
-  // Oct 07, 2026: "create a room strategy that has criteria that looks for
-  // past 1 day or 2 days or 3 days or 4 days ... (create seperate room for
-  // each)" — switched on by their last 1, 2, 3, 4 days, off on 30
-  { id: "99E79CBA", name: "#99E79CBA" },
-  { id: "C7396286", name: "#C7396286" },
-  { id: "1D4274C1", name: "#1D4274C1" },
-  { id: "8F0C7926", name: "#8F0C7926" },
-  // Oct 17, 2026: "Room for #BBE0A361" — the one rule set that pays 2:1
-  // after real fees (prompt 4, BANANA 30m: +$2.15 a win, -$1.03 a loss)
-  { id: "BBE0A361", name: "#BBE0A361" },
+  // Nov 11, 2026: "i said undeploy the old existing rooms / only deploy your
+  // 3 suggested room" — #55D32617, #4FC03172, #B2404C0B, #6B08FF64,
+  // #CC94D9FB, #99E79CBA, #C7396286, #1D4274C1, #8F0C7926 and #BBE0A361 are
+  // OFF (profiles.OFF_NOV11): no tab, as the standing setup says of "off".
   // Nov 10, 2026: Forecast v4's three best rule sets as practice rooms,
   // traded by a follower from Backtest v4's engine (no runner ever): their
   // tab shows the follow line and panel, never the runner's buttons. Held

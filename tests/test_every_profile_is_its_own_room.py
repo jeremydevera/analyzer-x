@@ -299,12 +299,23 @@ def test_the_tab_i_reads_each_rooms_own_rules(home, monkeypatch):
     monkeypatch.setattr(sw, "LOG", home / "strategy_watcher.jsonl")
     got = {r["id"]: r for r in TestClient(api.app).get("/api/trade/profiles").json()["profiles"]}
     assert list(got) == profiles.shown()
-    # the table's rooms (Sep 30, 2026): #55D32617 judges on 15 days
-    b = got["55D32617"]
-    assert (b["cfg"]["on_winrate"], b["cfg"]["min_trades"], b["cfg"]["max_sl"]) == (70.0, 50, 2.0)
-    assert b["window_days"] == 15 and b["cfg"]["window_days"] == 15
-    assert b["mode"] == "act" and b["live"] is False
-    assert got["CC94D9FB"]["cfg"]["on_winrate"] == 80.0 and got["CC94D9FB"]["window_days"] == 30
+    # Nov 11, 2026 ("i said undeploy the old existing rooms / only deploy your 3
+    # suggested room"): the table's rooms (#55D32617 ... #BBE0A361) are OFF, so
+    # they have no tab and no popup; the tabs are Main and the three follower rooms
+    assert list(got) == ["main", "D7EN8BNV", "RSS7CUKH", "7T3VJU82"]
+    for old in profiles.OFF_NOV11:
+        assert old not in got, old
+    # the room that was Main keeps its own rules (90% wins, 20+ trades, stop 2%)
+    m = got["main"]
+    assert (m["cfg"]["on_winrate"], m["cfg"]["min_trades"]) == (90.0, 20)
+    assert m["window_days"] == 30 and m["cfg"]["window_days"] == 30
+    assert m["mode"] == "act" and m["live"] is False
+    # the retired rooms still hold the rules they were switched off with
+    b = profiles.get("55D32617")["rules"]
+    assert (b["on_winrate"], b["min_trades"], b["max_sl"], b["window_days"]) == (70.0, 50, 2.0, 15)
+    assert profiles.get("CC94D9FB")["rules"]["on_winrate"] == 80.0
+    # a follower room shows what it follows
+    assert got["D7EN8BNV"]["follows"] == "v4"
     # ...and the rooms before it are retired: no tab, so no popup either
     assert "B52662ED" not in got
 

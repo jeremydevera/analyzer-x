@@ -41,7 +41,18 @@ def test_the_ten_ids_are_the_rooms_that_exist_and_not_the_skill_rooms_or_main():
     assert not set(SKILL) & set(v4_rooms.OTHERS)
 
 
-def test_retire_others_turns_ten_watchers_off_and_leaves_main():
+def test_the_ten_are_the_ten_retired_on_nov_11():
+    """Nov 11, 2026 ("i said undeploy the old existing rooms"): the ten whose
+    watchers were switched off on Nov 10 lost their tabs too."""
+    assert set(v4_rooms.OTHERS) == set(profiles.OFF_NOV11)
+    for pid in v4_rooms.OTHERS:
+        assert profiles.retired(pid) and pid not in profiles.shown()
+        assert _mode(pid) == "off"
+    assert _mode(profiles.MAIN) != "off" or not profiles.retired(profiles.MAIN)
+
+
+def test_retire_others_turns_ten_watchers_off_and_leaves_main(old_rooms_on):
+    old_rooms_on()       # retired in production since Nov 11, 2026: revived to prove the Nov 10 switch-off
     for pid in v4_rooms.OTHERS:
         _on(pid)
     _on(profiles.MAIN)

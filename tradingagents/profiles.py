@@ -119,6 +119,19 @@ BUILTIN[1:1] = [
                  "sl_cap": 0.0, "tf": "1h", "skill": ""}},
 ]
 
+# THE OLD ROOMS ARE OFF, TABS AND ALL (operator, Nov 11, 2026: "i said undeploy
+# the old existing rooms / only deploy your 3 suggested room", after their
+# watchers had been switched off on Nov 10 with the tabs left up). "Off" is the
+# STANDING SETUP's word: no tab at all (`retired`), the room kept in BUILTIN
+# only so its runner could finish a practice trade still open (none was: all
+# ten held 0 open positions and 0 switched-on rows on Nov 11, 2026 7:35am).
+# #09439DC2 (the room `main`) is not among them: they did not name it.
+OFF_NOV11 = ("55D32617", "4FC03172", "B2404C0B", "6B08FF64", "CC94D9FB",
+             "99E79CBA", "C7396286", "1D4274C1", "8F0C7926", "BBE0A361")
+for _p in BUILTIN:
+    if _p["id"] in OFF_NOV11:
+        _p["retired"] = True
+
 
 def follows(pid: str) -> str | None:
     """"v4" for a room whose trades a follower writes from Backtest v4 (no

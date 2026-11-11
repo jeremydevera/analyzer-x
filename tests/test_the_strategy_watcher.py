@@ -598,8 +598,10 @@ def test_a_rooms_watcher_starts_on_with_that_rooms_rules(world):
     assert sw._read() == {}, "Main's watcher is untouched"
 
 
-def test_the_live_switch_arms_both_books_and_off_takes_real_back(world):
+def test_the_live_switch_arms_both_books_and_off_takes_real_back(world, old_rooms_on):
     from tradingagents import profiles
+
+    old_rooms_on("CC94D9FB")      # retired Nov 11, 2026: revived for this behaviour test
 
     with profiles.using("CC94D9FB"):
         st = sw._read()
@@ -616,8 +618,10 @@ def test_the_live_switch_arms_both_books_and_off_takes_real_back(world):
         assert s["watcher_slots"][SLOT]["real"] is False
 
 
-def test_a_real_row_the_watcher_armed_is_switched_off_by_the_same_rule(world):
+def test_a_real_row_the_watcher_armed_is_switched_off_by_the_same_rule(world, old_rooms_on):
     from tradingagents import profiles
+
+    old_rooms_on("CC94D9FB")      # retired Nov 11, 2026: revived for this behaviour test
 
     with profiles.using("CC94D9FB"):
         st = sw._read()

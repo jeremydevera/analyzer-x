@@ -198,8 +198,13 @@ def test_the_old_rooms_are_retired_and_main_is_not():
     assert not profiles.retired(profiles.MAIN)
     for pid in ("DC57174E", "CC8DC54C", "B52662ED"):
         assert profiles.retired(pid)
+    # Nov 11, 2026 ("i said undeploy the old existing rooms / only deploy your
+    # 3 suggested room"): the table's rooms are off too, no tab, watcher forced
+    # off - kept in BUILTIN only so a runner can finish an open practice trade
     for pid in TABLE:
-        assert not profiles.retired(pid)
+        assert profiles.retired(pid)
+        assert pid in profiles.OFF_NOV11
+        assert pid not in profiles.shown()
 
 
 def test_a_retired_room_switches_nothing_on():
@@ -207,6 +212,8 @@ def test_a_retired_room_switches_nothing_on():
     with profiles.using("B52662ED"):
         assert sw.mode_of({"mode": "act"}) == "off"
     with profiles.using("55D32617"):
+        assert sw.mode_of({"mode": "act"}) == "off"
+    with profiles.using("main"):                 # the one watcher room not named
         assert sw.mode_of({"mode": "act"}) == "act"
 
 

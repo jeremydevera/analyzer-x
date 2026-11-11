@@ -487,8 +487,10 @@ def test_a_custom_run_carries_its_id_in_the_title():
     assert 'run-name: "Watcher replay · from ${{ inputs.start }} · ${{ inputs.write_rule }}"' in rp
 
 
-def test_streak_bells_ring_once_and_never_for_the_runs_already_going(monkeypatch):
+def test_streak_bells_ring_once_and_never_for_the_runs_already_going(monkeypatch, old_rooms_on):
     from tradingagents import forecast_v2_daily as fd, notifications as nt
+
+    old_rooms_on(ROOM)       # #4FC03172 is retired since Nov 11, 2026 (no bell for a room that is off)
 
     rung = []
     monkeypatch.setattr(nt, "record", lambda *a, **k: rung.append(a[1]))
@@ -752,12 +754,13 @@ def test_the_daily_bell_names_each_rooms_month_against_its_range(monkeypatch):
     assert "worst coin" not in d, "no coins to avoid since Oct 07, 2026"
 
 
-def test_a_long_bell_keeps_its_count_of_the_rest(monkeypatch):
+def test_a_long_bell_keeps_its_count_of_the_rest(monkeypatch, old_rooms_on):
     """Bug hunt, round 7: notifications.record keeps 500 characters of a
     detail, so twelve names and "and 34 more on the Forecast v2 page" lost
     the count first. A part that does not fit is left out whole and counted."""
     from tradingagents import forecast_v2_daily as fd, notifications as nt
 
+    old_rooms_on(ROOM)       # a retired room rings no bell (Nov 11, 2026)
     texts = [f"C{i:02d}STOCK has lost 5 in a row in #4FC03172" for i in range(46)]
     d = fd.fit(texts[:12], left=34)
     assert len(d) <= 500 and d.endswith("more on the Forecast v2 page")

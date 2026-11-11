@@ -552,12 +552,13 @@ def test_each_short_window_room_is_its_rule_set_by_id():
     for pid, days in SHORT_ROOMS.items():
         assert fr.rule_id(_room_rule_set(days)) == pid, (pid, days)
         p = profiles.get(pid)
-        assert p and p["name"] == f"#{pid}" and not profiles.retired(pid)
+        # Nov 11, 2026: the four rooms are OFF (retired, no tab) but keep their rules
+        assert p and p["name"] == f"#{pid}" and profiles.retired(pid)
         r = p["rules"]
         assert (r["window_days"], r["judge_days"], r["on_winrate"], r["off_winrate"],
                 r["min_trades"], r["tp_rule"], r["max_sl"]) == (days, 30, 80.0, 80.0, 30, ">", 2.0)
         assert r["raw"] and not (r["max_new_per_day"] or r["max_slots"] or r["max_per_coin"])
-        assert pid in profiles.shown()
+        assert pid not in profiles.shown()
 
 
 def test_a_short_window_room_is_switched_on_by_its_window_and_off_by_30():
@@ -586,8 +587,9 @@ def test_a_room_with_two_windows_reaches_github_with_both():
     assert rooms["C7396286"]["judge_days"] == 30
 
 
-def test_the_daily_forecast_takes_the_rooms_switch_off_window(monkeypatch):
+def test_the_daily_forecast_takes_the_rooms_switch_off_window(monkeypatch, old_rooms_on):
     from tradingagents import forecast_v2_daily as fd
+    old_rooms_on("C7396286", "CC94D9FB")     # both retired Nov 11, 2026; revived for this test
     from tradingagents import profiles
     from tradingagents import room_stats as rs
     from tradingagents import strategy_watcher as sw
@@ -597,6 +599,10 @@ def test_the_daily_forecast_takes_the_rooms_switch_off_window(monkeypatch):
     got = fd.room_rules()
     assert got["C7396286"]["judge_days"] == 30 and got["C7396286"]["window_days"] == 2
     assert not got["CC94D9FB"].get("judge_days"), "a one-window room stays one window"
+    # ...and a retired room is never sent: Nov 11, 2026
+    from tradingagents import profiles as _p
+    _p.BUILTIN[:] = [dict(x, retired=True) if x["id"] == "C7396286" else x for x in _p.BUILTIN]
+    assert "C7396286" not in fd.room_rules()
 
 
 def test_the_words_name_both_windows():

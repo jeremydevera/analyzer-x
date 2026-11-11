@@ -604,3 +604,21 @@ def _isolate_kline_disk_cache(tmp_path, monkeypatch):
     yield
     _fx._KLINE_CACHE.clear()
     _sm._MEMO.clear()
+
+
+@pytest.fixture
+def old_rooms_on(monkeypatch):
+    """Nov 11, 2026: the ten older watcher rooms (`profiles.OFF_NOV11`) are
+    retired in production, so a test about a BEHAVIOUR of an active watcher room
+    (short-window judging, bells, forecast features, the live switch) asks for
+    the ones it needs, un-retired for that test only:
+    `old_rooms_on("C7396286", ...)`; no argument = all ten. A test about the
+    CONFIGURATION must not use this - it pins the retired truth instead."""
+    from tradingagents import profiles
+
+    def _revive(*ids):
+        want = set(ids) or set(profiles.OFF_NOV11)
+        monkeypatch.setattr(profiles, "BUILTIN", [
+            {k: v for k, v in p.items() if k != "retired"} if p["id"] in want else p
+            for p in profiles.BUILTIN])
+    return _revive

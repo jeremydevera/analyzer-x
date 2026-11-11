@@ -23,8 +23,14 @@ ROOM = "4FC03172"
 
 
 @pytest.fixture(autouse=True)
-def sandbox(tmp_path, monkeypatch):
-    """Main's and every room's files under tmp_path; caches cleared."""
+def sandbox(tmp_path, monkeypatch, old_rooms_on):
+    """Main's and every room's files under tmp_path; caches cleared.
+
+    Nov 11, 2026: the ten older watcher rooms are retired in production
+    (profiles.OFF_NOV11). These tests are about what the Forecast says of a room
+    that is still ON (#4FC03172 and #CC94D9FB are the examples), so those ten
+    are revived for this file only; B52662ED stays retired for "turned off"."""
+    old_rooms_on()
     monkeypatch.setattr(at, "LEDGER_PATH", tmp_path / "auto_trade_ledger.jsonl")
     monkeypatch.setattr(at, "STATE_PATH", tmp_path / "auto_trade_state.json")
     monkeypatch.setattr(rs, "rules_of", lambda room: {"window_days": 30, "on_winrate": 70,

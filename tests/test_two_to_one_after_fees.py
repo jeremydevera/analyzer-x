@@ -212,8 +212,10 @@ def test_the_room_for_bbe0a361_is_that_rule_set_exactly():
     from tradingagents import room_strategies as rst
 
     p = profiles.get("BBE0A361")
-    assert p and p["name"] == "#BBE0A361" and not profiles.retired("BBE0A361")
-    assert "BBE0A361" in profiles.shown()
+    # Nov 11, 2026: "undeploy the old existing rooms" - the room keeps its rules,
+    # its tab is gone (retired, watcher forced off)
+    assert p and p["name"] == "#BBE0A361" and profiles.retired("BBE0A361")
+    assert "BBE0A361" not in profiles.shown()
     r = p["rules"]
     assert fr.rule_id(rst.cfg(30, 65.0, 30, "any", 1.0, 2.0)) == "BBE0A361"
     assert fr.rule_id({**r, "coin_slices": fr.COIN_SLICES}) == "BBE0A361"
@@ -222,4 +224,4 @@ def test_the_room_for_bbe0a361_is_that_rule_set_exactly():
     assert r["raw"] and not (r["max_new_per_day"] or r["max_slots"] or r["max_per_coin"])
     assert "min_pay" not in r, "the rooms' own 2:1 after fees"
     api = (Path(__file__).resolve().parents[1] / "webapp" / "src" / "lib" / "api.ts").read_text(encoding="utf-8")
-    assert '{ id: "BBE0A361", name: "#BBE0A361" }' in api, "a tab on the screen"
+    assert 'id: "BBE0A361"' not in api.split("export const PROFILES", 1)[1].split("];", 1)[0],         "no tab on the screen since Nov 11, 2026"

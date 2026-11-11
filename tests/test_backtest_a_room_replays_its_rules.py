@@ -32,6 +32,14 @@ def _no_two_to_one_floor(monkeypatch):
     monkeypatch.setitem(_wp.DEFAULTS, "min_pay", 0.0)
 
 
+@pytest.fixture(autouse=True)
+def _the_room_is_on(old_rooms_on):
+    """#6B08FF64 is retired since Nov 11, 2026 (profiles.OFF_NOV11) and Backtest a
+    room replays only rooms that have a tab; this file is about the replay of a
+    room that is ON, so the one room it uses is revived for it."""
+    old_rooms_on("6B08FF64")
+
+
 def _ms(y, m, d, h=0, mi=0):
     return int(dt.datetime(y, m, d, h, mi).timestamp() * 1000)
 

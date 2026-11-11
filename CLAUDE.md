@@ -1739,6 +1739,7 @@ tighter, raw, practice, $5 x 20x):
 | #8F0C7926 | on: last 4 days · off: DEMO 30 days | 80% | 30 inside the 4 days |
 | #BBE0A361 (Oct 17, 2026) | 30 days; any TP, stop 1% or tighter, target 2% or wider | 65% | 30 |
 | #DC57174E, #CC8DC54C, #B52662ED | retired, no tab | — | — |
+| every room above except #09439DC2 (Nov 11, 2026) | retired, no tab — replaced by the skill rooms #D7EN8BNV, #RSS7CUKH, #7T3VJU82 | — | — |
 
 The four short-window rooms were added Oct 07, 2026 (see "Rooms that switch
 on by their last 1-4 days" below).
@@ -3161,9 +3162,13 @@ their backtest did"*, and the played-back design with *"go start use suporpower"
   is a lead to practice, never a reason for real money.
 * **What was switched off:** the watchers of #55D32617, #4FC03172, #B2404C0B, #6B08FF64, #CC94D9FB,
   #99E79CBA, #C7396286, #1D4274C1, #8F0C7926 and #BBE0A361 (`python -m tradingagents.v4_rooms
-  retire_others`, one reason line each in the room's deploy history). Their tabs and past trades
-  stay; no slot is disarmed (all held 0 switched-on rows on Nov 10, 2026, so a slot holding "real"
-  is never touched); #09439DC2 (the room `main`) was not named and is untouched.
+  retire_others`, one reason line each in the room's deploy history); no slot is disarmed (all held
+  0 switched-on rows on Nov 10, 2026, so a slot holding "real" is never touched). **And then OFF,
+  tabs and all (Nov 11, 2026 7:35am: *"i said undeploy the old existing rooms / only deploy your 3
+  suggested room"*)** — switching their watchers off and leaving the tabs up was the wrong reading
+  of "remove the existing strategy": the ten are `retired` (`profiles.OFF_NOV11`), out of
+  `PROFILES` and the Main tab's past trades, kept in `BUILTIN` only (0 open trades then). The tabs
+  are now `main` (#09439DC2) and the three skill rooms. #09439DC2 was not named and is untouched.
 * **First run (Nov 11, 2026):** the 2:16am attempt was given up at its 1:00am deadline and a PC
   restart cut the next one off, so the first refresh was started by hand at 5:56am
   (`v4_daily.start_now`) and finished at 6:22am: 5,395 coin-timeframes of 1,079 coins, 242,508

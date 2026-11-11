@@ -25,7 +25,7 @@ SCREEN = (WEB / "components/trade/AutoTradeScreen.tsx").read_text(encoding="utf-
 PANEL_PATH = WEB / "components/trade/V4FollowPanel.tsx"
 V4TAB = (WEB / "components/backtest-v4/V4Strategies.tsx").read_text(encoding="utf-8")
 ROOM = "D7EN8BNV"
-OTHER = "55D32617"
+OTHER = "main"      # a watcher room still on screen (the old ten are off since Nov 11, 2026)
 
 
 @pytest.fixture
@@ -170,7 +170,11 @@ def test_screen_puts_the_follow_panel_in_place_of_the_watcher_and_keys():
     api_ts = (WEB / "lib/api.ts").read_text(encoding="utf-8")
     for pid in ("D7EN8BNV", "RSS7CUKH", "7T3VJU82"):
         assert re.search(rf'id: "{pid}", name: "#{pid}", follows: "v4"', api_ts), pid
-    assert "follows: \"v4\"" not in re.search(r'\{ id: "55D32617".*', api_ts).group(0)
+    # a watcher room is no follower; the ten older ones (profiles.OFF_NOV11) have no tab at all
+    assert "follows: \"v4\"" not in re.search(r'\{ id: "main".*', api_ts).group(0)
+    block = api_ts.split("export const PROFILES", 1)[1].split("];", 1)[0]
+    for old in profiles.OFF_NOV11:
+        assert f'id: "{old}"' not in block, old
 
 
 def test_panel_columns_and_cost_line():

@@ -12,15 +12,20 @@ ROOT = Path(__file__).resolve().parent.parent
 IDS = ["D7EN8BNV", "RSS7CUKH", "7T3VJU82"]
 
 
-def test_the_three_rooms_have_tabs_after_bbe0a361():
+def test_the_three_rooms_have_tabs_right_after_main():
+    """Nov 11, 2026: "i said undeploy the old existing rooms / only deploy your
+    3 suggested room" - the ten older watcher rooms are off, no tab, so the
+    tabs are #09439DC2 (main) and the three follower rooms, in that order."""
     shown = profiles.shown()
-    i = shown.index("BBE0A361")
-    assert shown[i + 1:i + 4] == IDS
+    assert shown == ["main"] + IDS
+    for old in profiles.OFF_NOV11:
+        assert old not in shown and profiles.retired(old)
+    assert not profiles.retired("main")
     for pid in IDS:
         assert profiles.follows(pid) == "v4"
         assert profiles.get(pid)["rules"] is None
         assert profiles.name_of(pid) == f"#{pid}"
-    assert profiles.follows("BBE0A361") is None
+    assert profiles.follows("BBE0A361") is None      # retired, still no follower
     assert profiles.follows("main") is None
     assert profiles.v4_rule("main") is None
 
@@ -37,8 +42,10 @@ def test_follower_rooms_switch_nothing_on(pid):
 
     with profiles.using(pid):
         assert sw.mode_of({"mode": "act"}) == "off"
-    with profiles.using("55D32617"):
+    with profiles.using("main"):                     # a watcher room still acts
         assert sw.mode_of({"mode": "act"}) == "act"
+    with profiles.using("55D32617"):                 # retired Nov 11, 2026: forced off
+        assert sw.mode_of({"mode": "act"}) == "off"
 
 
 @pytest.mark.parametrize("pid", IDS)
@@ -111,7 +118,8 @@ def test_the_daily_forecast_sends_no_follower_room_to_github():
 
     got = fd.room_rules()
     assert not set(IDS) & set(got)
-    assert "BBE0A361" in got and "main" in got
+    assert "main" in got
+    assert not set(profiles.OFF_NOV11) & set(got)    # the retired ten are off
 
 
 @pytest.mark.parametrize("pid", IDS)
@@ -128,7 +136,7 @@ def test_backtest_a_room_refuses_a_follower_by_name(pid):
     assert str(e.value) == want
     with pytest.raises(ValueError):
         room_replay.rules_for(pid)
-    room_replay._check_room("BBE0A361")          # a watcher room still passes
+    room_replay._check_room("main")              # a watcher room still passes
 
 
 def test_the_watcher_and_30_day_loops_skip_a_follower_room():

@@ -303,6 +303,25 @@ def _keep_the_row_index_current() -> None:
                         _th.Thread(target=_vfw.tick, name="v3-forward", daemon=True).start()
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[v3 forward] could not start its thread: {exc!r}", flush=True)
+                # THE SKILL ROOMS (operator, Nov 10, 2026): Backtest v4 measured
+                # again every day and each room's list written once
+                # (v4_daily), and the follower that trades every closed
+                # candle of those lists (v4_follow). Each in its OWN thread:
+                # a chain step can block for three hours
+                try:
+                    from tradingagents import v4_daily as _v4d
+
+                    if not any(t.name == "v4-daily" for t in _th.enumerate()):
+                        _th.Thread(target=_v4d.tick, name="v4-daily", daemon=True).start()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[v4 daily] could not start its thread: {exc!r}", flush=True)
+                try:
+                    from tradingagents import v4_follow as _v4f
+
+                    if not any(t.name == "v4-follow" for t in _th.enumerate()):
+                        _th.Thread(target=_v4f.tick, name="v4-follow", daemon=True).start()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[v4 follow] could not start its thread: {exc!r}", flush=True)
                 # NO AUTOMATIC CANDLE TOP-UP. candle_autopilot.tick() ran here
                 # from 2026-09-06 to 2026-09-09 and started an UPDATE by itself
                 # whenever the store was 3h stale. The operator saw
@@ -814,6 +833,15 @@ def v4_strategies(coin: str | None = None, tf: str | None = None,
         "tp_over_sl": tp_over_sl, "days": days, "months": months, "unseen": unseen,
         "row_id": row_id, "base_margin": base_margin, "sort": sort, "desc": desc,
         "limit": limit, "offset": offset})
+
+
+@app.get("/api/v4/daily")
+def v4_daily_state() -> dict:
+    """Where Backtest v4's daily refresh is (tradingagents/v4_daily.py): only READS - the chain's
+    own thread writes its state, and an unreadable state is named here, never overwritten."""
+    from tradingagents import v4_daily
+
+    return v4_daily.status()
 
 
 @app.get("/api/v4/facets")
@@ -2025,7 +2053,7 @@ def trade_profiles() -> dict:
                         "cfg": {k: cfg0[k] for k in sw.LIVE_RULES},
                         "window_days": cfg0["window_days"], "running": 0, "rows": 0,
                         "follows": _pf.follows(pid), "v4_rule": _pf.v4_rule(pid),
-                        "deployed_at": None})
+                        "rule_words": _v4_rule_words(pid), "deployed_at": None})
             continue
         with _pf.using(pid):
             st = sw._read()
@@ -3234,6 +3262,64 @@ def _own_exchange_positions(live: list, state: dict | None = None) -> list:
     return out
 
 
+def _v4_rule_words(pid: str) -> str | None:
+    """A follower room's rule in the words Forecast v4 prints (None for any other room)."""
+    from tradingagents import forecast_v4 as _f4, profiles as _pf
+
+    rule = _pf.v4_rule(pid)
+    return _f4.rule_words(**rule) if rule else None
+
+
+def _follow_heartbeat(pid: str) -> dict | None:
+    """What a follower room's ribbon says about its follower (None for any other room): the
+    follower's own status, whether its last pass is too old to call it following, and when the
+    next 15-minute close it acts on comes. Only READS - the follower's and the chain's own
+    threads write their files."""
+    from tradingagents import profiles as _pf, v4_daily as _v4d, v4_follow as _v4f
+
+    if not _pf.follows(pid):
+        return None
+    st = _v4f.status(pid)
+    last = st.get("last_pass_s")
+    stale = (not last) or (_time.time() - float(last) > _v4f.STALE_S)
+    held_why = None
+    if st.get("held_at") is not None:
+        try:
+            held_why = _v4d.status().get("why") or None
+        except Exception:                                      # noqa: BLE001
+            held_why = None
+    nxt = (int(float(last)) // _v4f.EVERY_S + 1) * _v4f.EVERY_S if last else None
+    return {"last_pass_s": last, "last_candle_ms": st.get("last_candle_ms"), "next_candle_s": nxt,
+            "held_at": st.get("held_at"), "held_why": held_why, "why": st.get("why"),
+            "stale": bool(stale), "errors": st.get("errors") or [], "filled_in": st.get("filled_in") or 0}
+
+
+@app.get("/api/trade/v4-follow")
+def trade_v4_follow(page: int = 1) -> dict:
+    """The room tab's follower panel (the room is the X-TA-Profile header): the rule in words, the
+    strategies switched on TODAY with their last-30-day record, the daily refresh, and yesterday's
+    agreement with the backtest. Paged on the server, ten at a time."""
+    from tradingagents import forecast_v2_api as _f2a, profiles as _pf, v4_daily as _v4d, v4_follow as _v4f
+
+    pid = _pf.current()
+    if not _pf.follows(pid):
+        return {"follows": None}
+    st = _v4f.status(pid)
+    on = list(st.get("switched_on") or [])
+    per = _f2a.PER_PAGE
+    pages = max(1, -(-len(on) // per))
+    page = min(max(1, int(page)), pages)
+    rows = [{"id": r.get("id"), "coin": r.get("coin"), "tf": r.get("tf"), "strategy": r.get("strategy"),
+             "label": r.get("label"), "skill": r.get("skill"), "n": int(r.get("n") or 0),
+             "wins": int(r.get("wins") or 0),
+             "win_rate": round(100.0 * int(r.get("wins") or 0) / int(r["n"]), 1) if r.get("n") else None}
+            for r in on[(page - 1) * per: page * per]]
+    return {"follows": "v4", "room": pid, "rule_words": _v4_rule_words(pid), "heartbeat": _follow_heartbeat(pid),
+            "switched_on": rows, "total_on": len(on), "page": page, "pages": pages, "per_page": per,
+            "fallback_from": st.get("fallback_from"), "agreement": st.get("agreement"),
+            "daily": _v4d.status()}
+
+
 @app.get("/api/trade/summary")
 def trade_summary() -> dict:
     """The status ribbon: process, modes, wallet, today, all-time, open."""
@@ -3279,6 +3365,10 @@ def trade_summary() -> dict:
             })
     # the kept trade rows: a re-read of #4FC03172's whole record was 2.0 s
     # of every summary, three times over (RCA-2026-10-07-L)
+    from tradingagents import profiles as _pf
+
+    room_now = _pf.current()
+    follows_now = _pf.follows(room_now)
     life_total, paper_all = _all_time_records(at.ledger_trades(0))
     open_real = round(sum(r["unrealized"] for r in open_rows), 2)
     return {
@@ -3296,6 +3386,9 @@ def trade_summary() -> dict:
         "open_positions": open_rows,
         "paper_positions": paper_rows,
         "paper_all_time": paper_all,
+        # a SKILL ROOM has no runner: its follower's heartbeat stands in the ribbon's badge
+        "follows": follows_now,
+        "follow": _follow_heartbeat(room_now) if follows_now else None,
     }
 
 

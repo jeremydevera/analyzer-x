@@ -9,6 +9,7 @@ import SummaryRibbon from "./SummaryRibbon";
 import PositionsPanel from "./PositionsPanel";
 import StrategiesGrid from "./StrategiesGrid";
 import WatcherPanel from "./WatcherPanel";
+import V4FollowPanel from "./V4FollowPanel";
 import PnlPanel from "./PnlPanel";
 import FeedPanel from "./FeedPanel";
 import CredentialsPanel from "./CredentialsPanel";
@@ -45,8 +46,10 @@ function firstRoom(): string {
 /** ONE ROOM'S PANELS, redrawn only when ITS props change (Oct 01, 2026). A
  *  tab click changes `active` on two rooms — the one left and the one opened —
  *  so the other four, #4FC03172's 2,594 rows among them, are not redrawn. */
-const RoomBody = memo(function RoomBody({ id, active, busy, blurred, tick, bump }: {
+const RoomBody = memo(function RoomBody({ id, active, busy, blurred, tick, bump, follows }: {
   id: string; active: boolean; busy: boolean; blurred: boolean; tick: number; bump: () => void;
+  /** "v4": a skill room, traded by a follower of Backtest v4 - no watcher, no keys */
+  follows?: "v4";
 }) {
   return (
     <RoomScope id={id} active={active}>
@@ -57,8 +60,12 @@ const RoomBody = memo(function RoomBody({ id, active, busy, blurred, tick, bump 
         <SummaryRibbon key={`ribbon-${tick}`} onChanged={bump} />
         <PositionsPanel onChanged={bump} />
         <StrategiesGrid />
-        <WatcherPanel />
-        <CredentialsPanel />
+        {follows ? <V4FollowPanel /> : (
+          <>
+            <WatcherPanel />
+            <CredentialsPanel />
+          </>
+        )}
         <TradeHistory />
         <PnlPanel />
         <FeedPanel />
@@ -204,14 +211,25 @@ export default function AutoTradeScreen() {
                 {!r && !infoErr && <p className="mt-2 text-gray-400">reading…</p>}
                 {r && (
                   <>
-                    <p className="mt-1 text-gray-500 dark:text-gray-400">
-                      Smart Watcher <b className={r.mode === "act" ? "text-success-600" : "text-gray-500"}>{r.mode === "act" ? "ON" : r.mode === "preview" ? "PREVIEW" : "OFF"}</b>
-                      {" · "}real money <b className={r.live ? "text-error-500" : "text-gray-500"}>{r.live ? "ON" : "off"}</b>
-                      {" · "}{r.rows} row{r.rows === 1 ? "" : "s"} switched on
-                    </p>
-                    <ul className="mt-2 flex list-disc flex-col gap-1 pl-4 text-gray-700 dark:text-gray-300">
-                      {rules(r.cfg, r.window_days, r.live).map((t) => <li key={t}>{t}</li>)}
-                    </ul>
+                    {r.follows ? (
+                      <p className="mt-2 text-gray-700 dark:text-gray-300">
+                        follows Backtest v4: {r.rule_words ?? "its rule is not available"}
+                        <span className="mt-1 block text-gray-500 dark:text-gray-400">
+                          no watcher, no real money: every trade is practice, written by the follower
+                        </span>
+                      </p>
+                    ) : (
+                      <>
+                        <p className="mt-1 text-gray-500 dark:text-gray-400">
+                          Smart Watcher <b className={r.mode === "act" ? "text-success-600" : "text-gray-500"}>{r.mode === "act" ? "ON" : r.mode === "preview" ? "PREVIEW" : "OFF"}</b>
+                          {" · "}real money <b className={r.live ? "text-error-500" : "text-gray-500"}>{r.live ? "ON" : "off"}</b>
+                          {" · "}{r.rows} row{r.rows === 1 ? "" : "s"} switched on
+                        </p>
+                        <ul className="mt-2 flex list-disc flex-col gap-1 pl-4 text-gray-700 dark:text-gray-300">
+                          {rules(r.cfg, r.window_days, r.live).map((t) => <li key={t}>{t}</li>)}
+                        </ul>
+                      </>
+                    )}
                     {/* when the room was deployed: its trade record's first runner start */}
                     <p className="mt-3 border-t border-gray-100 pt-2 text-[11px] text-gray-500 dark:border-gray-800 dark:text-gray-400">
                       {r.deployed_at ? <>deployed {fmtWhen(r.deployed_at)}</> : "deployed: not started yet"}
@@ -239,7 +257,8 @@ export default function AutoTradeScreen() {
       {room && PROFILES.map((p) => (
         <RoomBody key={p.id} id={p.id} active={p.id === room}
                   busy={p.id === room && shown.length > 0}
-                  blurred={p.id === room && blurred} tick={tick} bump={bump} />
+                  blurred={p.id === room && blurred} tick={tick} bump={bump}
+                  follows={p.follows} />
       ))}
     </div>
   );

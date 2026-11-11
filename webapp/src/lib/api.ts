@@ -132,7 +132,7 @@ function freeLane(behind = false, chrome = false): void {
 // the three before them were switched off. OFF MEANS NO TAB (Oct 01, 2026:
 // "if i say off you should completely remoev the tab"): a retired room is not
 // listed here at all. Held equal to profiles.shown() by a test.
-export const PROFILES: readonly { id: string; name: string; display_id?: string }[] = [
+export const PROFILES: readonly { id: string; name: string; display_id?: string; follows?: "v4" }[] = [
   // THE ROOM THAT WAS MAIN (operator, Oct 14, 2026: "the main tab is a room
   // strategy so what i want is to assign and id for it and create a new tab
   // for it"): its id stays "main" (its folder and its runner), its NAME is
@@ -155,10 +155,12 @@ export const PROFILES: readonly { id: string; name: string; display_id?: string 
   // after real fees (prompt 4, BANANA 30m: +$2.15 a win, -$1.03 a loss)
   { id: "BBE0A361", name: "#BBE0A361" },
   // Nov 10, 2026: Forecast v4's three best rule sets as practice rooms,
-  // traded by a follower from Backtest v4's engine (no runner ever)
-  { id: "D7EN8BNV", name: "#D7EN8BNV" },
-  { id: "RSS7CUKH", name: "#RSS7CUKH" },
-  { id: "7T3VJU82", name: "#7T3VJU82" },
+  // traded by a follower from Backtest v4's engine (no runner ever): their
+  // tab shows the follow line and panel, never the runner's buttons. Held
+  // equal to profiles.follows by a test.
+  { id: "D7EN8BNV", name: "#D7EN8BNV", follows: "v4" },
+  { id: "RSS7CUKH", name: "#RSS7CUKH", follows: "v4" },
+  { id: "7T3VJU82", name: "#7T3VJU82", follows: "v4" },
 ];
 
 /** How a room is PRINTED — the one place in the browser, as
@@ -1866,6 +1868,54 @@ export interface TradeSummary {
    *  (`since`, seconds; null = none yet) */
   paper_all_time?: { total: number; wins: number; losses: number; trades: number;
                      since: number | null };
+  /** "v4" in a skill room: no runner, a follower instead (v4_follow.py) */
+  follows?: "v4" | null;
+  follow?: FollowBeat | null;
+}
+
+/** A follower room's heartbeat, as the ribbon reads it (GET /api/trade/summary). */
+export interface FollowBeat {
+  last_pass_s: number | null;
+  /** when the newest candle it processed CLOSED (ms) */
+  last_candle_ms: number | null;
+  /** the next 15-minute close after the last pass (s) */
+  next_candle_s: number | null;
+  /** midnight UTC (s) of the list it is waiting for, else null */
+  held_at: number | null;
+  held_why: string | null;
+  why: string | null;
+  /** the last pass is more than 30 minutes old, or there was none */
+  stale: boolean;
+  errors: string[];
+  filled_in: number;
+}
+
+/** One strategy a skill room switched on today, with its last 30 days. */
+export interface FollowRow {
+  id: string; coin: string; tf: string; strategy: string; label: string; skill: string;
+  n: number; wins: number; win_rate: number | null;
+}
+
+/** GET /api/trade/v4-follow: the follower panel's whole answer. */
+export interface V4Follow {
+  follows: "v4" | null;
+  room?: string;
+  rule_words?: string;
+  heartbeat?: FollowBeat | null;
+  switched_on?: FollowRow[];
+  total_on?: number; page?: number; pages?: number; per_page?: number;
+  fallback_from?: string | null;
+  agreement?: {
+    day_s?: number; same?: number; of?: number; dollars_apart?: number; error?: string;
+    only_practice?: string[]; only_backtest?: string[];
+  } | null;
+  daily?: V4Daily;
+}
+
+/** GET /api/v4/daily: where Backtest v4's daily refresh is. */
+export interface V4Daily {
+  phase: string; day?: string | null; why: string; error?: string;
+  done_at?: number | null; landed_s?: number | null; next_s?: number | null;
 }
 
 export interface CredStatus {
@@ -1954,6 +2004,11 @@ export interface RoomInfo {
   rows: number;
   /** when the room was deployed: its trade record's first runner start (s) */
   deployed_at?: number | null;
+  /** "v4" for a skill room, which follows Backtest v4 instead of running a
+   *  watcher; `rule_words` is its rule as Forecast v4 prints it */
+  follows?: "v4" | null;
+  v4_rule?: Record<string, unknown> | null;
+  rule_words?: string | null;
 }
 
 /** A row's last 30 days, from tradingagents/rolling30.py. */
@@ -2185,6 +2240,8 @@ export const tradeApi = {
   credsForget: () => post<{ cleared: boolean } & CredStatus>("/api/trade/credentials/forget", {}),
   credsTest: (symbol = "BTC_USDT") => post<Preflight>("/api/trade/credentials/test", { symbol }),
   summary: () => get<TradeSummary>("/api/trade/summary"),
+  /** a skill room's follower panel (the room is the header); paged by the server */
+  v4Follow: (page = 1) => get<V4Follow>(`/api/trade/v4-follow?page=${page}`),
   strategies: (catalog = false) =>
     get<TradeStrategies>(`/api/trade/strategies${catalog ? "?catalog=true" : ""}`),
   settingsGet: () => get<{ settings: Record<string, unknown> }>("/api/trade/settings"),

@@ -35,6 +35,7 @@ type Log = { found: boolean; total_profit: number; trades: number; wins: number;
   win_rate: number; worst_run: number; worst_run_n: number; dip: number; split_s: number;
   window: { days: number | null; unseen: boolean; from_s: number | null };
   months: Record<string, number>; log: Trade[]; label: string; skill: string };
+type Daily = { phase: string; why: string; done_at?: number | null; next_s?: number | null };
 type Facets = { coins: string[]; tfs: string[]; strategies: string[]; skills: string[] };
 
 const PER_PAGE = 50;
@@ -112,6 +113,7 @@ export default function V4Strategies() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [facets, setFacets] = useState<Facets | null>(null);
+  const [daily, setDaily] = useState<Daily | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [log, setLog] = useState<Log | null>(null);
   const [logErr, setLogErr] = useState<string | null>(null);
@@ -121,6 +123,8 @@ export default function V4Strategies() {
 
   useEffect(() => {
     fetch(`${API_BASE}/api/v4/facets`, { cache: "no-store" }).then((r) => r.json()).then(setFacets).catch(() => {});
+    // where the daily refresh is (the server only reads it): said under the title
+    fetch(`${API_BASE}/api/v4/daily`, { cache: "no-store" }).then((r) => r.json()).then(setDaily).catch(() => {});
   }, []);
 
   // live typing: every change asks the store again, after a short pause; an old answer never lands
@@ -183,6 +187,12 @@ export default function V4Strategies() {
           after the exchange’s 0.075% fee each way and the coin’s usual gap; a stop and a target are checked on the candle’s close.
           Each strategy was chosen on the older 70% of its candles and judged on the newest 30% it never saw.
           {m ? ` Candles run to ${fmtWhen(m.data_end_s)}; filed ${fmtWhen(m.built_s)}.` : ""}
+        </p>
+        {/* the daily refresh, and what the trades do not pay (the rooms that follow this tab say the same) */}
+        <p className="mt-1 text-theme-sm text-gray-500 dark:text-gray-400">
+          Backtest v4 is refreshed every day
+          {daily ? ` — ${daily.phase}${daily.why ? `: ${daily.why}` : ""}${daily.next_s ? ` · next ${fmtWhen(daily.next_s)}` : ""}` : ""}.
+          Every trade pays its coin&apos;s usual gap, not its own minute&apos;s order book (100% typical cost).
         </p>
       </div>
 

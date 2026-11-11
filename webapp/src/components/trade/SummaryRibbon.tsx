@@ -3,7 +3,7 @@
  * from /api/trade/summary, the same numbers the runner acts on. */
 import { useState, useRef } from "react";
 import { LATE_MS, markReady } from "@/lib/loading";
-import { fmtMoney, fmtWhen, TradeSummary } from "@/lib/api";
+import { fmtMoney, fmtWhen, fmtWhenMs, FollowBeat, TradeSummary } from "@/lib/api";
 import { useRoomApis } from "@/lib/room";
 import { useLiveRefresh } from "@/lib/live";
 import Badge from "@/components/ui/badge/Badge";
@@ -21,6 +21,28 @@ function Tile({ label, value, sub, tone }: { label: string; value: string; sub: 
       <p className="mt-0.5 text-theme-xs text-gray-500 dark:text-gray-400">{sub}</p>
     </div>
   );
+}
+
+/** A skill room's one line in place of the runner's badge (operator, Nov 10, 2026: the room is
+ *  traded by a follower of Backtest v4, so there is no runner to start, stop or panic). Every
+ *  word comes from the follower's own heartbeat; the dates are the one formatter. */
+function followLine(f: FollowBeat | null | undefined): { text: string; ok: boolean } {
+  if (!f) return { text: "not following: the follower has not reported yet", ok: false };
+  if (f.stale) return { text: `not following: ${f.why ?? "the follower has not run yet"}`, ok: false };
+  if (f.held_at != null) {
+    return {
+      text: `waiting for today's list (${f.held_why ?? "the daily refresh has not landed it yet"}); `
+        + `trades since ${fmtWhen(f.held_at)} are filled in when it lands`,
+      ok: false,
+    };
+  }
+  if (f.errors.length > 0) return { text: `not following: ${f.why ?? f.errors[0]}`, ok: false };
+  return {
+    text: "PAPER · follows Backtest v4"
+      + ` · last candle ${f.last_candle_ms != null ? fmtWhenMs(f.last_candle_ms) : "none yet"}`
+      + ` · next ${f.next_candle_s != null ? fmtWhen(f.next_candle_s) : "—"}`,
+    ok: true,
+  };
 }
 
 export default function SummaryRibbon({ onChanged }: { onChanged?: () => void }) {
@@ -92,58 +114,69 @@ export default function SummaryRibbon({ onChanged }: { onChanged?: () => void })
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Badge size="sm" color={s.pid ? (s.mode.includes("LIVE") ? "error" : "success") : "light"}>
-          {s.mode}{s.pid ? ` · pid ${s.pid}` : ""}
-        </Badge>
-        {s.halted && <Badge size="sm" color="warning">HALTED — no new entries</Badge>}
-        {sup && !s.pid && sup.wants_runner && (
-          <Badge size="sm" color="error">
-            DIED{sup.last_beat_seconds != null
-              ? ` — last heartbeat ${Math.round(sup.last_beat_seconds / 60)} min ago`
-              : ""}
+        {s.follows ? (
+          <span className={`text-theme-sm font-medium ${followLine(s.follow).ok
+            ? "text-success-600 dark:text-success-500" : "text-warning-600 dark:text-warning-500"}`}>
+            {followLine(s.follow).text}
+          </span>
+        ) : (
+          <>
+          <Badge size="sm" color={s.pid ? (s.mode.includes("LIVE") ? "error" : "success") : "light"}>
+            {s.mode}{s.pid ? ` · pid ${s.pid}` : ""}
           </Badge>
-        )}
-        {sup && s.pid && sup.stale && (
-          <Badge size="sm" color="warning">
-            no heartbeat for {Math.round((sup.last_beat_seconds ?? 0) / 60)} min
-          </Badge>
-        )}
-        {sup && !sup.disk_ok && (
-          <Badge size="sm" color="error">
-            disk almost full — {sup.free_mb.toLocaleString()} MB free
-          </Badge>
+          {s.halted && <Badge size="sm" color="warning">HALTED — no new entries</Badge>}
+          {sup && !s.pid && sup.wants_runner && (
+            <Badge size="sm" color="error">
+              DIED{sup.last_beat_seconds != null
+                ? ` — last heartbeat ${Math.round(sup.last_beat_seconds / 60)} min ago`
+                : ""}
+            </Badge>
+          )}
+          {sup && s.pid && sup.stale && (
+            <Badge size="sm" color="warning">
+              no heartbeat for {Math.round((sup.last_beat_seconds ?? 0) / 60)} min
+            </Badge>
+          )}
+          {sup && !sup.disk_ok && (
+            <Badge size="sm" color="error">
+              disk almost full — {sup.free_mb.toLocaleString()} MB free
+            </Badge>
+          )}
+          </>
         )}
         {note && <span className="text-theme-xs font-medium text-error-500">{note}</span>}
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          {s.pid
-            ? <Button size="sm" variant="outline" disabled={busy} onClick={() => runner("stop")}>STOP RUNNER</Button>
-            : <Button size="sm" disabled={busy} onClick={() => runner("start")}>START RUNNER</Button>}
-          <Button size="sm" variant="outline" disabled={busy} onClick={halt}>
-            {s.halted ? "RESUME ENTRIES" : "HALT ENTRIES"}
-          </Button>
-          <label className="flex items-center gap-1.5 text-theme-xs text-gray-600 dark:text-gray-300"
-            title={sup?.installed
-              ? `macOS restarts the runner within ${sup.throttle_seconds}s of a crash, while it is meant to be up. A deliberate STOP is respected.`
-              : "off: if the runner dies, nothing brings it back"}>
-            <input type="checkbox" checked={!!sup?.installed}
-              onChange={async (e) => {
-                setBusy(true);
-                try { await tradeApi.setSupervisor(e.target.checked); await loadSup(); }
-                catch (err) { setErr(String(err)); } finally { setBusy(false); }
-              }}
-              className="h-4 w-4 accent-brand-500" />
-            auto-restart
-          </label>
-          <label className="flex items-center gap-1.5 text-theme-xs text-gray-600 dark:text-gray-300">
-            <input type="checkbox" checked={armed} onChange={(e) => setArmed(e.target.checked)}
-              className="h-4 w-4 accent-error-500" />
-            arm PANIC
-          </label>
-          <button disabled={!armed || busy} onClick={panic}
-            className="rounded-lg bg-error-500 px-3 py-2 text-theme-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">
-            PANIC — close all
-          </button>
-        </div>
+        {!s.follows && (
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {s.pid
+              ? <Button size="sm" variant="outline" disabled={busy} onClick={() => runner("stop")}>STOP RUNNER</Button>
+              : <Button size="sm" disabled={busy} onClick={() => runner("start")}>START RUNNER</Button>}
+            <Button size="sm" variant="outline" disabled={busy} onClick={halt}>
+              {s.halted ? "RESUME ENTRIES" : "HALT ENTRIES"}
+            </Button>
+            <label className="flex items-center gap-1.5 text-theme-xs text-gray-600 dark:text-gray-300"
+              title={sup?.installed
+                ? `macOS restarts the runner within ${sup.throttle_seconds}s of a crash, while it is meant to be up. A deliberate STOP is respected.`
+                : "off: if the runner dies, nothing brings it back"}>
+              <input type="checkbox" checked={!!sup?.installed}
+                onChange={async (e) => {
+                  setBusy(true);
+                  try { await tradeApi.setSupervisor(e.target.checked); await loadSup(); }
+                  catch (err) { setErr(String(err)); } finally { setBusy(false); }
+                }}
+                className="h-4 w-4 accent-brand-500" />
+              auto-restart
+            </label>
+            <label className="flex items-center gap-1.5 text-theme-xs text-gray-600 dark:text-gray-300">
+              <input type="checkbox" checked={armed} onChange={(e) => setArmed(e.target.checked)}
+                className="h-4 w-4 accent-error-500" />
+              arm PANIC
+            </label>
+            <button disabled={!armed || busy} onClick={panic}
+              className="rounded-lg bg-error-500 px-3 py-2 text-theme-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">
+              PANIC — close all
+            </button>
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
         <Tile label="Futures wallet" value={s.equity == null ? "—" : s.equity.toLocaleString("en-US", { minimumFractionDigits: 2 })} sub="USDT collateral" />

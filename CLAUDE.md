@@ -3164,8 +3164,15 @@ their backtest did"*, and the played-back design with *"go start use suporpower"
   retire_others`, one reason line each in the room's deploy history). Their tabs and past trades
   stay; no slot is disarmed (all held 0 switched-on rows on Nov 10, 2026, so a slot holding "real"
   is never touched); #09439DC2 (the room `main`) was not named and is untouched.
-* **Status:** the first refresh has not run yet ("first refresh: not run yet"). Nothing above has
-  traded; the first numbers go beside this line when it has.
+* **First run (Nov 11, 2026):** the 2:16am attempt was given up at its 1:00am deadline and a PC
+  restart cut the next one off, so the first refresh was started by hand at 5:56am
+  (`v4_daily.start_now`) and finished at 6:22am: 5,395 coin-timeframes of 1,079 coins, 242,508
+  strategies and 7,199,434 trades to Nov 11, 2026 5:45am (ROKU named delisted, 2 new listings not
+  added). The Nov 11 UTC lists: #D7EN8BNV 1 (JIO 30m #ZTQYNEN6, 29 of 31), #RSS7CUKH 7, #7T3VJU82 8.
+  The follower's first pass (6:45am) filled in from 7:00pm: the first closed trade, WLFI 30m
+  #Q75PGNXQ, bought at the 9:00pm close and closed on the opposite signal at the 11:30pm close for
+  +0.8555, is the same candle, reason and dollars as the re-measured backtest. Full suite: 7,169
+  passed, 30 failed - all 30 fail on the code from before this work too.
 
 Guards: `tests/test_skill_rooms_exist.py`, `tests/test_skill_rooms_screen.py`,
 `tests/test_skill_engine_steps.py`, `tests/test_v4_follow.py`, `tests/test_v4_daily.py`,

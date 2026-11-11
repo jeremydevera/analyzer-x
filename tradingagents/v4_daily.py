@@ -40,9 +40,18 @@ begun for day D first writes a FALLBACK list for every day between the newest li
 (the PC was off) - a copy of the newest earlier list, `fallback_from` naming the day it really is - and
 a day not landed by 06:00 UTC (`GIVE_UP_AT_S`) is given up the same way, said. Nothing here runs under
 pytest; a line `[v4-daily] ...` is printed only when the sentence changes.
+
+ONE STEP AT A TIME, ACROSS PROCESSES (final review, Nov 11, 2026): every step and `start_now` hold
+`daily.lock` (a file lock, tried once), so a `start_now` typed on the command line and the API's
+thread can never both write the state or build twice. A built day's lists may be written up to the
+LATER of its own deadline and the next midnight; a check of yesterday still failing once the next
+UTC day has begun is ended and named, so it never holds the next day's refresh; and `start_now`
+refuses a day whose list is already written. `words()` - what every screen prints - carries the
+coins kept stale or absent, a redo refused or skipped, a lost copy, and a step failing right now.
 """
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
 import json
 import os
@@ -50,7 +59,6 @@ import shutil
 import sqlite3
 import subprocess
 import sys
-import threading
 import time
 from pathlib import Path
 
@@ -71,7 +79,7 @@ CATCH_UP_DAYS = 31                # agreement days checked at most in one pass (
 LOG_MAX_BYTES = 10_000_000
 IDLE = ("idle", "done", "given_up")
 BEFORE_LIST = ("dispatch", "running", "collect", "build", "lists")
-_LOCK = threading.Lock()
+BUSY = "a step is already running (another process or thread holds the daily lock)"
 _SAID: dict = {"text": None}
 
 
@@ -100,6 +108,27 @@ def work() -> Path:
     p = home() / "daily"
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+@contextlib.contextmanager
+def _held():
+    """`daily.lock` under Backtest v4's folder, tried once: True while this caller holds it. "Is a
+    step running" is a LOCK HELD, never a thread lock (final review, Nov 11, 2026: a `start_now` from
+    the command line could not see the API thread's `threading.Lock`, and could overwrite the state
+    or start a second build beside it)."""
+    from tradingagents import portable
+
+    home().mkdir(parents=True, exist_ok=True)
+    with open(home() / "daily.lock", "a+b") as fh:
+        try:
+            portable.lock_exclusive(fh, blocking=False)
+        except OSError:
+            yield False
+            return
+        try:
+            yield True
+        finally:
+            portable.unlock(fh)
 
 
 def agree_path(day_s: int) -> Path:
@@ -743,10 +772,16 @@ def _step(st: dict, now: float) -> None:
     # A store BUILT for this day writes its real lists whenever the build ends - only a list that
     # cannot be worked out by the next midnight gives the day up (the next day's chain needs the turn)
     deadline = _deadline(st, now)
+    day_end = int(st.get("day_s") or _midnight(now)) + DAY_S
     if phase == "lists" and st.get("built_day") == st.get("day"):
-        deadline = int(st.get("day_s") or _midnight(now)) + DAY_S
+        # the LATER of the two (final review, Nov 11, 2026): a late `start_now` carries its own
+        # deadline past midnight, and replacing it with midnight gave up a good build's lists
+        deadline = max(deadline, day_end)
     if phase in BEFORE_LIST and now >= deadline:
         _give_up(st, now, f"it had not landed by {_when(deadline)}")
+        return
+    if phase == "agree" and st.get("failed_at") and now >= day_end:
+        _end_agree(st, now, day_end)
         return
     if st.get("failed_at") and now - float(st["failed_at"]) < RETRY_S:
         return
@@ -754,6 +789,17 @@ def _step(st: dict, now: float) -> None:
         return
     st["polled_at"] = now
     _PHASES[phase](st, now)
+
+
+def _end_agree(st: dict, now: float, day_end: int) -> None:
+    """The check of yesterday still failing when the next UTC day has begun: the step ENDS - the day
+    is done, its list long landed - and the reason is named, so the next day's refresh is never held
+    behind a check (final review, Nov 11, 2026)."""
+    err = str(st.get("error") or "it had not finished")
+    err = err[len("agree: "):] if err.startswith("agree: ") else err
+    st.update(phase="done", done_at=now, failed_at=0, error="", agree_error=f"{err} - given up at {_when(day_end)}")
+    st["why"] = (f"the list of {_when(int(st['day_s']))} landed at {_when(float(st.get('landed_s') or now))}; "
+                 f"yesterday's check could not be made ({st['agree_error']})" + _notes(st))
 
 
 def _deadline(st: dict, now: float) -> float:
@@ -779,9 +825,9 @@ def _tell(why: str) -> None:
 
 
 def _tick(now: float | None = None) -> dict:
-    if not _LOCK.acquire(blocking=False):
-        return {"why": "a step is already running"}
-    try:
+    with _held() as ok:
+        if not ok:
+            return {"why": BUSY}
         now = time.time() if now is None else float(now)
         st, bad = _load()
         if bad:                         # named once, nothing done, the file left exactly as it is
@@ -794,32 +840,50 @@ def _tick(now: float | None = None) -> dict:
         _write(st)
         _tell(st.get("why") or "")
         return {"phase": st.get("phase"), "why": st.get("why", "")}
-    finally:
-        _LOCK.release()
 
 
 def start_now(now: float | None = None) -> dict:
     """Today's chain at once, whatever `due()` says - the first refresh. Never between 12:45am and
-    5:00am, never over a chain already under way. Its deadline is six hours from now (a first refresh
-    started late is not given up at 06:00 UTC); the dispatch is the next tick's."""
+    5:00am, never over a chain already under way, never while another process holds the daily lock,
+    and never for a day whose list already exists (a day's list is never written twice, so a refresh
+    could only measure the whole market and change nothing). Its deadline is six hours from now (a
+    first refresh started late is not given up at 06:00 UTC); the dispatch is the next tick's."""
     from tradingagents import cq_search
+    from tradingagents import v4_follow as vf
 
     now = time.time() if now is None else float(now)
     if cq_search.quiet_hours(now):
         raise RuntimeError("no press between 12:45am and 5:00am (the nightly jobs' hours)")
-    if not _LOCK.acquire(blocking=False):
-        raise RuntimeError("the daily refresh is in the middle of a step; ask again in a minute")
-    try:
+    with _held() as ok:
+        if not ok:
+            raise RuntimeError(f"the daily refresh is in the middle of a step ({BUSY}); ask again in a minute")
         st, bad = _load()
         if bad:
             raise RuntimeError(_stopped(bad))
         if (st.get("phase") or "idle") not in IDLE:
             raise RuntimeError(f"the refresh of {_said(st.get('day'))} is already under way ({st.get('phase')}): "
                                f"{st.get('why', '')}")
-        _begin(st, now, max(_midnight(now) + GIVE_UP_AT_S, now + GIVE_UP_AT_S), manual=True)
-    finally:
-        _LOCK.release()
+        day_s = _midnight(now)
+        path = vf.list_path(day_s)
+        if path.exists():
+            raise RuntimeError(_list_exists(day_s, path))
+        _begin(st, now, max(day_s + GIVE_UP_AT_S, now + GIVE_UP_AT_S), manual=True)
     return status()
+
+
+def _list_exists(day_s: int, path: Path) -> str:
+    """Why `start_now` refuses a day whose list is already written - with the day and when, in the
+    one date format, never the file's name."""
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        doc = doc if isinstance(doc, dict) else {}
+    except (OSError, ValueError):
+        doc = {}
+    made = f" at {_when(float(doc['made_s']))}" if doc.get("made_s") else ""
+    copy = (f", as a copy of the list of the day that began {_said(doc['fallback_from'])}"
+            if doc.get("fallback_from") else "")
+    return (f"today's list (the day that began {_when(day_s)}) was already written{made}{copy}; a day's list "
+            f"is never written twice, so a refresh now would measure the whole market and change nothing")
 
 
 # ------------------------------------------------------------------ the agreement check
@@ -953,6 +1017,10 @@ def words(st: dict) -> str:
     phase = st.get("phase") or "idle"
     if phase == "unreadable":
         return f"its record cannot be read: {st.get('error') or st.get('why') or 'unknown'}"
+    return _phase_words(st, phase) + _news(st, phase)
+
+
+def _phase_words(st: dict, phase: str) -> str:
     if phase in ("dispatch", "running"):
         return "measuring on GitHub"
     if phase == "collect":
@@ -968,6 +1036,18 @@ def words(st: dict) -> str:
         return f"done {_when(got)}" if got else "done"
     nxt = st.get("next_s") or _next_due(time.time())
     return f"next refresh {_when(nxt)}"
+
+
+def _news(st: dict, phase: str) -> str:
+    """What the screens were missing after the list landed (final review, Nov 11, 2026): the coins
+    kept stale or absent, a redo refused or skipped, a kept copy lost (`_notes`); a step failing right
+    now and when it is tried again; a check that could not be made."""
+    out = _notes(st)
+    if st.get("failed_at") and st.get("error") and phase != "given_up":
+        out += f" - the last try failed: {st['error']} (tried again after {RETRY_S // 60} minutes)"
+    if phase == "done" and st.get("agree_error"):
+        out += f" - yesterday's check could not be made: {st['agree_error']}"
+    return out
 
 
 def status() -> dict:
@@ -986,6 +1066,7 @@ def status() -> dict:
             "redo_refused": st.get("redo_refused") or (st.get("collect") or {}).get("redo_refused") or [],
             "redo_skipped": st.get("redo_skipped") or (st.get("collect") or {}).get("redo_skipped") or "",
             "redo_error": st.get("redo_error") or "", "prev_error": st.get("prev_error") or "",
+            "failed_at": st.get("failed_at") or 0, "agree_error": st.get("agree_error") or "",
             "next_s": _next_due(time.time())}
     out["words"] = words(out)
     return out

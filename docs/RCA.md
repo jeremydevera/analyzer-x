@@ -551,6 +551,110 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-11-L — a refresh started late in the day would have thrown away its good build at midnight and kept yesterday's list: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the final review.
+* Why: a refresh started by hand late in the day gets six hours to finish, but once its store was built the program swapped that deadline for "midnight" instead of keeping whichever was later - so a build finishing just after midnight was thrown away.
+* What stops it now: a built day keeps the later of its own deadline and midnight, and writes its real list.
+
+**DEV**
+
+* `tradingagents/v4_daily.py:_step` (c5a41ad) set `deadline = day_s + DAY_S` for `phase == "lists"` with `built_day == day`, overwriting `deadline_s` (which `start_now` sets to `max(midnight + 6 h, now + 6 h)`).
+* Invariant broken: **a relaxation may only move a deadline LATER - "exempt from 06:00" never means "due at midnight" for a day already given longer**.
+* Guard: `tests/test_v4_daily.py::test_a_late_start_whose_build_ends_after_midnight_still_writes_its_lists`.
+
+**SAW** - nothing: the first refresh has not run. The go-live walkthrough (Nov 11, 2026 1:30am) already had to say "do not start it in the late afternoon" because of this.
+
+**TIMELINE** (D = Nov 11, 2026 12:00am UTC)
+
+1. `start_now` at D + 20:00 (3:00pm local): `deadline_s` = D + 26:00 (Nov 12, 2026 2:00am UTC).
+2. The build ends at D + 24:30 (Nov 12, 2026 12:30am UTC); the lists step runs.
+3. c5a41ad: deadline replaced by D + 24:00, `now >= deadline`, the day is given up - "it had not landed by Nov 11, 2026 7:00pm" - and today's list is yesterday's copy (red before: phase `given_up`).
+4. This commit: deadline = max(D + 26:00, D + 24:00); the list of D is written from today's store (`fallback_from` None) and the chain goes on to the check.
+
+**ROOT CAUSE** - an assignment where a `max()` was meant.
+
+**WHY IT WAS NOT CAUGHT** - the tests of the 06:00 exemption all began from the automatic 00:05 start, whose deadline (06:00) is always earlier than midnight, so "replace" and "the later of" gave the same answer in every case tested.
+
+**COST** - none (never ran). Would have been a good day's lists lost to a stale copy.
+
+**FIX** - this commit: `deadline = max(deadline, day_s + DAY_S)` for a built day's lists.
+
+**GUARD** - `tests/test_v4_daily.py::test_a_late_start_whose_build_ends_after_midnight_still_writes_its_lists` (red on c7c7bff), and `::test_the_lists_still_give_up_at_the_next_midnight` still holds the bound.
+
+---
+
+## RCA-2026-11-11-M — once a day's list landed, the screens would have stopped saying which coins were missing or carried stale, or that a step was failing: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the final review.
+* Why: the short status line every screen prints said only "done" with a time; the list of coins measured stale or missing that day, the redo that was refused, and any error happening right now lived only in a longer sentence no screen showed.
+* What stops it now: the line every screen prints carries those notes and any failing step, with when it is tried again.
+
+**DEV**
+
+* `tradingagents/v4_daily.py:words` (b9b1df4) returned only the phase in plain words (`done <landed>`, `rebuilding Backtest v4`, ...); `_notes(st)` (stale, missing, redo refused/skipped, redo_error, prev_error) and `error` while `failed_at` was set reached `status()["why"]` and the log, never `status()["words"]`, which is what `V4FollowPanel.tsx` and `V4Strategies.tsx` print.
+* Invariant broken: **the sentence a screen prints carries everything the day is missing - a fact kept only in a field no screen reads has not been said**.
+* Guard: `tests/test_v4_daily.py::test_the_words_carry_what_the_day_is_missing_and_a_failing_try`.
+
+**SAW** - nothing: the first refresh has not run.
+
+**TIMELINE** (D = Nov 11, 2026 12:00am UTC)
+
+1. D 00:10: the collect finds AAA failed and BBB not reached; the redo on pal is refused twice; the redo of CCC is skipped in the quiet hours.
+2. The list lands at D 01:30; AAA keeps yesterday's line marked stale, BBB is absent that day.
+3. b9b1df4: every room panel and Backtest v4 read "Backtest v4 is refreshed every day - done Nov 10, 2026 8:30pm" (red before: "AAA" not in it); a build failing at 2:00am read "rebuilding Backtest v4" with no reason.
+4. This commit: "done Nov 10, 2026 8:30pm - note: 1 coin(s) keep yesterday's line, marked stale (AAA); 1 coin(s) absent today (BBB); redo refused twice on pal ...", and "rebuilding Backtest v4 - the last try failed: build: the build ended 1: boom (tried again after 30 minutes)".
+
+**ROOT CAUSE** - the plain-words line was written as a phase name translator, and the day's notes were attached only to the longer `why` sentence.
+
+**WHY IT WAS NOT CAUGHT** - the words test checked one bare dict per phase, each with nothing missing; no test put a stale coin or a failing step into the state and read the words back.
+
+**COST** - none (never ran). Would have been rooms trading on a day's list with some coins stale or missing while every screen said "done".
+
+**FIX** - this commit: `words()` = the phase in plain words + `_notes(st)` + the failing step's error and retry time + a check that could not be made; `status()` passes `failed_at` and `agree_error`.
+
+**GUARD** - `tests/test_v4_daily.py::test_the_words_carry_what_the_day_is_missing_and_a_failing_try`, `tests/test_skill_rooms_screen.py::test_the_daily_route_and_both_screens_print_the_words_not_the_phase`.
+
+---
+
+## RCA-2026-11-11-N — three smaller faults in the daily refresh: a check that kept failing blocked the next day, a command-line start could run beside the app, and a start for a day already listed did nothing useful: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the final review.
+* Why: a "same as the backtest" check that kept failing had no end, so the next day's refresh could never begin; the "only one at a time" lock only worked inside the app, not for a start typed by hand; and a hand start on a day that already had its list re-measured the whole market for nothing.
+* What stops it now: a check still failing the next day is ended and named; the lock is a file every process sees; a start on a day with a list is refused, saying why.
+
+**DEV**
+
+* `tradingagents/v4_daily.py:_step` had no cut-off for `phase == "agree"` (`_fail` retried it every `RETRY_S` for ever, and `due()` is read only in an idle phase); `_LOCK = threading.Lock()` in `_tick` / `start_now` is invisible to another process; `start_now` began a chain without looking at `vf.list_path(today)`.
+* Invariant broken: **every step has an end; "is it running" is a lock every process sees; a button refuses work it cannot use**.
+* Guard: `tests/test_v4_daily.py::test_an_agree_step_still_failing_on_the_next_utc_day_is_ended_and_named`, `::test_the_daily_lock_is_a_file_lock_a_second_process_is_refused`, `::test_start_now_refuses_a_day_whose_list_already_exists`.
+
+**SAW** - nothing: the first refresh has not run.
+
+**TIMELINE** (D = Nov 11, 2026 12:00am UTC)
+
+1. The check of yesterday fails at D 01:00 ("the store is locked") and at every retry; c7c7bff: at D + 24:10 the phase is still `agree`, so the refresh of Nov 12, 2026 never begins (red before). This commit: at D + 24:10 the day is `done` with "yesterday's check could not be made: RuntimeError: the store is locked - given up at Nov 11, 2026 7:00pm", and at D + 24:12 the next day's refresh is dispatching.
+2. With `daily.lock` held by another process, c7c7bff's `_tick` began today's chain anyway (red before: state rewritten); this commit answers "a step is already running ..." and writes nothing, and `start_now` raises "in the middle of a step".
+3. Today's list was written at 6:00am UTC as a copy of Nov 10, 2026's (the day given up); c7c7bff's `start_now` at D + 15:00 began a chain that would re-measure ~1,000 coins on 60 machines and could not change the list (red before: no refusal). This commit refuses: "today's list (the day that began Nov 10, 2026 7:00pm) was already written ..., as a copy of the list of the day that began Nov 09, 2026 7:00pm; a day's list is never written twice ...".
+
+**ROOT CAUSE** - the agree step was the only step with no deadline; the exclusion was a per-process object; `start_now` checked the chain's phase but not the day's list.
+
+**WHY IT WAS NOT CAUGHT** - the agree tests always succeeded on the first try; every lock test (none) and every `start_now` test ran in one process with no list for the day, so neither "another process" nor "a day already listed" was ever a case.
+
+**COST** - none (never ran). Would have been a day with no refresh, a possible second build or overwritten state, and a wasted full run on 60 machines.
+
+**FIX** - this commit: `_step` ends a failing `agree` once `now >= day_s + DAY_S` (`_end_agree`, `agree_error` printed by `words()`); `_held()` takes `daily.lock` (`portable.lock_exclusive`, non-blocking) in `_tick` and `start_now`, and `_LOCK` is gone; `start_now` refuses through `_list_exists()` (dates via `fmt_when`, no file name).
+
+**GUARD** - `tests/test_v4_daily.py::test_an_agree_step_still_failing_on_the_next_utc_day_is_ended_and_named`, `tests/test_v4_daily.py::test_the_daily_lock_is_a_file_lock_a_second_process_is_refused`, `tests/test_v4_daily.py::test_start_now_refuses_a_day_whose_list_already_exists`.
+
+---
+
 ## RCA-2026-11-05-G — a coin redone alone would still have been listed "no machine reached" on the strategies page: NEVER HAPPENED YET
 
 **CEO**

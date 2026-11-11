@@ -3145,8 +3145,13 @@ their backtest did"*, and the played-back design with *"go start use suporpower"
   **One list per UTC day, written ONCE** (a day's list is never rewritten, the follower may have
   traded on it); a day not landed by 06:00 UTC (`GIVE_UP_AT_S`) is given up by name and yesterday's
   list applies, said — except that a store BUILT for the day writes its real lists whenever the build
-  ends, so a good build is exempt from the 06:00 give-up. An account refusing twice, a green run that
-  measured 0 coins and a share missing coins are named and never published.
+  ends (up to the LATER of its own deadline and the next midnight), so a good build is exempt from the
+  06:00 give-up. An account refusing twice, a green run that measured 0 coins and a share missing
+  coins are named and never published. Every step and `start_now()` hold `daily.lock` (a FILE lock,
+  so a start typed on the command line and the API's thread see each other); `start_now()` refuses a
+  day whose list already exists; a check of yesterday still failing once the next UTC day begins is
+  ended and named, never holding the next refresh; `words()` carries the stale/absent coins, refused
+  or skipped redos and a failing step to every screen (RCA-2026-11-11-L..N).
   **Agreement is judged by the day a trade CLOSED** (`v4_daily.agreement`): yesterday's practice
   exits against the re-measured backtest's trades of the same strategies, "the same" = strategy,
   side, entry candle, exit candle and reason, with the dollar difference printed beside the count.

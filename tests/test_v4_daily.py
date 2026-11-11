@@ -801,3 +801,95 @@ def test_an_unreadable_state_is_named_and_never_overwritten(world):
     with pytest.raises(RuntimeError, match="cannot be read"):
         vd.start_now(D + 15 * H)
     assert vd.state_path().read_bytes() == before
+
+
+# ------------------------------------------------------------------ final review of the skill rooms (Nov 11, 2026)
+def test_a_late_start_whose_build_ends_after_midnight_still_writes_its_lists(world, monkeypatch):
+    """A `start_now` at 8:00pm UTC carries its own deadline, 2:00am UTC the next day. A build ending
+    at 12:30am was given up at the lists step, because a built day's deadline was REPLACED by the
+    next midnight instead of being the later of the two."""
+    from tradingagents import forecast_v4 as f4
+
+    _put_list(Y, {r: [_row("YDAY")] for r in ROOMS})
+    monkeypatch.setattr(f4, "switched_on", lambda rule, at_s, db=None: [_row("FRESH")])
+    st = {"phase": "lists", "day": _iso(D), "day_s": D, "deadline_s": D + 20 * H + vd.GIVE_UP_AT_S,
+          "built_day": _iso(D)}
+    vd._step(st, D + DAY + 30 * 60)
+    assert st["phase"] == "agree", st.get("why")
+    doc = _read_list(D)
+    assert doc["fallback_from"] is None and doc["rooms"] == {r: [_row("FRESH")] for r in ROOMS}
+
+
+def test_an_agree_step_still_failing_on_the_next_utc_day_is_ended_and_named(world, monkeypatch):
+    def broken(st, now):
+        raise RuntimeError("the store is locked")
+
+    monkeypatch.setitem(vd._PHASES, "agree", broken)
+    vd._write({"phase": "agree", "day": _iso(D), "day_s": D, "deadline_s": D + vd.GIVE_UP_AT_S,
+               "landed_s": AT})
+    vd._tick(AT + H)
+    s = vd.read()
+    assert s["phase"] == "agree" and "store is locked" in s["error"], "tried again in 30 minutes"
+    vd._tick(D + DAY + 10 * 60)                    # 12:10am UTC the next day: still failing - ended
+    s = vd.read()
+    assert s["phase"] == "done" and "store is locked" in s["agree_error"], s
+    w = vd.status()["words"]
+    assert "store is locked" in w and "check" in w
+    vd._tick(D + DAY + 10 * 60 + vd.POLL_S)        # the next day's refresh is not blocked
+    s = vd.read()
+    assert s["day"] == _iso(D + DAY) and s["phase"] == "dispatch"
+
+
+def test_the_daily_lock_is_a_file_lock_a_second_process_is_refused(world):
+    from tradingagents import portable
+
+    vd._write({"phase": "idle"})
+    before = vd.state_path().read_bytes()
+    with open(vd.home() / "daily.lock", "a+b") as fh:          # a start_now from the command line
+        portable.lock_exclusive(fh, blocking=False)
+        try:
+            out = vd._tick(AT)
+            with pytest.raises(RuntimeError, match="middle of a step"):
+                vd.start_now(D + 15 * H)
+        finally:
+            portable.unlock(fh)
+    assert "a step is already running" in out["why"]
+    assert vd.state_path().read_bytes() == before and world.gh.sent == [], "nothing written, nothing sent"
+    assert vd._tick(AT)["phase"] == "dispatch", "free again: today's chain begins"
+    assert not hasattr(vd, "_LOCK"), "a thread lock cannot see another process"
+
+
+def test_start_now_refuses_a_day_whose_list_already_exists(world):
+    from tradingagents.positions_view import fmt_when
+
+    _put_list(D, {r: [] for r in ROOMS}, fallback_from=_iso(Y))       # today was given up earlier
+    with pytest.raises(RuntimeError) as err:
+        vd.start_now(D + 15 * H)
+    msg = str(err.value)
+    assert fmt_when(D) in msg and fmt_when(Y) in msg and _iso(D) not in msg, msg
+    assert "never written twice" in msg
+    assert world.gh.sent == [] and not vd.state_path().exists(), "no chain begun"
+
+
+def test_the_words_carry_what_the_day_is_missing_and_a_failing_try(world):
+    from tradingagents.positions_view import fmt_when
+
+    st = {"phase": "done", "landed_s": AT, "stale": {"AAA": ["1h"]}, "missing": ["BBB"],
+          "redo_refused": ["pal: RuntimeError: refused - 1 coin(s) not redone (CCC)"],
+          "redo_skipped": "2 coin(s) not redone (DDD, EEE): no press between 12:45am and 5:00am",
+          "redo_error": "OSError: disk full",
+          "prev_error": "the collected file could not be kept for tomorrow (OSError: x)"}
+    w = vd.words(st)
+    assert w.startswith(f"done {fmt_when(AT)}")
+    for bit in ("AAA", "keep yesterday's line", "BBB", "absent", "CCC", "DDD", "disk full", "could not be kept"):
+        assert bit in w, (bit, w)
+    w = vd.words({"phase": "build", "failed_at": AT, "error": "build: the build ended 1: boom"})
+    assert w.startswith("rebuilding Backtest v4") and "boom" in w and "tried again" in w
+    assert "boom" not in vd.words({"phase": "build", "failed_at": 0, "error": "build: old"}), \
+        "an error with no failing try is history, not news"
+    # status() hands them to every screen that prints `words`
+    vd._write({"phase": "done", "day": _iso(D), "day_s": D, "landed_s": AT, "missing": ["BBB"],
+               "stale": {"AAA": ["1h"]}})
+    assert "BBB" in vd.status()["words"] and "AAA" in vd.status()["words"]
+    vd._write({"phase": "running", "day": _iso(D), "day_s": D, "failed_at": AT, "error": "running: GitHub said 502"})
+    assert "GitHub said 502" in vd.status()["words"]

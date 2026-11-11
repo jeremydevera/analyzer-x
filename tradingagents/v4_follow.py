@@ -29,6 +29,13 @@ The rules, each one from the spec:
   warmed up again at that candle, as a fresh switch-on is.
 * A signal is `skill_bt.signal_at` over a frame holding the full `BARS[tf]` candles ending at that
   candle, so a technical-analysis family reads the window its backtest read.
+* A STOP OR TARGET IS SETTLED BY THE MINUTE (Nov 11, 2026, operator: "okay then change backtest and
+  the practice rooms together, so they keep matching each other"): once a trade is open, each later
+  candle's minutes are walked in order by the same `skill_bt.step` the daily run uses, and the first
+  minute that touched the stop or target ends the trade - written at THAT minute (`ts`), with the
+  candle it belongs to beside it (`v4_candle`, the agreement check's key). A candle is waited for
+  until its last minute is final (`FINE_WAIT_S`), then - the exchange having no minutes under it -
+  settled by its close as before. The minutes come from `skill_bt.read_fine`, one read a coin a pass.
 * Every cost is the strategy's own: its fee and gap from the list it was switched on by (kept with
   the trade to its exit), and the coin's funding settled inside the hold (CLAUDE.md rule 9).
 * A trade is closed DELISTED - at the last candle read, named - ONLY when the exchange's own
@@ -65,6 +72,7 @@ AFTER_CLOSE_S = 20            # ... 20 seconds after it
 STALE_S = 1800                # a heartbeat older than this is a room "not following"
 START_BACK_DAYS = 7           # a room with no state starts at its oldest list this recent
 SPARE_BARS = 5
+FINE_WAIT_S = 600             # a candle's last minute not final yet: wait this long, then the close decides
 WRITTEN_KEEP = 5000           # trade rows (id + action) remembered as written, newest last
 REPLACE_BUDGET_S = 3.0
 BUSY = ("another follower pass is running (it holds the follow lock); this pass wrote nothing and "
@@ -187,6 +195,14 @@ def _funding_default(sym, since_ms=None, fresh_after_s=None):
     return fx.funding_history(sym, since_ms=since_ms, max_age_s=age)
 
 
+def _minutes_default(sym, start_s, end_s):
+    """The coin's minutes between two instants (the archive, 5-minute bars over its monthly hole, the
+    last week from REST): one door, `fx.minutes`."""
+    from tradingagents.dataflows import exchange as fx
+
+    return fx.minutes(sym, int(start_s), int(end_s))
+
+
 def _listed_default():
     """{symbol: contract size} of every contract the exchange trades: one read gives both the
     delisting check and the size a position's `vol` is counted in (contracts, as the runner's)."""
@@ -201,10 +217,12 @@ class _Reads:
     """Every read a pass makes, made once: candle frames, funding, the contract list, day lists and
     signals. Nothing here is kept between passes."""
 
-    def __init__(self, now_s, fetch, funding_of, listed, lists_dir):
+    def __init__(self, now_s, fetch, funding_of, listed, lists_dir, minutes=None):
         self.now_s = float(now_s)
         self.now_ms = int(now_s * 1000)
         self._fetch, self._funding_of, self._listed = fetch, funding_of, listed
+        self._minutes = minutes
+        self._fine: dict = {}
         self.lists_dir = Path(lists_dir) if lists_dir else lists_home()
         self._frames: dict = {}
         self._warm: dict = {}
@@ -237,6 +255,19 @@ class _Reads:
         if k not in self._warm:
             self._warm[k] = self._fetch(sym, tf, end_ms=int(end_ms))
         return self._warm[k]
+
+    def fine(self, sym: str, from_ms: int):
+        """The coin's minutes from `from_ms` to now (`skill_bt.read_fine`), read ONCE a pass - again
+        only to reach further back. A read that raises propagates: the strategy waits for the next
+        pass, never decided on candles because its minutes could not be read."""
+        from tradingagents import skill_bt as sb
+
+        from_ms = int(from_ms) // sb.MINUTE_MS * sb.MINUTE_MS
+        hit = self._fine.get(sym)
+        if hit is None or from_ms < hit.from_ms:
+            hit = sb.read_fine(sym, from_ms, minutes=self._minutes, now_s=self.now_s)
+            self._fine[sym] = hit
+        return hit
 
     def opens(self, df) -> list:
         k = id(df)
@@ -438,13 +469,17 @@ class _Writer:
         sym, key = f"{row['coin']}_USDT", f"v4_{sid}"
         entry_ts = int(trade["entry_ms"]) // 1000
         fill_s = (int(trade["entry_ms"]) + bar_ms) // 1000
-        exit_s = (int(trade["exit_ms"]) + bar_ms) // 1000
+        # a trade the minutes settled ends in its own minute (`at`); any other at its candle's close
+        exit_s = int(trade["at"]) // 1000 if trade.get("at") is not None else (int(trade["exit_ms"]) + bar_ms) // 1000
         tid = self.at.trade_code(sym, key, entry_ts, trade["side"], dry=True)
         x = {"ts": exit_s, "symbol": sym, "action": "exit", "why": trade["why"], "strategy": key,
              "trade_id": tid, "entry_ts": entry_ts, "opened_at": fill_s, "held_s": exit_s - fill_s,
              "side": "LONG" if trade["side"] > 0 else "SHORT", "entry": float(trade["entry_px"]),
              "exit": float(trade["exit_px"]), "pnl_est": float(trade["pnl"]), "pnl_source": "v4_engine",
-             "step_next": 0, "dry_run": True, "v4_id": sid, "written_at": self.now_s}
+             "step_next": 0, "dry_run": True, "v4_id": sid, "written_at": self.now_s,
+             "v4_candle": int(trade["exit_ms"]) // 1000}      # the candle it ended in: the agreement's key
+        if trade.get("at") is not None:
+            x["by_minute"] = True
         if "fund" in trade:
             x["fund"] = float(trade["fund"])
         else:
@@ -464,6 +499,7 @@ class _Room:
         self.st.setdefault("strats", {})
         self.st.setdefault("pending", {})
         self.errors: list[str] = []
+        self.tally: dict = {}          # candle-steps of a held trade settled by minute / by candle
         self.out = {"processed": 0, "entered": 0, "exited": 0, "held_at": None, "errors": self.errors}
         self.newest_close = int(self.st.get("last_candle_ms") or 0)
 
@@ -533,9 +569,12 @@ class _Room:
         fund = R.funding(sym, opens[0] if opens else None)
         pos = None
         if len(df):
+            # the minutes the daily run read for THIS midnight: MINUTE_DAYS back from it, so a candle is
+            # settled by the minute here exactly when it was in the backtest this room was chosen from
+            fine = R.fine(sym, sb.fine_from_ms(int(end_ms) // DAY_MS * DAY_MS))
             _done, pos = sb.run(df, R.warm_signals(row, df, end_ms), stop=float(row["stop"]),
                                 fee=float(row["fee"]), slip=float(row["slip"]), target=row.get("target"),
-                                funding=fund, bar_ms=bar_ms)
+                                funding=fund, bar_ms=bar_ms, fine=fine)
         return {"row": row, "last_ms": opens[-1] if opens else int(end_ms) - 1,
                 "last_close": float(df["close"].iloc[-1]) if len(df) else None,
                 "pos": pos, "carried": pos is not None, "cold": False, "fails": 0,
@@ -722,8 +761,20 @@ class _Room:
             sig = R.signal(row, df, i)
             fee, slip = ((float(e["pos_fee"]), float(e["pos_slip"])) if pos is not None
                          else (float(row["fee"]), float(row["slip"])))
+            fine = None
+            if pos is not None:
+                # a held trade's candle is settled by its minutes: read them (once a pass), and wait
+                # for the candle's last minute to be final rather than decide on its close
+                fine = R.fine(f"{row['coin']}_USDT", o)
+                # WAIT only for a minute that is on its way: minutes up to just short of the candle's
+                # end are there. No minute at all under the range (a coin the exchange keeps none
+                # for) is settled by the close at once, as the daily run settles it.
+                if len(fine.t) and not fine.covers(o, bar_ms) and o + bar_ms > fine.to_ms and \
+                        R.now_ms - (o + bar_ms) < FINE_WAIT_S * 1000:
+                    break
             new, done = sb.step(pos, sig, close=close, when_ms=o, bar_ms=bar_ms, stop=float(row["stop"]),
-                                fee=fee, slip=slip, target=row.get("target"), funding=fund)
+                                fee=fee, slip=slip, target=row.get("target"), funding=fund, fine=fine,
+                                tally=self.tally)
             if done is not None:
                 if not e.get("carried"):
                     self.W.exit(sid, row, done, bar_ms)
@@ -762,7 +813,7 @@ class _Room:
 
 # ------------------------------------------------------------------ the pass
 def pass_once(now_s: float | None = None, *, fetch=None, funding_of=None, listed=None,
-              lists_dir: Path | None = None) -> dict:
+              lists_dir: Path | None = None, minutes=None) -> dict:
     """One pass over every follower room: each strategy advanced through every closed candle not
     yet processed. Returns {pid: {processed, entered, exited, held_at, errors}}. `fetch(sym, tf,
     bars=None, end_ms=None)`, `funding_of(sym)` and `listed()` default to the exchange (one door)."""
@@ -776,7 +827,7 @@ def pass_once(now_s: float | None = None, *, fetch=None, funding_of=None, listed
             return {pid: {"processed": 0, "entered": 0, "exited": 0, "held_at": None, "skipped": True,
                           "errors": [BUSY]} for pid in rooms()}
         R = _Reads(now_s, fetch or _fetch_default, funding_of or _funding_default, listed or _listed_default,
-                   lists_dir)
+                   lists_dir, minutes or _minutes_default)
         out = {}
         for pid in rooms():
             with profiles.using(pid):

@@ -9,7 +9,10 @@ settings x stops of each coin-timeframe, not the best 3, into skilltaall-*.jsonl
 
 SKILL_SET=daily is what the skill rooms follow (skilldaily-*.jsonl): all 42 technical-analysis
 settings x stops, then ONLY the backtesting skill's strategies PINNED for that coin-timeframe
-(research/v4/bt_pinned.json: Backtest v4's ids never move), every trade paying its funding.
+(research/v4/bt_pinned.json: Backtest v4's ids never move), every trade paying its funding. Since Nov
+11, 2026 a stop or target is settled MINUTE BY MINUTE over the last `skill_bt.MINUTE_DAYS` days
+(`skill_bt.Fine`, read once a coin, the same read a follower makes), the close deciding only the
+candles the minutes do not cover; each line says how many steps went each way (`exits`).
 """
 # ruff: noqa: E402
 from __future__ import annotations
@@ -103,10 +106,14 @@ def main() -> int:
             coin = sym.replace("_USDT", "")
             try:
                 fee, slip = costs(sym)
-                frames, funding = {}, None
+                frames, funding, fine = {}, None, None
                 if SET == "daily":
                     frames["1d"] = frame(sym, "1d")
                     funding = funding_of(sym, sb._ms(frames["1d"].index)[0] if len(frames["1d"]) else (time.time() - 730 * 86400) * 1000)
+                    # the minutes, ONCE a coin: a read that raises fails the coin (redone alone) - never a
+                    # coin measured on candles because its minutes were missing, while its room reads them
+                    today_ms = int(time.time() * 1000) // 86_400_000 * 86_400_000
+                    fine = sb.read_fine(sym, sb.fine_from_ms(today_ms))
                 for tf in BARS:
                     t1 = time.time()
                     entry = {"coin": coin, "tf": tf}
@@ -117,7 +124,7 @@ def main() -> int:
                         elif SET == "daily":
                             out.write(json.dumps(sb.daily_line(coin, tf, df, pinned.get(f"{coin}|{tf}"), fee=fee,
                                                                slip=slip, funding=funding,
-                                                               bar_ms=br.TFS[tf][1] * 1000),
+                                                               bar_ms=br.TFS[tf][1] * 1000, fine=fine),
                                                  separators=(",", ":")) + "\n")
                             n += 1
                         else:

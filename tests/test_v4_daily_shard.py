@@ -125,3 +125,45 @@ def test_the_shard_runs_the_daily_set_and_reads_the_pinned_file():
     from tradingagents import acs
 
     assert acs.SKILL_PREFIX["daily"] == "skilldaily"
+
+
+# ------------------------------------------------------------------ exits settled by the minute (Nov 11, 2026)
+def _wicky_fine(df, bar_ms, wick):
+    """Minutes under every candle of `df`: the candle's own close for 59 minutes, then a spike to
+    `wick` beyond it in minute 30 - so a held trade is stopped by a wick its close never shows."""
+    import numpy as np
+
+    opens = df.index.as_unit("ms").asi8
+    close = df["close"].to_numpy()
+    t, hi, lo = [], [], []
+    for k, o in enumerate(opens):
+        for m in range(bar_ms // 60_000):
+            t.append(int(o) + m * 60_000)
+            spike = m == 30
+            hi.append(close[k] * (1 + (wick if spike else 0.0)))
+            lo.append(close[k] * (1 - (wick if spike else 0.0)))
+    return sb.Fine(np.asarray(t), np.asarray(hi), np.asarray(lo), int(opens[0]), int(opens[-1]) + bar_ms)
+
+
+def test_daily_line_with_minutes_settles_a_wick_and_says_how_it_settled_everything():
+    df = _df()
+    bar_ms = 3_600_000
+    fine = _wicky_fine(df, bar_ms, wick=0.05)                 # every candle has a 5% wick: stops of 1.5% / 3% all hit
+    line = sb.daily_line("BTC", "1h", df, None, fee=0.00075, slip=0.0003, funding=None, bar_ms=bar_ms, fine=fine)
+    plain = sb.daily_line("BTC", "1h", df, None, fee=0.00075, slip=0.0003, funding=None, bar_ms=bar_ms)
+    assert "exits" not in plain, "a line measured on candles says nothing about minutes"
+    ex = line["exits"]
+    assert ex["from_ms"] == fine.from_ms and ex["minute"] > 0 and ex["candle"] == 0
+    sixes = [t for p in line["picks"] for t in p["trades"] if len(t) == 6]
+    assert sixes and all(t[3] in ("SL", "TP") and t[5] % 60_000 == 0 and t[1] <= t[5] < t[1] + bar_ms for t in sixes)
+    assert sum(1 for p in line["picks"] for t in p["trades"] if t[3] == "SL") > \
+        sum(1 for p in plain["picks"] for t in p["trades"] if t[3] == "SL"), "wicks stop trades closes never did"
+
+
+def test_the_shard_reads_each_coins_minutes_once_from_the_days_window():
+    src = (ROOT / ".github" / "scripts" / "skill_shard.py").read_text(encoding="utf-8")
+    assert "sb.read_fine(sym, sb.fine_from_ms(today_ms))" in src and "fine=fine" in src
+    assert src.count("read_fine(") == 1, "once a coin, never once a timeframe"
+    # the follower's warm-up reads the same stretch for the same midnight
+    fol = (ROOT / "tradingagents" / "v4_follow.py").read_text(encoding="utf-8")
+    assert "sb.fine_from_ms(" in fol and "R.fine(" in fol

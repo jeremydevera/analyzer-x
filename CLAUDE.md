@@ -3087,7 +3087,8 @@ on the server, ten a page, a base margin box that scales every dollar).
   1,043 trades, 70.4% won, every month green (Aug +101.86, Sep +132.42, Oct +218.96, Nov so far +44.92),
   random picks −$1,279.79, beat random on 74 of 80 days — checked by a separate re-add from the
   database (Aug: 69 trades, 61 won, +57.28 on #2QZXYWP5 both ways). Streaks: 7,038 winning and 73,804
-  losing runs of 3+. Skill trades exit on the candle's close, not the minute, and pay the coin's usual
+  losing runs of 3+. That first build's skill trades exited on the candle's close (since Nov 11, 2026
+  the daily run settles stops and targets by the minute, see "Skill rooms") and pay the coin's usual
   gap, not each minute's book — so this is a lead to practice, never a reason for real money.
 
 Guard: `tests/test_forecast_v4.py` (19: on one timeline; no day reads its own closes, months add up,
@@ -3158,8 +3159,33 @@ their backtest did"*, and the played-back design with *"go start use suporpower"
   side, entry candle, exit candle and reason, with the dollar difference printed beside the count.
 * **Costs NOT charged, named on the rooms and Backtest v4:** every trade pays its coin's usual gap,
   not its own minute's order book (100% typical cost), and no trade is refused by the runner's cost
-  check; exits settle on a candle's close, not on the minute. Building them is a separate job. This
-  is a lead to practice, never a reason for real money.
+  check. Building them is a separate job. This is a lead to practice, never a reason for real money.
+* **STOPS AND TARGETS ARE SETTLED BY THE MINUTE (Nov 11, 2026).** The operator, asked whether 1-minute
+  candles would be more precise (answer: for exits yes - XPIN 1h #LG9NSU4B stopped at 7:28am in
+  practice and the 1-hour backtest booked 7:00am): *"okay then change backtest and the practice
+  rooms together, so they keep matching each other"*. ONE rule, `skill_bt.step(fine=)`: the signal
+  still reads the CLOSED candle and an entry still fills at its close plus the gap, but once a trade is
+  open each later candle's minutes are walked in order (`auto_trader.settle_in_minutes`, Backtest v2's
+  own rule) and the first minute that touches the stop or target ends it, at that price plus the gap,
+  funding charged up to that minute (trade `at`, the minute; `exit_ms` stays the candle). Both barriers
+  in one minute = the stop, counted `unclear`. The minutes are `skill_bt.read_fine` (`fx.minutes`: the
+  archive, 5-minute bars over its monthly hole, REST's last week), `MINUTE_DAYS` = 120 back from the
+  run's UTC midnight (`fine_from_ms`): the daily GitHub run reads them once a coin, a follower warming
+  a strategy up at that midnight reads the same stretch, so a candle is settled by the minute on one
+  side exactly when it is on the other. A candle the minutes do not cover keeps the close rule and is
+  COUNTED (each line's `exits`: minute / candle / unclear; `meta.exits` in the store; the Backtest v4
+  page prints it from that data). The follower WAITS for a candle's last minute to be final (up to
+  `FINE_WAIT_S` = 10 minutes) rather than decide on the close, and a minutes read that fails holds the
+  trade - never decides it on candles. A room's exit row is written at the touch minute (`ts`) with
+  its candle beside it (`v4_candle`, the agreement check's key; rows from before it read `ts - bar`).
+  Measured on WLFI (Nov 11, 2026, real minutes, all 45 strategies): 30m 385 stops by the close rule,
+  505 by the minute, total -$612.20 to -$624.70; 1h 478 to 680 stops, -$768.90 to -$834.50 — the
+  close rule was a little optimistic. Not the same as v2's resolution on old days: a minute inside the
+  exchange's monthly hole is a 5-minute bar (a stop and target in one such bar = the stop), and a
+  candle read days later may be 5-minute where the follower read minutes, so the daily agreement can
+  show a rare difference there. Guards: `tests/test_skill_exits_by_the_minute.py`, and the minute
+  tests in `tests/test_v4_follow.py`, `test_v4_daily.py`, `test_v4_store_daily.py`,
+  `test_v4_daily_shard.py`. The store built Nov 11, 2026 6:22am is close-only until the 7:05pm run.
 * **What was switched off:** the watchers of #55D32617, #4FC03172, #B2404C0B, #6B08FF64, #CC94D9FB,
   #99E79CBA, #C7396286, #1D4274C1, #8F0C7926 and #BBE0A361 (`python -m tradingagents.v4_rooms
   retire_others`, one reason line each in the room's deploy history); no slot is disarmed (all held

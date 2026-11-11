@@ -58,6 +58,8 @@ class Market:
         self.coins: set | None = None
         self.sizes: dict = {}         # sym -> contract size (1.0 when not set)
         self.fund_calls: list = []    # (sym, since_ms, fresh_after_s, the pass's clock in ms)
+        self.minute_rows: dict = {}   # sym -> [(open_ms, high, low)]: the minutes, when a test wants them
+        self.minute_calls: list = []
         self.fund_cache_s = 0         # > 0: the adapter's own copy, kept this long (gate: 1800 s)
         self._fund_copy: dict = {}
 
@@ -105,6 +107,17 @@ class Market:
         self._fund_copy[sym] = (now_s, rows)
         return list(rows)
 
+    def minutes(self, sym, start_s, end_s):
+        """The minutes under every candle: NONE by default - the exchange keeps no minutes for the
+        coin - so every candle is settled by its close, the rule these tests were written on. A test
+        of the minute rule sets `minute_rows`: {sym: [(open_ms, high, low), ...]}."""
+        self.minute_calls.append((sym, start_s, end_s))
+        rows = self.minute_rows.get(sym) or []
+        rows = [r for r in rows if start_s * 1000 <= r[0] and r[0] + 60_000 <= end_s * 1000]
+        return pd.DataFrame({"Date": pd.to_datetime([r[0] for r in rows], unit="ms"),
+                             "High": [r[1] for r in rows], "Low": [r[2] for r in rows],
+                             "Seconds": [60] * len(rows)})
+
     def listed(self):
         """{symbol: contract size}, the shape `fx.list_contracts()` gives the follower."""
         if self.listed_fail:
@@ -145,7 +158,7 @@ def world(tmp_path, monkeypatch):
 
     def run(now_s, **kw):
         m.now_ms = int(now_s * 1000)
-        return vf.pass_once(now_s, fetch=m.fetch, funding_of=m.funding, listed=m.listed, lists_dir=lists, **kw)
+        return vf.pass_once(now_s, fetch=m.fetch, funding_of=m.funding, listed=m.listed, lists_dir=lists, minutes=m.minutes, **kw)
 
     def put(day_s, rooms):
         vf.list_path(day_s, lists).write_text(json.dumps({"day_s": day_s, "made_s": day_s + 300,
@@ -586,6 +599,7 @@ def test_tick_holds_no_lock_of_its_own_so_its_pass_runs(world, monkeypatch):
     monkeypatch.setattr(vf, "_fetch_default", world.m.fetch)
     monkeypatch.setattr(vf, "_funding_default", world.m.funding)
     monkeypatch.setattr(vf, "_listed_default", world.m.listed)
+    monkeypatch.setattr(vf, "_minutes_default", world.m.minutes)
     monkeypatch.setitem(vf._DONE, "slot", None)
     world.m.now_ms = (T0 + 12 * H) * 1000
     res = vf._tick(T0 + 12 * H)
@@ -713,3 +727,145 @@ def test_status_says_whether_todays_list_has_landed(world):
     world.put(D2, {ROOM: [row("TESTAAA1")]})
     s = vf.status(ROOM, now_s=D2 + 5 * H + 60, lists_dir=world.lists)
     assert s["today_landed"] is True and [r["id"] for r in s["switched_on"]] == ["TESTAAA1"]
+
+
+# ------------------------------------------------------------------ exits settled by the minute (Nov 11, 2026)
+# Operator: "okay then change backtest and the practice rooms together, so they keep matching each
+# other". A held trade's candle is walked minute by minute by the same skill_bt.step the daily run
+# uses; the first minute that touches the stop or target writes the exit at THAT minute (ts), with
+# the candle it belongs to beside it (v4_candle).
+def _minute_rows(closes, first_ms, wick, seed=5):
+    """60 minutes under every 1h candle: a noisy straight line from the previous close to this one,
+    each minute's high and low `wick` (a fraction) beyond it."""
+    rng = np.random.default_rng(seed)
+    rows, prev = [], closes[0]
+    for k, c in enumerate(closes):
+        for m in range(60):
+            p = prev + (c - prev) * (m + 1) / 60
+            rows.append((first_ms + k * H_MS + m * 60_000, p * (1 + rng.uniform(0, wick)),
+                         p * (1 - rng.uniform(0, wick))))
+        prev = c
+    return rows
+
+
+def _exits(pid=ROOM):
+    return [r for r in ledger(pid) if r["action"] == "exit"]
+
+
+@pytest.mark.parametrize("strategy,params,stop,target", [
+    ("bf_momentum", {"lookback": 10}, 0.015, None),
+    ("sma_crossover", {"fast_period": 3, "slow_period": 8}, 0.015, 0.01),
+    ("rsi_reversal", {"period": 7, "overbought": 70, "oversold": 30}, 0.02, None),
+])
+def test_follower_trades_equal_the_engines_walk_with_the_same_minutes(world, strategy, params, stop, target):
+    """The whole point: a room and its backtest settle every stop and target with the same minutes,
+    so trade for trade - the minute, the price, the dollars - they are one walk."""
+    rng = np.random.default_rng(11)
+    before, after = 400, 3 * 24 + 6
+    closes = 100 * np.exp(np.cumsum(rng.normal(0, 0.006, before + after)))
+    first_ms = (T0 - before * H) * 1000
+    world.m.add("AAA_USDT", closes, first_ms)
+    world.m.minute_rows["AAA_USDT"] = _minute_rows(closes, first_ms, wick=0.008)
+    r = row("TESTAAA1", strategy=strategy, params=params, stop=stop, target=target)
+    for d in (D1, D2, D3):
+        world.put(d, {ROOM: [r]})
+    now = T0 + 20
+    while now < D4:
+        world.run(now)
+        now += 7 * H
+    world.run(D4 + 20)
+
+    world.m.now_ms = (D4 + 20) * 1000
+    warm = world.m.fetch("AAA_USDT", "1h", end_ms=T0 * 1000)
+    full = world.m.fetch("AAA_USDT", "1h", bars=10 ** 6)
+    ref = full[full.index >= warm.index[0]]
+    fine = sb.read_fine("AAA_USDT", sb.fine_from_ms(T0 * 1000), minutes=world.m.minutes, now_s=D4 + 20)
+    done, _still = sb.run(ref, sb.signals(ref, strategy, params), stop=stop, fee=r["fee"], slip=r["slip"],
+                          target=target, funding=sb.Funding(world.m.funding("AAA_USDT")), bar_ms=H_MS, fine=fine)
+    want = sorted((t["entry_ms"], t["exit_ms"], t["side"], t["why"], round(t["pnl"], 4), t.get("at"))
+                  for t in done if t["entry_ms"] >= T0 * 1000 and t["why"] != "END")
+    by_enter = {e["trade_id"]: e for e in ledger() if e["action"] == "enter"}
+    got = sorted((by_enter[x["trade_id"]]["entry_ts"] * 1000, x["v4_candle"] * 1000,
+                  1 if x["side"] == "LONG" else -1, x["why"], round(x["pnl_est"], 4),
+                  x["ts"] * 1000 if x.get("by_minute") else None) for x in _exits())
+    assert len(want) >= 4 and got == want, (want, got)
+    assert any(w[5] is not None for w in want), "the case must hold a stop or target the minutes settled"
+    assert all(x["ts"] >= x["opened_at"] for x in _exits()), "never an exit before its fill"
+
+
+def test_a_stop_in_minute_twelve_is_written_at_minute_twelve(world):
+    closes = scripted([(5, 20)])
+    first_ms = (T0 - 48 * H) * 1000
+    world.m.add("AAA_USDT", closes, first_ms)
+    rows = _minute_rows(closes, first_ms, wick=0.0)
+    dip = (T0 + 8 * H) * 1000 + 12 * 60_000                 # candle 8, minute 12: a wick to 90
+    rows = [(t, h, 90.0 if t == dip else lo) for t, h, lo in rows]
+    world.m.minute_rows["AAA_USDT"] = rows
+    world.put(D1, {ROOM: [row("TESTAAA1", stop=0.03, slip=0.0005)]})
+    world.run(T0 + 20)
+    world.run(T0 + 12 * H)
+    (x,) = _exits()
+    entry = float(next(e for e in ledger() if e["action"] == "enter")["entry"])
+    assert x["why"] == "SL" and x["by_minute"] is True
+    assert x["ts"] == T0 + 8 * H + 12 * 60, "the minute the price touched the stop, not the candle's close"
+    assert x["v4_candle"] == T0 + 8 * H, "and the candle it belongs to, for the daily check"
+    assert x["exit"] == pytest.approx(entry * 0.97 * (1 - 0.0005)), "the stop's price plus the gap"
+    assert x["held_s"] == x["ts"] - x["opened_at"] and x["held_s"] > 0
+    assert open_slots() == {}, "the position is gone"
+
+
+def test_it_waits_for_a_candles_last_minute_and_then_for_ten_minutes_no_longer(world):
+    """The pass runs 20 seconds after a close; if the exchange's minutes stop short of that candle's
+    end, the close must NOT decide (the backtest would settle it by the minute) - the candle waits,
+    and only after FINE_WAIT_S does the close decide, as it does where the exchange has no minutes."""
+    closes = scripted([(5, 40)])
+    first_ms = (T0 - 48 * H) * 1000
+    world.m.add("AAA_USDT", closes, first_ms)
+    rows = _minute_rows(closes, first_ms, wick=0.0)
+    cut = (T0 + 7 * H) * 1000 - 5 * 60_000                  # the last five minutes of candle 6 are missing
+    world.m.minute_rows["AAA_USDT"] = [r for r in rows if r[0] < cut]
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.run(T0 + 6 * H + 20)                               # candle 5's close is read; the trade is open
+    assert open_slots()
+    world.run(T0 + 7 * H + 20)                               # candle 6 closed 20 s ago, its last minutes missing
+    assert follow_state()["strats"]["TESTAAA1"]["last_ms"] == (T0 + 5 * H) * 1000, "candle 6 waits"
+    world.run(T0 + 7 * H + vf.FINE_WAIT_S + 1)               # ten minutes on: the close decides
+    assert follow_state()["strats"]["TESTAAA1"]["last_ms"] == (T0 + 6 * H) * 1000
+
+
+def test_a_coin_with_no_minutes_at_all_is_settled_by_the_close_at_once(world):
+    world.m.add("AAA_USDT", scripted([(5, 8)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.run(T0 + 12 * H)
+    (x,) = _exits()
+    assert x["why"] == "SIGNAL" and not x.get("by_minute") and x["ts"] == T0 + 9 * H
+    assert x["v4_candle"] == T0 + 8 * H
+
+
+def test_minutes_that_cannot_be_read_hold_the_trade_never_decide_it(world):
+    world.m.add("AAA_USDT", scripted([(5, 8)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.run(T0 + 6 * H + 20)
+    assert open_slots()
+    real = world.m.minutes
+
+    def down(*a, **k):
+        raise ConnectionError("the minutes are unreachable")
+    world.m.minutes = down
+    res = world.run(T0 + 12 * H)
+    assert _exits() == [] and open_slots(), "no exit written on candles because the minutes were down"
+    assert any("the minutes are unreachable" in e for e in res[ROOM]["errors"])
+    world.m.minutes = real
+    world.run(T0 + 13 * H)
+    assert len(_exits()) == 1, "the next pass catches up"
+
+
+def test_a_warm_up_reads_the_minutes_the_daily_run_reads_for_that_midnight(world):
+    """A strategy warmed up at D1 reads minutes from MINUTE_DAYS before D1 - the same stretch the
+    GitHub run of D1 reads - so a carried trade is the backtest's carried trade."""
+    closes = scripted([(-10, 20)], before=48)
+    world.m.add("AAA_USDT", closes, (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.run(T0 + 20)
+    starts = [c[1] for c in world.m.minute_calls]
+    assert min(starts) == sb.fine_from_ms(T0 * 1000) // 1000

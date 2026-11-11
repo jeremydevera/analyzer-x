@@ -937,8 +937,10 @@ def agreement(pid: str, day_s: int, db: Path | None = None, lists: _DayLists | N
     backtest's trades that closed that day - judged by the day a trade CLOSED, so a trade held over
     midnight, a 1d trade and the day's last candles are all compared once, on the day they end.
 
-    Practice: the room's exit rows (strategy v4_*) with `ts` (the exit candle's close) in
-    (day_s, day_s + 1 day], whatever day they opened. Backtest: the store's trades with
+    Practice: the room's exit rows (strategy v4_*) whose exit CANDLE closed in
+    (day_s, day_s + 1 day], whatever day they opened - a row the minutes settled carries that candle
+    (`v4_candle`, its `ts` being the minute inside it); an older row's `ts` is the candle's close.
+    Backtest: the store's trades with
     `ex + bar` in that window and why != END, kept only when the strategy was on the day list of its
     OWN entry day (`en`'s UTC day) - the day lists read back as far as they go; a strategy not
     switched on when the trade opened was never expected to take it.
@@ -958,8 +960,10 @@ def agreement(pid: str, day_s: int, db: Path | None = None, lists: _DayLists | N
     ever = lists.ever(pid, day_s)                     # a trade closing today opened today or before
     with profiles.using(pid):
         rows = at.ledger_trades(day_s)
+    # widened by a day each way: a minute exit's `ts` lies inside its candle, so the candle's own close
+    # (known once the strategy's timeframe is) decides which day it belongs to
     exits = [r for r in rows if r.get("action") == "exit" and str(r.get("strategy") or "").startswith("v4_")
-             and day_s < int(r.get("ts") or 0) <= end]
+             and day_s - DAY_S < int(r.get("ts") or 0) <= end + DAY_S]
 
     def rid_of(r) -> str:
         return str(r.get("v4_id") or str(r.get("strategy"))[3:])
@@ -1007,8 +1011,12 @@ def agreement(pid: str, day_s: int, db: Path | None = None, lists: _DayLists | N
         rid = rid_of(r)
         b = bar(rid)
         ts = int(r.get("ts") or 0)
+        cand = r.get("v4_candle")
+        cs = int(cand) if cand is not None else (ts - b if b is not None else None)
+        if b is None or cs is None or not (day_s < cs + b <= end):
+            continue                     # its exit candle closed on another day
         pr[(rid, 1 if str(r.get("side")).upper() == "LONG" else -1, int(r.get("entry_ts") or 0))] = (
-            ts - b if b is not None else None, v4_store.why_code(r.get("why") or ""),
+            cs, v4_store.why_code(r.get("why") or ""),
             float(r.get("pnl_est") or 0.0), str(r.get("trade_id") or ""))
     same = [k for k in bt if k in pr and pr[k][0] == bt[k][0] and pr[k][1] == bt[k][1]]
     return {"day": _iso(day_s), "day_s": day_s, "same": len(same), "of": len(set(bt) | set(pr)),

@@ -899,3 +899,49 @@ def test_the_words_carry_what_the_day_is_missing_and_a_failing_try(world):
     assert "BBB" in vd.status()["words"] and "AAA" in vd.status()["words"]
     vd._write({"phase": "running", "day": _iso(D), "day_s": D, "failed_at": AT, "error": "running: GitHub said 502"})
     assert "GitHub said 502" in vd.status()["words"]
+
+
+# ------------------------------------------------------------------ exits settled by the minute (Nov 11, 2026)
+def _minute_exit(sid, en, candle, minute_ts, pnl, tid):
+    """A practice exit the minutes settled: its ts is the minute, v4_candle the candle it belongs to."""
+    x = _practice_exit(sid, en, minute_ts, "SL", pnl, tid=tid)
+    x["v4_candle"], x["by_minute"] = candle, True
+    return x
+
+
+def test_a_minute_exit_is_compared_by_its_candle_not_by_its_minute(world):
+    """Practice stopped at minute 12 of the 10:00 candle (ts 10:12); the backtest's trade says exit
+    candle 10:00. They are the SAME trade - the row's ts is no longer the candle's close."""
+    pick = _pick([[(Y + 8 * H) * 1000, (Y + 10 * H) * 1000, 1, "SL", -1.5]])
+    _build_store(world.tmp, {"AAA|1h": _line("AAA", "1h", [pick])})
+    sid = v4_store.row_id("AAA", "1h", pick)
+    _put_list(Y, {ROOM: [_row(sid)]})
+    with profiles.using(ROOM):
+        at.append_ledger(_minute_exit(sid, Y + 8 * H, Y + 10 * H, Y + 10 * H + 12 * 60, -1.49, "MINUTE01"))
+    res = vd.agreement(ROOM, Y)
+    assert res["same"] == 1 and res["of"] == 1 and res["only_practice"] == [] and res["only_backtest"] == []
+    assert res["dollars_apart"] == 0.01
+
+
+def test_a_minute_exit_in_the_first_minute_of_a_day_belongs_to_that_days_candle(world):
+    """A stop in the very first minute of the 00:00 candle: ts == midnight exactly. By ts it would
+    land on the day before (the window is open at its start); its candle closes 01:00, so it is D's."""
+    pick = _pick([[(Y + 22 * H) * 1000, D * 1000, 1, "SL", -1.5]])
+    _build_store(world.tmp, {"AAA|1h": _line("AAA", "1h", [pick])})
+    sid = v4_store.row_id("AAA", "1h", pick)
+    _put_list(Y, {ROOM: [_row(sid)]})
+    with profiles.using(ROOM):
+        at.append_ledger(_minute_exit(sid, Y + 22 * H, D, D, -1.5, "FIRSTMIN"))
+    assert vd.agreement(ROOM, Y)["of"] == 0, "not yesterday's"
+    today = vd.agreement(ROOM, D)
+    assert today["same"] == 1 and today["of"] == 1
+
+
+def test_an_exit_row_from_before_the_minutes_is_still_compared_by_its_close(world):
+    pick = _pick([[(Y + 8 * H) * 1000, (Y + 10 * H) * 1000, 1, "TP", 1.0]])
+    _build_store(world.tmp, {"AAA|1h": _line("AAA", "1h", [pick])})
+    sid = v4_store.row_id("AAA", "1h", pick)
+    _put_list(Y, {ROOM: [_row(sid)]})
+    with profiles.using(ROOM):
+        at.append_ledger(_practice_exit(sid, Y + 8 * H, Y + 11 * H, "TP", 1.0, tid="OLDROW01"))
+    assert vd.agreement(ROOM, Y)["same"] == 1

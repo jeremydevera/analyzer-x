@@ -125,3 +125,58 @@ def test_first_daily_build_also_keeps_the_nov10_forecast_once(tmp_path):
     v4.keep_first_copy(db)
     assert not kept.exists(), "a forecast built from a daily store is never kept as the Nov 10 one"
     assert [p.name for p in home.rglob("*") if p.name.endswith((".tmp", ".copying"))] == []
+
+
+# ------------------------------------------------------------------ exits settled by the minute (Nov 11, 2026)
+def test_a_minute_exit_keeps_its_minute_and_the_page_says_how_far_the_minutes_went(tmp_path):
+    folder = tmp_path / "acs"
+    folder.mkdir()
+    en, ex = ms(2026, 10, 25, 10), ms(2026, 10, 25, 11)
+    at_ms = ex + 12 * 60_000
+    pick = _daily_pick("sma_crossover", "stopped", [(en, ex, -1.5)])
+    pick["trades"][0].append(at_ms)                                  # a sixth item: the minute it ended in
+    plain = _daily_pick("ta_ma_pullback", "closed", [(en, ex + H, 0.5)])
+    _file(folder, {("AAA", "1h"): [pick, plain]})
+    path = folder / "skilldaily.json"
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    doc["lines"]["AAA|1h"]["exits"] = {"minute": 30, "candle": 10, "unclear": 1, "from_ms": ms(2026, 7, 13)}
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    db = tmp_path / "v4" / "rows.db"
+    meta = v4.build(folder, target=db, sources=v4.DAILY_SOURCES, log=lambda *_: None)
+    # one line, two strategies: the counts are the LINE's, never added once a strategy
+    assert meta["exits"] == {"minute": 30, "candle": 10, "unclear": 1, "from_s": ms(2026, 7, 13) // 1000}
+    con = sqlite3.connect(db)
+    got = {r[0]: r[1] for r in con.execute("SELECT s.label, t.at FROM trade t JOIN strat s ON s.sid = t.sid")}
+    assert got == {"stopped": at_ms // 1000, "closed": None}, "only a trade the minutes settled has a minute"
+    con.close()
+
+
+def test_the_trade_log_shows_the_minute_and_an_old_store_without_the_column_still_reads(tmp_path, monkeypatch):
+    folder = tmp_path / "acs"
+    folder.mkdir()
+    en, ex = ms(2026, 10, 25, 10), ms(2026, 10, 25, 11)
+    pick = _daily_pick("sma_crossover", "stopped", [(en, ex, -1.5)])
+    pick["trades"][0].append(ex + 12 * 60_000)
+    _file(folder, {("AAA", "1h"): [pick]})
+    home = tmp_path / "v4"
+    monkeypatch.setattr(stores, "V4", stores.Store(**{**stores.V4.__dict__, "home": home,
+                                                      "rows_db": home / "rows.db"}))
+    v4.build(folder, target=home / "rows.db", sources=v4.DAILY_SOURCES, log=lambda *_: None)
+    rid = v4.row_id("AAA", "1h", {**pick, "label": pick["label"]})
+    log = v4.trade_log(rid)["log"]
+    assert log[0]["exit_s"] == (ex + 12 * 60_000) // 1000 and log[0]["by_minute"] is True
+
+    con = sqlite3.connect(home / "rows.db")                          # a store built before Nov 11, 2026
+    con.execute("ALTER TABLE trade DROP COLUMN at")
+    con.commit()
+    con.close()
+    old = v4.trade_log(rid)["log"]
+    assert old[0]["exit_s"] == ex // 1000 and old[0]["by_minute"] is False
+
+
+def test_a_store_with_no_minute_exits_says_nothing_about_them(tmp_path):
+    folder = tmp_path / "acs"
+    folder.mkdir()
+    _file(folder, {("AAA", "1h"): [_daily_pick("sma_crossover", "x", [(ms(2026, 10, 25, 10), ms(2026, 10, 25, 11), 1.0)])]})
+    meta = v4.build(folder, target=tmp_path / "v4" / "rows.db", sources=v4.DAILY_SOURCES, log=lambda *_: None)
+    assert "exits" not in meta

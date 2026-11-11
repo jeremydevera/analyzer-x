@@ -21,7 +21,8 @@ Tables:
 * `meta`   - what was filed and when.
 
 A trade's dollars are the skills' own: $100 of coin (the app's $5 at 20x) after 0.075% fee each way and
-the coin's usual gap, a stop and a target checked on the candle's close (skill_bt.py). A trade that made
+the coin's usual gap, a stop and a target settled minute by minute where the daily run holds the minutes
+(`meta.exits` says how far; skill_bt.py), else on the candle's close. A trade that made
 $0 or less is a loss. The window clock is the trade's CLOSE ("last 30 days" = closed in them); the unseen
 clock is the trade's OPEN (a trade that opened after the row's split: RCA-2026-11-05-F).
 """
@@ -71,7 +72,7 @@ CREATE TABLE strat (
 );
 CREATE TABLE trade (
   sid INTEGER NOT NULL, ex INTEGER NOT NULL, en INTEGER NOT NULL, side INTEGER NOT NULL,
-  why INTEGER NOT NULL, pnl REAL NOT NULL,
+  why INTEGER NOT NULL, pnl REAL NOT NULL, at INTEGER,
   PRIMARY KEY (sid, ex, en)
 ) WITHOUT ROWID;
 CREATE TABLE meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);
@@ -174,6 +175,8 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
     sid = dups = 0
     per_source: dict[str, int] = {}
     ends = []
+    exit_counts = {"minute": 0, "candle": 0, "unclear": 0}   # how the daily run settled stops and targets
+    seen_lines: set = set()
     t0 = time.time()
     for name, who in sources:
         path = src / name
@@ -182,6 +185,11 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
             continue
         n = 0
         for x, c in _rows_of(path):
+            if x.get("exits") and (name, x["coin"], x["tf"]) not in seen_lines:      # one count a line, not a strategy
+                seen_lines.add((name, x["coin"], x["tf"]))
+                for k in ("minute", "candle", "unclear"):
+                    exit_counts[k] += int(x["exits"].get(k) or 0)
+                exit_counts["from_s"] = max(exit_counts.get("from_s", 0), int(x["exits"].get("from_ms") or 0) // 1000)
             rid = row_id(x["coin"], x["tf"], c)
             if rid in seen:                      # the same strategy in two files: the first one stays
                 dups += 1
@@ -207,9 +215,11 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
                  1 if c.get("older_lost", False) else 0, int(x["start_ms"]) // 1000, split_s, int(x["end_ms"]) // 1000,
                  (x["end_ms"] - x["start_ms"]) / 86_400_000, int(x["bars"]), x.get("fee"), x.get("slip")))
             if tr:
-                con.executemany("INSERT OR IGNORE INTO trade VALUES (?,?,?,?,?,?)",
+                # `at` (a sixth item, Nov 11, 2026): the minute a trade the minutes settled ended in
+                con.executemany("INSERT OR IGNORE INTO trade VALUES (?,?,?,?,?,?,?)",
                                 [(sid, int(t[1]) // 1000, int(t[0]) // 1000, int(t[2]), why_code(t[3]),
-                                  float(t[4])) for t in tr])
+                                  float(t[4]), int(t[5]) // 1000 if len(t) > 5 and t[5] is not None else None)
+                                 for t in tr])
             ends.append(int(x["end_ms"]) // 1000)
             n += 1
             if sid % 20_000 == 0:
@@ -227,6 +237,9 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
             "sources": per_source, "data_end_s": max(ends) if ends else 0,
             "trades": con.execute("SELECT COUNT(*) FROM trade").fetchone()[0],
             "measured_margin": MEASURED_MARGIN, "leverage": LEVERAGE}
+    if exit_counts["minute"] or exit_counts["candle"]:
+        # stops and targets settled minute by minute (Nov 11, 2026): the page says how far, from data
+        meta["exits"] = exit_counts
     con.executemany("INSERT INTO meta VALUES (?,?)", [(k, json.dumps(v)) for k, v in meta.items()])
     con.commit()
     bad = con.execute("PRAGMA integrity_check").fetchone()[0]
@@ -502,7 +515,8 @@ def _query(con: sqlite3.Connection, q: dict) -> dict:
     out = {"ready": True, "rows": rows, "total": total, "offset": offset, "limit": limit,
            "base_margin": base, "leverage": LEVERAGE, "notional": round(base * LEVERAGE, 2),
            "measured": {"strategies": mt.get("strategies"), "trades": mt.get("trades"),
-                        "built_s": mt.get("built_s"), "data_end_s": end_s, "sources": mt.get("sources")},
+                        "built_s": mt.get("built_s"), "data_end_s": end_s, "sources": mt.get("sources"),
+                        "exits": mt.get("exits")},
            "window": ({"days": days or None, "from_s": (end_s - days * DAY_S) if days else None, "to_s": end_s,
                        "unseen": unseen} if windowed else None),
            "sort": sort, "desc": desc, "notes": notes}
@@ -530,12 +544,15 @@ def trade_log(sid_or_id: str, *, base_margin: float = MEASURED_MARGIN, days: int
             cond.append("en >= ?")
             args.append(s["split_s"])
         scale = float(base_margin or MEASURED_MARGIN) / MEASURED_MARGIN
-        tr = con.execute("SELECT en, ex, side, why, pnl FROM trade WHERE " + " AND ".join(cond)
-                         + " ORDER BY ex, en", args).fetchall()
+        # a store built before Nov 11, 2026 has no `at` column: its trades were all settled by the close
+        has_at = any(r[1] == "at" for r in con.execute("PRAGMA table_info(trade)"))
+        tr = con.execute("SELECT en, ex, side, why, pnl" + (", at" if has_at else ", NULL AS at")
+                         + " FROM trade WHERE " + " AND ".join(cond) + " ORDER BY ex, en", args).fetchall()
         log, run = [], 0.0
         for t in tr:
             run += t["pnl"] * scale
-            log.append({"entry_s": t["en"], "exit_s": t["ex"], "side": "long" if t["side"] > 0 else "short",
+            log.append({"entry_s": t["en"], "exit_s": t["at"] if t["at"] is not None else t["ex"],
+                        "by_minute": t["at"] is not None, "side": "long" if t["side"] > 0 else "short",
                         "why": WHYS[t["why"]], "pnl": round(t["pnl"] * scale, 2), "running": round(run, 2),
                         "unseen": t["en"] >= s["split_s"]})
         f = figures([t["pnl"] for t in tr], [t["ex"] for t in tr])

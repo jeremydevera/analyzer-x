@@ -406,6 +406,28 @@ supervisor keeps its runner alive to finish open practice trades. A row
 holding REAL money is never taken off by `retire_room()` — it is listed in
 `real_kept` for the operator.
 
+## Follower rooms
+
+Three rooms are not run by the runner at all: #D7EN8BNV, #RSS7CUKH and #7T3VJU82
+(Nov 10, 2026). Their entry in `profiles.BUILTIN` says `follows: "v4"`, with a
+`v4_rule` that is the same rule set Forecast v4 walked under the same id.
+
+* **No runner, no watcher, no deploy grid.** The supervisor never starts a runner
+  for them, their watcher is forced off, and the arming routes refuse them
+  (HTTP 409). Nothing in them is switched on by hand.
+* **Where their trades come from:** `tradingagents/v4_follow.py` reads the day's
+  list of switched-on strategies (written once a day by `v4_daily`, 00:05 UTC,
+  from Backtest v4) and walks every closed candle with Backtest v4's own engine
+  (`skill_bt.step`). It writes the trades into the room's own ledger and state in
+  the runner's shapes, so the tiles, history, calendar and the all-rooms past
+  trades read them unchanged. It places no order; there is no real money here.
+* **Costs:** each trade pays its coin's usual gap and the fee and settles on a
+  candle's close, as the backtest does. Funding is charged. The order book of
+  each minute is not used and the runner's cost check is not applied.
+* **The older ten rooms** (#55D32617 ... #BBE0A361) had their watchers switched
+  off on the same day (`python -m tradingagents.v4_rooms retire_others`); their
+  tabs and past trades stay.
+
 ## Adding a room
 
 1. Add `{"id": "<RULE ID>", "name": "#<RULE ID>", "rules": _rule(w, line, n)}`

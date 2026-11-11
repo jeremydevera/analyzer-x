@@ -3093,6 +3093,69 @@ Guard: `tests/test_forecast_v4.py` (19: on one timeline; no day reads its own cl
 whole months only, worst run, the chosen skill's split, the luck bar, streaks, paging, ceilings, the
 empty answer, the page's columns, boxes and routes).
 
+## Skill rooms — Forecast v4's three rule sets traded in practice (Nov 10, 2026)
+
+The operator, Nov 10, 2026: *"can you deploy this 3 and remove the existing strategy in my auto
+trade"*. Asked whether they wanted practice to trade the skill strategies the way their backtest did,
+they answered *"okay es for this - My guess is that you want practice to trade these exactly the way
+their backtest did"*, and the played-back design with *"go start use suporpower"*. Spec:
+`docs/superpowers/specs/2026-11-10-skill-rooms-design.md`.
+
+* **What it is:** three practice rooms, #D7EN8BNV (last 30 days, won 90%+ of 20+ trades), #RSS7CUKH
+  (80%+, stop 1.5% or tighter) and #7T3VJU82 (80%+, 1h only), each the rule set of the same id in
+  Forecast v4 (`forecast_v4.rule_id`). Practice money only, $5 x 20x = $100 of coin; **no order is
+  ever placed and there is no real-money path.** They are `profiles.BUILTIN` rooms with `follows:
+  "v4"` and `v4_rule`: no runner, no watcher, no deploy grid (the arming routes answer 409).
+* **One engine, never a second copy.** Backtest v4's own code (`skill_bt.step`, the per-candle half of
+  `walk`) is called by the follower, so practice and backtest cannot drift: buy at the signal
+  candle's close plus the coin's usual gap, then at each later close the stop, the target, the
+  opposite signal. Several strategies may hold one coin (the runner's one-per-coin rule does not apply).
+* **The follower** (`tradingagents/v4_follow.py`, the API's `v4-follow` thread, 20 seconds after each
+  15-minute close, under a file lock): for every switched-on strategy it processes EVERY closed
+  candle since the last one it handled, in order, so a sleeping PC loses nothing (catch-up).
+  It writes the runner's own row shapes into the room's files (strategy `v4_<id>`, $5, 20x), so
+  every panel reads them unchanged. **It HOLDS at midnight UTC** until that day's list lands: no
+  candle opening at or after 00:00 UTC is processed, so nothing is written and taken back; the rows
+  of the hold are filled in at their candle times when the list lands. A switch-on first warms the
+  strategy up over the newest candles; a trade the warm-up leaves open is CARRIED (followed to its
+  exit so the strategy cannot buy early, not counted, as Forecast v4 did not count it). A strategy
+  switched off takes no new trade and finishes the one it holds. A pinned coin the exchange delists
+  closes an open trade at its last candle, `why` DELISTED.
+* **The daily chain** (`tradingagents/v4_daily.py`, the `v4-daily` thread; `start_now()` and
+  `status()`/`words()`): starts 00:05 UTC every day, `skillbt.yml` on EVERY account's machines (all
+  60, `split_coins`, each fork synced first) over a **pinned universe** — the 42 settings of
+  technical-analysis + backtesting-frameworks on every coin-timeframe, and exactly the 15,933
+  backtesting-trading-strategies picks of Nov 05, 2026 (`research/v4/bt_pinned.json`, never
+  re-chosen, so ids never come and go) — then collect, `v4_store build --daily` (the store is
+  REPLACED daily, never merged; the Nov 10, 2026 store is kept, and each day's forecast is kept
+  gzipped under `forecast-days/`), `forecast_v4.build`, then each room's list.
+  **Funding is charged** (rule 9): the shard passes each coin's funding history and `step()` charges
+  every settlement inside a hold, in the backtest and in practice alike. **A trade still open at the
+  end of a run (`why` END) never counts** as a finished trade, in the rooms or in Forecast v4.
+  **One list per UTC day, written ONCE** (a day's list is never rewritten, the follower may have
+  traded on it); a day not landed by 06:00 UTC (`GIVE_UP_AT_S`) is given up by name and yesterday's
+  list applies, said — except that a store BUILT for the day writes its real lists whenever the build
+  ends, so a good build is exempt from the 06:00 give-up. An account refusing twice, a green run that
+  measured 0 coins and a share missing coins are named and never published.
+  **Agreement is judged by the day a trade CLOSED** (`v4_daily.agreement`): yesterday's practice
+  exits against the re-measured backtest's trades of the same strategies, "the same" = strategy,
+  side, entry candle, exit candle and reason, with the dollar difference printed beside the count.
+* **Costs NOT charged, named on the rooms and Backtest v4:** every trade pays its coin's usual gap,
+  not its own minute's order book (100% typical cost), and no trade is refused by the runner's cost
+  check; exits settle on a candle's close, not on the minute. Building them is a separate job. This
+  is a lead to practice, never a reason for real money.
+* **What was switched off:** the watchers of #55D32617, #4FC03172, #B2404C0B, #6B08FF64, #CC94D9FB,
+  #99E79CBA, #C7396286, #1D4274C1, #8F0C7926 and #BBE0A361 (`python -m tradingagents.v4_rooms
+  retire_others`, one reason line each in the room's deploy history). Their tabs and past trades
+  stay; no slot is disarmed (all held 0 switched-on rows on Nov 10, 2026, so a slot holding "real"
+  is never touched); #09439DC2 (the room `main`) was not named and is untouched.
+* **Status:** the first refresh has not run yet ("first refresh: not run yet"). Nothing above has
+  traded; the first numbers go beside this line when it has.
+
+Guards: `tests/test_skill_rooms_exist.py`, `tests/test_skill_rooms_screen.py`,
+`tests/test_skill_engine_steps.py`, `tests/test_v4_follow.py`, `tests/test_v4_daily.py`,
+`tests/test_v4_daily_shard.py`, `tests/test_v4_store_daily.py`, `tests/test_v4_rooms.py`.
+
 ## Strategies for every coin and every timeframe (MANDATORY — Nov 05, 2026)
 
 The operator, Nov 05, 2026: *"use all my existing data from v2 , v3 and

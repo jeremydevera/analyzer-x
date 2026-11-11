@@ -346,3 +346,61 @@ def test_the_ribbon_never_prints_a_list_file_name(monkeypatch, v4home):
     s = v4_follow.status(ROOM)
     assert s["today_landed"] is False and s["today_list_error"]
     assert ".json" not in s["today_list_error"] and "rooms" not in s["today_list_error"]
+
+
+# ------------------------------------------------------------------ the price badge
+# Operator, Nov 11, 2026: "why does it say websocket down". A follower room has no runner, so no
+# runner ever opens a price connection for it - by design, it checks at each candle close as its
+# backtest did - and the badge read the one machine-wide feed file, last written Oct 30, 2026, and
+# called that "websocket down" (label-must-match-data: a false label over a true number).
+def _follow_status(**over):
+    st = {"last_pass_s": 1_793_000_020.0, "last_candle_ms": 1_793_000_000_000, "held_at": None,
+          "why": None, "filled_in": 0, "errors": [], "switched_on": [], "fallback_from": None,
+          "agreement": None}
+    st.update(over)
+    return lambda pid, *a, **k: st
+
+
+def test_the_feed_route_says_a_follower_room_checks_at_each_close(client, monkeypatch):
+    from tradingagents import v4_follow
+    from tradingagents.positions_view import fmt_when
+
+    monkeypatch.setattr(v4_follow, "status", _follow_status())
+    got = client.get("/api/trade/feed", headers=_hdr(ROOM)).json()
+    assert got["follows"] == "v4"
+    assert got["connected"] is False and got["running"] is False and got["prices"] == []
+    assert got["checked_s"] == 1_793_000_000 and got["problem"] is None
+    assert "websocket" not in got["why"].lower()
+    assert "candle close" in got["why"] and fmt_when(1_793_000_000) in got["why"]
+    # a watcher room still reads its runner's socket, exactly as before
+    plain = client.get("/api/trade/feed", headers=_hdr(OTHER)).json()
+    assert plain.get("follows") is None and "checked_s" not in plain
+
+
+def test_the_feed_route_names_a_follower_that_is_not_following(client, monkeypatch):
+    from tradingagents import v4_follow
+
+    monkeypatch.setattr(v4_follow, "status", _follow_status(
+        last_pass_s=None, last_candle_ms=None, why="the follower has not run yet"))
+    got = client.get("/api/trade/feed", headers=_hdr(ROOM)).json()
+    assert got["checked_s"] is None and got["problem"] == "the follower has not run yet"
+    assert "has not checked a candle yet" in got["why"]
+
+    def boom(pid, *a, **k):
+        raise OSError("disk gone")
+    monkeypatch.setattr(v4_follow, "status", boom)
+    got = client.get("/api/trade/feed", headers=_hdr(ROOM)).json()
+    assert got["follows"] == "v4" and got["problem"].startswith("the follower's record cannot be read")
+
+
+def test_the_badge_never_says_websocket_down_in_a_follower_room():
+    src = (WEB / "components/trade/LivePrice.tsx").read_text(encoding="utf-8")
+    badge = src[src.index("export function FeedBadge"):]
+    assert badge.index("feed.follows") < badge.index('"websocket down"')
+    assert "fmtWhen(feed.checked_s)" in badge          # one date format, from the route's own number
+    assert "feed.problem" in badge
+    ts = (WEB / "lib/api.ts").read_text(encoding="utf-8")
+    block = ts[ts.index("export interface FeedStatus"):]
+    block = block[:block.index("}")]
+    for field in ("follows?:", "checked_s?:", "problem?:"):
+        assert field in block, field

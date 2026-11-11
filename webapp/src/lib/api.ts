@@ -2184,6 +2184,12 @@ export interface FeedStatus {
   status_age?: number;
   prices?: FeedPrice[];
   why?: string;
+  /** "v4" in a skill room: no runner and no socket, on purpose - it checks at each candle close */
+  follows?: "v4" | null;
+  /** when the newest candle the follower checked CLOSED (seconds), or null before its first */
+  checked_s?: number | null;
+  /** why the follower is not following right now, or null while it is */
+  problem?: string | null;
 }
 
 /** The exchange this app trades (tradingagents/venue.py, Oct 10, 2026);

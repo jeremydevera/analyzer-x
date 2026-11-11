@@ -7,7 +7,7 @@
  * times for a second copy of a thing that drifts, so they moved here instead
  * of being pasted.
  */
-import type { FeedStatus } from "@/lib/api";
+import { fmtWhen, type FeedStatus } from "@/lib/api";
 import { useVenueName } from "@/lib/venue";
 
 /** The last price MEXC PUSHED to the runner for this contract.
@@ -41,6 +41,23 @@ export function Live({ sym, feed }: { sym: string; feed: FeedStatus | null }) {
 /** Proof, not decoration: the socket the runner is actually holding. */
 export function FeedBadge({ feed }: { feed: FeedStatus | null }) {
   if (!feed) return null;
+  // A skill room has no socket on purpose: it checks at each candle close, as its backtest did
+  // (operator, Nov 11, 2026: "why does it say websocket down"). Say that, never "down".
+  if (feed.follows) {
+    const bad = !!feed.problem;
+    return (
+      <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+        bad ? "bg-warning-50 text-warning-600 dark:bg-warning-500/10"
+            : "bg-gray-100 text-gray-600 dark:bg-white/[0.05] dark:text-gray-400"}`}
+        title={bad ? `${feed.problem} · ${feed.why ?? ""}` : (feed.why ?? "")}>
+        <span className={`h-1.5 w-1.5 rounded-full ${bad ? "bg-warning-500" : "bg-gray-400"}`} />
+        {feed.checked_s != null
+          ? `checks at each candle close · last ${fmtWhen(feed.checked_s)}`
+          : "checks at each candle close · none checked yet"}
+        {bad ? " · not following" : ""}
+      </span>
+    );
+  }
   const on = feed.connected;
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${

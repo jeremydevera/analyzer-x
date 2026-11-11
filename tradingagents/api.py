@@ -3949,6 +3949,30 @@ def trade_feed() -> dict:
     import json as _json
 
     from tradingagents import live_price as _lp
+    from tradingagents import profiles as _pf
+
+    # A FOLLOWER ROOM HAS NO SOCKET, ON PURPOSE (operator, Nov 11, 2026: "why does it say
+    # websocket down"): no runner ever opens one for it - like its backtest, it reads each candle
+    # once it has closed - so the machine-wide feed file below (last written Oct 30, 2026) is not
+    # its connection and "down" was a false label. Say what it does, from the follower's record.
+    _pid = _pf.current()
+    if _pf.follows(_pid) == "v4":
+        from tradingagents import v4_follow as _v4f
+        from tradingagents.positions_view import fmt_when as _fw
+
+        try:
+            _st = _v4f.status(_pid)
+            problem = _st.get("why")
+        except Exception as exc:                               # noqa: BLE001
+            _st, problem = {}, f"the follower's record cannot be read ({type(exc).__name__})"
+        close_ms = _st.get("last_candle_ms")
+        checked = int(close_ms) // 1000 if close_ms else None
+        why = ("this room has no live price connection, on purpose: like its backtest, it checks "
+               "prices once at each candle close; "
+               + (f"the last candle it checked closed {_fw(checked)}" if checked
+                  else "it has not checked a candle yet"))
+        return {"running": False, "connected": False, "follows": "v4", "checked_s": checked,
+                "problem": problem, "why": why, "prices": []}
 
     try:
         raw = _json.loads(_lp.STATUS_PATH.read_text(encoding="utf-8"))

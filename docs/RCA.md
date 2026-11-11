@@ -691,6 +691,41 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-11-P — the three skill rooms' Positions badge said "websocket down" while nothing was down
+
+**CEO**
+
+* What you saw: "websocket down" in orange beside Positions on #D7EN8BNV, #RSS7CUKH and #7T3VJU82, which reads like the rooms were broken.
+* Why: these rooms have no live price connection on purpose - like their backtest they check prices once at each candle close - and the badge was reading an old file from Oct 30, 2026 that belongs to the old rooms' programs.
+* What stops it now: in these rooms the badge says "checks at each candle close · last Nov 11, 2026 10:30am" from the follower's own record, and turns orange only when the follower itself is not following.
+
+**DEV**
+
+* `tradingagents/api.py:trade_feed` read the machine-wide `live_price.STATUS_PATH` for every room; a follower room (`profiles.follows(pid) == "v4"`) has no runner, so the file was a stale one from another process and `webapp/src/components/trade/LivePrice.tsx:FeedBadge` printed `connected: false` as "websocket down".
+* Invariant broken: **a status badge describes the room it sits in, from that room's own data - a room with no connection by design is never labelled "down"** (label-must-match-data).
+* Guard: `tests/test_skill_rooms_screen.py::test_the_feed_route_says_a_follower_room_checks_at_each_close`, `::test_the_feed_route_names_a_follower_that_is_not_following`, `::test_the_badge_never_says_websocket_down_in_a_follower_room`.
+
+**SAW** - "websocket down" on the Positions panel of all three skill rooms; asked "why does it say websocket down" on Nov 11, 2026 about 10:30am.
+
+**TIMELINE**
+
+1. Oct 30, 2026 4:26pm: `~/.tradingagents/live_price.json` is written for the last time (connected, last error `ConnectionClosedError: no close frame received or sent`, tracking XIECHUANG_USDT).
+2. Nov 11, 2026 6:00am: the three skill rooms go live with no runner, as designed; their trades are written by the follower 20 s after each 15-minute close.
+3. Nov 11, 2026 10:31am: `/api/trade/feed` for each of the three answers `connected: false`, `status_age` 1,019,076 s (11.8 days), and the badge prints "websocket down".
+4. After the fix (10:40am): the route answers `follows: "v4"`, `checked_s` = the last candle the follower checked; the badge prints "checks at each candle close · last Nov 11, 2026 10:30am" for #D7EN8BNV and #RSS7CUKH and "... 10:00am" for #7T3VJU82 (1-hour candles only), in gray.
+
+**ROOT CAUSE** - the feed route and its badge were written for rooms with a runner and had no branch for a room that has none.
+
+**WHY IT WAS NOT CAUGHT** - the skill-room screen tests checked every panel a follower room HIDES (the deploy grid, the watcher, the runner buttons) and the panels it adds, but the Positions panel is shared and kept, so nobody asked what its badge would say in a room with no socket; and no test ever ran the feed route under a follower room's header.
+
+**COST** - none in money; a false alarm on three screens for about 4.5 hours.
+
+**FIX** - this commit: `trade_feed` answers a follower room from `v4_follow.status` (`follows`, `checked_s`, `problem`, a plain `why`), never the feed file; `FeedBadge` prints the follower's line, orange only with a `problem`; the live-price cell's hover says the same `why`.
+
+**GUARD** - `tests/test_skill_rooms_screen.py::test_the_feed_route_says_a_follower_room_checks_at_each_close`, `::test_the_feed_route_names_a_follower_that_is_not_following` and `::test_the_badge_never_says_websocket_down_in_a_follower_room` (all red before the fix). Not looked into: why the old feed file stopped on Oct 30, 2026 while the old rooms' programs were still up - those rooms are off since Nov 11, 2026.
+
+---
+
 ## RCA-2026-11-05-G — a coin redone alone would still have been listed "no machine reached" on the strategies page: NEVER HAPPENED YET
 
 **CEO**

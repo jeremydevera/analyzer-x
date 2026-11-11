@@ -3057,6 +3057,42 @@ Guards: `tests/test_backtest_v4_store.py` (14, on a tiny built database), `tests
 format). Page: `webapp/src/components/backtest-v4/V4Strategies.tsx`; routes `/api/v4/strategies`,
 `/api/v4/facets`, `/api/v4/strategies/trades`.
 
+## Forecast v4 — Forecast v2's questions over Backtest v4 (Nov 10, 2026)
+
+The operator, Nov 10, 2026: *"in auto trade can you create forecast v4 but this time use my backtest
+v4 data"*. Auto Trade → Forecast v4 (`/forecast-v4`, `webapp/src/components/forecast/ForecastV4.tsx`),
+worked out by `tradingagents/forecast_v4.py` into `~/.tradingagents/v4/forecast.json` (one swap,
+`forecast_v2.publish`), served by `/api/forecast-v4`, `/rules`, `/streaks` (every filter, sort and page
+on the server, ten a page, a base margin box that scales every dollar).
+
+* **Walked forward, never looking ahead:** every day at 12:00am UTC from the 1st of the month three
+  months before the store's last candle, a rule set (days judged 7/15/30 × win rate 50-90% × 3/5/10/20+
+  trades × TP any / wider than SL × any stop / 1.5% or tighter × timeframe × skill) switches on every
+  strategy whose trades that CLOSED before that midnight pass it, and counts the trades they OPEN that
+  day at their stored profit. "This month" = the average of the whole months (low to high); a rule set
+  with fewer than 3 whole months is thin and sorts after the others on "best worst month first".
+  Rule sets that switch on exactly the same strategies are listed once (`same_as`; finding the other
+  id opens its twin and says so).
+* **Luck bar:** random picks = the same trades at the average trade every strategy of the same kind
+  opened that day; "beat random on A of B days", "could be luck" unless clearly over half (one-sided 95%).
+* **Left out:** the backtesting-trading-strategies rows' trades opened before their split (they were
+  chosen on them): 461,213 of 7,145,966. **Uncapped:** several strategies on one coin all count (a room
+  holds one position per coin). **No reality check, nothing switched on:** no runner can trade a skill
+  strategy. **Static:** Backtest v4 is never re-measured; `python -m tradingagents.v4_store build` now
+  rebuilds the store AND the forecast (`python -m tradingagents.forecast_v4 build` alone: ~2-5 min).
+* **First build (Nov 10, 2026, data to Nov 06, 2026 1:45am UTC):** 3,600 rule sets (+720 merged), 98
+  days, 6,076,588 trades opened; 2,787 traded, 390 made money, 151 made money AND beat random by more
+  than luck. Best worst month: #7T3VJU82 (1h, won 80%+ of 20+ trades in its last 30 days) +$498.16 over
+  1,043 trades, 70.4% won, every month green (Aug +101.86, Sep +132.42, Oct +218.96, Nov so far +44.92),
+  random picks −$1,279.79, beat random on 74 of 80 days — checked by a separate re-add from the
+  database (Aug: 69 trades, 61 won, +57.28 on #2QZXYWP5 both ways). Streaks: 7,038 winning and 73,804
+  losing runs of 3+. Skill trades exit on the candle's close, not the minute, and pay the coin's usual
+  gap, not each minute's book — so this is a lead to practice, never a reason for real money.
+
+Guard: `tests/test_forecast_v4.py` (19: on one timeline; no day reads its own closes, months add up,
+whole months only, worst run, the chosen skill's split, the luck bar, streaks, paging, ceilings, the
+empty answer, the page's columns, boxes and routes).
+
 ## Strategies for every coin and every timeframe (MANDATORY — Nov 05, 2026)
 
 The operator, Nov 05, 2026: *"use all my existing data from v2 , v3 and

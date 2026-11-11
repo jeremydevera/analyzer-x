@@ -508,6 +508,10 @@ def main(argv: list[str] | None = None) -> int:
     if args[:1] == ["build"]:
         meta_ = build()
         print(json.dumps(meta_, indent=1))
+        # Forecast v4 is worked out from this store, so a new store means a new forecast
+        from tradingagents import forecast_v4
+
+        forecast_v4.build()
         return 0
     if args[:1] == ["status"]:
         print(json.dumps(meta(), indent=1))

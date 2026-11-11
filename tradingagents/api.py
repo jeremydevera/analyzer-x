@@ -831,6 +831,49 @@ def v4_trades(row_id: str, base_margin: float = 5.0, days: int = 0,
     return got
 
 
+@app.get("/api/forecast-v4")
+def forecast_v4_route() -> dict:
+    """Auto Trade -> Forecast v4 (operator, Nov 10, 2026: "in auto trade can you
+    create forecast v4 but this time use my backtest v4 data"): what the walk
+    over Backtest v4's trades covered, and the counts the page heads with."""
+    from tradingagents import forecast_v4
+
+    return forecast_v4.summary()
+
+
+@app.get("/api/forecast-v4/rules")
+def forecast_v4_rules(window: int = 0, tf: str = "", skill: str = "", tp_rule: str = "",
+                      max_tp: float = 0.0, max_sl: float = 0.0, min_winrate: float = 0.0,
+                      min_trades: int = 0, min_profit: float | None = None,
+                      profitable: bool = False, not_luck: bool = False, traded: bool = True,
+                      q: str = "", base_margin: float = 5.0, sort: str = "rank",
+                      desc: bool = True, page: int = 1) -> dict:
+    """The switch-on rule sets walked forward over Backtest v4, every filter
+    applied on the server (tradingagents/forecast_v4.rules_page), ten a page."""
+    from tradingagents import forecast_v4
+
+    return forecast_v4.rules_page({
+        "window": window, "tf": tf, "skill": skill, "tp_rule": tp_rule, "max_tp": max_tp,
+        "max_sl": max_sl, "min_winrate": min_winrate, "min_trades": min_trades,
+        "min_profit": min_profit, "profitable": profitable, "not_luck": not_luck,
+        "traded": traded, "q": q, "base_margin": base_margin, "sort": sort, "desc": desc,
+        "page": page})
+
+
+@app.get("/api/forecast-v4/streaks")
+def forecast_v4_streaks(kind: str = "win", min: int = 5, recent: int = 7, tf: str = "",
+                        skill: str = "", q: str = "", base_margin: float = 5.0,
+                        page: int = 1) -> dict:
+    """Backtest v4 strategies whose newest trades are a run of wins (or
+    losses), filtered and paged on the server, with what past runs that long
+    did next."""
+    from tradingagents import forecast_v4
+
+    return forecast_v4.streaks_page({"kind": kind, "min": min, "recent": recent, "tf": tf,
+                                     "skill": skill, "q": q, "base_margin": base_margin,
+                                     "page": page})
+
+
 # -------------------------------------------------------------- strategies
 @app.get("/api/strategies")
 def strategies(coin: str | None = None, tf: str | None = None,

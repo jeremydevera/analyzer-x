@@ -46,6 +46,9 @@ const navItems: NavItem[] = [
       // v2 with the first Forecast's Backtest a room and Rooms table under
       // it. The first page (/forecast) is off the menu, still at its address.
       { name: "Forecast", path: "/forecast-v2" },
+      // Forecast v4 (operator, Nov 10, 2026: "in auto trade can you create forecast v4 but this
+      // time use my backtest v4 data"): the same two questions over Backtest v4's trades.
+      { name: "Forecast v4", path: "/forecast-v4" },
     ],
   },
   // v1 IS OFF THE NAV (Sep 24, 2026). The operator, three times:

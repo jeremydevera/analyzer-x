@@ -57,17 +57,20 @@ export default function V4FollowPanel() {
               {`Backtest v4 is refreshed every day — ${daily.words}`}
             </p>
           )}
-          {d.fallback_from && (
-            <p className="mt-1 text-theme-xs text-warning-600 dark:text-warning-400">
-              today&apos;s list is a copy of an earlier day&apos;s: the new one has not landed yet
-            </p>
+          {d.fallback_words && (
+            <p className="mt-1 text-theme-xs text-warning-600 dark:text-warning-400">{d.fallback_words}</p>
           )}
 
+          {/* an empty list before today's has landed is "not made yet", never "nothing passes" */}
           <p className="mt-4 text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
-            Switched on today · {(d.total_on ?? 0).toLocaleString()}
+            Switched on today{d.today_landed === false ? "" : ` · ${(d.total_on ?? 0).toLocaleString()}`}
             {busy && <span className="ml-2 font-normal text-gray-400">loading…</span>}
           </p>
-          {(d.total_on ?? 0) === 0 ? (
+          {d.today_landed === false ? (
+            <p className="mt-1 text-theme-xs text-gray-400">
+              {`today's list has not landed yet (${d.today_why ?? "the daily refresh has not made it yet"})`}
+            </p>
+          ) : (d.total_on ?? 0) === 0 ? (
             <p className="mt-1 text-theme-xs text-gray-400">
               no strategy passes this rule today, so the room opens nothing
             </p>
@@ -80,7 +83,9 @@ export default function V4FollowPanel() {
                     <TableCell isHeader className={th}>Coin</TableCell>
                     <TableCell isHeader className={th}>Timeframe</TableCell>
                     <TableCell isHeader className={th}>Strategy</TableCell>
-                    <TableCell isHeader className={th}>Last 30 days: Trades</TableCell>
+                    <TableCell isHeader className={th}>
+                      {d.window_days != null ? `Last ${d.window_days} days: Trades` : "Trades"}
+                    </TableCell>
                     <TableCell isHeader className={th}>Wins</TableCell>
                     <TableCell isHeader className={th}>Win rate</TableCell>
                   </TableRow>
@@ -104,15 +109,20 @@ export default function V4FollowPanel() {
           <PageButtons cur={d.page ?? 1} pages={d.pages ?? 1} goto={setPage} what="switched on" busy={busy} />
 
           {/* yesterday's agreement with the backtest */}
+          {/* the UTC day it checked, named by when it ENDED (its start in this PC's time reads as
+              the day before); "Yesterday's" only when it is */}
           <p className="mt-4 text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
-            Yesterday&apos;s check{ag?.day_s ? ` (${fmtWhen(ag.day_s)})` : ""}
+            {ag?.yesterday === false ? "Latest check" : "Yesterday's check"}
+            {ag?.ended_s != null ? ` (the day that ended ${fmtWhen(ag.ended_s)})` : ""}
           </p>
           {!ag && <p className="mt-1 text-theme-xs text-gray-400">not checked yet: the first check runs after the first daily refresh</p>}
           {ag?.error && <p className="mt-1 text-theme-xs text-error-500">not checked: {ag.error}</p>}
           {ag && !ag.error && (
             <>
               <p className="mt-1 text-theme-sm text-gray-700 dark:text-gray-300">
-                {ag.same} of {ag.of} trades the same as the backtest · ${(ag.dollars_apart ?? 0).toFixed(2)} apart
+                {ag.of === 0
+                  ? "no trades closed that day"
+                  : `${ag.same} of ${ag.of} trades the same as the backtest · $${(ag.dollars_apart ?? 0).toFixed(2)} apart`}
               </p>
               {((ag.only_practice?.length ?? 0) + (ag.only_backtest?.length ?? 0)) > 0 && (
                 <p className="mt-1 max-h-24 overflow-y-auto break-words text-theme-xs text-gray-500 dark:text-gray-400">

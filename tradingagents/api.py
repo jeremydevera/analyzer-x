@@ -3327,10 +3327,31 @@ def trade_v4_follow(page: int = 1) -> dict:
              "wins": int(r.get("wins") or 0),
              "win_rate": round(100.0 * int(r.get("wins") or 0) / int(r["n"]), 1) if r.get("n") else None}
             for r in on[(page - 1) * per: page * per]]
+    from tradingagents.positions_view import fmt_when
+
+    daily = _v4d.status()
+    # WAS TODAY'S LIST EXAMINED (final review, Nov 11, 2026): before it lands, an empty list is
+    # "not made yet" with the daily refresh's own reason - never "no strategy passes"
+    landed = bool(st.get("today_landed"))
+    today_why = None if landed else (st.get("today_list_error") or daily.get("why") or daily.get("words")
+                                     or "the daily refresh has not made it yet")
+    # a day's list is never rewritten, so a copy for TODAY is final: today gets no list of its own
+    fb_day = st.get("fallback_day_s")
+    fallback_words = (f"today's list is a copy of the list of the day that began {fmt_when(int(fb_day))}: "
+                      f"today's refresh did not make one, and a day's list is never written twice"
+                      if fb_day is not None else None)
+    ag = st.get("agreement")
+    if isinstance(ag, dict) and ag.get("day_s") is not None:
+        # the UTC day it checked, named by its END in the one date format (its start in local time
+        # reads as the day before), and whether that day is really yesterday
+        today = int(st.get("today_s") or _time.time() // 86400 * 86400)
+        ag = {**ag, "ended_s": int(ag["day_s"]) + 86400, "yesterday": int(ag["day_s"]) == today - 86400}
+    rule = _pf.v4_rule(pid) or {}
     return {"follows": "v4", "room": pid, "rule_words": _v4_rule_words(pid), "heartbeat": _follow_heartbeat(pid),
             "switched_on": rows, "total_on": len(on), "page": page, "pages": pages, "per_page": per,
-            "fallback_from": st.get("fallback_from"), "agreement": st.get("agreement"),
-            "daily": _v4d.status()}
+            "today_landed": landed, "today_why": today_why, "window_days": rule.get("window"),
+            "fallback_from": st.get("fallback_from"), "fallback_words": fallback_words, "agreement": ag,
+            "daily": daily}
 
 
 @app.get("/api/trade/summary")

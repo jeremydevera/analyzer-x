@@ -47,6 +47,7 @@ SOURCES = (("skilltaall.json", "technical-analysis / backtesting-frameworks"),
 # `older_lost` flag - the daily run chooses nothing.
 DAILY_SOURCES = (("skilldaily.json", "daily re-measure"),)
 FIRST_COPY = "rows-2026-11-10.db"     # the Nov 10, 2026 store, kept once before the first daily refresh
+FIRST_FORECAST = "forecast-2026-11-10-static.json.gz"   # ... and its Forecast v4, the rooms' rule sets
 SORTS = {                         # the sort key -> its SQL (window figures are `a.*` when a window is on)
     "profit": "profit", "winrate": "win_rate", "trades": "trades", "wins": "wins", "losses": "losses",
     "tp": "tp", "sl": "sl", "worst_run": "worst_run", "dip": "dip", "green": "green",
@@ -243,15 +244,44 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
 def keep_first_copy(db: Path | str | None = None) -> Path | None:
     """Copy the store as it stands (the Nov 10, 2026 measurement) to `rows-2026-11-10.db` beside it, ONCE.
     Returns the copy's path, or None when that file already exists (or there is no store to copy): a
-    daily refresh REPLACES the store, so this is what keeps the numbers the three rooms were chosen on."""
+    daily refresh REPLACES the store, so this is what keeps the numbers the three rooms were chosen on.
+    The store's `forecast.json` beside it is kept too, once (`keep_first_forecast`): the daily build
+    replaces it as well, and the rooms were chosen from ITS rule sets."""
     import shutil
 
     src = Path(db) if db else db_path()
+    keep_first_forecast(src.parent)
     dst = src.with_name(FIRST_COPY)
     if dst.exists() or not src.exists():
         return None
     tmp = dst.with_name(dst.name + ".copying")
     shutil.copyfile(src, tmp)
+    os.replace(tmp, dst)
+    return dst
+
+
+def keep_first_forecast(home: Path | str) -> Path | None:
+    """`<home>/forecast.json` kept gzipped as `forecast-days/forecast-2026-11-10-static.json.gz`, ONCE
+    (final review, Nov 11, 2026): never written over, and never a forecast already built from a daily
+    store (its `store.sources` names the daily re-measure). Returns the copy, or None when there is
+    nothing to keep."""
+    import gzip
+
+    home = Path(home)
+    src, dst = home / "forecast.json", home / "forecast-days" / FIRST_FORECAST
+    if dst.exists() or not src.exists():
+        return None
+    raw = src.read_bytes()
+    try:
+        sources = (json.loads(raw).get("store") or {}).get("sources") or {}
+    except (ValueError, AttributeError):
+        return None                     # not the forecast it should be: nothing is kept under that name
+    if DAILY_SOURCES[0][1] in sources:
+        return None
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dst.with_name(f"{dst.name}.{os.getpid()}.tmp")
+    with gzip.open(tmp, "wb", compresslevel=6) as fh:
+        fh.write(raw)
     os.replace(tmp, dst)
     return dst
 
@@ -532,9 +562,12 @@ def main(argv: list[str] | None = None) -> int:
         try:
             from tradingagents import forecast_v4
 
+            had = (db_path().parent / "forecast-days" / FIRST_FORECAST).exists()
             kept = keep_first_copy()
             if kept:
                 print(f"v4: the Nov 10, 2026 store is kept as {kept}")
+            if not had and (db_path().parent / "forecast-days" / FIRST_FORECAST).exists():
+                print(f"v4: the Nov 10, 2026 forecast is kept as {db_path().parent / 'forecast-days' / FIRST_FORECAST}")
             print(json.dumps(build(sources=DAILY_SOURCES), indent=1))
             forecast_v4.build()
         except Exception as e:                      # noqa: BLE001 - the reason is the product

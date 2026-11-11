@@ -1904,10 +1904,20 @@ export interface V4Follow {
   heartbeat?: FollowBeat | null;
   switched_on?: FollowRow[];
   total_on?: number; page?: number; pages?: number; per_page?: number;
+  /** false until today's list has landed: an empty list then means "not made yet", never
+   *  "nothing passes"; `today_why` is the daily refresh's own reason */
+  today_landed?: boolean;
+  today_why?: string | null;
+  /** the room's own rule window (v4_rule.window), the days the "Last N days" columns count */
+  window_days?: number | null;
   fallback_from?: string | null;
+  /** the sentence for a list copied from an earlier day (final: today gets no list of its own) */
+  fallback_words?: string | null;
   agreement?: {
     day_s?: number; same?: number; of?: number; dollars_apart?: number; error?: string;
     only_practice?: string[]; only_backtest?: string[];
+    /** when the UTC day it checked ENDED (s), and whether that day is yesterday */
+    ended_s?: number; yesterday?: boolean;
   } | null;
   daily?: V4Daily;
 }

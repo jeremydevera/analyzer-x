@@ -655,6 +655,42 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-11-O — every evening before the day's list landed, a skill room's panel would have said "no strategy passes this rule today", and four of its labels did not match their numbers: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the final review before the rooms went live.
+* Why: the panel read "nothing switched on" the same way whether the day's list had been made and was empty, or had not been made yet - so for the first hours of every UTC day it would have told you nothing passes when nothing had been looked at.
+* What stops it now: until the day's list lands the panel says so, with the daily refresh's own reason; the copy, check and column labels are worked out from the data they describe.
+
+**DEV**
+
+* `webapp/src/components/trade/V4FollowPanel.tsx:70-73` printed "no strategy passes this rule today" whenever `total_on` was 0, and `tradingagents/v4_follow.py:status` returned `switched_on: []` both for a missing list and an empty one; the fallback line said "the new one has not landed yet" for a given-up day that never gets one; the check printed its UTC day's START in local time ("Nov 09, 2026 7:00pm" for Nov 10) and "0 of 0"; "Last 30 days" was a literal.
+* Invariant broken: **an empty page names what was EXAMINED, never what exists (CLAUDE.md kit G, Sep 12, 2026) - and every label is derived from the data beside it**.
+* Guard: `tests/test_skill_rooms_screen.py::test_before_todays_list_lands_the_panel_never_says_nothing_passes`, `::test_the_panel_labels_come_from_the_data`.
+
+**SAW** - nothing: the rooms are not live. The go-live walkthrough (Nov 11, 2026 1:30am) predicted "until the list lands, the panel wrongly says nothing passes".
+
+**TIMELINE** (D = Nov 11, 2026 12:00am UTC = Nov 10, 2026 7:00pm on this PC)
+
+1. D 00:05: the daily refresh starts; GitHub measures ~1,050 coins until about D 01:30.
+2. b9b1df4: from 7:00pm to about 8:30pm every evening, #D7EN8BNV's panel read "Switched on today · 0 - no strategy passes this rule today, so the room opens nothing" (red before: no `today_landed` in the route).
+3. This commit: "today's list has not landed yet (measuring 1,050 coins on GitHub: run 101 on me)", with no count; once the list lands empty, "no strategy passes" - true then.
+4. Labels, b9b1df4 -> this commit: a given-up day "a copy of an earlier day's: the new one has not landed yet" -> "a copy of the list of the day that began Nov 09, 2026 7:00pm: today's refresh did not make one, and a day's list is never written twice"; "Yesterday's check (Nov 09, 2026 7:00pm)" -> "Yesterday's check (the day that ended Nov 10, 2026 7:00pm)" ("Latest check" when it is not yesterday); "0 of 0 trades the same" -> "no trades closed that day"; "Last 30 days" -> the room's `v4_rule.window`; a list error "the list 2026-11-11.json cannot be read" -> "the list of the day that began Nov 10, 2026 7:00pm cannot be read (...)".
+5. The first daily build would have replaced `forecast.json`, the file the three rooms' rule sets were picked from, with no copy of it; this commit keeps it once as `forecast-days/forecast-2026-11-10-static.json.gz` (`v4_store.keep_first_forecast`), never a daily forecast under that name.
+
+**ROOT CAUSE** - "zero rows" carried two meanings and the panel assumed one; the labels were written as literals or from the wrong end of the day.
+
+**WHY IT WAS NOT CAUGHT** - the route tests always monkeypatched `v4_follow.status` with a list already present, and the panel tests checked that strings EXIST, not what they say in each state; the empty state had no test, which is the exact gap RCA-2026-09-12-G named ("a row-shaped suite has nowhere to stand").
+
+**COST** - none (never ran). Would have been a false "nothing passes" on every room every evening, and four labels that disagreed with their own numbers.
+
+**FIX** - this commit: `status()` returns `today_landed` / `today_list_error` / `fallback_day_s` (1294334); the route adds `today_why`, `fallback_words`, `window_days` and the check's `ended_s` / `yesterday`; the panel prints from them; `keep_first_copy` also keeps the Nov 10 forecast.
+
+**GUARD** - `tests/test_skill_rooms_screen.py::test_before_todays_list_lands_the_panel_never_says_nothing_passes`, `tests/test_skill_rooms_screen.py::test_the_panel_labels_come_from_the_data`, `tests/test_skill_rooms_screen.py::test_the_ribbon_never_prints_a_list_file_name`, `tests/test_v4_store_daily.py::test_first_daily_build_also_keeps_the_nov10_forecast_once`.
+
+---
+
 ## RCA-2026-11-05-G — a coin redone alone would still have been listed "no machine reached" on the strategies page: NEVER HAPPENED YET
 
 **CEO**

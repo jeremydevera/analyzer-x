@@ -175,7 +175,7 @@ def test_screen_puts_the_follow_panel_in_place_of_the_watcher_and_keys():
 
 def test_panel_columns_and_cost_line():
     panel = PANEL_PATH.read_text(encoding="utf-8")
-    for col in ("Switched on today", "ID", "Coin", "Timeframe", "Strategy", "Last 30 days", "Trades", "Wins",
+    for col in ("Switched on today", "ID", "Coin", "Timeframe", "Strategy", "Last ${d.window_days} days", "Trades", "Wins",
                 "Win rate"):
         assert col in panel, col
     assert "trades the same as the backtest" in panel and "apart" in panel
@@ -259,3 +259,85 @@ def test_the_daily_route_and_both_screens_print_the_words_not_the_phase(client, 
     panel = PANEL_PATH.read_text(encoding="utf-8")
     assert "daily.words" in panel and "daily.phase" not in panel
     assert "daily.words" in V4TAB and "daily.phase" not in V4TAB
+
+
+# ------------------------------------------------------------------ final review (Nov 11, 2026)
+@pytest.fixture
+def v4home(tmp_path, monkeypatch):
+    from tradingagents import stores
+
+    home = tmp_path / "v4"
+    monkeypatch.setattr(stores, "V4", stores.Store(**{**stores.V4.__dict__, "home": home,
+                                                      "rows_db": home / "rows.db"}))
+    (home / "rooms").mkdir(parents=True)
+    return home
+
+
+def _today():
+    import time
+
+    return int(time.time()) // 86400 * 86400
+
+
+def test_before_todays_list_lands_the_panel_never_says_nothing_passes(client, monkeypatch, v4home):
+    """IMPORTANT: until the day's list landed, the panel said "no strategy passes this rule today, so
+    the room opens nothing" - a claim about a list nobody had made yet."""
+    import json
+
+    from tradingagents import v4_daily, v4_follow
+
+    monkeypatch.setattr(v4_daily, "status", lambda: {"phase": "running", "words": "measuring on GitHub",
+                                                     "why": "measuring 1,050 coins on GitHub: run 101 on me"})
+    got = client.get("/api/trade/v4-follow", headers=_hdr(ROOM)).json()
+    assert got["today_landed"] is False and got["total_on"] == 0
+    assert got["today_why"] == "measuring 1,050 coins on GitHub: run 101 on me"
+    v4_follow.list_path(_today()).write_text(json.dumps({"day_s": _today(), "fallback_from": None, "rooms": {
+        ROOM: [{"id": "ONE", "coin": "AAA", "tf": "1h", "strategy": "x", "label": "x", "n": 25, "wins": 24}]}}),
+        encoding="utf-8")
+    got = client.get("/api/trade/v4-follow", headers=_hdr(ROOM)).json()
+    assert got["today_landed"] is True and got["total_on"] == 1
+    v4_follow.list_path(_today()).write_text(json.dumps({"day_s": _today(), "fallback_from": None,
+                                                          "rooms": {ROOM: []}}), encoding="utf-8")
+    got = client.get("/api/trade/v4-follow", headers=_hdr(ROOM)).json()
+    assert got["today_landed"] is True and got["total_on"] == 0, "landed and empty: nothing passes, truly"
+    panel = PANEL_PATH.read_text(encoding="utf-8")
+    assert "today's list has not landed yet (" in panel and "d.today_why" in panel
+    assert panel.index("d.today_landed === false") < panel.index("no strategy passes this rule today")
+
+
+def test_the_panel_labels_come_from_the_data(client, monkeypatch, v4home):
+    import json
+
+    from tradingagents import v4_daily, v4_follow
+    from tradingagents.positions_view import fmt_when
+
+    monkeypatch.setattr(v4_daily, "status", lambda: {"phase": "given_up", "words": "gave up: x", "why": "x"})
+    today, day = _today(), 86400
+    v4_follow.list_path(today).write_text(json.dumps({"day_s": today, "fallback_from": "2026-11-09",
+                                                       "rooms": {ROOM: []}}), encoding="utf-8")
+    (v4home / "rooms" / f"agree-{v4_follow.list_path(today - day).stem}.json").write_text(
+        json.dumps({ROOM: {"day_s": today - day, "same": 0, "of": 0, "dollars_apart": 0.0,
+                           "only_practice": [], "only_backtest": []}}), encoding="utf-8")
+    got = client.get("/api/trade/v4-follow", headers=_hdr(ROOM)).json()
+    nov09 = v4_follow._day_of("2026-11-09")
+    # a given-up day never gets a list of its own: the line says so, never "has not landed yet"
+    assert got["fallback_words"] == (f"today's list is a copy of the list of the day that began {fmt_when(nov09)}: "
+                                     "today's refresh did not make one, and a day's list is never written twice")
+    # the check names the UTC day it checked by its END, and says whether that is yesterday
+    assert got["agreement"]["ended_s"] == today and got["agreement"]["yesterday"] is True
+    # "Last N days" is the room's own rule window
+    assert got["window_days"] == profiles.v4_rule(ROOM)["window"] == 30
+    panel = PANEL_PATH.read_text(encoding="utf-8")
+    assert "the new one has not landed yet" not in panel and "d.fallback_words" in panel
+    assert "the day that ended ${fmtWhen(ag.ended_s)}" in panel and "Yesterday's check" in panel
+    assert "no trades closed that day" in panel and "ag.of === 0" in panel
+    assert "Last 30 days" not in panel and "Last ${d.window_days} days: Trades" in panel
+
+
+def test_the_ribbon_never_prints_a_list_file_name(monkeypatch, v4home):
+    from tradingagents import v4_follow
+
+    v4_follow.list_path(_today()).write_text("{", encoding="utf-8")
+    s = v4_follow.status(ROOM)
+    assert s["today_landed"] is False and s["today_list_error"]
+    assert ".json" not in s["today_list_error"] and "rooms" not in s["today_list_error"]

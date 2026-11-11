@@ -99,3 +99,29 @@ def test_the_daily_cli_fails_loudly_with_its_reason(tmp_path, monkeypatch, capsy
     assert v4.main(["build", "--daily"]) == 1
     out = capsys.readouterr().out
     assert "FAILED" in out and "no daily file" in out
+
+
+def test_first_daily_build_also_keeps_the_nov10_forecast_once(tmp_path):
+    """Final review (Nov 11, 2026): the daily build replaces forecast.json too, and the numbers the
+    three rooms were chosen on (#D7EN8BNV, #RSS7CUKH, #7T3VJU82) lived only there. Kept once, gzipped,
+    beside the dated daily copies - never overwritten, and never a daily forecast under that name."""
+    import gzip
+
+    home = tmp_path / "v4"
+    home.mkdir()
+    db = home / "rows.db"
+    db.write_bytes(b"the nov 10 store")
+    fc = home / "forecast.json"
+    nov10 = json.dumps({"store": {"sources": {"technical-analysis + backtesting-frameworks": 226380}},
+                        "rules": [{"id": "D7EN8BNV"}]})
+    fc.write_text(nov10, encoding="utf-8")
+    v4.keep_first_copy(db)
+    kept = home / "forecast-days" / "forecast-2026-11-10-static.json.gz"
+    assert kept.exists() and gzip.decompress(kept.read_bytes()).decode("utf-8") == nov10
+    fc.write_text(json.dumps({"store": {"sources": {"daily re-measure": 15933}}}), encoding="utf-8")
+    v4.keep_first_copy(db)
+    assert gzip.decompress(kept.read_bytes()).decode("utf-8") == nov10, "never overwritten"
+    kept.unlink()
+    v4.keep_first_copy(db)
+    assert not kept.exists(), "a forecast built from a daily store is never kept as the Nov 10 one"
+    assert [p.name for p in home.rglob("*") if p.name.endswith((".tmp", ".copying"))] == []

@@ -139,9 +139,13 @@ def test_the_main_tab_draws_only_the_all_rooms_list():
     assert 'export const MAIN_TAB_PANELS: string[] = ["past trades"];' in _web("lib/loading.ts")
 
 
-def test_one_name_for_the_room_that_was_main_on_every_screen():
+def test_one_name_for_the_room_that_was_main_on_every_screen(as_shipped):
     ts = _web("lib/api.ts")
-    assert '{ id: "main", name: "#09439DC2", display_id: "09439DC2" },' in ts
+    # Nov 11, 2026 ("remove 09439DC2"): no tab for it, but every screen still names it
+    block = ts.split("export const PROFILES", 1)[1].split("];", 1)[0]
+    assert 'id: "main"' not in block
+    assert 'if (id === "main") return "#09439DC2";' in ts
+    assert profiles.retired("main") and profiles.name_of("main") == "#09439DC2"
     assert "export function roomName(id: string): string" in ts
     for rel in ("components/errors/DeployedTabsErrors.tsx", "components/forecast/ForecastV2.tsx",
                 "components/forecast/RoomForecasts.tsx", "components/trade/AutoTradeScreen.tsx"):

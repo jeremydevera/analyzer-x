@@ -194,8 +194,12 @@ def test_each_room_is_its_rule_set_by_id():
             assert rules[k] == c[k], (pid, k)
 
 
-def test_the_old_rooms_are_retired_and_main_is_not():
-    assert not profiles.retired(profiles.MAIN)
+def test_the_old_rooms_are_retired_and_main_too(as_shipped):
+    # Nov 11, 2026 ("remove 09439DC2"): the room `main` is OFF as shipped
+    assert profiles.MAIN_OFF is True
+    assert profiles.retired(profiles.MAIN)
+    assert profiles.shown() == ["D7EN8BNV", "RSS7CUKH", "7T3VJU82"]
+    assert profiles.name_of(profiles.MAIN) == "#09439DC2"
     for pid in ("DC57174E", "CC8DC54C", "B52662ED"):
         assert profiles.retired(pid)
     # Nov 11, 2026 ("i said undeploy the old existing rooms / only deploy your
@@ -213,11 +217,18 @@ def test_a_retired_room_switches_nothing_on():
         assert sw.mode_of({"mode": "act"}) == "off"
     with profiles.using("55D32617"):
         assert sw.mode_of({"mode": "act"}) == "off"
-    with profiles.using("main"):                 # the one watcher room not named
+    with profiles.using("main"):                 # the suite switches `main` back on (conftest main_room_on)
         assert sw.mode_of({"mode": "act"}) == "act"
 
 
-def test_the_screen_lists_the_same_rooms():
+def test_main_is_off_as_shipped_and_its_watcher_with_it(as_shipped):
+    from tradingagents import strategy_watcher as sw
+    assert profiles.MAIN_OFF is True and profiles.retired("main")
+    with profiles.using("main"):
+        assert sw.mode_of({"mode": "act"}) == "off"
+
+
+def test_the_screen_lists_the_same_rooms(as_shipped):
     ts = (ROOT / "webapp/src/lib/api.ts").read_text(encoding="utf-8")
     block = ts.split("export const PROFILES", 1)[1].split("];", 1)[0]
     ids = re.findall(r'\bid: "([^"]+)"', block)   # not the room that was Main's display_id

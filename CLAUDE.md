@@ -1719,7 +1719,7 @@ time"*).**
 | which money? | PRACTICE only. Real money only when THEY tick that room's "Watcher trades real money" box. Never ask. |
 | "undeploy my current" | every row in every room except #09439DC2 (the room `main`) switched off (`retire_room()`), watcher off |
 | "off" (a room) | **NO TAB AT ALL** (*"if i say off you should completely remoev the tab"*). `retired: True` in `profiles.BUILTIN`, left out of `PROFILES` in `webapp/src/lib/api.ts` and of `/api/trade/profiles` (`profiles.shown()`). It stays in `BUILTIN` only so its runner finishes the practice trades still open; its folder is kept. |
-| #09439DC2 (id `main`, called "Main" until Oct 14, 2026) | untouched unless they name it |
+| #09439DC2 (id `main`, called "Main" until Oct 14, 2026) | untouched unless they name it — named Nov 11, 2026 (*"remove 09439DC2"*): OFF, no tab (`profiles.MAIN_OFF`); its folder stays the base |
 | "Main" (the tab) | every room strategy's past trades, nothing else — not a room |
 
 The rooms as configured Oct 01, 2026 (all TP wider than SL, stop 2% or
@@ -1739,7 +1739,7 @@ tighter, raw, practice, $5 x 20x):
 | #8F0C7926 | on: last 4 days · off: DEMO 30 days | 80% | 30 inside the 4 days |
 | #BBE0A361 (Oct 17, 2026) | 30 days; any TP, stop 1% or tighter, target 2% or wider | 65% | 30 |
 | #DC57174E, #CC8DC54C, #B52662ED | retired, no tab | — | — |
-| every room above except #09439DC2 (Nov 11, 2026) | retired, no tab — replaced by the skill rooms #D7EN8BNV, #RSS7CUKH, #7T3VJU82 | — | — |
+| every room above, #09439DC2 included (Nov 11, 2026) | retired, no tab — replaced by the skill rooms #D7EN8BNV, #RSS7CUKH, #7T3VJU82 | — | — |
 
 The four short-window rooms were added Oct 07, 2026 (see "Rooms that switch
 on by their last 1-4 days" below).
@@ -3168,7 +3168,10 @@ their backtest did"*, and the played-back design with *"go start use suporpower"
   suggested room"*)** — switching their watchers off and leaving the tabs up was the wrong reading
   of "remove the existing strategy": the ten are `retired` (`profiles.OFF_NOV11`), out of
   `PROFILES` and the Main tab's past trades, kept in `BUILTIN` only (0 open trades then). The tabs
-  are now `main` (#09439DC2) and the three skill rooms. #09439DC2 was not named and is untouched.
+  are now the three skill rooms only: asked why #09439DC2 was still there, the operator said
+  *"remove 09439DC2"* — it is OFF too (`profiles.MAIN_OFF`, `retired`): no tab, watcher off. Only
+  the room goes; its id stays `main` and its folder `~/.tradingagents`, the base every call outside
+  a room reads, and it is still printed #09439DC2 (`name_of`, `roomName`).
 * **First run (Nov 11, 2026):** the 2:16am attempt was given up at its 1:00am deadline and a PC
   restart cut the next one off, so the first refresh was started by hand at 5:56am
   (`v4_daily.start_now`) and finished at 6:22am: 5,395 coin-timeframes of 1,079 coins, 242,508

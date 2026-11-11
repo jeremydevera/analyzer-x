@@ -203,7 +203,7 @@ def _src(p):
     return open(p, encoding="utf-8").read()
 
 
-def test_the_screen_offers_exactly_the_servers_rooms():
+def test_the_screen_offers_exactly_the_servers_rooms(as_shipped):
     import re
 
     api_ts = _src("webapp/src/lib/api.ts")
@@ -211,6 +211,9 @@ def test_the_screen_offers_exactly_the_servers_rooms():
     block = block[:block.index("];")]
     # \b: `display_id: "09439DC2"` (the room that was Main, Oct 14, 2026) is not an id
     assert re.findall(r'\bid: "([^"]+)"', block) == profiles.shown()
+    # Nov 11, 2026 ("remove 09439DC2"): the three skill rooms are the only tabs
+    assert profiles.shown() == ["D7EN8BNV", "RSS7CUKH", "7T3VJU82"]
+    assert 'id: "main"' not in block
 
 
 def test_every_trade_call_names_its_room_and_nothing_else_does():

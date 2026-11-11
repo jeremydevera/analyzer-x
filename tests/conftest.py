@@ -622,3 +622,29 @@ def old_rooms_on(monkeypatch):
             {k: v for k, v in p.items() if k != "retired"} if p["id"] in want else p
             for p in profiles.BUILTIN])
     return _revive
+
+
+@pytest.fixture(autouse=True)
+def main_room_on(monkeypatch):
+    """Production has the room `main` (printed #09439DC2) OFF since Nov 11, 2026
+    ("remove 09439DC2": `profiles.MAIN_OFF`), but the suite's watcher/runner
+    behaviour tests run in the default room `main`, so it is switched back on
+    for every test. A test about the SHIPPED tab list requests `as_shipped`."""
+    from tradingagents import profiles
+
+    monkeypatch.setattr(profiles, "BUILTIN", [
+        {k: v for k, v in p.items() if k != "retired"}
+        if p["id"] == profiles.MAIN else p
+        for p in profiles.BUILTIN])
+
+
+@pytest.fixture
+def as_shipped(main_room_on, monkeypatch):
+    """Put `main` back to its production value for this one test (retired when
+    `profiles.MAIN_OFF`). Depends on `main_room_on`, so it always runs after it."""
+    from tradingagents import profiles
+
+    monkeypatch.setattr(profiles, "BUILTIN", [
+        ({**p, "retired": True} if profiles.MAIN_OFF else p)
+        if p["id"] == profiles.MAIN else p
+        for p in profiles.BUILTIN])

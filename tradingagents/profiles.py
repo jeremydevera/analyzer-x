@@ -132,6 +132,18 @@ for _p in BUILTIN:
     if _p["id"] in OFF_NOV11:
         _p["retired"] = True
 
+# ...AND #09439DC2 TOO (operator, Nov 11, 2026: "remove 09439DC2", asked if
+# only the three skill rooms should show). The room whose id is `main` is OFF
+# like the ten: no tab, its watcher off (`mode_of`), out of the Main tab's past
+# trades. ONLY THE ROOM: its id stays `main` and its folder stays
+# ~/.tradingagents, the base every call outside a room still reads (0 open
+# trades and 0 switched-on rows on Nov 11, 2026). `name_of` still prints
+# #09439DC2 for it.
+MAIN_OFF = True
+for _p in BUILTIN:
+    if _p["id"] == MAIN and MAIN_OFF:
+        _p["retired"] = True
+
 
 def follows(pid: str) -> str | None:
     """"v4" for a room whose trades a follower writes from Backtest v4 (no

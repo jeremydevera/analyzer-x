@@ -162,7 +162,7 @@ def test_ribbon_has_the_follow_line_and_no_runner_buttons_for_followers():
     assert "fmtWhen(" in RIBBON and "next_candle_s" in RIBBON
 
 
-def test_screen_puts_the_follow_panel_in_place_of_the_watcher_and_keys():
+def test_screen_puts_the_follow_panel_in_place_of_the_watcher_and_keys(as_shipped):
     assert PANEL_PATH.is_file()
     assert 'import V4FollowPanel from "./V4FollowPanel"' in SCREEN
     assert "follows ? <V4FollowPanel />" in SCREEN or "follows ? (\n" in SCREEN
@@ -171,8 +171,9 @@ def test_screen_puts_the_follow_panel_in_place_of_the_watcher_and_keys():
     for pid in ("D7EN8BNV", "RSS7CUKH", "7T3VJU82"):
         assert re.search(rf'id: "{pid}", name: "#{pid}", follows: "v4"', api_ts), pid
     # a watcher room is no follower; the ten older ones (profiles.OFF_NOV11) have no tab at all
-    assert "follows: \"v4\"" not in re.search(r'\{ id: "main".*', api_ts).group(0)
     block = api_ts.split("export const PROFILES", 1)[1].split("];", 1)[0]
+    # Nov 11, 2026 ("remove 09439DC2"): the room `main` has no tab either
+    assert 'id: "main"' not in block
     for old in profiles.OFF_NOV11:
         assert f'id: "{old}"' not in block, old
 

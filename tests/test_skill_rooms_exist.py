@@ -104,12 +104,13 @@ def test_a_v4_key_resolves_to_its_own_id():
     assert api.row_id_for("v4_9HZYB3B5", None, {}) == "9HZYB3B5"
 
 
-def test_webapp_lists_the_rooms_in_order():
+def test_webapp_lists_the_rooms_in_order(as_shipped):
     ts = (ROOT / "webapp/src/lib/api.ts").read_text(encoding="utf-8")
     block = ts.split("export const PROFILES", 1)[1].split("];", 1)[0]
     ids = re.findall(r'\bid: "([^"]+)"', block)
     assert ids == profiles.shown()
-    assert ids[-3:] == IDS
+    assert ids == IDS      # Nov 11, 2026: the three skill rooms are ALL the tabs
+    assert "main" not in ids
 
 
 # ---- the loops that walk every room (review of Task 4, Nov 10, 2026)

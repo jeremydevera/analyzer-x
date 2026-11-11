@@ -138,7 +138,9 @@ export const PROFILES: readonly { id: string; name: string; display_id?: string;
   // for it"): its id stays "main" (its folder and its runner), its NAME is
   // #09439DC2 — the id of its rules, as profiles.MAIN_DISPLAY_ID says. The
   // word "Main" names the all-rooms past trades tab (AutoTradeScreen).
-  { id: "main", name: "#09439DC2", display_id: "09439DC2" },
+  // Nov 11, 2026: "remove 09439DC2" — the room whose id is "main" is OFF too
+  // (profiles.MAIN_OFF): no tab. Its folder is still the base every call
+  // outside a room reads, and roomName still prints it #09439DC2.
   // Nov 11, 2026: "i said undeploy the old existing rooms / only deploy your
   // 3 suggested room" — #55D32617, #4FC03172, #B2404C0B, #6B08FF64,
   // #CC94D9FB, #99E79CBA, #C7396286, #1D4274C1, #8F0C7926 and #BBE0A361 are
@@ -156,6 +158,9 @@ export const PROFILES: readonly { id: string; name: string; display_id?: string;
  *  profiles.name_of is on the server: "#09439DC2" for the room whose id is
  *  "main", "#<id>" for every other room, listed or not. */
 export function roomName(id: string): string {
+  // the room "main" has no tab since Nov 11, 2026, but its trades and bells
+  // still name it as profiles.name_of does
+  if (id === "main") return "#09439DC2";
   return PROFILES.find((p) => p.id === id)?.name ?? `#${id}`;
 }
 // THE MAIN TAB IS NO ROOM (Oct 14, 2026): every room strategy's past trades.

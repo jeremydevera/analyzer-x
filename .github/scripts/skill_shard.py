@@ -6,6 +6,10 @@ newest 30%, every trade paying the coin's fee both ways and its usual gap. One l
 SKILL_SET=ta runs the technical-analysis and backtesting-frameworks skills' own strategies instead
 (tradingagents/skill_ta.py), the same way, into skillta-*.jsonl; ta_all keeps EVERY one of their 42
 settings x stops of each coin-timeframe, not the best 3, into skilltaall-*.jsonl.
+
+SKILL_SET=daily is what the skill rooms follow (skilldaily-*.jsonl): all 42 technical-analysis
+settings x stops, then ONLY the backtesting skill's strategies PINNED for that coin-timeframe
+(research/v4/bt_pinned.json: Backtest v4's ids never move), every trade paying its funding.
 """
 # ruff: noqa: E402
 from __future__ import annotations
@@ -29,11 +33,12 @@ from tradingagents.dataflows import exchange as fx  # noqa: E402
 from tradingagents.skill_frames import BARS, frame  # noqa: E402,F401  (the candle frame lives there)
 
 SET = os.environ.get("SKILL_SET", "bt") or "bt"
-if SET not in ("bt", "ta", "ta_all"):
-    raise SystemExit(f"SKILL_SET must be bt, ta or ta_all, not {SET!r}")
-PREFIX = {"bt": "skill", "ta": "skillta", "ta_all": "skilltaall"}[SET]
+if SET not in ("bt", "ta", "ta_all", "daily"):
+    raise SystemExit(f"SKILL_SET must be bt, ta, ta_all or daily, not {SET!r}")
+PREFIX = {"bt": "skill", "ta": "skillta", "ta_all": "skilltaall", "daily": "skilldaily"}[SET]
+PINNED_FILE = os.path.join(ROOT, "research", "v4", "bt_pinned.json")
 KEEP = None if SET == "ta_all" else sb.PER_PAIR
-GRID, TARGETS = (None, None) if SET == "bt" else (sta.GRID, sta.TARGETS)
+GRID, TARGETS = (None, None) if SET in ("bt", "daily") else (sta.GRID, sta.TARGETS)
 OUT = os.path.join("out", f"{PREFIX}-{ss.SHARD}.jsonl")
 REPORT_OUT = os.path.join("out", f"{PREFIX}-report-{ss.SHARD}.json")
 COIN_RETRIES = 2
@@ -60,6 +65,19 @@ def line(coin: str, tf: str, res: dict, fee: float, slip: float) -> dict:
             "end_ms": res["end_ms"], "bar": res["bar"], "picks": picks}
 
 
+def pinned_pairs() -> dict:
+    """The backtesting skill's pinned picks by 'COIN|tf' (the daily set); a missing file is an
+    error, never a day measured without them."""
+    with open(PINNED_FILE, encoding="utf-8") as fh:
+        return json.load(fh)["pairs"]
+
+
+def funding_of(sym: str, first_ms: int) -> sb.Funding:
+    """The coin's funding settlements since its first 1d candle, read ONCE a coin. A read that raises
+    fails the coin (redone alone): never a coin measured with its funding silently missing."""
+    return sb.Funding(fx.funding_history(sym, since_ms=int(first_ms)))
+
+
 def _save(report):
     tmp = REPORT_OUT + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
@@ -73,6 +91,7 @@ def main() -> int:
     coins = ss.eligible()
     ss.report.board = len(coins)
     report, failed, queue, done, n = [], {}, [], 0, 0
+    pinned = pinned_pairs() if SET == "daily" else {}
     with open(OUT, "w", encoding="utf-8") as out:
         stream = ss.coin_stream(coins, t0)
         while True:
@@ -84,13 +103,23 @@ def main() -> int:
             coin = sym.replace("_USDT", "")
             try:
                 fee, slip = costs(sym)
+                frames, funding = {}, None
+                if SET == "daily":
+                    frames["1d"] = frame(sym, "1d")
+                    funding = funding_of(sym, sb._ms(frames["1d"].index)[0] if len(frames["1d"]) else (time.time() - 730 * 86400) * 1000)
                 for tf in BARS:
                     t1 = time.time()
                     entry = {"coin": coin, "tf": tf}
                     try:
-                        df = frame(sym, tf)
+                        df = frames[tf] if tf in frames else frame(sym, tf)
                         if len(df) < 2:          # CLAUDE.md: no bar floor but the physical one
                             entry["skipped"] = f"{len(df)} candles"
+                        elif SET == "daily":
+                            out.write(json.dumps(sb.daily_line(coin, tf, df, pinned.get(f"{coin}|{tf}"), fee=fee,
+                                                               slip=slip, funding=funding,
+                                                               bar_ms=br.TFS[tf][1] * 1000),
+                                                 separators=(",", ":")) + "\n")
+                            n += 1
                         else:
                             out.write(json.dumps(line(coin, tf, sb.pair(df, fee=fee, slip=slip, grid=GRID, targets=TARGETS, k=KEEP), fee, slip),
                                                  separators=(",", ":")) + "\n")

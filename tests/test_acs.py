@@ -135,7 +135,8 @@ def test_a_redo_of_any_set_keeps_its_own_state():
 
 def test_the_every_strategy_set_keeps_its_own_files():
     assert acs._state_name(True, False, "ta_all") == "skilltaall-state.json"
-    assert acs.SKILL_PREFIX == {"bt": "skill", "ta": "skillta", "ta_all": "skilltaall"}
+    assert acs.SKILL_PREFIX == {"bt": "skill", "ta": "skillta", "ta_all": "skilltaall",
+                               "daily": "skilldaily"}
 
 
 def test_a_redone_coin_leaves_the_not_reached_list(tmp_path, monkeypatch):

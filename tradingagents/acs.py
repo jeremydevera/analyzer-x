@@ -230,8 +230,9 @@ def _gh(*args: str, timeout: int = 120) -> str:
 
 SKILL_WORKFLOW = "skillbt.yml"
 # each skill set's files: bt = the backtesting skill, ta = technical-analysis + backtesting-frameworks
-# (best 3 a coin-timeframe), ta_all = every one of their 42 a coin-timeframe
-SKILL_PREFIX = {"bt": "skill", "ta": "skillta", "ta_all": "skilltaall"}
+# (best 3 a coin-timeframe), ta_all = every one of their 42 a coin-timeframe, daily = the 42 plus the
+# backtesting skill's pinned picks (research/v4/bt_pinned.json), funding charged
+SKILL_PREFIX = {"bt": "skill", "ta": "skillta", "ta_all": "skilltaall", "daily": "skilldaily"}
 
 
 def dispatch(label: str | None = None, plan_path: Path = PLAN_FILE, skip=(), skill: bool = False,
@@ -460,11 +461,11 @@ def main(argv=None) -> int:
     d.add_argument("--skip", action="append", default=[], help="owner/repo whose machines are busy")
     d.add_argument("--skill", action="store_true", help="the backtesting skill on the whole market")
     d.add_argument("--coins", default="", help="comma-separated coins (a redo of named ones)")
-    d.add_argument("--set", dest="skill_set", default="bt", choices=("bt", "ta", "ta_all"),
+    d.add_argument("--set", dest="skill_set", default="bt", choices=("bt", "ta", "ta_all", "daily"),
                    help="with --skill: bt = the backtesting skill, ta = technical-analysis + backtesting-frameworks")
     c = sub.add_parser("collect")
     c.add_argument("--skill", action="store_true")
-    c.add_argument("--set", dest="skill_set", default="bt", choices=("bt", "ta", "ta_all"))
+    c.add_argument("--set", dest="skill_set", default="bt", choices=("bt", "ta", "ta_all", "daily"))
     c.add_argument("--merge", default=None, help="a skill redo's out folder to lay over the saved run")
     sub.add_parser("page")
     a = p.parse_args(argv)

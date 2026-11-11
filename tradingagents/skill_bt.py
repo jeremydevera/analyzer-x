@@ -25,6 +25,7 @@ before entry so a signal can flip), `calculate_trade_stats`. What differs, and w
 """
 from __future__ import annotations
 
+import json
 import math
 
 from tradingagents.vendor.btstrat import metrics as sm
@@ -262,6 +263,59 @@ def pair(df, *, fee: float, slip: float, k: int | None = PER_PAIR, grid: dict | 
         picks += [{**c, "older_lost": True} for c in rest[: k - len(picks)]]
     return {"split_ms": split_ms, "bars": len(df), "combos": len(combos), "bar": bar, "picks": picks,
             "start_ms": int(ms[0]), "end_ms": int(ms[-1])}
+
+
+def measure(df, combos: list[dict], *, fee: float, slip: float, funding: "Funding | None" = None,
+            bar_ms: int = 0) -> list[dict]:
+    """Walk each `{strategy, params, stop, target}` over `df`; the signals of one (strategy, params)
+    are computed once however many stops use them. A trade is `[entry_ms, exit_ms, side, why, pnl]`,
+    its pnl after the fee, the gap and (when `funding` is given) the funding it paid. A combo's
+    `split_ms`, when it has one, rides along."""
+    sig_of: dict = {}
+    out = []
+    for c in combos:
+        key = (c["strategy"], json.dumps(c["params"], sort_keys=True))
+        if key not in sig_of:
+            sig_of[key] = signals(df, c["strategy"], c["params"])
+        tr = walk(df, sig_of[key], stop=c["stop"], fee=fee, slip=slip, target=c.get("target"),
+                  funding=funding, bar_ms=bar_ms)
+        row = {"label": label(c), "strategy": c["strategy"], "params": c["params"], "stop": c["stop"],
+               "target": c.get("target"), "older_lost": False,
+               "trades": [[t["entry_ms"], t["exit_ms"], t["side"], t["why"], t["pnl"]] for t in tr]}
+        if "split_ms" in c:
+            row["split_ms"] = c["split_ms"]
+        out.append(row)
+    return out
+
+
+def daily_combos(pinned: dict | None) -> list[dict]:
+    """The daily run's strategies of one coin-timeframe: all 42 technical-analysis / backtesting-
+    frameworks settings x stops (skill_ta.GRID, its targets), then ONLY the backtesting skill's picks
+    pinned for that pair (`research/v4/bt_pinned.json`), each with the pair's original `split_ms`."""
+    from tradingagents import skill_ta
+
+    combos = []
+    for name, settings in skill_ta.GRID.items():
+        r = skill_ta.TARGETS.get(name)
+        for params in settings:
+            for stop in STOPS:
+                combos.append({"strategy": name, "params": params, "stop": stop,
+                               "target": round(stop * r, 6) if r else None})
+    for p in (pinned or {}).get("picks", []):
+        combos.append({"strategy": p["strategy"], "params": p["params"], "stop": p["stop"],
+                       "target": p.get("target"), "split_ms": (pinned or {})["split_ms"]})
+    return combos
+
+
+def daily_line(coin: str, tf: str, df, pinned: dict | None, *, fee: float, slip: float,
+               funding: "Funding | None", bar_ms: int) -> dict:
+    """One coin-timeframe of the daily run, in `skill_shard.line()`'s keys. The pinned picks keep
+    their own (older) `split_ms`; the line's is where THIS frame's 70% falls, for the 42 new ones."""
+    ms = _ms(df.index)
+    picks = measure(df, daily_combos(pinned), fee=fee, slip=slip, funding=funding, bar_ms=bar_ms)
+    return {"coin": coin, "tf": tf, "fee": fee, "slip": slip, "bars": len(df), "combos": len(picks),
+            "split_ms": int(ms[int(len(df) * SPLIT)]), "start_ms": int(ms[0]), "end_ms": int(ms[-1]),
+            "bar": None, "picks": picks}
 
 
 def label(c: dict) -> str:

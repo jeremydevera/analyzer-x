@@ -144,9 +144,12 @@ def _funding_default(sym):
 
 
 def _listed_default():
+    """{symbol: contract size} of every contract the exchange trades: one read gives both the
+    delisting check and the size a position's `vol` is counted in (contracts, as the runner's)."""
     from tradingagents.dataflows import exchange as fx
 
-    return {str(r["symbol"]) for r in fx.list_contracts() if r.get("symbol")}
+    return {str(r["symbol"]): float(r.get("contract_size") or 0.0)
+            for r in fx.list_contracts() if r.get("symbol")}
 
 
 # ------------------------------------------------------------------ one pass's reads, shared by the rooms
@@ -166,6 +169,7 @@ class _Reads:
         self._sigs: dict = {}
         self._opens: dict = {}
         self._listed_set: set | None = None
+        self._sizes: dict = {}
         self._listed_read = False
         self.listed_error: str | None = None
         self.list_errors: dict = {}
@@ -230,18 +234,33 @@ class _Reads:
     # -- the contract list
     def listed(self) -> set | None:
         """The exchange's contracts, or None when they cannot be read - then no coin is judged
-        delisted this pass (an unreadable list is not an empty one)."""
+        delisted this pass (an unreadable list is not an empty one), and no unread candle is
+        counted toward closing a trade. `listed()` may answer a set of symbols or {symbol:
+        contract size}; only the second can size a position."""
         if not self._listed_read:
             self._listed_read = True
+            got: set = set()
             try:
-                got = set(self._listed() or ())
+                raw = self._listed() or ()
+                if isinstance(raw, dict):
+                    for k, v in raw.items():
+                        try:
+                            self._sizes[str(k)] = float(v)
+                        except (TypeError, ValueError):
+                            pass
+                got = {str(k) for k in raw}
             except Exception as exc:                                    # noqa: BLE001
-                got = set()
                 self.listed_error = f"{type(exc).__name__}: {exc}"
             if not got and self.listed_error is None:
                 self.listed_error = "the list came back empty"
             self._listed_set = got or None
         return self._listed_set
+
+    def contract_size(self, sym: str) -> float | None:
+        """The exchange's contract size of `sym`, from the same read as `listed()`; None unknown."""
+        self.listed()
+        v = self._sizes.get(sym)
+        return v if v and v > 0 else None
 
     def delisted(self, coin: str) -> bool:
         got = self.listed()
@@ -282,10 +301,12 @@ class _Writer:
     """Ledger rows and state slots in the practice runner's shapes (auto_trader.py, the practice
     `enter` row ~7342, its position ~7314, the `exit` row ~6793), each written once."""
 
-    def __init__(self, st: dict, out: dict, now_s: float, release_ms: int | None):
+    def __init__(self, st: dict, out: dict, now_s: float, release_ms: int | None, size_of=None):
         import tradingagents.auto_trader as at
 
         self.at = at
+        self.size_of = size_of or (lambda sym: None)
+        self.unsized: set = set()
         self.st = st
         self.out = out
         self.now_s = now_s
@@ -330,7 +351,15 @@ class _Writer:
         tid = self.at.trade_code(sym, key, entry_ts, side, dry=True)
         lev = self.at.LEVERAGE
         margin = sb.NOTIONAL / lev
-        vol = sb.NOTIONAL / px
+        # IN CONTRACTS, as the runner's (`fx.contracts_for`) and as every reader multiplies it
+        # (positions_view: notional = entry x vol x contract size). A size the exchange did not
+        # give is left BLANK and named - a wrong size prints wrong dollars, a blank prints none
+        cs = self.size_of(sym)
+        vol = sb.NOTIONAL / (px * cs) if cs else None
+        if vol is None and sym not in self.unsized:
+            self.unsized.add(sym)
+            self.out["errors"].append(f"{row['coin']} {row['tf']} {sid}: the exchange gave no contract size "
+                                      f"for {sym}, so the position's size (vol) is left blank")
         if self._put({"ts": fill_s, "symbol": sym, "action": "enter", "strategy": key, "entry_ts": entry_ts,
                       "trade_id": tid, "opened_at": fill_s, "side": "LONG" if side > 0 else "SHORT",
                       "vol": vol, "entry": px, "tp": tp, "sl": sl, "margin": margin, "leverage": lev,
@@ -400,7 +429,7 @@ class _Room:
         st["next_day_s"] = nd
         self.frontier_ms = None if nd is None else nd * 1000
         release = int(prev_held) * 1000 if prev_held is not None and int(prev_held) in opened else None
-        self.W = _Writer(st, self.out, R.now_s, release)
+        self.W = _Writer(st, self.out, R.now_s, release, size_of=R.contract_size)
         for d in opened:
             for sid, row in (R.room_list(d, self.pid) or {}).items():
                 if sid not in st["strats"] and sid not in st["pending"]:
@@ -487,7 +516,6 @@ class _Room:
         gone = R.delisted(coin)
         try:
             df = R.frame(sym, tf, min(int(st["strats"][s]["last_ms"]) for s in sids))
-            fund = R.funding(sym)
         except Exception as exc:                                        # noqa: BLE001
             if not last_try:
                 return False
@@ -495,8 +523,27 @@ class _Room:
                 self._unread(sid, exc, gone)
             return True
         for sid in sids:
+            st["strats"][sid]["fails"] = 0        # the candles were read: a run of failures ends
+        try:
+            fund = R.funding(sym)
+        except Exception as exc:                                        # noqa: BLE001
+            # NOT A DELISTING (review, Nov 10, 2026): a funding read that fails alone skips the
+            # coin's candles this pass - never charged as free, never counted toward closing a
+            # trade - and the next pass catches up. Only a coin the exchange no longer lists is
+            # closed, at the last candle read, its funding marked unknown.
+            if not last_try:
+                return False
+            for sid in sids:
+                e = st["strats"][sid]
+                if gone:
+                    self._delist(sid, e, None, "delisted by the exchange")
+                else:
+                    self.errors.append(f"{_name(e, sid)}: its funding could not be read ({type(exc).__name__}: "
+                                       f"{exc}); its candles wait for the next pass")
+            _save(st)
+            return True
+        for sid in sids:
             e = st["strats"][sid]
-            e["fails"] = 0
             try:
                 self._advance(sid, e, df, fund, entries=not gone)
             except Exception as exc:                                    # noqa: BLE001
@@ -512,9 +559,15 @@ class _Room:
         exchange no longer lists, its trade is closed at the last candle read."""
         st = self.st
         e = st["strats"][sid]
-        e["fails"] = int(e.get("fails") or 0) + 1
-        self.errors.append(f"{_name(e, sid)}: {type(exc).__name__}: {exc}")
-        if gone or e["fails"] >= DELIST_AFTER_FAILS:
+        # NOT COUNTED while the exchange's contract list cannot be read either (review, Nov 10,
+        # 2026): with the network down every read fails, and that says nothing about one coin
+        known = self.R.listed() is not None
+        if known:
+            e["fails"] = int(e.get("fails") or 0) + 1
+        self.errors.append(f"{_name(e, sid)}: {type(exc).__name__}: {exc}" + (
+            "" if known else "; the exchange's contract list could not be read either, so this pass "
+                             "is not counted toward closing its trade"))
+        if gone or (known and e["fails"] >= DELIST_AFTER_FAILS):
             fund = None
             try:
                 fund = self.R.funding(f"{e['row']['coin']}_USDT")

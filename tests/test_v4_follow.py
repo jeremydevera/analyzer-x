@@ -45,14 +45,18 @@ ROOM = "D7EN8BNV"
 
 class Market:
     """The exchange, on the one timeline: frames cut at the pass's clock (`now_ms`), funding every
-    8 hours, the contract list, and a switch that makes one coin's candles unreadable."""
+    8 hours, the contract list with each contract's size, and switches that make one coin's
+    candles or funding - or the whole contract list - unreadable."""
 
     def __init__(self):
         self.frames: dict = {}
         self.now_ms = 0
         self.calls: list = []
-        self.fail: dict = {}          # sym -> how many reads fail (-1: every one)
+        self.fail: dict = {}          # sym -> how many candle reads fail (-1: every one)
+        self.fund_fail: dict = {}     # sym -> how many funding reads fail (-1: every one)
+        self.listed_fail = False      # the contract list cannot be read (the network is down)
         self.coins: set | None = None
+        self.sizes: dict = {}         # sym -> contract size (1.0 when not set)
 
     def add(self, sym: str, closes, first_ms: int, tf: str = "1h") -> None:
         bar = H_MS if tf == "1h" else int({"15m": 900, "30m": 1800, "4h": 14400, "1d": 86400}[tf] * 1000)
@@ -77,11 +81,20 @@ class Market:
         return df[keep].tail(BARS[tf] if bars is None else int(bars))
 
     def funding(self, sym):
+        n = self.fund_fail.get(sym, 0)
+        if n:
+            if n > 0:
+                self.fund_fail[sym] = n - 1
+            raise ConnectionError(f"{sym} funding cut")
         return [{"settle_ms": T0 * 1000 + k * 8 * H_MS, "rate": 0.0001 * (1 if k % 3 else -2)}
                 for k in range(-200, 30)]
 
     def listed(self):
-        return set(self.coins) if self.coins is not None else {s for s, _ in self.frames}
+        """{symbol: contract size}, the shape `fx.list_contracts()` gives the follower."""
+        if self.listed_fail:
+            raise ConnectionError("the contract list is unreachable")
+        syms = set(self.coins) if self.coins is not None else {s for s, _ in self.frames}
+        return {s: self.sizes.get(s, 1.0) for s in syms}
 
 
 def scripted(rises, before: int = 48, after: int = 4 * 24) -> list[float]:
@@ -342,6 +355,92 @@ def test_a_coin_unreadable_for_two_passes_closes_its_trade(world):
     assert len(x) == 1 and x[0]["why"] == "DELISTED" and x[0]["ts"] == T0 + 8 * H, \
         "closed at the last candle it read"
     assert open_slots() == {}
+
+
+def test_a_funding_read_that_fails_is_not_a_delisting(world):
+    """Review, Nov 10, 2026: funding was read in the candles' `try`, so two failed funding reads
+    closed every held trade DELISTED - a false exit in an append-only record."""
+    world.m.add("AAA_USDT", scripted([(5, 10)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.run(T0 + 20)
+    world.run(T0 + 8 * H)
+    world.m.fund_fail["AAA_USDT"] = -1
+    for now in (T0 + 9 * H, T0 + 10 * H, T0 + 11 * H):
+        res = world.run(now)
+        assert any("funding could not be read" in e for e in res[ROOM]["errors"]), res[ROOM]["errors"]
+    s = follow_state()["strats"]["TESTAAA1"]
+    assert s["last_ms"] == (T0 + 7 * H) * 1000 and s["fails"] == 0, "its candles wait, nothing counted"
+    assert list(open_slots()) == ["AAA_USDT#paper#v4_TESTAAA1"]
+    assert [e["action"] for e in ledger()] == ["enter"]
+    world.m.fund_fail.clear()                      # funding is back: the pass catches up
+    world.run(T0 + 12 * H)
+    x = [e for e in ledger() if e["action"] == "exit"]
+    assert [(e["why"], e["ts"]) for e in x] == [("SIGNAL", T0 + 11 * H)], "at its own candle, by its own rule"
+    assert open_slots() == {}
+
+
+def test_unread_candles_while_the_contract_list_is_unreadable_are_not_counted(world):
+    """The network is down: every read fails, which says nothing about one coin."""
+    world.m.add("CCC_USDT", scripted([(5, 60)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTCCC1", coin="CCC")]})
+    world.run(T0 + 20)
+    world.run(T0 + 8 * H)
+    world.m.fail["CCC_USDT"] = -1
+    world.m.listed_fail = True
+    for now in (T0 + 9 * H, T0 + 10 * H, T0 + 11 * H):
+        res = world.run(now)
+        assert any("not counted" in e for e in res[ROOM]["errors"]), res[ROOM]["errors"]
+    assert follow_state()["strats"]["TESTCCC1"]["fails"] == 0
+    assert list(open_slots()) == ["CCC_USDT#paper#v4_TESTCCC1"] and len(ledger()) == 1, "no DELISTED"
+    world.m.fail.clear()
+    world.m.listed_fail = False
+    world.run(T0 + 12 * H)
+    assert follow_state()["strats"]["TESTCCC1"]["last_ms"] == (T0 + 11 * H) * 1000, "caught up"
+    assert len(ledger()) == 1 and list(open_slots()) == ["CCC_USDT#paper#v4_TESTCCC1"]
+
+
+def _btc(world, size: float) -> dict:
+    """BTC at exactly 50,000 when it signals on candle 5, a 10-a-candle rise to candle 8, flat."""
+    closes = [49990.0 if k < 5 else 50000.0 + 10 * (min(k, 8) - 5) for k in range(-48, 96)]
+    world.m.add("BTC_USDT", closes, (T0 - 48 * H) * 1000)
+    world.m.sizes["BTC_USDT"] = size
+    world.put(D1, {ROOM: [row("TESTBTC1", coin="BTC", slip=0.0)]})
+    world.run(T0 + 20)
+    return world.run(T0 + 7 * H)                   # the pass that opens the trade
+
+
+def test_a_position_is_sized_in_contracts(world):
+    """Review, Nov 10, 2026: `vol` was coins while every reader multiplies it by the contract
+    size - BTC's 0.0001 put the panel's TP $ / SL $ at about $0."""
+    from tradingagents import positions_view as pv
+
+    _btc(world, 0.0001)
+    (enter,) = [e for e in ledger() if e["action"] == "enter"]
+    pos = open_slots()["BTC_USDT#paper#v4_TESTBTC1"]
+    assert enter["entry"] == 50000.0
+    assert enter["vol"] == pytest.approx(20.0) and pos["vol"] == pytest.approx(20.0),         "100 / (50,000 x 0.0001) = 20 contracts"
+    with profiles.using(ROOM):
+        state = at.load_state()
+    (r,) = pv.build_rows(state=state, exchange_positions=[], stats={}, dry=True,
+                         last_price=lambda s: 50010.0, contract_size=lambda s: 0.0001,
+                         taker_fee=lambda s: 0.00075, leverage=20, now=T0 + 7 * H, settings={})
+    assert r["notional"] == pytest.approx(100.0), "the panel reads $100 of coin"
+
+
+def test_an_unknown_contract_size_leaves_the_size_blank_and_says_so(world):
+    from tradingagents import positions_view as pv
+
+    res = _btc(world, 0.0)                         # the exchange gave no size
+    (enter,) = [e for e in ledger() if e["action"] == "enter"]
+    assert enter["vol"] is None and open_slots()["BTC_USDT#paper#v4_TESTBTC1"]["vol"] is None
+    assert [e for e in res[ROOM]["errors"] if "no contract size for BTC_USDT" in e] ==         ["BTC 1h TESTBTC1: the exchange gave no contract size for BTC_USDT, so the position's size "
+         "(vol) is left blank"]
+    with profiles.using(ROOM):
+        state = at.load_state()
+    rows = pv.build_rows(state=state, exchange_positions=[], stats={}, dry=True,
+                         last_price=lambda s: 50010.0, contract_size=lambda s: 0.0001,
+                         taker_fee=lambda s: 0.00075, leverage=20, now=T0 + 7 * H, settings={})
+    assert len(rows) == 1 and rows[0]["vol"] is None, "the panel reader takes a blank size"
 
 
 def test_a_failing_read_is_retried_once_in_the_same_pass(world):

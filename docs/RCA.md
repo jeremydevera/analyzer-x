@@ -172,6 +172,75 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-11-A — the skill rooms' follower would have closed open practice trades "DELISTED" after a 30-minute funding or network outage: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the code review of the follower before it was switched on.
+* Why: when the coin's funding numbers, or the whole internet, could not be read for two passes in a row, the follower took that as "the exchange stopped trading this coin" and closed the trade for good.
+* What stops it now: only a coin whose candles cannot be read while the exchange's coin list CAN be read counts; a funding hiccup just waits for the next pass, and a test holds both.
+
+**DEV**
+
+* `tradingagents/v4_follow.py:_follow_group` read the frame and `R.funding(sym)` in one `try`, so a funding failure went to `_unread`, which counted `fails` and called `_delist` at `DELIST_AFTER_FAILS` (2); `_unread` never checked `R.listed() is None`.
+* Invariant broken: **only evidence about the COIN may close its trade - a failure of something else (funding, the network) is never counted as a delisting**.
+* Guard: `tests/test_v4_follow.py::test_a_funding_read_that_fails_is_not_a_delisting` and `::test_unread_candles_while_the_contract_list_is_unreadable_are_not_counted`.
+
+**SAW** - nothing on screen: `tick()` is not wired into the supervisor yet, so no follower pass has ever run on this PC.
+
+**TIMELINE** (test timeline, T0 = Nov 01, 2026 12:00am UTC)
+
+1. Nov 10, 2026: e188adb ships the follower; funding and candles share one `try` (v4_follow.py:488-491).
+2. A long on AAA opens at candle 5 (6:00am); funding fails at the 9:00am and 10:00am passes.
+3. Old code: the 10:00am pass closes it DELISTED at its last read close and drops the strategy (re-run on e188adb: `KeyError: 'TESTAAA1'` - gone from the follower's state), while the backtest holds the trade to its 10:00am signal exit.
+4. Nov 11, 2026: the same 3 failed passes leave `fails` 0 and the trade open; funding back at 12:00pm, the exit is written at its own candle (11:00am close, SIGNAL).
+
+**ROOT CAUSE** - two different reads shared one failure path, and the failure counter could not tell "this coin is gone" from "something else failed".
+
+**WHY IT WAS NOT CAUGHT** - the only failure test made the CANDLE read fail (`Market.fail`), so the one path it exercised was the one that should count; no test made funding or the contract list fail, and the fake exchange had no switch to do it.
+
+**COST** - none (never ran). Each false exit would have been a permanent row in the room's record plus a strategy dropped until a new day's list.
+
+**FIX** - this commit: the candle read has its own `try` and alone counts `fails` (reset on success); a funding failure skips the group for the pass, named, state untouched (a coin `listed()` confirms gone still closes, funding marked unknown); `_unread` counts nothing while `R.listed()` is None.
+
+**GUARD** - `tests/test_v4_follow.py::test_a_funding_read_that_fails_is_not_a_delisting`, `tests/test_v4_follow.py::test_unread_candles_while_the_contract_list_is_unreadable_are_not_counted` (both red on e188adb).
+
+---
+
+## RCA-2026-11-11-B — a skill room's open position would have shown its target and stop worth about $0: its size was written in coins where every reader expects contracts: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the code review before the rooms traded.
+* Why: the follower wrote how many COINS a $100 trade buys, but the positions panel multiplies that number by the exchange's contract size (0.0001 for BTC), so it would have read $0.01 of BTC.
+* What stops it now: the size is written in contracts from the exchange's own list, left blank and named when the exchange gives none, and a test checks the panel reads $100.
+
+**DEV**
+
+* `tradingagents/v4_follow.py:_Writer.enter` set `vol = NOTIONAL / px`; `positions_view.build_rows` computes `notional = entry * vol * contract_size(sym)` (positions_view.py:238-240) and the runner's own `vol` is a contract count (`fx.contracts_for`, auto_trader.py:7160).
+* Invariant broken: **a field written in another program's shape carries that program's UNIT, not just its name**.
+* Guard: `tests/test_v4_follow.py::test_a_position_is_sized_in_contracts` and `::test_an_unknown_contract_size_leaves_the_size_blank_and_says_so`.
+
+**SAW** - nothing on screen: no follower pass has run.
+
+**TIMELINE** (test timeline, T0 = Nov 01, 2026 12:00am UTC)
+
+1. Nov 10, 2026: e188adb writes `vol = 100 / entry`, as the task brief said.
+2. BTC entered at 50,000 on candle 5: old vol 0.002 (re-run on e188adb: `assert 0.002 == 20.0`); the panel's notional 50,000 x 0.002 x 0.0001 = $0.01.
+3. Nov 11, 2026: vol = 100 / (50,000 x 0.0001) = 20 contracts in the enter row and the position; `build_rows` notional $100.00.
+
+**ROOT CAUSE** - the position was copied from the runner's shape by field NAME, and `vol` means contracts there.
+
+**WHY IT WAS NOT CAUGHT** - `test_ledger_rows_read_by_every_panel` checked the ids, margin, side and prices the panels print, but never drove `positions_view.build_rows`, the one reader that multiplies `vol`, and every test coin had a contract size of 1.
+
+**COST** - none (never ran).
+
+**FIX** - this commit: `vol = NOTIONAL / (px * contract_size)`, the size from the `fx.list_contracts()` rows the pass already reads (no extra call); unknown size -> `vol: null`, named (`positions_view` reads `float(vol or 0)` and does not crash).
+
+**GUARD** - `tests/test_v4_follow.py::test_a_position_is_sized_in_contracts`, `tests/test_v4_follow.py::test_an_unknown_contract_size_leaves_the_size_blank_and_says_so` (both red on e188adb).
+
+---
+
 ## RCA-2026-11-05-G — a coin redone alone would still have been listed "no machine reached" on the strategies page: NEVER HAPPENED YET
 
 **CEO**

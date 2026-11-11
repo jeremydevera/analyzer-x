@@ -946,11 +946,35 @@ def agreement(pid: str, day_s: int, db: Path | None = None, lists: _DayLists | N
 
 
 # ------------------------------------------------------------------ the page
+def words(st: dict) -> str:
+    """Where the daily refresh is, in plain words - what every screen prints after "refreshed every
+    day", never the phase's own name (operator's plain-words rule). Works on `read()`'s state or
+    `status()`'s fields; every date is `fmt_when`."""
+    phase = st.get("phase") or "idle"
+    if phase == "unreadable":
+        return f"its record cannot be read: {st.get('error') or st.get('why') or 'unknown'}"
+    if phase in ("dispatch", "running"):
+        return "measuring on GitHub"
+    if phase == "collect":
+        return "collecting the results"
+    if phase == "build":
+        return "rebuilding Backtest v4"
+    if phase in ("lists", "agree"):
+        return "choosing today's strategies"
+    if phase == "given_up":
+        return f"gave up: {st.get('error') or st.get('why') or 'no reason kept'}"
+    if phase == "done":
+        got = st.get("landed_s") or st.get("done_at")
+        return f"done {_when(got)}" if got else "done"
+    nxt = st.get("next_s") or _next_due(time.time())
+    return f"next refresh {_when(nxt)}"
+
+
 def status() -> dict:
     """What the rooms and Backtest v4 print about the daily refresh."""
     st = read()
     deal = st.get("deal") or {}
-    return {"phase": st.get("phase") or "idle", "day": st.get("day"), "why": st.get("why") or "",
+    out = {"phase": st.get("phase") or "idle", "day": st.get("day"), "why": st.get("why") or "",
             "error": st.get("error") or "", "started_at": st.get("started_at"), "deadline_s": st.get("deadline_s"),
             "landed_s": st.get("landed_s"), "done_at": st.get("done_at"), "manual": bool(st.get("manual")),
             "deal": {_owner(r): len(p) for r, p in deal.items()}, "runs": st.get("runs") or {},
@@ -963,6 +987,8 @@ def status() -> dict:
             "redo_skipped": st.get("redo_skipped") or (st.get("collect") or {}).get("redo_skipped") or "",
             "redo_error": st.get("redo_error") or "", "prev_error": st.get("prev_error") or "",
             "next_s": _next_due(time.time())}
+    out["words"] = words(out)
+    return out
 
 
 # ------------------------------------------------------------------ the processes

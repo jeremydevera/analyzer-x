@@ -59,7 +59,8 @@ const RoomBody = memo(function RoomBody({ id, active, busy, blurred, tick, bump,
              : ""}`}>
         <SummaryRibbon key={`ribbon-${tick}`} onChanged={bump} />
         <PositionsPanel onChanged={bump} />
-        <StrategiesGrid />
+        {/* a skill room has no strategies to switch on: no arm toggles, no SAVE CONFIG, no reset */}
+        {!follows && <StrategiesGrid />}
         {follows ? <V4FollowPanel /> : (
           <>
             <WatcherPanel />

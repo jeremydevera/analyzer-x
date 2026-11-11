@@ -1915,6 +1915,8 @@ export interface V4Follow {
 /** GET /api/v4/daily: where Backtest v4's daily refresh is. */
 export interface V4Daily {
   phase: string; day?: string | null; why: string; error?: string;
+  /** where the refresh is, in plain words (v4_daily.words): never the phase's own name */
+  words: string;
   done_at?: number | null; landed_s?: number | null; next_s?: number | null;
 }
 

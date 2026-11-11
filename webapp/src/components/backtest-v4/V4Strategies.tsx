@@ -35,7 +35,7 @@ type Log = { found: boolean; total_profit: number; trades: number; wins: number;
   win_rate: number; worst_run: number; worst_run_n: number; dip: number; split_s: number;
   window: { days: number | null; unseen: boolean; from_s: number | null };
   months: Record<string, number>; log: Trade[]; label: string; skill: string };
-type Daily = { phase: string; why: string; done_at?: number | null; next_s?: number | null };
+type Daily = { phase: string; why: string; words: string };
 type Facets = { coins: string[]; tfs: string[]; strategies: string[]; skills: string[] };
 
 const PER_PAGE = 50;
@@ -191,7 +191,7 @@ export default function V4Strategies() {
         {/* the daily refresh, and what the trades do not pay (the rooms that follow this tab say the same) */}
         <p className="mt-1 text-theme-sm text-gray-500 dark:text-gray-400">
           Backtest v4 is refreshed every day
-          {daily ? ` — ${daily.phase}${daily.why ? `: ${daily.why}` : ""}${daily.next_s ? ` · next ${fmtWhen(daily.next_s)}` : ""}` : ""}.
+          {daily ? ` — ${daily.words}` : ""}.
           Every trade pays its coin&apos;s usual gap, not its own minute&apos;s order book (100% typical cost).
         </p>
       </div>

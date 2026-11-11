@@ -2098,10 +2098,23 @@ def _room_started(path) -> float | None:
     return got
 
 
+def _refuse_follower_room() -> None:
+    """A skill room is traded by a follower of Backtest v4's engine: it has no strategies to switch
+    on, no runner to start and no watcher, so a write that would arm something in it is refused
+    (409) instead of saved into a settings file nothing acts on."""
+    from tradingagents import profiles as _pf
+
+    pid = _pf.current()
+    if _pf.follows(pid):
+        raise HTTPException(409, f"{_pf.name_of(pid)} is followed by Backtest v4's engine; "
+                                 f"it has no strategies to switch on")
+
+
 @app.post("/api/trade/watcher")
 def watcher_switch(body: dict) -> dict:
     """`{"mode": "off"|"preview"|"act"}`, `{"live": true|false}` or
     `{"cfg": {rule: value}}` — for the profile the request names."""
+    _refuse_follower_room()
     from tradingagents import strategy_watcher as sw
 
     body = body or {}
@@ -3835,6 +3848,7 @@ def trade_settings_post(payload: dict) -> dict:
     rule guarantees. `timeframe_locks` returns {} now; the check is kept so a
     future lock has somewhere to live.
     """
+    _refuse_follower_room()
     import tradingagents.auto_trader as at
 
     locked = at.timeframe_locks(payload)
@@ -3852,6 +3866,7 @@ def trade_settings_post(payload: dict) -> dict:
 @app.post("/api/trade/losscap/reset")
 def trade_losscap_reset(body: dict) -> dict:
     """The RESET CAP button: forgive today's counted loss, delete nothing."""
+    _refuse_follower_room()
     import tradingagents.auto_trader as at
 
     if body.get("confirm") is not True:
@@ -3866,6 +3881,7 @@ def trade_record_reset(body: dict) -> dict:
     """The RESET W/L button. Requires {"confirm": true}; archives, never
     deletes. Resetting the real book also resets today's loss-cap counter —
     the response says so, and the button's confirm text says it first."""
+    _refuse_follower_room()
     import tradingagents.auto_trader as at
 
     if body.get("confirm") is not True:
@@ -3884,6 +3900,7 @@ def trade_record_reset(body: dict) -> dict:
 
 @app.post("/api/trade/runner/start")
 def runner_start() -> dict:
+    _refuse_follower_room()
     import tradingagents.auto_trader as at
 
     return {"pid": at.start_runner()}

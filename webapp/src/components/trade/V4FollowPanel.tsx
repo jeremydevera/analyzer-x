@@ -54,10 +54,7 @@ export default function V4FollowPanel() {
           {/* the day's refresh sentence */}
           {daily && (
             <p className="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
-              {daily.phase === "unreadable"
-                ? daily.why
-                : `Backtest v4 is refreshed every day — ${daily.phase}${daily.why ? `: ${daily.why}` : ""}`
-                  + (daily.next_s ? ` · next ${fmtWhen(daily.next_s)}` : "")}
+              {`Backtest v4 is refreshed every day — ${daily.words}`}
             </p>
           )}
           {d.fallback_from && (

@@ -201,3 +201,61 @@ def test_no_client_filter_and_one_date_format():
     panel = PANEL_PATH.read_text(encoding="utf-8")
     assert "fmtWhen" in panel and ".filter(" not in panel and ".slice(" not in panel
     assert "toISOString" not in panel and "new Date(" not in panel
+
+
+# ------------------------------------------------------------------ fix round 1
+def test_the_deploy_grid_is_not_rendered_for_a_follower_room():
+    assert "{!follows && <StrategiesGrid />}" in SCREEN
+    assert "        <StrategiesGrid />\n" not in SCREEN        # never unconditional
+
+
+def test_settings_writes_are_refused_for_a_follower_room_only(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(at, "SETTINGS_PATH", tmp_path / "auto_trade.json")
+    want = "#D7EN8BNV is followed by Backtest v4's engine; it has no strategies to switch on"
+    posts = [("/api/trade/settings", {"strategy_books": {"x": ["real"]}}),
+             ("/api/trade/losscap/reset", {"confirm": True}),
+             ("/api/trade/record/reset", {"confirm": True, "books": ["paper"]}),
+             ("/api/trade/watcher", {"mode": "act"}),
+             ("/api/trade/runner/start", {})]
+    for path, body in posts:
+        r = client.post(path, json=body, headers=_hdr(ROOM))
+        assert r.status_code == 409, path
+        assert r.json()["detail"] == want, path
+    with profiles.using(ROOM):
+        assert not at._pp(at.SETTINGS_PATH).exists(), "nothing was written into the follower room"
+    ok = client.post("/api/trade/settings", json={"strategy_books": {}}, headers=_hdr(OTHER))
+    assert ok.status_code == 200, ok.text
+
+
+def test_the_daily_phase_is_said_in_plain_words():
+    from tradingagents import v4_daily as vd
+    from tradingagents.positions_view import fmt_when
+
+    t = 1_800_000_000.0
+    assert vd.words({"phase": "idle", "next_s": t}) == f"next refresh {fmt_when(t)}"
+    assert vd.words({"phase": "dispatch"}) == "measuring on GitHub"
+    assert vd.words({"phase": "running"}) == "measuring on GitHub"
+    assert vd.words({"phase": "collect"}) == "collecting the results"
+    assert vd.words({"phase": "build"}) == "rebuilding Backtest v4"
+    assert vd.words({"phase": "lists"}) == "choosing today's strategies"
+    assert vd.words({"phase": "agree"}) == "choosing today's strategies"
+    assert vd.words({"phase": "done", "landed_s": t}) == f"done {fmt_when(t)}"
+    assert vd.words({"phase": "given_up", "error": "collect: GitHub refused"}) == "gave up: collect: GitHub refused"
+    assert vd.words({"phase": "unreadable", "error": "x.json cannot be read"}) == \
+        "its record cannot be read: x.json cannot be read"
+    # every phase the chain can be in has plain words, none is the bare phase name
+    for ph in ("idle", "dispatch", "running", "collect", "build", "lists", "agree", "done", "given_up",
+               "unreadable"):
+        w = vd.words({"phase": ph, "next_s": t, "landed_s": t, "error": "e"})
+        assert w != ph and w, ph
+
+
+def test_the_daily_route_and_both_screens_print_the_words_not_the_phase(client, monkeypatch):
+    from tradingagents import v4_daily
+
+    monkeypatch.setattr(v4_daily, "read", lambda: {"phase": "build", "why": "x"})
+    got = client.get("/api/v4/daily").json()
+    assert got["phase"] == "build" and got["words"] == "rebuilding Backtest v4"
+    panel = PANEL_PATH.read_text(encoding="utf-8")
+    assert "daily.words" in panel and "daily.phase" not in panel
+    assert "daily.words" in V4TAB and "daily.phase" not in V4TAB

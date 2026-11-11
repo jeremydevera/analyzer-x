@@ -31,13 +31,23 @@ The rules, each one from the spec:
   candle, so a technical-analysis family reads the window its backtest read.
 * Every cost is the strategy's own: its fee and gap from the list it was switched on by (kept with
   the trade to its exit), and the coin's funding settled inside the hold (CLAUDE.md rule 9).
-* A coin the exchange no longer lists - or a HELD strategy whose candles cannot be read on
-  `DELIST_AFTER_FAILS` passes running - closes its trade at the last candle read, `why`
-  "DELISTED", named. One failed read is not a delisting: it is retried once later in the same
-  pass, then named, and the strategy's state is left where it was so the next pass catches up.
+* A trade is closed DELISTED - at the last candle read, named - ONLY when the exchange's own
+  contract list, read successfully, no longer has the coin (final review, Nov 11, 2026). A candle
+  read that fails, however many passes running, never closes a trade: the record is append-only and
+  a run of "too many requests" answers must not write a false exit. It is retried once later in the
+  same pass, then named with how many passes it has failed, and the strategy waits where it was so
+  the next pass catches up.
+* Every exit pays the funding settled inside its hold, read as the backtest's shard reads it: back
+  to the shard's 1d frame start (or the oldest open trade, if older), and from a read made DURING
+  this pass - the adapter's half-hour copy would miss a settlement at the exit's own close.
 * A row is never written twice: before appending, the follower checks the room's own trade
   record (and the keys it remembers) for that trade id and action - a pass killed between a row and
-  its state is replayed by the next one without a duplicate.
+  its state is replayed by the next one without a duplicate. And only ONE pass runs at a time:
+  `pass_once` itself holds `follow.lock` (a second pass, from the command line or a test beside the
+  API's thread, writes nothing and says so), because the writer reads the record once at its start.
+* A room's follower record that cannot be read is NAMED and never overwritten: nothing is done in
+  that room until it is repaired or moved aside (a fresh start would rebuild an open trade as
+  carried, or lose it). A pass that fails for a whole room saves its reason for the screen.
 """
 from __future__ import annotations
 
@@ -54,10 +64,11 @@ EVERY_S = 900                 # a pass after every 15-minute close ...
 AFTER_CLOSE_S = 20            # ... 20 seconds after it
 STALE_S = 1800                # a heartbeat older than this is a room "not following"
 START_BACK_DAYS = 7           # a room with no state starts at its oldest list this recent
-DELIST_AFTER_FAILS = 2        # passes a HELD strategy's coin may go unread before it is closed
 SPARE_BARS = 5
 WRITTEN_KEEP = 5000           # trade rows (id + action) remembered as written, newest last
 REPLACE_BUDGET_S = 3.0
+BUSY = ("another follower pass is running (it holds the follow lock); this pass wrote nothing and "
+        "the next one catches up")
 
 
 # ------------------------------------------------------------------ where things are
@@ -89,13 +100,43 @@ def state_path() -> Path:
     return at._pp(at.STATE_PATH).with_name("v4_follow.json")
 
 
+def _load() -> tuple[dict, str | None]:
+    """(the current room's follower state, None) - {} when it has none - or ({}, why) when the file
+    EXISTS but cannot be read. An unreadable one is named and never overwritten: read as "never ran",
+    a fresh start would rebuild an open trade as carried, or lose it."""
+    p = state_path()
+    if not p.exists():
+        return {}, None
+    st = None
+    for attempt in range(3):          # a swap under the reader (Windows) is a moment, not a fault
+        try:
+            st = json.loads(p.read_text(encoding="utf-8"))
+            break
+        except OSError as exc:
+            if attempt == 2:
+                return {}, f"{type(exc).__name__}: {exc.strerror or exc.errno}"
+            time.sleep(0.05)
+        except ValueError as exc:
+            return {}, f"{type(exc).__name__}: {str(exc)[:160]}"
+    if not isinstance(st, dict):
+        return {}, f"it holds a {type(st).__name__}, not a record"
+    return st, None
+
+
 def load() -> dict:
-    """The current room's follower state; {} when it has none (or it cannot be read)."""
-    try:
-        st = json.loads(state_path().read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-    return st if isinstance(st, dict) else {}
+    """The current room's follower state; {} when it has none or it cannot be read (`_load` says
+    which)."""
+    return _load()[0]
+
+
+def unreadable_words(bad: str) -> str:
+    """What every screen says about a room whose follower record cannot be read (never its path)."""
+    return (f"this room's follower record cannot be read ({bad}); nothing is done in this room until it "
+            f"is repaired or moved aside - it is never overwritten")
+
+
+class _Unreadable(Exception):
+    """The room's follower record exists and cannot be read: the room is left exactly as it is."""
 
 
 def _save(st: dict) -> None:
@@ -137,10 +178,13 @@ def _fetch_default(sym, tf, bars=None, end_ms=None):
     return skill_frames.frame(sym, tf, bars, end_ms=end_ms)
 
 
-def _funding_default(sym):
+def _funding_default(sym, since_ms=None, fresh_after_s=None):
+    """The coin's settlements since `since_ms`, from a read made at or after `fresh_after_s` (the
+    wall clock): the adapter's own copy is used only while it is that fresh (`max_age_s`)."""
     from tradingagents.dataflows import exchange as fx
 
-    return fx.funding_history(sym)
+    age = None if fresh_after_s is None else max(0.0, time.time() - float(fresh_after_s))
+    return fx.funding_history(sym, since_ms=since_ms, max_age_s=age)
 
 
 def _listed_default():
@@ -202,12 +246,27 @@ class _Reads:
             self._opens[k] = (df, [int(x) for x in sb._ms(df.index)] if len(df) else [])
         return self._opens[k][1]
 
-    def funding(self, sym: str):
-        if sym not in self._fund:
+    def fund_since(self, since_ms: int | None = None) -> int:
+        """Where a funding read starts: the shard's 1d frame start (its `BARS["1d"]` closed daily
+        candles to today's midnight - `skill_shard.funding_of` reads from there), or `since_ms` (an
+        open trade's fill) when that is older. Never later than the 1d start, so practice charges
+        exactly the settlements the next day's backtest charges."""
+        from tradingagents.skill_frames import BARS
+
+        start = (self.now_ms // DAY_MS - BARS["1d"]) * DAY_MS
+        return start if since_ms is None else min(start, int(since_ms))
+
+    def funding(self, sym: str, since_ms: int | None = None):
+        """The coin's funding, read ONCE a pass (again only to reach further back), from a read
+        made during this pass: an exit written now pays every settlement up to its own close."""
+        want = self.fund_since(since_ms)
+        hit = self._fund.get(sym)
+        if hit is None or want < hit[0]:
             from tradingagents import skill_bt as sb
 
-            self._fund[sym] = sb.Funding(self._funding_of(sym))
-        return self._fund[sym]
+            rows = self._funding_of(sym, since_ms=want, fresh_after_s=self.now_s)
+            self._fund[sym] = (want, sb.Funding(rows))
+        return self._fund[sym][1]
 
     # -- signals
     def signal(self, row: dict, df, i: int):
@@ -287,7 +346,12 @@ class _Reads:
                     if not isinstance(doc, dict) or not isinstance(doc.get("rooms", {}), dict):
                         raise ValueError("not a day list")
                 except (OSError, ValueError) as exc:
-                    self.list_errors[day_s] = f"the list {p.name} cannot be read: {type(exc).__name__}: {exc}"
+                    # never the file's name or path on a screen (final review, Nov 11, 2026)
+                    from tradingagents.positions_view import fmt_when
+
+                    said = (exc.strerror or exc.errno) if isinstance(exc, OSError) else str(exc)[:120]
+                    self.list_errors[day_s] = (f"the list of the day that began {fmt_when(day_s)} cannot be "
+                                               f"read ({type(exc).__name__}: {said})")
                     doc = None
             self._lists[day_s] = doc
         doc = self._lists[day_s]
@@ -394,7 +458,9 @@ class _Writer:
 class _Room:
     def __init__(self, pid: str, R: _Reads):
         self.pid, self.R = pid, R
-        self.st = load()
+        self.st, bad = _load()
+        if bad:
+            raise _Unreadable(bad)
         self.st.setdefault("strats", {})
         self.st.setdefault("pending", {})
         self.errors: list[str] = []
@@ -448,6 +514,8 @@ class _Room:
         st["last_pass_s"] = R.now_s
         st["last_candle_ms"] = self.newest_close or None
         st["errors"] = list(self.errors)
+        st.pop("pass_error", None)            # a pass that ran: an earlier failure is no longer the news
+        st.pop("pass_error_s", None)
         _save(st)
         self.out["held_at"] = held
         return self.out
@@ -461,13 +529,13 @@ class _Room:
         R = self.R
         sym, tf, bar_ms = f"{row['coin']}_USDT", row["tf"], _bar_ms(row["tf"])
         df = R.warm_frame(sym, tf, end_ms)
-        fund = R.funding(sym)
+        opens = R.opens(df)
+        fund = R.funding(sym, opens[0] if opens else None)
         pos = None
         if len(df):
             _done, pos = sb.run(df, R.warm_signals(row, df, end_ms), stop=float(row["stop"]),
                                 fee=float(row["fee"]), slip=float(row["slip"]), target=row.get("target"),
                                 funding=fund, bar_ms=bar_ms)
-        opens = R.opens(df)
         return {"row": row, "last_ms": opens[-1] if opens else int(end_ms) - 1,
                 "last_close": float(df["close"].iloc[-1]) if len(df) else None,
                 "pos": pos, "carried": pos is not None, "cold": False, "fails": 0,
@@ -525,7 +593,7 @@ class _Room:
         for sid in sids:
             st["strats"][sid]["fails"] = 0        # the candles were read: a run of failures ends
         try:
-            fund = R.funding(sym)
+            fund = R.funding(sym, self._oldest_fill(sids))
         except Exception as exc:                                        # noqa: BLE001
             # NOT A DELISTING (review, Nov 10, 2026): a funding read that fails alone skips the
             # coin's candles this pass - never charged as free, never counted toward closing a
@@ -553,29 +621,41 @@ class _Room:
             _save(st)
         return True
 
+    def _oldest_fill(self, sids: list) -> int | None:
+        """The earliest entry fill among the trades `sids` hold (carried ones too), or None."""
+        fills = []
+        for sid in sids:
+            e = self.st["strats"][sid]
+            pos = e.get("pos")
+            if pos is not None:
+                fills.append(int(pos.get("fill_ms", int(pos["t"]) + _bar_ms(e["row"]["tf"]))))
+        return min(fills) if fills else None
+
     def _unread(self, sid: str, exc: Exception, gone: bool) -> None:
-        """A strategy whose candles could not be read this pass (after the retry): named, its
-        candles left where they were. Held through DELIST_AFTER_FAILS passes, or on a coin the
-        exchange no longer lists, its trade is closed at the last candle read."""
+        """A strategy whose candles could not be read this pass (after the retry): named with how many
+        passes running it has failed, its candles left where they were - it WAITS. A failed read never
+        closes a trade (final review, Nov 11, 2026: the record is append-only, and a run of "too many
+        requests" answers is not a delisting). Only a coin the exchange's own contract list, read
+        successfully, no longer has is closed, at the last candle read."""
         st = self.st
         e = st["strats"][sid]
-        # NOT COUNTED while the exchange's contract list cannot be read either (review, Nov 10,
-        # 2026): with the network down every read fails, and that says nothing about one coin
-        known = self.R.listed() is not None
-        if known:
-            e["fails"] = int(e.get("fails") or 0) + 1
-        self.errors.append(f"{_name(e, sid)}: {type(exc).__name__}: {exc}" + (
-            "" if known else "; the exchange's contract list could not be read either, so this pass "
-                             "is not counted toward closing its trade"))
-        if gone or (known and e["fails"] >= DELIST_AFTER_FAILS):
+        e["fails"] = int(e.get("fails") or 0) + 1
+        if gone:
             fund = None
             try:
-                fund = self.R.funding(f"{e['row']['coin']}_USDT")
+                fund = self.R.funding(f"{e['row']['coin']}_USDT", self._oldest_fill([sid]))
             except Exception:                                           # noqa: BLE001
                 fund = None
-            if gone or e.get("pos") is not None or e.get("cold"):
-                self._delist(sid, e, fund, "delisted by the exchange" if gone else
-                             f"its candles could not be read on {e['fails']} passes running")
+            self.errors.append(f"{_name(e, sid)}: {type(exc).__name__}: {exc}")
+            self._delist(sid, e, fund, "delisted by the exchange")
+        else:
+            n = e["fails"]
+            self.errors.append(
+                f"{_name(e, sid)}: {type(exc).__name__}: {exc}; its candles could not be read "
+                f"({n} pass{'' if n == 1 else 'es'} running) - it waits for the next pass, and only the "
+                f"exchange's own contract list can close its trade"
+                + ("" if self.R.listed() is not None else
+                   "; the exchange's contract list could not be read either"))
         _save(st)
 
     def _delist(self, sid: str, e: dict, fund, why: str) -> None:
@@ -654,7 +734,11 @@ class _Room:
                     e["carried"] = False
                     e["pos_fee"], e["pos_slip"] = fee, slip
                 else:
-                    new = None                           # switched off: no new trade
+                    # switched off: no new trade - but the backtest HOLDS the one it opened here, so
+                    # the strategy goes cold: switched on again later it is warmed up afresh (the
+                    # trade carried), never left flat to buy before the backtest could
+                    new = None
+                    e["cold"] = True
             e["pos"] = new
             self._done_candle(e, o, close, bar_ms)
             i += 1
@@ -685,17 +769,67 @@ def pass_once(now_s: float | None = None, *, fetch=None, funding_of=None, listed
     from tradingagents import profiles
 
     now_s = time.time() if now_s is None else float(now_s)
-    R = _Reads(now_s, fetch or _fetch_default, funding_of or _funding_default, listed or _listed_default,
-               lists_dir)
-    out = {}
-    for pid in rooms():
-        with profiles.using(pid):
-            try:
-                out[pid] = _Room(pid, R).run()
-            except Exception as exc:                                   # noqa: BLE001
-                out[pid] = {"processed": 0, "entered": 0, "exited": 0, "held_at": None,
-                            "errors": [f"the pass failed: {type(exc).__name__}: {exc}"]}
+    with _follow_lock() as held:
+        if not held:
+            # ANOTHER PASS IS WRITING (final review, Nov 11, 2026): the writer reads the room's record
+            # once when it starts, so two passes at once would write every row twice, for good
+            return {pid: {"processed": 0, "entered": 0, "exited": 0, "held_at": None, "skipped": True,
+                          "errors": [BUSY]} for pid in rooms()}
+        R = _Reads(now_s, fetch or _fetch_default, funding_of or _funding_default, listed or _listed_default,
+                   lists_dir)
+        out = {}
+        for pid in rooms():
+            with profiles.using(pid):
+                try:
+                    out[pid] = _Room(pid, R).run()
+                except _Unreadable as exc:
+                    out[pid] = {"processed": 0, "entered": 0, "exited": 0, "held_at": None,
+                                "unreadable": True, "errors": [unreadable_words(str(exc))]}
+                except Exception as exc:                               # noqa: BLE001
+                    reason = f"{type(exc).__name__}: {exc}"
+                    out[pid] = {"processed": 0, "entered": 0, "exited": 0, "held_at": None,
+                                "errors": [f"the pass failed: {reason}"]}
+                    _keep_failure(reason, now_s, out[pid]["errors"])
     return out
+
+
+def _follow_lock():
+    """`follow.lock` under Backtest v4's folder, tried once (never waited on): a context manager
+    answering True when this pass holds it. One pass at a time, whoever starts it."""
+    import contextlib
+
+    @contextlib.contextmanager
+    def held():
+        from tradingagents import portable, stores
+
+        home = Path(stores.V4.home)
+        home.mkdir(parents=True, exist_ok=True)
+        with open(home / "follow.lock", "a+b") as fh:
+            try:
+                portable.lock_exclusive(fh, blocking=False)
+            except OSError:
+                yield False
+                return
+            try:
+                yield True
+            finally:
+                portable.unlock(fh)
+
+    return held()
+
+
+def _keep_failure(reason: str, now_s: float, errors: list) -> None:
+    """A pass that failed for a whole room: its reason saved into the room's record for the screen,
+    on top of what is ON DISK (never the half-run pass's memory). An unreadable record is never
+    written over."""
+    try:
+        st, bad = _load()
+        if bad:
+            return
+        st["pass_error"], st["pass_error_s"] = reason, float(now_s)
+        _save(st)
+    except Exception as exc:                                            # noqa: BLE001
+        errors.append(f"and its reason could not be saved: {type(exc).__name__}: {exc}")
 
 
 # ------------------------------------------------------------------ the heartbeat
@@ -708,9 +842,16 @@ def status(pid: str, now_s: float | None = None, lists_dir: Path | None = None) 
 
     now_s = time.time() if now_s is None else float(now_s)
     with profiles.using(pid):
-        st = load()
+        st, bad = _load()
     last, held, errs = st.get("last_pass_s"), st.get("held_at"), list(st.get("errors") or [])
-    if not last:
+    failed, failed_s = st.get("pass_error"), st.get("pass_error_s")
+    if bad:
+        why = unreadable_words(bad)
+        errs = [why]
+    elif failed and (not last or float(failed_s or 0) >= float(last)):
+        why = f"the pass of {fmt_when(float(failed_s or now_s))} failed: {failed}"
+        errs = [f"the pass failed: {failed}", *errs]
+    elif not last:
         why = "the follower has not run yet"
     elif now_s - float(last) > STALE_S:
         why = f"the last pass was {fmt_when(float(last))}"
@@ -722,16 +863,26 @@ def status(pid: str, now_s: float | None = None, lists_dir: Path | None = None) 
     else:
         why = None
     today = int(now_s) // DAY_S * DAY_S
-    on, fallback = [], None
-    try:
-        doc = json.loads(list_path(today, lists_dir).read_text(encoding="utf-8"))
-        on = list((doc.get("rooms") or {}).get(pid) or [])
-        fallback = doc.get("fallback_from")
-    except (OSError, ValueError, AttributeError):
-        pass
+    on, fallback, landed, list_error = [], None, False, None
+    p = list_path(today, lists_dir)
+    if p.exists():
+        try:
+            doc = json.loads(p.read_text(encoding="utf-8"))
+            if not isinstance(doc, dict) or not isinstance(doc.get("rooms", {}), dict):
+                raise ValueError("not a day list")
+            on = list((doc.get("rooms") or {}).get(pid) or [])
+            fallback = doc.get("fallback_from")
+            landed = True
+        except (OSError, ValueError) as exc:
+            said = (exc.strerror or exc.errno) if isinstance(exc, OSError) else str(exc)[:120]
+            list_error = f"today's list cannot be read ({type(exc).__name__}: {said})"
+    fb_day = _day_of(str(fallback)) if fallback else None
     return {"last_pass_s": last, "last_candle_ms": st.get("last_candle_ms"), "held_at": held, "why": why,
             "filled_in": int(st.get("filled_in") or 0), "errors": errs, "switched_on": on,
-            "fallback_from": fallback, "agreement": agreement_of(pid, lists_dir)}
+            # WAS TODAY'S LIST EXAMINED AT ALL (final review, Nov 11, 2026): an empty `switched_on`
+            # before the list lands is "nothing looked at yet", never "nothing passes"
+            "today_s": today, "today_landed": landed, "today_list_error": list_error,
+            "fallback_from": fallback, "fallback_day_s": fb_day, "agreement": agreement_of(pid, lists_dir)}
 
 
 def agreement_of(pid: str, lists_dir: Path | None = None) -> dict | None:
@@ -779,32 +930,34 @@ def _sentence(res: dict) -> str:
             bits.append(f"{profiles.name_of(pid)} waiting for the list of {fmt_when(int(r['held_at']))}")
         if r.get("errors"):
             bits.append(f"{profiles.name_of(pid)}: {len(r['errors'])} problem(s), first: {r['errors'][0]}")
+        if r.get("unreadable"):           # the log (never a screen) says WHERE, for the repair
+            with profiles.using(pid):
+                bits.append(f"{profiles.name_of(pid)}'s follower record is {state_path()}")
     return "; ".join(bits) if bits else f"following {len(res)} room(s)"
 
 
 def tick(now_s: float | None = None) -> dict | None:
-    """The supervisor's call: one pass 20 s after every 15-minute close, under `follow.lock` (held
-    by another pass = skipped). Nothing under pytest. Never raises."""
+    """The supervisor's call: one pass 20 s after every 15-minute close. Nothing under pytest. Never
+    raises."""
     if os.environ.get("PYTEST_CURRENT_TEST"):
         return None
-    try:
-        from tradingagents import portable, stores
+    return _tick(now_s)
 
+
+def _tick(now_s: float | None = None) -> dict | None:
+    """The pass for the newest slot, once. It takes NO lock of its own: `pass_once` holds
+    `follow.lock`, and a pass that finds it held (another pass is writing) leaves the slot to be
+    tried again at the next poll."""
+    try:
         now_s = time.time() if now_s is None else float(now_s)
         slot = _slot(now_s)
         if _DONE["slot"] is not None and _DONE["slot"] >= slot:
             return None
-        stores.V4.home.mkdir(parents=True, exist_ok=True)
-        with open(stores.V4.home / "follow.lock", "a+b") as fh:
-            try:
-                portable.lock_exclusive(fh, blocking=False)
-            except OSError:
-                return None
-            try:
-                _DONE["slot"] = slot
-                res = pass_once(now_s)
-            finally:
-                portable.unlock(fh)
+        was, _DONE["slot"] = _DONE["slot"], slot
+        res = pass_once(now_s)
+        if any(r.get("skipped") for r in res.values()):
+            _DONE["slot"] = was
+            return None
         _say(_sentence(res))
         return res
     except Exception as exc:                                            # noqa: BLE001

@@ -3111,7 +3111,9 @@ their backtest did"*, and the played-back design with *"go start use suporpower"
   candle's close plus the coin's usual gap, then at each later close the stop, the target, the
   opposite signal. Several strategies may hold one coin (the runner's one-per-coin rule does not apply).
 * **The follower** (`tradingagents/v4_follow.py`, the API's `v4-follow` thread, 20 seconds after each
-  15-minute close, under a file lock): for every switched-on strategy it processes EVERY closed
+  15-minute close; `pass_once` ITSELF holds `follow.lock`, so a pass run by hand beside the thread
+  writes nothing and says so - the writer reads the record once, and two passes at once would write
+  every row twice, RCA-2026-11-11-I): for every switched-on strategy it processes EVERY closed
   candle since the last one it handled, in order, so a sleeping PC loses nothing (catch-up).
   It writes the runner's own row shapes into the room's files (strategy `v4_<id>`, $5, 20x), so
   every panel reads them unchanged. **It HOLDS at midnight UTC** until that day's list lands: no
@@ -3119,8 +3121,16 @@ their backtest did"*, and the played-back design with *"go start use suporpower"
   of the hold are filled in at their candle times when the list lands. A switch-on first warms the
   strategy up over the newest candles; a trade the warm-up leaves open is CARRIED (followed to its
   exit so the strategy cannot buy early, not counted, as Forecast v4 did not count it). A strategy
-  switched off takes no new trade and finishes the one it holds. A pinned coin the exchange delists
-  closes an open trade at its last candle, `why` DELISTED.
+  switched off takes no new trade and finishes the one it holds; an entry it skips that way makes it
+  cold, so switched on again it is warmed up afresh. **A trade is closed DELISTED (at its last candle
+  read) ONLY when the exchange's own contract list, read successfully, no longer has the coin**
+  (final review, Nov 11, 2026): failed candle reads, however many passes running, never close a
+  trade - they are named with the count and the follower waits, because the record is append-only
+  and a run of "too many requests" answers must never write a false exit. Every exit pays the
+  funding settled in its hold from a read made during that pass (`fx.funding_history(max_age_s=)`;
+  Gate's half-hour copy is topped up, one page), read back to the shard's own 1d frame start. A
+  room whose follower record cannot be read is named on its screens and left untouched (never
+  overwritten); a pass that fails for a whole room saves its reason for the screen.
 * **The daily chain** (`tradingagents/v4_daily.py`, the `v4-daily` thread; `start_now()` and
   `status()`/`words()`): starts 00:05 UTC every day, `skillbt.yml` on EVERY account's machines (all
   60, `split_coins`, each fork synced first) over a **pinned universe** — the 42 settings of

@@ -103,6 +103,49 @@ def test_the_same_coin_is_read_once_per_half_hour(gate):
     assert len(gate) > n, "a wider ask reads further back"
 
 
+def test_a_read_asked_fresh_is_topped_up_with_the_settlements_since(monkeypatch, tmp_path):
+    """The skill rooms' follower (Nov 11, 2026): an exit at a settlement's own close must pay it, so
+    it asks for a read made after the close (`max_age_s`). A kept read older than that is TOPPED
+    UP - one page, merged - never served stale, and never the whole history again."""
+    monkeypatch.setenv("TA_VENUE", "gate")
+    monkeypatch.setattr(gf, "PUBLIC_PAUSE_PATH", tmp_path / "pause.json")
+    monkeypatch.setattr(gf, "_retry_sleep", lambda s: None)
+    monkeypatch.setattr(gf, "contract_spec", lambda s: {"funding_interval_h": 8})
+    gf._FUND_CACHE.clear()
+    newest = int(time.time()) // 28800 * 28800 - 28800
+    settled = [newest - 28800 * i for i in range(400)]
+    pages = []
+
+    def fake(url):
+        q = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(url).query))
+        top = int(q.get("to") or 10 ** 12)
+        pages.append(top)
+        rows = [t for t in settled if t <= top][:90]
+        return 200, json.dumps([{"r": "0.0001", "t": t} for t in rows]).encode()
+
+    monkeypatch.setattr(gf, "_fetch", fake)
+    since = (newest - 300 * 86400) * 1000
+    first = gf.funding_history("BTC_USDT", since_ms=since)
+    n = len(pages)
+    assert first[-1]["settle_ms"] == newest * 1000 and n > 3
+    settled.insert(0, newest + 28800)                     # a settlement is published after the read
+    assert gf.funding_history("BTC_USDT", since_ms=since) == first, "the half-hour copy, as before"
+    assert len(pages) == n
+    got = gf.funding_history("BTC_USDT", since_ms=since, max_age_s=0)
+    assert got[-1]["settle_ms"] == (newest + 28800) * 1000, "the new settlement is in a fresh ask"
+    assert got[:-1] == first and len(pages) == n + 1, "topped up with ONE page, merged"
+    assert gf.funding_history("BTC_USDT", since_ms=since, max_age_s=600) == got, "now fresh enough"
+    assert len(pages) == n + 1
+    gf._FUND_CACHE.clear()
+
+
+def test_mexc_takes_the_freshness_ask_and_keeps_no_copy():
+    import inspect
+
+    assert "max_age_s" in inspect.signature(mf.funding_history).parameters
+    assert "_FUND_CACHE" not in inspect.getsource(mf.funding_history)
+
+
 def test_the_v2_engine_call_pays_each_minutes_book():
     """Phase 4: every v2 trade pays its own minute's order book and is refused
     where the runner would refuse it; the row says how many were refused and

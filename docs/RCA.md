@@ -378,6 +378,179 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-11-G — the three skill rooms would have been sent to the daily GitHub forecast and to "Backtest a room" with watcher rules they do not have: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the review of the step that added the three rooms, before they were switched on.
+* Why: every list that walks "all rooms" picked up the three new rooms too, and for a room with no watcher of its own the app quietly fills in the default watcher rules - so the daily forecast and Backtest a room would have measured rules these rooms never use.
+* What stops it now: those lists skip a room that follows Backtest v4, and Backtest a room refuses one by name.
+
+**DEV**
+
+* `tradingagents/forecast_v2_daily.py:room_rules` (via `rules_of`, which falls back to defaults for a room with no state), `room_backtest.compare`, `room_replay._check_room`, the API's watcher tick loop, `rolling30.refresh` and `strategy_watcher.restore_backtest_notes` all walked `profiles.ids()` with no `profiles.follows(pid)` test; `/api/trade/profiles` wrote a seed file for each.
+* Invariant broken: **a loop over every room must ask what KIND of room it is - a room traded by a follower has no watcher rules, and defaults are never its rules**.
+* Guard: `tests/test_skill_rooms_exist.py::test_the_daily_forecast_sends_no_follower_room_to_github`, `::test_backtest_a_room_refuses_a_follower_by_name`, `::test_the_watcher_and_30_day_loops_skip_a_follower_room`.
+
+**SAW** - nothing on screen: the rooms were added at 0e739f0 (Nov 10, 2026 11:23pm) and fixed 4 minutes later, before any API ran that code.
+
+**TIMELINE**
+
+1. Nov 10, 2026 11:23pm: 0e739f0 adds #D7EN8BNV, #RSS7CUKH and #7T3VJU82 to `profiles.BUILTIN` with `follows: "v4"` and no watcher.
+2. The task review runs `forecast_v2_daily.room_rules()`: the 3 follower rooms are in it, each with the default watcher rule set, so the next daily Forecast v2 run would have replayed 3 rule sets nobody chose on all 60 machines; Backtest a room would have answered for them with the same defaults.
+3. Nov 10, 2026 11:27pm: 1234b5b - `room_rules`, `room_backtest.compare` and `room_replay._check_room` skip or refuse a follower by name; the watcher tick, `rolling30.refresh` and `restore_backtest_notes` skip it; `/api/trade/profiles` writes no seed file and reports `follows`/`v4_rule`. 9 new tests, all red before the fix.
+
+**ROOT CAUSE** - a new kind of room was added to a list that every room-walking loop reads, and each loop assumed every room has a watcher; `rules_of` turned "no watcher" into "the default watcher" silently.
+
+**WHY IT WAS NOT CAUGHT** - every existing room test was written when all rooms were watcher rooms, so "every room has rules" was never a question anyone asserted; the room list grew and no test walked the loops asking what they did with a room of a different kind.
+
+**COST** - none (never ran). Would have been 3 meaningless rule sets in each daily Forecast v2 run and wrong answers in Backtest a room for the three rooms.
+
+**FIX** - 1234b5b (Nov 10, 2026 11:27pm). This entry is written in a later commit: the fix was found by a task review and shipped without one (final review, Nov 11, 2026).
+
+**GUARD** - `tests/test_skill_rooms_exist.py::test_the_daily_forecast_sends_no_follower_room_to_github`, `::test_backtest_a_room_refuses_a_follower_by_name`, `::test_the_watcher_and_30_day_loops_skip_a_follower_room`, `::test_the_room_list_says_what_a_follower_follows`, `::test_a_follower_rooms_stats_name_its_v4_rule_not_default_watcher_rules`.
+
+---
+
+## RCA-2026-11-11-H — a skill room's tab still offered "switch on for real money" and SAVE CONFIG, and saving wrote a real-money flag nobody acts on: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the review of the room tab before it went live.
+* Why: the room tab kept the usual strategy grid with its practice and real-money switches, and the server accepted the save, although these rooms are traded only by the follower and have nothing to switch on.
+* What stops it now: the grid is gone from these three rooms and the server refuses every change that would switch something on in them, saying why.
+
+**DEV**
+
+* `webapp/src/components/trade/AutoTradeScreen.tsx` rendered `<StrategiesGrid />` for every room; `POST /api/trade/settings`, `/losscap/reset`, `/record/reset`, `/watcher` and `/runner/start` in `tradingagents/api.py` had no follower check, so a save wrote `auto_trade.json` (with `strategy_books` "real") into the room's folder.
+* Invariant broken: **a control is shown and a write accepted only where something acts on it - a room no runner reads has no arming switch**.
+* Guard: `tests/test_skill_rooms_screen.py::test_the_deploy_grid_is_not_rendered_for_a_follower_room`, `::test_settings_writes_are_refused_for_a_follower_room_only`.
+
+**SAW** - nothing: the tab shipped at 7ddf265 (Nov 11, 2026 12:58am) and was fixed at b9b1df4 (Nov 11, 2026 1:06am), before the site was restarted onto it.
+
+**TIMELINE**
+
+1. Nov 11, 2026 12:58am: 7ddf265 puts the follower panel in the three rooms' tabs; the strategy grid (practice + real switches, SAVE CONFIG, record reset) stays below it.
+2. The task review posts `{"strategy_books": {"x": ["real"]}}` to `/api/trade/settings` as #D7EN8BNV: 200, and the room's `auto_trade.json` holds a real-money flag that no runner will ever read - a false "armed" state on screen.
+3. Nov 11, 2026 1:06am: b9b1df4 hides the grid for a follower room and makes the 5 arming routes answer 409 "#D7EN8BNV is followed by Backtest v4's engine; it has no strategies to switch on"; the daily refresh's phase word is printed in plain words. Guard: 4 new tests in `tests/test_skill_rooms_screen.py` (17 then).
+
+**ROOT CAUSE** - the room tab and the settings routes were written for rooms with a runner; the follower rooms reused both without anything asking whether a runner exists.
+
+**WHY IT WAS NOT CAUGHT** - the screen tests asserted what the follower panel SHOWS and never what the rest of the tab still offered, and no route test posted to a follower room, because the routes predate the room kind.
+
+**COST** - none (never ran). Would have been a real-money flag on a practice-only room, read by no one, shown as switched on.
+
+**FIX** - b9b1df4 (Nov 11, 2026 1:06am). This entry is written in a later commit: the fix was found by a task review and shipped without one (final review, Nov 11, 2026).
+
+**GUARD** - `tests/test_skill_rooms_screen.py::test_the_deploy_grid_is_not_rendered_for_a_follower_room`, `tests/test_skill_rooms_screen.py::test_settings_writes_are_refused_for_a_follower_room_only`.
+
+---
+
+## RCA-2026-11-11-I — a follower pass run by hand beside the API's own would have written every practice trade twice, for good: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the final review before the skill rooms went live.
+* Why: only the API's background timer took the "one at a time" lock; running the same pass by hand skipped it, and each pass only checks for duplicates once, when it starts, so two passes at once would each have written the same trades.
+* What stops it now: the pass itself takes the lock - a second pass writes nothing and says another one is running.
+
+**DEV**
+
+* `tradingagents/v4_follow.py:pass_once` (e188adb) took no lock; only `tick()` held `follow.lock`, and `_Writer.__init__` reads the room's record ONCE into `written`, so two concurrent `_Writer`s both pass the duplicate check for the same `trade_id:action`.
+* Invariant broken: **the lock belongs to the function that writes, not to one of its callers - every door into a writer is guarded, including the one a person types**.
+* Guard: `tests/test_v4_follow.py::test_a_second_pass_while_the_lock_is_held_writes_nothing_and_says_why` and `::test_tick_holds_no_lock_of_its_own_so_its_pass_runs`.
+
+**SAW** - nothing: the go-live walkthrough of Nov 11, 2026 planned a hand-run `pass_once()` while the API's `v4-follow` thread runs, which is exactly this.
+
+**TIMELINE** (test timeline, T0 = Nov 01, 2026 12:00am UTC)
+
+1. Nov 10, 2026: e188adb ships `pass_once` without a lock; `tick()` takes `follow.lock` and calls it.
+2. The API's thread starts its 12:00pm pass; a pass started by hand at the same second reads the room's record (0 rows) for its own duplicate check.
+3. Both walk AAA's candles 0..11 and both append `enter` (6:00am) and `exit` (9:00am): 4 rows for 2 trades, the day's total doubled on every tile, permanently (the record is append-only).
+4. This commit: with `follow.lock` held, the second pass returns `skipped` with "another follower pass is running ... wrote nothing" for every room and writes no row and no state (red before: the pass ran and wrote 2 rows); `tick()` holds no lock of its own, so its pass is never refused by itself.
+
+**ROOT CAUSE** - the exclusion lived in the scheduler (`tick`) instead of in the writer (`pass_once`), and the writer's duplicate check is a snapshot taken at its start.
+
+**WHY IT WAS NOT CAUGHT** - every follower test drives `pass_once` alone, one call after another; no test ran two passes at once or held the lock while a pass started, and `tick()` does nothing under pytest, so the only lock in the code was never exercised.
+
+**COST** - none (never ran). Would have been every trade of that pass written twice in the room's permanent record.
+
+**FIX** - this commit: `pass_once` holds `follow.lock` (tried once, never waited on) for the whole pass and returns `skipped` + `BUSY` when it is held; `tick()` -> `_tick()` takes no lock and leaves the slot for the next poll when its pass was skipped.
+
+**GUARD** - `tests/test_v4_follow.py::test_a_second_pass_while_the_lock_is_held_writes_nothing_and_says_why`, `tests/test_v4_follow.py::test_tick_holds_no_lock_of_its_own_so_its_pass_runs`.
+
+---
+
+## RCA-2026-11-11-J — a practice exit at a funding settlement would have been written without that payment, which the next day's backtest charges: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the final review.
+* Why: the app keeps a copy of each coin's funding payments for half an hour, so a trade closing exactly when a payment is due could be written from a copy made before the payment existed; and the follower looked back only 200 days where the backtest looks back two years.
+* What stops it now: the follower asks for funding read during its own pass (topping the copy up with one page) and reads back as far as the backtest does.
+
+**DEV**
+
+* `tradingagents/v4_follow.py:_funding_default` called `fx.funding_history(sym)`: no `since_ms` (Gate's default `FUNDING_DEFAULT_DAYS` = 200, while `.github/scripts/skill_shard.py:funding_of` reads from the coin's first 1d candle, ~730 days) and served from `gate_futures._FUND_CACHE` for `_FUND_TTL_S` = 1800 s.
+* Invariant broken: **a cost charged now is read now - a cached input may only be used when it is younger than the event it prices**.
+* Guard: `tests/test_v4_follow.py::test_an_exit_at_a_settlement_is_charged_that_settlement`, `::test_funding_is_asked_back_to_the_shards_1d_frame_and_fresh_for_each_pass`, `tests/test_gate_shard_inputs.py::test_a_read_asked_fresh_is_topped_up_with_the_settlements_since`.
+
+**SAW** - nothing: no follower pass has run on this PC yet.
+
+**TIMELINE** (test timeline, T0 = Nov 01, 2026 12:00am UTC; settlements every 8 hours)
+
+1. A long on AAA fills at 6:00am; the 7:45am pass reads funding (settled up to 7:45am) and the adapter keeps that read for 30 minutes.
+2. The 8:00am pass closes the trade on the 7:00am candle (fill 8:00am), a settlement of 0.01% at 8:00am inside the hold.
+3. e188adb: the 8:00am pass reads the 15-minute-old copy, so the exit is written with `fund` 0.0000 (red before: -0.0 against -0.01); the next day's shard, reading fresh, charges -$0.01 - one trade differs on the daily check, permanently.
+4. This commit: the read is asked with `max_age_s` = the time since the pass began, the copy is topped up with one page, and the exit is written with `fund` -0.01; every read starts at or before the shard's 1d frame start.
+
+**ROOT CAUSE** - the follower reused a reader built for backtests (where half an hour of staleness is harmless) to price trades closing at the moment of the read.
+
+**WHY IT WAS NOT CAUGHT** - the fake exchange in the follower tests returned every settlement, past and future, on every call: it had no copy and no publication time, so a stale read was impossible in the tests.
+
+**COST** - none (never ran). Would have been up to one settlement (typically $0.01 per $100) missing from an exit at a settlement's close, and a "not the same" on the daily check.
+
+**FIX** - this commit: `fx.funding_history(..., max_age_s=)` through the door (Gate: a kept read older than that is topped up with the pages since its newest settlement; MEXC keeps no copy and accepts it); the follower asks from `_Reads.fund_since` (the shard's 1d frame start, or an open trade's older fill) with a read made during the pass, once per coin per pass.
+
+**GUARD** - `tests/test_v4_follow.py::test_an_exit_at_a_settlement_is_charged_that_settlement`, `tests/test_v4_follow.py::test_funding_is_asked_back_to_the_shards_1d_frame_and_fresh_for_each_pass`, `tests/test_gate_shard_inputs.py::test_a_read_asked_fresh_is_topped_up_with_the_settlements_since`, `tests/test_gate_shard_inputs.py::test_mexc_takes_the_freshness_ask_and_keeps_no_copy`.
+
+---
+
+## RCA-2026-11-11-K — the follower would have closed a trade "DELISTED" after two refused candle reads, and three smaller faults in what it keeps: NEVER HAPPENED YET
+
+**CEO**
+
+* What you saw: nothing - found by the final review.
+* Why: two failed price reads in a row were treated as the coin being gone, which a burst of "too many requests" can cause; separately, a damaged room record would have been overwritten, a whole-room failure left no reason on screen, and a strategy switched off at the wrong moment could later buy a trade early.
+* What stops it now: only the exchange's own coin list can close a trade as delisted; a damaged record is named and left alone; a failure's reason is saved for the screen; a skipped trade makes the strategy start over cleanly when switched on again.
+
+**DEV**
+
+* `tradingagents/v4_follow.py:_unread` (8707c17) called `_delist` once `fails >= DELIST_AFTER_FAILS` (2) while the contract list was readable; `load()` returned `{}` for a file that could not be parsed and `_Room.run` then `_save`d over it; `pass_once`'s `except` kept the reason only in the return value; `_advance` dropped a switched-off strategy's new trade (`new = None`) without `cold`, so a switch-on next candle stepped flat while the backtest held that trade.
+* Invariant broken: **only evidence about the COIN closes its trade; an unreadable record is named, never rewritten; a reason the screen needs is stored where the screen reads**.
+* Guard: `tests/test_v4_follow.py::test_failed_candle_reads_never_close_a_trade_only_the_contract_list_does`, `::test_an_unreadable_follower_record_is_named_and_never_overwritten`, `::test_a_room_whose_pass_fails_saves_why_for_the_screen`, `::test_a_skipped_entry_marks_the_strategy_cold_so_a_switch_on_rewarms_it`.
+
+**SAW** - nothing: no follower pass has run on this PC yet.
+
+**TIMELINE** (test timeline, T0 = Nov 01, 2026 12:00am UTC)
+
+1. CCC long open since 6:00am; from the 9:00am pass every candle read is refused for 6 passes running while the contract list reads fine. 8707c17: the 10:00am pass closes it DELISTED at the 8:00am candle (red before). This commit: 6 passes named "(1 pass running) ... (6 passes running) - it waits", no exit; closed DELISTED at 8:00am only at 3:00pm, when the list no longer has CCC.
+2. A room's record is cut to `{"strats": {"TESTAAA1": {"pos": {"t": 17`: 8707c17 starts the room fresh and writes over it (red before: no error, file replaced). This commit: "this room's follower record cannot be read (JSONDecodeError: ...)" on every screen, bytes untouched, no row.
+3. A pass fails for the whole room at 12:00pm ("RuntimeError: the disk went away"): 8707c17's screen said "the follower has not run yet". This commit: "the pass of Nov 01, 2026 7:00am failed: RuntimeError: the disk went away" (12:00pm UTC in this PC's time), cleared by the next good pass.
+4. Breakout on AAA, switched off on day 2, reaches its target on day 2's last candle (11:00pm) where the backtest buys again; switched on at day 3's midnight, 8707c17 bought at 12:00am - a trade the backtest never had (red before: 3 rows). This commit: warmed up afresh at midnight, the 11:00pm trade carried, 2 rows.
+
+**ROOT CAUSE** - a failure counter stood in for a fact only the exchange's list can give; "no file" and "bad file" shared one `except`; a whole-room failure had nowhere to go; a skipped entry left no mark that the strategy and the backtest had parted.
+
+**WHY IT WAS NOT CAUGHT** - the delisting test asserted the counter's own rule (close at 2) instead of the ruling it should have encoded; no test wrote a broken follower record or broke a whole room; the switch-off tests used a strategy that can never exit and re-enter on one candle (`bf_momentum` enters only on a crossover).
+
+**COST** - none (never ran). Would have been false DELISTED exits after rate-limit bursts, an open trade lost from a damaged record, a silent failed room, and occasional early entries.
+
+**FIX** - this commit: `_unread` counts and names, and closes only when `R.delisted()` (a list read successfully) says so - `DELIST_AFTER_FAILS` removed; `_load()` tells missing from unreadable, `_Room` raises `_Unreadable`, nothing is written, `status()` names it; `_keep_failure` saves `pass_error` on top of the record on disk and `status()` leads with it; `_advance` marks a skipped entry `cold`. The list errors no longer print a file name (`the list of the day that began ...`).
+
+**GUARD** - `tests/test_v4_follow.py::test_failed_candle_reads_never_close_a_trade_only_the_contract_list_does`, `tests/test_v4_follow.py::test_an_unreadable_follower_record_is_named_and_never_overwritten`, `tests/test_v4_follow.py::test_a_room_whose_pass_fails_saves_why_for_the_screen`, `tests/test_v4_follow.py::test_a_skipped_entry_marks_the_strategy_cold_so_a_switch_on_rewarms_it`, `tests/test_v4_follow.py::test_a_list_that_cannot_be_read_is_named_without_its_file_name`.
+
+---
+
 ## RCA-2026-11-05-G — a coin redone alone would still have been listed "no machine reached" on the strategies page: NEVER HAPPENED YET
 
 **CEO**

@@ -1436,7 +1436,8 @@ def round_vol(symbol: str, vol: float) -> int:
 
 # ---------------------------------------------------------------- funding
 def funding_history(symbol: str, max_pages: int = 200, *,
-                    since_ms: int | None = None) -> list:
+                    since_ms: int | None = None,
+                    max_age_s: float | None = None) -> list:
     """Every published funding settlement, oldest last. Keyless.
 
     ``max_pages`` is a runaway backstop, NOT a limit on real history. It was 20,
@@ -1451,7 +1452,9 @@ def funding_history(symbol: str, max_pages: int = 200, *,
     long position's funding PnL is ``-rate * notional`` per settlement.
 
     `since_ms` exists for the door's sake (Gate pages ~30 days at a time and
-    stops at the window); MEXC returns its whole history either way.
+    stops at the window); MEXC returns its whole history either way. So does
+    `max_age_s` (Gate keeps a read for half an hour): MEXC keeps no copy, so
+    every read here is already made now.
     """
     # `total` is read by the failure message below, which runs BEFORE the
     # first page assigns it. Today the ternary there short-circuits on

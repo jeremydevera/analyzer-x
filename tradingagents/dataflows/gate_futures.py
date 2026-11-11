@@ -471,15 +471,34 @@ _FUND_CACHE: dict = {}
 
 
 def funding_history(symbol: str, max_pages: int = 200, *,
-                    since_ms: int | None = None) -> list:
+                    since_ms: int | None = None,
+                    max_age_s: float | None = None) -> list:
     """See `_funding_read`; this keeps one read per coin for half an hour and
-    answers any NARROWER ask from it."""
+    answers any NARROWER ask from it.
+
+    `max_age_s`: the kept read is used only while it is younger than this.
+    A caller that is about to charge a trade closing NOW asks for a read made
+    after that close (the skill rooms' follower, Nov 11, 2026: from the
+    half-hour copy an exit at 8:00am missed the 8:00am settlement the next
+    day's backtest charged). An older kept read is TOPPED UP - only the pages
+    since its newest settlement are read, a settled payment never changes -
+    so a fresh ask costs one page, not the whole history again. None = the
+    half-hour rule, as before."""
     now = time.time()
     if since_ms is None:
         since_ms = int((now - FUNDING_DEFAULT_DAYS * 86400) * 1000)
+    ttl = _FUND_TTL_S if max_age_s is None else min(_FUND_TTL_S, float(max_age_s))
     hit = _FUND_CACHE.get(symbol)
-    if hit and now - hit[0] < _FUND_TTL_S and hit[1] <= since_ms:
+    if hit and now - hit[0] < ttl and hit[1] <= since_ms:
         return list(hit[2])
+    if hit and max_age_s is not None and hit[1] <= since_ms and hit[2]:
+        newest = int(hit[2][-1]["settle_ms"])
+        fresh = _funding_read(symbol, max_pages, since_ms=newest)
+        merged = {int(r["settle_ms"]): r for r in hit[2]}
+        merged.update({int(r["settle_ms"]): r for r in fresh})
+        rows = [merged[k] for k in sorted(merged)]
+        _FUND_CACHE[symbol] = (now, hit[1], rows)
+        return list(rows)
     rows = _funding_read(symbol, max_pages, since_ms=since_ms)
     _FUND_CACHE[symbol] = (now, since_ms, rows)
     return list(rows)

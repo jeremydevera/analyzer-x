@@ -57,6 +57,9 @@ class Market:
         self.listed_fail = False      # the contract list cannot be read (the network is down)
         self.coins: set | None = None
         self.sizes: dict = {}         # sym -> contract size (1.0 when not set)
+        self.fund_calls: list = []    # (sym, since_ms, fresh_after_s, the pass's clock in ms)
+        self.fund_cache_s = 0         # > 0: the adapter's own copy, kept this long (gate: 1800 s)
+        self._fund_copy: dict = {}
 
     def add(self, sym: str, closes, first_ms: int, tf: str = "1h") -> None:
         bar = H_MS if tf == "1h" else int({"15m": 900, "30m": 1800, "4h": 14400, "1d": 86400}[tf] * 1000)
@@ -80,14 +83,27 @@ class Market:
             keep &= ms < int(end_ms)
         return df[keep].tail(BARS[tf] if bars is None else int(bars))
 
-    def funding(self, sym):
+    def funding(self, sym, since_ms=None, fresh_after_s=None):
+        """Settlements every 8 hours. With `fund_cache_s` it behaves as the real adapter does: only
+        what was SETTLED by the read is in it, and a read is kept that long - answered again while
+        it is fresh enough (made at or after `fresh_after_s`, the pass's own clock)."""
+        self.fund_calls.append((sym, since_ms, fresh_after_s, self.now_ms))
         n = self.fund_fail.get(sym, 0)
         if n:
             if n > 0:
                 self.fund_fail[sym] = n - 1
             raise ConnectionError(f"{sym} funding cut")
-        return [{"settle_ms": T0 * 1000 + k * 8 * H_MS, "rate": 0.0001 * (1 if k % 3 else -2)}
-                for k in range(-200, 30)]
+        every = [{"settle_ms": T0 * 1000 + k * 8 * H_MS, "rate": 0.0001 * (1 if k % 3 else -2)}
+                 for k in range(-200, 30)]
+        if not self.fund_cache_s:
+            return every
+        now_s = self.now_ms / 1000
+        hit = self._fund_copy.get(sym)
+        if hit and now_s - hit[0] < self.fund_cache_s and (fresh_after_s is None or hit[0] >= fresh_after_s):
+            return list(hit[1])
+        rows = [r for r in every if r["settle_ms"] <= self.now_ms]
+        self._fund_copy[sym] = (now_s, rows)
+        return list(rows)
 
     def listed(self):
         """{symbol: contract size}, the shape `fx.list_contracts()` gives the follower."""
@@ -340,21 +356,29 @@ def test_a_delisted_coin_closes_its_trade(world):
     assert "TESTAAA1" not in follow_state()["strats"]
 
 
-def test_a_coin_unreadable_for_two_passes_closes_its_trade(world):
+def test_failed_candle_reads_never_close_a_trade_only_the_contract_list_does(world):
+    """Ruling of the final review (Nov 11, 2026): the record is append-only, and a run of "too many
+    requests" answers must never write a false exit - so failed candle reads, however many, are named
+    and wait. Only the exchange's own contract list, read successfully, can close a trade DELISTED."""
     world.m.add("CCC_USDT", scripted([(5, 60)]), (T0 - 48 * H) * 1000)
     world.put(D1, {ROOM: [row("TESTCCC1", coin="CCC")]})
     world.run(T0 + 20)
     world.run(T0 + 8 * H)
     world.m.fail["CCC_USDT"] = -1
-    res = world.run(T0 + 9 * H)
-    assert list(open_slots()) == ["CCC_USDT#paper#v4_TESTCCC1"], "one failed pass is not a delisting"
-    assert any(e.startswith("CCC 1h TESTCCC1: ConnectionError") for e in res[ROOM]["errors"])
+    for k in range(9, 15):                         # six passes in a row, every candle read refused
+        res = world.run(T0 + k * H)
+        mine = [e for e in res[ROOM]["errors"] if e.startswith("CCC 1h TESTCCC1: ConnectionError")]
+        assert mine and "waits" in mine[0] and f"{k - 8} pass" in mine[0], res[ROOM]["errors"]
+    assert [e["action"] for e in ledger()] == ["enter"], "no false exit, however many reads failed"
+    assert list(open_slots()) == ["CCC_USDT#paper#v4_TESTCCC1"]
     assert follow_state()["strats"]["TESTCCC1"]["last_ms"] == (T0 + 7 * H) * 1000, "state untouched"
-    world.run(T0 + 10 * H)
+    world.m.coins = {"AAA_USDT"}                   # the list, read fine, no longer has CCC
+    res = world.run(T0 + 15 * H)
     x = [e for e in ledger() if e["action"] == "exit"]
     assert len(x) == 1 and x[0]["why"] == "DELISTED" and x[0]["ts"] == T0 + 8 * H, \
-        "closed at the last candle it read"
+        "closed at the last candle it read, only once the exchange's list confirmed it"
     assert open_slots() == {}
+    assert any("delisted by the exchange" in e for e in res[ROOM]["errors"])
 
 
 def test_a_funding_read_that_fails_is_not_a_delisting(world):
@@ -389,8 +413,8 @@ def test_unread_candles_while_the_contract_list_is_unreadable_are_not_counted(wo
     world.m.listed_fail = True
     for now in (T0 + 9 * H, T0 + 10 * H, T0 + 11 * H):
         res = world.run(now)
-        assert any("not counted" in e for e in res[ROOM]["errors"]), res[ROOM]["errors"]
-    assert follow_state()["strats"]["TESTCCC1"]["fails"] == 0
+        assert any("contract list could not be read either" in e for e in res[ROOM]["errors"]), \
+            res[ROOM]["errors"]
     assert list(open_slots()) == ["CCC_USDT#paper#v4_TESTCCC1"] and len(ledger()) == 1, "no DELISTED"
     world.m.fail.clear()
     world.m.listed_fail = False
@@ -530,3 +554,162 @@ def test_a_crash_after_writing_never_writes_a_row_twice(world, monkeypatch):
 def test_tick_does_nothing_under_pytest(monkeypatch):
     monkeypatch.setattr(vf, "pass_once", lambda *a, **k: (_ for _ in ()).throw(AssertionError("ran")))
     assert vf.tick() is None
+
+
+# ------------------------------------------------------------------ final review of the skill rooms (Nov 11, 2026)
+def test_a_second_pass_while_the_lock_is_held_writes_nothing_and_says_why(world):
+    """CRITICAL: `pass_once` took no lock - only `tick()` did - and the writer reads the room's record
+    ONCE when it starts, so a pass run by hand beside the API's thread wrote every enter and exit
+    twice, for good. The pass itself now holds `follow.lock`; a second one writes nothing."""
+    from tradingagents import portable
+
+    world.m.add("AAA_USDT", scripted([(5, 8)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    with open(world.home / "follow.lock", "a+b") as fh:       # the API's thread is mid-pass
+        portable.lock_exclusive(fh, blocking=False)
+        try:
+            res = world.run(T0 + 12 * H)
+        finally:
+            portable.unlock(fh)
+    assert res[ROOM]["skipped"] is True and res[ROOM]["errors"] == [vf.BUSY]
+    assert "another follower pass is running" in vf.BUSY and "wrote nothing" in vf.BUSY
+    assert ledger() == [] and follow_state() == {}, "not a row, not a state"
+    world.run(T0 + 12 * H)                                    # the lock is free again
+    assert [e["action"] for e in ledger()] == ["enter", "exit"]
+
+
+def test_tick_holds_no_lock_of_its_own_so_its_pass_runs(world, monkeypatch):
+    """`tick()` used to take the lock and then call `pass_once`; with the lock in the pass, a tick
+    holding it too would find its own pass "busy" for ever."""
+    world.m.add("AAA_USDT", scripted([(5, 8)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    monkeypatch.setattr(vf, "_fetch_default", world.m.fetch)
+    monkeypatch.setattr(vf, "_funding_default", world.m.funding)
+    monkeypatch.setattr(vf, "_listed_default", world.m.listed)
+    monkeypatch.setitem(vf._DONE, "slot", None)
+    world.m.now_ms = (T0 + 12 * H) * 1000
+    res = vf._tick(T0 + 12 * H)
+    assert res is not None and not res[ROOM].get("skipped"), res
+    assert [e["action"] for e in ledger()] == ["enter", "exit"]
+
+
+def test_an_unreadable_follower_record_is_named_and_never_overwritten(world):
+    world.m.add("AAA_USDT", scripted([(5, 8)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    with profiles.using(ROOM):
+        p = vf.state_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text('{"strats": {"TESTAAA1": {"pos": {"t": 17', encoding="utf-8")
+    before = p.read_bytes()
+    res = world.run(T0 + 12 * H)
+    (err,) = res[ROOM]["errors"]
+    assert "follower record cannot be read" in err and "never overwritten" in err
+    assert p.read_bytes() == before, "never overwritten"
+    assert ledger() == [] and open_slots() == {}, "nothing is done in that room"
+    s = vf.status(ROOM, now_s=T0 + 12 * H + 60, lists_dir=world.lists)
+    assert "follower record cannot be read" in s["why"] and s["errors"] == [s["why"]]
+    assert "v4_follow.json" not in s["why"] and str(p.parent) not in s["why"], "no file name on screen"
+
+
+def test_a_room_whose_pass_fails_saves_why_for_the_screen(world, monkeypatch):
+    world.m.add("AAA_USDT", scripted([(5, 8)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    real = vf._Room._follow_all
+
+    def broken(self):
+        raise RuntimeError("the disk went away")
+
+    monkeypatch.setattr(vf._Room, "_follow_all", broken)
+    res = world.run(T0 + 12 * H)
+    assert res[ROOM]["errors"] == ["the pass failed: RuntimeError: the disk went away"]
+    s = vf.status(ROOM, now_s=T0 + 12 * H + 60, lists_dir=world.lists)
+    from tradingagents.positions_view import fmt_when
+
+    assert s["why"] == f"the pass of {fmt_when(T0 + 12 * H)} failed: RuntimeError: the disk went away"
+    assert s["errors"][0] == "the pass failed: RuntimeError: the disk went away"
+    monkeypatch.setattr(vf._Room, "_follow_all", real)
+    world.run(T0 + 12 * H + 15 * 60)                          # the next pass works: the reason goes
+    s = vf.status(ROOM, now_s=T0 + 12 * H + 15 * 60 + 60, lists_dir=world.lists)
+    assert s["why"] is None and "pass_error" not in follow_state()
+
+
+def test_a_skipped_entry_marks_the_strategy_cold_so_a_switch_on_rewarms_it(world):
+    """Switched off on day 2, a strategy closes its trade on day 2's LAST candle by its target, and
+    the same candle signals a new trade the backtest takes. Switched on again at day 3's midnight,
+    the follower must know the backtest is holding that trade (warm up again, carry it) - not stand
+    flat and buy a candle later, a trade the backtest never had."""
+    closes = scripted([(20, 52)])
+    c = {k: closes[k + 48] for k in range(-48, 4 * 24)}
+    px = c[20] * (1 + 0.0005)
+    r46, r47 = (c[46] - px) / px, (c[47] - px) / px
+    target = (r46 + r47) / 2                              # reached first on candle 47, day 2's last
+    world.m.add("AAA_USDT", closes, (T0 - 48 * H) * 1000)
+    # breakout signals an entry on EVERY candle that closes above the last two highs, so the candle
+    # that reaches the target also opens the next trade
+    r = row("TESTAAA1", strategy="breakout", params={"lookback": 2, "threshold": 0.0}, target=target)
+    world.put(D1, {ROOM: [r]})
+    world.put(D2, {ROOM: []})                             # switched off for day 2
+    world.put(D3, {ROOM: [r]})                            # and on again for day 3
+    world.run(T0 + 20)
+    world.run(D2 + 20)
+    world.run(D3 + 3 * H + 20)
+    got = [(e["action"], e["entry_ts"], e.get("why")) for e in ledger()]
+    assert got == [("enter", T0 + 20 * H, None), ("exit", T0 + 20 * H, "TP")], got
+    s = follow_state()["strats"]["TESTAAA1"]
+    assert s["carried"] is True and s["pos"]["t"] == (T0 + 47 * H) * 1000, \
+        "the trade the backtest opened on candle 47 is carried, never written"
+
+
+def test_an_exit_at_a_settlement_is_charged_that_settlement(world):
+    """The adapter keeps a funding read for 30 minutes: an exit at 8:00am written from the 7:45am
+    read would miss the 8:00am settlement the next day's backtest charges. The follower asks for a
+    read made during its own pass."""
+    world.m.fund_cache_s = 1800
+    world.m.add("AAA_USDT", scripted([(5, 7)]), (T0 - 48 * H) * 1000)   # in at 6:00am, out at 8:00am
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.run(T0 + 20)
+    world.run(T0 + 7 * H + 45 * 60 + 20)            # the 7:45am pass: funding read, settled to 7:45am
+    world.run(T0 + 8 * H + 20)                      # the 8:00am pass writes the exit
+    (x,) = [e for e in ledger() if e["action"] == "exit"]
+    assert x["ts"] == T0 + 8 * H and x["opened_at"] == T0 + 6 * H
+    assert x["fund"] == pytest.approx(-0.01), "the 8:00am settlement (0.01%, a long pays) is charged"
+
+
+def test_funding_is_asked_back_to_the_shards_1d_frame_and_fresh_for_each_pass(world):
+    world.m.add("AAA_USDT", scripted([(5, 8)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    for now in (T0 + 20, T0 + 7 * H, T0 + 12 * H):
+        world.run(now)
+    calls = [c for c in world.m.fund_calls if c[0] == "AAA_USDT"]
+    assert calls
+    for _sym, since, fresh, at_ms in calls:
+        start_1d = (at_ms // (DAY * 1000) - BARS["1d"]) * DAY * 1000
+        assert since is not None and since <= start_1d, "never later than the shard's 1d frame start"
+        assert fresh == at_ms / 1000, "a read made during this pass"
+    R = vf._Reads(T0 + 12 * H, None, None, None, world.lists)
+    start = (R.now_ms // (DAY * 1000) - BARS["1d"]) * DAY * 1000
+    assert R.fund_since(None) == start and R.fund_since(start - 5) == start - 5
+    assert R.fund_since(start + 5) == start, "an open trade newer than that still reads from the 1d start"
+
+
+def test_a_list_that_cannot_be_read_is_named_without_its_file_name(world):
+    world.m.add("AAA_USDT", scripted([(5, 8)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    vf.list_path(D2, world.lists).write_text('{"rooms": ', encoding="utf-8")
+    res = world.run(D2 + 5 * H)
+    bad = [e for e in res[ROOM]["errors"] if "cannot be read" in e]
+    assert bad and all(".json" not in e and "2026-11-02" not in e for e in res[ROOM]["errors"]), bad
+    from tradingagents.positions_view import fmt_when
+
+    assert fmt_when(D2) in bad[0]
+
+
+def test_status_says_whether_todays_list_has_landed(world):
+    world.m.add("AAA_USDT", scripted([(5, 8)]), (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    world.run(D2 + 5 * H)
+    s = vf.status(ROOM, now_s=D2 + 5 * H + 60, lists_dir=world.lists)
+    assert s["today_landed"] is False and s["switched_on"] == []
+    world.put(D2, {ROOM: [row("TESTAAA1")]})
+    s = vf.status(ROOM, now_s=D2 + 5 * H + 60, lists_dir=world.lists)
+    assert s["today_landed"] is True and [r["id"] for r in s["switched_on"]] == ["TESTAAA1"]

@@ -255,7 +255,8 @@ def test_the_cover_names_only_what_the_tab_shows(tmp_path):
     # TAB's list, while still watching every name from the first frame
     s = _web("components/trade/AutoTradeScreen.tsx")
     assert "begin([...ROOM_PANELS, ...MAIN_TAB_PANELS]);" in s
-    assert "const shown = onTab(waitlist, room === ALL_ROOMS);" in s
+    # a skill room passes a third argument since Nov 12, 2026 (RCA-2026-11-12-A)
+    assert "const shown = onTab(waitlist, room === ALL_ROOMS," in s
     assert "<LoadingOverlay waitlist={shown} />" in s
     blur = s[s.index("const blurred = !started"):].split(";")[0]
     assert "shown" in blur and "waitlist" not in blur, blur

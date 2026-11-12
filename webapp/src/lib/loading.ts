@@ -55,7 +55,15 @@ export const LATE_MS = 30_000;
 export const MAIN_TAB_PANELS: string[] = ["past trades"];
 export const ROOM_PANELS: string[] = ["summary", "positions", "strategies", "exchange keys",
                                       "trade history", "profit", "runner feed"];
-export function onTab<T extends { name: string }>(list: T[], mainTab: boolean): T[] {
-  const mine = mainTab ? MAIN_TAB_PANELS : ROOM_PANELS;
+/** A SKILL ROOM SHOWS FIVE OF THEM (Nov 12, 2026). A room that follows
+ *  Backtest v4 has no deploy grid ("strategies") and no keys panel ("exchange
+ *  keys"), so nothing in it ever reports those two names. Since Nov 11, 2026
+ *  8:00am every room tab is a skill room, and the cover sat on every one of
+ *  them reading "strategies — still not loading after 165s, retrying" while
+ *  the API answered both in 0.01 s (RCA-2026-11-12-A). */
+export const SKILL_ROOM_PANELS: string[] = ROOM_PANELS.filter(
+  (n) => n !== "strategies" && n !== "exchange keys");
+export function onTab<T extends { name: string }>(list: T[], mainTab: boolean, skillRoom = false): T[] {
+  const mine = mainTab ? MAIN_TAB_PANELS : skillRoom ? SKILL_ROOM_PANELS : ROOM_PANELS;
   return list.filter((w) => mine.includes(w.name));
 }

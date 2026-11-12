@@ -163,7 +163,9 @@ export default function AutoTradeScreen() {
   // never become a lock.
   // ...and only what THIS tab shows: the Main tab waits for its one list,
   // a room tab for the room's panels (lib/loading.ts onTab, Oct 14, 2026)
-  const shown = onTab(waitlist, room === ALL_ROOMS);
+  // ...and a skill room waits only for the panels it mounts (RCA-2026-11-12-A)
+  const shown = onTab(waitlist, room === ALL_ROOMS,
+                      PROFILES.find((p) => p.id === room)?.follows === "v4");
   const blurred = !started
     || (shown.length > 0 && shown.every((w) => w.waitedMs <= LATE_MS));
   return (

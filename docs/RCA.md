@@ -172,6 +172,42 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-12-A — every skill room tab stayed blurred for 30 seconds, then said "strategies" and "exchange keys" were "still not loading, retrying" for as long as it was open
+
+**CEO**
+
+* What you saw: on #D7EN8BNV (and the other two rooms) the page sat blurred, then said in red "strategies — still not loading after 165s, retrying" and "exchange keys — still not loading after 165s, retrying".
+* Why: nothing was slow. The loading cover waited for two parts the skill rooms do not have (the strategy switch grid and the exchange keys box), so they could never arrive; it only looked fine before because the old room #09439DC2, hidden behind its tab, reported them, and it went off on Nov 11, 2026.
+* What stops it now: a skill room's cover waits only for the five parts it shows, and a test checks that list against the parts the room really draws.
+
+**DEV**
+
+* `webapp/src/lib/loading.ts:onTab` gave every room tab `ROOM_PANELS` (7 names); `AutoTradeScreen.tsx:RoomBody` does not mount `StrategiesGrid` ("strategies") or `CredentialsPanel` ("exchange keys") when `follows === "v4"`, so `markReady` was never called for them once no non-skill room was mounted.
+* Invariant broken: **a loading cover waits only for what its own tab mounts** - a name no mounted panel can report is a wait that never ends (the Oct 14, 2026 "the cover names only what the tab shows" rule, missed for the third kind of tab).
+* Guard: `tests/test_skill_room_cover_waits_only_on_its_panels.py` (3: the skill list, the list held to the JSX's hidden and mounted panels, the screen passing the flag).
+
+**SAW** - a screenshot, Nov 12, 2026 about 9:10am: the spinner over a room's tiles with the two red lines at 165 s; asked "why is it loading slow".
+
+**TIMELINE**
+
+1. Nov 10, 2026: the three skill rooms get tabs; they hide the strategy grid and the keys box. The cover still clears, because #09439DC2's tab (kept mounted and hidden) reports both names.
+2. Nov 11, 2026 8:00am (commit 7617a10): #09439DC2 goes off. From the next restart every room tab is a skill room and nothing reports "strategies" or "exchange keys".
+3. From then, every open of a room tab: blurred for 30 s (`LATE_MS`), then the two red lines, counting up, for as long as the page stays open.
+4. Nov 12, 2026 9:12am, measured: `/api/trade/strategies` answered in 0.01 s and `/api/trade/credentials` in 0.003 s for all three rooms; the API log shows the page never asked for either.
+5. After the fix (Nov 12, 2026 9:15am): a fresh load onto #D7EN8BNV lists summary, positions, trade history, profit and runner feed, and the cover is gone at 0.5 s.
+
+**ROOT CAUSE** - `onTab` knew two kinds of tab (Main, room) and the skill room is a third, with fewer panels.
+
+**WHY IT WAS NOT CAUGHT** - the cover test ran `onTab` only for "Main" and "a room", and checked that every name a panel reports is on some list, never that every name on a tab's list is reported by a panel that tab mounts. The skill-room tests checked which panels a skill room hides, not what the cover waits for. And it could not show while any old room was mounted: every room stays mounted behind its tab, so a hidden room's panels answered for the skill room. Turning the last old room off broke the cover without touching its code.
+
+**COST** - none in money; every room tab blurred for 30 s per open and showed two false red lines for about 25 hours.
+
+**FIX** - this commit: `SKILL_ROOM_PANELS` (the room list less "strategies" and "exchange keys") and `onTab(list, mainTab, skillRoom)`; the screen passes `PROFILES.find(...).follows === "v4"`.
+
+**GUARD** - `tests/test_skill_room_cover_waits_only_on_its_panels.py::test_a_skill_room_cover_never_waits_on_a_panel_it_does_not_show`, `::test_the_skill_list_is_what_a_skill_room_mounts` and `::test_the_screen_tells_the_cover_which_tab_is_a_skill_room` (all three red before the fix).
+
+---
+
 ## RCA-2026-11-11-A — the skill rooms' follower would have closed open practice trades "DELISTED" after a 30-minute funding or network outage: NEVER HAPPENED YET
 
 **CEO**

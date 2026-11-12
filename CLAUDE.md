@@ -3067,13 +3067,33 @@ worked out by `tradingagents/forecast_v4.py` into `~/.tradingagents/v4/forecast.
 on the server, ten a page, a base margin box that scales every dollar).
 
 * **Walked forward, never looking ahead:** every day at 12:00am UTC from the 1st of the month three
-  months before the store's last candle, a rule set (days judged 7/15/30 × win rate 50-90% × 3/5/10/20+
-  trades × TP any / wider than SL × any stop / 1.5% or tighter × timeframe × skill) switches on every
+  months before the store's last candle, a rule set (days judged 7/15/30 × win rate any or 50-90% ×
+  3/5/10/20+ trades × money rule × TP any / wider than SL × any stop / 1.5% or tighter × timeframe ×
+  skill) switches on every
   strategy whose trades that CLOSED before that midnight pass it, and counts the trades they OPEN that
   day at their stored profit. "This month" = the average of the whole months (low to high); a rule set
   with fewer than 3 whole months is thin and sorts after the others on "best worst month first".
   Rule sets that switch on exactly the same strategies are listed once (`same_as`; finding the other
   id opens its twin and says so).
+* **Money rules (Nov 11, 2026).** The operator: *"currently you are basing the room strategy according
+  to winrate, can you create room strategy on your own? like profitable after x trades, or winrate = x &&
+  profitable after x trades ... dont based on winrate, you can use multiple criteria"*, then *"Just
+  start"*. `forecast_v4.MONEY_RULES`, judged on the SAME trades as the win rate (closed in the W days
+  before the midnight, at least N of them): `made` = they made money in total after every fee; `pf15` =
+  their wins paid at least $1.50 for every $1 their losses cost. Each is crossed with every win rate AND
+  with "any win rate" (0; a win rate of 0 with no money rule switches on everything, so it is not
+  walked, `grid()`). Added in whole ten-thousandths of a dollar (every stored profit has 4 decimals) in
+  the walk and in `switched_on`'s SQL, so both add the same integers. A rule with no money rule hashes
+  exactly as before: #D7EN8BNV, #RSS7CUKH and #7T3VJU82 keep their ids, and a room can follow a money
+  rule by putting `money` in its `v4_rule`. The page filters by it on the server (`money`: none / made /
+  pf15). **What it found (store of Nov 11, 2026 8:09pm, minute exits, 12,240 rule sets + 2,448 merged,
+  the build still 134 s):** a money rule ALONE does not work: the best with 3 whole months, "made money
+  over 5+ trades in its last 7 days", +$6.83 over 213 trades with a −$22.18 month. Added TO a win rate it
+  changes almost nothing: #CKVS7G7Z (won 80%+ of 20+ trades in 30 days AND won $1.50 for every $1 lost)
+  is first on worst month, +$377.37 over 1,207 trades, 66.1% won, months +22.67 / +148.62 / +170.43 /
+  +35.65 so far, worst losing run −$29.99 over 12, beat random on 75 of 80 days (random −$1,262.58);
+  its twin without the money rule, #YNSJM39T, +$389.33 over 1,312 with a +$21.79 worst month. 88 cents a
+  month apart, out of 12,240 tried: say so beside any money rule recommended.
 * **Luck bar:** random picks = the same trades at the average trade every strategy of the same kind
   opened that day; "beat random on A of B days", "could be luck" unless clearly over half (one-sided 95%).
 * **Left out:** the backtesting-trading-strategies rows' trades opened before their split (they were
@@ -3091,9 +3111,11 @@ on the server, ten a page, a base margin box that scales every dollar).
   the daily run settles stops and targets by the minute, see "Skill rooms") and pay the coin's usual
   gap, not each minute's book — so this is a lead to practice, never a reason for real money.
 
-Guard: `tests/test_forecast_v4.py` (19: on one timeline; no day reads its own closes, months add up,
+Guard: `tests/test_forecast_v4.py` (28: on one timeline; no day reads its own closes, months add up,
 whole months only, worst run, the chosen skill's split, the luck bar, streaks, paging, ceilings, the
-empty answer, the page's columns, boxes and routes).
+empty answer, the page's columns, boxes and routes; the money rules: dollars not win rate decide, the
+$1.50-for-$1 and $0.00 edges exact, the room ids unchanged, `switched_on` equal to the walk for every
+money rule, the server-side filter).
 
 ## Skill rooms — Forecast v4's three rule sets traded in practice (Nov 10, 2026)
 

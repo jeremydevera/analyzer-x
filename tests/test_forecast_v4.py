@@ -91,8 +91,8 @@ def built(tmp_path, monkeypatch):
     return _make(tmp_path, monkeypatch)
 
 
-def rule(window, wr, n, tf="", skill="", tp="any", cap=0.0):
-    rid = f4.rule_id(window, wr, n, tp, cap, tf, skill)
+def rule(window, wr, n, tf="", skill="", tp="any", cap=0.0, money=""):
+    rid = f4.rule_id(window, wr, n, tp, cap, tf, skill, money)
     got = f4.rules_page({"q": rid})["rows"]
     assert got, f"rule set {rid} not walked"
     return got[0]
@@ -269,13 +269,15 @@ def test_switched_on_matches_the_walk(built):
         rows = con.execute("SELECT en, pnl, why FROM trade WHERE sid=? AND en>=? AND en<?", (sid, lo, hi))
         return [pnl for en, pnl, why in rows if why != f4.END_CODE and en >= chosen_split.get(sid, 0)]
 
-    rules = [r for r in doc["rules"] if r["window"] in f4.WINDOWS and r["min_win_rate"] in (50, 90)
+    rules = [r for r in doc["rules"] if r["window"] in f4.WINDOWS and r["min_win_rate"] in (0, 50, 90)
              and r["min_trades"] in (3, 5)]
     assert len(rules) >= 30
+    assert {r["money"] for r in rules} == set(f4.MONEY_RULES)     # the money rules are checked too
     traded = 0
     for r in rules:
         rule = {"window": r["window"], "win_rate": r["min_win_rate"], "min_trades": r["min_trades"],
-                "tp_rule": r["tp_rule"], "sl_cap": r["sl_cap"], "tf": r["tf"], "skill": r["skill"]}
+                "tp_rule": r["tp_rule"], "sl_cap": r["sl_cap"], "tf": r["tf"], "skill": r["skill"],
+                "money": r["money"]}
         n = profit = 0
         for d in range(days):
             at = start + d * DAY // 1000
@@ -337,3 +339,99 @@ def test_a_dated_copy_is_kept_per_day(tmp_path, monkeypatch):
     two = f4.dated_copy_path(ms(2026, 11, 6, 12) // 1000)
     assert two.name == "forecast-2026-11-06.json.gz" and two.exists() and one.read_bytes() == first
     assert sorted(p.name for p in one.parent.iterdir()) == [one.name, two.name]       # no stray temp file
+
+
+# ------------------------------------------------------------------ money rules (Nov 11, 2026)
+# The operator: "currently you are basing the room strategy according to winrate, can you create room
+# strategy on your own? like profitable after x trades, or winrate = x && profitable after x trades ...
+# dont based on winrate, you can use multiple criteria", then "Just start".
+def _money_fixture(tmp_path, monkeypatch):
+    # MMM 15m wins 1 day in 4 (+5) and loses the other 3 (-1): 25% won, but it MAKES money (about +2
+    # every 4 days) and wins $1.52-$1.82 for every $1 it loses over any 30 days.
+    # LLS 15m wins 1 day in 4 too (+2) and loses 3 (-1): 25% won and it LOSES money.
+    mmm = _pick("ta_ma_pullback", 0.01, 0.05, daily(ms(2026, 7, 1), ms(2026, 11, 4),
+                                                    lambda i: 5.0 if i % 4 == 0 else -1.0))
+    lls = _pick("ta_ma_pullback", 0.01, 0.02, daily(ms(2026, 7, 1), ms(2026, 11, 4),
+                                                    lambda i: 2.0 if i % 4 == 0 else -1.0))
+    # three 1d strategies closing three trades each on Oct 10-12: wins exactly 1.5x their losses (PFA),
+    # one ten-thousandth under it (PFB), and a sum of exactly $0 (ZER)
+    def three(a):
+        return _pick("bf_momentum", 0.01, 0.03, [(ms(2026, 10, 10 + i, 1), ms(2026, 10, 10 + i, 2), p)
+                                                 for i, p in enumerate((a, -1.0, -1.0))])
+    return _make(tmp_path, monkeypatch, {
+        "MMM|15m": _line("MMM", "15m", [mmm], ms(2026, 10, 1)),
+        "LLS|15m": _line("LLS", "15m", [lls], ms(2026, 10, 1)),
+        "PFA|1d": _line("PFA", "1d", [three(3.0)], ms(2026, 10, 1)),
+        "PFB|1d": _line("PFB", "1d", [three(2.9999)], ms(2026, 10, 1)),
+        "ZER|1d": _line("ZER", "1d", [three(2.0)], ms(2026, 10, 1)),
+    })
+
+
+def test_a_money_rule_switches_on_by_dollars_not_by_win_rate(tmp_path, monkeypatch):
+    _money_fixture(tmp_path, monkeypatch)
+    at = ms(2026, 10, 15) // 1000
+    base = {"window": 30, "min_trades": 20, "tp_rule": "any", "sl_cap": 0.0, "tf": "15m", "skill": ""}
+    coins = lambda **k: [s["coin"] for s in f4.switched_on({**base, **k}, at)]
+    assert coins(win_rate=50) == []                              # 25% won: a win-rate rule takes neither
+    assert coins(win_rate=0, money="made") == ["MMM"]            # made money: only the one that did
+    assert coins(win_rate=0, money="pf15") == ["MMM"]
+    assert coins(win_rate=20, money="made") == ["MMM"]           # win rate AND money, both must pass
+    assert coins(win_rate=30, money="made") == []
+    # and the walk counts exactly MMM's trades for it: the rule set's trades are all MMM's
+    r = rule(30, 0, 20, tf="15m", money="made")
+    assert r["trades"] > 0 and {t["coin"] for t in r["top"]} == {"MMM"} and r["profit"] > 0
+    assert rule(30, 50, 20, tf="15m")["trades"] == 0
+
+
+def test_the_money_rules_edges_are_exact(tmp_path, monkeypatch):
+    _money_fixture(tmp_path, monkeypatch)
+    at = ms(2026, 10, 14) // 1000
+    base = {"window": 7, "win_rate": 0, "min_trades": 3, "tp_rule": "any", "sl_cap": 0.0, "tf": "1d",
+            "skill": ""}
+    coins = lambda m: sorted(s["coin"] for s in f4.switched_on({**base, "money": m}, at))
+    assert coins("pf15") == ["PFA"]              # $3.00 won for $2.00 lost passes; $2.9999 does not
+    assert coins("made") == ["PFA", "PFB"]       # ZER's $0.00 is not making money
+    with pytest.raises(ValueError):
+        f4.switched_on({**base, "money": "lots"}, at)
+
+
+def test_old_rule_ids_never_change_and_a_money_rule_has_its_own():
+    # the three skill rooms follow these: a money rule must never move their ids
+    assert f4.rule_id(30, 90, 20, "any", 0.0, "", "") == "D7EN8BNV"
+    assert f4.rule_id(30, 80, 20, "any", 1.5, "", "") == "RSS7CUKH"
+    assert f4.rule_id(30, 80, 20, "any", 0.0, "1h", "") == "7T3VJU82"
+    assert f4.rule_id(30, 80, 20, "any", 0.0, "1h", "", "") == "7T3VJU82"
+    ids = {f4.rule_id(30, 80, 20, "any", 0.0, "1h", "", m) for m in f4.MONEY_RULES}
+    assert len(ids) == len(f4.MONEY_RULES)
+    with pytest.raises(ValueError):
+        f4.rule_id(30, 80, 20, "any", 0.0, "1h", "", "lots")
+
+
+def test_every_walked_rule_is_a_rule_and_says_its_money_rule(built):
+    doc = f4.load()
+    assert not [r for r in doc["rules"] if not r["min_win_rate"] and not r["money"]]
+    assert {r["money"] for r in doc["rules"]} == set(f4.MONEY_RULES)
+    assert doc["grid"]["money"] == list(f4.MONEY_RULES)
+    for r in doc["rules"]:
+        assert r["words"] == f4.rule_words(r["window"], r["min_win_rate"], r["min_trades"], r["tp_rule"],
+                                           r["sl_cap"], r["tf"], r["skill"], r["money"])
+        if r["money"] == "made":
+            assert "made money over" in r["words"]
+        if r["money"] == "pf15":
+            assert "$1.50 for every $1" in r["words"]
+        if not r["min_win_rate"]:
+            assert "% or more" not in r["words"]
+    assert f4.rule_words(30, 70, 20, ">", 1.5, "", "", "made") == (
+        "Every day, switch on each any-timeframe strategy that won 70% or more of at least 20 trades in "
+        "its last 30 days and made money over them, TP wider than SL, stop 1.5% or tighter")
+
+
+def test_the_page_filters_by_money_rule_on_the_server(built):
+    for m in ("none", "made", "pf15"):
+        p = f4.rules_page({"money": m, "traded": False})
+        assert p["total"] and all((r["money"] or "none") == m for r in p["rows"]), m
+        assert any(("win rate alone" if m == "none" else "money rule") in t for t in p["filters"]), m
+    panel = _panel()
+    assert 'aria-label="money rule"' in panel and "money: f.money" in panel
+    api = (REPO / "tradingagents/api.py").read_text(encoding="utf-8")
+    assert '"money": money' in api

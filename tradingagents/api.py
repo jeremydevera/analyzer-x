@@ -877,7 +877,7 @@ def forecast_v4_route() -> dict:
 
 @app.get("/api/forecast-v4/rules")
 def forecast_v4_rules(window: int = 0, tf: str = "", skill: str = "", tp_rule: str = "",
-                      max_tp: float = 0.0, max_sl: float = 0.0, min_winrate: float = 0.0,
+                      money: str = "", max_tp: float = 0.0, max_sl: float = 0.0, min_winrate: float = 0.0,
                       min_trades: int = 0, min_profit: float | None = None,
                       profitable: bool = False, not_luck: bool = False, traded: bool = True,
                       q: str = "", base_margin: float = 5.0, sort: str = "rank",
@@ -887,7 +887,8 @@ def forecast_v4_rules(window: int = 0, tf: str = "", skill: str = "", tp_rule: s
     from tradingagents import forecast_v4
 
     return forecast_v4.rules_page({
-        "window": window, "tf": tf, "skill": skill, "tp_rule": tp_rule, "max_tp": max_tp,
+        "window": window, "tf": tf, "skill": skill, "tp_rule": tp_rule, "money": money,
+        "max_tp": max_tp,
         "max_sl": max_sl, "min_winrate": min_winrate, "min_trades": min_trades,
         "min_profit": min_profit, "profitable": profitable, "not_luck": not_luck,
         "traded": traded, "q": q, "base_margin": base_margin, "sort": sort, "desc": desc,

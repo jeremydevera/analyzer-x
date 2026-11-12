@@ -47,7 +47,18 @@ from tradingagents import stores, v4_store
 DAY_S = 86_400
 VERSION = 1
 WINDOWS = (7, 15, 30)                 # days judged before each day
-WIN_RATES = (50, 60, 70, 80, 90)      # switch on at this win rate or better (percent)
+WIN_RATES = (0, 50, 60, 70, 80, 90)   # switch on at this win rate or better (percent); 0 = any win rate,
+                                      # which only a money rule may use (it then decides alone)
+# MONEY RULES (operator, Nov 11, 2026: "currently you are basing the room strategy according to winrate,
+# can you create room strategy on your own? like profitable after x trades, or winrate = x && profitable
+# after x trades ... dont based on winrate, you can use multiple criteria", then "Just start"). Judged on the
+# SAME trades as the win rate - those that closed in the W days before the midnight, at least N of them -
+# in whole ten-thousandths of a dollar, so the walk and `switched_on`'s SQL add up the same integers:
+#   ""      no money rule (every rule set before Nov 11, 2026: their ids are unchanged)
+#   "made"  those trades made money in total, after every fee
+#   "pf15"  their wins paid at least $1.50 for every $1 their losses cost (and something was won)
+MONEY_RULES = ("", "made", "pf15")
+MONEY_WORDS = {"made": "made money over them", "pf15": "won at least $1.50 for every $1 it lost over them"}
 MIN_TRADES = (3, 5, 10, 20)           # ... over at least this many trades in those days
 TP_RULES = ("any", ">")               # any target (or none) / TP wider than SL
 SL_CAPS = (0.0, 1.5)                  # any stop / a stop of 1.5% or tighter (0 = no ceiling)
@@ -110,20 +121,45 @@ def month_starts(from_s: int, end_s: int) -> list[int]:
         y, m = (y + 1, 1) if m == 12 else (y, m + 1)
 
 
+def _money(money) -> str:
+    m = money or ""
+    if m not in MONEY_RULES:
+        raise ValueError(f"unknown money rule {money!r}: one of {', '.join(repr(x) for x in MONEY_RULES)}")
+    return m
+
+
+def grid() -> list[tuple[int, int, str, float]]:
+    """Every (window, min trades, money rule, win rate) a kind of strategy is walked with. A win rate of 0
+    with no money rule would switch on everything that traded: it is not a rule, so it is not walked."""
+    return [(W, N, m, X) for W in WINDOWS for N in MIN_TRADES for m in MONEY_RULES for X in WIN_RATES
+            if X or m]
+
+
 def rule_id(window: int, win_rate: float, min_trades: int, tp_rule: str, sl_cap: float,
-            tf: str, skill: str) -> str:
-    """Hashed from the rule set itself (CLAUDE.md kit H), never a position on a page."""
+            tf: str, skill: str, money: str = "") -> str:
+    """Hashed from the rule set itself (CLAUDE.md kit H), never a position on a page. A rule with no
+    money rule hashes exactly as before money rules existed, so the rooms' ids never change."""
     from tradingagents import backtest_report as br
 
+    m = _money(money)
     return br._code(f"forecast_v4|w={window}|wr={float(win_rate):g}|n={min_trades}|tp={tp_rule}"
-                    f"|sl={float(sl_cap):g}|tf={tf or 'any'}|skill={skill or 'any'}")
+                    f"|sl={float(sl_cap):g}|tf={tf or 'any'}|skill={skill or 'any'}"
+                    + (f"|money={m}" if m else ""))
 
 
 def rule_words(window: int, win_rate: float, min_trades: int, tp_rule: str, sl_cap: float,
-               tf: str, skill: str) -> str:
+               tf: str, skill: str, money: str = "") -> str:
+    m = _money(money)
     kind = f"{tf} " if tf else "any-timeframe "
-    s = (f"Every day, switch on each {kind}strategy{f' from {skill}' if skill else ''} that won "
-         f"{float(win_rate):g}% or more of at least {min_trades} trades in its last {window} days")
+    who = f"Every day, switch on each {kind}strategy{f' from {skill}' if skill else ''} that "
+    if not m:
+        s = f"{who}won {float(win_rate):g}% or more of at least {min_trades} trades in its last {window} days"
+    elif not win_rate:
+        s = (f"{who}{MONEY_WORDS[m].replace(' them', '')} at least {min_trades} trades in its last "
+             f"{window} days")
+    else:
+        s = (f"{who}won {float(win_rate):g}% or more of at least {min_trades} trades in its last {window} "
+             f"days and {MONEY_WORDS[m]}")
     if tp_rule == ">":
         s += ", TP wider than SL"
     if sl_cap:
@@ -275,6 +311,12 @@ def _walk(d: dict, end_s: int, log) -> dict:
     key = (sid << 32) | ex
     win = pnl > 0
     cw = np.concatenate(([0], np.cumsum(win, dtype=np.int64)))
+    # the money rules add whole ten-thousandths of a dollar (every stored profit has 4 decimals), so a
+    # window's sum is exact however large the running total grows - the SQL in `switched_on` adds the same
+    p4 = np.rint(pnl * 10_000).astype(np.int64)
+    cgw = np.concatenate(([0], np.cumsum(np.where(p4 > 0, p4, 0))))
+    cgl = np.concatenate(([0], np.cumsum(np.where(p4 > 0, 0, -p4))))
+    del p4
     sel = np.nonzero((en >= start) & (en < start + D * DAY_S))[0]
     sel = sel[np.argsort(ex[sel], kind="stable")]          # closing order, for the losing runs
     j_sid = sid[sel]
@@ -290,6 +332,10 @@ def _walk(d: dict, end_s: int, log) -> dict:
         hi = np.searchsorted(key, (j_sid << 32) | dstart, side="left")      # closed BEFORE the day
         t[f"n{W}"] = (hi - lo).astype(np.int32)
         t[f"w{W}"] = (cw[hi] - cw[lo]).astype(np.int32)
+        gw, gl = cgw[hi] - cgw[lo], cgl[hi] - cgl[lo]
+        t[f"made{W}"] = gw > gl
+        t[f"pf15{W}"] = (2 * gw >= 3 * gl) & (gw > 0)
+        del gw, gl
     log(f"forecast v4: {len(sel):,} trades opened from {_fmt(start)} on")
     day_month = np.searchsorted(np.array(ms), start + np.arange(D) * DAY_S, side="right") - 1
     ex_s = d["exists"]
@@ -324,11 +370,9 @@ def _walk(d: dict, end_s: int, log) -> dict:
                     sig = np.packbits(kst).tobytes()
                     if sig in seen:            # the same strategies as a kind already walked
                         kept = seen[sig]
-                        for W in WINDOWS:
-                            for N in MIN_TRADES:
-                                for X in WIN_RATES:
-                                    same_as[rule_id(W, X, N, tp_rule, cap, tf, sk)] = rule_id(W, X, N, *kept)
-                        dupes += len(WINDOWS) * len(WIN_RATES) * len(MIN_TRADES)
+                        for W, N, mr, X in grid():
+                            same_as[rule_id(W, X, N, tp_rule, cap, tf, sk, mr)] = rule_id(W, X, N, *kept, mr)
+                        dupes += len(grid())
                         continue
                     seen[sig] = (tp_rule, cap, tf, sk)
                     km = np.ones(len(idx), bool)
@@ -353,14 +397,19 @@ def _walk(d: dict, end_s: int, log) -> dict:
                         w100 = sub[f"w{W}"] * 100
                         for N in MIN_TRADES:
                             base = km & (n_ >= N)
-                            for X in WIN_RATES:
-                                m = base & (w100 >= X * n_)
-                                f = _figures(m, sub, pool_avg, day_month, covered_m, complete,
-                                             covered_days, len(u), D, M)
-                                rules.append({"id": rule_id(W, X, N, tp_rule, cap, tf, sk),
-                                              "window": W, "min_win_rate": X, "min_trades": N,
-                                              "words": rule_words(W, X, N, tp_rule, cap, tf, sk),
-                                              **kind, **f})
+                            for mr in MONEY_RULES:
+                                mb = (base & sub[f"{mr}{W}"]) if mr else base
+                                for X in WIN_RATES:
+                                    if not (X or mr):
+                                        continue
+                                    m = (mb & (w100 >= X * n_)) if X else mb
+                                    f = _figures(m, sub, pool_avg, day_month, covered_m, complete,
+                                                 covered_days, len(u), D, M)
+                                    rules.append({"id": rule_id(W, X, N, tp_rule, cap, tf, sk, mr),
+                                                  "window": W, "min_win_rate": X, "min_trades": N,
+                                                  "money": mr,
+                                                  "words": rule_words(W, X, N, tp_rule, cap, tf, sk, mr),
+                                                  **kind, **f})
             log(f"forecast v4: {tf or 'any timeframe'} / {sk or 'any skill'} walked, {len(rules):,} rule sets")
     info = d["info"]
     for r in rules:
@@ -471,6 +520,7 @@ def build(db: Path | None = None, out: Path | None = None, log=print) -> dict:
                                   "are its best 3 settings, chosen on those trades")},
         "walk": walk["walk"], "coverage": walk["coverage"],
         "grid": {"windows": list(WINDOWS), "win_rates": list(WIN_RATES), "min_trades": list(MIN_TRADES),
+                 "money": list(MONEY_RULES), "money_words": MONEY_WORDS,
                  "tp_rules": list(TP_RULES), "sl_caps": list(SL_CAPS), "tfs": list(TFS),
                  "skills": list(SKILLS), "tested": len(rules), "same_as_another": walk["dupes"]},
         "rules": rules, "same_as": walk["same_as"],
@@ -492,10 +542,12 @@ def build(db: Path | None = None, out: Path | None = None, log=print) -> dict:
 def switched_on(rule: dict, at_s: int, db: Path | None = None) -> list[dict]:
     """The strategies `rule` switches on at midnight `at_s` - the walk's own arithmetic (`_walk`), asked
     of one midnight. `rule` carries `rule_id`'s parameter names: window, win_rate, min_trades, tp_rule,
-    sl_cap, tf, skill. A strategy is on when the trades that CLOSED in [at_s - window days, at_s) (a
+    sl_cap, tf, skill and money (absent = none). A strategy is on when the trades that CLOSED in
+    [at_s - window days, at_s) (a
     trade's CLOSE is the window clock; END trades and the chosen skill's trades opened before its split
     are not counted, as in `_load`) number at least min_trades and won (pnl above 0) win_rate percent or
-    more, and its kind passes: tf, skill, TP wider than SL (a strategy with no target fails it) and a
+    more, pass its money rule (MONEY_RULES, added in whole ten-thousandths of a dollar as the walk
+    adds them), and its kind passes: tf, skill, TP wider than SL (a strategy with no target fails it) and a
     stop of sl_cap percent or tighter (0 = no ceiling). Each row: sid, id, coin, tf, strategy, label,
     skill, params (dict), stop (a fraction), target (a fraction or None), fee, slip, n, wins."""
     db = Path(db) if db else v4_store.db_path()
@@ -504,6 +556,7 @@ def switched_on(rule: dict, at_s: int, db: Path | None = None) -> list[dict]:
     cap = float(rule.get("sl_cap") or 0)
     tf = rule.get("tf") or ""
     skill = rule.get("skill") or ""
+    money = _money(rule.get("money"))
     lo, hi = int(at_s) - window * DAY_S, int(at_s)
     where = ["t.ex >= ?", "t.ex < ?", "t.why <> ?", "(s.skill <> ? OR t.en >= s.split_s)"]
     args: list = [lo, hi, END_CODE, CHOSEN_SKILL]
@@ -518,9 +571,16 @@ def switched_on(rule: dict, at_s: int, db: Path | None = None) -> list[dict]:
     if cap:
         where.append("s.sl <= ?")
         args.append(cap + 1e-9)
+    p4 = "CAST(ROUND(t.pnl * 10000) AS INTEGER)"
+    having = "k_n >= ? AND k_wins * 100 >= ? * k_n"
+    if money == "made":
+        having += f" AND SUM({p4}) > 0"
+    elif money == "pf15":
+        having += (f" AND k_wins > 0 AND 2 * SUM(CASE WHEN t.pnl > 0 THEN {p4} ELSE 0 END)"
+                   f" >= 3 * SUM(CASE WHEN t.pnl > 0 THEN 0 ELSE -{p4} END)")
     sql = ("SELECT s.sid, s.id, s.coin, s.tf, s.strategy, s.label, s.skill, s.params, s.tp, s.sl, s.fee, "
            "s.slip, COUNT(*) AS k_n, SUM(t.pnl > 0) AS k_wins FROM strat s JOIN trade t ON t.sid = s.sid "
-           "WHERE " + " AND ".join(where) + " GROUP BY s.sid HAVING k_n >= ? AND k_wins * 100 >= ? * k_n "
+           "WHERE " + " AND ".join(where) + " GROUP BY s.sid HAVING " + having + " "
            "ORDER BY s.sid")      # k_*: never `wins`, which is also a column of strat
     args += [int(rule["min_trades"]), float(rule["win_rate"])]
     con = sqlite3.connect(f"file:{Path(db).as_posix()}?mode=ro", uri=True, timeout=30)
@@ -625,7 +685,8 @@ def _sort_value(sort: str):
 
 def rules_page(q: dict) -> dict:
     """The rule sets, filtered, sorted and paged HERE (never in the browser). Keys, all optional:
-    window, tf, skill, tp_rule, max_tp, max_sl (ceilings on the widest target / stop the rule set
+    window, tf, skill, tp_rule, money ("none" = win rate alone, or one of MONEY_RULES), max_tp, max_sl
+    (ceilings on the widest target / stop the rule set
     can switch on, inclusive; a rule set that can switch on a strategy with no target is left out by
     max_tp), min_winrate (of its trades), min_trades, min_profit (dollars at the base margin),
     profitable, not_luck, traded, q (an id: overrides every other filter), base_margin, sort, desc,
@@ -659,6 +720,13 @@ def rules_page(q: dict) -> dict:
         if q.get("tp_rule") in TP_RULES:
             got = [r for r in got if r["tp_rule"] == q["tp_rule"]]
             named.append("TP wider than SL" if q["tp_rule"] == ">" else "any TP")
+        mq = str(q.get("money") or "")
+        if mq == "none":
+            got = [r for r in got if not r.get("money")]
+            named.append("judged on win rate alone")
+        elif mq in MONEY_RULES[1:]:
+            got = [r for r in got if r.get("money") == mq]
+            named.append("money rule: " + MONEY_WORDS[mq].replace(" over them", "") + " in its judged days")
         mtp = _num(q.get("max_tp"), 0)
         if mtp > 0:
             got = [r for r in got if r["widest_tp"] is not None and r["widest_tp"] <= mtp + 1e-9]

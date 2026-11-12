@@ -13,7 +13,7 @@ import PageButtons from "@/components/common/PageButtons";
 type Month = { trades: number; wins: number; losses: number; profit: number; random: number; covered: boolean; complete: boolean };
 type Top = { id: string; coin: string; tf: string; label: string; trades: number; profit: number };
 type Rule = {
-  id: string; window: number; min_win_rate: number; min_trades: number; words: string;
+  id: string; window: number; min_win_rate: number; min_trades: number; words: string; money?: string;
   tf: string; skill: string; tp_rule: string; sl_cap: number; kind_n: number;
   widest_tp: number | null; widest_sl: number; pool_trades: number; pool_per_trade: number | null;
   trades: number; wins: number; losses: number; profit: number; win_rate: number | null;
@@ -39,7 +39,8 @@ type Summary = {
   used: { trades: number; left_out: number; left_out_why: string };
   walk: { from_s: number; to_s: number; days: number; months: WalkMonth[]; trades: number };
   coverage: Record<string, { strategies: number; trades: number; first_s: number | null }>;
-  grid: { windows: number[]; win_rates: number[]; min_trades: number[]; tested: number; same_as_another: number; skills: string[] };
+  grid: { windows: number[]; win_rates: number[]; min_trades: number[]; tested: number; same_as_another: number; skills: string[];
+    money?: string[]; money_words?: Record<string, string> };
   counts: { rules: number; traded: number; made_money: number; not_luck: number; win_streaks: number; loss_streaks: number };
   defaults: { win_n: number; loss_m: number; recent: number };
 };
@@ -169,6 +170,12 @@ function StreakList({ kind, initial, recentInit, base }: { kind: "win" | "loss";
 }
 
 // ---------------------------------------------------------------- rule sets
+/** The money rules the grid crossed with every win rate (Nov 11, 2026), in the server's own words. */
+function moneyRules(s: Summary) {
+  const m = (s.grid.money ?? []).flatMap((x) => (x ? [s.grid.money_words?.[x]?.replace(" over them", "") ?? x] : []));
+  return m.length ? `no money rule / ${m.join(" / ")}` : "no money rule";
+}
+
 function tpText(r: Rule) {
   if (r.tp_rule === ">") return `wider than SL, up to ${r.widest_tp}%`;
   return r.widest_tp == null ? "any (some have none)" : `any, up to ${r.widest_tp}%`;
@@ -245,11 +252,11 @@ function RuleRow({ r, open, toggle, s }: { r: Rule; open: boolean; toggle: () =>
 }
 
 type RQ = {
-  window: string; tf: string; skill: string; tp_rule: string; max_tp: string; max_sl: string;
+  window: string; tf: string; skill: string; tp_rule: string; money: string; max_tp: string; max_sl: string;
   min_winrate: string; min_trades: string; min_profit: string; profitable: boolean; not_luck: boolean;
   untraded: boolean; q: string; sort: string; desc: boolean;
 };
-const RQ0: RQ = { window: "", tf: "", skill: "", tp_rule: "", max_tp: "", max_sl: "", min_winrate: "", min_trades: "",
+const RQ0: RQ = { window: "", tf: "", skill: "", tp_rule: "", money: "", max_tp: "", max_sl: "", min_winrate: "", min_trades: "",
   min_profit: "", profitable: false, not_luck: false, untraded: false, q: "", sort: "rank", desc: true };
 
 function Rules({ s, base }: { s: Summary; base: number }) {
@@ -259,7 +266,7 @@ function Rules({ s, base }: { s: Summary; base: number }) {
   const [open, setOpen] = useState<string | null>(null);
   const set = (k: Partial<RQ>) => { setF((x) => ({ ...x, ...k })); setPage(1); setOpen(null); };
   const { d, err, busy } = useServer<RulePage>("/api/forecast-v4/rules", {
-    window: f.window, tf: f.tf, skill: f.skill, tp_rule: f.tp_rule, max_tp: f.max_tp, max_sl: f.max_sl,
+    window: f.window, tf: f.tf, skill: f.skill, tp_rule: f.tp_rule, money: f.money, max_tp: f.max_tp, max_sl: f.max_sl,
     min_winrate: f.min_winrate, min_trades: f.min_trades, min_profit: f.min_profit,
     profitable: f.profitable || undefined, not_luck: f.not_luck || undefined, traded: !f.untraded,
     q: f.q, sort: f.sort, desc: f.desc, base_margin: base, page,
@@ -274,7 +281,7 @@ function Rules({ s, base }: { s: Summary; base: number }) {
       <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Best switch-on rules this month</h3>
       <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
         ${base.toLocaleString()} margin a trade at {s.store.leverage}x leverage (${(base * s.store.leverage).toLocaleString()} of coin; the stored trades were measured at ${s.store.margin} and every dollar here is scaled) ·
-        {" "}<b>{s.grid.tested.toLocaleString()} rule sets tested</b> ({s.grid.windows.join(" / ")} days judged × {s.grid.win_rates.join(" / ")}% wins × {s.grid.min_trades.join(" / ")}+ trades × TP rule × stop ceiling × timeframe × skill; {s.grid.same_as_another.toLocaleString()} more switched on exactly the same strategies as one listed, so they are listed once) ·
+        {" "}<b>{s.grid.tested.toLocaleString()} rule sets tested</b> ({s.grid.windows.join(" / ")} days judged × {s.grid.win_rates.map((x) => (x ? `${x}%` : "any")).join(" / ")} wins × {s.grid.min_trades.join(" / ")}+ trades × {moneyRules(s)} × TP rule × stop ceiling × timeframe × skill; {s.grid.same_as_another.toLocaleString()} more switched on exactly the same strategies as one listed, so they are listed once) ·
         walked day by day from the start of {monthName(w.months[0]?.key ?? "")} (12:00am UTC, {fmtWhen(w.from_s)} on this PC&apos;s clock) to {fmtWhen(w.to_s)} ({w.days} days, {w.trades.toLocaleString()} trades opened): every day at 12:00am UTC each rule set switches on the strategies whose trades that closed in the days before pass it, and counts the trades they open that day ·
         &quot;this month&quot; is the average of the whole months {w.months.flatMap((m) => (m.complete ? [monthName(m.key)] : [])).join(", ")}, low to high in brackets ·
         random picks = the same trades at the average trade every strategy of the same kind opened that day ·
@@ -296,6 +303,11 @@ function Rules({ s, base }: { s: Summary; base: number }) {
           <option value="">every skill rule</option>
           <option value="any">any-skill rules only</option>
           {s.grid.skills.flatMap((k) => (k ? [<option key={k} value={k}>{k}</option>] : []))}
+        </select>
+        <select aria-label="money rule" className={field} value={f.money} onChange={(e) => set({ money: e.target.value })}>
+          <option value="">win rate and money rules</option>
+          <option value="none">win rate alone</option>
+          {(s.grid.money ?? []).flatMap((m) => (m ? [<option key={m} value={m}>{s.grid.money_words?.[m]?.replace(" over them", "") ?? m}</option>] : []))}
         </select>
         <select aria-label="TP rule" className={field} value={f.tp_rule} onChange={(e) => set({ tp_rule: e.target.value })}>
           <option value="">any TP rule</option>

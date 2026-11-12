@@ -3234,6 +3234,53 @@ Guards: `tests/test_skill_rooms_exist.py`, `tests/test_skill_rooms_screen.py`,
 `tests/test_skill_engine_steps.py`, `tests/test_v4_follow.py`, `tests/test_v4_daily.py`,
 `tests/test_v4_daily_shard.py`, `tests/test_v4_store_daily.py`, `tests/test_v4_rooms.py`.
 
+## The daily picker — the three skill rooms follow the best rule sets by themselves (Nov 12, 2026)
+
+The operator, Nov 12, 2026: *"can i have a logic to run the best switch-on for this month? for
+example logic detected CKVS7G7Z is performing well then what it will do is i will deploy it
+automatically in auto trade practice ... then for example in my current deployed switch on
+(D7EN8BNV RSS7CUKH 7T3VJU82) it did not performed well, then it will undeploy it ... the goal for
+this is that i will not manually search for best switch on and deploy and undeploy what is not
+working"*. Asked how it should show and what "performing well" means, they took the recommended
+answers: **fixed rooms, rule swapped** and **worst month green + beats random**.
+
+* **Three FIXED slots, never new rooms.** The rooms #D7EN8BNV, #RSS7CUKH and #7T3VJU82 keep their
+  ids and folders (the id is now the SLOT); `~/.tradingagents/v4/picker.json` says which rule set
+  each follows. `profiles.v4_rule(pid)` reads the picker's rule, else the room's BUILTIN one, so the
+  daily lists, the rule words, room stats and the follower all follow it with no second copy. The
+  TAB prints the rule followed (`profiles.rule_name`, `#CKVS7G7Z`), the "i" popup and the panel say
+  which day it was given and why. A test never reads this PC's file (`PICKER_PATH`, and none under
+  pytest).
+* **One pass a day, inside the daily chain, BEFORE the day's list** (`v4_daily._pick` →
+  `v4_picker.pick`, only when a list is about to be written): it reads Forecast v4's own record, so
+  the list is judged by the rules just chosen. A picker that fails is named on the screen
+  (`picker_error`) and every room keeps its rule; the day's list is never lost to it. The pass applies
+  from the day's list on - a day's list is written ONCE, so a swap is never made in the middle of a day.
+* **"Performing well" (`v4_picker.judge`):** at least 100 trades over the days walked, not luck (beat
+  random picks by more than chance), at least 3 whole months, every whole month green (`rank`, the worst
+  whole month, above 0), money in total, and the month so far not losing - once it holds 20 trades
+  (`MONTH_MIN_TRADES`; on the 2nd of a month one loss would switch every room off). Plus PRACTICE: the
+  room's own closed practice trades since the rule was given (at least 10, last 30 days) must not be
+  losing in total.
+* **No churn:** a slot whose rule still passes is NEVER swapped for a better one. A slot that fails takes
+  the best passing rule set (best worst month first) that no other slot follows - twins with identical
+  results (#CKVS7G7Z and its "technical-analysis" copy #5AUSDZ9L: +$377.37 over 1,207 trades) are one bet -
+  and never its own rule back. With none left the slot goes OFF: no tab (`profiles.picker_off` →
+  `retired`/`shown()`), an empty list so it opens nothing, a trade it holds finished by the follower, its
+  past trades kept in the Main tab (`profiles.history_rooms`). A slot that is off takes a rule set the day
+  one passes, and comes back when its own rule passes again.
+* **A bell per decision**, `POST /api/v4/picker {"enabled": false}` stops the daily pass (rooms keep
+  what they follow now), `GET /api/v4/picker` says what each room follows and the last 20 decisions.
+* **PRACTICE ONLY.** A skill room has no runner and no real-money path; the picker only writes which rule
+  set the follower reads.
+* **Dry run on Nov 12, 2026 (store of Nov 11 7:33pm):** #D7EN8BNV passes, #7T3VJU82 passes, #RSS7CUKH
+  fails (the month so far −7.79 over 25 trades) and would be replaced by #TKWY7PTA; the first real pass is
+  the 00:05 UTC chain of Nov 13, 2026. Left out by design: the Main tab's "Room" column still prints the
+  SLOT's id for trades of every rule the slot has followed (each row's strategy says which).
+
+Guard: `tests/test_v4_picker.py` (22: each check, twins, keep/replace/off/back on, no churn, practice,
+month start, the rooms and tab reading it, the chain's order, the screen).
+
 ## Strategies for every coin and every timeframe (MANDATORY — Nov 05, 2026)
 
 The operator, Nov 05, 2026: *"use all my existing data from v2 , v3 and

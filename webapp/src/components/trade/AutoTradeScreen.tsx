@@ -147,6 +147,15 @@ export default function AutoTradeScreen() {
   // unblurred for its first second (begin's notify hit zero listeners, so
   // the overlay waited for the 1s tick — measured 355ms names=0, 1365ms
   // names=7 on Sep 09, 2026)
+  // A SKILL ROOM'S TAB SAYS THE RULE SET IT FOLLOWS TODAY, and a room the daily picker switched
+  // off has no tab (operator, Nov 12, 2026: the picker deploys the best rule sets and undeploys
+  // what stopped working; off = no tab, as always). Until the rooms are read, every tab shows.
+  const onScreen = (p: { id: string }) => !rooms || rooms.some((x) => x.id === p.id);
+  const tabName = (p: { id: string; name: string }) => rooms?.find((x) => x.id === p.id)?.name ?? p.name;
+  useEffect(() => {
+    if (rooms && room && room !== ALL_ROOMS && !rooms.some((x) => x.id === room)) pick(ALL_ROOMS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rooms, room]);
   const waitlist = useWaitlist();
   // the spinner card's watchlist — each panel reports when its data lands.
   // `started` covers the FIRST paint: the server-rendered frame has an empty
@@ -184,7 +193,7 @@ export default function AutoTradeScreen() {
             Main
           </button>
         </div>
-        {PROFILES.map((p) => {
+        {PROFILES.filter(onScreen).map((p) => {
           const r = rooms?.find((x) => x.id === p.id);
           return (
           <div key={p.id} data-room-info className={`relative -mb-px flex items-center rounded-t-lg border ${room === p.id
@@ -195,7 +204,7 @@ export default function AutoTradeScreen() {
               className={`py-2 pl-4 pr-1.5 text-theme-sm font-medium ${room === p.id
                 ? "text-brand-600 dark:text-brand-400"
                 : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"}`}>
-              {p.name}
+              {tabName(p)}
             </button>
             <button type="button" onClick={() => openInfo(p.id)}
               aria-label={`What ${p.name} switches on and off`} aria-expanded={info === p.id}
@@ -203,11 +212,11 @@ export default function AutoTradeScreen() {
               i
             </button>
             {info === p.id && (
-              <div role="dialog" aria-label={`${p.name} rules`}
+              <div role="dialog" aria-label={`${tabName(p)} rules`}
                 className="absolute left-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white p-4 text-theme-xs shadow-lg dark:border-gray-700 dark:bg-gray-900">
                 <p className="flex items-center gap-1 text-theme-sm font-semibold text-gray-800 dark:text-white/90">
                   {/* the room's id with a copy button (Oct 02, 2026) */}
-                  <CopyableId id={p.display_id ?? p.id} prefix="#" />
+                  <CopyableId id={r?.follows ? r.name.replace(/^#/, "") : (p.display_id ?? p.id)} prefix="#" />
                   <span>— its rules</span>
                 </p>
                 {infoErr && <p className="mt-2 text-error-500">{infoErr}</p>}
@@ -217,6 +226,11 @@ export default function AutoTradeScreen() {
                     {r.follows ? (
                       <p className="mt-2 text-gray-700 dark:text-gray-300">
                         follows Backtest v4: {r.rule_words ?? "its rule is not available"}
+                        {r.picker && (
+                          <span className="mt-1 block text-gray-500 dark:text-gray-400">
+                            {`picked by the daily picker${r.picker.since ? ` on ${r.picker.since}` : ""}${r.picker.why ? ` — ${r.picker.why}` : ""}`}
+                          </span>
+                        )}
                         <span className="mt-1 block text-gray-500 dark:text-gray-400">
                           no watcher, no real money: every trade is practice, written by the follower
                         </span>

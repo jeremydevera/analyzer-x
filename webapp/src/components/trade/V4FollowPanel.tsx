@@ -49,6 +49,13 @@ export default function V4FollowPanel() {
       {d && d.follows && (
         <>
           <p className="mt-1 text-theme-sm text-gray-600 dark:text-gray-300">{d.rule_words}</p>
+          {d.picker && (
+            <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
+              {`The daily picker gave this room #${d.picker.rule_id}${d.picker.since ? ` on ${d.picker.since}` : ""}`}
+              {d.picker.why ? ` — ${d.picker.why}.` : "."}
+              {` It keeps a rule while it passes, and swaps or switches it off when it stops${d.picker.enabled ? "" : " (the picker is switched off: rooms keep what they follow now)"}.`}
+            </p>
+          )}
           <p className="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">{COST_LINE}</p>
 
           {/* the day's refresh sentence */}

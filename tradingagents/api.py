@@ -2049,8 +2049,11 @@ def trade_profiles() -> dict:
             # a skill room has no watcher: nothing is read (sw._read would write a
             # seed file for it) and the rules it follows are named instead
             cfg0 = sw.cfg_of({})
-            out.append({"id": pid, "name": (_pf.get(pid) or {}).get("name", pid),
-                        "mode": "off", "live": False,
+            from tradingagents import v4_picker as _vp
+
+            # the TAB says the rule set the room follows today (the daily picker may have swapped it)
+            out.append({"id": pid, "name": _pf.rule_name(pid), "slot": (_pf.get(pid) or {}).get("name", pid),
+                        "picker": _vp.words(pid), "mode": "off", "live": False,
                         "cfg": {k: cfg0[k] for k in sw.LIVE_RULES},
                         "window_days": cfg0["window_days"], "running": 0, "rows": 0,
                         "follows": _pf.follows(pid), "v4_rule": _pf.v4_rule(pid),
@@ -3348,11 +3351,34 @@ def trade_v4_follow(page: int = 1) -> dict:
         today = int(st.get("today_s") or _time.time() // 86400 * 86400)
         ag = {**ag, "ended_s": int(ag["day_s"]) + 86400, "yesterday": int(ag["day_s"]) == today - 86400}
     rule = _pf.v4_rule(pid) or {}
+    from tradingagents import v4_picker as _vp
+
     return {"follows": "v4", "room": pid, "rule_words": _v4_rule_words(pid), "heartbeat": _follow_heartbeat(pid),
+            "picker": _vp.words(pid), "rule_id": _pf.rule_name(pid).lstrip("#"),
             "switched_on": rows, "total_on": len(on), "page": page, "pages": pages, "per_page": per,
             "today_landed": landed, "today_why": today_why, "window_days": rule.get("window"),
             "fallback_from": st.get("fallback_from"), "fallback_words": fallback_words, "agreement": ag,
             "daily": daily}
+
+
+@app.get("/api/v4/picker")
+def v4_picker_status() -> dict:
+    """The daily picker (Nov 12, 2026): what each skill room follows now, why, and the last decisions."""
+    from tradingagents import profiles as _pf, v4_picker as _vp
+
+    st = _vp.load()
+    return {"enabled": st.get("enabled") is not False, "last_pass_s": st.get("last_pass_s"),
+            "rooms": [{"room": pid, "rule_id": _pf.rule_name(pid).lstrip("#"), **(_vp.words(pid) or {})}
+                      for pid in _vp.slots()],
+            "log": (st.get("log") or [])[-20:]}
+
+
+@app.post("/api/v4/picker")
+def v4_picker_set(body: dict) -> dict:
+    """The operator's switch: off stops the daily pass; every room keeps the rule it follows now."""
+    from tradingagents import v4_picker as _vp
+
+    return _vp.set_enabled(bool(body.get("enabled")))
 
 
 @app.get("/api/trade/summary")
@@ -4832,7 +4858,7 @@ def trade_history_rooms(dry: bool = False, per_page: int = 5, page: int = 1,
 
     _q = (q or "").strip().lstrip("#").upper()
     books = (False, True) if _q else (dry,)
-    rooms = _pf.shown()
+    rooms = _pf.history_rooms()        # a slot the picker switched off keeps its past trades here
     rows: list = []
     examined, unreadable = 0, []
     for order, rid in enumerate(rooms):

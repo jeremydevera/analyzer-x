@@ -151,22 +151,98 @@ def follows(pid: str) -> str | None:
     return (get(pid) or {}).get("follows") or None
 
 
+# THE DAILY PICKER'S SLOTS (operator, Nov 12, 2026: "can i have a logic to run
+# the best switch-on for this month ... i will not manually search for best
+# switch on and deploy and undeploy what is not working"). The three skill
+# rooms are FIXED SLOTS: `tradingagents/v4_picker.py` writes
+# `~/.tradingagents/v4/picker.json` once a day, and a slot there says which rule
+# set the room follows now (and whether the room is off). The room's id and
+# folder never change - only the rule it follows - and with no file (a test, a
+# machine that never ran the picker) every room follows its BUILTIN rule.
+PICKER_PATH: Path | None = None
+_PICKER_CACHE: dict = {"key": None, "data": {}}
+
+
+def _picker_file() -> Path | None:
+    if PICKER_PATH is not None:
+        return Path(PICKER_PATH)
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return None          # a test never reads this PC's real picks
+    return HOME / "v4" / "picker.json"
+
+
+def picker_state() -> dict:
+    """The picker's record, {} when there is none or it cannot be read (a room
+    then follows its BUILTIN rule - never an error on a screen)."""
+    f = _picker_file()
+    if f is None:
+        return {}
+    try:
+        st = f.stat()
+        key = (str(f), st.st_mtime_ns, st.st_size)
+        if _PICKER_CACHE["key"] == key:
+            return _PICKER_CACHE["data"]
+        import json as _json
+
+        data = _json.loads(f.read_text(encoding="utf-8"))
+        data = data if isinstance(data, dict) else {}
+        _PICKER_CACHE.update(key=key, data=data)
+        return data
+    except (OSError, ValueError):
+        return {}
+
+
+def picked(pid: str) -> dict | None:
+    """The picker's slot for a follower room: {rule, rule_id, off, since_s, why}."""
+    if follows(pid) != "v4":
+        return None
+    slot = (picker_state().get("slots") or {}).get(pid)
+    return slot if isinstance(slot, dict) and isinstance(slot.get("rule"), dict) else None
+
+
 def v4_rule(pid: str) -> dict | None:
-    """A copy of a follower room's rule set (forecast_v4.rule_id's arguments)."""
+    """A copy of a follower room's rule set (forecast_v4.rule_id's arguments): the
+    rule the daily picker gave its slot, else the room's own BUILTIN rule."""
+    slot = picked(pid)
+    if slot:
+        return dict(slot["rule"])
     r = (get(pid) or {}).get("v4_rule")
     return dict(r) if r else None
 
 
+def picker_off(pid: str) -> bool:
+    """True when the picker switched this slot off: no rule set passes for it today."""
+    slot = picked(pid)
+    return bool(slot and slot.get("off"))
+
+
+def rule_name(pid: str) -> str:
+    """What a follower room's TAB says: the rule set it follows today, `#CKVS7G7Z`
+    (the room's own id when the picker has given it nothing)."""
+    slot = picked(pid)
+    rid = (slot or {}).get("rule_id")
+    return f"#{rid}" if rid else name_of(pid)
+
+
 def retired(pid: str) -> bool:
-    return bool((get(pid) or {}).get("retired"))
+    return bool((get(pid) or {}).get("retired")) or picker_off(pid)
 
 
 def shown() -> list[str]:
     """The rooms that get a TAB. A retired room gets none (operator, Oct 01,
     2026: "if i say off you should completely remoev the tab"); it stays in
     BUILTIN only so its runner can finish the practice trades still open and
-    its record stays on disk."""
-    return [p["id"] for p in BUILTIN if not p.get("retired")]
+    its record stays on disk. A slot the picker switched off gets none either."""
+    return [p["id"] for p in BUILTIN if not retired(p["id"])]
+
+def history_rooms() -> list[str]:
+    """The rooms whose trades the Main tab lists: every room with a tab PLUS a slot the picker
+    switched off - it has no tab, but what it traded is still the operator's record (a room
+    retired by hand stays out, as before)."""
+    tabs = shown()
+    return tabs + [p["id"] for p in BUILTIN
+                   if p["id"] not in tabs and not p.get("retired") and picker_off(p["id"])]
+
 
 _CURRENT: contextvars.ContextVar[str] = contextvars.ContextVar(
     "ta_profile", default=os.environ.get("TA_PROFILE") or MAIN)

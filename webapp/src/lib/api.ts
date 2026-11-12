@@ -1895,6 +1895,8 @@ export interface V4Follow {
   follows: "v4" | null;
   room?: string;
   rule_words?: string;
+  picker?: PickerWords | null;
+  rule_id?: string;
   heartbeat?: FollowBeat | null;
   switched_on?: FollowRow[];
   total_on?: number; page?: number; pages?: number; per_page?: number;
@@ -2015,6 +2017,16 @@ export interface RoomInfo {
   follows?: "v4" | null;
   v4_rule?: Record<string, unknown> | null;
   rule_words?: string | null;
+  /** the room's own id, when `name` (the tab) says the rule set it follows today */
+  slot?: string;
+  /** what the daily picker says about this room (GET /api/trade/profiles) */
+  picker?: PickerWords | null;
+}
+
+/** The daily picker's words for one skill room (tradingagents/v4_picker.py `words`). */
+export interface PickerWords {
+  enabled: boolean; off: boolean; rule_id: string | null; why: string;
+  since: string | null; last_pass: string | null;
 }
 
 /** A row's last 30 days, from tradingagents/rolling30.py. */

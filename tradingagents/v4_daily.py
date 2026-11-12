@@ -658,6 +658,8 @@ def _notes(st: dict) -> str:
         bits.append(f"the redo could not be collected: {st['redo_error']}")
     if st.get("prev_error"):
         bits.append(st["prev_error"])
+    if st.get("picker_error"):
+        bits.append(st["picker_error"])
     return (" - note: " + "; ".join(bits)) if bits else ""
 
 
@@ -690,6 +692,20 @@ def _build(st: dict, now: float) -> None:
     st["why"] = "the store and Forecast v4 are rebuilt - switching on each room's strategies next" + _notes(st)
 
 
+def _pick(st: dict, now: float) -> None:
+    """The daily picker (`v4_picker`, Nov 12, 2026): which rule set each room follows today. Its
+    failure never stops the day's list - the rooms keep the rules they follow - and is named."""
+    st.pop("picker_error", None)
+    try:
+        from tradingagents import v4_picker as vp
+
+        res = vp.pick(now)
+        st["picker_note"] = (res.get("skipped") or
+                             ("; ".join(x["text"] for x in res.get("log") or []) or "every room keeps its rule"))
+    except Exception as exc:        # noqa: BLE001 - never a reason to lose the day's list
+        st["picker_error"] = f"the picker could not run ({type(exc).__name__}: {exc}); every room keeps its rule"
+
+
 def _lists(st: dict, now: float) -> None:
     from tradingagents import forecast_v2 as f2
     from tradingagents import forecast_v4 as f4
@@ -703,9 +719,11 @@ def _lists(st: dict, now: float) -> None:
         st["list_note"] = f"the list of {_when(day_s)} had already been written and is kept as it is"
     else:
         rooms = {}
+        _pick(st, now)                  # BEFORE the list: the day's list is judged by the rules just chosen
         for pid in vf.rooms():
-            _say(st, f"switching on {profiles.name_of(pid)}'s strategies for {_when(day_s)}")
-            rooms[pid] = f4.switched_on(profiles.v4_rule(pid), day_s)
+            _say(st, f"switching on {profiles.rule_name(pid)}'s strategies for {_when(day_s)}")
+            # a slot the picker switched off opens nothing; a trade it holds is finished by the follower
+            rooms[pid] = [] if profiles.picker_off(pid) else f4.switched_on(profiles.v4_rule(pid), day_s)
         if path.exists():               # never rewritten, even by a race
             st["list_note"] = f"the list of {_when(day_s)} had already been written and is kept as it is"
         else:
@@ -715,7 +733,9 @@ def _lists(st: dict, now: float) -> None:
     st.update(phase="agree", landed_s=now, counts=counts, error="", failed_at=0,
               why=(f"the list of {_when(day_s)} landed at {_when(now)}: "
                    + (", ".join(f"{profiles.name_of(p)} {n}" for p, n in counts.items()) + " switched on"
-                      if counts else st.get("list_note", "")) + " - checking yesterday next" + _notes(st)))
+                      if counts else st.get("list_note", ""))
+                   + (f" - picker: {st['picker_note']}" if st.get("picker_note") else "")
+                   + " - checking yesterday next" + _notes(st)))
 
 
 def _agreed_days() -> list[int]:

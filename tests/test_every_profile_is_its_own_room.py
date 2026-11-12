@@ -345,7 +345,7 @@ def test_the_i_popup_is_read_ahead_copies_the_id_and_says_when_deployed(tmp_path
     open_info = open_info[:open_info.index("};")]
     assert "api.profiles()" not in open_info, "the click must not wait for a request"
     # every room's own id, the room that was Main's #09439DC2 included (Oct 14, 2026)
-    assert '<CopyableId id={p.display_id ?? p.id} prefix="#" />' in screen
+    assert '<CopyableId id={r?.follows ? r.name.replace(/^#/, "") : (p.display_id ?? p.id)} prefix="#" />' in screen
     assert "deployed {fmtWhen(r.deployed_at)}" in screen
     led = tmp_path / "ledger.jsonl"
     led.write_text('{"ts": 1790810794, "action": "runner_start"}\n{"ts": 1790900000, "action": "runner_start"}\n',

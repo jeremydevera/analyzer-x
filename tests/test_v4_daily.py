@@ -945,3 +945,35 @@ def test_an_exit_row_from_before_the_minutes_is_still_compared_by_its_close(worl
     with profiles.using(ROOM):
         at.append_ledger(_practice_exit(sid, Y + 8 * H, Y + 11 * H, "TP", 1.0, tid="OLDROW01"))
     assert vd.agreement(ROOM, Y)["same"] == 1
+
+
+def test_the_picker_runs_in_the_chain_and_a_switched_off_room_gets_an_empty_list(world, monkeypatch, tmp_path):
+    """Nov 12, 2026: the daily picker's pass comes BEFORE the day's list, and the list is judged by the
+    rule the picker gave each room - a slot it switched off opens nothing."""
+    import json
+
+    from tradingagents import forecast_v4 as f4
+    from tradingagents import v4_picker as vp
+
+    seen = []
+
+    def switched_on(rule, at_s, db=None):
+        seen.append(f4.rule_id(**rule))
+        return [_row("ON" + f4.rule_id(**rule)[:4])]
+
+    monkeypatch.setattr(f4, "switched_on", switched_on)
+    monkeypatch.setattr(profiles, "PICKER_PATH", tmp_path / "picker.json")
+    order = []
+    monkeypatch.setattr(vp, "pick", lambda now: order.append("pick") or {"log": [{"text": "RSS7CUKH switched off"}]})
+    (tmp_path / "picker.json").write_text(json.dumps({"slots": {
+        "RSS7CUKH": {"rule": profiles.get("RSS7CUKH")["v4_rule"], "rule_id": "RSS7CUKH", "off": True, "since_s": 1},
+        "7T3VJU82": {"rule": {**profiles.get("7T3VJU82")["v4_rule"], "money": "made"}, "rule_id": "NEWRULE1", "off": False}}}),
+        encoding="utf-8")
+    st = {"phase": "lists", "day": _iso(D), "day_s": D, "deadline_s": D + vd.GIVE_UP_AT_S, "runs": {}}
+    vd._step(st, AT)
+    doc = _read_list(D)
+    assert order == ["pick"] and "picker: RSS7CUKH switched off" in st["why"]
+    assert doc["rooms"]["RSS7CUKH"] == [], "a switched-off slot opens nothing"
+    assert doc["rooms"]["D7EN8BNV"] and doc["rooms"]["7T3VJU82"]
+    assert f4.rule_id(**{**profiles.get("7T3VJU82")["v4_rule"], "money": "made"}) in seen   # judged by the picked rule
+    assert "RSS7CUKH" not in seen

@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { markReady } from "@/lib/loading";
 import { useLiveRefresh } from "@/lib/live";
 import PanelStatus from "./PanelStatus";
+import DayTrades from "./DayTrades";
 import { DayStat, fmtMoney } from "@/lib/api";
 import { useRoomApis } from "@/lib/room";
 
@@ -69,7 +70,7 @@ export default function PnlPanel() {
     <div className="min-w-0">
       <PanelStatus err={err} loaded={got.current} />
       <DayCalendar days={loading ? {} : days} loading={loading}
-        book={dry ? "practice account" : "real-money account"} dry={dry} onBook={pick}
+        book={dry ? "practice account" : "real-money account"} dry={dry} onBook={pick} trades
         span={first ? { from: first, to: today } : undefined} />
     </div>
   );
@@ -95,7 +96,7 @@ const dayKey = (y: number, m: number, d: number) => `${y}-${pad2(m + 1)}-${pad2(
  * month's total summed from the same boxes, so the caption cannot disagree
  * with the grid. A day with no closed trade stays blank rather than +0.00:
  * "nothing closed" and "closed at break-even" are different days. */
-export function DayCalendar({ days, book, dry, onBook, loading = false, start, span }: {
+export function DayCalendar({ days, book, dry, onBook, loading = false, start, span, trades = false }: {
   days: Record<string, DayStat>; book: string; dry?: boolean; onBook?: (dry: boolean) => void;
   loading?: boolean;
   /** a "YYYY-MM-DD" day whose month it opens on (default: this month) — a
@@ -106,6 +107,9 @@ export function DayCalendar({ days, book, dry, onBook, loading = false, start, s
    *  there is no pnl for the day just make it 0$ or indicate no trade because
    *  im not sure if you made a trade that day"). Outside it stays blank. */
   span?: { from: string; to: string };
+  /** a click on a day opens that day's closed trades as a table under the
+   *  grid (Auto Trade's panel only: Room strategies' days have no ledger) */
+  trades?: boolean;
 }) {
   const now = new Date();
   const [month, setMonth] = useState(() => start
@@ -216,6 +220,9 @@ export function DayCalendar({ days, book, dry, onBook, loading = false, start, s
             <span className={sel.pnl >= 0 ? "text-success-600" : "text-error-500"}>{fmtMoney(sel.pnl)}</span>
             {" · "}{sel.trades} trade{sel.trades === 1 ? "" : "s"}, {sel.wins}W / {sel.losses}L · {sel.coins.join(", ")}
           </p>
+        )}
+        {trades && picked && sel && dry !== undefined && (
+          <DayTrades key={`${picked}|${dry}`} day={picked} dry={dry} />
         )}
         {!keys.length && !loading && <p className="mt-2 text-theme-sm text-gray-500 dark:text-gray-400">No closed trades on the {book} yet{dry ? "" : " — tap Practice to see the practice trades"}.</p>}
       </div>

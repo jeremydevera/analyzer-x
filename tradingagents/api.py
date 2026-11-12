@@ -4697,6 +4697,9 @@ def _history_rows(books: tuple) -> tuple[list[dict], int]:
                                             str(e.get("symbol") or "")),
                 "why": e.get("why") or "—",
                 "profit": round(float(e.get("pnl_est") or 0), 2),
+                # the unrounded figure: a day's total is the sum of THESE, as the
+                # calendar's box is (`daily_pnl`), never of the cent-rounded rows
+                "_raw": float(e.get("pnl_est") or 0),
                 # WHICH BOOK. Both stamp the same trade id, so a row that
                 # does not say which one it is turns two trades into one —
                 # #MTX4FSGN read as a single trade for a whole evening.
@@ -4705,7 +4708,7 @@ def _history_rows(books: tuple) -> tuple[list[dict], int]:
 
 
 def _history_page(rows: list, *, books: tuple, q: str, per_page: int, page: int,
-                  examined: int, match: tuple = ("id", "strategy_id")) -> dict:
+                  examined: int, match: tuple = ("id", "strategy_id"), day: str = "") -> dict:
     """One page of closed trades and the months behind it — the one shape both
     history lists answer. `rows` are oldest first; `q` is already upper-cased
     with no "#". The running total is per BOOK over every row, BEFORE the
@@ -4721,6 +4724,14 @@ def _history_page(rows: list, *, books: tuple, q: str, per_page: int, page: int,
         r["running"] = run[r["book"]]
     if q:
         rows = [r for r in rows if any(q in str(r.get(k) or "").upper() for k in match)]
+    if day:
+        # ONE LOCAL CALENDAR DAY (operator, Nov 12, 2026: "if i click a date in
+        # calendar show me the trades made on that day in table"). The same key
+        # `auto_trader.daily_pnl` files the calendar's boxes under, so the box
+        # and its table count the same exits. Filtered HERE, over every exit
+        # row, never in the browser over a page already cut.
+        rows = [r for r in rows
+                if _time.strftime("%Y-%m-%d", _time.localtime(r["ts"])) == day]
     months: dict = {}
     for r in rows:
         k = dt.datetime.fromtimestamp(r["ts"]).strftime("%Y-%m")
@@ -4729,6 +4740,14 @@ def _history_page(rows: list, *, books: tuple, q: str, per_page: int, page: int,
         m["trades"] += 1
         m["wins" if r["profit"] > 0 else "losses"] += 1
         m["profit"] = round(m["profit"] + r["profit"], 2)
+    if day:
+        # the box and its table add the SAME unrounded amounts: Nov 11, 2026's six
+        # trades are +1.61 in the box and summed to +1.62 from cent-rounded rows
+        raw = round(sum(r["_raw"] for r in rows), 2)
+        for m in months.values():
+            m["profit"] = raw
+    for r in rows:
+        r.pop("_raw", None)
     rows = sorted(rows, key=lambda r: r["ts"])
     rows.reverse()                                   # newest first
     per = max(1, min(per_page, 100))
@@ -4743,7 +4762,7 @@ def _history_page(rows: list, *, books: tuple, q: str, per_page: int, page: int,
         "total": len(rows), "page": page, "pages": pages, "per_page": per,
         # what was SEARCHED, so an empty answer names what it looked at
         # rather than speaking for the store (CLAUDE.md, Sep 12 2026)
-        "q": q, "examined": examined,
+        "q": q, "examined": examined, "day": day,
         "books": ["live", "demo"] if q else (["demo"] if books == (True,) else ["live"]),
         "months": mrows,
         "totals": {"trades": sum(m["trades"] for m in mrows),
@@ -4755,7 +4774,7 @@ def _history_page(rows: list, *, books: tuple, q: str, per_page: int, page: int,
 
 @app.get("/api/trade/history")
 def trade_history(dry: bool = False, per_page: int = 5, page: int = 1,
-                  q: str = "") -> dict:
+                  q: str = "", day: str = "") -> dict:
     """Every CLOSED trade on one book, newest first, with its running total —
     plus a per-month summary the page cannot give.
 
@@ -4783,11 +4802,16 @@ def trade_history(dry: bool = False, per_page: int = 5, page: int = 1,
     `_history_rows` and `_history_page`, shared with the all-rooms list.
     """
     _q = (q or "").strip().lstrip("#").upper()
+    # `day` is a LOCAL "YYYY-MM-DD" (the calendar's own key). A malformed one is
+    # refused, never ignored: ignoring it would print EVERY trade under a day's name.
+    _day = (day or "").strip()
+    if _day and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", _day):
+        raise HTTPException(status_code=400, detail="day must look like 2026-11-11")
     # a search spans BOTH books; without one the tab still rules
     books = (False, True) if _q else (dry,)
     rows, examined = _history_rows(books)
     return _history_page(rows, books=books, q=_q, per_page=per_page, page=page,
-                         examined=examined)
+                         examined=examined, day=_day)
 
 
 @app.get("/api/trade/history/rooms")

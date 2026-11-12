@@ -2149,6 +2149,8 @@ export interface HistoryPayload {
   totals: { trades: number; wins: number; losses: number; profit: number };
   /** the id that was searched for, cleaned up (no #, upper case) */
   q?: string;
+  /** the local day ("YYYY-MM-DD") this answer was cut to, "" for none */
+  day?: string;
   /** how many closed trades were looked at — so an empty answer can name
    *  what it checked instead of speaking for the whole store */
   examined?: number;
@@ -2205,9 +2207,11 @@ export const tradeApi = {
    *  both books stamp a trade with the same id, so a search that honoured
    *  the tab would show one of the two and look like the other never
    *  happened. Sent to the server, never filtered in the browser. */
-  history: (dry: boolean, page = 1, per_page = 5, q = "") =>
+  history: (dry: boolean, page = 1, per_page = 5, q = "", day = "") =>
     get<HistoryPayload>(`/api/trade/history?dry=${dry}&page=${page}`
-      + `&per_page=${per_page}&q=${encodeURIComponent(q)}`),
+      + `&per_page=${per_page}&q=${encodeURIComponent(q)}`
+      // one local calendar day ("YYYY-MM-DD"), filtered by the server
+      + (day ? `&day=${encodeURIComponent(day)}` : "")),
   // EVERY room strategy's closed trades (Oct 14, 2026: "the main tab is for
   // seeing all room strategy past trades"), searched and paged by the server
   // (tradingagents/api.py trade_history_rooms)

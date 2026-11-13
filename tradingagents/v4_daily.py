@@ -439,8 +439,9 @@ def _books_ready(st: dict, now: float) -> bool:
     from tradingagents import app_books as ab
 
     was = st.get("books") or {}
-    if was and not was.get("waiting"):
-        return True
+    if was and not was.get("waiting") and was.get("published") is not False:
+        return True                     # decided - but a day that had NOT gone up is looked at again below:
+        #                                 a dispatch tried again after the upload reads it, and says so
     day_s = int(st["day_s"])
     yday = ab._day(day_s - 1)
     if not ab.IN_BACKTEST or not ab.HOME.exists():
@@ -453,7 +454,7 @@ def _books_ready(st: dict, now: float) -> bool:
         st["books"] = {"day": yday, "published": False, "recorded": False}
         return True
     until = day_s + ab.PUBLISH_AFTER_UTC_S + BOOKS_WAIT_S
-    if now < until:
+    if now < until and not (was and not was.get("waiting")):       # never back to waiting once it went on
         st["books"] = {"day": yday, "published": False, "waiting": True, "until_s": until}
         st["why"] = (f"waiting for yesterday's recorded order books to go up to GitHub (until {_when(until)} "
                      f"at the latest), so yesterday's trades are priced from them")
@@ -700,11 +701,12 @@ def _notes(st: dict) -> str:
         bits.append(st["picker_error"])
     books = st.get("books") or {}
     if books.get("published") is False and not books.get("waiting"):
-        bits.append("yesterday's recorded order books "
-                    + ("had not gone up to GitHub when the run started" if books.get("recorded", True)
-                       else "do not exist (nothing was recorded yesterday)")
-                    + ", so yesterday's trades pay the coin's usual gap"
-                    + (" until tomorrow night's run" if books.get("recorded", True) else ""))
+        # the machines still read yesterday's last HOURLY upload: only the hours after it are estimates
+        bits.append("yesterday's recorded order books had not gone up to GitHub whole when the run started, so "
+                    "the hours of yesterday that had not gone up pay the coin's usual gap until tomorrow "
+                    "night's run" if books.get("recorded", True) else
+                    "yesterday's recorded order books do not exist (nothing was recorded yesterday), so its "
+                    "trades pay the coin's usual gap")
     return (" - note: " + "; ".join(bits)) if bits else ""
 
 

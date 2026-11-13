@@ -788,7 +788,10 @@ def measure(d: dict, log=print) -> dict:
                   "margin": v4_store.MEASURED_MARGIN, "leverage": v4_store.LEVERAGE,
                   # how the store priced each coin's buy-sell gap: {"minutes": coins, "one reading": coins},
                   # or None for a store built before the usual gap (one reading a coin, a night)
-                  "gaps": json.loads(meta["gaps"]) if meta.get("gaps") else None},
+                  "gaps": json.loads(meta["gaps"]) if meta.get("gaps") else None,
+                  # of the store's finished trades: priced from the recorded order book on both sides
+                  # (`real`) or one (`part`) - the page's cost sentence is derived from it
+                  "real": json.loads(meta["real"]) if meta.get("real") else None},
         "walk": M["walk"], "coverage": M["coverage"], "rule_sets": P.R, "slots": SLOTS,
         "lead_days": LEAD_DAYS, "first_day_s": start + days[0] * DAY_S, "last_day_s": start + days[-1] * DAY_S,
         "days": len(days), "months": [int(x) for x in P.ms], "rooms": rooms,

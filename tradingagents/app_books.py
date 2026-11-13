@@ -279,6 +279,7 @@ _PARTIAL_RE = re.compile(r"partial-(\d{8})-(\d{2})\.npz")
 INDEX_TAG = "appbook-index"
 INDEX_ASSET = "days.json"
 _REMOTE: dict = {}
+_UNREAD: dict = {}             # (day, sym | "*") -> why: a PUBLISHED day this machine could not download
 _REMOTE_DAYS: dict = {}
 _BUNDLES: dict = {}            # asset name -> ({sym: packed} | None, when asked)
 _TICKED: dict = {}             # "final" / "partial" -> the UTC hour last done
@@ -440,15 +441,52 @@ def _remote(day: str, sym: str) -> dict | None:
         entry = idx["partial"].get(day)
         if not entry:
             return None
-        return (_bundle(str(entry["asset"])) or {}).get(sym)
+        got = _bundle(str(entry["asset"]))
+        if got is None:
+            _UNREAD[(day, "*")] = "its hourly upload could not be downloaded"
+            return None
+        _UNREAD.pop((day, "*"), None)
+        return got.get(sym)
     key = (day, sym)
     if key not in _REMOTE:
         status, raw = cs._fetch(url(day, sym))
+        got, ok = None, True
         try:
-            _REMOTE[key] = cs.from_bytes(raw) if status == 200 and raw else None
+            got = cs.from_bytes(raw) if status == 200 and raw else None
         except (OSError, ValueError, KeyError):
-            _REMOTE[key] = None
+            ok = False
+        if status not in (200, 404) or not ok:
+            # NOT "never recorded" (a 404 is that): a file GitHub holds and this machine could not
+            # read. Named (`unread`) and NOT kept, so a coin redone asks for it again
+            _UNREAD[key] = f"HTTP {status}" if status else "no answer"
+            return None
+        _UNREAD.pop(key, None)
+        _REMOTE[key] = got
     return _REMOTE[key]
+
+
+def unread(sym: str, start_s: int, end_s: int) -> list[str]:
+    """Why a machine's read of `sym`'s PUBLISHED readings in [start_s, end_s] is not whole, in words: the
+    list of published days never read, or a published day (its coin file or its hourly upload) that
+    could not be downloaded. [] when everything asked for was answered - a coin-day that was never
+    recorded (404) is not a failure - and always on the recorder's own PC, which reads its files, or
+    while the app's books are switched out. A reader that must not price by an estimate without
+    saying so asks this after `book_for` (`skill_bt.read_book(strict=True)`)."""
+    if HOME.exists() or not IN_BACKTEST:
+        return []
+    out = []
+    if not _REMOTE_DAYS.get("read"):
+        out.append("the list of published days could not be read")
+    bad, d = [], int(start_s) - int(start_s) % 86400
+    while d <= int(end_s):
+        if (_day(d), sym) in _UNREAD or (_day(d), "*") in _UNREAD:
+            bad.append(d)
+        d += 86400
+    if bad:
+        from tradingagents.positions_view import fmt_when
+
+        out.append(f"{len(bad)} published day(s) could not be downloaded (the first began {fmt_when(bad[0])})")
+    return out
 
 
 _GH_ENV: dict = {}

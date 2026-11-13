@@ -187,8 +187,9 @@ END_CODE = v4_store.WHYS.index("END")      # a trade still open when the run end
 def _load(db: Path, log, extra: bool = False) -> dict:
     """Every trade the forecast may count, in the store's own order. `extra` also keeps each one's exit
     kind, side and exit minute ("why", "side", "at" - the candle's time where the store has no minute):
-    the picker lab prints them in its trade logs; nothing in the forecast reads them, and without
-    `extra` the store is asked exactly what it was asked before."""
+    the picker lab prints them in its trade logs; nothing in the forecast reads them. Either way each
+    trade carries its mark (`real`: how many of its two fills paid a recorded order book; 0 for every
+    trade of a store built before Nov 13, 2026)."""
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
         meta = {k: v for k, v in con.execute("SELECT k, v FROM meta")}

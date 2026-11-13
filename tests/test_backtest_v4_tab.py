@@ -70,3 +70,8 @@ def test_the_trade_list_says_how_each_trade_was_priced():
     for words in ("order book, both sides", "order book, one side", "usual gap"):
         assert words in PANEL, words
     assert "log.priced" in PANEL, "and the count over exactly the trades listed"
+
+
+def test_the_header_no_longer_says_every_trade_pays_the_usual_gap():
+    assert "fee each way and the coin’s usual gap;" not in PANEL
+    assert "fee each way and the buy-sell gap" in PANEL

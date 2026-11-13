@@ -583,3 +583,9 @@ def test_the_page_has_the_real_prices_column_sort_and_box(marked):
     api = (REPO / "tradingagents/api.py").read_text(encoding="utf-8")
     assert '"real_made": real_made' in api
     assert f4.rules_page({"real_made": "true"})["filters"] == ["made money at real prices", "traded"]
+
+
+def test_the_real_prices_line_states_its_share_from_the_walk_never_most():
+    panel = _panel()
+    assert "most of PROFIT" not in panel, "a literal that stops being true as the record fills the walk"
+    assert "100 * s.walk.real.real" in panel

@@ -3428,7 +3428,11 @@ idea is sound; the price was wrong, and every "best switch" found before this wa
   not only their dollars.
 * **The nightly run** (`skill_shard`, daily set) reads each coin's readings once over the stretch the
   minutes are read, PUBLISHED days only (`skill_bt.read_book`, `app_books.book_for`), so every machine
-  and the PC price a strategy from the same readings. A trade it writes is always seven items
+  and the PC price a strategy from the same readings. It reads STRICTLY (`strict=True`,
+  `app_books.unread`): a machine that could not read the list of published days, or could not download
+  a published day, FAILS the coin (redone alone) - never a coin priced by the usual gap because its
+  readings did not arrive (final review: a machine with every download failing read 0 readings and
+  raised nothing). A coin-day that was never recorded (404) is not a failure. A trade it writes is always seven items
   (`[.., the minute it ended in or None, its mark]`). **The dispatch waits for yesterday's readings to
   go up** (`v4_daily._books_ready`): the chain is due at 00:05 UTC, the recorder uploads from 00:20 UTC,
   so it waits at most 30 minutes past that (00:50 UTC), then goes on and every screen says yesterday
@@ -3440,8 +3444,9 @@ idea is sound; the price was wrong, and every "best switch" found before this wa
 * **The follower** (`v4_follow`) reads this PC's recording as it stands (`_books_default`,
   `published_only=False`, NEVER a download), in the warm-up and on every candle. The recorder writes
   every five minutes and a pass runs 20 s after a close, so a fill whose reading is not on disk yet
-  WAITS (`skill_bt.BookNotYet`: no row, no state moved, `waiting` counts it) and ONE MORE PASS runs
-  `RETRY_AFTER_S` (6 minutes) later; after `BOOK_WAIT_S` (10 minutes) with none - or at once when
+  WAITS (`skill_bt.BookNotYet`: no row, no state moved, `waiting` counts it) and another pass runs
+  `RETRY_AFTER_S` (6 minutes) later - and, if it still waits, a last one 6 minutes after that, which is
+  the one that writes the estimate; after `BOOK_WAIT_S` (10 minutes) with none - or at once when
   nothing is on its way (an old candle, the recorder not running) - the fill pays the usual gap, the
   row says so (`real`) and the room counts it (`fills`). A trade open before this keeps its entry.
 * **The store** (`v4_store`): `trade.real`, `strat.real_trades / real_wins / real_profit`, and

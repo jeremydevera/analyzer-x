@@ -541,7 +541,10 @@ def test_the_kit_is_on_the_page(ran):
     for box in ("f-base", "f-wr", "f-pr", "f-gm", "f-dd", "f-tp", "f-sl", "f-days", "f-id", "clear"):
         assert f'id="{box}"' in html, box
     assert "TOTAL PROFIT" in html and "picker rules tested" in html
-    assert "100% typical cost" in html, "the cost every trade paid is said beside the results"
+    # Nov 13, 2026 (final review): the cost every trade paid is said from the STORE'S OWN count of the
+    # trades priced from the recorded order book - the literal "100% typical cost" stopped being true
+    assert "100% typical cost" not in html
+    assert "D.store.real" in html and "D.store.real.from_s" in html and "recorded order book" in html
     assert "the picker is not started again" in html, "a window is a re-add, said on the page"
     title = re.search(r"<title>(.*?)</title>", html).group(1)
     assert 2 <= len(title.split()) <= 4
@@ -668,3 +671,10 @@ def test_the_page_says_first_how_the_store_priced_each_coins_gap(ran):
     assert "ONE reading of its buy-sell gap" in html and "their usual gap" in html
     assert "PROFIT the night before" in html and "Win % the night before" in html
     assert "Trust a rule only where both nights agree" in html
+
+
+def test_the_lab_keeps_the_stores_count_of_real_priced_trades(ran):
+    """The page's cost sentence is derived from it (label-must-match-data)."""
+    real = ran["doc"]["store"]["real"]
+    assert real is not None and set(real) >= {"from_s", "trades", "real", "part"}
+    assert real["real"] == 0, "the fixture's store was measured without a recorded order book"

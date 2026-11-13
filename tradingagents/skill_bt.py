@@ -331,13 +331,18 @@ class Book:
 
 
 def read_book(sym: str, from_s: int, to_s: int, *, published_only: bool = True, reader=None,
-              now_ms: int | None = None, wait_ms: int = 0) -> "Book":
+              now_ms: int | None = None, wait_ms: int = 0, strict: bool = False) -> "Book":
     """The app's own recorded readings of `sym` between two instants, never from before the record began
     (`REAL_FROM_S`). `published_only` is the nightly run's read - GitHub's machines and this PC read
     exactly the days that went up, so a strategy is priced the same wherever it is measured; the
     follower reads this PC's own recording as it stands (`published_only=False`). Empty (and never
     waiting) while the app's books are switched out of every backtest (`app_books.IN_BACKTEST`).
-    `reader(sym, from_s, to_s)` is for tests."""
+    `reader(sym, from_s, to_s)` is for tests.
+
+    `strict` is the nightly run's (final review, Nov 13, 2026): a machine whose downloads failed read 0
+    readings and raised nothing, so its coins would have been priced by the usual gap with nothing
+    saying so. Strictly, a read that is not whole (`app_books.unread`: the list of published days never
+    read, a published day that could not be downloaded) RAISES - the coin fails and is redone alone."""
     from tradingagents import app_books
 
     lo = max(int(from_s), REAL_FROM_S)
@@ -346,7 +351,12 @@ def read_book(sym: str, from_s: int, to_s: int, *, published_only: bool = True, 
     if reader is None:
         def reader(s, a, b):
             return app_books.book_for(s, a, b, published_only=published_only)
-    return Book(reader(sym, lo, int(to_s)), now_ms=now_ms, wait_ms=wait_ms)
+    book = Book(reader(sym, lo, int(to_s)), now_ms=now_ms, wait_ms=wait_ms)
+    if strict:
+        why = app_books.unread(sym, lo, int(to_s))
+        if why:
+            raise RuntimeError(f"{sym}: its recorded order books could not be read ({'; '.join(why)})")
+    return book
 
 
 def _priced(book: "Book | None", minute_ms: int, buying: bool, estimate: float, *,

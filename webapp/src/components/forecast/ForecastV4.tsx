@@ -374,7 +374,7 @@ function Rules({ s, base }: { s: Summary; base: number }) {
       {/* what "at real prices" counts, from the walk's own numbers */}
       <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
         {s.walk.real
-          ? `“At real prices” counts only trades whose buy and sell were both priced from the order book the app recorded in that same minute, which begins ${fmtWhen(s.walk.real.from_s)}: ${s.walk.real.real.toLocaleString()} of the ${s.walk.real.trades.toLocaleString()} trades walked (${s.walk.real.part.toLocaleString()} more on one side only). Every other trade - and so most of PROFIT / TOTAL $ and of the order of this list - pays the coin’s usual gap, which made buying a dip on a thinly traded coin look cheaper than it was.`
+          ? `“At real prices” counts only trades whose buy and sell were both priced from the order book the app recorded in that same minute, which begins ${fmtWhen(s.walk.real.from_s)}: ${s.walk.real.real.toLocaleString()} of the ${s.walk.real.trades.toLocaleString()} trades walked, ${s.walk.real.trades ? ((100 * s.walk.real.real) / s.walk.real.trades).toFixed(1) : "0"}% (${s.walk.real.part.toLocaleString()} more on one side only). Every other trade pays the coin’s usual gap, which made buying a dip on a thinly traded coin look cheaper than it was - and PROFIT / TOTAL $ and the order of this list count those trades too.`
           : "This forecast was worked out before trades were priced from the recorded order book; the next nightly build adds the “at real prices” figures."}
       </p>
       {err && <p className="mt-2 text-theme-xs text-error-500">could not read the rule sets — {err}</p>}

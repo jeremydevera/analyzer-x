@@ -174,7 +174,9 @@ def test_the_shard_reads_each_coins_recorded_order_books_once_over_the_minutes_w
     """The nightly run prices every fill from the app's own PUBLISHED readings: read once a coin, over
     the stretch the minutes are read, and handed to every timeframe's line."""
     src = (ROOT / ".github" / "scripts" / "skill_shard.py").read_text(encoding="utf-8")
-    assert "sb.read_book(sym, sb.fine_from_ms(today_ms) // 1000, now_s)" in src
+    # STRICT (final review): a machine that cannot download the readings fails the coin, never prices
+    # it by the usual gap without saying so
+    assert "sb.read_book(sym, sb.fine_from_ms(today_ms) // 1000, now_s, strict=True)" in src
     assert src.count("read_book(") == 1, "once a coin, never once a timeframe"
     assert "fine=fine, book=book" in src
     assert "published_only=False" not in src, "a machine reads only what went up, as the PC's backtest does"

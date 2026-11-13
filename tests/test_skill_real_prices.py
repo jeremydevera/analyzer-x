@@ -312,3 +312,96 @@ def test_read_book_asks_the_recorder_for_published_days_by_default(monkeypatch):
     assert seen == {"sym": "AAA_USDT", "published_only": True}
     sb.read_book("AAA_USDT", sb.REAL_FROM_S, sb.REAL_FROM_S + 86_400, published_only=False)
     assert seen["published_only"] is False
+
+
+# ------------------------------------------------------------------ a machine that cannot read them (final review)
+def _machine(monkeypatch, answers):
+    """A GitHub machine: no recorder folder, every download answered by `answers(url)`."""
+    from tradingagents import app_books as ab, cost_store as cs
+
+    assert not ab.HOME.exists()
+    for name in ("_REMOTE", "_REMOTE_DAYS", "_BUNDLES", "_UNREAD"):
+        monkeypatch.setattr(ab, name, {})
+    asked = []
+
+    def fetch(u):
+        asked.append(u)
+        return answers(u)
+
+    monkeypatch.setattr(cs, "_fetch", fetch)
+    return ab, cs, asked
+
+
+def _day_file(cs, day_s):
+    return cs.to_bytes({"t": np.array([day_s + 60], dtype="int64"), "bid": np.array([99.9]), "ask": np.array([100.1]),
+                        "spread": np.array([0.002], dtype="float32"), "buy": np.array([0.001], dtype="float32"),
+                        "sell": np.array([0.001], dtype="float32"), "exhausted": np.array([False]),
+                        "source": np.array([3], dtype="int8")})
+
+
+def test_a_machine_that_cannot_read_the_published_list_fails_the_coin_instead_of_estimating(monkeypatch):
+    """NEVER HAPPENED YET (found by the final review): a machine whose downloads all fail read 0 readings
+    and raised nothing, so its coins would have been priced by the usual gap all night with nothing
+    saying so. The nightly run reads strictly: the coin FAILS (and is redone alone)."""
+    ab, _cs, asked = _machine(monkeypatch, lambda u: (0, b""))
+    with pytest.raises(RuntimeError, match="recorded order books could not be read") as e:
+        sb.read_book("AAA_USDT", sb.REAL_FROM_S, sb.REAL_FROM_S + 2 * 86_400, strict=True)
+    assert "list of published days" in str(e.value) and asked
+    # not strict (a caller that only wants what there is): empty, as before
+    assert sb.read_book("AAA_USDT", sb.REAL_FROM_S, sb.REAL_FROM_S + 2 * 86_400).minutes == 0
+
+
+def test_a_coin_day_that_cannot_be_downloaded_fails_the_coin_and_is_asked_again(monkeypatch):
+    import json
+
+    state = {"up": False}
+
+    def answers(u):
+        if u.endswith("days.json"):
+            return 200, json.dumps({"days": ["20261017"], "partial": {}}).encode()
+        return (200, _day_file(cs, sb.REAL_FROM_S)) if state["up"] else (503, b"")
+
+    ab, cs, asked = _machine(monkeypatch, answers)
+    with pytest.raises(RuntimeError, match="could not be downloaded") as e:
+        sb.read_book("AAA_USDT", sb.REAL_FROM_S, sb.REAL_FROM_S + 3600, strict=True)
+    assert "Oct 16, 2026" in str(e.value) or "Oct 17, 2026" in str(e.value), "the day, in the one date format"
+    assert "20261017" not in str(e.value)
+    state["up"] = True                              # the coin is redone: the file is asked for again
+    book = sb.read_book("AAA_USDT", sb.REAL_FROM_S, sb.REAL_FROM_S + 3600, strict=True)
+    assert book.minutes == 1 and book.at((sb.REAL_FROM_S + 60) * 1000) is not None
+    assert ab.unread("AAA_USDT", sb.REAL_FROM_S, sb.REAL_FROM_S + 3600) == []
+
+
+def test_a_coin_day_that_was_never_recorded_is_not_a_failure(monkeypatch):
+    import json
+
+    def answers(u):
+        if u.endswith("days.json"):
+            return 200, json.dumps({"days": ["20261017"], "partial": {}}).encode()
+        return 404, b""
+
+    _machine(monkeypatch, answers)
+    assert sb.read_book("NEW_USDT", sb.REAL_FROM_S, sb.REAL_FROM_S + 3600, strict=True).minutes == 0
+
+
+def test_an_hourly_bundle_that_cannot_be_downloaded_fails_the_coin(monkeypatch):
+    import json
+
+    def answers(u):
+        if u.endswith("days.json"):
+            return 200, json.dumps({"days": [], "partial": {"20261017": {"asset": "partial-20261017-05.npz",
+                                                                        "through": 0}}}).encode()
+        return 0, b""
+
+    _machine(monkeypatch, answers)
+    with pytest.raises(RuntimeError, match="could not be downloaded"):
+        sb.read_book("AAA_USDT", sb.REAL_FROM_S, sb.REAL_FROM_S + 3600, strict=True)
+
+
+def test_on_the_recorders_own_pc_nothing_is_unread(monkeypatch):
+    from tradingagents import app_books as ab
+
+    ab.HOME.mkdir(parents=True)
+    monkeypatch.setattr(ab, "_REMOTE_DAYS", {})
+    assert ab.unread("AAA_USDT", sb.REAL_FROM_S, sb.REAL_FROM_S + 86_400) == []
+    assert sb.read_book("AAA_USDT", sb.REAL_FROM_S, sb.REAL_FROM_S + 86_400, strict=True).minutes == 0

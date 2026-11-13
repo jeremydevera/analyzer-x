@@ -193,7 +193,7 @@ export default function V4Strategies() {
         <p className="mt-1 text-theme-sm text-gray-500 dark:text-gray-400">
           {m ? `${m.strategies.toLocaleString()} strategies tested (${Object.entries(m.sources).map(([k, v]) => `${v.toLocaleString()} from ${k}`).join(", ")}), ${m.trades.toLocaleString()} trades. ` : ""}
           Each trade is ${ans?.notional?.toLocaleString() ?? "100"} of coin (${ans?.base_margin ?? 5} margin × {ans?.leverage ?? 20}x)
-          after the exchange’s 0.075% fee each way and the coin’s usual gap; {m?.exits
+          after the exchange’s 0.075% fee each way and the buy-sell gap (how it is priced is said below); {m?.exits
             ? `a stop and a target are settled minute by minute since ${fmtWhen(m.exits.from_s)} (${m.exits.minute.toLocaleString()} of ${(m.exits.minute + m.exits.candle).toLocaleString()} candles an open trade lived through; the rest, and every trade before that day, by the candle’s close)`
             : "a stop and a target are checked on the candle’s close"}.
           Each strategy was chosen on the older 70% of its candles and judged on the newest 30% it never saw.

@@ -129,9 +129,10 @@ def main() -> int:
                     fine = sb.read_fine(sym, sb.fine_from_ms(today_ms))
                     # the app's own recorded order books over the same stretch (never before the record
                     # began): what each fill really paid. Only the days that went up, so every machine
-                    # and the PC price a strategy from the same readings; a read that raises fails the
-                    # coin (redone alone)
-                    book = sb.read_book(sym, sb.fine_from_ms(today_ms) // 1000, now_s)
+                    # and the PC price a strategy from the same readings. STRICT: a published day this
+                    # machine could not download RAISES and fails the coin (redone alone) - never a coin
+                    # priced by the usual gap because its readings did not arrive
+                    book = sb.read_book(sym, sb.fine_from_ms(today_ms) // 1000, now_s, strict=True)
                 for tf in BARS:
                     t1 = time.time()
                     entry = {"coin": coin, "tf": tf}

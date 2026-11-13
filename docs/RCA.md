@@ -172,6 +172,77 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-13-A — a GitHub machine that could not download the recorded order books would have priced its coins by the usual gap all night and said nothing: NEVER HAPPENED YET
+
+**CEO**
+
+* What you would have seen: the morning after a night when GitHub's downloads were failing on one machine, about 18 coins' trades priced the old flattering way again, the "paid the recorded order book" share lower, and a room's "same as the backtest" check showing dollars apart - with no reason given anywhere.
+* Why: the nightly run asked for each coin's recorded order books, and a download that failed after its four tries was read as "nothing was recorded", exactly like a coin that really has no recording.
+* What stops it now: the nightly run reads strictly - a recording that exists and could not be downloaded fails that coin, which is measured again by itself and named if it never recovers.
+
+**DEV**
+
+* `.github/scripts/skill_shard.py:main` called `sb.read_book(sym, ..)` -> `app_books.book_for` -> `app_books._remote`, which turned every non-200 answer (429, 5xx, a cut wire) and an unread list of published days into `None`, cached it, and returned an empty `Book`; `skill_bt.step` then priced every fill by the estimate with `real` = 0.
+* Invariant broken: **unknown is not "none"** (rule 12's shape, on a read): a file that exists and could not be read must never be answered like a file that does not exist - "never a coin measured with its minutes / funding silently missing" already held for the two reads beside it.
+* Guard: `tests/test_skill_real_prices.py::test_a_machine_that_cannot_read_the_published_list_fails_the_coin_instead_of_estimating`, `::test_a_coin_day_that_cannot_be_downloaded_fails_the_coin_and_is_asked_again`, `::test_an_hourly_bundle_that_cannot_be_downloaded_fails_the_coin`, `::test_a_coin_day_that_was_never_recorded_is_not_a_failure`.
+
+**SAW** - nothing on a screen: the final review of "real prices for skill trades" (Nov 13, 2026, before the first nightly run on the new code) simulated a machine with every download failing: `read_book` returned 0 readings after 4 downloads tried, no exception, while the comment beside the call said "a read that raises fails the coin".
+
+**TIMELINE**
+
+1. Nov 13, 2026 10:05am (commit cb39536): the daily shard starts reading each coin's published order books with `sb.read_book(sym, sb.fine_from_ms(today_ms) // 1000, now_s)`.
+2. Nov 13, 2026 10:30am: pushed to all three accounts; the first run on it is due at 7:05pm (00:05 UTC).
+3. Nov 13, 2026 about 11:00am, the review: every download answered "no answer" - 0 readings, 4 tries, nothing raised. The only trace would have been `line["book"]["minutes"]`, which nothing reads.
+4. NEVER HAPPENED YET, the night it would have: one machine's 18 coins x 5 timeframes x 42+ strategies measured with `real` = 0 on every trade; the store's share for the last 30 days lower by about 1 part in 60; those coins' dollars back at "last price plus the usual gap" (CATL 1h alone: -$933.65 instead of -$1,076.49 over 618 trades), read by Forecast v4 and the picker as if they were measured.
+5. After the fix: the same simulation raises `AAA_USDT: its recorded order books could not be read (the list of published days could not be read)`; a coin-day answering 503 raises naming the day, and the same coin asked again once the wire is back reads its reading (the failure is not kept). A coin-day that was never recorded (404) still reads as empty.
+
+**ROOT CAUSE** - the reader the nightly run borrowed (`app_books._remote`) was written for a job where a missing day falls back to another source, so it answered a failed download and a missing file the same way.
+
+**WHY IT WAS NOT CAUGHT** - the shard's own test reads its SOURCE for the call (`"sb.read_book(" in src`) and every test of the pricing handed the readings in as a fixture, so no test stood where a download fails; and the comment promising "a read that raises fails the coin" was true of the two reads above it and assumed of the third. A promise in a comment about a failure path is a claim to test, not a description.
+
+**COST** - none: found before the first run.
+
+**FIX** - this commit: `app_books._remote` records a published day it could not download (`_UNREAD`, never a 404) and does not keep the failure; `app_books.unread(sym, from, to)` says why a read is not whole; `skill_bt.read_book(strict=True)` raises on it and the shard reads strictly.
+
+**GUARD** - the four tests above; each failed first (no `strict`, no `unread`), and `tests/test_v4_daily_shard.py::test_the_shard_reads_each_coins_recorded_order_books_once_over_the_minutes_window` now demands the strict call in the shard.
+
+---
+
+## RCA-2026-11-13-B — three pages would have gone on saying "every trade pays the usual gap" the night trades stopped doing so: NEVER HAPPENED YET
+
+**CEO**
+
+* What you would have seen: from tonight's run, the picker rooms page saying "no trade paid its own minute's order book (100% typical cost)" while Backtest v4, on the same store, said how many did; and a late-upload note saying all of yesterday's trades pay the usual gap when only its last hour would.
+* Why: the sentence was typed into the page, not worked out from the store, so it stayed when the store changed.
+* What stops it now: each of those sentences is worked out from the store's own count of real-priced trades, and the tests refuse the typed versions.
+
+**DEV**
+
+* `tradingagents/v4_picker_lab_page.py:360` printed the literal "100% typical cost" (pinned by `tests/test_v4_picker_lab.py`); `webapp/.../ForecastV4.tsx` printed "most of PROFIT / TOTAL $ ... pays the coin's usual gap" as a literal; `V4Strategies.tsx` kept "after ... the coin's usual gap" in its first sentence; `v4_daily._notes` said "yesterday's trades pay the coin's usual gap" when the machines still read yesterday's last hourly upload, and kept saying it after a dispatch tried again once the day had gone up (`st["books"]` was decided once).
+* Invariant broken: **a label is derived from the data it describes, never a literal** (label-must-match-data) - here on a COST sentence, the reading nobody makes of that rule.
+* Guard: `tests/test_v4_picker_lab.py::test_the_kit_is_on_the_page` (the literal refused, `D.store.real` required) and `::test_the_lab_keeps_the_stores_count_of_real_priced_trades`; `tests/test_forecast_v4.py::test_the_real_prices_line_states_its_share_from_the_walk_never_most`; `tests/test_backtest_v4_tab.py::test_the_header_no_longer_says_every_trade_pays_the_usual_gap`; `tests/test_v4_daily.py::test_the_late_note_names_only_the_hours_that_had_not_gone_up` and `::test_a_dispatch_tried_again_after_the_upload_drops_the_note`.
+
+**SAW** - nothing on a screen yet: the final review of "real prices for skill trades" (Nov 13, 2026) read the picker-lab page's source and found the sentence two other pages had just been corrected for, with a test still requiring it.
+
+**TIMELINE**
+
+1. Nov 12, 2026: the picker-lab page is written; "100% typical cost" is true of every trade, and a test pins the words.
+2. Nov 13, 2026 10:10am - 10:25am (commits ad196e0, 372fdc1): the store starts keeping each trade's mark; Backtest v4's header and the room panel are corrected and their tests flipped. The picker-lab page, generated by a nightly process from the same store, is not looked at.
+3. NEVER HAPPENED YET, tonight: the store of Nov 13, 2026 7:05pm holds real-priced trades (CATL 1h alone: 499 of 618 since Oct 17, 2026); the lab's nightly run rebuilds its page on it and prints "no trade paid its own minute's order book".
+4. After the fix: the lab keeps the store's count (`store.real`) and the page prints "since <day> a buy or sell is priced from the recorded order book of its own minute where one was recorded - N of the store's M finished trades on both sides, K on one"; Forecast v4 prints the share as a percent of the walked trades; the late note names "the hours of yesterday that had not gone up".
+
+**ROOT CAUSE** - the change was made by grepping the two pages named in its plan; the third page prints the same fact and was found by nobody because the plan listed files, not the fact.
+
+**WHY IT WAS NOT CAUGHT** - the one test that covers that sentence REQUIRED the literal ("100% typical cost" in html): a test that pins words pins them after they stop being true. When a fact changes, grep for the FACT in every page and every test (here: "typical cost", "usual gap"), not for the files the plan names (CLAUDE.md "grep for the CONCEPT").
+
+**COST** - none: found before the first run.
+
+**FIX** - this commit: the lab's `store.real` and the page's derived sentence; Forecast v4's share from `walk.real`; Backtest v4's first sentence; `v4_daily._notes` and `_books_ready` (a day that had not gone up is looked at again on a later try).
+
+**GUARD** - `tests/test_v4_picker_lab.py::test_the_kit_is_on_the_page` (it now refuses "100% typical cost" and requires `D.store.real`), `tests/test_forecast_v4.py::test_the_real_prices_line_states_its_share_from_the_walk_never_most`, `tests/test_backtest_v4_tab.py::test_the_header_no_longer_says_every_trade_pays_the_usual_gap` and `tests/test_v4_daily.py::test_the_late_note_names_only_the_hours_that_had_not_gone_up`; each failed first on the old pages.
+
+---
+
 ## RCA-2026-11-12-B — every night the skill backtest re-priced each coin's whole past with one reading of its buy-sell gap, so the same months turned from profit to loss overnight and the picker switched two rooms off
 
 **CEO**

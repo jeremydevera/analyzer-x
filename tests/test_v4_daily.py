@@ -1086,3 +1086,28 @@ def test_a_day_with_no_check_yet_is_not_checked_twice(world):
     st = {"phase": "agree", "day": _iso(D), "day_s": D, "deadline_s": D + vd.GIVE_UP_AT_S, "landed_s": AT}
     vd._step(st, AT)
     assert "rechecked_day" not in st
+
+
+def test_the_late_note_names_only_the_hours_that_had_not_gone_up(world, monkeypatch):
+    """The machines still read yesterday's last hourly upload: only the hours after it are estimates."""
+    from tradingagents import app_books as ab
+
+    _recorder(monkeypatch)
+    until = D + ab.PUBLISH_AFTER_UTC_S + vd.BOOKS_WAIT_S
+    st = {"phase": "idle"}
+    vd._step(st, AT)
+    vd._step(st, until + vd.POLL_S)
+    note = vd._notes(st)
+    assert "the hours of yesterday that had not gone up" in note
+    assert "yesterday's trades pay" not in note, "not every trade of yesterday: only the unpublished hours"
+
+
+def test_a_dispatch_tried_again_after_the_upload_drops_the_note(world, monkeypatch):
+    from tradingagents import app_books as ab
+
+    yday = _recorder(monkeypatch)
+    st = {"day_s": D, "books": {"day": yday, "published": False}}
+    assert vd._books_ready(st, D + 2 * H) is True and "had not gone up" in vd._notes(st)
+    ab._write_marker(yday, coins={"BTC_USDT"}, failed=set())
+    assert vd._books_ready(st, D + 2 * H + 60) is True
+    assert st["books"] == {"day": yday, "published": True} and "had not gone up" not in vd._notes(st)

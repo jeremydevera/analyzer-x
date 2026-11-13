@@ -47,12 +47,20 @@ REPORT_OUT = os.path.join("out", f"{PREFIX}-report-{ss.SHARD}.json")
 COIN_RETRIES = 2
 
 
-def costs(sym: str) -> tuple[float, float]:
-    """The coin's fee a side and its usual gap a side (the searches' own reads)."""
+def costs(sym: str, now_s: float | None = None) -> tuple[float, float, dict]:
+    """The coin's fee a side, its USUAL gap a side, and where that gap came from (`gap`, kept on every
+    line it prices). The gap is the median of the coin's own recorded minutes over the `sb.GAP_DAYS`
+    days before today's UTC midnight (`sb.usual_gap`): the same for every machine tonight and nearly the
+    same tomorrow. Only a coin the costs store holds no minute of pays one reading of the book now, and
+    its lines say so (RCA-2026-11-12-B: one reading a night re-priced every coin's whole past)."""
     fee = at.taker_fee(sym, fx=fx)
+    day_s = int(time.time() if now_s is None else now_s) // 86_400 * 86_400
+    slip, n = sb.usual_gap(sym, day_s)
+    if slip is not None and slip > 0:
+        return float(fee), float(slip), {"from": "minutes", "minutes": int(n), "days": sb.GAP_DAYS}
     book = fx.book_cost(sym, ss.BASE_MARGIN * at.LEVERAGE)
     slip = br.charged_slippage([float(book.get("slippage") or 0.0) or 0.0003])
-    return float(fee), float(slip)
+    return float(fee), float(slip), {"from": "one reading", "minutes": 0, "days": sb.GAP_DAYS}
 
 
 def line(coin: str, tf: str, res: dict, fee: float, slip: float) -> dict:
@@ -105,7 +113,7 @@ def main() -> int:
                 sym = queue.pop(0)
             coin = sym.replace("_USDT", "")
             try:
-                fee, slip = costs(sym)
+                fee, slip, gap = costs(sym)
                 frames, funding, fine = {}, None, None
                 if SET == "daily":
                     frames["1d"] = frame(sym, "1d")
@@ -122,14 +130,14 @@ def main() -> int:
                         if len(df) < 2:          # CLAUDE.md: no bar floor but the physical one
                             entry["skipped"] = f"{len(df)} candles"
                         elif SET == "daily":
-                            out.write(json.dumps(sb.daily_line(coin, tf, df, pinned.get(f"{coin}|{tf}"), fee=fee,
-                                                               slip=slip, funding=funding,
-                                                               bar_ms=br.TFS[tf][1] * 1000, fine=fine),
-                                                 separators=(",", ":")) + "\n")
+                            out.write(json.dumps({**sb.daily_line(coin, tf, df, pinned.get(f"{coin}|{tf}"), fee=fee,
+                                                                  slip=slip, funding=funding,
+                                                                  bar_ms=br.TFS[tf][1] * 1000, fine=fine),
+                                                  "gap": gap}, separators=(",", ":")) + "\n")
                             n += 1
                         else:
-                            out.write(json.dumps(line(coin, tf, sb.pair(df, fee=fee, slip=slip, grid=GRID, targets=TARGETS, k=KEEP), fee, slip),
-                                                 separators=(",", ":")) + "\n")
+                            out.write(json.dumps({**line(coin, tf, sb.pair(df, fee=fee, slip=slip, grid=GRID, targets=TARGETS, k=KEEP), fee, slip),
+                                                  "gap": gap}, separators=(",", ":")) + "\n")
                             n += 1
                     except Exception as exc:                       # noqa: BLE001
                         entry["error"] = f"{type(exc).__name__}: {str(exc)[:200]}"

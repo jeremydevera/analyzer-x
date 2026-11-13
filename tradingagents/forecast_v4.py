@@ -171,7 +171,11 @@ def rule_words(window: int, win_rate: float, min_trades: int, tp_rule: str, sl_c
 END_CODE = v4_store.WHYS.index("END")      # a trade still open when the run ended: its dollars are made up
 
 
-def _load(db: Path, log) -> dict:
+def _load(db: Path, log, extra: bool = False) -> dict:
+    """Every trade the forecast may count, in the store's own order. `extra` also keeps each one's exit
+    kind, side and exit minute ("why", "side", "at" - the candle's time where the store has no minute):
+    the picker lab prints them in its trade logs; nothing in the forecast reads them, and without
+    `extra` the store is asked exactly what it was asked before."""
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
         meta = {k: v for k, v in con.execute("SELECT k, v FROM meta")}
@@ -195,7 +199,11 @@ def _load(db: Path, log) -> dict:
         exists[[r[0] for r in st]] = True
         chosen = skc == SKILLS.index(CHOSEN_SKILL) - 1
         parts = []
-        cur = con.execute("SELECT sid, ex, en, pnl, why FROM trade ORDER BY sid, ex, en")
+        more = ""
+        if extra:
+            has_at = any(r[1] == "at" for r in con.execute("PRAGMA table_info(trade)"))
+            more = ", side, " + ("COALESCE(at, ex)" if has_at else "ex")
+        cur = con.execute("SELECT sid, ex, en, pnl, why" + more + " FROM trade ORDER BY sid, ex, en")
         got = 0
         while True:
             rows = cur.fetchmany(500_000)
@@ -207,7 +215,7 @@ def _load(db: Path, log) -> dict:
                 log(f"forecast v4: read {got:,} trades")
     finally:
         con.close()
-    a = np.concatenate(parts) if parts else np.zeros((0, 4))
+    a = np.concatenate(parts) if parts else np.zeros((0, 7 if extra else 4))
     sid = a[:, 0].astype(np.int64)
     ex = a[:, 1].astype(np.int64)
     en = a[:, 2].astype(np.int64)
@@ -218,12 +226,25 @@ def _load(db: Path, log) -> dict:
     keep = (~chosen[sid] | (en >= split[sid])) & ~open_
     left_out = int((~(~chosen[sid] | (en >= split[sid]))).sum())
     left_open = int(open_.sum())
-    return {"meta": meta, "info": info, "exists": exists, "tfc": tfc, "skc": skc, "tp": tp, "sl": sl,
-            "sid": sid[keep], "ex": ex[keep], "en": en[keep], "pnl": pnl[keep],
-            "all_trades": int(len(sid)), "left_out": left_out, "left_open": left_open}
+    out = {"meta": meta, "info": info, "exists": exists, "tfc": tfc, "skc": skc, "tp": tp, "sl": sl,
+           "sid": sid[keep], "ex": ex[keep], "en": en[keep], "pnl": pnl[keep],
+           "all_trades": int(len(sid)), "left_out": left_out, "left_open": left_open}
+    if extra:
+        out.update(why=a[:, 4].astype(np.int8)[keep], side=a[:, 5].astype(np.int8)[keep],
+                   at=a[:, 6].astype(np.int64)[keep])
+    return out
 
 
 # ------------------------------------------------------------------ the walk
+def could_be_luck(days_traded, beat_days, profit, random_profit):
+    """THE LUCK BAR in one place: "could be luck" when it traded on fewer than 10 days, did not beat
+    random picks on clearly more than half of them (one-sided 95%), or did not beat them over the whole
+    walk. Works on plain numbers and on numpy arrays alike (the picker lab asks it of every rule set
+    at once)."""
+    return ((days_traded < 10) | (beat_days <= days_traded / 2 + LUCK_Z * np.sqrt(days_traded) / 2)
+            | (profit <= random_profit))
+
+
 def _figures(m, sub, pool_avg, day_month, covered_m, complete, covered_days, lsid_n, D, M) -> dict:
     p = sub["pnl"][m]
     k = int(p.size)
@@ -271,8 +292,7 @@ def _figures(m, sub, pool_avg, day_month, covered_m, complete, covered_days, lsi
     days_traded = int(traded.sum())
     profit = float(p.sum()) if k else 0.0
     random_profit = float(rd.sum())
-    luck = (days_traded < 10 or beat_days <= days_traded / 2 + LUCK_Z * math.sqrt(days_traded) / 2
-            or profit <= random_profit)
+    luck = bool(could_be_luck(days_traded, beat_days, profit, random_profit))
     months = [{"trades": int(cm[i]), "wins": int(wm[i]), "losses": int(cm[i] - wm[i]),
                "profit": round(float(pm[i]), 4), "random": round(float(rm[i]), 4),
                "covered": bool(covered_m[i]), "complete": bool(complete[i])} for i in range(M)]
@@ -300,7 +320,11 @@ def _figures(m, sub, pool_avg, day_month, covered_m, complete, covered_days, lsi
             "months": months, "predicted": predicted, "rank": rank, "top": top}
 
 
-def _walk(d: dict, end_s: int, log) -> dict:
+def _walk(d: dict, end_s: int, log, visit=None) -> dict:
+    """`visit(rule, m, sub, km)`, when given, is called once for every rule set walked, with the very mask
+    `m` of the trades it took (over `sub`, the walked trades of its kind; `sub["row"]` is each one's place
+    in `d`'s arrays) and `km`, every trade of its kind - so the picker lab (`v4_picker_lab`) reads the
+    same trades this walk counts, never a second copy of the rules. It changes nothing written here."""
     sid, ex, en, pnl = d["sid"], d["ex"], d["en"], d["pnl"]
     start = walk_from(end_s)
     D = (end_s - start) // DAY_S + 1
@@ -322,7 +346,7 @@ def _walk(d: dict, end_s: int, log) -> dict:
     j_sid = sid[sel]
     j_day = (en[sel] - start) // DAY_S
     dstart = start + j_day * DAY_S
-    t = {"sid": j_sid, "pnl": pnl[sel], "day": j_day,
+    t = {"sid": j_sid, "pnl": pnl[sel], "day": j_day, "row": sel,
          "month": np.searchsorted(np.array(ms), en[sel], side="right") - 1,
          "tfc": d["tfc"][j_sid], "skc": d["skc"][j_sid],
          "tpf": ~np.isnan(d["tp"][j_sid]) & (np.nan_to_num(d["tp"][j_sid]) > d["sl"][j_sid]),
@@ -410,6 +434,8 @@ def _walk(d: dict, end_s: int, log) -> dict:
                                                   "money": mr,
                                                   "words": rule_words(W, X, N, tp_rule, cap, tf, sk, mr),
                                                   **kind, **f})
+                                    if visit is not None:
+                                        visit(rules[-1], m, sub, km)
             log(f"forecast v4: {tf or 'any timeframe'} / {sk or 'any skill'} walked, {len(rules):,} rule sets")
     info = d["info"]
     for r in rules:

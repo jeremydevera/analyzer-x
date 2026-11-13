@@ -3182,6 +3182,9 @@ their backtest did"*, and the played-back design with *"go start use suporpower"
 * **Costs NOT charged, named on the rooms and Backtest v4:** every trade pays its coin's usual gap,
   not its own minute's order book (100% typical cost), and no trade is refused by the runner's cost
   check. Building them is a separate job. This is a lead to practice, never a reason for real money.
+  **The usual gap is the median of the coin's recorded minutes over 30 days** (`skill_bt.usual_gap`,
+  Nov 12, 2026), never one reading of the book as a machine runs - see "A coin's past is priced with
+  its USUAL gap" below (RCA-2026-11-12-B).
 * **STOPS AND TARGETS ARE SETTLED BY THE MINUTE (Nov 11, 2026).** The operator, asked whether 1-minute
   candles would be more precise (answer: for exits yes - XPIN 1h #LG9NSU4B stopped at 7:28am in
   practice and the 1-hour backtest booked 7:00am): *"okay then change backtest and the practice
@@ -3280,6 +3283,95 @@ answers: **fixed rooms, rule swapped** and **worst month green + beats random**.
 
 Guard: `tests/test_v4_picker.py` (22: each check, twins, keep/replace/off/back on, no churn, practice,
 month start, the rooms and tab reading it, the chain's order, the screen).
+
+## A coin's past is priced with its USUAL gap, never one reading of the book (MANDATORY — Nov 12, 2026)
+
+Bought the night the picker switched two rooms off (RCA-2026-11-12-B). Until then the skill
+backtest's machines looked at each coin's order book ONCE as they ran (about 7:10pm) and charged that
+buy-sell gap to every trade the coin ever made: CATL read 0.21% a side on Nov 11, 2026 and 0.86% on
+Nov 12, so its trade of Sep 01, 2026 10:00pm was +$1.30 one night and -$0.01 the next, rule set
+#CKVS7G7Z's September went from +$148.62 to -$55.56, and the cost of a trade moved by more than $0.25
+on 283 of 1,078 coins between two nights.
+
+* **The usual gap is `skill_bt.usual_gap(sym, day_s)`:** the median of the coin's own recorded minutes
+  (the costs store, the app's own recorded books laid over the exchange's record through
+  `cost_store.with_app_books`) over the `GAP_DAYS` = 30 days before the run's UTC midnight. Every
+  machine and every retry of a day reads the same minutes; the next night reads all but one day of
+  them again. Checked on the two nights that disagreed: CATL 0.6508% and 0.6558%, SLV 0.0749% and
+  0.0745%.
+* **`.github/scripts/skill_shard.py:costs` is the one place that may look at the book,** and only for
+  a coin with no recorded minute; every line it writes carries `gap` ({"from": "minutes" | "one
+  reading", ...}) and `v4_store.build` counts the coins each way in `meta["gaps"]`. A record month that
+  cannot be read fails the coin (redone alone), never a gap from half its months.
+* **The rule, anywhere a history is measured:** a cost charged to a whole history may not depend on
+  the minute the measurement ran. One reading is for the trade being placed now.
+* **A result is only as stable as the store under it.** Before trusting a ranking built on a store
+  that is re-measured nightly, measure it on two nights' stores; the picker lab keeps every night's
+  run for that (`v4_picker_lab.previous`).
+
+Guard: `tests/test_skill_usual_gap.py` (9).
+
+## The picker lab — twenty picker rules, walked forward (Nov 12, 2026)
+
+The operator, Nov 12, 2026: *"Can you create mo picker rule? As of now this is your only criteria? Could you
+give me 20 picker rule then do a backtest to see which of them is most profitable and highest winrate /
+Because low winrate does not mean its not profitable"*.
+
+* **What a picker rule is:** the test a rule set must pass to be given to a room, the order the passing
+  ones are taken in, and when a room drops the one it follows. `tradingagents/v4_picker_lab.py` `RULES`
+  holds twenty (ids hashed from the rule, `rule_id`); the first is the live picker's own test -
+  `v4_picker.judge` is CALLED, never copied - and the second is that test without its 3-month wait.
+  `python -m tradingagents.v4_picker_lab run` measures them and writes the page
+  (`<v4 home>/picker-lab/`: `lab.json`, `trades.pkl`, `page/index.html`, and one kept run a store day
+  in `runs/`); `page` rebuilds the page; `show` prints the table.
+* **No looking ahead, one engine.** A pick for a day is made at its 12:00am UTC from trades that CLOSED
+  before it; what the three rooms then make is every trade their rule sets' strategies OPENED that day.
+  Which trades a rule set takes is Forecast v4's own walk, read through `forecast_v4._walk(visit=)`
+  (it changes nothing the walk writes); the luck test is `forecast_v4.could_be_luck`, one function for
+  the forecast and the lab; a trade's side, exit kind and exit minute come from
+  `forecast_v4._load(extra=True)`, the same single read. The lab stops if its sums are not the
+  forecast's, or if the trades it reads back are not the ones its day-by-day totals counted.
+* **The same days for every rule, and more than one first pick.** The first pick is 31 days into the
+  walk; a store that ends on the stroke of midnight has no empty last day. A rule that holds what it
+  picked on day one is judged on ONE decision, so every rule is also started afresh every 7 days
+  (`start_days`) and the page prints how many starts made money - "Most money a trade" looked second
+  best on one night's store and made money from only 4 of its 9 starts.
+* **Two luck bars beside every result:** random strategies (the same number of trades at the average
+  trade of the same kind that day), and 200 random pickers drawing blindly - among any rule set that
+  trades, and among only those that made money over their last 30 days (the bar a rule's ORDER must
+  beat).
+* **It reads a private copy of the store** (`picker-lab/cache/rows-copy.db`, on the store's drive, one
+  file replaced by each run) and refuses to copy while the daily refresh is collecting or building: a
+  reader holding the live file when the refresh swaps it in fails that swap on Windows and the refresh
+  builds the whole store again (NEVER HAPPENED YET, `refresh_in_the_way`).
+* **The page** (`v4_picker_lab_page`, the standard kit): every row carries all its trades; figures are
+  worked out in the page from them, so the margin box rescales every dollar and "last N days" re-adds
+  each row from the trades OPENED in the window (the picker is not started again, said on the page);
+  refused when a row's trades are not the ones measured. Above everything it says how the store priced
+  each coin's gap and prints the kept run of the night before beside tonight's.
+* **Not in the test:** the live picker's practice check (no practice record exists for past days); each
+  room is its own account. NOTHING is switched: the live picker still runs its own test until the
+  operator names a rule.
+* **First runs, two nights, two answers** (https://claude.ai/artifact/9BwVguAn9WL8dkMaqcdMiW; 73 days
+  from Aug 31, 2026 8:00pm, 12,240 rule sets, 3 rooms, $5 x 20x). On the store to Nov 11, 2026 7:00pm
+  12 of the 20 made money (most: #UJ4MCMM5 +2,796.43, all of it in November; #935DAZVL +954.74;
+  #DSYBGJ67 +885.53 with 65.7% won); on the store to Nov 12, 2026 7:00pm ONE did (#64MVRAVZ "Wins 70%+
+  and makes money" +195.07 over 1,010 trades, 62.1% won; #DSYBGJ67 -476.57). The stores differ by the
+  one-reading gap above, so neither night is the answer. What both nights agree on: #64MVRAVZ made
+  money (+494.03, +195.07); the rooms with no picker made money (+395.44, +125.22) with the highest
+  win rate (68.3%, 66.6%); every rule that chases recent total money lost (#BKL8Y74D -10,843.12 and
+  -17,344.09, #AC44FNMN -29,149.20 and -37,917.10, #2HZEW2V8 -40,541.36 and -49,658.07); and the
+  operator's own point, tested as #YP34WQ5B (wins under half its trades, still in profit) and #65ZRPXEJ
+  (average win 2x the average loss), lost both nights (-11,375.36 / -17,344.09 and -11,860.37 /
+  -17,344.09): the rule sets that fit were trend-followers that gave it back the next month. Blind
+  pickers lost too (among rule sets in profit a middle -1,106.80, 7 of 200 in profit). **Run it again
+  on a store priced with the usual gap (from the refresh of Nov 13, 2026) before naming a rule.**
+
+Guard: `tests/test_v4_picker_lab.py` (40: the twenty rules and their ids, the live test called not
+copied, every pick decision, no look-ahead - a changed future changes no earlier pick -, sums equal to
+Forecast v4's, trades read back equal to the totals, the start days, the luck shelves, the copy guard,
+the kept runs and the night before, and the page's own script run under node against the run's
+figures).
 
 ## Strategies for every coin and every timeframe (MANDATORY — Nov 05, 2026)
 

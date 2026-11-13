@@ -137,6 +137,47 @@ def fine_from_ms(day_ms: int) -> int:
     return int(day_ms) - MINUTE_DAYS * 86_400_000
 
 
+GAP_DAYS = 30                     # a coin's usual gap: the median of its recorded minutes of this many days
+
+
+def usual_gap(sym: str, day_s: int, *, days: int = GAP_DAYS, load=None, books=None) -> tuple[float | None, int]:
+    """The coin's USUAL one-side buy-sell gap for the run of the UTC day starting `day_s`: the median of
+    its own recorded minutes (each minute's order book walked for the app's $100, both sides,
+    `cost_store.usual_slip`) over the `days` days before that midnight - and how many minutes that is.
+    The minutes are the exchange's record with the app's own recorded books laid over it, as every
+    backtest reads them (`cost_store.with_app_books`). Every machine and every retry of one day's run
+    reads the same minutes, and tomorrow's run reads all but one day of them again, so a coin's past is
+    priced the same from one night to the next.
+
+    NEVER ONE READING OF THE BOOK AT THE MOMENT A MACHINE RUNS (RCA-2026-11-12-B): until Nov 12, 2026 the
+    whole history of a coin paid whatever its book showed at about 7:10pm that night - CATL 0.21% a side
+    on Nov 11 and 0.86% on Nov 12, so the same September trade read +$1.30 one night and -$0.01 the next.
+
+    (None, 0) when no usable minute of the coin was recorded in those days - the caller then says so.
+    A month of the record that cannot be READ raises (`strict`): the coin is redone alone, never priced
+    from half its months. `load` is `cost_store.load_month` and `books` `cost_store.with_app_books`,
+    for tests."""
+    import numpy as np
+
+    from tradingagents import cost_store
+
+    load = load or cost_store.load_month
+    books = books or cost_store.with_app_books
+    lo, hi = int(day_s) - int(days) * 86_400, int(day_s)
+    months = sorted({cost_store._month_key(t) for t in range(lo, hi, 86_400)} | {cost_store._month_key(hi - 1)})
+    got = None
+    for ym in months:
+        part = load(sym, ym, strict=True)
+        if part is not None:
+            got = cost_store.merge(got, part)
+    got = books(sym, got if got is not None else cost_store.empty(), lo, hi)
+    t = np.asarray(got["t"])
+    if not len(t):
+        return None, 0
+    keep = (t >= lo) & (t < hi)
+    return cost_store.usual_slip({k: np.asarray(got[k])[keep] for k in cost_store.KEYS})
+
+
 class Fine:
     """The minutes (or, over the exchange's hole, 5-minute bars) between `from_ms` and `to_ms`, as
     `settle_in_minutes` reads them: sorted opens in ms, highs, lows. A candle is settled by the minute

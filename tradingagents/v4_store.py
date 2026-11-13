@@ -177,6 +177,8 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
     ends = []
     exit_counts = {"minute": 0, "candle": 0, "unclear": 0}   # how the daily run settled stops and targets
     seen_lines: set = set()
+    gap_counts: dict[str, int] = {}                          # where each coin's usual gap came from
+    seen_gaps: set = set()
     t0 = time.time()
     for name, who in sources:
         path = src / name
@@ -190,6 +192,10 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
                 for k in ("minute", "candle", "unclear"):
                     exit_counts[k] += int(x["exits"].get(k) or 0)
                 exit_counts["from_s"] = max(exit_counts.get("from_s", 0), int(x["exits"].get("from_ms") or 0) // 1000)
+            if (name, x["coin"]) not in seen_gaps:                                    # one count a coin
+                seen_gaps.add((name, x["coin"]))
+                said = (x.get("gap") or {}).get("from") or "not said"
+                gap_counts[said] = gap_counts.get(said, 0) + 1
             rid = row_id(x["coin"], x["tf"], c)
             if rid in seen:                      # the same strategy in two files: the first one stays
                 dups += 1
@@ -237,6 +243,10 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
             "sources": per_source, "data_end_s": max(ends) if ends else 0,
             "trades": con.execute("SELECT COUNT(*) FROM trade").fetchone()[0],
             "measured_margin": MEASURED_MARGIN, "leverage": LEVERAGE}
+    if any(k != "not said" for k in gap_counts):
+        # the daily run prices a coin's past with the median of its recorded minutes (RCA-2026-11-12-B);
+        # "one reading" counts the coins with no recorded minute, priced by one look at the book
+        meta["gaps"] = gap_counts
     if exit_counts["minute"] or exit_counts["candle"]:
         # stops and targets settled minute by minute (Nov 11, 2026): the page says how far, from data
         meta["exits"] = exit_counts

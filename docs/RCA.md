@@ -172,6 +172,44 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-12-B — every night the skill backtest re-priced each coin's whole past with one reading of its buy-sell gap, so the same months turned from profit to loss overnight and the picker switched two rooms off
+
+**CEO**
+
+* What you saw: on Nov 12, 2026 8:16pm the picker switched #RSS7CUKH and #7T3VJU82 off ("a whole month lost money") and moved #D7EN8BNV to #KK9SRY28 - one night after those same rule sets showed every month in profit.
+* Why: the months had not changed, their price had. Each night's measurement looked ONCE at how far apart a coin's buy and sell prices were at about 7:10pm and charged that to every trade the coin ever made; the next night it looked again and saw a different number.
+* What stops it now: a coin's past is priced with the middle of its recorded minutes over the last 30 days, which is the same from one night to the next; a test holds it, and the store counts any coin that still had to be priced by one look.
+
+**DEV**
+
+* `.github/scripts/skill_shard.py:costs` called `fx.book_cost(sym, 100)` once a coin as the machine ran and passed it as `slip` to `skill_bt.daily_line` for every trade of the coin's history; `v4_store` files it and a room's follower charges the list's `slip`.
+* Invariant broken: **a cost charged to a whole history must not depend on the minute the measurement ran** - and "the coin's usual gap" must be what the code computes (label-must-match-data, on a cost).
+* Guard: `tests/test_skill_usual_gap.py` (9: the median of the window's minutes, two nights the same, the app's own books laid over the record, months read strictly, the machines never looking at the book for a coin with recorded minutes, every line saying where its gap came from, the store counting them).
+
+**SAW** - testing twenty picker rules for the operator ("Could you give me 20 picker rule then do a backtest to see which of them is most profitable and highest winrate"): the same test on two consecutive nights' stores gave opposite answers, and that evening the live picker's first real pass switched two of the three rooms off.
+
+**TIMELINE**
+
+1. Nov 05, 2026: the skill runs begin; `costs()` reads each coin's book once, as its machine runs. Every store built since is priced that way.
+2. Nov 11, 2026 7:10pm (runs 43124758170, 43124776200, 43124794049): CATL reads 0.2105% a side. Its 1h VWAP strategy's trade of Sep 01, 2026 10:00pm (long, closed Sep 02, 2026 10:00am) is +$1.3038; rule set #CKVS7G7Z's whole months are +22.67 / +148.62 / +170.43 and 43 rule sets pass the picker's test.
+3. Nov 12, 2026 7:10pm (runs 43334307215, 43334329059, 43334348969): CATL reads 0.8635%. The same trade is -$0.0116 (2 x 0.653% of $100 = $1.31 worse, on every trade CATL ever made); #CKVS7G7Z's September is -55.56 and #7T3VJU82's -25.82; ONE rule set passes.
+4. Nov 12, 2026 8:16pm, the picker's first real pass: #D7EN8BNV replaced by #KK9SRY28 ("the month so far is losing (-10.59 over 37 trades)"), #RSS7CUKH switched off ("a whole month lost money (worst -7.81)"), #7T3VJU82 switched off ("worst -25.82"), "no other rule set passes".
+5. Measured over both nights: of 1,078 coins the reading changed by 1.25x or more on 572 and by 2x or more on 157; the cost of one trade moved by more than $0.25 on 283 coins and by more than $0.50 on 189 (LNG 14.22% to 1.21%, PROLOGUE 0.08% to 6.87%).
+6. The picker lab on the two stores: 12 of 20 picker rules made money on the first night's, 1 of 20 on the second's (#DSYBGJ67 +885.53 then -476.57).
+7. After the fix, the usual gap worked out for the two nights' midnights: CATL 0.6508% and 0.6558% (36,769 recorded minutes each), SLV 0.0749% and 0.0745%, BTC 0.0001% both.
+
+**ROOT CAUSE** - one live reading of the order book, taken whenever a machine happened to run, was used as "the coin's usual gap" for its whole history.
+
+**WHY IT WAS NOT CAUGHT** - every test of the skill measurement handed `slip` in as a fixed number (`daily_line(..., slip=0.0003)`), so none stood where the number comes from, and the shard was tested by reading its source for names the old line satisfied. The daily agreement check compares practice with the same night's backtest - both priced by the same reading - so it printed the drift as a small "$0.42 apart" and passed. Nothing had ever measured one coin on two nights: the picker lab was the first, and only because its trial run and its final run fell on different stores. And "usual gap" stood in the docs, the page and the docstring while the code took one look - a label never held against its source because it was a cost, not a screen.
+
+**COST** - none in money (practice only). Two practice rooms opened no new trade from Nov 12, 2026 7:00pm until their next list; every Backtest v4 and Forecast v4 figure from Nov 05 to Nov 12, 2026, and each day's switched-on lists, were priced by that night's reading.
+
+**FIX** - this commit: `skill_bt.usual_gap` (the median of the coin's recorded minutes over `GAP_DAYS` = 30 days before the run's UTC midnight, the app's own recorded books laid over the exchange's record, months read strictly); `skill_shard.costs` uses it and looks at the book only for a coin with no recorded minute, every line carrying `gap`; `v4_store.build` counts them in `meta["gaps"]`. The rooms the picker switched off are judged again by the pass of Nov 13, 2026 7:05pm, on prices that no longer move with the hour.
+
+**GUARD** - `tests/test_skill_usual_gap.py::test_tomorrows_run_prices_the_coin_as_tonights_did` and `::test_the_machines_price_a_coin_with_its_usual_gap_and_never_look_at_the_book_for_it` (the old `costs` returned two values and always looked at the book: both fail on it), `::test_the_usual_gap_is_the_median_of_the_recorded_minutes_of_the_last_thirty_days`; and `tests/test_v4_picker_lab.py::test_every_run_is_kept_by_the_day_of_its_store_and_the_page_shows_the_night_before` keeps each night's lab run, so two nights can always be compared.
+
+---
+
 ## RCA-2026-11-12-A — every skill room tab stayed blurred for 30 seconds, then said "strategies" and "exchange keys" were "still not loading, retrying" for as long as it was open
 
 **CEO**

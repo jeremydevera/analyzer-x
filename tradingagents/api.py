@@ -3389,7 +3389,8 @@ def _follow_heartbeat(pid: str) -> dict | None:
     nxt = (int(float(last)) // _v4f.EVERY_S + 1) * _v4f.EVERY_S if last else None
     return {"last_pass_s": last, "last_candle_ms": st.get("last_candle_ms"), "next_candle_s": nxt,
             "held_at": st.get("held_at"), "held_why": held_why, "why": st.get("why"),
-            "stale": bool(stale), "errors": st.get("errors") or [], "filled_in": st.get("filled_in") or 0}
+            "stale": bool(stale), "errors": st.get("errors") or [], "filled_in": st.get("filled_in") or 0,
+            "fills": st.get("fills")}
 
 
 @app.get("/api/trade/v4-follow")
@@ -3439,6 +3440,8 @@ def trade_v4_follow(page: int = 1) -> dict:
             "switched_on": rows, "total_on": len(on), "page": page, "pages": pages, "per_page": per,
             "today_landed": landed, "today_why": today_why, "window_days": rule.get("window"),
             "fallback_from": st.get("fallback_from"), "fallback_words": fallback_words, "agreement": ag,
+            # the fills this room wrote at the recorded order book of their minute, and at the usual gap
+            "fills": st.get("fills"),
             "daily": daily}
 
 

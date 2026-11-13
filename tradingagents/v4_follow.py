@@ -47,6 +47,14 @@ The rules, each one from the spec:
 * Every exit pays the funding settled inside its hold, read as the backtest's shard reads it: back
   to the shard's 1d frame start (or the oldest open trade, if older), and from a read made DURING
   this pass - the adapter's half-hour copy would miss a settlement at the exit's own close.
+* EVERY FILL PAYS THIS PC'S OWN RECORDED ORDER BOOK OF ITS MINUTE (Nov 13, 2026, operator: "build
+  it"): the same `skill_bt.step(book=)` the nightly run uses, handed this PC's recording as it stands
+  (`app_books.book_for(published_only=False)`, never a download). The recorder writes every five
+  minutes and a pass runs 20 seconds after a close, so a fill whose reading is not on disk yet WAITS
+  (`skill_bt.BookNotYet`: no row, no state moved; `waiting` counts it and one more pass runs
+  `RETRY_AFTER_S` later); after `BOOK_WAIT_S` with no reading - or at once when nothing is on its way
+  (an old candle, the recorder not running) - the fill pays the usual gap as before, the row says so
+  (`real`) and the room counts it (`fills`). A trade already open keeps the price it was entered at.
 * A row is never written twice: before appending, the follower checks the room's own trade
   record (and the keys it remembers) for that trade id and action - a pass killed between a row and
   its state is replayed by the next one without a duplicate. And only ONE pass runs at a time:
@@ -73,6 +81,8 @@ STALE_S = 1800                # a heartbeat older than this is a room "not follo
 START_BACK_DAYS = 7           # a room with no state starts at its oldest list this recent
 SPARE_BARS = 5
 FINE_WAIT_S = 600             # a candle's last minute not final yet: wait this long, then the close decides
+BOOK_WAIT_S = 600             # a fill's order-book reading not on disk yet: wait this long, then the usual gap
+RETRY_AFTER_S = 360           # a pass that waited runs once more this long after (the recorder writes every 300 s)
 WRITTEN_KEEP = 5000           # trade rows (id + action) remembered as written, newest last
 REPLACE_BUDGET_S = 3.0
 BUSY = ("another follower pass is running (it holds the follow lock); this pass wrote nothing and "
@@ -203,6 +213,28 @@ def _minutes_default(sym, start_s, end_s):
     return fx.minutes(sym, int(start_s), int(end_s))
 
 
+def _books_default(sym, start_s, end_s):
+    """This PC's own recording of the coin's order book between two instants, as it stands on disk
+    (`published_only=False`) - NEVER a download: what this PC did not record, the follower prices by the
+    usual gap. None when this PC records nothing."""
+    from tradingagents import app_books as ab
+
+    if not ab.HOME.exists():
+        return None
+    return ab.book_for(sym, int(start_s), int(end_s), published_only=False)
+
+
+def _recording() -> bool:
+    """Is this PC's order-book recorder running - so that a reading of the last minutes may still be on
+    its way to disk? When it is not, nothing is, and a fill is priced by the usual gap at once."""
+    try:
+        from tradingagents import app_books as ab
+
+        return bool(ab.HOME.exists() and ab.running())
+    except Exception:                                                   # noqa: BLE001
+        return False
+
+
 def _listed_default():
     """{symbol: contract size} of every contract the exchange trades: one read gives both the
     delisting check and the size a position's `vol` is counted in (contracts, as the runner's)."""
@@ -217,12 +249,15 @@ class _Reads:
     """Every read a pass makes, made once: candle frames, funding, the contract list, day lists and
     signals. Nothing here is kept between passes."""
 
-    def __init__(self, now_s, fetch, funding_of, listed, lists_dir, minutes=None):
+    def __init__(self, now_s, fetch, funding_of, listed, lists_dir, minutes=None, books=None,
+                 book_wait_s: float = 0):
         self.now_s = float(now_s)
         self.now_ms = int(now_s * 1000)
         self._fetch, self._funding_of, self._listed = fetch, funding_of, listed
         self._minutes = minutes
         self._fine: dict = {}
+        self._books, self._book = books, {}
+        self.book_wait_ms = int(float(book_wait_s) * 1000)
         self.lists_dir = Path(lists_dir) if lists_dir else lists_home()
         self._frames: dict = {}
         self._warm: dict = {}
@@ -268,6 +303,20 @@ class _Reads:
             hit = sb.read_fine(sym, from_ms, minutes=self._minutes, now_s=self.now_s)
             self._fine[sym] = hit
         return hit
+
+    def book(self, sym: str, from_ms: int):
+        """The coin's recorded order books from `from_ms` to now (`skill_bt.read_book`, this PC's own
+        recording), read ONCE a pass - again only to reach further back. A reading of the last
+        `BOOK_WAIT_S` that is not there yet is waited for (`skill_bt.BookNotYet`)."""
+        from tradingagents import skill_bt as sb
+
+        lo = max(int(from_ms) // 1000, sb.REAL_FROM_S)
+        hit = self._book.get(sym)
+        if hit is None or lo < hit[0]:
+            hit = (lo, sb.read_book(sym, lo, int(self.now_s) + 60, published_only=False, reader=self._books,
+                                    now_ms=self.now_ms, wait_ms=self.book_wait_ms))
+            self._book[sym] = hit
+        return hit[1]
 
     def opens(self, df) -> list:
         k = id(df)
@@ -426,6 +475,11 @@ class _Writer:
             self.filled.add(row["trade_id"])
         return True
 
+    def _count(self, real: bool) -> None:
+        """One more fill this room wrote, at the recorded order book (`real`) or at the usual gap."""
+        f = self.st.setdefault("fills", {"real": 0, "est": 0, "since_s": self.now_s})
+        f["real" if real else "est"] = int(f.get("real" if real else "est") or 0) + 1
+
     def _slot(self, sym: str, key: str, position: dict | None) -> None:
         slot = self.at.state_key(sym, True, key)
         book = self.at.load_state()
@@ -459,14 +513,18 @@ class _Writer:
                       "trade_id": tid, "opened_at": fill_s, "side": "LONG" if side > 0 else "SHORT",
                       "vol": vol, "entry": px, "tp": tp, "sl": sl, "margin": margin, "leverage": lev,
                       "step": 0, "dry_run": True, "fee": fee, "slip": slip, "v4_id": sid,
+                      # did the entry pay the recorded order book of its minute (True) or the usual gap
+                      "real": bool(pos.get("real")),
                       "written_at": self.now_s}, int(pos["t"])):
             self.out["entered"] += 1
+            self._count(bool(pos.get("real")))
         self._slot(sym, key, {"side": side, "vol": vol, "entry": px, "tp": tp, "sl": sl, "margin": margin,
                               "strategy": key, "entry_ts": entry_ts, "opened_at": fill_s, "trade_id": tid,
                               "dry": True, "bracket": True, "v4_id": sid})
 
-    def exit(self, sid: str, row: dict, trade: dict, bar_ms: int) -> None:
+    def exit(self, sid: str, row: dict, trade: dict, bar_ms: int, entry_real: bool = False) -> None:
         sym, key = f"{row['coin']}_USDT", f"v4_{sid}"
+        marked = int(trade.get("real") or 0)           # how many of the trade's two fills were real
         entry_ts = int(trade["entry_ms"]) // 1000
         fill_s = (int(trade["entry_ms"]) + bar_ms) // 1000
         # a trade the minutes settled ends in its own minute (`at`); any other at its candle's close
@@ -476,7 +534,7 @@ class _Writer:
              "trade_id": tid, "entry_ts": entry_ts, "opened_at": fill_s, "held_s": exit_s - fill_s,
              "side": "LONG" if trade["side"] > 0 else "SHORT", "entry": float(trade["entry_px"]),
              "exit": float(trade["exit_px"]), "pnl_est": float(trade["pnl"]), "pnl_source": "v4_engine",
-             "step_next": 0, "dry_run": True, "v4_id": sid, "written_at": self.now_s,
+             "step_next": 0, "dry_run": True, "v4_id": sid, "written_at": self.now_s, "real": marked,
              "v4_candle": int(trade["exit_ms"]) // 1000}      # the candle it ended in: the agreement's key
         if trade.get("at") is not None:
             x["by_minute"] = True
@@ -486,6 +544,7 @@ class _Writer:
             x["fund_unknown"] = True
         if self._put(x, int(trade["exit_ms"])):
             self.out["exited"] += 1
+            self._count(marked - int(bool(entry_real)) > 0)
         self._slot(sym, key, None)
 
 
@@ -500,7 +559,8 @@ class _Room:
         self.st.setdefault("pending", {})
         self.errors: list[str] = []
         self.tally: dict = {}          # candle-steps of a held trade settled by minute / by candle
-        self.out = {"processed": 0, "entered": 0, "exited": 0, "held_at": None, "errors": self.errors}
+        self.out = {"processed": 0, "entered": 0, "exited": 0, "held_at": None, "waiting": 0,
+                    "errors": self.errors}
         self.newest_close = int(self.st.get("last_candle_ms") or 0)
 
     # -- the days whose lists have landed
@@ -572,15 +632,20 @@ class _Room:
             # the minutes the daily run read for THIS midnight: MINUTE_DAYS back from it, so a candle is
             # settled by the minute here exactly when it was in the backtest this room was chosen from
             fine = R.fine(sym, sb.fine_from_ms(int(end_ms) // DAY_MS * DAY_MS))
+            # ... and this PC's recorded order books over the same stretch: a carried trade is entered at
+            # the price the backtest's will be, so its stop frees the strategy on the same candle
+            book = R.book(sym, sb.fine_from_ms(int(end_ms) // DAY_MS * DAY_MS))
             _done, pos = sb.run(df, R.warm_signals(row, df, end_ms), stop=float(row["stop"]),
                                 fee=float(row["fee"]), slip=float(row["slip"]), target=row.get("target"),
-                                funding=fund, bar_ms=bar_ms, fine=fine)
+                                funding=fund, bar_ms=bar_ms, fine=fine, book=book)
         return {"row": row, "last_ms": opens[-1] if opens else int(end_ms) - 1,
                 "last_close": float(df["close"].iloc[-1]) if len(df) else None,
                 "pos": pos, "carried": pos is not None, "cold": False, "fails": 0,
                 "pos_fee": float(row["fee"]), "pos_slip": float(row["slip"])}
 
     def _warm_pending(self) -> None:
+        from tradingagents import skill_bt as sb
+
         st, retry = self.st, []
         for sid, p in sorted(st["pending"].items()):
             row = p["row"]
@@ -591,6 +656,8 @@ class _Room:
             try:
                 st["strats"][sid] = self._warm(sid, row, int(p["day_s"]) * 1000)
                 del st["pending"][sid]
+            except sb.BookNotYet:             # a reading still on its way: the next pass, not a problem
+                self.out["waiting"] += 1
             except Exception:                                          # noqa: BLE001
                 retry.append(sid)
         for sid in retry:                     # once more, after the others
@@ -598,6 +665,8 @@ class _Room:
             try:
                 st["strats"][sid] = self._warm(sid, p["row"], int(p["day_s"]) * 1000)
                 del st["pending"][sid]
+            except sb.BookNotYet:
+                self.out["waiting"] += 1
             except Exception as exc:                                    # noqa: BLE001
                 self.errors.append(f"{p['row']['coin']} {p['row']['tf']} {sid}: {type(exc).__name__}: {exc}")
         if st["strats"] or retry:
@@ -708,9 +777,9 @@ class _Room:
             bar_ms = _bar_ms(row["tf"])
             trade = sb.close_position(pos, px, int(e["last_ms"]), why="DELISTED", stop=float(row["stop"]),
                                       fee=float(e.get("pos_fee", row["fee"])), target=row.get("target"),
-                                      bar_ms=bar_ms, funding=fund)
+                                      bar_ms=bar_ms, funding=fund, real=int(bool(pos.get("real"))))
             if not e.get("carried"):
-                self.W.exit(sid, row, trade, bar_ms)
+                self.W.exit(sid, row, trade, bar_ms, entry_real=bool(pos.get("real")))
             from tradingagents.positions_view import fmt_when
 
             why += f"; its trade closed at the candle of {fmt_when(int(e['last_ms']) // 1000)}"
@@ -751,7 +820,11 @@ class _Room:
                     self._done_candle(e, o, close, bar_ms)
                     i += 1
                     continue
-                e.update(self._warm(sid, row, o))       # switched on again: warmed up at this candle
+                try:
+                    e.update(self._warm(sid, row, o))   # switched on again: warmed up at this candle
+                except sb.BookNotYet:                   # its last reading is still on its way
+                    self.out["waiting"] += 1
+                    break
             elif e.get("pos") is None and not on:
                 e["cold"] = True                         # switched off, holding nothing
                 self._done_candle(e, o, close, bar_ms)
@@ -771,13 +844,20 @@ class _Room:
                 # for) is settled by the close at once, as the daily run settles it.
                 if len(fine.t) and not fine.covers(o, bar_ms) and o + bar_ms > fine.to_ms and \
                         R.now_ms - (o + bar_ms) < FINE_WAIT_S * 1000:
+                    self.out["waiting"] += 1
                     break
-            new, done = sb.step(pos, sig, close=close, when_ms=o, bar_ms=bar_ms, stop=float(row["stop"]),
-                                fee=fee, slip=slip, target=row.get("target"), funding=fund, fine=fine,
-                                tally=self.tally)
+            try:
+                new, done = sb.step(pos, sig, close=close, when_ms=o, bar_ms=bar_ms, stop=float(row["stop"]),
+                                    fee=fee, slip=slip, target=row.get("target"), funding=fund, fine=fine,
+                                    tally=self.tally, book=R.book(f"{row['coin']}_USDT", o))
+            except sb.BookNotYet:
+                # a fill of this candle has no order-book reading on disk YET (the recorder writes every
+                # five minutes): nothing was written and nothing moved - the candle waits for it
+                self.out["waiting"] += 1
+                break
             if done is not None:
                 if not e.get("carried"):
-                    self.W.exit(sid, row, done, bar_ms)
+                    self.W.exit(sid, row, done, bar_ms, entry_real=bool((pos or {}).get("real")))
                 e["carried"] = False
             if new is not None and new is not pos:      # a new trade on this candle's close
                 if on:
@@ -813,13 +893,17 @@ class _Room:
 
 # ------------------------------------------------------------------ the pass
 def pass_once(now_s: float | None = None, *, fetch=None, funding_of=None, listed=None,
-              lists_dir: Path | None = None, minutes=None) -> dict:
+              lists_dir: Path | None = None, minutes=None, books=None, book_wait_s: float | None = None) -> dict:
     """One pass over every follower room: each strategy advanced through every closed candle not
-    yet processed. Returns {pid: {processed, entered, exited, held_at, errors}}. `fetch(sym, tf,
-    bars=None, end_ms=None)`, `funding_of(sym)` and `listed()` default to the exchange (one door)."""
+    yet processed. Returns {pid: {processed, entered, exited, held_at, waiting, errors}}. `fetch(sym,
+    tf, bars=None, end_ms=None)`, `funding_of(sym)` and `listed()` default to the exchange (one door);
+    `books(sym, start_s, end_s)` to this PC's own recorded order books, a reading of the last
+    `BOOK_WAIT_S` waited for only while the recorder is running (`book_wait_s` overrides)."""
     from tradingagents import profiles
 
     now_s = time.time() if now_s is None else float(now_s)
+    if book_wait_s is None:
+        book_wait_s = BOOK_WAIT_S if (books is not None or _recording()) else 0
     with _follow_lock() as held:
         if not held:
             # ANOTHER PASS IS WRITING (final review, Nov 11, 2026): the writer reads the room's record
@@ -827,7 +911,8 @@ def pass_once(now_s: float | None = None, *, fetch=None, funding_of=None, listed
             return {pid: {"processed": 0, "entered": 0, "exited": 0, "held_at": None, "skipped": True,
                           "errors": [BUSY]} for pid in rooms()}
         R = _Reads(now_s, fetch or _fetch_default, funding_of or _funding_default, listed or _listed_default,
-                   lists_dir, minutes or _minutes_default)
+                   lists_dir, minutes or _minutes_default, books=books or _books_default,
+                   book_wait_s=book_wait_s)
         out = {}
         for pid in rooms():
             with profiles.using(pid):
@@ -930,6 +1015,9 @@ def status(pid: str, now_s: float | None = None, lists_dir: Path | None = None) 
     fb_day = _day_of(str(fallback)) if fallback else None
     return {"last_pass_s": last, "last_candle_ms": st.get("last_candle_ms"), "held_at": held, "why": why,
             "filled_in": int(st.get("filled_in") or 0), "errors": errs, "switched_on": on,
+            # the fills this room wrote since real prices (Nov 13, 2026): at the recorded order book of
+            # their minute (`real`) or, with no reading, at the coin's usual gap (`est`); None before any
+            "fills": st.get("fills") if isinstance(st.get("fills"), dict) else None,
             # WAS TODAY'S LIST EXAMINED AT ALL (final review, Nov 11, 2026): an empty `switched_on`
             # before the list lands is "nothing looked at yet", never "nothing passes"
             "today_s": today, "today_landed": landed, "today_list_error": list_error,
@@ -956,6 +1044,7 @@ def agreement_of(pid: str, lists_dir: Path | None = None) -> dict | None:
 
 # ------------------------------------------------------------------ the supervisor's tick
 _DONE: dict = {"slot": None}
+_RETRY: dict = {"at": None}       # when the slot's pass waited for a reading: one more pass at this time
 _SAID: dict = {"text": None}
 
 
@@ -981,6 +1070,9 @@ def _sentence(res: dict) -> str:
             bits.append(f"{profiles.name_of(pid)} waiting for the list of {fmt_when(int(r['held_at']))}")
         if r.get("errors"):
             bits.append(f"{profiles.name_of(pid)}: {len(r['errors'])} problem(s), first: {r['errors'][0]}")
+        if r.get("waiting"):
+            bits.append(f"{profiles.name_of(pid)}: {r['waiting']} strategy(ies) waiting for a recorded "
+                        f"order book or a candle's last minute")
         if r.get("unreadable"):           # the log (never a screen) says WHERE, for the repair
             with profiles.using(pid):
                 bits.append(f"{profiles.name_of(pid)}'s follower record is {state_path()}")
@@ -996,19 +1088,26 @@ def tick(now_s: float | None = None) -> dict | None:
 
 
 def _tick(now_s: float | None = None) -> dict | None:
-    """The pass for the newest slot, once. It takes NO lock of its own: `pass_once` holds
-    `follow.lock`, and a pass that finds it held (another pass is writing) leaves the slot to be
-    tried again at the next poll."""
+    """The pass for the newest slot, once - and once more `RETRY_AFTER_S` after a pass in which
+    something WAITED (a fill's order-book reading, or a candle's last minute, not on disk yet), so a
+    fill is written about six minutes after its candle instead of at the next close. It takes NO lock
+    of its own: `pass_once` holds `follow.lock`, and a pass that finds it held (another pass is writing)
+    leaves the slot to be tried again at the next poll."""
     try:
         now_s = time.time() if now_s is None else float(now_s)
         slot = _slot(now_s)
-        if _DONE["slot"] is not None and _DONE["slot"] >= slot:
+        new_slot = _DONE["slot"] is None or _DONE["slot"] < slot
+        retry = _RETRY.get("at")
+        if not new_slot and (retry is None or now_s < retry):
             return None
-        was, _DONE["slot"] = _DONE["slot"], slot
+        was = _DONE["slot"]
+        _DONE["slot"], _RETRY["at"] = slot, None
         res = pass_once(now_s)
         if any(r.get("skipped") for r in res.values()):
-            _DONE["slot"] = was
+            _DONE["slot"], _RETRY["at"] = was, retry
             return None
+        if any(int(r.get("waiting") or 0) for r in res.values()) and now_s + RETRY_AFTER_S < slot + EVERY_S:
+            _RETRY["at"] = now_s + RETRY_AFTER_S
         _say(_sentence(res))
         return res
     except Exception as exc:                                            # noqa: BLE001

@@ -869,3 +869,216 @@ def test_a_warm_up_reads_the_minutes_the_daily_run_reads_for_that_midnight(world
     world.run(T0 + 20)
     starts = [c[1] for c in world.m.minute_calls]
     assert min(starts) == sb.fine_from_ms(T0 * 1000) // 1000
+
+
+# ------------------------------------------------------------------ real prices (Nov 13, 2026)
+def _readings(rows: dict):
+    """{minute_ms: (bid, ask, buy, sell)} -> this PC's recording, as `pass_once(books=)` reads it:
+    `books(sym, start_s, end_s)` answers the app's own readings stamped in [start_s, end_s]."""
+    def books(sym, start_s, end_s):
+        keys = sorted(k for k in rows if start_s * 1000 <= k <= end_s * 1000)
+        return {"t": np.array([k // 1000 for k in keys], dtype="int64"),
+                "bid": np.array([rows[k][0] for k in keys], dtype="float64"),
+                "ask": np.array([rows[k][1] for k in keys], dtype="float64"),
+                "buy": np.array([rows[k][2] for k in keys], dtype="float32"),
+                "sell": np.array([rows[k][3] for k in keys], dtype="float32"),
+                "exhausted": np.zeros(len(keys), dtype=bool),
+                "source": np.full(len(keys), 3, dtype="int8")}
+    return books
+
+
+def _thin_book(px: float, lean: float = 0.004):
+    """A thin coin's reading around a last price: the middle sits `lean` BELOW it (the last print was a
+    buyer lifting the ask) and $100 walks 0.6% up the asks, 0.5% down the bids."""
+    mid = px * (1 - lean)
+    return (mid * 0.999, mid * 1.001, 0.006, 0.005)
+
+
+@pytest.mark.parametrize("strategy,params,stop,target", [
+    ("bf_momentum", {"lookback": 10}, 0.015, None),
+    ("sma_crossover", {"fast_period": 3, "slow_period": 8}, 0.015, 0.01),
+    ("rsi_reversal", {"period": 7, "overbought": 70, "oversold": 30}, 0.02, None),
+])
+def test_follower_and_engine_write_the_same_trade_to_the_cent_with_the_same_readings(world, strategy, params,
+                                                                                      stop, target):
+    """ONE FUNCTION prices both sides: a room and tomorrow's backtest of the same trade, given the same
+    candles, minutes and recorded order books, agree on every price and every cent."""
+    rng = np.random.default_rng(11)
+    before, after = 400, 3 * 24 + 6
+    closes = 100 * np.exp(np.cumsum(rng.normal(0, 0.006, before + after)))
+    first_ms = (T0 - before * H) * 1000
+    world.m.add("AAA_USDT", closes, first_ms)
+    minutes = _minute_rows(closes, first_ms, wick=0.008)
+    world.m.minute_rows["AAA_USDT"] = minutes
+    rec = {t: _thin_book((h + lo) / 2) for t, h, lo in minutes}                      # every minute recorded ...
+    rec.update({first_ms + (k + 1) * H_MS: _thin_book(c) for k, c in enumerate(closes)})   # ... and every close
+    books = _readings(rec)
+    r = row("TESTAAA1", strategy=strategy, params=params, stop=stop, target=target)
+    for d in (D1, D2, D3):
+        world.put(d, {ROOM: [r]})
+    now = T0 + 20
+    while now < D4:
+        world.run(now, books=books)
+        now += 7 * H
+    world.run(D4 + 20, books=books)
+
+    world.m.now_ms = (D4 + 20) * 1000
+    warm = world.m.fetch("AAA_USDT", "1h", end_ms=T0 * 1000)
+    full = world.m.fetch("AAA_USDT", "1h", bars=10 ** 6)
+    ref = full[full.index >= warm.index[0]]
+    fine = sb.read_fine("AAA_USDT", sb.fine_from_ms(T0 * 1000), minutes=world.m.minutes, now_s=D4 + 20)
+    book = sb.read_book("AAA_USDT", sb.fine_from_ms(T0 * 1000) // 1000, D4 + 80, reader=books)
+    done, _still = sb.run(ref, sb.signals(ref, strategy, params), stop=stop, fee=r["fee"], slip=r["slip"],
+                          target=target, funding=sb.Funding(world.m.funding("AAA_USDT")), bar_ms=H_MS,
+                          fine=fine, book=book)
+    want = sorted((t["entry_ms"], t["exit_ms"], t["side"], t["why"], round(t["entry_px"], 8),
+                   round(t["exit_px"], 8), round(t["pnl"], 4), t.get("at"), t["real"])
+                  for t in done if t["entry_ms"] >= T0 * 1000)
+    by_enter = {e["trade_id"]: e for e in ledger() if e["action"] == "enter"}
+    got = sorted((by_enter[x["trade_id"]]["entry_ts"] * 1000, x["v4_candle"] * 1000,
+                  1 if x["side"] == "LONG" else -1, x["why"], round(x["entry"], 8), round(x["exit"], 8),
+                  round(x["pnl_est"], 4), x["ts"] * 1000 if x.get("by_minute") else None, x["real"])
+                 for x in _exits())
+    assert len(want) >= 4 and got == want, (want, got)
+    assert all(w[8] == 2 for w in want), "every fill had its reading: every trade is real-priced"
+    plain, _ = sb.run(ref, sb.signals(ref, strategy, params), stop=stop, fee=r["fee"], slip=r["slip"],
+                      target=target, funding=sb.Funding(world.m.funding("AAA_USDT")), bar_ms=H_MS, fine=fine)
+    assert round(sum(t["pnl"] for t in plain), 2) != round(sum(t["pnl"] for t in done), 2), \
+        "the case must be one where the recorded book changes the dollars"
+    assert all(e["real"] is True for e in by_enter.values())
+    fills = follow_state()["fills"]
+    assert fills["est"] == 0 and fills["real"] == len(by_enter) + len(_exits())
+
+
+def _one_trade(world):
+    """bf_momentum lookback 2 over a rise on candles 5..7: bought on candle 5's close (6:00), sold on
+    candle 8's (9:00)."""
+    closes = scripted([(5, 8)])
+    world.m.add("AAA_USDT", closes, (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    return closes[48 + 5], closes[48 + 8]
+
+
+def test_an_entry_row_carries_the_real_price_and_says_so(world):
+    c5, _ = _one_trade(world)
+    fill = (T0 + 6 * H) * 1000
+    rec = {fill: _thin_book(c5)}
+    res = world.run(T0 + 6 * H + 20, books=_readings(rec))
+    (e,) = [x for x in ledger() if x["action"] == "enter"]
+    mid = c5 * (1 - 0.004)
+    assert e["entry"] == pytest.approx(mid * 1.006, rel=1e-6) and e["real"] is True
+    assert e["entry"] != pytest.approx(c5 * 1.0005), "never the last price plus the usual gap"
+    assert e["sl"] == pytest.approx(e["entry"] * 0.97, rel=1e-6), "the stop is measured from the price paid"
+    (pos,) = open_slots().values()
+    assert pos["entry"] == e["entry"]
+    assert res[ROOM]["waiting"] == 0
+    assert follow_state()["fills"] == {"real": 1, "est": 0, "since_s": T0 + 6 * H + 20}
+
+
+def test_a_fill_whose_reading_is_not_recorded_yet_waits_and_writes_nothing(world):
+    """The pass runs 20 seconds after the close; the recorder writes every five minutes. The reading
+    of 6:00:03 is not on disk yet: the entry WAITS - no row, no slot, the candle not marked done."""
+    c5, _ = _one_trade(world)
+    res = world.run(T0 + 6 * H + 20, books=_readings({}))
+    assert ledger() == [] and open_slots() == {}
+    assert follow_state()["strats"]["TESTAAA1"]["last_ms"] == (T0 + 4 * H) * 1000, "candle 5 waits"
+    assert res[ROOM]["waiting"] == 1 and res[ROOM]["errors"] == [], "a wait is not a problem"
+    # six minutes later the recorder has written it
+    res = world.run(T0 + 6 * H + 360, books=_readings({(T0 + 6 * H) * 1000: _thin_book(c5)}))
+    (e,) = [x for x in ledger() if x["action"] == "enter"]
+    assert e["real"] is True and e["ts"] == T0 + 6 * H, "written late, at its candle's time"
+    assert res[ROOM]["waiting"] == 0
+
+
+def test_ten_minutes_later_it_is_written_as_an_estimate_and_counted(world):
+    c5, _ = _one_trade(world)
+    world.run(T0 + 6 * H + 20, books=_readings({}))
+    assert ledger() == []
+    world.run(T0 + 6 * H + vf.BOOK_WAIT_S + 1, books=_readings({}))
+    (e,) = [x for x in ledger() if x["action"] == "enter"]
+    assert e["real"] is False and e["entry"] == pytest.approx(c5 * 1.0005)
+    assert follow_state()["fills"]["est"] == 1 and follow_state()["fills"]["real"] == 0
+    assert vf.status(ROOM, now_s=T0 + 6 * H + 700, lists_dir=world.lists)["fills"]["est"] == 1
+
+
+def test_an_old_candle_with_no_reading_is_an_estimate_at_once(world):
+    """A PC that slept: the candles it catches up on were never recorded. Nothing is on its way."""
+    _one_trade(world)
+    res = world.run(T0 + 12 * H, books=_readings({}))
+    assert [t[3] for t in trades()] == ["SIGNAL"] and res[ROOM]["waiting"] == 0
+    (x,) = _exits()
+    assert x["real"] == 0
+    assert follow_state()["fills"] == {"real": 0, "est": 2, "since_s": T0 + 12 * H}
+
+
+def test_a_trade_open_before_this_keeps_its_entry_and_its_exit_is_part(world):
+    """A trade the room already held when real prices shipped has no mark on its entry: it keeps the
+    price it was entered at, and its exit is priced from the reading."""
+    _c5, c8 = _one_trade(world)
+    world.run(T0 + 6 * H + vf.BOOK_WAIT_S + 1, books=_readings({}))
+    with profiles.using(ROOM):
+        st = vf.load()
+        st["strats"]["TESTAAA1"]["pos"].pop("real")          # as a position saved by the code of before
+        vf._save(st)
+    world.run(T0 + 9 * H + 400, books=_readings({(T0 + 9 * H) * 1000: _thin_book(c8)}))
+    (x,) = _exits()
+    assert x["real"] == 1 and x["exit"] == pytest.approx(c8 * (1 - 0.004) / 1.005, rel=1e-6)
+
+
+def test_no_recorder_on_this_pc_prices_by_the_estimate_without_waiting(world):
+    """The default reader is this PC's own recording and NEVER a download; with no recorder folder
+    nothing is on its way, so nothing waits."""
+    c5, _ = _one_trade(world)
+    res = world.run(T0 + 6 * H + 20)
+    (e,) = [x for x in ledger() if x["action"] == "enter"]
+    assert e["real"] is False and e["entry"] == pytest.approx(c5 * 1.0005) and res[ROOM]["waiting"] == 0
+
+
+def test_the_default_reader_reads_this_pcs_files_as_they_stand_and_never_the_network(world, monkeypatch):
+    from tradingagents import app_books as ab
+
+    monkeypatch.setattr(ab, "_remote", lambda *a, **k: pytest.fail("the follower asked GitHub for a reading"))
+    assert vf._books_default("AAA_USDT", T0, T0 + H) is None, "no recorder folder: nothing recorded"
+    ab.HOME.mkdir(parents=True)
+    seen = {}
+
+    def book_for(sym, a, b, *, published_only=True):
+        seen.update(published_only=published_only)
+        return None
+
+    monkeypatch.setattr(ab, "book_for", book_for)
+    vf._books_default("AAA_USDT", T0, T0 + H)
+    assert seen == {"published_only": False}, "as recorded, not only what went up"
+
+
+def test_a_warm_up_waiting_for_a_reading_is_not_an_error(world):
+    """A strategy switched on at midnight is warmed up over the candles before it; the last one closes
+    AT midnight, and a carried trade's entry there needs the 00:00:03 reading."""
+    closes = scripted([(-1, 3)])                       # rising from 11pm: bought on the candle closing at midnight
+    world.m.add("AAA_USDT", closes, (T0 - 48 * H) * 1000)
+    world.put(D1, {ROOM: [row("TESTAAA1")]})
+    res = world.run(T0 + 20, books=_readings({}))
+    assert res[ROOM]["errors"] == [] and res[ROOM]["waiting"] == 1
+    assert "TESTAAA1" in follow_state()["pending"] and follow_state()["strats"] == {}
+    world.run(T0 + 400, books=_readings({T0 * 1000: _thin_book(closes[47])}))
+    s = follow_state()["strats"]["TESTAAA1"]
+    assert s["carried"] is True and s["pos"]["real"] is True
+
+
+def test_a_pass_that_waited_is_tried_again_six_minutes_after_the_close(world, monkeypatch):
+    calls, waiting = [], [1]
+    monkeypatch.setattr(vf, "pass_once", lambda now_s: (calls.append(now_s), {ROOM: {"waiting": waiting[0]}})[1])
+    monkeypatch.setattr(vf, "_DONE", {"slot": None})
+    monkeypatch.setattr(vf, "_RETRY", {"at": None})
+    slot = T0 + 6 * H + vf.AFTER_CLOSE_S
+    vf._tick(slot + 5)
+    assert calls == [slot + 5]
+    vf._tick(slot + 60)
+    assert len(calls) == 1, "not every poll: once, six minutes on"
+    waiting[0] = 0
+    vf._tick(slot + 5 + vf.RETRY_AFTER_S)
+    assert len(calls) == 2
+    vf._tick(slot + 5 + 2 * vf.RETRY_AFTER_S)
+    assert len(calls) == 2, "nothing waited the second time: the next pass is the next close's"
+    vf._tick(slot + vf.EVERY_S)
+    assert len(calls) == 3

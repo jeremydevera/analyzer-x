@@ -1237,6 +1237,17 @@ length: the example REPLACES the explanation. `window_last` was answered as
 clearer. If a real one cannot be measured, label it "made-up numbers".
 Compress structure, never comprehension. Verify as rigorously as ever — then
 report only the answer.
+**EVERY EXPLANATION IS A SCENARIO (Nov 13, 2026):** *"i dont get it give me
+scenario / make a rule: id you will explaion someting give me scenario always"*
+— asked after "what does unseen mean" was answered with the right numbers
+(14 "chosen on" trades +$1,940.52, 7 "unseen" −$22.56) and still not
+understood. Numbers beside a definition are not a scenario. A scenario is a
+STORY IN TIME ORDER that puts them in it: *"it is Jul 16, 2026 8:00pm and you
+look at #YQR6ESD9 LAB 1d's record so far — 14 trades, +$1,940.52 — so you
+switch it on; from then to Nov 11, 2026 it makes 7 trades, every one hits its
+3% stop, −$22.57"*. Every "what does X mean", "why", "how does it work" and
+"explain" answer is told that way — real dates, the real id, the real dollars,
+"you" in the story — whatever else the answer carries.
 
 **AND WHEN ONE SENTENCE IS NOT ENOUGH, DRAW IT — same skill, part two.**
 `workflow-map` was deleted on 2026-09-17 and folded in here: *"i want it all in

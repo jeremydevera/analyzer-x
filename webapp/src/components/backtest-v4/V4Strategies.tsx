@@ -202,7 +202,7 @@ export default function V4Strategies() {
         {/* the daily refresh, and what the trades do not pay (the rooms that follow this tab say the same) */}
         <p className="mt-1 text-theme-sm text-gray-500 dark:text-gray-400">
           Backtest v4 is refreshed every day
-          {daily ? ` — ${daily.words}` : ""}.
+          {daily ? ` — ${daily.words}` : ""}.{" "}
           {m?.real
             ? `Since ${fmtWhen(m.real.from_s)} a trade’s buy and sell are priced from the order book the app recorded in that same minute. Of the ${m.real.trades_30d.toLocaleString()} trades that closed in the last 30 days, ${m.real.real_30d.toLocaleString()} (${m.real.trades_30d ? ((100 * m.real.real_30d) / m.real.trades_30d).toFixed(1) : "0"}%) were priced that way on both sides and ${m.real.part_30d.toLocaleString()} on one; the rest, and every trade before that day, pay the coin’s usual gap instead (no order book was recorded for their minute). No trade is refused by the runner’s cost check.`
             : "Every trade pays its coin’s usual gap, not its own minute’s order book."}

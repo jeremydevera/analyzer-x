@@ -435,3 +435,138 @@ def test_the_page_filters_by_money_rule_on_the_server(built):
     assert 'aria-label="money rule"' in panel and "money: f.money" in panel
     api = (REPO / "tradingagents/api.py").read_text(encoding="utf-8")
     assert '"money": money' in api
+
+
+# ------------------------------------------------------------------ real prices (Nov 13, 2026)
+REC = ms(2026, 10, 17)                        # the record of the app's own order books begins
+
+
+def _marked_trades():
+    """MMM 15m: a win every day from Jul 01 to Nov 04. From Oct 17 a trade carries its mark - both
+    fills at the recorded order book on even days (real: +$0.50, less than the paper +$1.00), one on
+    odd days (part) - and every trade before the record is an estimate."""
+    out = []
+    for i, (en, ex, _p) in enumerate(daily(ms(2026, 7, 1), ms(2026, 11, 4), lambda i: 1.0)):
+        if en < REC:
+            out.append([en, ex, 1, "TP", 1.0, None, 0])
+        elif i % 2 == 0:
+            out.append([en, ex, 1, "TP", 0.5, None, 2])
+        else:
+            out.append([en, ex, 1, "TP", 1.0, None, 1])
+    return out
+
+
+def _marked_line():
+    pick = {"label": "ta_ma_pullback(n=1) stop 1.5%", "strategy": "ta_ma_pullback", "params": {"n": 1},
+            "stop": 0.015, "target": 0.03, "older": {}, "newer": {}, "older_lost": False,
+            "trades": _marked_trades()}
+    return {"MMM|15m": _line("MMM", "15m", [pick], ms(2026, 10, 1))}
+
+
+@pytest.fixture()
+def marked(tmp_path, monkeypatch):
+    _make(tmp_path, monkeypatch, extra_taall=_marked_line())
+    return f4.load()
+
+
+def _rule(doc, tf, window=30, rate=90, n=20):
+    return next(r for r in doc["rules"] if r["tf"] == tf and r["skill"] == "" and r["window"] == window
+                and r["min_win_rate"] == rate and r["min_trades"] == n and r["tp_rule"] == "any"
+                and not r["sl_cap"] and not r.get("cost_cap") and not r["money"])
+
+
+def test_a_rule_sets_real_priced_figure_counts_only_trades_with_both_fills_real(marked):
+    r = _rule(marked, "15m")
+    real = [t for t in _marked_trades() if t[6] == 2]
+    assert len(real) == 9 or len(real) == 10                      # Oct 17 - Nov 04, every other day
+    assert r["real_trades"] == len(real) and r["real_wins"] == len(real)
+    assert r["real_profit"] == pytest.approx(0.5 * len(real))
+    assert r["real_per_trade"] == pytest.approx(0.5)
+    assert r["trades"] > r["real_trades"], "its whole result still counts every trade"
+    assert r["per_trade"] > r["real_per_trade"], "the estimate flattered it: the real-priced figure is lower"
+
+
+def test_no_real_priced_trade_is_blank_never_zero_and_fails_made_money_at_real_prices(marked):
+    r = _rule(marked, "1h")                                       # AAA: no trade of it carries a mark
+    assert r["trades"] > 0 and r["real_trades"] == 0
+    assert r["real_profit"] is None and r["real_per_trade"] is None, "blank, never $0.00 shown as a result"
+    page = f4.rules_page({"real_made": "1"})
+    assert page["total"] > 0 and all(x["real_trades"] > 0 and x["real_profit"] > 0 for x in page["rows"])
+    assert "made money at real prices" in page["filters"]
+    none = f4.rules_page({"real_made": "1", "tf": "1h"})
+    assert none["total"] == 0 and none["rows"] == []
+    assert "every rule set was examined" in none["why"] and "made money at real prices" in none["why"]
+
+
+def test_a_rule_set_that_lost_at_real_prices_fails_the_box(tmp_path, monkeypatch):
+    line = _marked_line()
+    for t in line["MMM|15m"]["picks"][0]["trades"]:
+        if t[6] == 2:
+            t[4], t[3] = -0.25, "SL"
+    _make(tmp_path, monkeypatch, extra_taall=line)
+    doc = f4.load()
+    lost = [r for r in doc["rules"] if r["tf"] == "15m" and r["real_trades"]]
+    assert lost and all(r["real_profit"] < 0 for r in lost)
+    assert f4.rules_page({"real_made": "1"})["total"] == 0
+
+
+def test_sorting_by_real_prices_puts_rule_sets_with_none_last(marked):
+    first = f4.rules_page({"sort": "real_profit"})
+    assert first["sort"] == "real_profit"
+    assert all(x["real_profit"] is not None for x in first["rows"][:3])
+    vals = [x["real_profit"] for x in first["rows"] if x["real_profit"] is not None]
+    assert vals == sorted(vals, reverse=True)
+    last = f4.rules_page({"sort": "real_profit", "page": first["pages"]})
+    assert last["rows"][-1]["real_profit"] is None, "nothing to sort on: last, whichever way round"
+    up = f4.rules_page({"sort": "real_per_trade", "desc": "0"})
+    assert up["rows"][0]["real_per_trade"] is not None
+
+
+def test_the_real_priced_dollars_scale_with_the_base_margin(marked):
+    r = _rule(marked, "15m")
+    at5 = f4.rules_page({"q": r["id"]})["rows"][0]
+    at10 = f4.rules_page({"q": r["id"], "base_margin": 10})["rows"][0]
+    assert at10["real_profit"] == pytest.approx(2 * at5["real_profit"])
+    assert at10["real_per_trade"] == pytest.approx(2 * at5["real_per_trade"])
+    assert at10["real_trades"] == at5["real_trades"]
+
+
+def test_the_walk_says_what_share_of_its_trades_paid_a_real_price(marked):
+    from tradingagents import skill_bt as sb
+
+    real = f4.summary()["walk"]["real"]
+    marks = [t[6] for t in _marked_trades() if t[0] >= ms(2026, 8, 1)]
+    assert real["from_s"] == sb.REAL_FROM_S
+    assert real["real"] == marks.count(2) and real["part"] == marks.count(1)
+    assert real["trades"] == f4.summary()["walk"]["trades"] > real["real"]
+
+
+def test_a_store_without_the_mark_builds_with_every_figure_blank(tmp_path, monkeypatch):
+    import sqlite3
+
+    _make(tmp_path, monkeypatch, extra_taall=_marked_line())
+    db = tmp_path / "v4" / "rows.db"
+    con = sqlite3.connect(db)
+    con.executescript("ALTER TABLE trade DROP COLUMN real; DELETE FROM meta WHERE k = 'real';")
+    con.commit()
+    con.close()
+    f4._CACHE.update(key=None, doc=None)
+    f4.build(log=lambda *_: None)
+    doc = f4.load()
+    assert all(r["real_trades"] == 0 and r["real_profit"] is None for r in doc["rules"])
+    assert f4.summary()["walk"]["real"]["real"] == 0
+    assert f4.rules_page({"real_made": "1"})["total"] == 0
+
+
+def test_a_forecast_from_before_real_prices_says_so_instead_of_none_matched(marked, monkeypatch):
+    old = {**marked, "rules": [{k: v for k, v in r.items() if not k.startswith("real_")} for r in marked["rules"]]}
+    monkeypatch.setattr(f4, "load", lambda path=None: old)
+    page = f4.rules_page({"real_made": "1"})
+    assert page["total"] == 0 and "before" in page["why"] and "recorded order book" in page["why"]
+    assert f4.rules_page({})["total"] > 0, "every other question still answers"
+
+
+def test_the_default_order_is_unchanged(marked):
+    assert f4.rules_page({})["sort"] == "rank"
+    assert [r["id"] for r in f4.rules_page({})["rows"]] == [r["id"] for r in f4.rules_page({"sort": "rank"})["rows"]]
+    assert "real_profit" in f4.RULE_SORTS and "real_per_trade" in f4.RULE_SORTS

@@ -78,7 +78,10 @@ FOLLOW_CAP = 15                       # "after a run this long" pools runs of 15
 FOLLOW_ENOUGH = 30                    # fewer past cases than this is "not enough to tell"
 PER_PAGE = 10                         # ten a page, as every Forecast list (forecast_v2_api.PER_PAGE)
 LUCK_Z = 1.645                        # one-sided 95%
-RULE_SORTS = ("rank", "predicted", "profit", "per_trade", "beat", "winrate", "trades", "worst_run")
+RULE_SORTS = ("rank", "predicted", "profit", "per_trade", "beat", "winrate", "trades", "worst_run",
+              # AT REAL PRICES (Nov 13, 2026): over the trades whose two fills both paid the app's own
+              # recorded order book of their minute - the figure the estimate cannot flatter
+              "real_profit", "real_per_trade")
 
 
 def out_path() -> Path:
@@ -212,10 +215,12 @@ def _load(db: Path, log, extra: bool = False) -> dict:
         exists[[r[0] for r in st]] = True
         chosen = skc == SKILLS.index(CHOSEN_SKILL) - 1
         parts = []
-        more = ""
+        have = {r[1] for r in con.execute("PRAGMA table_info(trade)")}
+        # each trade's mark: how many of its two fills paid a recorded order book (a store built before
+        # Nov 13, 2026 has none: every trade an estimate)
+        more = ", real" if "real" in have else ", 0"
         if extra:
-            has_at = any(r[1] == "at" for r in con.execute("PRAGMA table_info(trade)"))
-            more = ", side, " + ("COALESCE(at, ex)" if has_at else "ex")
+            more += ", side, " + ("COALESCE(at, ex)" if "at" in have else "ex")
         cur = con.execute("SELECT sid, ex, en, pnl, why" + more + " FROM trade ORDER BY sid, ex, en")
         got = 0
         while True:
@@ -228,7 +233,7 @@ def _load(db: Path, log, extra: bool = False) -> dict:
                 log(f"forecast v4: read {got:,} trades")
     finally:
         con.close()
-    a = np.concatenate(parts) if parts else np.zeros((0, 7 if extra else 4))
+    a = np.concatenate(parts) if parts else np.zeros((0, 8 if extra else 6))
     sid = a[:, 0].astype(np.int64)
     ex = a[:, 1].astype(np.int64)
     en = a[:, 2].astype(np.int64)
@@ -242,10 +247,11 @@ def _load(db: Path, log, extra: bool = False) -> dict:
     out = {"meta": meta, "info": info, "exists": exists, "tfc": tfc, "skc": skc, "tp": tp, "sl": sl,
            "cost": cost,
            "sid": sid[keep], "ex": ex[keep], "en": en[keep], "pnl": pnl[keep],
+           "real": a[:, 5].astype(np.int8)[keep],
            "all_trades": int(len(sid)), "left_out": left_out, "left_open": left_open}
     if extra:
-        out.update(why=a[:, 4].astype(np.int8)[keep], side=a[:, 5].astype(np.int8)[keep],
-                   at=a[:, 6].astype(np.int64)[keep])
+        out.update(why=a[:, 4].astype(np.int8)[keep], side=a[:, 6].astype(np.int8)[keep],
+                   at=a[:, 7].astype(np.int64)[keep])
     return out
 
 
@@ -274,7 +280,11 @@ def _figures(m, sub, pool_avg, day_month, covered_m, complete, covered_days, lsi
     top: list[list] = []
     distinct = 0
     wins = int((p > 0).sum())
+    real_n = real_w = 0
+    real_p = 0.0
     if k:
+        rp = p[sub["real"][m]]          # the trades whose two fills both paid a recorded order book
+        real_n, real_w, real_p = int(rp.size), int((rp > 0).sum()), float(rp.sum())
         day = sub["day"][m]
         mon = sub["month"][m]
         pd_ = np.bincount(day, weights=p, minlength=D)
@@ -334,6 +344,11 @@ def _figures(m, sub, pool_avg, day_month, covered_m, complete, covered_days, lsi
             "random_per_trade": round(random_profit / k, 4) if k else None,
             "beat_days": beat_days, "luck": bool(luck), "strategies": distinct,
             "months": months, "predicted": predicted, "rank": rank, "top": top,
+            # AT REAL PRICES: its result over the real-priced trades alone. Blank (None), never $0.00,
+            # when it has none - everything before Oct 17, 2026 and every fill with no reading
+            "real_trades": real_n, "real_wins": real_w,
+            "real_profit": round(real_p, 4) if real_n else None,
+            "real_per_trade": round(real_p / real_n, 4) if real_n else None,
             # the calendar's boxes (taken out by `_walk` before the rule is kept): trades, wins and
             # profit on each walked day, the same trades the months add
             "_days": (cd, wd, pd_)}
@@ -373,7 +388,9 @@ def _walk(d: dict, end_s: int, log, visit=None, keep: bool = False) -> dict:
          "month": np.searchsorted(np.array(ms), en[sel], side="right") - 1,
          "tfc": d["tfc"][j_sid], "skc": d["skc"][j_sid],
          "tpf": ~np.isnan(d["tp"][j_sid]) & (np.nan_to_num(d["tp"][j_sid]) > d["sl"][j_sid]),
-         "slc": d["sl"][j_sid] <= 1.5 + 1e-9, "cost": d["cost"][j_sid]}
+         "slc": d["sl"][j_sid] <= 1.5 + 1e-9, "cost": d["cost"][j_sid],
+         # real-priced: both of the trade's fills paid the recorded order book of their minute
+         "real": (d["real"][sel] == 2) if d.get("real") is not None else np.zeros(len(sel), bool)}
     for W in WINDOWS:
         lo = np.searchsorted(key, (j_sid << 32) | (dstart - W * DAY_S), side="left")
         hi = np.searchsorted(key, (j_sid << 32) | dstart, side="left")      # closed BEFORE the day
@@ -479,9 +496,16 @@ def _walk(d: dict, end_s: int, log, visit=None, keep: bool = False) -> dict:
     days = {"trades": np.array(day_c, dtype=np.int32).reshape(len(rules), D),
             "wins": np.array(day_w, dtype=np.int32).reshape(len(rules), D),
             "profit": np.array(day_p, dtype=np.float64).reshape(len(rules), D)}
+    from tradingagents import skill_bt as _sb
+
+    marks = d["real"][sel] if d.get("real") is not None else np.zeros(len(sel), np.int8)
     out = {"rules": rules, "dupes": dupes, "same_as": same_as, "coverage": coverage, "days": days,
            "walk": {"from_s": start, "to_s": int(end_s), "days": int(D), "months": months,
-                    "trades": int(len(sel))}}
+                    "trades": int(len(sel)),
+                    # of the walked trades: both fills at the recorded order book (`real`), one (`part`);
+                    # the rest paid the coin's usual gap. The record begins `from_s`
+                    "real": {"from_s": _sb.REAL_FROM_S, "trades": int(len(sel)),
+                             "real": int((marks == 2).sum()), "part": int((marks == 1).sum())}}}
     if keep:
         out["t"] = t
     return out
@@ -816,7 +840,8 @@ def _num(v, default=0.0) -> float:
     return x if math.isfinite(x) else default
 
 
-MONEY = ("profit", "per_trade", "worst_run", "worst_day", "random_profit", "random_per_trade", "rank")
+MONEY = ("profit", "per_trade", "worst_run", "worst_day", "random_profit", "random_per_trade", "rank",
+         "real_profit", "real_per_trade")
 
 
 def _scaled(r: dict, k: float) -> dict:
@@ -928,6 +953,9 @@ def rules_page(q: dict) -> dict:
         if _truthy(q.get("not_luck")):
             got = [r for r in got if r["trades"] and not r["luck"]]
             named.append("beat random by more than luck")
+        if _truthy(q.get("real_made")):
+            got = [r for r in got if (r.get("real_trades") or 0) > 0 and (r.get("real_profit") or 0) > 0]
+            named.append("made money at real prices")
         if _truthy(q.get("traded", True)):
             got = [r for r in got if r["trades"]]
             named.append("traded")
@@ -946,6 +974,9 @@ def rules_page(q: dict) -> dict:
     if not total:
         why = (f"none of the {len(rules):,} rule sets walked matched"
                f"{(' ' + ', '.join(named)) if named else ''} - every rule set was examined")
+        if "made money at real prices" in named and rules and "real_trades" not in rules[0]:
+            why = ("this forecast was worked out before trades were priced at the recorded order book, so "
+                   "no rule set has a real-priced figure yet - the next nightly build fills it in")
     return {"ready": True, "rows": rows, "total": total, "of": len(rules), "page": page, "pages": pages,
             "per_page": PER_PAGE, "filters": named, "sort": sort, "desc": desc, "why": why,
             "base_margin": round(k * v4_store.MEASURED_MARGIN, 4)}

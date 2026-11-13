@@ -893,6 +893,7 @@ def forecast_v4_rules(window: int = 0, tf: str = "", skill: str = "", tp_rule: s
                       money: str = "", cost: str = "", max_tp: float = 0.0, max_sl: float = 0.0, min_winrate: float = 0.0,
                       min_trades: int = 0, min_profit: float | None = None,
                       profitable: bool = False, not_luck: bool = False, traded: bool = True,
+                      real_made: bool = False,
                       q: str = "", base_margin: float = 5.0, sort: str = "rank",
                       desc: bool = True, page: int = 1) -> dict:
     """The switch-on rule sets walked forward over Backtest v4, every filter
@@ -904,6 +905,7 @@ def forecast_v4_rules(window: int = 0, tf: str = "", skill: str = "", tp_rule: s
         "max_tp": max_tp,
         "max_sl": max_sl, "min_winrate": min_winrate, "min_trades": min_trades,
         "min_profit": min_profit, "profitable": profitable, "not_luck": not_luck,
+        "real_made": real_made,
         "traded": traded, "q": q, "base_margin": base_margin, "sort": sort, "desc": desc,
         "page": page})
 

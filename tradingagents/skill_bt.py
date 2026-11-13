@@ -31,6 +31,15 @@ before entry so a signal can flip), `calculate_trade_stats`. What differs, and w
   and is COUNTED (`tally`), never hidden. With `fine=None` every line below is the rule of before.
 * a trade is $100 of coin (the app's $5 at 20x), not 95% of a $10,000 account, so its dollars read
   like every other row on the results page; the fee is the exchange's, 0.075% each way.
+* A FILL PAYS THE APP'S OWN RECORDED ORDER BOOK OF ITS OWN MINUTE (Nov 13, 2026, operator: "build it").
+  The five room rule sets' 707 trades of Oct 17 - Nov 12, 2026 read +$131 priced at "the candle's last
+  price plus the usual gap" and -$1,125 at the book the app recorded in the same minute: a reversion
+  strategy buys when the last price was a seller hitting the bid, and that price cannot be bought. With
+  a `Book`, an entry and a close-priced exit take the reading's $100 walk whole; a stop or target
+  settled by the minute keeps its barrier and pays that minute's walk (a stop the price had already
+  jumped past fills from where the price was). No reading at the fill's minute: the price of before,
+  and the trade says so (`real`: how many of its two fills were real). With `book=None` every line
+  below is the rule of before, with no new key anywhere.
 """
 from __future__ import annotations
 
@@ -234,9 +243,129 @@ def read_fine(sym: str, from_ms: int, to_ms: int | None = None, *, minutes=None,
     return Fine(t * 1000, hi, lo, int(from_ms), int((t[-1] + secs[-1]) * 1000))
 
 
+REAL_FROM_S = 1_792_195_200       # Oct 17, 2026 00:00 UTC: the first whole day the app recorded its own books
+
+
+class BookNotYet(Exception):
+    """A fill's reading is not recorded yet and may still be on its way (the recorder writes every five
+    minutes): the follower leaves the candle for its next pass. Nothing was changed by the step."""
+
+    def __init__(self, minute_ms: int):
+        super().__init__(f"the order book of the minute {int(minute_ms)} is not recorded yet")
+        self.minute_ms = int(minute_ms)
+
+
+class Book:
+    """THE REAL PRICE OF A FILL: a coin's order book as the app itself recorded it (`app_books`, 3
+    seconds into every minute), one reading a minute, in `cost_store`'s packed columns.
+
+    Only a reading that is a price the app could have had is kept: the app's OWN (never the exchange's
+    published record, which holds offers no API order can take - RCA-2026-10-16-A), whose $100 walk did
+    not run out of book, with a real bid under a real ask. A fill is priced only by the reading stamped
+    at ITS OWN minute; anything else is no reading (`at` answers None and the caller keeps its estimate).
+
+    `fill(minute, buying)` is what $100 really got: a buy pays the middle x (1 + the walk up the asks),
+    a sell gets the middle / (1 + the walk down the bids) - the reading's own definition of its walk
+    (`book_history._sample`), so the fill IS the walk's average price. With `barrier` (a stop or target
+    the minutes settled) the price stays the barrier and only that minute's walk is paid; a `stop` the
+    price had already jumped past fills from where the price was (Backtest v3's rule), never from a
+    barrier it could not get. A target keeps its barrier.
+
+    `now_ms` / `wait_ms` are the follower's: a minute with no reading that is younger than `wait_ms`
+    raises `BookNotYet` instead of answering None."""
+
+    def __init__(self, packed: dict | None = None, *, now_ms: int | None = None, wait_ms: int = 0):
+        import numpy as np
+
+        from tradingagents import book_history as bh
+
+        p = packed or {}
+        t = np.asarray(p.get("t", []), dtype="int64")
+        self.now_ms = None if now_ms is None else int(now_ms)
+        self.wait_ms = int(wait_ms)
+        if not len(t):
+            self.t = np.zeros(0, "int64")
+            self.mid = self.buy = self.sell = np.zeros(0)
+            return
+        bid = np.asarray(p["bid"], dtype="float64")
+        ask = np.asarray(p["ask"], dtype="float64")
+        buy = np.asarray(p["buy"], dtype="float64")
+        sell = np.asarray(p["sell"], dtype="float64")
+        with np.errstate(invalid="ignore"):
+            ok = ((np.asarray(p["source"]).astype("int64") == bh.SOURCES["app"])
+                  & ~np.asarray(p["exhausted"], dtype=bool)
+                  & np.isfinite(bid) & np.isfinite(ask) & (bid > 0) & (ask > bid)
+                  & np.isfinite(buy) & np.isfinite(sell) & (buy >= 0) & (sell >= 0))
+        order = np.argsort(t[ok], kind="stable")
+        self.t = t[ok][order]
+        self.mid = ((bid + ask) / 2.0)[ok][order]
+        self.buy, self.sell = buy[ok][order], sell[ok][order]
+
+    @property
+    def minutes(self) -> int:
+        return int(len(self.t))
+
+    def at(self, minute_ms: int):
+        """(middle, buy walk, sell walk) of the reading stamped at exactly this minute, or None."""
+        import numpy as np
+
+        s = int(minute_ms) // 1000
+        j = int(np.searchsorted(self.t, s, side="right")) - 1
+        if j < 0 or int(self.t[j]) != s:
+            return None
+        return float(self.mid[j]), float(self.buy[j]), float(self.sell[j])
+
+    def fill(self, minute_ms: int, buying: bool, *, barrier: float | None = None, stop: bool = False):
+        r = self.at(minute_ms)
+        if r is None:
+            if self.now_ms is not None and self.now_ms - int(minute_ms) < self.wait_ms:
+                raise BookNotYet(minute_ms)
+            return None
+        mid, buy, sell = r
+        base = mid
+        if barrier is not None:
+            base = float(barrier)
+            if stop:
+                base = max(base, mid) if buying else min(base, mid)
+        return base * (1 + buy) if buying else base / (1 + sell)
+
+
+def read_book(sym: str, from_s: int, to_s: int, *, published_only: bool = True, reader=None,
+              now_ms: int | None = None, wait_ms: int = 0) -> "Book":
+    """The app's own recorded readings of `sym` between two instants, never from before the record began
+    (`REAL_FROM_S`). `published_only` is the nightly run's read - GitHub's machines and this PC read
+    exactly the days that went up, so a strategy is priced the same wherever it is measured; the
+    follower reads this PC's own recording as it stands (`published_only=False`). Empty (and never
+    waiting) while the app's books are switched out of every backtest (`app_books.IN_BACKTEST`).
+    `reader(sym, from_s, to_s)` is for tests."""
+    from tradingagents import app_books
+
+    lo = max(int(from_s), REAL_FROM_S)
+    if not app_books.IN_BACKTEST or int(to_s) <= lo:
+        return Book(None)
+    if reader is None:
+        def reader(s, a, b):
+            return app_books.book_for(s, a, b, published_only=published_only)
+    return Book(reader(sym, lo, int(to_s)), now_ms=now_ms, wait_ms=wait_ms)
+
+
+def _priced(book: "Book | None", minute_ms: int, buying: bool, estimate: float, *,
+            barrier: float | None = None, stop: bool = False) -> tuple[float, bool]:
+    """(the fill's price, whether it is a real one): the book's, else the estimate of before."""
+    if book is None:
+        return estimate, False
+    px = book.fill(minute_ms, buying, barrier=barrier, stop=stop)
+    return (estimate, False) if px is None else (px, True)
+
+
+def _mark(book: "Book | None", pos: dict, exit_real: bool) -> int | None:
+    """How many of a trade's two fills paid a real price - None without a book (no key is written)."""
+    return None if book is None else int(bool(pos.get("real"))) + int(bool(exit_real))
+
+
 def close_position(pos: dict, px: float, when_ms: int, *, why: str, stop: float, fee: float,
                    target: float | None = None, bar_ms: int = 0, funding: "Funding | None" = None,
-                   at_ms: int | None = None) -> dict:
+                   at_ms: int | None = None, real: int | None = None) -> dict:
     """The trade a position becomes when it is closed at `px` on the candle opening at `when_ms`:
     net dollars on $100 after the fee both ways and, when `funding` is given, the funding settled
     between the entry fill and the exit fill (a candle's open + its length - or, for an exit the
@@ -248,6 +377,8 @@ def close_position(pos: dict, px: float, when_ms: int, *, why: str, stop: float,
              "exit_px": px, "pnl": round(pnl, 4), "why": why, "stop": stop, "target": target}
     if at_ms is not None:
         trade["at"] = int(at_ms)
+    if real is not None:
+        trade["real"] = int(real)
     if funding is not None:
         fill = pos.get("fill_ms", pos["t"] + bar_ms)
         end = when_ms + bar_ms if at_ms is None else int(at_ms) + MINUTE_MS
@@ -259,16 +390,23 @@ def close_position(pos: dict, px: float, when_ms: int, *, why: str, stop: float,
 
 def step(pos: dict | None, sig, *, close: float, when_ms: int, bar_ms: int, stop: float, fee: float,
          slip: float, target: float | None = None, funding: "Funding | None" = None,
-         fine: "Fine | None" = None, tally: dict | None = None):
+         fine: "Fine | None" = None, tally: dict | None = None, book: "Book | None" = None):
     """ONE candle of the skill's bar loop - stop, target, the strategy's own exit, close, then entry -
     so the backtest, the daily shard and a room following the strategy live run one set of rules.
     Returns `(position after, the trade it closed or None)`. A `None` signal (warm-up) changes nothing.
-    `pos` is never changed in place; an opened position remembers its entry fill (`fill_ms`)."""
+    `pos` is never changed in place; an opened position remembers its entry fill (`fill_ms`).
+
+    With a `book`, every fill asks it for the real price of its own minute (`Book.fill`): an entry and
+    a close-priced exit at the candle's close, a stop or target at the minute that settled it. A
+    position then says whether its entry was real (`real`) and a trade how many of its two fills were.
+    A reading still on its way raises `BookNotYet` BEFORE anything is counted, so the same step can be
+    asked again."""
     if sig is None:
         return pos, None
     buy, sell = close * (1 + slip), close * (1 - slip)
     force = won = False
     trade = None
+    bump: dict = {}                    # what `tally` gains, added only once every price is known
     if pos is not None and fine is not None:
         side = 1 if pos["dir"] == "long" else -1
         if fine.covers(when_ms, bar_ms):
@@ -277,20 +415,21 @@ def step(pos: dict | None, sig, *, close: float, when_ms: int, bar_ms: int, stop
             got = fine.settle(when_ms, bar_ms, side, tp_px, sl_px)
             if got is not None and got[0] in ("SL", "TP"):
                 why, minute, unclear = got
-                px = (sl_px if why == "SL" else tp_px) * (1 - side * slip)
+                barrier = sl_px if why == "SL" else tp_px
+                px, real = _priced(book, minute, side == -1, barrier * (1 - side * slip), barrier=barrier,
+                                   stop=why == "SL")
                 trade = close_position(pos, px, when_ms, why=why, stop=stop, fee=fee, target=target,
-                                       bar_ms=bar_ms, funding=funding, at_ms=minute)
+                                       bar_ms=bar_ms, funding=funding, at_ms=minute,
+                                       real=_mark(book, pos, real))
                 pos = None
-                if tally is not None:
-                    tally["minute"] = tally.get("minute", 0) + 1
-                    tally["unclear"] = tally.get("unclear", 0) + int(unclear)
-            elif tally is not None:
+                bump["minute"] = 1
+                bump["unclear"] = int(unclear)
+            else:
                 # the minutes touched nothing ("NONE"), or none lies under the candle (None: the
                 # candle rule below decides, as Backtest v2 keeps the bar rule)
-                key = "minute" if got is not None else "candle"
-                tally[key] = tally.get(key, 0) + 1
-        elif tally is not None:
-            tally["candle"] = tally.get("candle", 0) + 1
+                bump["minute" if got is not None else "candle"] = 1
+        else:
+            bump["candle"] = 1
     if pos is not None:
         ret = (close - pos["px"]) / pos["px"] * (1 if pos["dir"] == "long" else -1)
         force = ret <= -stop
@@ -298,25 +437,33 @@ def step(pos: dict | None, sig, *, close: float, when_ms: int, bar_ms: int, stop
     mine = sig.exit and getattr(sig, "exit_dir", None) in (None, pos and pos["dir"])
     if pos is not None and (mine or force or won):
         why = "SL" if force else "TP" if won else "SIGNAL"
-        trade = close_position(pos, sell if pos["dir"] == "long" else buy, when_ms, why=why, stop=stop,
-                               fee=fee, target=target, bar_ms=bar_ms, funding=funding)
+        long = pos["dir"] == "long"
+        px, real = _priced(book, when_ms + bar_ms, not long, sell if long else buy)
+        trade = close_position(pos, px, when_ms, why=why, stop=stop, fee=fee, target=target, bar_ms=bar_ms,
+                               funding=funding, real=_mark(book, pos, real))
         pos = None
     if sig.entry and pos is None:
-        pos = {"t": when_ms, "dir": sig.direction, "px": buy if sig.direction == "long" else sell,
-               "fill_ms": when_ms + bar_ms}
+        long = sig.direction == "long"
+        px, real = _priced(book, when_ms + bar_ms, long, buy if long else sell)
+        pos = {"t": when_ms, "dir": sig.direction, "px": px, "fill_ms": when_ms + bar_ms}
+        if book is not None:
+            pos["real"] = real
+    if tally is not None:
+        for k, v in bump.items():
+            tally[k] = tally.get(k, 0) + v
     return pos, trade
 
 
 def run(df, sigs: list, *, stop: float, fee: float, slip: float, target: float | None = None,
         funding: "Funding | None" = None, bar_ms: int = 0, fine: "Fine | None" = None,
-        tally: dict | None = None):
+        tally: dict | None = None, book: "Book | None" = None):
     """`step()` over every candle: the trades closed, and the position still open (NOT closed)."""
     close = df["close"].to_numpy()
     when = _ms(df.index).tolist()
     trades, pos = [], None
     for i, sig in enumerate(sigs):
         pos, done = step(pos, sig, close=close[i], when_ms=when[i], bar_ms=bar_ms, stop=stop, fee=fee,
-                         slip=slip, target=target, funding=funding, fine=fine, tally=tally)
+                         slip=slip, target=target, funding=funding, fine=fine, tally=tally, book=book)
         if done:
             trades.append(done)
     return trades, pos
@@ -324,20 +471,23 @@ def run(df, sigs: list, *, stop: float, fee: float, slip: float, target: float |
 
 def walk(df, sigs: list, *, stop: float, fee: float, slip: float, target: float | None = None,
          funding: "Funding | None" = None, bar_ms: int = 0, fine: "Fine | None" = None,
-         tally: dict | None = None) -> list[dict]:
+         tally: dict | None = None, book: "Book | None" = None) -> list[dict]:
     """The skill's bar loop over precomputed signals: stop on the close, exit before entry, an open
     trade closed at the last candle. Each trade: entry/exit ms, side, net dollars on $100, its stop.
     `target` (skill_ta.py's 2x the stop) closes a trade whose close reached it, checked like the stop;
     a signal's `exit_dir` limits its exit to that side. Neither given = the skill's loop as before.
     `funding` (with `bar_ms`, the candle's length) adds each trade's funding as `fund`; without it a
-    trade is exactly what it always was. The loop body is `step()`, shared with the skill rooms."""
+    trade is exactly what it always was. The loop body is `step()`, shared with the skill rooms.
+    A trade still open at the end (`why` END, never counted as a finished trade) is closed at the last
+    price less the gap as before - an estimate, whatever `book` holds."""
     trades, pos = run(df, sigs, stop=stop, fee=fee, slip=slip, target=target, funding=funding, bar_ms=bar_ms,
-                      fine=fine, tally=tally)
+                      fine=fine, tally=tally, book=book)
     if pos is not None:
         c = df["close"].to_numpy()[-1]
         trades.append(close_position(pos, c * (1 - slip) if pos["dir"] == "long" else c * (1 + slip),
                                      _ms(df.index).tolist()[-1], why="END", stop=stop, fee=fee,
-                                     target=target, bar_ms=bar_ms, funding=funding))
+                                     target=target, bar_ms=bar_ms, funding=funding,
+                                     real=_mark(book, pos, False)))
     return trades
 
 
@@ -414,11 +564,13 @@ def pair(df, *, fee: float, slip: float, k: int | None = PER_PAIR, grid: dict | 
 
 
 def measure(df, combos: list[dict], *, fee: float, slip: float, funding: "Funding | None" = None,
-            bar_ms: int = 0, fine: "Fine | None" = None, tally: dict | None = None) -> list[dict]:
+            bar_ms: int = 0, fine: "Fine | None" = None, tally: dict | None = None,
+            book: "Book | None" = None) -> list[dict]:
     """Walk each `{strategy, params, stop, target}` over `df`; the signals of one (strategy, params)
     are computed once however many stops use them. A trade is `[entry_ms, exit_ms, side, why, pnl]`,
     its pnl after the fee, the gap and (when `funding` is given) the funding it paid. A combo's
-    `split_ms`, when it has one, rides along."""
+    `split_ms`, when it has one, rides along. With a `book` a trade is ALWAYS seven items:
+    `[.., the minute it ended in or None, how many of its two fills paid a real price]`."""
     sig_of: dict = {}
     out = []
     for c in combos:
@@ -426,12 +578,14 @@ def measure(df, combos: list[dict], *, fee: float, slip: float, funding: "Fundin
         if key not in sig_of:
             sig_of[key] = signals(df, c["strategy"], c["params"])
         tr = walk(df, sig_of[key], stop=c["stop"], fee=fee, slip=slip, target=c.get("target"),
-                  funding=funding, bar_ms=bar_ms, fine=fine, tally=tally)
+                  funding=funding, bar_ms=bar_ms, fine=fine, tally=tally, book=book)
         row = {"label": label(c), "strategy": c["strategy"], "params": c["params"], "stop": c["stop"],
                "target": c.get("target"), "older_lost": False,
-               # a trade the minutes settled carries a sixth item: the minute it ended in
+               # a trade the minutes settled carries a sixth item: the minute it ended in; with a book
+               # every trade has that place (None when its candle settled it) and a seventh, its mark
                "trades": [[t["entry_ms"], t["exit_ms"], t["side"], t["why"], t["pnl"]]
-                          + ([t["at"]] if "at" in t else []) for t in tr]}
+                          + ([t.get("at"), t["real"]] if book is not None else [t["at"]] if "at" in t else [])
+                          for t in tr]}
         if "split_ms" in c:
             row["split_ms"] = c["split_ms"]
         out.append(row)
@@ -458,22 +612,26 @@ def daily_combos(pinned: dict | None) -> list[dict]:
 
 
 def daily_line(coin: str, tf: str, df, pinned: dict | None, *, fee: float, slip: float,
-               funding: "Funding | None", bar_ms: int, fine: "Fine | None" = None) -> dict:
+               funding: "Funding | None", bar_ms: int, fine: "Fine | None" = None,
+               book: "Book | None" = None) -> dict:
     """One coin-timeframe of the daily run, in `skill_shard.line()`'s keys. The pinned picks keep
     their own (older) `split_ms`; the line's is where THIS frame's 70% falls, for the 42 new ones.
     With `fine`, a stop or target is settled by the minute where the minutes cover the candle; the line
     says how many candle-steps of an open trade were settled each way (`exits`: minute, candle,
-    unclear - summed over every strategy of the line)."""
+    unclear - summed over every strategy of the line). With `book` every fill is priced from the coin's
+    recorded readings where its minute has one, and the line says how many readings it was handed."""
     ms = _ms(df.index)
     tally: dict = {}
     picks = measure(df, daily_combos(pinned), fee=fee, slip=slip, funding=funding, bar_ms=bar_ms,
-                    fine=fine, tally=tally)
+                    fine=fine, tally=tally, book=book)
     out = {"coin": coin, "tf": tf, "fee": fee, "slip": slip, "bars": len(df), "combos": len(picks),
            "split_ms": int(ms[int(len(df) * SPLIT)]), "start_ms": int(ms[0]), "end_ms": int(ms[-1]),
            "bar": None, "picks": picks}
     if fine is not None:
         out["exits"] = {"minute": int(tally.get("minute", 0)), "candle": int(tally.get("candle", 0)),
                         "unclear": int(tally.get("unclear", 0)), "from_ms": fine.from_ms}
+    if book is not None:
+        out["book"] = {"minutes": book.minutes, "from_s": REAL_FROM_S}
     return out
 
 

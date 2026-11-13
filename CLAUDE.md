@@ -3112,6 +3112,25 @@ on the server, ten a page, a base margin box that scales every dollar).
   losing runs of 3+. That first build's skill trades exited on the candle's close (since Nov 11, 2026
   the daily run settles stops and targets by the minute, see "Skill rooms") and pay the coin's usual
   gap, not each minute's book — so this is a lead to practice, never a reason for real money.
+* **A calendar per rule set, and a clicked day's trades (Nov 13, 2026).** The operator: *"when i click
+  and id in Best switch-on rules this month currently you are showing months only i want a calendar,
+  when i click a day in calendar, show me the trades it made in that day"*. A day is the walk's own:
+  12:00am to 12:00am UTC, its trades the ones OPENED that day. `build` files, beside forecast.json, a
+  folder `walk-<built_s>` that the forecast names (`walk_dir`; that one and the one before it are kept,
+  older ones removed): every rule set's trades, wins and profit on each walked day (`days_*.bin`, one
+  row per rule in the forecast's order) and every walked trade, sorted by the day it opened, with the
+  numbers the walk judged it by (`n7`..`w30`, the money flags) - raw arrays read by offset, never held
+  open, so the next build can remove an old folder. `/api/forecast-v4/rules/{id}/days` serves the boxes
+  (they ARE the months' trades, so they add up to them); `/api/forecast-v4/rules/{id}/day?day=` lists
+  that day's trades ten a page with the WHOLE day's TOTAL PROFIT, picked by `_takes` - the walk's own
+  test over the walk's own filed numbers, held equal to every box of EVERY rule set by
+  `tests/test_forecast_v4_calendar.py` (a second copy of the switch-on test cannot drift unseen, and
+  the reply says `agrees`). A trade's strategy is named from the Backtest v4 store only while it is
+  the store this forecast was built from (each store build numbers strategies afresh); otherwise the
+  trades still list and say why they are unnamed. `switched_on` (one SQL read of the store) took over
+  two minutes for one day on the real store, which is why a click reads the filed walk instead.
+  The panel: the calendar (Auto Trade's `DayCalendar`, told the clicked day by `onPick`) beside the
+  months, the day's table under both; every dollar at the base margin box.
 
 Guard: `tests/test_forecast_v4.py` (28: on one timeline; no day reads its own closes, months add up,
 whole months only, worst run, the chosen skill's split, the luck bar, streaks, paging, ceilings, the

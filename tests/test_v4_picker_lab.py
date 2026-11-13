@@ -597,6 +597,10 @@ def test_the_walk_hands_a_visitor_the_very_trades_each_rule_set_counted(ran):
 
     with_visitor = f4._walk(d, END // 1000, lambda *_: None, visit=visit)
     plain = f4._walk(d, END // 1000, lambda *_: None)
+    # the day-by-day figures (the rule sets' calendars, Nov 13, 2026) are arrays: compared as arrays
+    dv, dp = with_visitor.pop("days"), plain.pop("days")
+    assert set(dv) == set(dp) and all(np.array_equal(dv[k], dp[k]) for k in dp), \
+        "a visitor changes no day of any rule set"
     assert json.dumps(with_visitor, sort_keys=True) == json.dumps(plain, sort_keys=True), \
         "a visitor changes nothing the walk writes"
     assert [s[0] for s in seen] == [r["id"] for r in plain["rules"]], "once for every rule set, in order"

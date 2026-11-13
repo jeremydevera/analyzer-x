@@ -34,6 +34,8 @@ import gzip
 import json
 import math
 import os
+import re
+import shutil
 import sqlite3
 import threading
 import time
@@ -250,6 +252,7 @@ def _figures(m, sub, pool_avg, day_month, covered_m, complete, covered_days, lsi
     k = int(p.size)
     pd_ = np.zeros(D)
     cd = np.zeros(D)
+    wd = np.zeros(D, np.int64)
     pm = np.zeros(M)
     cm = np.zeros(M, np.int64)
     wm = np.zeros(M, np.int64)
@@ -264,6 +267,7 @@ def _figures(m, sub, pool_avg, day_month, covered_m, complete, covered_days, lsi
         mon = sub["month"][m]
         pd_ = np.bincount(day, weights=p, minlength=D)
         cd = np.bincount(day, minlength=D).astype(np.float64)
+        wd = np.bincount(day[p > 0], minlength=D)
         pm = np.bincount(mon, weights=p, minlength=M)
         cm = np.bincount(mon, minlength=M)
         wm = np.bincount(mon[p > 0], minlength=M)
@@ -317,14 +321,21 @@ def _figures(m, sub, pool_avg, day_month, covered_m, complete, covered_days, lsi
             "random_profit": round(random_profit, 4),
             "random_per_trade": round(random_profit / k, 4) if k else None,
             "beat_days": beat_days, "luck": bool(luck), "strategies": distinct,
-            "months": months, "predicted": predicted, "rank": rank, "top": top}
+            "months": months, "predicted": predicted, "rank": rank, "top": top,
+            # the calendar's boxes (taken out by `_walk` before the rule is kept): trades, wins and
+            # profit on each walked day, the same trades the months add
+            "_days": (cd, wd, pd_)}
 
 
-def _walk(d: dict, end_s: int, log, visit=None) -> dict:
+def _walk(d: dict, end_s: int, log, visit=None, keep: bool = False) -> dict:
     """`visit(rule, m, sub, km)`, when given, is called once for every rule set walked, with the very mask
     `m` of the trades it took (over `sub`, the walked trades of its kind; `sub["row"]` is each one's place
     in `d`'s arrays) and `km`, every trade of its kind - so the picker lab (`v4_picker_lab`) reads the
-    same trades this walk counts, never a second copy of the rules. It changes nothing written here."""
+    same trades this walk counts, never a second copy of the rules. It changes nothing written here.
+
+    The answer carries every rule set's figures DAY BY DAY ("days": trades, wins, profit, one row per
+    rule in `rules`' order) for the calendar; `keep` also hands back the walked trades themselves ("t"),
+    which `build` files so a clicked day can list its trades (`rule_day`)."""
     sid, ex, en, pnl = d["sid"], d["ex"], d["en"], d["pnl"]
     start = walk_from(end_s)
     D = (end_s - start) // DAY_S + 1
@@ -367,6 +378,7 @@ def _walk(d: dict, end_s: int, log, visit=None) -> dict:
     s_tpf = ~np.isnan(s_tp) & (np.nan_to_num(s_tp) > s_sl)
     rules, seen, dupes, same_as = [], {}, 0, {}
     coverage = {}
+    day_c, day_w, day_p = [], [], []
     for ti, tf in enumerate(TFS):
         for ki, sk in enumerate(SKILLS):
             sm = np.ones(len(sel), bool)
@@ -429,6 +441,10 @@ def _walk(d: dict, end_s: int, log, visit=None) -> dict:
                                     m = (mb & (w100 >= X * n_)) if X else mb
                                     f = _figures(m, sub, pool_avg, day_month, covered_m, complete,
                                                  covered_days, len(u), D, M)
+                                    c_, w_, p_ = f.pop("_days")
+                                    day_c.append(c_)
+                                    day_w.append(w_)
+                                    day_p.append(p_)
                                     rules.append({"id": rule_id(W, X, N, tp_rule, cap, tf, sk, mr),
                                                   "window": W, "min_win_rate": X, "min_trades": N,
                                                   "money": mr,
@@ -443,9 +459,15 @@ def _walk(d: dict, end_s: int, log, visit=None) -> dict:
                      "trades": n_, "profit": pr} for s, n_, pr in r["top"]]
     months = [{"key": datetime.fromtimestamp(s, tz=timezone.utc).strftime("%Y-%m"), "from_s": s,
                "to_s": min(n_, end_s), "complete": c} for s, n_, c in zip(ms, nxt, complete)]
-    return {"rules": rules, "dupes": dupes, "same_as": same_as, "coverage": coverage,
-            "walk": {"from_s": start, "to_s": int(end_s), "days": int(D), "months": months,
-                     "trades": int(len(sel))}}
+    days = {"trades": np.array(day_c, dtype=np.int32).reshape(len(rules), D),
+            "wins": np.array(day_w, dtype=np.int32).reshape(len(rules), D),
+            "profit": np.array(day_p, dtype=np.float64).reshape(len(rules), D)}
+    out = {"rules": rules, "dupes": dupes, "same_as": same_as, "coverage": coverage, "days": days,
+           "walk": {"from_s": start, "to_s": int(end_s), "days": int(D), "months": months,
+                    "trades": int(len(sel))}}
+    if keep:
+        out["t"] = t
+    return out
 
 
 def _fmt(s: int) -> str:
@@ -522,12 +544,12 @@ def build(db: Path | None = None, out: Path | None = None, log=print) -> dict:
     if not db.exists():
         raise RuntimeError(f"no Backtest v4 store at {db}: run python -m tradingagents.v4_store build first")
     t0 = time.time()
-    d = _load(db, log)
+    d = _load(db, log, extra=True)        # each trade's side, exit kind and exit minute: the day lists
     meta = d["meta"]
     end_s = int(meta.get("data_end_s") or (int(d["ex"].max()) if len(d["ex"]) else 0))
     if not len(d["sid"]) or not end_s:
         raise RuntimeError("Backtest v4 holds no trades: nothing to forecast")
-    walk = _walk(d, end_s, log)
+    walk = _walk(d, end_s, log, keep=True)
     streak = _streaks(d)
     info = d["info"]
     srows = [[info[r[0]][0], info[r[0]][1], info[r[0]][2], info[r[0]][3], info[r[0]][4],
@@ -556,12 +578,110 @@ def build(db: Path | None = None, out: Path | None = None, log=print) -> dict:
     }
     from tradingagents.forecast_v2 import publish
 
+    # the calendar's files first, whole, then the forecast that names them: a reader holding the old
+    # forecast keeps reading the old folder, which is removed only by the build AFTER this one
+    before = _named_walk_dir(out)
+    doc["walk_dir"] = _file_walk(out.parent, doc["built_s"], int(float(meta.get("built_s", 0) or 0)),
+                                 walk, d, log)
+    doc["seconds"] = round(time.time() - t0, 1)
     text = json.dumps(doc, separators=(",", ":"))
     publish(out, text)
+    _prune_walk_dirs(out.parent, {doc["walk_dir"], before}, log)
     kept = keep_dated_copy(text, end_s) if out == out_path() else None
     log(f"forecast v4: {len(rules):,} rule sets and {len(srows):,} streaks written to {out} "
         f"in {doc['seconds']:.0f} s" + (f"; dated copy {kept}" if kept else ""))
     return {k: doc[k] for k in ("built_s", "seconds", "store", "used", "walk", "grid")}
+
+
+# ------------------------------------------------------------------ the calendar's files
+WALK_FORMAT = 1
+WINDOW_FLAGS = tuple(f"{mr}{W}" for mr in MONEY_RULES if mr for W in WINDOWS)   # one bit each
+
+
+def _named_walk_dir(out: Path) -> str:
+    """The calendar folder the forecast now on disk names ("" when none does)."""
+    try:
+        with open(out, encoding="utf-8") as fh:
+            head = fh.read()
+        return str(json.loads(head).get("walk_dir") or "")
+    except (OSError, ValueError):
+        return ""
+
+
+def _file_walk(home: Path, built_s: int, store_built_s: int, walk: dict, d: dict, log) -> str:
+    """File what the calendar reads, into a folder of its own named by the build (`walk-<built_s>`):
+    every rule set's trades, wins and profit on each walked day (`days_*.bin`, one row per rule in the
+    forecast's order), and every walked trade - sorted by the day it OPENED, closing order inside a
+    day - with what the walk judged it by (`n7`..`w30`, the money flags), so `rule_day` asks a day the
+    walk's own question of its own numbers. Raw arrays, one file each, written to a temp folder and
+    renamed whole; `index.json` says each one's type and where each day starts."""
+    t = walk["t"]
+    start = int(walk["walk"]["from_s"])
+    D = int(walk["walk"]["days"])
+    order = np.argsort(t["day"], kind="stable")
+    day = t["day"][order]
+    rows = t["row"][order]
+    offsets = np.searchsorted(day, np.arange(D + 1), side="left")
+    flags = np.zeros(len(order), np.uint8)
+    for b, k in enumerate(WINDOW_FLAGS):
+        flags |= (t[k][order].astype(np.uint8) << b)
+    counts = {}
+    for W in WINDOWS:
+        for k in (f"n{W}", f"w{W}"):
+            v = t[k][order]
+            counts[k] = v.astype(np.int16 if (len(v) == 0 or int(v.max()) < 32_767) else np.int32)
+    n_sid = len(d["tfc"])
+    tpf = ~np.isnan(d["tp"]) & (np.nan_to_num(d["tp"]) > d["sl"])
+    cols = {
+        "sid": t["sid"][order].astype(np.int32),
+        "en": (d["en"][rows] - start).astype(np.int32),
+        "ex": (d["ex"][rows] - start).astype(np.int32),
+        "at": (d["at"][rows] - start).astype(np.int32),
+        "p4": np.rint(d["pnl"][rows] * 10_000).astype(np.int32),
+        "side": d["side"][rows].astype(np.int8),
+        "why": d["why"][rows].astype(np.int8),
+        "flags": flags, **counts,
+        # per strategy (indexed by sid): its kind, the walk's own tests of it
+        "s_tfc": d["tfc"].astype(np.int8), "s_skc": d["skc"].astype(np.int8),
+        "s_tpf": tpf.astype(np.uint8), "s_slc": (d["sl"] <= 1.5 + 1e-9).astype(np.uint8),
+        # per rule set, per day: the calendar's boxes
+        "days_trades": walk["days"]["trades"], "days_wins": walk["days"]["wins"],
+        "days_profit": walk["days"]["profit"],
+    }
+    name = f"walk-{int(built_s)}"
+    final = home / name
+    tmp = home / f"{name}.tmp-{os.getpid()}"
+    home.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(tmp, ignore_errors=True)
+    tmp.mkdir()
+    for k, v in cols.items():
+        np.ascontiguousarray(v).tofile(tmp / f"{k}.bin")
+    index = {"format": WALK_FORMAT, "built_s": int(built_s), "store_built_s": int(store_built_s),
+             "start": start, "D": D, "rows": int(len(order)), "n_sid": int(n_sid),
+             "offsets": [int(x) for x in offsets], "flags": list(WINDOW_FLAGS),
+             "cols": {k: np.asarray(v).dtype.str for k, v in cols.items()},
+             "rule_ids": [r["id"] for r in walk["rules"]]}
+    (tmp / "index.json").write_text(json.dumps(index, separators=(",", ":")), encoding="utf-8")
+    shutil.rmtree(final, ignore_errors=True)
+    os.replace(tmp, final)
+    size = sum(p.stat().st_size for p in final.iterdir())
+    log(f"forecast v4: the calendar's files, {len(order):,} walked trades, {size / 1e6:,.0f} MB in {final}")
+    return name
+
+
+def _prune_walk_dirs(home: Path, keep: set, log) -> None:
+    """Remove calendar folders no forecast names any more: every `walk-*` folder but the new one and the
+    one the forecast before it named (a reader may still hold that forecast). A folder Windows will not
+    let go (a reader has a file open) is left for the next build."""
+    for p in home.glob("walk-*"):
+        if not p.is_dir() or p.name in keep:
+            continue
+        if ".tmp-" in p.name and time.time() - p.stat().st_mtime < 6 * 3600:
+            continue                       # another build may be writing it
+        try:
+            shutil.rmtree(p)
+        except OSError as e:
+            log(f"forecast v4: could not remove the old calendar folder {p} ({e}); the next build tries again")
 
 
 # ------------------------------------------------------------------ what a rule set switches on
@@ -804,6 +924,243 @@ def rules_page(q: dict) -> dict:
 
 def _truthy(v) -> bool:
     return str(v).strip().lower() in ("1", "true", "yes", "on")
+
+
+# ------------------------------------------------------------------ a rule set's calendar
+# Operator, Nov 13, 2026: "when i click and id in Best switch-on rules this month currently you are
+# showing months only i want a calendar, when i click a day in calendar, show me the trades it made in
+# that day". A day is the walk's own day: 12:00am to 12:00am UTC, its trades the ones OPENED that day.
+class BadAsk(ValueError):
+    """A question the calendar cannot answer as asked (a malformed day): the route answers 400."""
+
+
+WHY_WORDS = {"SL": "stop (SL)", "TP": "target (TP)", "SIGNAL": "opposite signal", "END": "run ended",
+             "OTHER": "other"}
+_WALK_IDX: dict = {"key": None, "index": None, "pos": None}
+
+
+def _day_key(s: int) -> str:
+    return datetime.fromtimestamp(int(s), tz=timezone.utc).strftime("%Y-%m-%d")
+
+
+def _walk_files(doc: dict):
+    """(folder, index, rule position by id) of the calendar files the forecast `doc` names, or None
+    when it names none (a forecast built before the calendar) or they cannot be read."""
+    name = str(doc.get("walk_dir") or "")
+    if not name:
+        return None
+    folder = out_path().parent / name
+    p = folder / "index.json"
+    try:
+        st = p.stat()
+    except OSError:
+        return None
+    key = (str(p), st.st_mtime_ns, st.st_size)
+    with _LOCK:
+        if _WALK_IDX["key"] != key:
+            try:
+                index = json.loads(p.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                return None
+            if index.get("format") != WALK_FORMAT:
+                return None
+            _WALK_IDX.update(key=key, index=index, pos={r: i for i, r in enumerate(index["rule_ids"])})
+        return folder, _WALK_IDX["index"], _WALK_IDX["pos"]
+
+
+def _read(folder: Path, index: dict, col: str, a: int = 0, count: int = -1) -> np.ndarray:
+    """Rows [a, a + count) of one column, read and closed at once (no file is held open across asks,
+    so the next build can remove an old folder)."""
+    dt = np.dtype(index["cols"][col])
+    return np.fromfile(folder / f"{col}.bin", dtype=dt, count=count, offset=a * dt.itemsize)
+
+
+def _find_rule(doc: dict, rule_id: str):
+    """The listed rule set for an id (a twin's id finds the rule set it is listed as), or None."""
+    want = str(rule_id or "").strip().lstrip("#").upper()
+    want = doc.get("same_as", {}).get(want, want)
+    for r in doc["rules"]:
+        if r["id"] == want:
+            return r
+    return None
+
+
+def _takes(t: dict, rule: dict) -> np.ndarray:
+    """THE SWITCH-ON TEST, asked of filed trades: which of them `rule` takes. The walk's own arithmetic
+    (`_walk`: its kind, at least min_trades closed in its window before the day, its money rule, and
+    wins x 100 >= win rate x trades) over the numbers the walk itself filed for each trade - held equal
+    to the walk's day figures for every rule set by tests/test_forecast_v4_calendar.py."""
+    W = int(rule["window"])
+    N = int(rule["min_trades"])
+    X = int(rule["min_win_rate"])
+    n_ = t[f"n{W}"].astype(np.int64)
+    m = n_ >= N
+    if rule.get("tf"):
+        m &= t["tfc"] == TFS.index(rule["tf"]) - 1
+    if rule.get("skill"):
+        m &= t["skc"] == SKILLS.index(rule["skill"]) - 1
+    if rule.get("tp_rule") == ">":
+        m &= t["tpf"]
+    if float(rule.get("sl_cap") or 0):
+        m &= t["slc"]
+    mr = _money(rule.get("money"))
+    if mr:
+        m &= t[f"{mr}{W}"]
+    if X:
+        m &= t[f"w{W}"].astype(np.int64) * 100 >= X * n_
+    return m
+
+
+def rule_days(rule_id: str, base_margin: float = 5.0) -> dict:
+    """Every walked day of one rule set, for the calendar: {"YYYY-MM-DD" (UTC): pnl, wins, losses,
+    trades} on each day it opened a trade, the dollars at `base_margin`. The boxes add up to the
+    rule set's months and total: they are the same trades, filed by the walk that counted those."""
+    doc = load()
+    if doc is None:
+        return {**_not_ready(), "days": {}}
+    r = _find_rule(doc, rule_id)
+    if r is None:
+        return {"ready": True, "found": False, "days": {},
+                "why": f"no rule set #{str(rule_id).strip().lstrip('#').upper()} in this forecast"}
+    w = doc["walk"]
+    k = max(_num(base_margin, 5.0), 0.01) / v4_store.MEASURED_MARGIN
+    span = {"from": _day_key(w["from_s"]), "to": _day_key(max(w["from_s"], w["to_s"] - 1))}
+    files = _walk_files(doc)
+    if files is None:
+        return {"ready": True, "found": True, "id": r["id"], "days": {}, **span,
+                "why": ("this forecast was worked out before the calendar existed: the day-by-day "
+                        "figures come with the next build (python -m tradingagents.forecast_v4 build)")}
+    folder, index, pos = files
+    i = pos.get(r["id"])
+    if i is None:
+        return {"ready": True, "found": True, "id": r["id"], "days": {}, **span,
+                "why": "the calendar files do not hold this rule set: they belong to another build"}
+    D = int(index["D"])
+    c = _read(folder, index, "days_trades", i * D, D)
+    wn = _read(folder, index, "days_wins", i * D, D)
+    p = _read(folder, index, "days_profit", i * D, D)
+    days = {}
+    for j in np.nonzero(c > 0)[0]:
+        days[_day_key(int(index["start"]) + int(j) * DAY_S)] = {
+            "pnl": round(float(p[j]) * k, 4), "trades": int(c[j]), "wins": int(wn[j]),
+            "losses": int(c[j] - wn[j]), "coins": []}
+    return {"ready": True, "found": True, "id": r["id"], "words": r["words"], "days": days, **span,
+            "trades": int(c.sum()), "profit": round(float(p.sum()) * k, 4),
+            "base_margin": round(k * v4_store.MEASURED_MARGIN, 4)}
+
+
+DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def rule_day(rule_id: str, day: str, page: int = 1, base_margin: float = 5.0) -> dict:
+    """The trades one rule set OPENED on one walked day (12:00am to 12:00am UTC), oldest first, ten a
+    page, with the day's totals over ALL of them (never the page's). Each trade: the strategy (id, coin,
+    timeframe, setting, skill), long or short, opened, closed (the exit minute), what closed it, its
+    stop and target and its profit at `base_margin`. `box` is the calendar's own figure for the day, so
+    a list that ever disagrees with its box says so."""
+    if not DAY_RE.match(str(day or "")):
+        raise BadAsk(f"day must be YYYY-MM-DD, not {day!r}")
+    try:
+        day_s = int(datetime.strptime(day, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp())
+    except ValueError as e:
+        raise BadAsk(f"no such day {day!r}") from e
+    doc = load()
+    if doc is None:
+        return {**_not_ready(), "rows": [], "total": 0, "page": 1, "pages": 1}
+    r = _find_rule(doc, rule_id)
+    if r is None:
+        return {"ready": True, "found": False, "rows": [], "total": 0, "page": 1, "pages": 1,
+                "why": f"no rule set #{str(rule_id).strip().lstrip('#').upper()} in this forecast"}
+    files = _walk_files(doc)
+    base = {"ready": True, "found": True, "id": r["id"], "words": r["words"], "day": day, "day_s": day_s,
+            "rows": [], "total": 0, "page": 1, "pages": 1, "per_page": PER_PAGE}
+    if files is None:
+        return {**base, "why": ("this forecast was worked out before the calendar existed: the trades "
+                                "come with the next build (python -m tradingagents.forecast_v4 build)")}
+    folder, index, pos = files
+    start, D = int(index["start"]), int(index["D"])
+    j = (day_s - start) // DAY_S
+    if day_s < start or j >= D:
+        return {**base, "why": (f"{day} is outside the days walked ({_day_key(start)} to "
+                                f"{_day_key(start + (D - 1) * DAY_S)})")}
+    ri = pos.get(r["id"])
+    if ri is None:
+        return {**base, "why": "the calendar files do not hold this rule set: they belong to another build"}
+    k = max(_num(base_margin, 5.0), 0.01) / v4_store.MEASURED_MARGIN
+    a, b = int(index["offsets"][j]), int(index["offsets"][j + 1])
+    sid = _read(folder, index, "sid", a, b - a).astype(np.int64)
+    t = {"tfc": _read(folder, index, "s_tfc")[sid], "skc": _read(folder, index, "s_skc")[sid],
+         "tpf": _read(folder, index, "s_tpf")[sid].astype(bool),
+         "slc": _read(folder, index, "s_slc")[sid].astype(bool)}
+    for W in WINDOWS:
+        t[f"n{W}"] = _read(folder, index, f"n{W}", a, b - a)
+        t[f"w{W}"] = _read(folder, index, f"w{W}", a, b - a)
+    flags = _read(folder, index, "flags", a, b - a)
+    for bit, name in enumerate(index["flags"]):
+        t[name] = (flags >> bit) & 1 == 1
+    m = _takes(t, r)
+    idx = np.nonzero(m)[0]
+    p4 = _read(folder, index, "p4", a, b - a)[idx].astype(np.int64)
+    en = _read(folder, index, "en", a, b - a)[idx].astype(np.int64) + start
+    at = _read(folder, index, "at", a, b - a)[idx].astype(np.int64) + start
+    side = _read(folder, index, "side", a, b - a)[idx]
+    why = _read(folder, index, "why", a, b - a)[idx]
+    s_sel = sid[idx]
+    box_n = int(_read(folder, index, "days_trades", ri * D + j, 1)[0])
+    box_p = float(_read(folder, index, "days_profit", ri * D + j, 1)[0])
+    order = np.lexsort((s_sel, at, en))                 # opened, then closed, then strategy
+    total = int(len(idx))
+    wins = int((p4 > 0).sum())
+    pages = max(1, -(-total // PER_PAGE))
+    page = min(max(1, int(_num(page, 1))), pages)
+    shown = order[(page - 1) * PER_PAGE: page * PER_PAGE]
+    names, names_why = _strategy_names([int(s_sel[x]) for x in shown], int(index["store_built_s"]))
+    rows = []
+    for x in shown:
+        s = int(s_sel[x])
+        nm = names.get(s, {})
+        rows.append({"id": nm.get("id"), "coin": nm.get("coin"), "tf": nm.get("tf"), "label": nm.get("label"),
+                     "skill": nm.get("skill"), "tp": nm.get("tp"), "sl": nm.get("sl"),
+                     "side": "long" if int(side[x]) > 0 else "short",
+                     "opened_s": int(en[x]), "closed_s": int(at[x]),
+                     "closed_by": WHY_WORDS.get(v4_store.WHYS[int(why[x])], "other")
+                     if 0 <= int(why[x]) < len(v4_store.WHYS) else "other",
+                     "profit": round(int(p4[x]) / 10_000 * k, 4)})
+    profit = int(p4.sum()) / 10_000
+    return {**base, "rows": rows, "total": total, "page": page, "pages": pages,
+            "trades": total, "wins": wins, "losses": total - wins,
+            "win_rate": round(100.0 * wins / total, 2) if total else None,
+            "profit": round(profit * k, 4), "strategies": int(len(np.unique(s_sel))),
+            "box": {"trades": box_n, "profit": round(box_p * k, 4)},
+            "agrees": box_n == total and abs(box_p - profit) < 0.00005 * max(1, total),
+            "names_why": names_why, "base_margin": round(k * v4_store.MEASURED_MARGIN, 4)}
+
+
+def _strategy_names(sids: list[int], store_built_s: int) -> tuple[dict, str]:
+    """Each strategy's id, coin, timeframe, setting and skill from the Backtest v4 store - only while
+    the store is the one this forecast was built from (a strategy's number, `sid`, is given by each
+    store build). Otherwise none, and why."""
+    if not sids:
+        return {}, ""
+    db = v4_store.db_path()
+    try:
+        con = sqlite3.connect(f"file:{Path(db).as_posix()}?mode=ro", uri=True, timeout=10)
+    except sqlite3.Error as e:
+        return {}, f"the Backtest v4 store could not be opened ({e})"
+    try:
+        got = {k: v for k, v in con.execute("SELECT k, v FROM meta WHERE k = 'built_s'")}
+        if int(float(got.get("built_s", 0) or 0)) != int(store_built_s):
+            return {}, ("Backtest v4 was rebuilt after this forecast: each trade's strategy is named again "
+                        "once the forecast is worked out from it (it follows the store within minutes)")
+        q = ",".join("?" * len(sids))
+        rows = con.execute(f"SELECT sid, id, coin, tf, label, skill, tp, sl FROM strat WHERE sid IN ({q})",
+                           sids).fetchall()
+    except sqlite3.Error as e:
+        return {}, f"the Backtest v4 store could not be read ({e})"
+    finally:
+        con.close()
+    return {int(s): {"id": i, "coin": c, "tf": tf, "label": lb, "skill": sk, "tp": tp, "sl": sl}
+            for s, i, c, tf, lb, sk, tp, sl in rows}, ""
 
 
 def streaks_page(q: dict) -> dict:

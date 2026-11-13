@@ -10,8 +10,9 @@
  *  Every number is the server's (tradingagents/forecast_v4.py, /api/forecast-v4*): every filter is
  *  sent to it, it sorts and pages, ten a page under the Auto Trade buttons. This file only prints. */
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { API_BASE, fmtMoney, fmtWhen } from "@/lib/api";
+import { API_BASE, DayStat, fmtMoney, fmtWhen } from "@/lib/api";
 import PageButtons from "@/components/common/PageButtons";
+import { DayCalendar } from "@/components/trade/PnlPanel";
 
 type Month = { trades: number; wins: number; losses: number; profit: number; random: number; covered: boolean; complete: boolean };
 type Top = { id: string; coin: string; tf: string; label: string; trades: number; profit: number };
@@ -101,7 +102,101 @@ function tpText(r: Rule) {
   return r.widest_tp == null ? "any (some have none)" : `any, up to ${r.widest_tp}%`;
 }
 
-function RuleRow({ r, open, toggle, s }: { r: Rule; open: boolean; toggle: () => void; s: Summary }) {
+// ---------------------------------------------------------------- a rule set's calendar
+/** DAY BY DAY (operator, Nov 13, 2026: "currently you are showing months only i want a calendar, when i
+ *  click a day in calendar, show me the trades it made in that day"). Each box is one walked day, 12:00am
+ *  to 12:00am UTC, holding the trades the rule set OPENED that day - filed by the walk that adds up the
+ *  months, so the boxes add up to them. A click asks the SERVER for that day's trades
+ *  (/api/forecast-v4/rules/{id}/day), never a filter here over something already cut. */
+type RuleDays = { ready: boolean; found?: boolean; why?: string; id?: string; words?: string;
+  days: Record<string, DayStat>; from?: string; to?: string; trades?: number; profit?: number };
+type DayRow = { id: string | null; coin: string | null; tf: string | null; label: string | null; skill: string | null;
+  tp: number | null; sl: number | null; side: string; opened_s: number; closed_s: number; closed_by: string; profit: number };
+type DayList = { ready: boolean; found?: boolean; why?: string; day: string; day_s: number; rows: DayRow[];
+  total: number; page: number; pages: number; trades?: number; wins?: number; losses?: number;
+  win_rate?: number | null; profit?: number; strategies?: number; box?: { trades: number; profit: number };
+  agrees?: boolean; names_why?: string };
+
+const dayName = (k: string) => `${MONTH[Number(k.slice(5, 7)) - 1]} ${k.slice(8, 10)}, ${k.slice(0, 4)}`;
+
+function RuleCalendar({ id, base, onPick }: { id: string; base: number; onPick: (day: string | null) => void }) {
+  const { d, err, busy } = useServer<RuleDays>(`/api/forecast-v4/rules/${id}/days`, { base_margin: base }, 0);
+  if (err) return <p className="text-error-500">could not read #{id}&apos;s calendar — {err}</p>;
+  if (!d) return <p className="text-gray-400">loading #{id}&apos;s calendar…</p>;
+  if (d.why || !d.from || !d.to) return <p className="text-gray-500">{d.why || "no calendar for this rule set"}</p>;
+  return (
+    <DayCalendar days={d.days} book={`#${id}`} title="Day by day (UTC days)" loading={busy}
+      span={{ from: d.from, to: d.to }} start={d.to} onPick={onPick} />
+  );
+}
+
+function RuleDayTrades({ id, day, base }: { id: string; day: string; base: number }) {
+  const [page, setPage] = useState(1);
+  const { d, err, busy } = useServer<DayList>(`/api/forecast-v4/rules/${id}/day`, { day, page, base_margin: base }, 0);
+  if (err) return <p className="mt-2 text-error-500">could not read the trades of {dayName(day)} — {err}</p>;
+  if (!d) return <p className="mt-2 text-gray-400">loading the trades of {dayName(day)}…</p>;
+  if (d.why) return <p className="mt-2 text-gray-500">{d.why}</p>;
+  const heads = ["opened", "closed", "coin", "timeframe", "side", "strategy", "TP / SL", "closed by", "PROFIT $"];
+  return (
+    <div className="mt-3">
+      <p>
+        <b>{dayName(day)}</b> (trades opened from {fmtWhen(d.day_s)} to {fmtWhen(d.day_s + 86_400)} on this PC&apos;s clock,
+        12:00am to 12:00am UTC) · {d.total.toLocaleString()} trade{d.total === 1 ? "" : "s"} by {d.strategies ?? 0} strateg{d.strategies === 1 ? "y" : "ies"} ·
+        {" "}{d.wins ?? 0} won / {d.losses ?? 0} lost ({pct(d.win_rate)}) · TOTAL PROFIT <b className={tone(d.profit)}>{fmtMoney(d.profit ?? 0)}</b>
+        {busy && <span className="ml-2 text-gray-400">working…</span>}
+      </p>
+      {d.agrees === false && d.box && (
+        <p className="mt-1 text-error-500">this list adds up to {d.total} trades and {fmtMoney(d.profit ?? 0)}, but the calendar&apos;s box says {d.box.trades} and {fmtMoney(d.box.profit)}</p>
+      )}
+      {d.names_why && <p className="mt-1 text-gray-500">{d.names_why}</p>}
+      {d.rows.length > 0 && (
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full min-w-[56rem] text-theme-xs">
+            <thead><tr>{heads.map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+              {d.rows.map((x, i) => (
+                <tr key={`${x.id}|${x.opened_s}|${x.closed_s}|${i}`}>
+                  <td className={td}>{fmtWhen(x.opened_s)}</td>
+                  <td className={td}>{fmtWhen(x.closed_s)}</td>
+                  <td className={td}>{x.coin ?? "—"}</td>
+                  <td className={td}>{x.tf ?? "—"}</td>
+                  <td className={td}>{x.side}</td>
+                  <td className="min-w-[16rem] py-1.5 pr-3 text-gray-700 dark:text-gray-300">{x.id ? <span className="font-mono">#{x.id}</span> : "—"} {x.label ?? ""}{x.skill ? <span className="text-gray-400"> · {x.skill}</span> : ""}</td>
+                  <td className={td}>{x.tp == null ? "no target" : `${x.tp}%`} / {x.sl == null ? "—" : `${x.sl}%`}</td>
+                  <td className={td}>{x.closed_by}</td>
+                  <td className={`${td} font-semibold ${tone(x.profit)}`}>{fmtMoney(x.profit)}</td>
+                </tr>
+              ))}
+              <tr className="border-t border-gray-200 dark:border-gray-700">
+                <td className={`${td} font-semibold`} colSpan={8}>TOTAL PROFIT — all {d.total.toLocaleString()} trades of {dayName(day)}, not only this page</td>
+                <td className={`${td} font-semibold ${tone(d.profit)}`}>{fmtMoney(d.profit ?? 0)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+      <PageButtons cur={d.page} pages={d.pages} goto={setPage} what="trade" busy={busy} />
+    </div>
+  );
+}
+
+/** The calendar beside the months, and the clicked day's trades under both; mounted only while the
+ *  rule set's panel is open, so a closed panel forgets its day. */
+function RuleDayByDay({ id, base, children }: { id: string; base: number; children: React.ReactNode }) {
+  const [day, setDay] = useState<string | null>(null);
+  return (
+    <>
+      <div className="mt-2 flex flex-wrap items-start gap-4">
+        <div className="w-[27rem] max-w-full"><RuleCalendar id={id} base={base} onPick={setDay} /></div>
+        <div className="min-w-0 flex-1 overflow-x-auto">{children}</div>
+      </div>
+      {day ? <RuleDayTrades key={`${id}|${day}`} id={id} day={day} base={base} />
+        : <p className="mt-2 text-gray-400">Click a day on the calendar to see the trades #{id} opened that day.</p>}
+    </>
+  );
+}
+
+function RuleRow({ r, open, toggle, s, base }: { r: Rule; open: boolean; toggle: () => void; s: Summary; base: number }) {
   const p = r.predicted;
   const days = Math.max(1, r.days_covered);
   return (
@@ -137,7 +232,7 @@ function RuleRow({ r, open, toggle, s }: { r: Rule; open: boolean; toggle: () =>
                 beat random on {r.beat_days} of {r.days_traded} days it traded{r.luck ? " — could be luck" : ""} ·
                 {" "}{r.strategies.toLocaleString()} of its kind&apos;s {r.kind_n.toLocaleString()} strategies traded · green on {r.green_days} days · busiest day {r.busiest_day.toLocaleString()} trades opened.
               </p>
-              <div className="mt-2 overflow-x-auto">
+              <RuleDayByDay id={r.id} base={base}>
                 <table className="text-theme-xs">
                   <thead><tr>{["month", "trades", "won / lost", "profit", "random picks, same trades"].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
                   <tbody>{r.months.map((m, i) => (
@@ -157,7 +252,7 @@ function RuleRow({ r, open, toggle, s }: { r: Rule; open: boolean; toggle: () =>
                     </tr>
                   </tbody>
                 </table>
-              </div>
+              </RuleDayByDay>
               {r.top.length > 0 && (
                 <p className="mt-2">The strategies it switched on most (look them up by id in Backtest v4):{" "}
                   {r.top.map((t, i) => <span key={t.id}>{i ? " · " : ""}<span className="font-mono">#{t.id}</span> {t.coin} {t.tf} {t.label}: {t.trades.toLocaleString()} trades, <span className={tone(t.profit)}>{fmtMoney(t.profit)}</span></span>)}
@@ -269,7 +364,7 @@ function Rules({ s, base }: { s: Summary; base: number }) {
               {["ID", "rule set", "this month — predicted (low to high)", "PROFIT / TOTAL $", "TP", "SL", "leverage", "trades", "wins / losses", "win rate", "worst losing run", "worst day", "beat random"].map((h) => <th key={h} className={th}>{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {d.rows.map((x) => <RuleRow key={x.id} r={x} s={s} open={isOpen(x.id)} toggle={() => setOpen(isOpen(x.id) ? "" : x.id)} />)}
+              {d.rows.map((x) => <RuleRow key={x.id} r={x} s={s} base={base} open={isOpen(x.id)} toggle={() => setOpen(isOpen(x.id) ? "" : x.id)} />)}
             </tbody>
           </table>
         </div>

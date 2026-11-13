@@ -908,6 +908,34 @@ def forecast_v4_rules(window: int = 0, tf: str = "", skill: str = "", tp_rule: s
         "page": page})
 
 
+@app.get("/api/forecast-v4/rules/{rule_id}/days")
+def forecast_v4_rule_days(rule_id: str, base_margin: float = 5.0) -> dict:
+    """One switch-on rule set, day by day, for its calendar (operator, Nov 13,
+    2026: "currently you are showing months only i want a calendar")."""
+    from tradingagents import forecast_v4
+
+    got = forecast_v4.rule_days(rule_id, base_margin)
+    if got.get("ready") and got.get("found") is False:
+        raise HTTPException(404, got.get("why", "not found"))
+    return got
+
+
+@app.get("/api/forecast-v4/rules/{rule_id}/day")
+def forecast_v4_rule_day(rule_id: str, day: str = "", page: int = 1, base_margin: float = 5.0) -> dict:
+    """The trades one switch-on rule set opened on one UTC day, ten a page
+    ("when i click a day in calendar, show me the trades it made in that
+    day"), cut on the server from the walk's own filed trades."""
+    from tradingagents import forecast_v4
+
+    try:
+        got = forecast_v4.rule_day(rule_id, day, page, base_margin)
+    except forecast_v4.BadAsk as exc:
+        raise HTTPException(400, str(exc)) from exc
+    if got.get("ready") and got.get("found") is False:
+        raise HTTPException(404, got.get("why", "not found"))
+    return got
+
+
 @app.get("/api/forecast-v4/streaks")
 def forecast_v4_streaks(kind: str = "win", min: int = 5, recent: int = 7, tf: str = "",
                         skill: str = "", q: str = "", base_margin: float = 5.0,

@@ -96,9 +96,14 @@ const dayKey = (y: number, m: number, d: number) => `${y}-${pad2(m + 1)}-${pad2(
  * month's total summed from the same boxes, so the caption cannot disagree
  * with the grid. A day with no closed trade stays blank rather than +0.00:
  * "nothing closed" and "closed at break-even" are different days. */
-export function DayCalendar({ days, book, dry, onBook, loading = false, start, span, trades = false }: {
+export function DayCalendar({ days, book, dry, onBook, loading = false, start, span, trades = false, title = "Day by day", onPick }: {
   days: Record<string, DayStat>; book: string; dry?: boolean; onBook?: (dry: boolean) => void;
   loading?: boolean;
+  /** the heading over the grid (Forecast v4's rule calendar says its days are UTC days) */
+  title?: string;
+  /** told the day clicked ("YYYY-MM-DD", null when it is closed or the month moves), so the page
+   *  can list that day's trades in a space of its own (Forecast v4's switch-on rules, Nov 13, 2026) */
+  onPick?: (day: string | null) => void;
   /** a "YYYY-MM-DD" day whose month it opens on (default: this month) — a
    *  Room strategy's dates may end in a month before today's (Oct 15, 2026) */
   start?: string;
@@ -115,7 +120,8 @@ export function DayCalendar({ days, book, dry, onBook, loading = false, start, s
   const [month, setMonth] = useState(() => start
     ? { y: Number(start.slice(0, 4)), m: Number(start.slice(5, 7)) - 1 }
     : { y: now.getFullYear(), m: now.getMonth() });
-  const [picked, setPicked] = useState<string | null>(null);
+  const [picked, setPickedHere] = useState<string | null>(null);
+  const setPicked = (k: string | null) => { setPickedHere(k); onPick?.(k); };
 
   const keys = Object.keys(days).sort();
   const first = keys[0];
@@ -147,7 +153,7 @@ export function DayCalendar({ days, book, dry, onBook, loading = false, start, s
   return (
     <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="flex items-center gap-2 px-5 pt-4">
-        <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">Day by day</h3>
+        <h3 className="text-base font-semibold text-gray-800 dark:text-white/90">{title}</h3>
         <div className="ml-auto flex items-center gap-1">
           <button type="button" aria-label="previous month" disabled={!canBack} onClick={() => step(-1)}
             className="h-8 w-8 rounded-lg border border-gray-200 text-gray-600 disabled:opacity-30 dark:border-gray-700 dark:text-gray-300">‹</button>
@@ -218,7 +224,7 @@ export function DayCalendar({ days, book, dry, onBook, loading = false, start, s
           <p className="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-theme-xs text-gray-600 dark:bg-white/[0.03] dark:text-gray-300">
             <b>{MONTHS[Number(picked.slice(5, 7)) - 1]} {picked.slice(8, 10)}, {picked.slice(0, 4)}</b>{" · "}
             <span className={sel.pnl >= 0 ? "text-success-600" : "text-error-500"}>{fmtMoney(sel.pnl)}</span>
-            {" · "}{sel.trades} trade{sel.trades === 1 ? "" : "s"}, {sel.wins}W / {sel.losses}L · {sel.coins.join(", ")}
+            {" · "}{sel.trades} trade{sel.trades === 1 ? "" : "s"}, {sel.wins}W / {sel.losses}L{sel.coins?.length ? ` · ${sel.coins.join(", ")}` : ""}
           </p>
         )}
         {trades && picked && sel && dry !== undefined && (

@@ -3253,9 +3253,11 @@ their backtest did"*, and the played-back design with *"go start use suporpower"
   **Agreement is judged by the day a trade CLOSED** (`v4_daily.agreement`): yesterday's practice
   exits against the re-measured backtest's trades of the same strategies, "the same" = strategy,
   side, entry candle, exit candle and reason, with the dollar difference printed beside the count.
-* **Costs NOT charged, named on the rooms and Backtest v4:** every trade pays its coin's usual gap,
-  not its own minute's order book (100% typical cost), and no trade is refused by the runner's cost
-  check. Building them is a separate job. This is a lead to practice, never a reason for real money.
+* **Costs, since Nov 13, 2026:** every buy and sell is priced from the app's own recorded order book of
+  its own minute where one was recorded (see "A skill trade's fill pays the recorded order book" below);
+  a fill with no recording - and every trade before Oct 17, 2026 - pays its coin's usual gap, and no
+  trade is refused by the runner's cost check. Named on the rooms and Backtest v4, each with the share.
+  This is a lead to practice, never a reason for real money.
   **The usual gap is the median of the coin's recorded minutes over 30 days** (`skill_bt.usual_gap`,
   Nov 12, 2026), never one reading of the book as a machine runs - see "A coin's past is priced with
   its USUAL gap" below (RCA-2026-11-12-B).
@@ -3384,6 +3386,91 @@ on 283 of 1,078 coins between two nights.
   run for that (`v4_picker_lab.previous`).
 
 Guard: `tests/test_skill_usual_gap.py` (9).
+
+## A skill trade's fill pays the recorded order book of its own minute (MANDATORY — Nov 13, 2026)
+
+The operator, Nov 13, 2026: *"for the best swittch what enhancement would you suggest? and is my logic
+correct to create a room that deploys a switch?"*, *"i switch the model to fable 5.2 now analyze and
+check the best approach again use superpower"*, then *"build it, use superpower when bulding"*. Spec:
+`docs/superpowers/specs/2026-11-13-real-prices-for-skill-trades-design.md`; plan:
+`docs/superpowers/plans/2026-11-13-real-prices-for-skill-trades.md`.
+
+**What was found (store of Nov 12, 2026 7:33pm, three read-only checks).** No way of choosing rule sets
+carries over: chosen on 3 months and judged on the next, over 7 held-out months (May - Nov 2026), the
+best method was in profit 2 of 5 and a rule set's rank carried over at about +0.04. The edge before
+costs of VWAP reversion (what every leading rule set switches on) exists only on thin coins: +$0.25 to
++$0.30 a trade over all coins, about $0.00 on coins costing $0.25 or less. And the five room rule sets'
+707 trades of Oct 17 - Nov 12, 2026 that have a recorded book at their own minute read **+$131 as the
+backtest measured them and -$1,125 at that book** (#KK9SRY28: 305 trades, +$92 against -$488). The
+engine priced a fill at the candle's last price plus the coin's usual gap; a reversion strategy buys
+when that last price was a seller hitting the bid, and that price cannot be bought. Practice had the
+same error, because a skill room is the engine stepping in real time, not a fill against the book: its
+20 closed trades with a recorded book, -$4.99 in practice and -$12.20 at the real book. So the room
+idea is sound; the price was wrong, and every "best switch" found before this was chosen by that error.
+
+* **ONE RULE, `skill_bt.step(book=)`**, for the nightly backtest and the rooms' follower. A `skill_bt.Book`
+  holds a coin's readings and answers what $100 really got at a minute: a BUY pays the middle x (1 + the
+  walk up the asks), a SELL gets the middle / (1 + the walk down the bids) - the reading's own
+  definition of its walk (`book_history._sample`). An entry and a close-priced exit take that price
+  WHOLE, at the candle's close; a stop or target settled by the minute keeps its barrier and pays that
+  minute's walk; **a stop the price had already jumped past fills from where the price was** (never from
+  a barrier it could not get; Backtest v3's rule), a target keeps its barrier.
+* **Only the app's OWN reading of the fill's OWN minute is a price** (`source` app, not `exhausted`, a
+  real bid under a real ask): never the exchange's published books, which hold offers no API order can
+  take (RCA-2026-10-16-A), and never a neighbouring minute. So real prices begin **Oct 17, 2026**
+  (`skill_bt.REAL_FROM_S`, the first whole day the app recorded) and reach back no further than the
+  minutes do (`MINUTE_DAYS`). The recorder runs on this PC: a minute it did not record is not a price.
+* **No reading: the price of before, and the trade SAYS so.** Each trade carries `real` - how many of
+  its two fills were real: 2 real, 1 part, 0 estimated. A trade is never dropped for it and an estimate
+  is never passed off as real. "Real-priced", in every count, means 2. With `book=None` every line of
+  the engine is byte for byte the rule of before (no new key anywhere).
+* **A stop and a target are measured from the price really paid**, so real prices change some trades,
+  not only their dollars.
+* **The nightly run** (`skill_shard`, daily set) reads each coin's readings once over the stretch the
+  minutes are read, PUBLISHED days only (`skill_bt.read_book`, `app_books.book_for`), so every machine
+  and the PC price a strategy from the same readings. A trade it writes is always seven items
+  (`[.., the minute it ended in or None, its mark]`). **The dispatch waits for yesterday's readings to
+  go up** (`v4_daily._books_ready`): the chain is due at 00:05 UTC, the recorder uploads from 00:20 UTC,
+  so it waits at most 30 minutes past that (00:50 UTC), then goes on and every screen says yesterday
+  was not published (the next night prices it). No wait on a PC that records nothing or for a day the
+  recorder was off. The rooms' lists therefore land about 20 minutes later than before.
+* **Fills at the 00:00 UTC close are real one night late**: their reading (00:00:03) is in the new
+  day's recording, which goes up an hour after the run. So the daily agreement check also checks the
+  day before yesterday once more (`rechecked_s` in that day's file).
+* **The follower** (`v4_follow`) reads this PC's recording as it stands (`_books_default`,
+  `published_only=False`, NEVER a download), in the warm-up and on every candle. The recorder writes
+  every five minutes and a pass runs 20 s after a close, so a fill whose reading is not on disk yet
+  WAITS (`skill_bt.BookNotYet`: no row, no state moved, `waiting` counts it) and ONE MORE PASS runs
+  `RETRY_AFTER_S` (6 minutes) later; after `BOOK_WAIT_S` (10 minutes) with none - or at once when
+  nothing is on its way (an old candle, the recorder not running) - the fill pays the usual gap, the
+  row says so (`real`) and the room counts it (`fills`). A trade open before this keeps its entry.
+* **The store** (`v4_store`): `trade.real`, `strat.real_trades / real_wins / real_profit`, and
+  `meta.real` (of the finished trades: real and part, over everything and over the last 30 days by the
+  day a trade closed). A line from a machine still on the old code, and a mark that is not 0, 1 or 2,
+  are filed as estimated. A store from before the mark reads every trade as estimated.
+* **Forecast v4**: each rule set also carries `real_trades`, `real_wins`, `real_profit`,
+  `real_per_trade` - blank (None), never $0.00, when it has none - shown as the column "at real
+  prices", sortable (`real_profit`, `real_per_trade`; a rule set with none sorts last) and filterable
+  ("made money at real prices", `real_made`). The walk says what share of its trades have a real price.
+* **NOT changed, on purpose:** the rule sets' own test, the list's default order and the picker read the
+  store's dollars as they are - real where a fill was recorded, the estimate where it was not
+  (everything before Oct 17, 2026, and about a fifth of the trades since). The estimate is what
+  flattered the leaders, so until three whole months are recorded (Feb 2027) "best worst month" still
+  rests partly on it: **the "at real prices" column is the truthful figure - quote it, with its trade
+  count, beside any rule set recommended.** Whether a rule set should count only real-priced trades is
+  decided after a week of real numbers. The picker is not paused: it may switch the last room off, and
+  a room with no tab is the truthful state until a rule set makes money at real prices. The runner's
+  entry checks (cost check, "the price ran away", closed market) are still not part of the skill engine.
+* **Checked on real data before it shipped (Nov 13, 2026):** CATL 1h, the 42 settings, trades opened
+  since Oct 17, 2026 - 618 trades (499 real-priced, 45 part, 74 estimated); 1,043 fills re-priced by a
+  separate lookup of the recording, 0 differences; -$933.65 at the usual gap, -$1,076.49 at the
+  recorded book. The Nov 11, 2026 7:00am buy (last price 49.34, bid 48.97, ask 49.23) fills at 49.88
+  and closes on its signal at 49.79: -$0.33.
+
+Guards: `tests/test_skill_real_prices.py` (30), and the real-price tests in `tests/test_v4_follow.py`
+(a room and the engine, given the same candles, minutes and readings, write the same trade to the
+cent), `tests/test_v4_daily.py`, `tests/test_v4_daily_shard.py`, `tests/test_backtest_v4_store.py`,
+`tests/test_forecast_v4.py`, `tests/test_backtest_v4_tab.py`, `tests/test_skill_rooms_screen.py`.
 
 ## The picker lab — twenty picker rules, walked forward (Nov 12, 2026)
 

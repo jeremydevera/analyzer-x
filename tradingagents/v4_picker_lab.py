@@ -59,7 +59,7 @@ from tradingagents import forecast_v4 as f4
 from tradingagents import stores
 
 DAY_S = 86_400
-VERSION = 1
+VERSION = 2               # 2: each row carries its day-by-day switch-ons (`follow`) and wins (`day_wins`)
 SLOTS = 3                 # the three skill rooms
 LEAD_DAYS = 31            # rule-set history before the first pick
 RANDOM_RUNS = 200
@@ -772,8 +772,13 @@ def measure(d: dict, log=print) -> dict:
             "starts": begun, "starts_green": sum(b["profit"] > 0 for b in begun),
             "day_profit": [round(float(v) / 1e4, 4) for v in tot["p"]],
             "day_trades": [int(v) for v in tot["n"]],
+            "day_wins": [int(v) for v in tot["w"]],
             "day_random": [round(float(v) / 1e4, 4) for v in tot["random"]],
+            # the switch-on each of its rooms followed, day by day (None = the room sat empty): what the
+            # Forecast v4 "Rooms" section turns into "deployed" and "undeployed" (v4_picker_rooms)
+            "follow": [[(M["rules"][int(r)]["id"] if r >= 0 else None) for r in day] for day in f],
         })
+    followed = sorted({int(r) for x in rows for r in np.unique(x["follow"]) if r >= 0})
     q = lambda a: [round(float(np.percentile(a, x)), 4) for x in (5, 50, 95)]     # noqa: E731
     doc = {
         "version": VERSION, "built_s": int(time.time()), "seconds": round(time.time() - t0, 1),
@@ -791,18 +796,23 @@ def measure(d: dict, log=print) -> dict:
                    "shelves": {name: {"test": SHELVES[name], "profit": q(v["p"] / 1e4),
                                       "per_trade": q(rnd_ppt[name]), "trades": q(v["n"]),
                                       "in_profit": int((v["p"] > 0).sum())} for name, v in rnd.items()}},
+        "switch_ons": {M["rules"][r]["id"]: M["rules"][r]["words"] for r in followed},
         "rules": out_rows,
     }
     home().mkdir(parents=True, exist_ok=True)
     from tradingagents.forecast_v2 import publish
 
-    publish(home() / "lab.json", json.dumps(doc, separators=(",", ":")))
-    runs_dir().mkdir(parents=True, exist_ok=True)
-    publish(kept_path(end_s), json.dumps(doc, separators=(",", ":")))       # nothing here deletes one
-    with open(home() / "trades.pkl", "wb") as fh:
+    # the trades first, swapped in whole, then the run that names them (`built_s` pairs the two): a
+    # reader between the two swaps sees files of two runs and keeps the pair it already holds
+    tmp = home() / "trades.pkl.writing"
+    with open(tmp, "wb") as fh:
         used = np.unique(np.concatenate([t["sid"] for t in trades.values()] or [np.zeros(0, np.int64)]))
         pickle.dump({"end_s": end_s, "built_s": doc["built_s"], "trades": trades, "rules": M["rules"],
                      "info": {int(s): d["info"][int(s)] for s in used}}, fh, protocol=4)
+    tmp.replace(home() / "trades.pkl")
+    publish(home() / "lab.json", json.dumps(doc, separators=(",", ":")))
+    runs_dir().mkdir(parents=True, exist_ok=True)
+    publish(kept_path(end_s), json.dumps(doc, separators=(",", ":")))       # nothing here deletes one
     log(f"picker lab: {len(out_rows)} rows written to {home() / 'lab.json'} in {doc['seconds']:.0f} s")
     return doc
 
@@ -828,14 +838,194 @@ def table(doc: dict) -> str:
     return "\n".join(lines)
 
 
+# ------------------------------------------------------------------ once a night, by itself
+# The Forecast v4 "Rooms" section reads the newest run (operator, Nov 12, 2026: "create a section 'room'
+# where you will list all the room that is earning this month"), so the lab measures again whenever the
+# daily refresh has landed a newer store. In its OWN process (it holds a 1 GB read and two walks), started
+# by the site's 30-second tick; what it is doing, and why it could not, is kept where the page reads it.
+RETRY_S = 3600            # a run that failed is tried again an hour later, never every tick
+
+
+def status_path() -> Path:
+    return home() / "status.json"
+
+
+def _status() -> dict:
+    try:
+        return json.loads(status_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _write_status(st: dict) -> None:
+    from tradingagents.forecast_v2 import publish
+
+    home().mkdir(parents=True, exist_ok=True)
+    publish(status_path(), json.dumps(st))
+
+
+def running() -> bool:
+    """A run is going when something HOLDS the run lock - never a pid (CLAUDE.md, RCA-2026-10-19-A)."""
+    from tradingagents import portable
+
+    try:
+        fh = open(home() / "run.lock", "a+", encoding="utf-8")   # noqa: SIM115
+    except OSError:
+        return False
+    try:
+        portable.lock_exclusive(fh, blocking=False)
+    except OSError:
+        return True
+    else:
+        portable.unlock(fh)
+        return False
+    finally:
+        fh.close()
+
+
+def newest_run_end() -> int:
+    """The last candle of the store the newest run was measured on (0 = never measured)."""
+    try:
+        return int(json.loads((home() / "lab.json").read_text(encoding="utf-8"))["store"]["data_end_s"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return 0
+
+
+def store_end() -> int:
+    """The live store's last candle (0 = no store, or one that cannot be read this second): one small
+    read of its own stamp, cheap enough for a 30-second tick."""
+    from tradingagents import v4_store
+
+    try:
+        con = v4_store._con()
+        if con is None:
+            return 0
+        try:
+            row = con.execute("SELECT v FROM meta WHERE k = 'data_end_s'").fetchone()
+            return int(json.loads(row[0])) if row else 0
+        finally:
+            con.close()
+    except Exception:                                          # noqa: BLE001 - a store mid-swap: next tick
+        return 0
+
+
+def due(now_s: float | None = None) -> str | None:
+    """Why a run should start now, or None. Due when the live store is newer than the newest run, the
+    daily refresh has finished with it (its list landed), no run is going, and the last try on THIS
+    store did not fail within the hour."""
+    from tradingagents import v4_daily
+
+    now_s = time.time() if now_s is None else now_s
+    if running():
+        return None
+    end_s = store_end()
+    if not end_s or end_s <= newest_run_end():
+        return None
+    phase = v4_daily.status().get("phase")
+    if phase not in v4_daily.IDLE:
+        return None                       # still measuring, building or writing the day's list
+    st = _status()
+    if st.get("tried_end_s") == end_s:
+        # the last try on THIS store failed, or started and never ended (killed, or died before it
+        # could say why): the next try waits RETRY_S, counted from when that one stopped or started
+        failed = st.get("ok") is False
+        died = bool(st.get("started_s")) and not st.get("ended_s")
+        since = float(st.get("ended_s") or st.get("started_s") or 0)
+        if (failed or died) and now_s - since < RETRY_S:
+            return None
+    from tradingagents.positions_view import fmt_when
+
+    return f"the store now ends {fmt_when(end_s)}, the newest run was measured on {fmt_when(newest_run_end()) if newest_run_end() else 'nothing'}"
+
+
+def nightly(log=print) -> int:
+    """`python -m tradingagents.v4_picker_lab nightly`: one run under the run lock. Its start, its end and
+    any failure are written to status.json - a job that could not run SAYS SO, where the page reads it."""
+    from tradingagents import portable, v4_picker_lab_page as page
+
+    home().mkdir(parents=True, exist_ok=True)
+    fh = open(home() / "run.lock", "a+", encoding="utf-8")   # noqa: SIM115
+    try:
+        portable.lock_exclusive(fh, blocking=False)
+    except OSError:
+        fh.close()
+        log("picker lab: a run is already going")
+        return 0
+    tried = store_end()
+    st = {"started_s": int(time.time()), "ended_s": None, "ok": None, "error": "", "tried_end_s": tried}
+    try:
+        _write_status(st)
+        doc = run(log=log)
+        page.write()
+        st.update(ok=True, store_end_s=doc["store"]["data_end_s"], rows=len(doc["rules"]))
+        log(table(doc))
+    except Exception as exc:                                   # noqa: BLE001 - the reason is the product
+        st.update(ok=False, error=f"{type(exc).__name__}: {exc}"[:500])
+        log(f"picker lab: the run FAILED - {st['error']}")
+    finally:
+        st["ended_s"] = int(time.time())
+        _write_status(st)
+        portable.unlock(fh)
+        fh.close()
+    return 0 if st["ok"] else 1
+
+
+def start_run() -> int:
+    """Start `nightly` as a background program with no window; its output goes to run.log."""
+    import os
+    import subprocess
+    import sys
+
+    from tradingagents import portable
+
+    home().mkdir(parents=True, exist_ok=True)
+    with (home() / "run.log").open("a", encoding="utf-8") as logf:
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "tradingagents.v4_picker_lab", "nightly"],
+            stdout=logf, stderr=subprocess.STDOUT, **portable.DETACHED,
+            cwd=str(Path(__file__).resolve().parent.parent),
+            env={**os.environ, "PYTHONUTF8": "1", "PYTHONUNBUFFERED": "1"})
+    return proc.pid
+
+
+def tick(now_s: float | None = None) -> dict:
+    """The site's tick: start a run when one is due. Never from a test."""
+    import os
+
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return {"started": False, "why": "never from a test"}
+    why = due(now_s)
+    if not why:
+        return {"started": False}
+    pid = start_run()
+    print(f"[picker lab] measuring again (pid {pid}): {why}", flush=True)
+    return {"started": True, "why": why}
+
+
+def status() -> dict:
+    """What the Rooms section says about its own freshness: the run it shows, a run going now, and a
+    run that failed or died (started, never ended, and nothing holds the lock)."""
+    st = _status()
+    going = running()
+    died = bool(st.get("started_s") and not st.get("ended_s") and not going)
+    return {"running": going, "started_s": st.get("started_s"), "ended_s": st.get("ended_s"),
+            "ok": st.get("ok"), "error": st.get("error") or ("the run that started never finished" if died else ""),
+            "measured_end_s": newest_run_end() or None}
+
+
 def main(argv: list[str] | None = None) -> int:
     import argparse
 
     ap = argparse.ArgumentParser(prog="python -m tradingagents.v4_picker_lab")
-    ap.add_argument("what", choices=("run", "page", "show"))
+    ap.add_argument("what", choices=("run", "page", "show", "nightly", "status"))
     ap.add_argument("--db", default=None)
     ap.add_argument("--fresh", action="store_true", help="copy the store again even if it has not changed")
     a = ap.parse_args(argv)
+    if a.what == "nightly":
+        return nightly()
+    if a.what == "status":
+        print(json.dumps({**status(), "due": due()}, indent=1))
+        return 0
     if a.what == "run":
         print(table(run(Path(a.db) if a.db else None, fresh=a.fresh)))
     if a.what == "show":

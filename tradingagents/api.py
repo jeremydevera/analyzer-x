@@ -322,6 +322,19 @@ def _keep_the_row_index_current() -> None:
                         _th.Thread(target=_v4f.tick, name="v4-follow", daemon=True).start()
                 except Exception as exc:                       # noqa: BLE001
                     print(f"[v4 follow] could not start its thread: {exc!r}", flush=True)
+                # THE ROOMS OF FORECAST V4, MEASURED AGAIN EVERY NIGHT (operator,
+                # Nov 12, 2026: "create a section 'room' where you will list all
+                # the room that is earning this month"). The section reads the
+                # picker lab's newest run, so a run is started - in its own
+                # process, it holds a 1 GB read - once the daily refresh has
+                # landed a newer store (v4_picker_lab.due). Never from a test.
+                try:
+                    from tradingagents import v4_picker_lab as _vpl
+
+                    if not any(t.name == "picker-lab" for t in _th.enumerate()):
+                        _th.Thread(target=_vpl.tick, name="picker-lab", daemon=True).start()
+                except Exception as exc:                       # noqa: BLE001
+                    print(f"[picker lab] could not start its thread: {exc!r}", flush=True)
                 # NO AUTOMATIC CANDLE TOP-UP. candle_autopilot.tick() ran here
                 # from 2026-09-06 to 2026-09-09 and started an UPDATE by itself
                 # whenever the store was 3h stale. The operator saw
@@ -907,6 +920,46 @@ def forecast_v4_streaks(kind: str = "win", min: int = 5, recent: int = 7, tf: st
     return forecast_v4.streaks_page({"kind": kind, "min": min, "recent": recent, "tf": tf,
                                      "skill": skill, "q": q, "base_margin": base_margin,
                                      "page": page})
+
+
+@app.get("/api/forecast-v4/rooms")
+def forecast_v4_rooms(days: int = 0, date_from: str = "", date_to: str = "",
+                      min_winrate: float = 0.0, min_trades: int = 0,
+                      min_profit: float | None = None, earning: bool = False, q: str = "",
+                      base_margin: float = 5.0, sort: str = "profit", desc: bool = True,
+                      page: int = 1) -> dict:
+    """Forecast v4 -> Rooms (operator, Nov 12, 2026: "create a section 'room'
+    where you will list all the room that is earning this month ... if i
+    adjust the date filter ... the winrate should adjust asw well"): every
+    tested picker rule as a room, worked out for the days asked and filtered,
+    sorted and paged on the server (tradingagents/v4_picker_rooms.rooms_page)."""
+    from tradingagents import v4_picker_rooms as vr
+
+    try:
+        return vr.rooms_page({
+            "days": days, "date_from": date_from, "date_to": date_to, "min_winrate": min_winrate,
+            "min_trades": min_trades, "min_profit": min_profit, "earning": earning, "q": q,
+            "base_margin": base_margin, "sort": sort, "desc": desc, "page": page})
+    except vr.BadAsk as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.get("/api/forecast-v4/rooms/{room_id}")
+def forecast_v4_room_log(room_id: str, days: int = 0, date_from: str = "", date_to: str = "",
+                         base_margin: float = 5.0, every: bool = False, page: int = 1) -> dict:
+    """One room, day by day: the switch-ons it deployed and undeployed, what
+    kept running and what the day's trades made ("if i click the room, i want
+    to see what switch-on has been deployed and undeployed per day")."""
+    from tradingagents import v4_picker_rooms as vr
+
+    try:
+        got = vr.room_log(room_id, {"days": days, "date_from": date_from, "date_to": date_to,
+                                    "base_margin": base_margin, "every": every, "page": page})
+    except vr.BadAsk as exc:
+        raise HTTPException(400, str(exc)) from exc
+    if got.get("ready") and not got.get("found"):
+        raise HTTPException(404, got.get("why", "not found"))
+    return got
 
 
 # -------------------------------------------------------------- strategies

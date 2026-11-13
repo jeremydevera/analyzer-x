@@ -3063,7 +3063,9 @@ format). Page: `webapp/src/components/backtest-v4/V4Strategies.tsx`; routes `/ap
 The operator, Nov 10, 2026: *"in auto trade can you create forecast v4 but this time use my backtest
 v4 data"*. Auto Trade → Forecast v4 (`/forecast-v4`, `webapp/src/components/forecast/ForecastV4.tsx`),
 worked out by `tradingagents/forecast_v4.py` into `~/.tradingagents/v4/forecast.json` (one swap,
-`forecast_v2.publish`), served by `/api/forecast-v4`, `/rules`, `/streaks` (every filter, sort and page
+`forecast_v2.publish`), served by `/api/forecast-v4`, `/rules`, `/streaks` and - since Nov 12, 2026, when the
+page's Streaks section went and its Rooms section came (see "The picker lab" below; the streaks are still
+worked out and served, the page no longer shows them) - `/rooms` (every filter, sort and page
 on the server, ten a page, a base margin box that scales every dollar).
 
 * **Walked forward, never looking ahead:** every day at 12:00am UTC from the 1st of the month three
@@ -3349,6 +3351,30 @@ Because low winrate does not mean its not profitable"*.
   each row from the trades OPENED in the window (the picker is not started again, said on the page);
   refused when a row's trades are not the ones measured. Above everything it says how the store priced
   each coin's gap and prints the kept run of the night before beside tonight's.
+* **THE ROOMS SECTION OF FORECAST V4 (operator, Nov 12, 2026):** *"in v4 just remove the streak section,
+  then create a section 'room' where you will list all the room that is earning this month take note i
+  want to see necessary filter on this, like dates, or winrate etc. if i adjust the date filter i should,
+  the winrate should adjust asw well / if i click the room, i want to see what switch-on has been deployed
+  and undeployed per day"* - and, asked what a room is, **each tested picker rule is one room** (plus the
+  rooms with no picker). `tradingagents/v4_picker_rooms.py` reads the lab's newest run and answers
+  `/api/forecast-v4/rooms` (the list) and `/api/forecast-v4/rooms/{id}` (one room's days), everything
+  on the server: the window is the picker's own UTC days (`days` = last N, or `date_from` / `date_to`,
+  default this month, cut to the days measured and said); a room's figures are the trades it OPENED
+  in the window, so profit, trades, wins, losses and win rate are the window's own; the floors (win
+  rate, trades, profit at the base margin, "made money in these days") are applied to those figures,
+  then sorted and paged ten a page; find by id overrides the floors and keeps the days; an empty list
+  names what was examined. The page opens on this month with "made money in these days" ticked. A
+  room's log is day by day, newest first: the switch-ons it DEPLOYED (running today, not yesterday; its
+  first day deploys its first picks), UNDEPLOYED (running yesterday, not today), what kept running and
+  what the day's trades made - only days with a change, or every day. A run from before the lab kept
+  each room's days (`VERSION` < 2) is not shown: the section says to measure again.
+* **MEASURED AGAIN EVERY NIGHT, BY ITSELF** (`v4_picker_lab.tick`, the site's `picker-lab` thread): a run
+  starts, in its own process with no window (`start_run` -> `nightly`, output in `picker-lab/run.log`),
+  once the live store is newer than the newest run AND the daily refresh is finished with it (`due`).
+  One run at a time by a run LOCK, never a pid; its start, end and any failure are in
+  `picker-lab/status.json` and on the section ("the last nightly measure did not finish - ..."); a run
+  that started and never ended while nothing holds the lock is said to have died; a failed run is tried
+  again an hour later (`RETRY_S`), never every tick; never from a test.
 * **Not in the test:** the live picker's practice check (no practice record exists for past days); each
   room is its own account. NOTHING is switched: the live picker still runs its own test until the
   operator names a rule.
@@ -3367,7 +3393,9 @@ Because low winrate does not mean its not profitable"*.
   pickers lost too (among rule sets in profit a middle -1,106.80, 7 of 200 in profit). **Run it again
   on a store priced with the usual gap (from the refresh of Nov 13, 2026) before naming a rule.**
 
-Guard: `tests/test_v4_picker_lab.py` (40: the twenty rules and their ids, the live test called not
+Guard: `tests/test_v4_picker_rooms.py` (21: the window, figures that are the window's own, every floor on
+the server, ten a page, find by id, the margin, the empty list, a room's days, the nightly run's rules,
+the page's columns and boxes) and `tests/test_v4_picker_lab.py` (40: the twenty rules and their ids, the live test called not
 copied, every pick decision, no look-ahead - a changed future changes no earlier pick -, sums equal to
 Forecast v4's, trades read back equal to the totals, the start days, the luck shelves, the copy guard,
 the kept runs and the night before, and the page's own script run under node against the run's

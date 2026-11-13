@@ -13,6 +13,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { API_BASE, DayStat, fmtMoney, fmtWhen } from "@/lib/api";
 import PageButtons from "@/components/common/PageButtons";
 import { DayCalendar } from "@/components/trade/PnlPanel";
+import { Modal } from "@/components/ui/modal";
 
 type Month = { trades: number; wins: number; losses: number; profit: number; random: number; covered: boolean; complete: boolean };
 type Top = { id: string; coin: string; tf: string; label: string; trades: number; profit: number };
@@ -201,14 +202,64 @@ function RuleDayByDay({ id, base, children }: { id: string; base: number; childr
   );
 }
 
-function RuleRow({ r, open, toggle, s, base }: { r: Rule; open: boolean; toggle: () => void; s: Summary; base: number }) {
+/** One rule set's detail, shown in a pop-up when its id is clicked (operator, Nov 13, 2026: "just use a
+ *  modal instead of showing the table inside the table"): its summary, the calendar with a clicked
+ *  day's trades, the months and the strategies it switched on most. */
+function RuleDetail({ r, s, base }: { r: Rule; s: Summary; base: number }) {
+  const p = r.predicted;
+  return (
+    <div className="whitespace-normal text-theme-xs text-gray-600 dark:text-gray-300">
+      <h4 className="mb-2 text-theme-sm font-semibold text-gray-800 dark:text-white/90">
+        <span className="font-mono text-brand-500">#{r.id}</span> — switch-on rule set
+      </h4>
+      <p>
+        <b>{r.words}</b>: about <b className={tone(p?.profit)}>{p ? fmtMoney(p.profit) : "—"}</b> a month
+        {p ? ` (the average of ${p.months} whole month${p.months === 1 ? "" : "s"}, about ${p.trades.toLocaleString()} trades each)` : ""} ·
+        TOTAL PROFIT {fmtMoney(r.profit)} over {r.trades.toLocaleString()} trades from {fmtWhen(s.walk.from_s)} to {fmtWhen(s.walk.to_s)}
+        ({fmtMoney(r.per_trade)} a trade; random picks of the same kind {fmtMoney(r.random_per_trade)} a trade, {fmtMoney(r.random_profit)} in all) ·
+        beat random on {r.beat_days} of {r.days_traded} days it traded{r.luck ? " — could be luck" : ""} ·
+        {" "}{r.strategies.toLocaleString()} of its kind&apos;s {r.kind_n.toLocaleString()} strategies traded · green on {r.green_days} days · busiest day {r.busiest_day.toLocaleString()} trades opened ·
+        {" "}at real prices: {r.real_trades
+          ? `${fmtMoney(r.real_profit ?? 0)} over the ${r.real_trades.toLocaleString()} of its trades whose buy and sell were both priced from the recorded order book (${r.real_wins ?? 0} won, ${fmtMoney(r.real_per_trade ?? 0)} a trade)`
+          : "none of its trades has been priced from a recorded order book yet"}.
+      </p>
+      <RuleDayByDay id={r.id} base={base}>
+        <table className="text-theme-xs">
+          <thead><tr>{["month", "trades", "won / lost", "profit", "random picks, same trades"].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
+          <tbody>{r.months.map((m, i) => (
+            <tr key={s.walk.months[i]?.key ?? i}>
+              <td className={td}>{monthName(s.walk.months[i]?.key ?? "")}{!m.complete && <span className="text-gray-400"> (so far, to {fmtWhen(s.walk.to_s)})</span>}{!m.covered && <span className="text-gray-400"> · no data of this kind</span>}</td>
+              <td className={td}>{m.trades.toLocaleString()}</td>
+              <td className={td}>{m.wins.toLocaleString()} / {m.losses.toLocaleString()}</td>
+              <td className={`${td} ${tone(m.profit)}`}>{fmtMoney(m.profit)}</td>
+              <td className={`${td} ${tone(m.random)}`}>{fmtMoney(m.random)}</td>
+            </tr>))}
+            <tr className="border-t border-gray-200 dark:border-gray-700">
+              <td className={`${td} font-semibold`}>TOTAL PROFIT</td>
+              <td className={td}>{r.trades.toLocaleString()}</td>
+              <td className={td}>{r.wins.toLocaleString()} / {r.losses.toLocaleString()}</td>
+              <td className={`${td} font-semibold ${tone(r.profit)}`}>{fmtMoney(r.profit)}</td>
+              <td className={`${td} ${tone(r.random_profit)}`}>{fmtMoney(r.random_profit)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </RuleDayByDay>
+      {r.top.length > 0 && (
+        <p className="mt-2">The strategies it switched on most (look them up by id in Backtest v4):{" "}
+          {r.top.map((t, i) => <span key={t.id}>{i ? " · " : ""}<span className="font-mono">#{t.id}</span> {t.coin} {t.tf} {t.label}: {t.trades.toLocaleString()} trades, <span className={tone(t.profit)}>{fmtMoney(t.profit)}</span></span>)}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function RuleRow({ r, show, s }: { r: Rule; show: () => void; s: Summary }) {
   const p = r.predicted;
   const days = Math.max(1, r.days_covered);
   return (
-    <Fragment>
       <tr className="align-top">
         <td className={`${td} font-semibold`}>
-          <button type="button" className="font-mono text-brand-500 hover:underline" onClick={toggle} aria-expanded={open}>#{r.id}</button>
+          <button type="button" className="font-mono text-brand-500 hover:underline" onClick={show} aria-haspopup="dialog">#{r.id}</button>
         </td>
         <td className="min-w-[280px] max-w-[420px] py-1.5 pr-3 text-theme-xs text-gray-700 dark:text-gray-300">{r.words}</td>
         <td className={`${td} font-semibold ${tone(p?.profit)}`}>{p ? <>{fmtMoney(p.profit)} <span className="font-normal text-gray-400">({fmtMoney(p.low)} to {fmtMoney(p.high)})</span>{p.thin && <span className="ml-1"><Badge kind="info">thin</Badge></span>}</> : "no whole month"}</td>
@@ -226,54 +277,6 @@ function RuleRow({ r, open, toggle, s, base }: { r: Rule; open: boolean; toggle:
         <td className={`${td} ${tone(r.worst_day)}`}>{fmtMoney(r.worst_day)}</td>
         <td className={td}>{r.days_traded ? `${r.beat_days} of ${r.days_traded} days` : "—"}{r.trades > 0 && r.luck && <span className="ml-1"><Badge kind="bad">could be luck</Badge></span>}</td>
       </tr>
-      {open && (
-        <tr>
-          <td colSpan={14} className="pb-3">
-            {/* sticky + a width of its own: the table is 1,400px wide inside a scrolling card, and the
-                detail would otherwise run off the card's right edge (seen Nov 10, 2026) */}
-            <div className="sticky left-0 w-[60rem] max-w-[calc(100vw-4rem)] whitespace-normal rounded-xl bg-gray-50 p-3 text-theme-xs text-gray-600 lg:max-w-[calc(100vw-24rem)] dark:bg-white/[0.03] dark:text-gray-300">
-              <p>
-                <b>{r.words}</b>: about <b className={tone(p?.profit)}>{p ? fmtMoney(p.profit) : "—"}</b> a month
-                {p ? ` (the average of ${p.months} whole month${p.months === 1 ? "" : "s"}, about ${p.trades.toLocaleString()} trades each)` : ""} ·
-                TOTAL PROFIT {fmtMoney(r.profit)} over {r.trades.toLocaleString()} trades from {fmtWhen(s.walk.from_s)} to {fmtWhen(s.walk.to_s)}
-                ({fmtMoney(r.per_trade)} a trade; random picks of the same kind {fmtMoney(r.random_per_trade)} a trade, {fmtMoney(r.random_profit)} in all) ·
-                beat random on {r.beat_days} of {r.days_traded} days it traded{r.luck ? " — could be luck" : ""} ·
-                {" "}{r.strategies.toLocaleString()} of its kind&apos;s {r.kind_n.toLocaleString()} strategies traded · green on {r.green_days} days · busiest day {r.busiest_day.toLocaleString()} trades opened ·
-                {" "}at real prices: {r.real_trades
-                  ? `${fmtMoney(r.real_profit ?? 0)} over the ${r.real_trades.toLocaleString()} of its trades whose buy and sell were both priced from the recorded order book (${r.real_wins ?? 0} won, ${fmtMoney(r.real_per_trade ?? 0)} a trade)`
-                  : "none of its trades has been priced from a recorded order book yet"}.
-              </p>
-              <RuleDayByDay id={r.id} base={base}>
-                <table className="text-theme-xs">
-                  <thead><tr>{["month", "trades", "won / lost", "profit", "random picks, same trades"].map((h) => <th key={h} className={th}>{h}</th>)}</tr></thead>
-                  <tbody>{r.months.map((m, i) => (
-                    <tr key={s.walk.months[i]?.key ?? i}>
-                      <td className={td}>{monthName(s.walk.months[i]?.key ?? "")}{!m.complete && <span className="text-gray-400"> (so far, to {fmtWhen(s.walk.to_s)})</span>}{!m.covered && <span className="text-gray-400"> · no data of this kind</span>}</td>
-                      <td className={td}>{m.trades.toLocaleString()}</td>
-                      <td className={td}>{m.wins.toLocaleString()} / {m.losses.toLocaleString()}</td>
-                      <td className={`${td} ${tone(m.profit)}`}>{fmtMoney(m.profit)}</td>
-                      <td className={`${td} ${tone(m.random)}`}>{fmtMoney(m.random)}</td>
-                    </tr>))}
-                    <tr className="border-t border-gray-200 dark:border-gray-700">
-                      <td className={`${td} font-semibold`}>TOTAL PROFIT</td>
-                      <td className={td}>{r.trades.toLocaleString()}</td>
-                      <td className={td}>{r.wins.toLocaleString()} / {r.losses.toLocaleString()}</td>
-                      <td className={`${td} font-semibold ${tone(r.profit)}`}>{fmtMoney(r.profit)}</td>
-                      <td className={`${td} ${tone(r.random_profit)}`}>{fmtMoney(r.random_profit)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </RuleDayByDay>
-              {r.top.length > 0 && (
-                <p className="mt-2">The strategies it switched on most (look them up by id in Backtest v4):{" "}
-                  {r.top.map((t, i) => <span key={t.id}>{i ? " · " : ""}<span className="font-mono">#{t.id}</span> {t.coin} {t.tf} {t.label}: {t.trades.toLocaleString()} trades, <span className={tone(t.profit)}>{fmtMoney(t.profit)}</span></span>)}
-                </p>
-              )}
-            </div>
-          </td>
-        </tr>
-      )}
-    </Fragment>
   );
 }
 
@@ -298,10 +301,11 @@ function Rules({ s, base }: { s: Summary; base: number }) {
     real_made: f.real_made || undefined, traded: !f.untraded,
     q: f.q, sort: f.sort, desc: f.desc, base_margin: base, page,
   });
-  // FIND BY ID opens that row's detail (CLAUDE.md kit H)
+  // FIND BY ID opens that row's detail (CLAUDE.md kit H) - by itself, in the same pop-up a click opens
   const want = f.q.trim().replace(/^#/, "").toUpperCase();
   const first = d?.rows[0]?.id;
   const isOpen = (id: string) => open === id || (open === null && want !== "" && id === first);
+  const shown = d?.rows.find((x) => isOpen(x.id)) ?? null;
   const w = s.walk;
   return (
     <div className={card}>
@@ -390,12 +394,23 @@ function Rules({ s, base }: { s: Summary; base: number }) {
               {["ID", "rule set", "this month — predicted (low to high)", "PROFIT / TOTAL $", "at real prices", "TP", "SL", "leverage", "trades", "wins / losses", "win rate", "worst losing run", "worst day", "beat random"].map((h) => <th key={h} className={th}>{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {d.rows.map((x) => <RuleRow key={x.id} r={x} s={s} base={base} open={isOpen(x.id)} toggle={() => setOpen(isOpen(x.id) ? "" : x.id)} />)}
+              {d.rows.map((x) => <RuleRow key={x.id} r={x} s={s} show={() => setOpen(x.id)} />)}
             </tbody>
           </table>
         </div>
       )}
       {d && <PageButtons cur={d.page} pages={d.pages} goto={setPage} what="rule set" busy={busy} />}
+      {/* a clicked id's detail, in a pop-up over the list (never a table inside the table); the list
+          stays readable behind it, and closing it by hand keeps it closed */}
+      <Modal isOpen={!!shown} onClose={() => setOpen("")} backdropClassName="bg-gray-900/20"
+        className="m-4 max-w-[1280px] p-5 shadow-2xl ring-1 ring-gray-200 lg:p-6 dark:ring-gray-700">
+        {shown && (
+          <div role="dialog" aria-modal="true" aria-label={`Switch-on rule set #${shown.id}`}
+            className="max-h-[80vh] overflow-y-auto pr-10 sm:pr-14">
+            <RuleDetail key={shown.id} r={shown} s={s} base={base} />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

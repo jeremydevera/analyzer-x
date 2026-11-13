@@ -579,7 +579,6 @@ def test_the_page_has_the_real_prices_column_sort_and_box(marked):
     assert '<option value="real_profit">' in panel and '<option value="real_per_trade">' in panel
     assert 'aria-label="made money at real prices"' in panel and "real_made: f.real_made" in panel
     assert "s.walk.real" in panel and "fmtWhen(s.walk.real.from_s)" in panel
-    assert "colSpan={14}" in panel, "the open row spans the new column too"
     api = (REPO / "tradingagents/api.py").read_text(encoding="utf-8")
     assert '"real_made": real_made' in api
     assert f4.rules_page({"real_made": "true"})["filters"] == ["made money at real prices", "traded"]
@@ -589,3 +588,27 @@ def test_the_real_prices_line_states_its_share_from_the_walk_never_most():
     panel = _panel()
     assert "most of PROFIT" not in panel, "a literal that stops being true as the record fills the walk"
     assert "100 * s.walk.real.real" in panel
+
+
+def test_clicking_a_rule_sets_id_opens_a_pop_up_not_a_table_inside_the_table():
+    """Operator, Nov 13, 2026: "when clicking the id of Best switch-on just use a modal instead of
+    showing the table inside the table". The row is only the row; the detail (the calendar, the months,
+    a clicked day's trades) is one pop-up owned by the list."""
+    panel = _panel()
+    assert 'import { Modal } from "@/components/ui/modal";' in panel
+    row = panel[panel.index("function RuleRow("):panel.index("type RQ = {")]
+    rules = panel[panel.index("function Rules("):panel.index("// ---------------------------------------------------------------- rooms")]
+    detail = panel[panel.index("function RuleDetail("):panel.index("function RuleRow(")]
+    assert "colSpan" not in row and "RuleDayByDay" not in row, "no detail row inside the table"
+    assert 'aria-haspopup="dialog"' in row and "aria-expanded" not in row
+    assert "<Modal" in rules and 'role="dialog"' in rules and 'aria-modal="true"' in rules
+    assert "aria-label={`Switch-on rule set #${shown.id}`}" in rules
+    assert "<RuleDetail" in rules and "max-h-[80vh] overflow-y-auto" in rules, "a long day list scrolls inside it"
+    # everything the open row showed is in the pop-up: the calendar with its day list, the months and
+    # their TOTAL PROFIT, the real-priced figure, the strategies it switched on most
+    for part in ("<RuleDayByDay", "TOTAL PROFIT", "at real prices:", "The strategies it switched on most"):
+        assert part in detail, part
+    # find by ID still opens that rule set's detail by itself (kit H), and closing it stays closed
+    assert "open === null && want !== \"\" && id === first" in rules
+    assert 'onClose={() => setOpen("")}' in rules
+

@@ -3162,7 +3162,11 @@ on the server, ten a page, a base margin box that scales every dollar).
   trades still list and say why they are unnamed. `switched_on` (one SQL read of the store) took over
   two minutes for one day on the real store, which is why a click reads the filed walk instead.
   The panel: the calendar (Auto Trade's `DayCalendar`, told the clicked day by `onPick`) beside the
-  months, the day's table under both; every dollar at the base margin box.
+  months, the day's table under both; every dollar at the base margin box. **It opens as a POP-UP over
+  the list, never a table inside the table** (operator, Nov 13, 2026: *"when clicking the id of Best
+  switch-on just use a modal instead of showing the table inside the table"*): `RuleRow` is only the
+  row, `RuleDetail` the pop-up's content, and the list owns one `Modal`; find by ID opens it by itself,
+  and closing it by hand keeps it closed.
 * **Cheap coins only — a switch on every rule set (Nov 13, 2026).** The operator asked how to profit
   more from Backtest v4 (*"use superpower on what's the best approach to fix this"*; the pick was handed
   to Claude). The check (store of Nov 12, 2026 7:33pm, judged on each strategy's UNSEEN days): +$0.08 a

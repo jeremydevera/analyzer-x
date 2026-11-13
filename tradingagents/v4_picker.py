@@ -89,7 +89,8 @@ def _rule_of(rec: dict) -> dict:
     return {"window": int(rec["window"]), "win_rate": int(rec["min_win_rate"]),
             "min_trades": int(rec["min_trades"]), "tp_rule": rec.get("tp_rule") or "any",
             "sl_cap": float(rec.get("sl_cap") or 0.0), "tf": rec.get("tf") or "",
-            "skill": rec.get("skill") or "", "money": rec.get("money") or ""}
+            "skill": rec.get("skill") or "", "money": rec.get("money") or "",
+            "cost_cap": float(rec.get("cost_cap") or 0.0)}
 
 
 def resolve(doc: dict, rule_id: str) -> dict | None:

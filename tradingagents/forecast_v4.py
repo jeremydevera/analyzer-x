@@ -64,6 +64,11 @@ MONEY_WORDS = {"made": "made money over them", "pf15": "won at least $1.50 for e
 MIN_TRADES = (3, 5, 10, 20)           # ... over at least this many trades in those days
 TP_RULES = ("any", ">")               # any target (or none) / TP wider than SL
 SL_CAPS = (0.0, 1.5)                  # any stop / a stop of 1.5% or tighter (0 = no ceiling)
+# Cheap coins only (Nov 13, 2026): a strategy whose round trip costs more than this many dollars per $100
+# traded ($100 x (2 x fee + 2 x its coin's gap), the store row's own numbers) is left out; 0 = no cap. A
+# fee or gap the store does not know is never cheap. Bought by the Backtest v4 check: unseen trades made
+# +$0.08 a trade before costs and -$1.06 after; coins at $0.25 or less -$0.22 (older days -$0.07).
+COST_CAPS = (0.0, 0.25)
 TFS = ("", "15m", "30m", "1h", "4h", "1d")        # "" = any timeframe
 SKILLS = ("", "technical-analysis", "backtesting-frameworks", "backtesting-trading-strategies")
 CHOSEN_SKILL = "backtesting-trading-strategies"   # its rows were chosen on their older days
@@ -138,19 +143,20 @@ def grid() -> list[tuple[int, int, str, float]]:
 
 
 def rule_id(window: int, win_rate: float, min_trades: int, tp_rule: str, sl_cap: float,
-            tf: str, skill: str, money: str = "") -> str:
+            tf: str, skill: str, money: str = "", cost_cap: float = 0.0) -> str:
     """Hashed from the rule set itself (CLAUDE.md kit H), never a position on a page. A rule with no
-    money rule hashes exactly as before money rules existed, so the rooms' ids never change."""
+    money rule and no cost cap hashes exactly as before either existed, so the rooms' ids never change."""
     from tradingagents import backtest_report as br
 
     m = _money(money)
     return br._code(f"forecast_v4|w={window}|wr={float(win_rate):g}|n={min_trades}|tp={tp_rule}"
                     f"|sl={float(sl_cap):g}|tf={tf or 'any'}|skill={skill or 'any'}"
-                    + (f"|money={m}" if m else ""))
+                    + (f"|money={m}" if m else "")
+                    + (f"|cost={float(cost_cap):g}" if float(cost_cap or 0) else ""))
 
 
 def rule_words(window: int, win_rate: float, min_trades: int, tp_rule: str, sl_cap: float,
-               tf: str, skill: str, money: str = "") -> str:
+               tf: str, skill: str, money: str = "", cost_cap: float = 0.0) -> str:
     m = _money(money)
     kind = f"{tf} " if tf else "any-timeframe "
     who = f"Every day, switch on each {kind}strategy{f' from {skill}' if skill else ''} that "
@@ -166,6 +172,8 @@ def rule_words(window: int, win_rate: float, min_trades: int, tp_rule: str, sl_c
         s += ", TP wider than SL"
     if sl_cap:
         s += f", stop {float(sl_cap):g}% or tighter"
+    if float(cost_cap or 0):
+        s += f", only on coins costing ${float(cost_cap):.2f} or less per $100 traded"
     return s
 
 
@@ -181,7 +189,7 @@ def _load(db: Path, log, extra: bool = False) -> dict:
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
         meta = {k: v for k, v in con.execute("SELECT k, v FROM meta")}
-        st = con.execute("SELECT sid, id, coin, tf, label, skill, tp, sl, split_s FROM strat "
+        st = con.execute("SELECT sid, id, coin, tf, label, skill, tp, sl, split_s, fee, slip FROM strat "
                          "ORDER BY sid").fetchall()
         n = (st[-1][0] + 1) if st else 1
         tfc = np.full(n, -1, np.int8)
@@ -189,8 +197,11 @@ def _load(db: Path, log, extra: bool = False) -> dict:
         tp = np.full(n, np.nan)
         sl = np.zeros(n)
         split = np.zeros(n, np.int64)
+        cost = np.full(n, np.inf)          # dollars a round trip per $100; unknown = never cheap
         info: dict[int, tuple] = {}
-        for sid, id_, coin, tf, label, skill, tp_, sl_, split_s in st:
+        for sid, id_, coin, tf, label, skill, tp_, sl_, split_s, fee_, slip_ in st:
+            if fee_ is not None and slip_ is not None:
+                cost[sid] = 100.0 * (2 * float(fee_) + 2 * float(slip_))
             tfc[sid] = TFS.index(tf) - 1 if tf in TFS[1:] else -1
             skc[sid] = SKILLS.index(skill) - 1 if skill in SKILLS[1:] else -1
             tp[sid] = np.nan if tp_ is None else float(tp_)
@@ -229,6 +240,7 @@ def _load(db: Path, log, extra: bool = False) -> dict:
     left_out = int((~(~chosen[sid] | (en >= split[sid]))).sum())
     left_open = int(open_.sum())
     out = {"meta": meta, "info": info, "exists": exists, "tfc": tfc, "skc": skc, "tp": tp, "sl": sl,
+           "cost": cost,
            "sid": sid[keep], "ex": ex[keep], "en": en[keep], "pnl": pnl[keep],
            "all_trades": int(len(sid)), "left_out": left_out, "left_open": left_open}
     if extra:
@@ -361,7 +373,7 @@ def _walk(d: dict, end_s: int, log, visit=None, keep: bool = False) -> dict:
          "month": np.searchsorted(np.array(ms), en[sel], side="right") - 1,
          "tfc": d["tfc"][j_sid], "skc": d["skc"][j_sid],
          "tpf": ~np.isnan(d["tp"][j_sid]) & (np.nan_to_num(d["tp"][j_sid]) > d["sl"][j_sid]),
-         "slc": d["sl"][j_sid] <= 1.5 + 1e-9}
+         "slc": d["sl"][j_sid] <= 1.5 + 1e-9, "cost": d["cost"][j_sid]}
     for W in WINDOWS:
         lo = np.searchsorted(key, (j_sid << 32) | (dstart - W * DAY_S), side="left")
         hi = np.searchsorted(key, (j_sid << 32) | dstart, side="left")      # closed BEFORE the day
@@ -376,6 +388,7 @@ def _walk(d: dict, end_s: int, log, visit=None, keep: bool = False) -> dict:
     ex_s = d["exists"]
     s_tfc, s_skc, s_tp, s_sl = d["tfc"], d["skc"], d["tp"], d["sl"]
     s_tpf = ~np.isnan(s_tp) & (np.nan_to_num(s_tp) > s_sl)
+    s_cost = d["cost"]
     rules, seen, dupes, same_as = [], {}, 0, {}
     coverage = {}
     day_c, day_w, day_p = [], [], []
@@ -399,30 +412,34 @@ def _walk(d: dict, end_s: int, log, visit=None, keep: bool = False) -> dict:
                 coverage[tf] = {"strategies": int(stm.sum()), "trades": int(len(idx)),
                                 "first_s": int(np.min(en[sel][idx])) if len(idx) else None}
             for tp_rule in TP_RULES:
-                for cap in SL_CAPS:
-                    kst = stm & (s_tpf if tp_rule == ">" else True) & ((s_sl <= cap + 1e-9) if cap else True)
+                for cap, cc in [(c, k) for c in SL_CAPS for k in COST_CAPS]:
+                    kst = (stm & (s_tpf if tp_rule == ">" else True) & ((s_sl <= cap + 1e-9) if cap else True)
+                           & ((s_cost <= cc + 1e-9) if cc else True))
                     if not kst.any():
                         continue
                     sig = np.packbits(kst).tobytes()
                     if sig in seen:            # the same strategies as a kind already walked
                         kept = seen[sig]
                         for W, N, mr, X in grid():
-                            same_as[rule_id(W, X, N, tp_rule, cap, tf, sk, mr)] = rule_id(W, X, N, *kept, mr)
+                            same_as[rule_id(W, X, N, tp_rule, cap, tf, sk, mr, cc)] = rule_id(
+                                W, X, N, kept[0], kept[1], kept[2], kept[3], mr, kept[4])
                         dupes += len(grid())
                         continue
-                    seen[sig] = (tp_rule, cap, tf, sk)
+                    seen[sig] = (tp_rule, cap, tf, sk, cc)
                     km = np.ones(len(idx), bool)
                     if tp_rule == ">":
                         km &= sub["tpf"]
                     if cap:
                         km &= sub["slc"]
+                    if cc:
+                        km &= sub["cost"] <= cc + 1e-9
                     pool_c = np.bincount(sub["day"][km], minlength=D).astype(np.float64)
                     pool_p = np.bincount(sub["day"][km], weights=sub["pnl"][km], minlength=D)
                     pool_avg = np.where(pool_c > 0, pool_p / np.maximum(pool_c, 1), 0.0)
                     covered_m = np.bincount(sub["month"][km], minlength=M) > 0
                     covered_days = int((pool_c > 0).sum())
                     no_target = bool((kst & ~s_tpf).any())
-                    kind = {"tf": tf, "skill": sk, "tp_rule": tp_rule, "sl_cap": cap,
+                    kind = {"tf": tf, "skill": sk, "tp_rule": tp_rule, "sl_cap": cap, "cost_cap": cc,
                             "kind_n": int(kst.sum()),
                             "widest_tp": None if no_target else float(np.nanmax(s_tp[kst])),
                             "widest_sl": float(s_sl[kst].max()),
@@ -445,10 +462,10 @@ def _walk(d: dict, end_s: int, log, visit=None, keep: bool = False) -> dict:
                                     day_c.append(c_)
                                     day_w.append(w_)
                                     day_p.append(p_)
-                                    rules.append({"id": rule_id(W, X, N, tp_rule, cap, tf, sk, mr),
+                                    rules.append({"id": rule_id(W, X, N, tp_rule, cap, tf, sk, mr, cc),
                                                   "window": W, "min_win_rate": X, "min_trades": N,
                                                   "money": mr,
-                                                  "words": rule_words(W, X, N, tp_rule, cap, tf, sk, mr),
+                                                  "words": rule_words(W, X, N, tp_rule, cap, tf, sk, mr, cc),
                                                   **kind, **f})
                                     if visit is not None:
                                         visit(rules[-1], m, sub, km)
@@ -569,7 +586,7 @@ def build(db: Path | None = None, out: Path | None = None, log=print) -> dict:
         "walk": walk["walk"], "coverage": walk["coverage"],
         "grid": {"windows": list(WINDOWS), "win_rates": list(WIN_RATES), "min_trades": list(MIN_TRADES),
                  "money": list(MONEY_RULES), "money_words": MONEY_WORDS,
-                 "tp_rules": list(TP_RULES), "sl_caps": list(SL_CAPS), "tfs": list(TFS),
+                 "tp_rules": list(TP_RULES), "sl_caps": list(SL_CAPS), "cost_caps": list(COST_CAPS), "tfs": list(TFS),
                  "skills": list(SKILLS), "tested": len(rules), "same_as_another": walk["dupes"]},
         "rules": rules, "same_as": walk["same_as"],
         "streaks": {"cols": ["id", "coin", "tf", "label", "skill", "tp", "sl", *STREAK_COLS[1:]],
@@ -594,7 +611,7 @@ def build(db: Path | None = None, out: Path | None = None, log=print) -> dict:
 
 
 # ------------------------------------------------------------------ the calendar's files
-WALK_FORMAT = 1
+WALK_FORMAT = 2          # 2: each strategy's cost (`s_cost`), for the cheap-coins rule sets
 WINDOW_FLAGS = tuple(f"{mr}{W}" for mr in MONEY_RULES if mr for W in WINDOWS)   # one bit each
 
 
@@ -644,6 +661,7 @@ def _file_walk(home: Path, built_s: int, store_built_s: int, walk: dict, d: dict
         # per strategy (indexed by sid): its kind, the walk's own tests of it
         "s_tfc": d["tfc"].astype(np.int8), "s_skc": d["skc"].astype(np.int8),
         "s_tpf": tpf.astype(np.uint8), "s_slc": (d["sl"] <= 1.5 + 1e-9).astype(np.uint8),
+        "s_cost": d["cost"].astype(np.float64),
         # per rule set, per day: the calendar's boxes
         "days_trades": walk["days"]["trades"], "days_wins": walk["days"]["wins"],
         "days_profit": walk["days"]["profit"],
@@ -700,6 +718,7 @@ def switched_on(rule: dict, at_s: int, db: Path | None = None) -> list[dict]:
     window = int(rule["window"])
     tp_rule = rule.get("tp_rule", "any")
     cap = float(rule.get("sl_cap") or 0)
+    cc = float(rule.get("cost_cap") or 0)
     tf = rule.get("tf") or ""
     skill = rule.get("skill") or ""
     money = _money(rule.get("money"))
@@ -717,6 +736,9 @@ def switched_on(rule: dict, at_s: int, db: Path | None = None) -> list[dict]:
     if cap:
         where.append("s.sl <= ?")
         args.append(cap + 1e-9)
+    if cc:          # a fee or gap the store does not know (NULL) fails this, as the walk's `inf` does
+        where.append("100.0 * (2 * s.fee + 2 * s.slip) <= ?")
+        args.append(cc + 1e-9)
     p4 = "CAST(ROUND(t.pnl * 10000) AS INTEGER)"
     having = "k_n >= ? AND k_wins * 100 >= ? * k_n"
     if money == "made":
@@ -873,6 +895,13 @@ def rules_page(q: dict) -> dict:
         elif mq in MONEY_RULES[1:]:
             got = [r for r in got if r.get("money") == mq]
             named.append("money rule: " + MONEY_WORDS[mq].replace(" over them", "") + " in its judged days")
+        cq = str(q.get("cost") or "")
+        if cq == "cheap":
+            got = [r for r in got if r.get("cost_cap")]
+            named.append(f"only coins costing ${COST_CAPS[-1]:.2f} or less per $100 traded")
+        elif cq == "none":
+            got = [r for r in got if not r.get("cost_cap")]
+            named.append("any coin, whatever it costs")
         mtp = _num(q.get("max_tp"), 0)
         if mtp > 0:
             got = [r for r in got if r["widest_tp"] is not None and r["widest_tp"] <= mtp + 1e-9]
@@ -1003,12 +1032,31 @@ def _takes(t: dict, rule: dict) -> np.ndarray:
         m &= t["tpf"]
     if float(rule.get("sl_cap") or 0):
         m &= t["slc"]
+    cc = float(rule.get("cost_cap") or 0)
+    if cc:
+        m &= t["cost"] <= cc + 1e-9
     mr = _money(rule.get("money"))
     if mr:
         m &= t[f"{mr}{W}"]
     if X:
         m &= t[f"w{W}"].astype(np.int64) * 100 >= X * n_
     return m
+
+
+def _filed(folder: Path, index: dict, a: int, b: int) -> dict:
+    """Walked trades [a, b) as `_takes` reads them: each one's strategy (`sid`), its kind (from the
+    strategy), the counts the walk judged it by and the money flags."""
+    sid = _read(folder, index, "sid", a, b - a).astype(np.int64)
+    t = {"sid": sid, "tfc": _read(folder, index, "s_tfc")[sid], "skc": _read(folder, index, "s_skc")[sid],
+         "tpf": _read(folder, index, "s_tpf")[sid].astype(bool),
+         "slc": _read(folder, index, "s_slc")[sid].astype(bool), "cost": _read(folder, index, "s_cost")[sid]}
+    for W in WINDOWS:
+        t[f"n{W}"] = _read(folder, index, f"n{W}", a, b - a)
+        t[f"w{W}"] = _read(folder, index, f"w{W}", a, b - a)
+    flags = _read(folder, index, "flags", a, b - a)
+    for bit, name in enumerate(index["flags"]):
+        t[name] = (flags >> bit) & 1 == 1
+    return t
 
 
 def rule_days(rule_id: str, base_margin: float = 5.0) -> dict:
@@ -1028,7 +1076,7 @@ def rule_days(rule_id: str, base_margin: float = 5.0) -> dict:
     files = _walk_files(doc)
     if files is None:
         return {"ready": True, "found": True, "id": r["id"], "days": {}, **span,
-                "why": ("this forecast was worked out before the calendar existed: the day-by-day "
+                "why": ("this forecast's calendar files are from an older build: the day-by-day "
                         "figures come with the next build (python -m tradingagents.forecast_v4 build)")}
     folder, index, pos = files
     i = pos.get(r["id"])
@@ -1075,7 +1123,7 @@ def rule_day(rule_id: str, day: str, page: int = 1, base_margin: float = 5.0) ->
     base = {"ready": True, "found": True, "id": r["id"], "words": r["words"], "day": day, "day_s": day_s,
             "rows": [], "total": 0, "page": 1, "pages": 1, "per_page": PER_PAGE}
     if files is None:
-        return {**base, "why": ("this forecast was worked out before the calendar existed: the trades "
+        return {**base, "why": ("this forecast's calendar files are from an older build: the trades "
                                 "come with the next build (python -m tradingagents.forecast_v4 build)")}
     folder, index, pos = files
     start, D = int(index["start"]), int(index["D"])
@@ -1088,16 +1136,8 @@ def rule_day(rule_id: str, day: str, page: int = 1, base_margin: float = 5.0) ->
         return {**base, "why": "the calendar files do not hold this rule set: they belong to another build"}
     k = max(_num(base_margin, 5.0), 0.01) / v4_store.MEASURED_MARGIN
     a, b = int(index["offsets"][j]), int(index["offsets"][j + 1])
-    sid = _read(folder, index, "sid", a, b - a).astype(np.int64)
-    t = {"tfc": _read(folder, index, "s_tfc")[sid], "skc": _read(folder, index, "s_skc")[sid],
-         "tpf": _read(folder, index, "s_tpf")[sid].astype(bool),
-         "slc": _read(folder, index, "s_slc")[sid].astype(bool)}
-    for W in WINDOWS:
-        t[f"n{W}"] = _read(folder, index, f"n{W}", a, b - a)
-        t[f"w{W}"] = _read(folder, index, f"w{W}", a, b - a)
-    flags = _read(folder, index, "flags", a, b - a)
-    for bit, name in enumerate(index["flags"]):
-        t[name] = (flags >> bit) & 1 == 1
+    t = _filed(folder, index, a, b)
+    sid = t["sid"]
     m = _takes(t, r)
     idx = np.nonzero(m)[0]
     p4 = _read(folder, index, "p4", a, b - a)[idx].astype(np.int64)

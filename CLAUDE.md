@@ -3163,6 +3163,27 @@ on the server, ten a page, a base margin box that scales every dollar).
   two minutes for one day on the real store, which is why a click reads the filed walk instead.
   The panel: the calendar (Auto Trade's `DayCalendar`, told the clicked day by `onPick`) beside the
   months, the day's table under both; every dollar at the base margin box.
+* **Cheap coins only — a switch on every rule set (Nov 13, 2026).** The operator asked how to profit
+  more from Backtest v4 (*"use superpower on what's the best approach to fix this"*; the pick was handed
+  to Claude). The check (store of Nov 12, 2026 7:33pm, judged on each strategy's UNSEEN days): +$0.08 a
+  trade before costs, −$1.06 after ($1.14 of costs a trade); coins at $0.25 or less a round trip −$0.22.
+  `COST_CAPS = (0.0, 0.25)`: every rule set is also walked skipping strategies whose round trip costs
+  more than $0.25 per $100 ($100 x (2 x fee + 2 x slip), the store row's own numbers; an unknown fee or
+  gap is never cheap, in the walk (`inf`) and in `switched_on`'s SQL (NULL) alike). An uncapped rule
+  hashes and reads as before (#D7EN8BNV, #KK9SRY28, #RSS7CUKH unchanged); a capped one adds
+  `|cost=0.25` and the words "only on coins costing $0.25 or less per $100 traded". `v4_picker._rule_of`
+  carries `cost_cap` (so a room given a capped rule gets lists without expensive coins), the picker
+  lab's kind key holds it, the calendar files carry each strategy's cost (`WALK_FORMAT` 2), and the page
+  filters by it on the server ("coin cost"). 24,480 rule sets; the build took 180 s (122 before) and
+  forecast.json 59 MB (37). First measure, on the store still priced from ONE book reading: the cheap
+  twin earned more a trade in 91% of 6,232 rule sets with 100+ trades both ways (median −$0.31 to
+  −$0.17), made money in 9% of them against 2%, a better worst month in 99% of 3,565 - BUT the rule sets
+  the rooms follow make their money on EXPENSIVE coins (#KK9SRY28 +$58.16, its cheap twin #PYK4FDVQ
+  +$4.13; #CKVS7G7Z +$175.74 against +$6.26). Nothing is forced: the picker chooses by its own test.
+  Known simplification: the walk prices every past day with the coin's cost as the nightly run measured
+  it. The first fair comparison is the build after the Nov 13, 2026 7:05pm refresh (usual gaps).
+  Spec `docs/superpowers/specs/2026-11-13-cheap-coins-switch-design.md`; guard
+  `tests/test_forecast_v4_cheap_coins.py` (11).
 
 Guard: `tests/test_forecast_v4.py` (28: on one timeline; no day reads its own closes, months add up,
 whole months only, worst run, the chosen skill's split, the luck bar, streaks, paging, ceilings, the

@@ -229,7 +229,7 @@ def matrices(d: dict, end_s: int, log=print) -> dict:
         return np.rint(b).astype(np.int64) if w is not None else b.astype(np.int64)
 
     def visit(rule, m, sub, km):
-        key = (rule["tf"], rule["skill"], rule["tp_rule"], float(rule["sl_cap"]))
+        key = (rule["tf"], rule["skill"], rule["tp_rule"], float(rule["sl_cap"]), float(rule.get("cost_cap") or 0.0))
         if key not in kinds:
             kinds[key] = len(kinds)
             ii = np.flatnonzero(km)
@@ -257,7 +257,8 @@ def matrices(d: dict, end_s: int, log=print) -> dict:
         for k in names:
             cols[k].append(got[k])
         rules.append({"id": rule["id"], "words": rule["words"], "tf": rule["tf"], "skill": rule["skill"],
-                      "tp_rule": rule["tp_rule"], "sl_cap": float(rule["sl_cap"]), "window": rule["window"],
+                      "tp_rule": rule["tp_rule"], "sl_cap": float(rule["sl_cap"]),
+                      "cost_cap": float(rule.get("cost_cap") or 0.0), "window": rule["window"],
                       "min_win_rate": rule["min_win_rate"], "min_trades": rule["min_trades"],
                       "money": rule["money"], "kind": kinds[key]})
 

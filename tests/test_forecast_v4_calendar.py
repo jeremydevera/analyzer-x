@@ -42,16 +42,7 @@ def busy(tmp_path, monkeypatch):
 
 def _all_filed(doc):
     folder, index, pos = f4._walk_files(doc)
-    t = {"tfc": f4._read(folder, index, "s_tfc"), "skc": f4._read(folder, index, "s_skc"),
-         "tpf": f4._read(folder, index, "s_tpf").astype(bool), "slc": f4._read(folder, index, "s_slc").astype(bool)}
-    sid = f4._read(folder, index, "sid").astype(np.int64)
-    trades = {k: v[sid] for k, v in t.items()}
-    for W in f4.WINDOWS:
-        trades[f"n{W}"] = f4._read(folder, index, f"n{W}")
-        trades[f"w{W}"] = f4._read(folder, index, f"w{W}")
-    flags = f4._read(folder, index, "flags")
-    for bit, name in enumerate(index["flags"]):
-        trades[name] = (flags >> bit) & 1 == 1
+    trades = f4._filed(folder, index, 0, index["rows"])
     offsets = np.array(index["offsets"])
     day = np.searchsorted(offsets, np.arange(index["rows"]), side="right") - 1
     return folder, index, pos, trades, day, f4._read(folder, index, "p4").astype(np.int64)

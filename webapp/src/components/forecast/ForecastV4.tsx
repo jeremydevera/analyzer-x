@@ -18,7 +18,7 @@ type Month = { trades: number; wins: number; losses: number; profit: number; ran
 type Top = { id: string; coin: string; tf: string; label: string; trades: number; profit: number };
 type Rule = {
   id: string; window: number; min_win_rate: number; min_trades: number; words: string; money?: string;
-  tf: string; skill: string; tp_rule: string; sl_cap: number; kind_n: number;
+  tf: string; skill: string; tp_rule: string; sl_cap: number; cost_cap?: number; kind_n: number;
   widest_tp: number | null; widest_sl: number; pool_trades: number; pool_per_trade: number | null;
   trades: number; wins: number; losses: number; profit: number; win_rate: number | null;
   per_trade: number | null; break_even: number | null; worst_run: number; worst_run_n: number;
@@ -37,6 +37,7 @@ type Summary = {
   walk: { from_s: number; to_s: number; days: number; months: WalkMonth[]; trades: number };
   coverage: Record<string, { strategies: number; trades: number; first_s: number | null }>;
   grid: { windows: number[]; win_rates: number[]; min_trades: number[]; tested: number; same_as_another: number; skills: string[];
+    cost_caps?: number[];
     money?: string[]; money_words?: Record<string, string> };
   counts: { rules: number; traded: number; made_money: number; not_luck: number };
 };
@@ -267,11 +268,11 @@ function RuleRow({ r, open, toggle, s, base }: { r: Rule; open: boolean; toggle:
 }
 
 type RQ = {
-  window: string; tf: string; skill: string; tp_rule: string; money: string; max_tp: string; max_sl: string;
+  window: string; tf: string; skill: string; tp_rule: string; money: string; cost: string; max_tp: string; max_sl: string;
   min_winrate: string; min_trades: string; min_profit: string; profitable: boolean; not_luck: boolean;
   untraded: boolean; q: string; sort: string; desc: boolean;
 };
-const RQ0: RQ = { window: "", tf: "", skill: "", tp_rule: "", money: "", max_tp: "", max_sl: "", min_winrate: "", min_trades: "",
+const RQ0: RQ = { window: "", tf: "", skill: "", tp_rule: "", money: "", cost: "", max_tp: "", max_sl: "", min_winrate: "", min_trades: "",
   min_profit: "", profitable: false, not_luck: false, untraded: false, q: "", sort: "rank", desc: true };
 
 function Rules({ s, base }: { s: Summary; base: number }) {
@@ -281,7 +282,7 @@ function Rules({ s, base }: { s: Summary; base: number }) {
   const [open, setOpen] = useState<string | null>(null);
   const set = (k: Partial<RQ>) => { setF((x) => ({ ...x, ...k })); setPage(1); setOpen(null); };
   const { d, err, busy } = useServer<RulePage>("/api/forecast-v4/rules", {
-    window: f.window, tf: f.tf, skill: f.skill, tp_rule: f.tp_rule, money: f.money, max_tp: f.max_tp, max_sl: f.max_sl,
+    window: f.window, tf: f.tf, skill: f.skill, tp_rule: f.tp_rule, money: f.money, cost: f.cost, max_tp: f.max_tp, max_sl: f.max_sl,
     min_winrate: f.min_winrate, min_trades: f.min_trades, min_profit: f.min_profit,
     profitable: f.profitable || undefined, not_luck: f.not_luck || undefined, traded: !f.untraded,
     q: f.q, sort: f.sort, desc: f.desc, base_margin: base, page,
@@ -296,7 +297,7 @@ function Rules({ s, base }: { s: Summary; base: number }) {
       <h3 className="text-theme-sm font-semibold text-gray-800 dark:text-white/90">Best switch-on rules this month</h3>
       <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
         ${base.toLocaleString()} margin a trade at {s.store.leverage}x leverage (${(base * s.store.leverage).toLocaleString()} of coin; the stored trades were measured at ${s.store.margin} and every dollar here is scaled) ·
-        {" "}<b>{s.grid.tested.toLocaleString()} rule sets tested</b> ({s.grid.windows.join(" / ")} days judged × {s.grid.win_rates.map((x) => (x ? `${x}%` : "any")).join(" / ")} wins × {s.grid.min_trades.join(" / ")}+ trades × {moneyRules(s)} × TP rule × stop ceiling × timeframe × skill; {s.grid.same_as_another.toLocaleString()} more switched on exactly the same strategies as one listed, so they are listed once) ·
+        {" "}<b>{s.grid.tested.toLocaleString()} rule sets tested</b> ({s.grid.windows.join(" / ")} days judged × {s.grid.win_rates.map((x) => (x ? `${x}%` : "any")).join(" / ")} wins × {s.grid.min_trades.join(" / ")}+ trades × {moneyRules(s)} × TP rule × stop ceiling × coin cost (any, or ${(s.grid.cost_caps ?? [0, 0.25]).slice(-1)[0].toFixed(2)} or less per $100 traded) × timeframe × skill; {s.grid.same_as_another.toLocaleString()} more switched on exactly the same strategies as one listed, so they are listed once) ·
         walked day by day from the start of {monthName(w.months[0]?.key ?? "")} (12:00am UTC, {fmtWhen(w.from_s)} on this PC&apos;s clock) to {fmtWhen(w.to_s)} ({w.days} days, {w.trades.toLocaleString()} trades opened): every day at 12:00am UTC each rule set switches on the strategies whose trades that closed in the days before pass it, and counts the trades they open that day ·
         &quot;this month&quot; is the average of the whole months {w.months.flatMap((m) => (m.complete ? [monthName(m.key)] : [])).join(", ")}, low to high in brackets ·
         random picks = the same trades at the average trade every strategy of the same kind opened that day ·
@@ -323,6 +324,11 @@ function Rules({ s, base }: { s: Summary; base: number }) {
           <option value="">win rate and money rules</option>
           <option value="none">win rate alone</option>
           {(s.grid.money ?? []).flatMap((m) => (m ? [<option key={m} value={m}>{s.grid.money_words?.[m]?.replace(" over them", "") ?? m}</option>] : []))}
+        </select>
+        <select aria-label="coin cost" className={field} value={f.cost} onChange={(e) => set({ cost: e.target.value })}>
+          <option value="">any coin-cost rule</option>
+          <option value="cheap">cheap coins only (${(s.grid.cost_caps ?? [0, 0.25]).slice(-1)[0].toFixed(2)} or less per $100 traded)</option>
+          <option value="none">any coin, whatever it costs</option>
         </select>
         <select aria-label="TP rule" className={field} value={f.tp_rule} onChange={(e) => set({ tp_rule: e.target.value })}>
           <option value="">any TP rule</option>

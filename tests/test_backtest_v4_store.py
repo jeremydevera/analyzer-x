@@ -164,3 +164,117 @@ def test_a_build_with_nothing_to_file_refuses_to_replace_the_store(tmp_path):
     with pytest.raises(RuntimeError, match="nothing was filed"):
         v4.build(tmp_path / "x", target=tmp_path / "out" / "rows.db", log=lambda *_: None)
     assert not (tmp_path / "out" / "rows.db").exists()
+
+
+# ------------------------------------------------------------------ real prices (Nov 13, 2026)
+H1 = 3_600_000
+
+
+def _marked(strategy, trades):
+    """A pick whose trades are `(days before END it closed, why, pnl, mark or None, minute or None)`:
+    seven items with a mark (a line priced from the recorded order books), five or six without."""
+    tr = []
+    for back, why, pnl, mark, at in trades:
+        ex = END - back * DAY
+        t = [ex - H1, ex, 1, why, pnl]
+        if mark is not None:
+            t += [at, mark]
+        elif at is not None:
+            t += [at]
+        tr.append(t)
+    return {"label": f"{strategy}(period=14) stop 1.5%", "strategy": strategy, "params": {"period": 14},
+            "stop": 0.015, "target": None, "older": {}, "newer": {}, "older_lost": False, "trades": tr}
+
+
+@pytest.fixture()
+def realdb(tmp_path, monkeypatch):
+    folder = tmp_path / "acs"
+    folder.mkdir()
+    lines = {"AAA|1h": {**_line("AAA", "1h", [
+        _marked("bf_momentum", [(45, "TP", 3.0, 0, None),            # before the last 30 days: estimated
+                                (9, "TP", 1.0, 2, None),             # both fills at the recorded book
+                                (8, "SL", -1.5, 2, END - 8 * DAY + 7 * 60_000),
+                                (7, "TP", 2.0, 1, None),             # one fill real: part
+                                (6, "SIGNAL", -0.5, 0, None),
+                                (0, "END", 0.3, 1, None)]),          # still open: never a finished trade
+        _marked("ta_ma_pullback", [(5, "TP", 1.0, None, None),       # a machine still on the old code
+                                   (4, "SL", -1.0, None, END - 4 * DAY + 60_000)]),
+    ]), "book": {"minutes": 1234, "from_s": 1_792_195_200}}}
+    (folder / "skilltaall.json").write_text(json.dumps({"lines": lines}), encoding="utf-8")
+    target = tmp_path / "v4" / "rows.db"
+    monkeypatch.setattr(stores, "V4", stores.Store(**{**stores.V4.__dict__, "rows_db": target}))
+    v4.build(folder, target=target, sources=(("skilltaall.json", "technical-analysis"),), log=lambda *_: None)
+    return target
+
+
+def test_a_seven_item_trade_files_its_mark_and_the_row_counts_its_real_trades(realdb):
+    import sqlite3
+
+    con = sqlite3.connect(realdb)
+    marks = [r[0] for r in con.execute("SELECT real FROM trade t JOIN strat s USING (sid) WHERE s.strategy = "
+                                       "'bf_momentum' ORDER BY ex")]
+    con.close()
+    assert marks == [0, 2, 2, 1, 0, 1]
+    row = next(r for r in v4.query({"limit": 50})["rows"] if r["strategy"] == "bf_momentum")
+    assert (row["real_trades"], row["real_wins"]) == (2, 1)
+    assert row["real_profit"] == pytest.approx(1.0 - 1.5)
+    assert row["trades"] == 6, "every trade is still filed and counted"
+
+
+def test_a_five_or_six_item_trade_is_filed_as_estimated(realdb):
+    row = next(r for r in v4.query({"limit": 50})["rows"] if r["strategy"] == "ta_ma_pullback")
+    assert (row["real_trades"], row["real_wins"], row["real_profit"]) == (0, 0, 0.0)
+    log = v4.trade_log(row["id"])
+    assert [t["priced"] for t in log["log"]] == ["estimated", "estimated"]
+    assert log["log"][1]["by_minute"] is True, "the minute it ended in is still read"
+
+
+def test_meta_says_the_share_that_paid_a_real_price_over_30_days_and_over_everything(realdb):
+    from tradingagents import skill_bt as sb
+
+    real = v4.meta()["real"]
+    assert real["from_s"] == sb.REAL_FROM_S
+    # 7 finished trades (the END one is never a trade): 2 real, 1 part
+    assert (real["trades"], real["real"], real["part"]) == (7, 2, 1)
+    # the last 30 days, by the day a trade CLOSED: the 45-day-old one is out
+    assert (real["trades_30d"], real["real_30d"], real["part_30d"]) == (6, 2, 1)
+
+
+def test_the_trade_list_marks_each_trade_real_part_or_estimated(realdb):
+    row = next(r for r in v4.query({"limit": 50})["rows"] if r["strategy"] == "bf_momentum")
+    log = v4.trade_log(row["id"])
+    assert [t["priced"] for t in log["log"]] == ["estimated", "real", "real", "part", "estimated", "part"]
+    assert log["priced"] == {"real": 2, "part": 2, "estimated": 2}, "of exactly the trades listed"
+    assert sum(log["priced"].values()) == log["trades"]
+    windowed = v4.trade_log(row["id"], days=8)
+    assert windowed["priced"] == {"real": 0, "part": 2, "estimated": 1}
+
+
+def test_a_mark_that_is_not_0_1_or_2_is_filed_as_estimated(tmp_path, monkeypatch):
+    folder = tmp_path / "acs"
+    folder.mkdir()
+    lines = {"AAA|1h": _line("AAA", "1h", [_marked("bf_momentum", [(3, "TP", 1.0, 7, None), (2, "TP", 1.0, -1, None)])])}
+    (folder / "skilltaall.json").write_text(json.dumps({"lines": lines}), encoding="utf-8")
+    target = tmp_path / "v4" / "rows.db"
+    monkeypatch.setattr(stores, "V4", stores.Store(**{**stores.V4.__dict__, "rows_db": target}))
+    v4.build(folder, target=target, sources=(("skilltaall.json", "technical-analysis"),), log=lambda *_: None)
+    assert v4.meta()["real"]["real"] == 0
+
+
+def test_a_store_without_the_column_still_lists_its_trades_as_estimated(realdb):
+    """The store of before this change (and the kept Nov 10, 2026 copy) has no mark: every trade reads
+    as estimated, nothing raises."""
+    import sqlite3
+
+    con = sqlite3.connect(realdb)
+    rid = con.execute("SELECT id FROM strat WHERE strategy = 'bf_momentum'").fetchone()[0]
+    con.executescript("DROP INDEX IF EXISTS trade_real; ALTER TABLE trade DROP COLUMN real;"
+                      "ALTER TABLE strat DROP COLUMN real_trades; ALTER TABLE strat DROP COLUMN real_wins;"
+                      "ALTER TABLE strat DROP COLUMN real_profit; DELETE FROM meta WHERE k = 'real';")
+    con.commit()
+    con.close()
+    log = v4.trade_log(rid)
+    assert log["found"] and {t["priced"] for t in log["log"]} == {"estimated"}
+    assert log["priced"] == {"real": 0, "part": 0, "estimated": 6}
+    assert "real" not in v4.meta()
+    assert v4.query({"limit": 50})["total"] == 2

@@ -56,7 +56,8 @@ SORTS = {                         # the sort key -> its SQL (window figures are 
 }
 SORT_TEXT = {"id", "coin", "tf", "strategy"}
 PAGE_MAX = 200
-STRAT_COLS = 35                  # the columns of `strat`, in SCHEMA order
+STRAT_COLS = 38                  # the columns of `strat`, in SCHEMA order
+PRICED = ("estimated", "part", "real")   # a trade's mark: how many of its two fills paid a recorded order book
 SCHEMA = """
 CREATE TABLE strat (
   sid INTEGER PRIMARY KEY, id TEXT NOT NULL, coin TEXT NOT NULL, tf TEXT NOT NULL,
@@ -68,11 +69,13 @@ CREATE TABLE strat (
   older_trades INTEGER NOT NULL, older_wins INTEGER NOT NULL, older_profit REAL NOT NULL,
   newer_trades INTEGER NOT NULL, newer_wins INTEGER NOT NULL, newer_profit REAL NOT NULL,
   older_lost INTEGER NOT NULL, start_s INTEGER NOT NULL, split_s INTEGER NOT NULL,
-  end_s INTEGER NOT NULL, days REAL NOT NULL, bars INTEGER NOT NULL, fee REAL, slip REAL
+  end_s INTEGER NOT NULL, days REAL NOT NULL, bars INTEGER NOT NULL, fee REAL, slip REAL,
+  real_trades INTEGER NOT NULL DEFAULT 0, real_wins INTEGER NOT NULL DEFAULT 0,
+  real_profit REAL NOT NULL DEFAULT 0
 );
 CREATE TABLE trade (
   sid INTEGER NOT NULL, ex INTEGER NOT NULL, en INTEGER NOT NULL, side INTEGER NOT NULL,
-  why INTEGER NOT NULL, pnl REAL NOT NULL, at INTEGER,
+  why INTEGER NOT NULL, pnl REAL NOT NULL, at INTEGER, real INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (sid, ex, en)
 ) WITHOUT ROWID;
 CREATE TABLE meta (k TEXT PRIMARY KEY, v TEXT NOT NULL);
@@ -129,6 +132,18 @@ def figures(pnls: list[float], exits_s: list[int]) -> dict:
             "win_rate": (100.0 * wins / n) if n else 0.0,
             "worst_run": worst, "worst_run_n": worst_n, "dip": dip, "months": months,
             "green": sum(1 for v in months.values() if v > 0)}
+
+
+def mark_of(t) -> int:
+    """A collected trade's mark (Nov 13, 2026): how many of its two fills paid the app's own recorded
+    order book of their minute - the seventh item of a trade measured with one (`skill_bt.measure`).
+    A trade from a line measured without (five or six items), or a mark that is not 0, 1 or 2, is 0:
+    estimated, never passed off as real."""
+    try:
+        m = int(t[6]) if len(t) > 6 and t[6] is not None else 0
+    except (TypeError, ValueError):
+        return 0
+    return m if m in (0, 1, 2) else 0
 
 
 def row_id(coin: str, tf: str, c: dict) -> str:
@@ -209,6 +224,7 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
             old = [t for t in tr if int(t[0]) // 1000 < split_s]
             new = [t for t in tr if int(t[0]) // 1000 >= split_s]
             tg = c.get("target")
+            real = [t for t in tr if mark_of(t) == 2]          # both fills at the recorded order book
             con.execute(
                 "INSERT INTO strat VALUES (" + ",".join("?" * STRAT_COLS) + ")",
                 (sid, rid, x["coin"], x["tf"], c["strategy"], c["label"], skill_of(c["strategy"]),
@@ -219,12 +235,15 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
                  len(old), sum(1 for t in old if float(t[4]) > 0), round(sum(float(t[4]) for t in old), 4),
                  len(new), sum(1 for t in new if float(t[4]) > 0), round(sum(float(t[4]) for t in new), 4),
                  1 if c.get("older_lost", False) else 0, int(x["start_ms"]) // 1000, split_s, int(x["end_ms"]) // 1000,
-                 (x["end_ms"] - x["start_ms"]) / 86_400_000, int(x["bars"]), x.get("fee"), x.get("slip")))
+                 (x["end_ms"] - x["start_ms"]) / 86_400_000, int(x["bars"]), x.get("fee"), x.get("slip"),
+                 len(real), sum(1 for t in real if float(t[4]) > 0), round(sum(float(t[4]) for t in real), 4)))
             if tr:
-                # `at` (a sixth item, Nov 11, 2026): the minute a trade the minutes settled ended in
-                con.executemany("INSERT OR IGNORE INTO trade VALUES (?,?,?,?,?,?,?)",
+                # `at` (a sixth item, Nov 11, 2026): the minute a trade the minutes settled ended in;
+                # `real` (a seventh, Nov 13, 2026): how many of its two fills paid a recorded order book
+                con.executemany("INSERT OR IGNORE INTO trade VALUES (?,?,?,?,?,?,?,?)",
                                 [(sid, int(t[1]) // 1000, int(t[0]) // 1000, int(t[2]), why_code(t[3]),
-                                  float(t[4]), int(t[5]) // 1000 if len(t) > 5 and t[5] is not None else None)
+                                  float(t[4]), int(t[5]) // 1000 if len(t) > 5 and t[5] is not None else None,
+                                  mark_of(t))
                                  for t in tr])
             ends.append(int(x["end_ms"]) // 1000)
             n += 1
@@ -250,6 +269,19 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
     if exit_counts["minute"] or exit_counts["candle"]:
         # stops and targets settled minute by minute (Nov 11, 2026): the page says how far, from data
         meta["exits"] = exit_counts
+    # WHAT SHARE PAID A REAL PRICE (Nov 13, 2026): of the finished trades (one still open at the end of
+    # a run is not a trade), how many had both fills at the app's own recorded order book (`real`) and
+    # how many one (`part`) - over everything and over the last 30 days by the day a trade CLOSED. The
+    # record begins `from_s`; every trade before it is an estimate
+    from tradingagents import skill_bt as _sb
+
+    cut = meta["data_end_s"] - 30 * DAY_S
+    got = con.execute("SELECT COUNT(*), SUM(real = 2), SUM(real = 1), SUM(ex > ?), SUM(ex > ? AND real = 2), "
+                      "SUM(ex > ? AND real = 1) FROM trade WHERE why != ?",
+                      (cut, cut, cut, WHYS.index("END"))).fetchone()
+    n, r2, r1, n30, r230, r130 = (int(v or 0) for v in got)
+    meta["real"] = {"from_s": _sb.REAL_FROM_S, "trades": n, "real": r2, "part": r1,
+                    "trades_30d": n30, "real_30d": r230, "part_30d": r130}
     con.executemany("INSERT INTO meta VALUES (?,?)", [(k, json.dumps(v)) for k, v in meta.items()])
     con.commit()
     bad = con.execute("PRAGMA integrity_check").fetchone()[0]
@@ -486,6 +518,7 @@ def _query(con: sqlite3.Connection, q: dict) -> dict:
     got = con.execute(sql, all_args + [limit, offset]).fetchall()
 
     rows = []
+    has_real = bool(got) and "real_trades" in got[0].keys()      # a store from before Nov 13, 2026 has none
     for r in got:
         if windowed:
             ex_cond, ex_args = ["sid = ?"], [r["sid"]]
@@ -515,7 +548,10 @@ def _query(con: sqlite3.Connection, q: dict) -> dict:
             "newer_wins": r["newer_wins"], "newer_profit": round(r["newer_profit"] * scale, 2),
             "older_lost": bool(r["older_lost"]), "start_s": r["start_s"], "split_s": r["split_s"],
             "end_s": r["end_s"], "days_of_data": round(r["days"], 1), "total_trades": r["trades"],
-            "total_profit": round(r["profit"] * scale, 2)})
+            "total_profit": round(r["profit"] * scale, 2),
+            # over its WHOLE history: the trades whose two fills both paid a recorded order book
+            "real_trades": r["real_trades"] if has_real else 0, "real_wins": r["real_wins"] if has_real else 0,
+            "real_profit": round(r["real_profit"] * scale, 2) if has_real else 0.0})
     if windowed:
         notes.append("worst losing run, worst dip and green months are worked out over the same window "
                      "for the rows shown; the max-dip and min-green boxes read each row's whole history")
@@ -526,7 +562,7 @@ def _query(con: sqlite3.Connection, q: dict) -> dict:
            "base_margin": base, "leverage": LEVERAGE, "notional": round(base * LEVERAGE, 2),
            "measured": {"strategies": mt.get("strategies"), "trades": mt.get("trades"),
                         "built_s": mt.get("built_s"), "data_end_s": end_s, "sources": mt.get("sources"),
-                        "exits": mt.get("exits")},
+                        "exits": mt.get("exits"), "real": mt.get("real")},
            "window": ({"days": days or None, "from_s": (end_s - days * DAY_S) if days else None, "to_s": end_s,
                        "unseen": unseen} if windowed else None),
            "sort": sort, "desc": desc, "notes": notes}
@@ -554,17 +590,25 @@ def trade_log(sid_or_id: str, *, base_margin: float = MEASURED_MARGIN, days: int
             cond.append("en >= ?")
             args.append(s["split_s"])
         scale = float(base_margin or MEASURED_MARGIN) / MEASURED_MARGIN
-        # a store built before Nov 11, 2026 has no `at` column: its trades were all settled by the close
-        has_at = any(r[1] == "at" for r in con.execute("PRAGMA table_info(trade)"))
-        tr = con.execute("SELECT en, ex, side, why, pnl" + (", at" if has_at else ", NULL AS at")
+        # a store built before Nov 11, 2026 has no `at` column: its trades were all settled by the close;
+        # one built before Nov 13, 2026 has no `real` column: every one of its trades is an estimate
+        have = {r[1] for r in con.execute("PRAGMA table_info(trade)")}
+        tr = con.execute("SELECT en, ex, side, why, pnl" + (", at" if "at" in have else ", NULL AS at")
+                         + (", real" if "real" in have else ", 0 AS real")
                          + " FROM trade WHERE " + " AND ".join(cond) + " ORDER BY ex, en", args).fetchall()
         log, run = [], 0.0
+        priced = dict.fromkeys(reversed(PRICED), 0)
         for t in tr:
             run += t["pnl"] * scale
+            how = PRICED[t["real"] if t["real"] in (0, 1, 2) else 0]
+            priced[how] += 1
             log.append({"entry_s": t["en"], "exit_s": t["at"] if t["at"] is not None else t["ex"],
                         "by_minute": t["at"] is not None, "side": "long" if t["side"] > 0 else "short",
                         "why": WHYS[t["why"]], "pnl": round(t["pnl"] * scale, 2), "running": round(run, 2),
-                        "unseen": t["en"] >= s["split_s"]})
+                        "unseen": t["en"] >= s["split_s"],
+                        # did its two fills pay the recorded order book of their minute: both (real),
+                        # one (part), or neither - the coin's usual gap (estimated)
+                        "priced": how})
         f = figures([t["pnl"] for t in tr], [t["ex"] for t in tr])
         return {"found": True, "id": s["id"], "coin": s["coin"], "tf": s["tf"], "label": s["label"],
                 "skill": s["skill"], "tp": s["tp"], "sl": s["sl"], "split_s": s["split_s"],
@@ -573,7 +617,7 @@ def trade_log(sid_or_id: str, *, base_margin: float = MEASURED_MARGIN, days: int
                 "trades": f["trades"], "wins": f["wins"], "losses": f["losses"],
                 "total_profit": round(f["profit"] * scale, 2), "win_rate": f["win_rate"],
                 "worst_run": round(f["worst_run"] * scale, 2), "worst_run_n": f["worst_run_n"],
-                "dip": round(f["dip"] * scale, 2),
+                "dip": round(f["dip"] * scale, 2), "priced": priced,
                 "months": {k: round(v * scale, 2) for k, v in sorted(f["months"].items())}, "log": log}
     finally:
         con.close()

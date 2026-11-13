@@ -184,8 +184,13 @@ def test_panel_columns_and_cost_line():
                 "Win rate"):
         assert col in panel, col
     assert "trades the same as the backtest" in panel and "apart" in panel
-    assert ("Every trade pays its coin's usual gap, not its own minute's order book (100% typical cost) · "
-            "no trade is refused by the runner's cost check · no order is placed") in panel
+    # Nov 13, 2026: a fill pays the order book this PC recorded in its minute; the line says what is
+    # still not charged, and the room counts the fills that had no recording (from its own record)
+    assert ("Every buy and sell is priced from the order book this PC recorded in that same minute; one with "
+            "no recording pays the coin's usual gap · no trade is refused by the runner's cost check · "
+            "no order is placed") in panel
+    assert "100% typical cost" not in panel
+    assert "d.fills.real" in panel and "d.fills.est" in panel and "fmtWhen(d.fills.since_s)" in panel
     assert "rule_words" in panel and "daily" in panel
     # the Backtest v4 tab says when it is refreshed and what it does not charge
     assert "refreshed every day" in V4TAB

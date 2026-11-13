@@ -570,3 +570,16 @@ def test_the_default_order_is_unchanged(marked):
     assert f4.rules_page({})["sort"] == "rank"
     assert [r["id"] for r in f4.rules_page({})["rows"]] == [r["id"] for r in f4.rules_page({"sort": "rank"})["rows"]]
     assert "real_profit" in f4.RULE_SORTS and "real_per_trade" in f4.RULE_SORTS
+
+
+def test_the_page_has_the_real_prices_column_sort_and_box(marked):
+    panel = _panel()
+    assert '"at real prices"' in panel, "its own column"
+    assert "r.real_profit" in panel and "r.real_trades" in panel
+    assert '<option value="real_profit">' in panel and '<option value="real_per_trade">' in panel
+    assert 'aria-label="made money at real prices"' in panel and "real_made: f.real_made" in panel
+    assert "s.walk.real" in panel and "fmtWhen(s.walk.real.from_s)" in panel
+    assert "colSpan={14}" in panel, "the open row spans the new column too"
+    api = (REPO / "tradingagents/api.py").read_text(encoding="utf-8")
+    assert '"real_made": real_made' in api
+    assert f4.rules_page({"real_made": "true"})["filters"] == ["made money at real prices", "traded"]

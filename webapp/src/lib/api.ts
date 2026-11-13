@@ -1909,6 +1909,9 @@ export interface V4Follow {
   fallback_from?: string | null;
   /** the sentence for a list copied from an earlier day (final: today gets no list of its own) */
   fallback_words?: string | null;
+  /** the buys and sells this room wrote since Nov 13, 2026: priced from this PC's recorded order book
+   *  (real) or, with no recording, at the coin's usual gap (est); null before the first one */
+  fills?: { real: number; est: number; since_s: number } | null;
   agreement?: {
     day_s?: number; same?: number; of?: number; dollars_apart?: number; error?: string;
     only_practice?: string[]; only_backtest?: string[];

@@ -52,3 +52,21 @@ def test_the_api_serves_the_list_the_facets_and_the_trade_log():
     api = (REPO / "tradingagents/api.py").read_text(encoding="utf-8")
     for route in ('"/api/v4/strategies"', '"/api/v4/facets"', '"/api/v4/strategies/trades"'):
         assert f"@app.get({route})" in api, route
+
+
+# ------------------------------------------------------------------ real prices (Nov 13, 2026)
+def test_the_tab_prints_the_share_that_paid_the_recorded_order_book_from_the_stores_own_count():
+    """A count on the page is the store's (meta.real), never a literal: the share of the last 30 days'
+    trades whose buy and sell were both priced from the order book the app recorded."""
+    assert "m.real.real_30d" in PANEL and "m.real.trades_30d" in PANEL and "m.real.part_30d" in PANEL
+    assert "fmtWhen(m.real.from_s)" in PANEL, "the day real prices begin is the store's, in the one date format"
+    assert "order book the app recorded" in PANEL and "usual gap" in PANEL
+    assert "100% typical cost" not in PANEL, "no longer true of every trade"
+    assert re.search(r"real\?: \{ from_s: number; trades: number; real: number; part: number;", PANEL)
+
+
+def test_the_trade_list_says_how_each_trade_was_priced():
+    assert ">Priced from<" in PANEL and "t.priced" in PANEL
+    for words in ("order book, both sides", "order book, one side", "usual gap"):
+        assert words in PANEL, words
+    assert "log.priced" in PANEL, "and the count over exactly the trades listed"

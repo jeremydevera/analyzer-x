@@ -18,7 +18,7 @@ const th = "px-2 py-2 text-left text-theme-xs font-medium text-gray-500 dark:tex
 const td = "whitespace-nowrap px-2 py-2 text-theme-sm tabular-nums text-gray-700 dark:text-gray-300";
 
 /** The line that says what the follower's trades cost - the same on every row. */
-export const COST_LINE = "Every trade pays its coin's usual gap, not its own minute's order book (100% typical cost) · no trade is refused by the runner's cost check · no order is placed";
+export const COST_LINE = "Every buy and sell is priced from the order book this PC recorded in that same minute; one with no recording pays the coin's usual gap · no trade is refused by the runner's cost check · no order is placed";
 
 export default function V4FollowPanel() {
   const { tradeApi } = useRoomApis();
@@ -57,6 +57,12 @@ export default function V4FollowPanel() {
             </p>
           )}
           <p className="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">{COST_LINE}</p>
+          {/* how many of this room's buys and sells really had a recording - its own count */}
+          <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
+            {d.fills
+              ? `Since ${fmtWhen(d.fills.since_s)}: ${d.fills.real.toLocaleString()} of this room's ${(d.fills.real + d.fills.est).toLocaleString()} buys and sells were priced from the recorded order book; ${d.fills.est.toLocaleString()} had no recording and paid the usual gap.`
+              : "No buy or sell has been written since prices began to come from the recorded order book (Nov 13, 2026)."}
+          </p>
 
           {/* the day's refresh sentence */}
           {daily && (

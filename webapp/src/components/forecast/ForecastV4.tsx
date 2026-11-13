@@ -27,6 +27,9 @@ type Rule = {
   luck: boolean; strategies: number; months: Month[];
   predicted: { profit: number; low: number; high: number; months: number; trades: number; thin: boolean } | null;
   rank: number | null; top: Top[];
+  /** over the trades whose buy and sell were BOTH priced from the recorded order book; the dollars are
+   *  null (never 0) when it has none. Missing on a forecast worked out before Nov 13, 2026. */
+  real_trades?: number; real_wins?: number; real_profit?: number | null; real_per_trade?: number | null;
 };
 type RulePage = { ready: boolean; why?: string; rows: Rule[]; total: number; of: number; page: number; pages: number; filters: string[] };
 type WalkMonth = { key: string; from_s: number; to_s: number; complete: boolean };
@@ -34,7 +37,8 @@ type Summary = {
   ready: boolean; why?: string; built_s: number; seconds: number;
   store: { built_s: number; data_end_s: number; strategies: number; trades: number; margin: number; leverage: number };
   used: { trades: number; left_out: number; left_out_why: string };
-  walk: { from_s: number; to_s: number; days: number; months: WalkMonth[]; trades: number };
+  walk: { from_s: number; to_s: number; days: number; months: WalkMonth[]; trades: number;
+    real?: { from_s: number; trades: number; real: number; part: number } };
   coverage: Record<string, { strategies: number; trades: number; first_s: number | null }>;
   grid: { windows: number[]; win_rates: number[]; min_trades: number[]; tested: number; same_as_another: number; skills: string[];
     cost_caps?: number[];
@@ -209,6 +213,9 @@ function RuleRow({ r, open, toggle, s, base }: { r: Rule; open: boolean; toggle:
         <td className="min-w-[280px] max-w-[420px] py-1.5 pr-3 text-theme-xs text-gray-700 dark:text-gray-300">{r.words}</td>
         <td className={`${td} font-semibold ${tone(p?.profit)}`}>{p ? <>{fmtMoney(p.profit)} <span className="font-normal text-gray-400">({fmtMoney(p.low)} to {fmtMoney(p.high)})</span>{p.thin && <span className="ml-1"><Badge kind="info">thin</Badge></span>}</> : "no whole month"}</td>
         <td className={`${td} font-semibold ${tone(r.profit)}`}>{fmtMoney(r.profit)}</td>
+        <td className={`${td} ${tone(r.real_profit)}`}>{r.real_trades
+          ? <>{fmtMoney(r.real_profit ?? 0)} <span className="font-normal text-gray-400">over {r.real_trades.toLocaleString()} ({fmtMoney(r.real_per_trade ?? 0)} a trade)</span></>
+          : <span className="text-gray-400">none yet</span>}</td>
         <td className={td}>{tpText(r)}</td>
         <td className={td}>up to {r.widest_sl}%</td>
         <td className={td}>{s.store.leverage}x</td>
@@ -221,7 +228,7 @@ function RuleRow({ r, open, toggle, s, base }: { r: Rule; open: boolean; toggle:
       </tr>
       {open && (
         <tr>
-          <td colSpan={13} className="pb-3">
+          <td colSpan={14} className="pb-3">
             {/* sticky + a width of its own: the table is 1,400px wide inside a scrolling card, and the
                 detail would otherwise run off the card's right edge (seen Nov 10, 2026) */}
             <div className="sticky left-0 w-[60rem] max-w-[calc(100vw-4rem)] whitespace-normal rounded-xl bg-gray-50 p-3 text-theme-xs text-gray-600 lg:max-w-[calc(100vw-24rem)] dark:bg-white/[0.03] dark:text-gray-300">
@@ -231,7 +238,10 @@ function RuleRow({ r, open, toggle, s, base }: { r: Rule; open: boolean; toggle:
                 TOTAL PROFIT {fmtMoney(r.profit)} over {r.trades.toLocaleString()} trades from {fmtWhen(s.walk.from_s)} to {fmtWhen(s.walk.to_s)}
                 ({fmtMoney(r.per_trade)} a trade; random picks of the same kind {fmtMoney(r.random_per_trade)} a trade, {fmtMoney(r.random_profit)} in all) ·
                 beat random on {r.beat_days} of {r.days_traded} days it traded{r.luck ? " — could be luck" : ""} ·
-                {" "}{r.strategies.toLocaleString()} of its kind&apos;s {r.kind_n.toLocaleString()} strategies traded · green on {r.green_days} days · busiest day {r.busiest_day.toLocaleString()} trades opened.
+                {" "}{r.strategies.toLocaleString()} of its kind&apos;s {r.kind_n.toLocaleString()} strategies traded · green on {r.green_days} days · busiest day {r.busiest_day.toLocaleString()} trades opened ·
+                {" "}at real prices: {r.real_trades
+                  ? `${fmtMoney(r.real_profit ?? 0)} over the ${r.real_trades.toLocaleString()} of its trades whose buy and sell were both priced from the recorded order book (${r.real_wins ?? 0} won, ${fmtMoney(r.real_per_trade ?? 0)} a trade)`
+                  : "none of its trades has been priced from a recorded order book yet"}.
               </p>
               <RuleDayByDay id={r.id} base={base}>
                 <table className="text-theme-xs">
@@ -270,10 +280,10 @@ function RuleRow({ r, open, toggle, s, base }: { r: Rule; open: boolean; toggle:
 type RQ = {
   window: string; tf: string; skill: string; tp_rule: string; money: string; cost: string; max_tp: string; max_sl: string;
   min_winrate: string; min_trades: string; min_profit: string; profitable: boolean; not_luck: boolean;
-  untraded: boolean; q: string; sort: string; desc: boolean;
+  real_made: boolean; untraded: boolean; q: string; sort: string; desc: boolean;
 };
 const RQ0: RQ = { window: "", tf: "", skill: "", tp_rule: "", money: "", cost: "", max_tp: "", max_sl: "", min_winrate: "", min_trades: "",
-  min_profit: "", profitable: false, not_luck: false, untraded: false, q: "", sort: "rank", desc: true };
+  min_profit: "", profitable: false, not_luck: false, real_made: false, untraded: false, q: "", sort: "rank", desc: true };
 
 function Rules({ s, base }: { s: Summary; base: number }) {
   const [f, setF] = useState<RQ>(RQ0);
@@ -284,7 +294,8 @@ function Rules({ s, base }: { s: Summary; base: number }) {
   const { d, err, busy } = useServer<RulePage>("/api/forecast-v4/rules", {
     window: f.window, tf: f.tf, skill: f.skill, tp_rule: f.tp_rule, money: f.money, cost: f.cost, max_tp: f.max_tp, max_sl: f.max_sl,
     min_winrate: f.min_winrate, min_trades: f.min_trades, min_profit: f.min_profit,
-    profitable: f.profitable || undefined, not_luck: f.not_luck || undefined, traded: !f.untraded,
+    profitable: f.profitable || undefined, not_luck: f.not_luck || undefined,
+    real_made: f.real_made || undefined, traded: !f.untraded,
     q: f.q, sort: f.sort, desc: f.desc, base_margin: base, page,
   });
   // FIND BY ID opens that row's detail (CLAUDE.md kit H)
@@ -342,6 +353,7 @@ function Rules({ s, base }: { s: Summary; base: number }) {
         <label className="flex items-center gap-1 text-gray-500 dark:text-gray-400">min profit $<input aria-label="min profit $" className={`${field} w-16`} inputMode="decimal" value={f.min_profit} onChange={(e) => set({ min_profit: e.target.value.replace(/[^0-9.-]/g, "") })} /></label>
         <label className="flex items-center gap-1 text-gray-500 dark:text-gray-400"><input type="checkbox" checked={f.profitable} onChange={(e) => set({ profitable: e.target.checked })} /> made money</label>
         <label className="flex items-center gap-1 text-gray-500 dark:text-gray-400"><input type="checkbox" checked={f.not_luck} onChange={(e) => set({ not_luck: e.target.checked })} /> beat random by more than luck</label>
+        <label className="flex items-center gap-1 text-gray-500 dark:text-gray-400"><input type="checkbox" aria-label="made money at real prices" checked={f.real_made} onChange={(e) => set({ real_made: e.target.checked })} /> made money at real prices</label>
         <label className="flex items-center gap-1 text-gray-500 dark:text-gray-400"><input type="checkbox" checked={f.untraded} onChange={(e) => set({ untraded: e.target.checked })} /> show rule sets that never traded</label>
         <select aria-label="sort the rule sets" className={field} value={f.sort} onChange={(e) => set({ sort: e.target.value })}>
           <option value="rank">best worst month first</option>
@@ -352,11 +364,19 @@ function Rules({ s, base }: { s: Summary; base: number }) {
           <option value="winrate">win rate</option>
           <option value="trades">trades</option>
           <option value="worst_run">worst losing run</option>
+          <option value="real_profit">profit at real prices</option>
+          <option value="real_per_trade">profit a trade at real prices</option>
         </select>
         <button type="button" className={btn} onClick={() => set({ desc: !f.desc })}>{f.desc ? "highest first" : "lowest first"}</button>
         <button type="button" className={btn} onClick={() => { setF(RQ0); setPage(1); setOpen(null); }}>clear all</button>
         {busy && <span className="text-[11px] text-gray-400">working…</span>}
       </div>
+      {/* what "at real prices" counts, from the walk's own numbers */}
+      <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+        {s.walk.real
+          ? `“At real prices” counts only trades whose buy and sell were both priced from the order book the app recorded in that same minute, which begins ${fmtWhen(s.walk.real.from_s)}: ${s.walk.real.real.toLocaleString()} of the ${s.walk.real.trades.toLocaleString()} trades walked (${s.walk.real.part.toLocaleString()} more on one side only). Every other trade - and so most of PROFIT / TOTAL $ and of the order of this list - pays the coin’s usual gap, which made buying a dip on a thinly traded coin look cheaper than it was.`
+          : "This forecast was worked out before trades were priced from the recorded order book; the next nightly build adds the “at real prices” figures."}
+      </p>
       {err && <p className="mt-2 text-theme-xs text-error-500">could not read the rule sets — {err}</p>}
       {d && d.ready && (
         <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
@@ -367,7 +387,7 @@ function Rules({ s, base }: { s: Summary; base: number }) {
         <div className="mt-2 max-w-full overflow-x-auto">
           <table className="w-full min-w-[1400px] text-theme-xs">
             <thead><tr>
-              {["ID", "rule set", "this month — predicted (low to high)", "PROFIT / TOTAL $", "TP", "SL", "leverage", "trades", "wins / losses", "win rate", "worst losing run", "worst day", "beat random"].map((h) => <th key={h} className={th}>{h}</th>)}
+              {["ID", "rule set", "this month — predicted (low to high)", "PROFIT / TOTAL $", "at real prices", "TP", "SL", "leverage", "trades", "wins / losses", "win rate", "worst losing run", "worst day", "beat random"].map((h) => <th key={h} className={th}>{h}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
               {d.rows.map((x) => <RuleRow key={x.id} r={x} s={s} base={base} open={isOpen(x.id)} toggle={() => setOpen(isOpen(x.id) ? "" : x.id)} />)}

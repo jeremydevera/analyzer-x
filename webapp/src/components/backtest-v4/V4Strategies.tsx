@@ -27,15 +27,23 @@ type Answer = {
   base_margin: number; leverage: number; notional: number; notes: string[];
   measured?: { strategies: number; trades: number; built_s: number; data_end_s: number;
     sources: Record<string, number>;
-    exits?: { minute: number; candle: number; unclear: number; from_s: number } | null };
+    exits?: { minute: number; candle: number; unclear: number; from_s: number } | null;
+    /** of the finished trades: both fills at the recorded order book (real), one (part); the record
+     *  begins from_s. Missing on a store filed before Nov 13, 2026. */
+    real?: { from_s: number; trades: number; real: number; part: number;
+      trades_30d: number; real_30d: number; part_30d: number } | null };
   window: { days: number | null; from_s: number | null; to_s: number; unseen: boolean } | null;
 };
 type Trade = { entry_s: number; exit_s: number; side: string; why: string; pnl: number;
-  running: number; unseen: boolean };
+  running: number; unseen: boolean; priced?: "real" | "part" | "estimated" };
+/** How a trade's buy and sell were priced, in plain words (v4_store.PRICED). */
+const PRICED: Record<string, string> = { real: "order book, both sides", part: "order book, one side",
+  estimated: "usual gap" };
 type Log = { found: boolean; total_profit: number; trades: number; wins: number; losses: number;
   win_rate: number; worst_run: number; worst_run_n: number; dip: number; split_s: number;
   window: { days: number | null; unseen: boolean; from_s: number | null };
-  months: Record<string, number>; log: Trade[]; label: string; skill: string };
+  months: Record<string, number>; log: Trade[]; label: string; skill: string;
+  priced?: { real: number; part: number; estimated: number } };
 type Daily = { phase: string; why: string; words: string };
 type Facets = { coins: string[]; tfs: string[]; strategies: string[]; skills: string[] };
 
@@ -195,7 +203,9 @@ export default function V4Strategies() {
         <p className="mt-1 text-theme-sm text-gray-500 dark:text-gray-400">
           Backtest v4 is refreshed every day
           {daily ? ` — ${daily.words}` : ""}.
-          Every trade pays its coin&apos;s usual gap, not its own minute&apos;s order book (100% typical cost).
+          {m?.real
+            ? `Since ${fmtWhen(m.real.from_s)} a trade’s buy and sell are priced from the order book the app recorded in that same minute. Of the ${m.real.trades_30d.toLocaleString()} trades that closed in the last 30 days, ${m.real.real_30d.toLocaleString()} (${m.real.trades_30d ? ((100 * m.real.real_30d) / m.real.trades_30d).toFixed(1) : "0"}%) were priced that way on both sides and ${m.real.part_30d.toLocaleString()} on one; the rest, and every trade before that day, pay the coin’s usual gap instead (no order book was recorded for their minute). No trade is refused by the runner’s cost check.`
+            : "Every trade pays its coin’s usual gap, not its own minute’s order book."}
         </p>
       </div>
 
@@ -358,6 +368,7 @@ function Detail({ r, log, err, page, setPage, margin, notional }: {
           over {log.trades} trades: {log.wins} won, {log.losses} lost ({log.trades ? log.win_rate.toFixed(1) : "0"}%);
           worst losing run {log.worst_run_n ? `${money(log.worst_run)} over ${log.worst_run_n}` : "none"};
           worst dip ${log.dip.toFixed(2)}
+          {log.priced ? `; priced from the recorded order book on both sides: ${log.priced.real}, on one side: ${log.priced.part}, at the usual gap: ${log.priced.estimated}` : ""}
         </span>
       </p>
       <p className="text-theme-xs text-gray-500 dark:text-gray-400">
@@ -368,7 +379,8 @@ function Detail({ r, log, err, page, setPage, margin, notional }: {
           <thead>
             <tr className="text-left text-gray-500"><th className="px-2 py-1">#</th><th className="px-2 py-1">Opened</th>
               <th className="px-2 py-1">Closed</th><th className="px-2 py-1">Side</th><th className="px-2 py-1">Out by</th>
-              <th className="px-2 py-1">Profit</th><th className="px-2 py-1">Running</th><th className="px-2 py-1">Seen?</th></tr>
+              <th className="px-2 py-1">Profit</th><th className="px-2 py-1">Running</th><th className="px-2 py-1">Seen?</th>
+              <th className="px-2 py-1">Priced from</th></tr>
           </thead>
           <tbody>
             {shown.map((t, i) => (
@@ -380,6 +392,7 @@ function Detail({ r, log, err, page, setPage, margin, notional }: {
                 <td className={`px-2 py-1 ${tone(t.pnl)}`}>{money(t.pnl)}</td>
                 <td className={`px-2 py-1 ${tone(t.running)}`}>{money(t.running)}</td>
                 <td className="px-2 py-1">{t.unseen ? "unseen" : "chosen on"}</td>
+                <td className="whitespace-nowrap px-2 py-1">{PRICED[t.priced ?? "estimated"]}</td>
               </tr>
             ))}
           </tbody>

@@ -5,6 +5,20 @@ description: ALWAYS ON, STRICT — the ONLY rule for how to answer. A FACT or a 
 
 # Short and Plain
 
+## FIRST: TALK LIKE A PERSON (Nov 13, 2026 — newest ask, it wins)
+
+The operator: *"talk to me like human make ruile for this"*, right after an
+answer made of a `BECAUSE` line, a boxed arrow diagram and "No pending for
+you." Write every reply the way a friend would explain it across a table:
+normal sentences with "you" and "I", a short paragraph or two, the story told
+in the order it happened with their real dates, ids and dollars. No boxed
+diagrams, no `BECAUSE` headline, no headings, no bold labels, no bullet lists
+and no closing stamp like "No pending for you." — unless they ASK for a
+diagram, a list or a table (a results table they asked for stays a table). If
+they need to do something, say it in a normal sentence; if not, just stop.
+Everything below still holds for SHORT, PLAIN WORDS and A REAL EXAMPLE; where
+it demands the diagram or the BECAUSE line, this section replaced it.
+
 The operator, verbatim, escalating over six asks:
 
 > "give me options short and accurate"

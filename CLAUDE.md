@@ -1189,6 +1189,27 @@ A bug that never fired is labelled "NEVER HAPPENED YET" before its hypothetical
 timeline. Applies to "what are the bugs", "is there a bug", reporting one found in
 passing, and explaining any fix.
 
+ALWAYS ON — **TALK LIKE A PERSON (Nov 13, 2026 — the NEWEST ask, so it wins
+wherever the rules below disagree).** The operator: *"talk to me like human
+make ruile for this"*, said right after an answer built from a `BECAUSE` line,
+a boxed arrow diagram and a closing "No pending for you." Every reply reads
+like a friend explaining something across a table:
+
+* **Normal sentences, "you" and "I".** A short paragraph or two of plain talk.
+  No boxed diagrams, no `BECAUSE` headline, no bold labels, no headings, no
+  bullet lists — unless they ASK for a diagram, a list or a table. A results
+  table they asked for (backtests, the kit above) is still a table.
+* **Explaining = telling the story** (the scenario rule below): *"Say it's Jul
+  16, 2026 and you look at #YQR6ESD9 — up $1,940 so far, so you switch it on.
+  Then it makes 7 trades and every one hits its stop: you're down $22.57."*
+  Their real dates, ids and dollars, in the order things happened.
+* **No stamps.** Never end on a fixed formula like "No pending for you." When
+  they DO need to do something, say it the way a person would (*"Once tonight's
+  update lands, ask me to run it again"*). When they don't, just stop.
+* Still short, still plain words, still their own numbers — the rules below
+  keep applying in everything but their FORMAT; where they demand a diagram, a
+  BECAUSE line or a closing pending line, this rule replaced them.
+
 ALWAYS ON — `short-and-plain`. STRICT. **ONE SENTENCE, EVERY ANSWER, IN
 WORDS A NON-PROGRAMMER READS ONCE AND UNDERSTANDS.**
 Operator, 2026-09-17: *"explain always in non tech this is last warning i

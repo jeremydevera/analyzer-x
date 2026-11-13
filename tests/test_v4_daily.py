@@ -977,3 +977,112 @@ def test_the_picker_runs_in_the_chain_and_a_switched_off_room_gets_an_empty_list
     assert doc["rooms"]["D7EN8BNV"] and doc["rooms"]["7T3VJU82"]
     assert f4.rule_id(**{**profiles.get("7T3VJU82")["v4_rule"], "money": "made"}) in seen   # judged by the picked rule
     assert "RSS7CUKH" not in seen
+
+
+# ------------------------------------------------------------------ real prices (Nov 13, 2026)
+def _recorder(monkeypatch, *, recorded=True, published=False):
+    """This PC records the order books (its folder exists); `recorded` = yesterday has a file,
+    `published` = yesterday's marker says it went up whole."""
+    from tradingagents import app_books as ab
+
+    ab.HOME.mkdir(parents=True, exist_ok=True)
+    yday = ab._day(D - 1)
+    if recorded:
+        f = ab._day_file("BTC_USDT", yday)
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_bytes(b"\0" * 39)
+    if published:
+        ab._write_marker(yday, coins={"BTC_USDT"}, failed=set())
+    return yday
+
+
+def test_the_dispatch_waits_for_yesterdays_order_books_to_be_published(world, monkeypatch):
+    """The chain is due at 00:05 UTC; yesterday's recorded order books go up at 00:20 UTC. A run started
+    in between would price all of yesterday's trades by the usual gap: it waits."""
+    from tradingagents import app_books as ab
+
+    yday = _recorder(monkeypatch)
+    st = {"phase": "idle"}
+    vd._step(st, AT)
+    vd._step(st, AT + vd.POLL_S)
+    assert st["phase"] == "dispatch" and world.gh.sent == [], "nothing is started while it waits"
+    assert st["books"]["waiting"] is True and st["books"]["day"] == yday
+    assert "order book" in st["why"] and "GitHub" in st["why"]
+    assert "recorded order books" in vd.words(st)
+    ab._write_marker(yday, coins={"BTC_USDT"}, failed=set())
+    vd._step(st, AT + 2 * vd.POLL_S)
+    assert st["phase"] == "running" and len(world.gh.ok()) == 2
+    assert st["books"] == {"day": yday, "published": True}
+    assert "order book" not in vd._notes(st)
+
+
+def test_after_the_wait_it_goes_on_and_says_yesterday_was_not_published(world, monkeypatch):
+    from tradingagents import app_books as ab
+
+    yday = _recorder(monkeypatch)
+    until = D + ab.PUBLISH_AFTER_UTC_S + vd.BOOKS_WAIT_S
+    st = {"phase": "idle"}
+    vd._step(st, AT)
+    vd._step(st, until - 1)
+    assert st["phase"] == "dispatch" and st["books"]["until_s"] == until
+    vd._step(st, until + vd.POLL_S)
+    assert st["phase"] == "running", "bounded: thirty minutes past the upload's hour, then it goes on"
+    assert st["books"] == {"day": yday, "published": False}
+    assert "had not gone up" in vd._notes(st) and "usual gap" in vd._notes(st)
+    assert "had not gone up" in vd.status()["words"] or "had not gone up" in vd.words(st)
+
+
+def test_a_start_late_in_the_day_does_not_wait(world, monkeypatch):
+    _recorder(monkeypatch)
+    st = {"phase": "idle"}
+    vd._step(st, D + 5 * H)                 # past the wait, before the 06:00 UTC give-up
+    vd._step(st, D + 5 * H + vd.POLL_S)
+    assert st["phase"] == "running" and st["books"]["published"] is False
+
+
+def test_already_published_never_waits(world, monkeypatch):
+    yday = _recorder(monkeypatch, published=True)
+    st = _started()
+    assert st["phase"] == "running" and st["books"] == {"day": yday, "published": True}
+
+
+def test_a_day_the_recorder_was_off_is_not_waited_for(world, monkeypatch):
+    yday = _recorder(monkeypatch, recorded=False)
+    st = _started()
+    assert st["phase"] == "running"
+    assert st["books"] == {"day": yday, "published": False, "recorded": False}
+    assert "nothing was recorded" in vd._notes(st)
+
+
+def test_a_pc_with_no_recorder_never_waits(world):
+    st = _started()
+    assert st["phase"] == "running" and st["books"]["published"] is None
+    assert "order book" not in vd._notes(st)
+
+
+def test_the_day_before_yesterday_is_checked_again(world):
+    """A fill at the 00:00 UTC close is priced from a reading that goes up an hour after the run: the
+    backtest has it one night late. So the day checked last night is checked once more tonight."""
+    pick = _pick([[(Y - DAY + 1 * H) * 1000, (Y - DAY + 3 * H) * 1000, 1, "TP", 1.00, None, 2]])
+    _build_store(world.tmp, {"AAA|1h": _line("AAA", "1h", [pick])})
+    sid = v4_store.row_id("AAA", "1h", pick)
+    _put_list(Y - DAY, {ROOM: [_row(sid)]})
+    with profiles.using(ROOM):
+        at.append_ledger(_practice_exit(sid, Y - DAY + 1 * H, Y - DAY + 4 * H, "TP", 1.00, tid="SAME0001"))
+    older = vf.lists_home() / f"agree-{_iso(Y - DAY)}.json"
+    older.write_text(json.dumps({ROOM: {"day": _iso(Y - DAY), "day_s": Y - DAY, "same": 0, "of": 1,
+                                        "dollars_apart": 0.0}}), encoding="utf-8")
+    st = {"phase": "agree", "day": _iso(D), "day_s": D, "deadline_s": D + vd.GIVE_UP_AT_S, "landed_s": AT}
+    vd._step(st, AT)
+    assert st["phase"] == "done" and st["agreed_days"] == [_iso(Y)], "yesterday is the day checked"
+    again = json.loads(older.read_text(encoding="utf-8"))
+    assert again[ROOM]["same"] == 1 and again[ROOM]["of"] == 1, "re-read against tonight's store"
+    assert again[ROOM]["rechecked_s"] == AT
+    assert st["rechecked_day"] == _iso(Y - DAY)
+    assert vf.status(ROOM, now_s=AT)["agreement"]["day"] == _iso(Y), "the room still shows the newest day"
+
+
+def test_a_day_with_no_check_yet_is_not_checked_twice(world):
+    st = {"phase": "agree", "day": _iso(D), "day_s": D, "deadline_s": D + vd.GIVE_UP_AT_S, "landed_s": AT}
+    vd._step(st, AT)
+    assert "rechecked_day" not in st

@@ -76,6 +76,7 @@ BUILD_TIMEOUT_S = 3 * 3600
 CHILD_TIMEOUT_S = 2 * 3600
 SHORT_LIST = 0.10                 # the exchange listing this much fewer coins than last time is a short answer
 CATCH_UP_DAYS = 31                # agreement days checked at most in one pass (the rest are named)
+BOOKS_WAIT_S = 30 * 60            # how long past the recorder's upload hour (00:20 UTC) the dispatch waits for it
 LOG_MAX_BYTES = 10_000_000
 IDLE = ("idle", "done", "given_up")
 BEFORE_LIST = ("dispatch", "running", "collect", "build", "lists")
@@ -426,12 +427,49 @@ def _give_up(st: dict, now: float, why: str) -> None:
     st["why"] = f"the refresh of {_when(int(st['day_s']))} was given up ({why}); {said}"
 
 
+def _books_ready(st: dict, now: float) -> bool:
+    """MAY THE RUN START? (Nov 13, 2026) Every fill is priced from the app's own recorded order book of
+    its minute, and GitHub's machines read a day only once it has gone up (`app_books.publish_day`, from
+    00:20 UTC). The chain is due at 00:05 UTC, so a run started at once would price ALL of yesterday's
+    trades by the usual gap - and the rooms, which read this PC's recording, would disagree with their
+    own backtest. So the dispatch waits until yesterday's marker says it went up, at most `BOOKS_WAIT_S`
+    past the upload's hour; then it goes on, and every screen says yesterday was not published (the
+    next night prices it). Decided once a chain. No wait at all on a PC that records nothing, while the
+    app's books are switched out of every backtest, or for a day the recorder was off."""
+    from tradingagents import app_books as ab
+
+    was = st.get("books") or {}
+    if was and not was.get("waiting"):
+        return True
+    day_s = int(st["day_s"])
+    yday = ab._day(day_s - 1)
+    if not ab.IN_BACKTEST or not ab.HOME.exists():
+        st["books"] = {"day": yday, "published": None}
+        return True
+    if ab._published(yday):
+        st["books"] = {"day": yday, "published": True}
+        return True
+    if not ab._day_file("BTC_USDT", yday).exists():
+        st["books"] = {"day": yday, "published": False, "recorded": False}
+        return True
+    until = day_s + ab.PUBLISH_AFTER_UTC_S + BOOKS_WAIT_S
+    if now < until:
+        st["books"] = {"day": yday, "published": False, "waiting": True, "until_s": until}
+        st["why"] = (f"waiting for yesterday's recorded order books to go up to GitHub (until {_when(until)} "
+                     f"at the latest), so yesterday's trades are priced from them")
+        return False
+    st["books"] = {"day": yday, "published": False}
+    return True
+
+
 def _dispatch(st: dict, now: float) -> None:
     from tradingagents import cloud_sweep as cs
     from tradingagents import cq_search
 
     if cq_search.quiet_hours(now):
         st["why"] = "waiting: no press between 12:45am and 5:00am (the nightly jobs' hours)"
+        return
+    if not _books_ready(st, now):
         return
     if not st.get("deal"):
         _deal(st)
@@ -660,6 +698,13 @@ def _notes(st: dict) -> str:
         bits.append(st["prev_error"])
     if st.get("picker_error"):
         bits.append(st["picker_error"])
+    books = st.get("books") or {}
+    if books.get("published") is False and not books.get("waiting"):
+        bits.append("yesterday's recorded order books "
+                    + ("had not gone up to GitHub when the run started" if books.get("recorded", True)
+                       else "do not exist (nothing was recorded yesterday)")
+                    + ", so yesterday's trades pay the coin's usual gap"
+                    + (" until tomorrow night's run" if books.get("recorded", True) else ""))
     return (" - note: " + "; ".join(bits)) if bits else ""
 
 
@@ -771,6 +816,21 @@ def _agree(st: dict, now: float) -> None:
             except Exception as exc:                                   # noqa: BLE001
                 out[pid] = {"day": _iso(d), "day_s": d, "error": f"{type(exc).__name__}: {str(exc)[:300]}"}
         f2.publish(agree_path(d), json.dumps(out))
+    # THE DAY BEFORE YESTERDAY, ONCE MORE (Nov 13, 2026): a fill at the 00:00 UTC close is priced from a
+    # reading that goes up an hour after the run, so the backtest holds it one night late - last night's
+    # check of that day compared those trades against an estimate. Only a day already checked.
+    again = y - DAY_S
+    st.pop("rechecked_day", None)
+    if again not in days and agree_path(again).exists():
+        redo = {}
+        for pid in vf.rooms():
+            try:
+                redo[pid] = {**agreement(pid, again, lists=lists), "rechecked_s": now}
+            except Exception as exc:                                   # noqa: BLE001
+                redo[pid] = {"day": _iso(again), "day_s": again, "rechecked_s": now,
+                             "error": f"{type(exc).__name__}: {str(exc)[:300]}"}
+        f2.publish(agree_path(again), json.dumps(redo))
+        st["rechecked_day"] = _iso(again)
     st["agreed_days"] = [_iso(d) for d in days]
     st["agree"] = {pid: {k: r[k] for k in ("same", "of", "dollars_apart", "error") if k in r}
                    for pid, r in out.items()}
@@ -1058,6 +1118,8 @@ def words(st: dict) -> str:
 
 
 def _phase_words(st: dict, phase: str) -> str:
+    if phase == "dispatch" and (st.get("books") or {}).get("waiting"):
+        return "waiting for yesterday's recorded order books to go up, then measuring on GitHub"
     if phase in ("dispatch", "running"):
         return "measuring on GitHub"
     if phase == "collect":
@@ -1104,6 +1166,8 @@ def status() -> dict:
             "redo_skipped": st.get("redo_skipped") or (st.get("collect") or {}).get("redo_skipped") or "",
             "redo_error": st.get("redo_error") or "", "prev_error": st.get("prev_error") or "",
             "failed_at": st.get("failed_at") or 0, "agree_error": st.get("agree_error") or "",
+            "books": st.get("books") or {}, "rechecked_day": st.get("rechecked_day"),
+            "picker_error": st.get("picker_error") or "",
             "next_s": _next_due(time.time())}
     out["words"] = words(out)
     return out

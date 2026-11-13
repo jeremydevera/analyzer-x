@@ -13,6 +13,10 @@ settings x stops, then ONLY the backtesting skill's strategies PINNED for that c
 11, 2026 a stop or target is settled MINUTE BY MINUTE over the last `skill_bt.MINUTE_DAYS` days
 (`skill_bt.Fine`, read once a coin, the same read a follower makes), the close deciding only the
 candles the minutes do not cover; each line says how many steps went each way (`exits`).
+Since Nov 13, 2026 every fill is priced from the app's own recorded order book of its own minute where
+one was recorded and published (`skill_bt.Book`, read once a coin over the same stretch as the minutes,
+never from before Oct 17, 2026); a fill with no reading keeps the usual gap, and each trade says how
+many of its two fills were real. Each line says how many readings it was handed (`book`).
 """
 # ruff: noqa: E402
 from __future__ import annotations
@@ -114,14 +118,20 @@ def main() -> int:
             coin = sym.replace("_USDT", "")
             try:
                 fee, slip, gap = costs(sym)
-                frames, funding, fine = {}, None, None
+                frames, funding, fine, book = {}, None, None, None
                 if SET == "daily":
                     frames["1d"] = frame(sym, "1d")
                     funding = funding_of(sym, sb._ms(frames["1d"].index)[0] if len(frames["1d"]) else (time.time() - 730 * 86400) * 1000)
                     # the minutes, ONCE a coin: a read that raises fails the coin (redone alone) - never a
                     # coin measured on candles because its minutes were missing, while its room reads them
-                    today_ms = int(time.time() * 1000) // 86_400_000 * 86_400_000
+                    now_s = int(time.time())
+                    today_ms = now_s * 1000 // 86_400_000 * 86_400_000
                     fine = sb.read_fine(sym, sb.fine_from_ms(today_ms))
+                    # the app's own recorded order books over the same stretch (never before the record
+                    # began): what each fill really paid. Only the days that went up, so every machine
+                    # and the PC price a strategy from the same readings; a read that raises fails the
+                    # coin (redone alone)
+                    book = sb.read_book(sym, sb.fine_from_ms(today_ms) // 1000, now_s)
                 for tf in BARS:
                     t1 = time.time()
                     entry = {"coin": coin, "tf": tf}
@@ -132,7 +142,8 @@ def main() -> int:
                         elif SET == "daily":
                             out.write(json.dumps({**sb.daily_line(coin, tf, df, pinned.get(f"{coin}|{tf}"), fee=fee,
                                                                   slip=slip, funding=funding,
-                                                                  bar_ms=br.TFS[tf][1] * 1000, fine=fine),
+                                                                  bar_ms=br.TFS[tf][1] * 1000,
+                                                                  fine=fine, book=book),
                                                   "gap": gap}, separators=(",", ":")) + "\n")
                             n += 1
                         else:

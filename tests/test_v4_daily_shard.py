@@ -167,3 +167,24 @@ def test_the_shard_reads_each_coins_minutes_once_from_the_days_window():
     # the follower's warm-up reads the same stretch for the same midnight
     fol = (ROOT / "tradingagents" / "v4_follow.py").read_text(encoding="utf-8")
     assert "sb.fine_from_ms(" in fol and "R.fine(" in fol
+
+
+# ------------------------------------------------------------------ real prices (Nov 13, 2026)
+def test_the_shard_reads_each_coins_recorded_order_books_once_over_the_minutes_window():
+    """The nightly run prices every fill from the app's own PUBLISHED readings: read once a coin, over
+    the stretch the minutes are read, and handed to every timeframe's line."""
+    src = (ROOT / ".github" / "scripts" / "skill_shard.py").read_text(encoding="utf-8")
+    assert "sb.read_book(sym, sb.fine_from_ms(today_ms) // 1000, now_s)" in src
+    assert src.count("read_book(") == 1, "once a coin, never once a timeframe"
+    assert "fine=fine, book=book" in src
+    assert "published_only=False" not in src, "a machine reads only what went up, as the PC's backtest does"
+
+
+def test_a_daily_line_priced_from_a_book_says_so_and_marks_every_trade():
+    df = _df()
+    book = sb.Book(None)
+    line = sb.daily_line("BTC", "1h", df, None, fee=0.00075, slip=0.0003, funding=None, bar_ms=3_600_000,
+                         book=book)
+    assert line["book"] == {"minutes": 0, "from_s": sb.REAL_FROM_S}
+    trades = [t for p in line["picks"] for t in p["trades"]]
+    assert trades and all(len(t) == 7 and t[6] == 0 for t in trades), "no reading: every trade says estimated"

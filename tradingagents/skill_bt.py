@@ -244,6 +244,7 @@ def read_fine(sym: str, from_ms: int, to_ms: int | None = None, *, minutes=None,
 
 
 REAL_FROM_S = 1_792_195_200       # Oct 17, 2026 00:00 UTC: the first whole day the app recorded its own books
+MAX_WALK = 0.25                   # a $100 walk past this share of the middle is not a price (see `Book`)
 
 
 class BookNotYet(Exception):
@@ -261,7 +262,14 @@ class Book:
 
     Only a reading that is a price the app could have had is kept: the app's OWN (never the exchange's
     published record, which holds offers no API order can take - RCA-2026-10-16-A), whose $100 walk did
-    not run out of book, with a real bid under a real ask. A fill is priced only by the reading stamped
+    not run out of book, with a real bid under a real ask, and a $100 walk of at most `MAX_WALK` (a quarter)
+    of the middle. THAT LAST TEST (RCA-2026-11-17-A): on Nov 05 - 08, 2026 the recorder saw 4,811 readings,
+    on thin stock tokens (TWUMC, NANYA, YAGEO, ...), whose $100 walk was 25% to 4,444,000,000% of the
+    middle - a bid book with one order at a thousandth of the price. They passed every structural test, the
+    engine priced a short's entry at one (TWUMC, Nov 06, 2026 8:30am: sold at ~1/6,800,000 of the middle) and
+    booked -$675,994,617 on a single $100 trade. Not one of 97,200 readings on Nov 10 passes 25% (181 pass
+    10%): such a book is not a price, and the runner's own cost check refuses a stop inside the gap long
+    before. The fill pays the usual gap and says estimated; `too_wide` counts them. A fill is priced only by the reading stamped
     at ITS OWN minute; anything else is no reading (`at` answers None and the caller keeps its estimate).
 
     `fill(minute, buying)` is what $100 really got: a buy pays the middle x (1 + the walk up the asks),
@@ -283,6 +291,7 @@ class Book:
         t = np.asarray(p.get("t", []), dtype="int64")
         self.now_ms = None if now_ms is None else int(now_ms)
         self.wait_ms = int(wait_ms)
+        self.too_wide = 0
         if not len(t):
             self.t = np.zeros(0, "int64")
             self.mid = self.buy = self.sell = np.zeros(0)
@@ -292,10 +301,12 @@ class Book:
         buy = np.asarray(p["buy"], dtype="float64")
         sell = np.asarray(p["sell"], dtype="float64")
         with np.errstate(invalid="ignore"):
-            ok = ((np.asarray(p["source"]).astype("int64") == bh.SOURCES["app"])
-                  & ~np.asarray(p["exhausted"], dtype=bool)
-                  & np.isfinite(bid) & np.isfinite(ask) & (bid > 0) & (ask > bid)
-                  & np.isfinite(buy) & np.isfinite(sell) & (buy >= 0) & (sell >= 0))
+            usable = ((np.asarray(p["source"]).astype("int64") == bh.SOURCES["app"])
+                      & ~np.asarray(p["exhausted"], dtype=bool)
+                      & np.isfinite(bid) & np.isfinite(ask) & (bid > 0) & (ask > bid)
+                      & np.isfinite(buy) & np.isfinite(sell) & (buy >= 0) & (sell >= 0))
+            ok = usable & (buy <= MAX_WALK) & (sell <= MAX_WALK)
+        self.too_wide = int((usable & ~ok).sum())
         order = np.argsort(t[ok], kind="stable")
         self.t = t[ok][order]
         self.mid = ((bid + ask) / 2.0)[ok][order]
@@ -641,7 +652,7 @@ def daily_line(coin: str, tf: str, df, pinned: dict | None, *, fee: float, slip:
         out["exits"] = {"minute": int(tally.get("minute", 0)), "candle": int(tally.get("candle", 0)),
                         "unclear": int(tally.get("unclear", 0)), "from_ms": fine.from_ms}
     if book is not None:
-        out["book"] = {"minutes": book.minutes, "from_s": REAL_FROM_S}
+        out["book"] = {"minutes": book.minutes, "too_wide": book.too_wide, "from_s": REAL_FROM_S}
     return out
 
 

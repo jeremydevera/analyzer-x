@@ -261,7 +261,7 @@ def test_daily_line_says_how_many_readings_it_was_priced_from():
     df = _frame([100.0 + (k % 7) for k in range(400)])
     book = _book({T0 + H: (99.9, 100.1, 0.001, 0.001), T0 + 2 * H: (99.9, 100.1, 0.001, 0.001)})
     line = sb.daily_line("AAA", "1h", df, None, fee=FEE, slip=SLIP, funding=None, bar_ms=H, book=book)
-    assert line["book"] == {"minutes": 2, "from_s": sb.REAL_FROM_S}
+    assert line["book"] == {"minutes": 2, "too_wide": 0, "from_s": sb.REAL_FROM_S}
     assert all(len(t) == 7 for p in line["picks"] for t in p["trades"])
     plain = sb.daily_line("AAA", "1h", df, None, fee=FEE, slip=SLIP, funding=None, bar_ms=H)
     assert "book" not in plain
@@ -405,3 +405,44 @@ def test_on_the_recorders_own_pc_nothing_is_unread(monkeypatch):
     monkeypatch.setattr(ab, "_REMOTE_DAYS", {})
     assert ab.unread("AAA_USDT", sb.REAL_FROM_S, sb.REAL_FROM_S + 86_400) == []
     assert sb.read_book("AAA_USDT", sb.REAL_FROM_S, sb.REAL_FROM_S + 86_400, strict=True).minutes == 0
+
+
+# ------------------------------------------------------------------ a book that cannot be traded (Nov 17, 2026)
+def test_a_reading_whose_hundred_dollars_moves_the_price_by_a_quarter_or_more_is_not_a_price():
+    """TWUMC, Nov 06, 2026 8:30am: the recorded bids were so far below the middle that $100 would have
+    sold at about 1/6,800,000 of it (sell = 6.8 million). That reading passed every structural test - a
+    real bid under a real ask, the walk not run out - and the engine booked the short's entry at it:
+    -$675,994,617 on one $100 trade. A walk past MAX_WALK is not a price (the runner's own cost check
+    refuses a stop inside the gap long before this): the fill pays the usual gap and says estimated."""
+    assert sb.MAX_WALK == 0.25
+    absurd = {T0 + H: (BID, ASK, BUY, 6_800_000.0)}
+    book = _book(absurd)
+    assert book.minutes == 0 and book.too_wide == 1 and book.at(T0 + H) is None
+    pos = _enter(book, direction="short")
+    assert pos["px"] == pytest.approx(LAST * (1 - SLIP)) and pos["real"] is False
+    # the whole trade, as the engine ran it: an entry at the absurd price, a stop on the way back up
+    fine = _minutes(highs={7: 106.0}, flat=100.0)
+    book = _book({T0 + H: (99.9, 100.1, 0.001, 6_800_000.0), T0 + H + 7 * M: (105.9, 106.1, 0.002, 0.003)})
+    pos, _ = sb.step(None, _Sig(entry=True, direction="short"), close=100.0, when_ms=T0, bar_ms=H, stop=0.03,
+                     fee=FEE, slip=SLIP, book=book)
+    _, trade = sb.step(pos, _Sig(), close=100.0, when_ms=T0 + H, bar_ms=H, stop=0.03, fee=FEE, slip=SLIP,
+                       fine=fine, book=book)
+    assert trade["why"] == "SL" and -200 < trade["pnl"] < 0, trade["pnl"]
+
+
+def test_a_walk_just_inside_the_ceiling_is_still_a_price_and_one_just_past_it_is_not():
+    just_in, just_out = 0.25, 0.2501
+    assert _book({T0 + H: (BID, ASK, just_in, SELL)}).minutes == 1
+    assert _book({T0 + H: (BID, ASK, BUY, just_in)}).minutes == 1
+    assert _book({T0 + H: (BID, ASK, just_out, SELL)}).minutes == 0
+    assert _book({T0 + H: (BID, ASK, BUY, just_out)}).minutes == 0
+    thin = _book({T0 + H: (BID, ASK, 0.11, 0.12)})            # a thin coin's honest 11% and 12%: kept
+    assert thin.minutes == 1 and thin.too_wide == 0
+
+
+def test_a_book_says_how_many_readings_were_too_wide_and_the_line_carries_it():
+    book = _book({T0 + H: (BID, ASK, BUY, SELL), T0 + 2 * H: (BID, ASK, 9.0, SELL), T0 + 3 * H: (BID, ASK, BUY, 7e6)})
+    assert (book.minutes, book.too_wide) == (1, 2)
+    df = _frame([100.0 + (k % 7) for k in range(400)])
+    line = sb.daily_line("AAA", "1h", df, None, fee=FEE, slip=SLIP, funding=None, bar_ms=H, book=book)
+    assert line["book"] == {"minutes": 1, "too_wide": 2, "from_s": sb.REAL_FROM_S}

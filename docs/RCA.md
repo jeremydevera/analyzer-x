@@ -172,6 +172,43 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-17-A — real-price pricing took a bid book with one order at a thousandth of the price literally and booked a loss of $676 million on a single $100 trade; 3,482 rule sets passed "beat random" on a corrupted bar
+
+**CEO**
+
+* What you saw: nothing on a screen at first. Asked whether Backtest v4 holds any strategy that can be trusted to profit, I added up the trades priced at the real order book and the total came to a loss of $1.39 billion. A $100 trade cannot lose that. The same bad numbers had sat in Backtest v4 and Forecast v4 since the first real-priced night, Nov 13, 2026.
+* Why: on thin stock tokens (TWUMC, NANYA, YAGEO and a few more) the order book the app recorded on Nov 5 - 8 had a single buy order at a thousandth of the price, so a $100 sale "filled" at almost nothing. The new pricing believed it. Such a trade is not possible: the runner's own cost check would have refused it long before.
+* What stops it now: a reading whose $100 order would move the price by a quarter or more is no longer a price (the trade is priced the old way and marked estimated), and every build counts and names any real-priced trade that lost more than a trade can.
+
+**DEV**
+
+* `tradingagents/skill_bt.py:Book.__init__` kept any reading with a finite bid under a finite ask, a walk that did not run out and finite non-negative `buy` / `sell`; `Book.fill` then priced a short's entry at `mid / (1 + sell)` with `sell` = 6,800,000, and `close_position` booked `NOTIONAL * (exit / entry - 1)` on an entry 6.8 million times too small.
+* Invariant broken: **a price must be one the app could have traded** - structural validity (finite, ordered, not run out) is not economic validity, and a unit-test fixture of sane books cannot hold a bad one. Review Focus 1 listed zero, NaN, crossed and exhausted readings and nothing past them.
+* Guard: `tests/test_skill_real_prices.py::test_a_reading_whose_hundred_dollars_moves_the_price_by_a_quarter_or_more_is_not_a_price` (+2), `tests/test_backtest_v4_store.py::test_a_real_priced_trade_that_lost_more_than_a_trade_can_is_counted_and_named`.
+
+**SAW** - Nov 17, 2026 about 12:30am, asked "so you mean I don't have a Backtest v4 that has a high confidence rate that will profit?": the store query behind the answer read `all real-priced trades together: -$1,389,534,521` (-$444 a trade over 3,129,400 trades).
+
+**TIMELINE**
+
+1. Nov 5 - 8, 2026: the recorder saw 4,811 readings of 5,120,162 whose $100 walk was over 25% of the middle, on ten coins (TWUMC 2,069, NANYA 869, YAGEO 616, LNG 398, TWASX 353, OXY 306, WUXIBIO 122, TWDELTA 57, WINBOND 17, XP 4); 2,355 over 100%, the worst 44,440,000 times (TWUMC, Nov 5). On Nov 10 none of 97,200 readings passes 25% (181 pass 10%).
+2. Nov 6, 2026 8:30am: TWUMC 15m, a short on VWAP reversion (#3P3HGHZN, stop 1%) - its entry is priced from a bid book whose $100 average sells at about 1/6.8 million of the middle, and the stop that follows books -$675,994,617.
+3. Nov 13, 2026 about 7:05pm: the first nightly run on real prices measures the whole history again from the recordings. Every store since carries the bad trades: in the store of Nov 16, 2026 8:46pm, 94 trades priced at both sides and 64 at one side below -$150, 9 strategies on 2 coins (TWUMC, WUXIBIO), -$1,386,451,127 and -$2,903,056.
+4. Nov 17, 2026 12:30am: found (SAW).
+5. Measured damage: no Forecast v4 rule set shows a total below -$1,000,000 (a rule set switches on only strategies that had been winning); but the "random picks of the same kind" bar is below -$10,000 on 3,770 of 24,480 rule sets - 51 of 120 kinds of rule set share a pool with the bad trades - and 3,482 of those are marked "beat random by more than luck", which means nothing. The three rooms' own rules (1h) are not in those pools (random bars -$128, -$143, -$166), and the picker's three reasons on Nov 13 - 16 ("a whole month lost money", "did not beat random") are not shown to have changed.
+6. After the fix: a reading over 25% is not a price; the TWUMC short is priced by the usual gap and ends between -$200 and $0 (test); `Book.too_wide` and each line's `book.too_wide` count what was dropped; the build counts real-priced trades below -$150 in `meta.real.implausible` and prints a WARNING.
+
+**ROOT CAUSE** - the pricing function validated a reading's SHAPE and never its size: a $100 order that moves the price by 4,444,000,000% passed as a price.
+
+**WHY IT WAS NOT CAUGHT** - three layers each tested the thing they were asked. The unit tests used sane books and, for bad ones, the structural kinds the plan's Review Focus named (zero, NaN, crossed, exhausted). The real-data proof on CATL printed counts, totals and "0 differences" between the engine and an independent lookup of the recording - which proved the engine did what the reading said, not that the reading was a price - and never printed the worst trade. The final review read the same structural list. And no screen showed the damage: rule sets total only what they switched on, "none yet" covers most of the column, and the luck bar is a number nobody compares with a sum. **A distribution's worst row, not its mean, is what shows an impossible number**: ask `MIN(pnl)` of any new money figure on the first real data.
+
+**COST** - none in money: practice only, and no room was switched by it as far as measured. Wrong for four nights (Nov 13 - 16, 2026): the "random picks" bar and the "beat random by more than luck" mark on 3,770 rule sets, and `real_profit` on the rule sets that hold the 9 strategies. Corrected by tonight's run (Nov 17, 2026 7:05pm), which measures everything again with the fix.
+
+**FIX** - this commit: `skill_bt.MAX_WALK` = 0.25 and `Book.too_wide`; `v4_store.IMPLAUSIBLE` and `meta.real.implausible`.
+
+**GUARD** - `tests/test_skill_real_prices.py::test_a_reading_whose_hundred_dollars_moves_the_price_by_a_quarter_or_more_is_not_a_price`, `::test_a_walk_just_inside_the_ceiling_is_still_a_price_and_one_just_past_it_is_not`, `::test_a_book_says_how_many_readings_were_too_wide_and_the_line_carries_it`, `tests/test_backtest_v4_store.py::test_a_real_priced_trade_that_lost_more_than_a_trade_can_is_counted_and_named` (each failed first on the code of before).
+
+---
+
 ## RCA-2026-11-13-A — a GitHub machine that could not download the recorded order books would have priced its coins by the usual gap all night and said nothing: NEVER HAPPENED YET
 
 **CEO**

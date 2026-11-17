@@ -187,6 +187,6 @@ def test_a_daily_line_priced_from_a_book_says_so_and_marks_every_trade():
     book = sb.Book(None)
     line = sb.daily_line("BTC", "1h", df, None, fee=0.00075, slip=0.0003, funding=None, bar_ms=3_600_000,
                          book=book)
-    assert line["book"] == {"minutes": 0, "from_s": sb.REAL_FROM_S}
+    assert line["book"] == {"minutes": 0, "too_wide": 0, "from_s": sb.REAL_FROM_S}
     trades = [t for p in line["picks"] for t in p["trades"]]
     assert trades and all(len(t) == 7 and t[6] == 0 for t in trades), "no reading: every trade says estimated"

@@ -278,3 +278,21 @@ def test_a_store_without_the_column_still_lists_its_trades_as_estimated(realdb):
     assert log["priced"] == {"real": 0, "part": 0, "estimated": 6}
     assert "real" not in v4.meta()
     assert v4.query({"limit": 50})["total"] == 2
+
+
+def test_a_real_priced_trade_that_lost_more_than_a_trade_can_is_counted_and_named(tmp_path, monkeypatch):
+    """RCA-2026-11-17-A: -$675,994,617 on one $100 trade went into the store and into Forecast v4 for four
+    nights without a word. The build now counts every real-priced trade below -$150 in meta.real and says so."""
+    folder = tmp_path / "acs"
+    folder.mkdir()
+    lines = {"AAA|1h": _line("AAA", "1h", [_marked("bf_momentum", [(5, "TP", 1.0, 2, None), (4, "SL", -675_994_617.0, 2, None),
+                                                                   (3, "SL", -200.0, 1, None),
+                                                                   (2, "SL", -5000.0, 0, None),     # a coin that pumped: an ESTIMATE, not a bad price
+                                                                   (1, "SL", -120.0, 2, None)])])}
+    (folder / "skilltaall.json").write_text(json.dumps({"lines": lines}), encoding="utf-8")
+    target = tmp_path / "v4" / "rows.db"
+    monkeypatch.setattr(stores, "V4", stores.Store(**{**stores.V4.__dict__, "rows_db": target}))
+    said = []
+    v4.build(folder, target=target, sources=(("skilltaall.json", "technical-analysis"),), log=said.append)
+    assert v4.meta()["real"]["implausible"] == 2, "-675,994,617 and -200 at real prices; not the pump, not -120"
+    assert any("WARNING 2 real-priced trade(s)" in s for s in said)

@@ -57,6 +57,7 @@ SORTS = {                         # the sort key -> its SQL (window figures are 
 SORT_TEXT = {"id", "coin", "tf", "strategy"}
 PAGE_MAX = 200
 STRAT_COLS = 38                  # the columns of `strat`, in SCHEMA order
+IMPLAUSIBLE = 150.0              # a real-priced $100 trade that lost more than this was priced from a bad book
 PRICED = ("estimated", "part", "real")   # a trade's mark: how many of its two fills paid a recorded order book
 SCHEMA = """
 CREATE TABLE strat (
@@ -280,8 +281,15 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
                       "SUM(ex > ? AND real = 1) FROM trade WHERE why != ?",
                       (cut, cut, cut, WHYS.index("END"))).fetchone()
     n, r2, r1, n30, r230, r130 = (int(v or 0) for v in got)
+    # A TRADE PRICED FROM A BOOK THAT LOST MORE THAN A $100 TRADE CAN (RCA-2026-11-17-A): a long cannot lose
+    # more than its $100 and a short only if the price more than doubled, so a real-priced trade below
+    # -$150 is a bad price, never a result. Counted and printed on every build, never swallowed
+    bad = int(con.execute("SELECT COUNT(*) FROM trade WHERE real > 0 AND pnl < -? AND why != ?",
+                          (IMPLAUSIBLE, WHYS.index("END"))).fetchone()[0])
     meta["real"] = {"from_s": _sb.REAL_FROM_S, "trades": n, "real": r2, "part": r1,
-                    "trades_30d": n30, "real_30d": r230, "part_30d": r130}
+                    "trades_30d": n30, "real_30d": r230, "part_30d": r130, "implausible": bad}
+    if bad:
+        log(f"v4: WARNING {bad:,} real-priced trade(s) lost more than ${IMPLAUSIBLE:g} - a bad price, not a result")
     con.executemany("INSERT INTO meta VALUES (?,?)", [(k, json.dumps(v)) for k, v in meta.items()])
     con.commit()
     bad = con.execute("PRAGMA integrity_check").fetchone()[0]

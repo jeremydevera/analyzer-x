@@ -3420,8 +3420,15 @@ idea is sound; the price was wrong, and every "best switch" found before this wa
   minute's walk; **a stop the price had already jumped past fills from where the price was** (never from
   a barrier it could not get; Backtest v3's rule), a target keeps its barrier.
 * **Only the app's OWN reading of the fill's OWN minute is a price** (`source` app, not `exhausted`, a
-  real bid under a real ask): never the exchange's published books, which hold offers no API order can
-  take (RCA-2026-10-16-A), and never a neighbouring minute. So real prices begin **Oct 17, 2026**
+  real bid under a real ask, **and a $100 walk of at most `skill_bt.MAX_WALK` = 25% of the middle**):
+  never the exchange's published books, which hold offers no API order can
+  take (RCA-2026-10-16-A), and never a neighbouring minute. THE 25% (RCA-2026-11-17-A): on Nov 5 - 8,
+  2026 the recorder saw 4,811 readings on thin stock tokens (TWUMC, NANYA, YAGEO ...) whose $100 walk was
+  25% to 4,444,000,000% of the middle; they passed every structural test and one booked -$675,994,617 on
+  a single $100 trade, and corrupted the "random picks" bar of 3,770 rule sets for four nights. A reading
+  past it is no price (the fill pays the usual gap, estimated; `Book.too_wide` counts them) and the store
+  counts every real-priced trade below -$150 (`meta.real.implausible`, a WARNING in the build). **On the
+  first real data of any new money figure, read its WORST row (`MIN(pnl)`), not only its mean.** So real prices begin **Oct 17, 2026**
   (`skill_bt.REAL_FROM_S`, the first whole day the app recorded) and reach back no further than the
   minutes do (`MINUTE_DAYS`). The recorder runs on this PC: a minute it did not record is not a price.
 * **No reading: the price of before, and the trade SAYS so.** Each trade carries `real` - how many of

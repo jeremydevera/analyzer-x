@@ -136,6 +136,9 @@ def fetch(src: Source, *, store: Path | None = None, gap_s: float | None = None)
     if _denied(host):
         return _result(src, "refused", f"host {host} is a denied pirate or mirror host")
     url = resolve(src)
+    # The host the request actually goes to. A GitHub repo is requested from its
+    # raw README host, so redirects are judged against that, not against github.com.
+    request_host = _hostname(url)
     refusal = _robots_refusal(url)
     if refusal:
         return _result(src, "refused", refusal)
@@ -143,12 +146,12 @@ def fetch(src: Source, *, store: Path | None = None, gap_s: float | None = None)
     body: bytes | None = None
     last_error = ""
     for attempt in range(1, RETRIES + 1):
-        _wait_for_host(host, gap)
+        _wait_for_host(request_host, gap)
         try:
             req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
             with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:
                 final_host = _hostname(resp.geturl())
-                if _site(final_host) != _site(host):
+                if _site(final_host) != _site(request_host):
                     return _result(src, "refused",
                                    f"redirected to a different site: {resp.geturl()}")
                 body = resp.read(MAX_BYTES + 1)

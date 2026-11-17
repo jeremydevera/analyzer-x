@@ -204,3 +204,13 @@ def test_the_module_never_uses_the_system_temp_folder():
     from tradingagents import market_sweep as msw
 
     assert str(tf.default_store()).startswith(str(msw.HOME))
+
+
+def test_a_repo_is_read_through_its_raw_readme_and_is_not_called_a_redirect(site, tmp_path, monkeypatch):
+    # A GitHub repo is fetched from its raw README host. That host is the
+    # request's own address, not a redirect, so it must be saved.
+    site.routes["/README.md"] = (200, {}, b"<p>" + b"readme words " * 60 + b"</p>")
+    monkeypatch.setattr(tf, "resolve", lambda s: site.base + "/README.md")
+    src = _src("https://github.com/owner/repo", kind="repo")
+    r = tf.fetch(src, store=tmp_path, gap_s=0)
+    assert r.status == "saved", r.reason

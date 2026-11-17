@@ -23453,3 +23453,50 @@ being rewritten at ~1,800/hour by a live collect during this very check.
 
 **Cost:** none in money or data. The six hours had not been spent yet, which
 is the whole point of reading the path before running it.
+
+## RCA-2026-11-17-A — the fetcher refused every GitHub repo as a "redirect to another site"
+
+**CEO**
+- The download of the free training sources refused 8 of 56 GitHub repos, saying
+  each had "redirected to a different site". None had.
+- Those 8 repos were never read. The download reported them as blocked, which
+  was wrong.
+- Fixed: a repo is now judged against the address it is really requested from,
+  and a test fails if that goes wrong again.
+
+**DEV**
+- `tradingagents/training_fetch.py` `fetch()`: the redirect check compared the
+  final host with `src.url`'s host (`github.com`), while `resolve()` requests
+  `raw.githubusercontent.com`. Every repo was refused.
+- Guard: `tests/test_training_fetch.py::test_a_repo_is_read_through_its_raw_readme_and_is_not_called_a_redirect`,
+  written first and red (`redirected to a different site: http://127.0.0.1:…`).
+- The rule now is `request_host = _hostname(resolve(src))`, used for the rate
+  gap and the redirect test.
+
+**SAW** — the first real download of the 56 free sources (`Nov 17, 2026`)
+reported 11 refused: 8 GitHub repos and 3 robots.txt refusals. The 8 repos were
+the ones the operator's "scrape the website" ask needed most.
+
+**TIMELINE**
+
+1. `Nov 17, 2026` — `fetch()` requested `https://raw.githubusercontent.com/<owner>/<repo>/HEAD/README.md`.
+2. The response URL's host was `raw.githubusercontent.com`.
+3. The check compared it with `github.com` (from `src.url`). Last two labels
+   `githubusercontent.com` ≠ `github.com`, so the body was refused as "redirected
+   to a different site". 8 of 56 sources were refused this way.
+4. After the fix, the same run saved 52 of 56: the 8 repos now save, and the
+   failures left are real refusals (3 robots.txt 403s, 1 HTTP 403 on DataCamp).
+
+**ROOT CAUSE** — `request_host` and the source's own host were two different
+values, and only one was checked against the redirect.
+
+**WHY IT WAS NOT CAUGHT** — the Task 2 test file covered redirects with a local
+server that never goes through `resolve()`. No test sent a repo through the real
+resolve path. The first run of the real download was the first time a repo
+was fetched.
+
+**COST** — none in money. Eight sources were not downloaded until the fix.
+
+**FIX** — the commit that carries this entry (see `git log` for the hash).
+
+**GUARD** — `tests/test_training_fetch.py::test_a_repo_is_read_through_its_raw_readme_and_is_not_called_a_redirect`.

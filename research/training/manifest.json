@@ -1,0 +1,452 @@
+{
+  "sources": [
+    {
+      "id": "CEB3F52E",
+      "url": "https://www.statlearning.com/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "780783DF",
+      "url": "https://hastie.su.domains/ElemStatLearn/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "7CD6075B",
+      "url": "https://hastie.su.domains/ElemStatLearn/download.html",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "B82E8DD8",
+      "url": "https://wesmckinney.com/book/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "877EA8D7",
+      "url": "https://github.com/quantrocket-codeload/quant-finance-lectures",
+      "kind": "repo",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "50E113FF",
+      "url": "https://quantopian-archive.netlify.app/forum/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "B4C39202",
+      "url": "https://github.com/braverock/quantstrat",
+      "kind": "repo",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "6B35AB6E",
+      "url": "https://docs.google.com/presentation/d/1fGzDc-LFfCQJKHHzaonspuX1_TTm1EB5hlvCEDsz7zw/pub",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "4FFF1668",
+      "url": "https://www.datacamp.com/community/blog/financial-trading-in-r-with-ilya-kipnis",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "24508276",
+      "url": "https://quantstrattrader.wordpress.com/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "62AA8F43",
+      "url": "https://systematicinvestor.github.io/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "8369FCB5",
+      "url": "https://quantivity.wordpress.com/2010/01/10/how-to-learn-algorithmic-trading/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "305EE2DA",
+      "url": "https://www.codecademy.com/learn/learn-python-3",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "702D5805",
+      "url": "https://www.tiingo.com/documentation/general/overview",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "7E163172",
+      "url": "https://zorro-project.com/manual/en/content.htm",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "1882C4FF",
+      "url": "https://aswathdamodaran.blogspot.com/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "26CD3759",
+      "url": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/home.htm",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "7409942A",
+      "url": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/onlineclass.htm",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "B73B8A51",
+      "url": "https://bettersystemtrader.com/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "37EFD5EF",
+      "url": "https://ml4trading.io/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "20ED5DC9",
+      "url": "https://github.com/stefan-jansen/machine-learning-for-trading",
+      "kind": "repo",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "5CBA8361",
+      "url": "https://en.wikipedia.org/wiki/Mathematical_finance",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "4DCEB70E",
+      "url": "https://quantocracy.com/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "4686630A",
+      "url": "https://quant.stackexchange.com/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "A91DB801",
+      "url": "https://rpc.cfainstitute.org/research/foundation/2015/trading-and-electronic-markets-what-investment-professionals-need-to-know",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "AD774F84",
+      "url": "https://qoppac.blogspot.com/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "68CF1E4C",
+      "url": "https://qoppac.blogspot.com/p/systematic-trading-start-here.html",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "53DDE89B",
+      "url": "https://www.systematicmoney.org/leveraged-trading-resources",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "2EF0D137",
+      "url": "https://github.com/pst-group/pysystemtrade",
+      "kind": "repo",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "F817B7A9",
+      "url": "https://epchan.blogspot.com/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "4B9A6509",
+      "url": "https://kjtradingsystems.com/free.html",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "ECB84568",
+      "url": "https://kjtradingsystems.com/KevinBookExcerpt.pdf",
+      "kind": "pdf",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "41A28FBD",
+      "url": "https://kjtradingsystems.com/backtest-series-blog.html",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "E4C53D34",
+      "url": "https://kjtradingsystems.com/articles.html",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "ECC89D1D",
+      "url": "https://kjtradingsystems.com/calculators.html",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "B1730216",
+      "url": "http://www.timothymasters.info/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "467ADC99",
+      "url": "http://www.timothymasters.info/tssb",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "5EB4F0CB",
+      "url": "https://www.adamhgrimes.com/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "CE5E3348",
+      "url": "https://www.clenow.com/blog",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "BCA2B653",
+      "url": "https://www.quantresearch.org/Lectures.htm",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "64103548",
+      "url": "https://www.quantresearch.org/Software.htm",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "D1E57A8C",
+      "url": "https://www.quantresearch.org/Publications.htm",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "D5C72713",
+      "url": "https://ssrn.com/abstract=3270329",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "CC3EBA8C",
+      "url": "https://www.cambridge.org/core/books/causal-factor-investing/9AFE270D7099B787B8FD4F4CBADE0C6E",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "B60874BA",
+      "url": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4205613",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "9D579C06",
+      "url": "https://github.com/yhilpisch/py4fi2nd",
+      "kind": "repo",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "D04EEBD5",
+      "url": "https://github.com/yhilpisch/py4at",
+      "kind": "repo",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "7B8F9911",
+      "url": "https://github.com/mfrdixon/ML_Finance_Codes",
+      "kind": "repo",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "80687756",
+      "url": "https://faculty.chicagobooth.edu/ruey-s-tsay/research/analysis-of-financial-time-series-3rd-edition",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "E4FB3067",
+      "url": "https://mesasoftware.com/TechnicalArticles.htm",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "18EFE4D8",
+      "url": "https://mesasoftware.com/papers/FourierTransformForTraders.pdf",
+      "kind": "pdf",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "6AFDFFCD",
+      "url": "https://github.com/PacktPublishing/Algorithmic-Trading-with-Python-Cookbook",
+      "kind": "repo",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "6B2EAD35",
+      "url": "https://www.hands-on-ai-trading.com",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "7278B0E2",
+      "url": "https://www.quantconnect.com/announcements/18643/hands-on-ai-trading-with-python-quantconnect-and-aws/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "02B57F4B",
+      "url": "https://www.wilmott.com/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    },
+    {
+      "id": "028F2747",
+      "url": "https://www.wqu.edu/",
+      "kind": "html",
+      "free": true,
+      "tier": 1,
+      "note": ""
+    }
+  ]
+}

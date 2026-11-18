@@ -282,14 +282,14 @@ Stops: almost not covered. The RSI(2) rule has "no stop", the gold rule's target
 9. A signal can be real before costs and lose after costs: the repo's walk-forward work already found about $0.00 a trade before fees and -$0.23 after; the same before/after split can be printed for any new rule.
 10. An edge can fade (month-end dollar "unreliable since 2021"): split any month-end or time-of-day crypto effect by year and see if it shrinks.
 11. Pre-FOMC drift: `research/cq/us_news.json` already lists the Fed dates; buy BTC (and the stock tokens) at 4:00pm New York the day before and sell at 2:00pm on the day, on 1m candles, with every cost.
-12. "Is the move over in 30 minutes" after a news release: use the same news file and the 1m candles to see whether price keeps going after the first 30 minutes of a CPI or jobs release.
+12. "is the move really over in 30 minutes" after a news release: use the same news file and the 1m candles to see whether price keeps going after the first 30 minutes of a CPI or jobs release.
 13. Overnight versus daytime returns: crypto never closes, but Gate's stock tokens can be split into New York hours and the rest.
 14. Touch about twice as often as finish: for levels X% away, count how often BTC's path touched the level within N days against how often it closed beyond it at day N.
-15. "About 100 trades" before saying anything: check how results of our own rows with 30, 50, 100 and 300 trades hold up on their unseen days.
+15. Wanting "about 100" trades before saying anything: check how results of our own rows with 30, 50, 100 and 300 trades hold up on their unseen days.
 
 ## Links it points to
 
-The 50 post links on the page (all off-site; none is labelled a tutorial; whether any is paid is not stated, so "Substack" is marked where a paywall is possible):
+The 50 post links on the page (all off-site; none is labelled a tutorial; whether any is paid is not stated, so Substack is marked where a paywall is possible):
 
 - AI for systematic traders - this is the least stupid way to do it [Investment Idiocy] - https://qoppac.blogspot.com/2026/11/ai-for-systematic-traders-this-is-least.html
 - Peak of Everything [Quantpedia] - https://quantpedia.com/peak-of-everything/?a=6080 (link carries a referral code)
@@ -352,5 +352,5 @@ The rest of the page's 471 links: about 108 on-site links (each blog's filter pa
 - Some numbers are claims by sellers or by the posts' subjects, not tests: the 72.17% opening-range figure came from "A company that sells trading data", and the 86-91% Bitcoin figure from a 2020 paper.
 - Marketing flags: the four sponsor links carry referral codes, and Quantpedia's own posts on the page carry the same `?a=6080` code; the Quantifiable Edges title ("Incredibly Bullish Seasonal Period") and the Macrosynergy excerpt ("a cost-efficient method for outperforming") read as promotion; the qis download count is a popularity figure; and tut2 says the reviewed course is sold as part of a paid membership and the reviewer got free access.
 - Almost everything is about U.S. stocks, futures, options and FX; only two excerpts are about Bitcoin. Results on those markets may not carry over to Gate's crypto contracts.
-- "Substack (may be partly paid)" is a guess carried from the earlier section summary ("possibly paywalled"); nothing on this page says any post is paid.
-- The text file h
+- Marking a post as Substack (possibly partly paid) is a guess carried from the earlier section summary, which called Substack possibly paywalled; nothing on this page says any post is paid.
+- The text file holds curly quote marks where the page used them; the quotes above were chosen to avoid those characters, so a few quotes are shorter than the sentence they come from.

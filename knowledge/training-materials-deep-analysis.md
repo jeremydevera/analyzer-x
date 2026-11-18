@@ -95,8 +95,10 @@ unseen. López de Prado calls it "test set overfitting" ([BCA2B653](sources/BCA2
 **The app: this is its biggest open risk.** The daily picker re-chooses which rule set each room follows from the
 recent days, again and again, and the picker lab chose among 20 picker rules by how they did on the same 73 days. The
 two nights the lab was run gave opposite answers (12 of 20 picker rules made money on the store of Nov 11, 2026; one of
-20 on the store of Nov 12, 2026). That is what reusing a test looks like. The repo's own rule ("check a v4 ranking on two
-nights") already guards one half of this; nothing yet measures how much of a winner's lead is selection.
+20 on the store of Nov 12, 2026). Part of that flip came from a change in how the store priced each coin's costs between
+the two nights (RCA-2026-11-12-B), so it is not proof of reuse alone; but a ranking that flips that easily is the case
+these sources warn about. The repo's own rule ("check a v4 ranking on two nights") already guards one half of this;
+nothing yet measures how much of a winner's lead is selection.
 
 ### 3.3 Costs are more certain than profits, so measure them exactly and judge after them
 

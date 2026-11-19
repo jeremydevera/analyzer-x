@@ -1,6 +1,6 @@
 # What the training materials teach, and what it means for this app
 
-**Built:** Nov 18, 2026, from the 56 knowledge notes in [`sources/`](sources/) (index:
+**Built:** Nov 18, 2026; updated Nov 19, 2026 after every link was read; from the 56 knowledge notes in [`sources/`](sources/) (index:
 [`training-materials-links.md`](training-materials-links.md)).
 **Source of every quote:** the text each source's own download produced on this PC. Every quote below was checked word
 for word against those files before this file was committed.
@@ -12,15 +12,25 @@ material itself. All 56 have a note.
 
 | | Links |
 |---|---|
-| Downloaded and read by one agent each (39 in full; the 141,835-word Quantopian forum index in part) | 40 |
-| Downloaded, but under 300 words (menus, a README, a page drawn by JavaScript) | 12 |
-| Blocked by the site (SSRN twice, quant.stackexchange, DataCamp) | 4 |
-| Quotes in the notes, each found word for word in its source | 2,493 |
+| Downloaded and read in full by one agent each (the 141,835-word Quantopian forum index by seven agents) | 40 |
+| Short pages, read in full (menus, READMEs, short pages) | 9 |
+| Read by another route on Nov 19, 2026 (see below) | 6 |
+| Read second-hand only (the site bars AI agents) | 1 |
+| Quotes in the notes, each found word for word in its source | 3,557 |
 
-**The honest limit.** Most links point at a front door: a blog's home page, a book's landing page, a repo's README, an
-index of articles. The deep teaching usually sits one click further in (the posts, the PDFs, the notebooks, the books),
-and those were not downloaded. So this analysis is strong on *what the experts warn about* and on *which ideas they
-name*, and weak on *their exact methods and numbers*. Section 6 lists what to read next to close that gap.
+**The six read by another route, Nov 19, 2026:** the quantstrat workshop slides (Google's HTML view of all 78 slides),
+Tiingo's documentation and the DataCamp course page (rendered in a browser; DataCamp's robots.txt allows AI agents),
+the ESL book page (through its frames, including the full table of contents), quant.stackexchange (Stack Exchange's
+official API: 60 top-voted questions and their best answers), and *Causal Factor Investing* (Cambridge's open-access
+copy of the same book SSRN would not serve). **The one read second-hand:** López de Prado's lecture 1, which lives only
+on SSRN, whose robots.txt bars AI agents from the whole site; CXO Advisory's summary of the lecture series was read
+instead and is labelled as such.
+
+**The honest limit.** Many links are a front door: a blog's home page, a book's landing page, a repo's README, an
+index of articles. Each front door was read in full, but the teaching behind some of them (the posts, the PDFs, the
+notebooks) sits one click further in. This analysis is strong on *what the experts warn about* and *which ideas they
+name*; where it gives a method or a number, it comes from the sources that were read whole (the book, the slides, the
+excerpt, the Q&A, the comment threads). Section 6 lists what to read next.
 
 ## 2. Which sources are worth your time
 
@@ -43,6 +53,10 @@ name*, and weak on *their exact methods and numbers*. Section 6 lists what to re
 | [4DCEB70E](sources/4DCEB70E.md) | Quantocracy | Re-tests of advertised rules on later years |
 | [B4C39202](sources/B4C39202.md) | quantstrat (R) README | "A backtest cannot be unseen" |
 | [E4FB3067](sources/E4FB3067.md) | John Ehlers, technical papers | Walk-forward's own problems; cycle-tuned indicators |
+| [B60874BA](sources/B60874BA.md) | López de Prado, *Causal Factor Investing* (full book) | Why a pick can pass unseen days and still be false |
+| [6B35AB6E](sources/6B35AB6E.md) | quantstrat workshop slides (2013, 78 slides) | Smooth settings over peaks; walk-forward done by hand; stop-size curves |
+| [4686630A](sources/4686630A.md) | quant.stackexchange, top 60 questions | Hold-out size, pessimistic fills, Kelly's dangers, what stops really do |
+| [D5C72713](sources/D5C72713.md) | López de Prado's lecture series (second-hand) | "The 7 reasons most machine learning funds fail" |
 
 **Useful as tools or textbooks** (free, but not about this app's questions): *An Introduction to Statistical Learning*
 ([CEB3F52E](sources/CEB3F52E.md)), *The Elements of Statistical Learning* ([7CD6075B](sources/7CD6075B.md)), *Python for
@@ -55,7 +69,7 @@ page [80687756](sources/80687756.md); WorldQuant University [028F2747](sources/0
 ([37EFD5EF](sources/37EFD5EF.md), [6B2EAD35](sources/6B2EAD35.md), [7278B0E2](sources/7278B0E2.md),
 [6AFDFFCD](sources/6AFDFFCD.md), [9D579C06](sources/9D579C06.md)), and menus or empty shells (the rest; see the index).
 
-## 3. The eight lessons, and how the app compares
+## 3. The ten lessons, and how the app compares
 
 Each lesson is what several sources agree on. "The app" is this repo as of Nov 18, 2026.
 
@@ -97,7 +111,7 @@ recent days, again and again, and the picker lab chose among 20 picker rules by 
 two nights the lab was run gave opposite answers (12 of 20 picker rules made money on the store of Nov 11, 2026; one of
 20 on the store of Nov 12, 2026). Part of that flip came from a change in how the store priced each coin's costs between
 the two nights (RCA-2026-11-12-B), so it is not proof of reuse alone; but a ranking that flips that easily is the case
-these sources warn about. The repo's own rule ("check a v4 ranking on two nights") already guards one half of this;
+these sources warn about. The repo's own rule to check a v4 ranking on two nights already guards one half of this;
 nothing yet measures how much of a winner's lead is selection.
 
 ### 3.3 Costs are more certain than profits, so measure them exactly and judge after them
@@ -173,6 +187,38 @@ that live results should stay inside ([ECC89D1D](sources/ECC89D1D.md)).
 **The app: partly.** Forecast v4 already sorts by the worst whole month. Monte Carlo exists only on one results page
 (80% of 200 draws in profit). No room is checked against a cone built from its own backtest.
 
+### 3.9 A pick can pass on unseen days and still be false
+
+> "It could take decades to collect enough out-of-sample evidence to determine that the association is false"
+> — López de Prado, *Causal Factor Investing* ([B60874BA](sources/B60874BA.md))
+
+The book splits false findings in two. Noise mistaken for a pattern (from trying many versions) is what testing on
+unseen days catches. A real pattern mistaken for a cause is not: if a strategy only makes money because it moves with
+something else, it keeps passing unseen days until that other thing changes. Its own example shows the wrong model
+fitting better than the right one.
+
+**The app: not tested.** On Gate the obvious "something else" is BTC's direction. A strategy that buys coins mostly
+wins when the whole market rises, whatever its signal says. Nothing checks whether a winning rule set's profit is just
+the market's move. The test is cheap: fit each winning strategy's trade profits against BTC's move over the same
+holds, and compare with random entries treated the same way.
+
+### 3.10 Most ideas fail; prefer settings that sit on a smooth surface
+
+> "Vast majority (90%+) of ideas will not work out" — the quantstrat authors ([6B35AB6E](sources/6B35AB6E.md))
+
+> "no huge peaks based on small changes" — the same slides, on what a good setting looks like
+
+> "in this case, the objective function chooses rather poor out-of-sample parameters" — their own walk-forward
+> example, which chose by highest profit
+
+A setting whose neighbours (one step longer, one step tighter) also do well is more likely to be real than a lone best
+setting. In their walk-forward example, picking the highest profit on the choosing months gave poor settings on the
+next month. The quant.stackexchange answers say the same in other words: use fewer settings, keep ones that do not
+flip when nudged, and treat a hold-out as spent once it has been used to choose ([4686630A](sources/4686630A.md)).
+
+**The app: not done.** Rule sets and strategy rows are ranked one by one; nothing asks whether a row's neighbours also
+pass.
+
 ## 4. What the sources do not cover that this app needs
 
 None of them deals with crypto perpetual futures: no funding settlements, no exchange liquidation at 20x, no order
@@ -197,6 +243,13 @@ Each is a suggestion for the operator to decide. Nothing has been changed in the
 6. **Test the trade floor.** How often does a rule set's verdict at 20 trades still hold at 100 and 200 (Davey)?
 7. **Test timing luck.** Re-run a few 4h and 1d strategies with the candle boundary moved by one to three hours
    (Kipnis).
+8. **Check winners against BTC's move.** For every rule set or strategy that made money on unseen days, fit its trade
+   profits against BTC's move over the same holds, beside random entries ([B60874BA](sources/B60874BA.md)).
+9. **Prefer smooth neighbourhoods.** When choosing among settings, rank by how well a setting's neighbours also do,
+   not by the single best, and compare both on unseen days ([6B35AB6E](sources/6B35AB6E.md)).
+10. **Keep a final hold-out that nothing has touched.** The newest stretch, used once only to confirm, never to choose.
+    A 10-vote answer quotes Ernest Chan on its size: "we should at least have one-third as much test data as training
+    data." ([4686630A](sources/4686630A.md)).
 
 ## 6. What to read next
 

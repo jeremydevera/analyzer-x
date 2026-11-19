@@ -172,6 +172,42 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-18-A — the GitHub-repo strategies run bought stock tokens on their placeholder candles before listing and booked +$719,692 on one $100 trade: NEVER HAPPENED YET (found before any result was shown)
+
+**CEO**
+
+* What you would have seen: the results of the 36 GitHub repos' strategies saying random entries make $299 a trade on daily candles and one repo's idea made $1.49 million - numbers no $100 trade can make, which would have pointed you at the wrong repos.
+* Why: before a stock token really starts trading, the exchange shows it for days at a made-up price with nothing traded (MDT at 0.01287, then 86.40), and some repo rules bought there.
+* What stops it now: those strategies, like the app's other backtests since Oct 18, 2026, never buy a stock token on a candle where nothing traded, and each such skipped buy is counted.
+
+**DEV**
+
+* `tradingagents/skill_bt.py:gh_line` (new, Nov 18, 2026) walked every `gh_strats` signal through `walk` -> `step`, which enters on any signal candle; on MDT 1d `gh_twp_xlp_gap` / `gh_ahmed_reversal` / `gh_random` entered on a zero-volume candle at 0.01287 and `close_position` booked `NOTIONAL * (95.59 / 0.01287 - 1)`.
+* Invariant broken: **a candle where nothing traded is not a price the app could buy at on a stock token** - Backtest v2 has held it since Oct 18, 2026 (`auto_trader.closed_market`, RCA-2026-10-18-B); the skill engine never learned it, and a new set built on that engine inherited the gap.
+* Guard: `tests/test_gh_strats_plumbing.py::test_a_stock_tokens_dead_candle_takes_no_entry`, `::test_the_shard_passes_the_stock_rule_for_the_gh_set`; the fix is `skill_bt.py:689` (`closed_skip`, counted in `closed_skipped`).
+
+**SAW** - nothing on a screen: the first add-up of the run (Nov 18, 2026 about 9:00pm, before any page or note was written) read `gh_random 1d +299.3078 a trade` and `gh_ahmed_reversal +1,491,236.05` at an 18.8% win rate; the top trades were MDT 1d +$719,692.00 (Oct 21 -> Oct 22, 2026) and VRTX 1d +$310,809.15 (Aug 11 -> Aug 12, 2026).
+
+**TIMELINE**
+
+1. Nov 18, 2026 about 8:35pm (commit fa834131): the gh set runs on runs 44437941813, 44437963082, 44437983976 - 1,032 coins, 5,160 coin-timeframes, 0 failed, 11,966,211 trades in the newest 30% of the candles.
+2. MDT_USDT 1d: flat 0.01287, volume 0, through Oct 22, 2026; Oct 23, 2026 opens 86.40, closes 95.59. VRTX_USDT 1d: flat 0.1601, volume 0, through Aug 12, 2026; Aug 13, 2026 opens 521.90. Both are listed by Gate as stocks.
+3. Seven trades on those two coins came to +$3,302,906 of the run's figures: the luck bar on 1d read +$299 a trade and three strategies read in profit only because of them.
+4. NEVER HAPPENED YET, had it been published: RESULTS.md and the page would have ranked the ahmedas91 stand-in first (+$3.26 a trade) and the luck bar second, while every real strategy lost.
+5. After the fix (commit 299a69c9): the 452 stock tokens are measured again as a redo (runs 44443285059, 44443306321, 44443327274) whose lines replace the first run's; an entry on a stock token's zero-volume candle is refused and counted.
+
+**ROOT CAUSE** - a new set was built on the skill engine (`skill_bt.step`) without checking which of the app's entry rules that engine lacks; the closed-market rule exists only in Backtest v2's engine.
+
+**WHY IT WAS NOT CAUGHT** - the smoke run before dispatch used BTC and SOL, two crypto coins that never print a placeholder candle, and the unit tests used random walks with volume on every candle. The proof was a total, and a total of 11.9 million trades hides 7 impossible ones until you sort by the largest - the same lesson as RCA-2026-11-17-A, **read the worst and the best row of a new money figure before its mean**, and this time it was read before anything was shown. Backtest v4's own store holds none (its trades over $1,000 are real pumps: AKE, LAB, SOXS, RAVE, XCN, BULLA, PIPPIN), because none of its 42 settings entered on those flat candles.
+
+**COST** - none: research only, nothing switched on, no result shown before the fix.
+
+**FIX** - commit 299a69c9: `skill_bt.gh_line(closed_skip=)` with `market_sweep.closed_rule`, passed by `.github/scripts/skill_shard.py` for the gh set; the stock tokens re-run as a redo.
+
+**GUARD** - `tests/test_gh_strats_plumbing.py::test_a_stock_tokens_dead_candle_takes_no_entry` (the MDT shape: 120 flat zero-volume candles at 0.01287, then a real walk; without the rule the dead candles are traded), `::test_the_shard_passes_the_stock_rule_for_the_gh_set`.
+
+---
+
 ## RCA-2026-11-17-A — real-price pricing took a bid book with one order at a thousandth of the price literally and booked a loss of $676 million on a single $100 trade; 3,482 rule sets passed "beat random" on a corrupted bar
 
 **CEO**

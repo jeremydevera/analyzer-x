@@ -208,6 +208,43 @@ The old file is kept as `rows.before-rebuild.db`; nothing was deleted, and
 
 ---
 
+## RCA-2026-11-18-B — the nightly Backtest v4 build filed 220,000+ strategies and then threw them all away because the old file was open for a moment
+
+**CEO**
+
+* What you saw: Errors showed "The site's v4-daily failed" at Nov 18, 2026 9:09pm - the night's Backtest v4 and Forecast v4 refresh was built and then not used, and the rooms' list for the day had to wait for a second try 30 minutes later.
+* Why: Windows will not let a file be replaced while any program is reading it, and the build tried to put its new file in place only once; something (the site looks at that file every 30 seconds) was reading the old one at that instant.
+* What stops it now: the build waits up to two minutes for the reader to let go instead of giving up at once, and the site no longer looks at that file while the nightly build is busy with it.
+
+**DEV**
+
+* `tradingagents/v4_store.py:build` ended with a bare `os.replace(tmp, out)`; `tradingagents/v4_daily.py:_build` spawns it and turns its exit 1 into `_fail` (retry after `RETRY_S`). Meanwhile `tradingagents/v4_picker_lab.py:due` (the site's 30 s `picker-lab` tick) called `store_end()` - a read-only SQLite open of the live `rows.db` - BEFORE asking `v4_daily.status()["phase"]`.
+* Invariant broken: **a swap a reader can refuse is retried** (`portable.replace_retry`, RCA-2026-10-07-E, RCA-2026-09-18-B) - every other store file here waits out a reader; the one file a page reads for 5-6 s per windowed query did not. And a poller asks "is the writer busy?" before it opens the file the writer must replace.
+* Guard: `tests/test_backtest_v4_store.py::test_a_store_held_open_for_a_moment_is_waited_for_never_a_failed_build`, `::test_a_reader_that_never_lets_go_fails_the_build_by_name_and_keeps_the_old_store`, `::test_a_real_sqlite_reader_on_the_old_store_does_not_fail_the_build`; `tests/test_v4_picker_rooms.py::test_the_tick_never_opens_the_store_while_the_refresh_is_building_it`.
+
+**SAW** - the Errors tab / issue: "[v4-daily] the build step failed at Nov 18, 2026 9:02pm - tried again after 30 minutes: ... v4: 220,000 strategies filed, 115s | v4: building the indexes | v4 daily build FAILED: PermissionError: [WinError 5] Access is denied: '...\v4\rows.db.building' -> '...\v4\rows.db'".
+
+**TIMELINE**
+
+1. Nov 18, 2026 7:05pm: the daily refresh starts; 7:26pm the three accounts measure 1,024 coins on GitHub.
+2. 8:45pm - 9:00pm: 1,023 coins collected, BITO redone alone and kept as yesterday's line (stale); 5,120 coin-timeframes ready.
+3. 9:02pm: the build starts in its own process; 220,000 strategies filed in 115 s, then the indexes and its own integrity check; the new file `rows.db.building` (772,538,368 bytes) is last written at 9:05pm.
+4. About 9:05 - 9:09pm: the single `os.replace` onto `rows.db` (773,226,496 bytes, the Nov 17, 2026 8:47pm store) is refused with WinError 5 - the code Windows gives when another handle holds the DESTINATION open. The build exits 1 and the chain records the failure with a retry 30 minutes after its 9:02pm start; the issue is filed at 9:09pm. No Backtest v4 page request is in the site log between the build's start and the failure; the site's picker-lab tick was opening `rows.db` every 30 seconds through the whole build (it read the file before asking whether the refresh was busy). Which handle it was at that instant is not recorded.
+5. Cost of the one refusal: the whole build (about 3 - 4 minutes of filing and checking) and Forecast v4's walk (174 s the night before) thrown away, and the rooms' list for the day 30+ minutes late.
+6. After the fix (tests on this PC): a real read-only SQLite connection held on `rows.db` for 0.5 s during the swap - which raised exactly `[WinError 5] Access is denied` on the code of before - is waited out and the new store is in place; five refusals in a row are waited out; a reader that never lets go fails the build after `SWAP_BUDGET_S` (120 s) with words naming the file, and the store of before still reads. The picker-lab tick opens the store in none of the 7 busy phases.
+
+**ROOT CAUSE** - `v4_store.build` swapped its finished database in with one bare `os.replace`, on Windows, onto a file the site reads.
+
+**WHY IT WAS NOT CAUGHT** - every v4 store test builds into a fresh `tmp_path` that nothing else has open, and the suite's home is POSIX-shaped: a rename onto an open file never fails there, so no test could stand where a reader holds the old store. The repo's own lesson was already written - `portable.replace_retry`'s docstring names WinError 5 and two incidents - but it lived at the call sites that had already failed, and a new module that swaps a file did not reach for it. **A swap onto a file another program reads is tested WITH a reader holding it open** (the real SQLite reader test, skipped off Windows, plus a portable refusal stand-in).
+
+**COST** - none in money: practice only, no real-money path. One night's build (filed and checked, then discarded) and a 30+ minute delay to the Nov 18, 2026 rooms' list.
+
+**FIX** - this commit: `v4_store.build` swaps through `portable.replace_retry(tmp, out, SWAP_BUDGET_S)` (120 s) and fails by name past it; `v4_picker_lab.due` asks the refresh's phase before `store_end()` opens the store.
+
+**GUARD** - `tests/test_backtest_v4_store.py::test_a_store_held_open_for_a_moment_is_waited_for_never_a_failed_build`, `::test_a_reader_that_never_lets_go_fails_the_build_by_name_and_keeps_the_old_store`, `::test_a_real_sqlite_reader_on_the_old_store_does_not_fail_the_build`, `tests/test_v4_picker_rooms.py::test_the_tick_never_opens_the_store_while_the_refresh_is_building_it` (all four failed first on the code of before; the real reader raised the production WinError 5).
+
+---
+
 ## RCA-2026-11-17-A — real-price pricing took a bid book with one order at a thousandth of the price literally and booked a loss of $676 million on a single $100 trade; 3,482 rule sets passed "beat random" on a corrupted bar
 
 **CEO**

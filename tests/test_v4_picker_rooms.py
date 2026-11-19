@@ -295,6 +295,27 @@ def test_a_run_is_due_only_when_the_refresh_has_landed_a_newer_store(monkeypatch
     assert lab.due() is None, "a store that cannot be read is not a go-ahead"
 
 
+def test_the_tick_never_opens_the_store_while_the_refresh_is_building_it(monkeypatch, tmp_path):
+    """RCA-2026-11-18-B: the picker lab's 30-second tick opened the live rows.db to read its last candle
+    BEFORE asking whether the daily refresh was busy - so it held the file open, every 30 seconds, right
+    through the build that has to replace it (Windows refuses that rename: "[WinError 5] Access is
+    denied", Nov 18, 2026 9:02pm). The refresh's phase is asked first; the store is opened only once
+    the refresh has finished with it."""
+    from tradingagents import v4_daily
+
+    opened = []
+    monkeypatch.setattr(lab, "home", lambda: tmp_path)
+    monkeypatch.setattr(lab, "running", lambda: False)
+    monkeypatch.setattr(lab, "newest_run_end", lambda: 1_000)
+    monkeypatch.setattr(lab, "store_end", lambda: opened.append(1) or 2_000)
+    for phase in ("dispatch", "running", "collect", "build", "lists", "agree", "unreadable"):
+        monkeypatch.setattr(v4_daily, "status", lambda phase=phase: {"phase": phase})
+        assert lab.due() is None
+    assert not opened, "the store was opened while the refresh was busy with it"
+    monkeypatch.setattr(v4_daily, "status", lambda: {"phase": "done"})
+    assert lab.due() and opened, "once the refresh is done the store is read as before"
+
+
 def test_a_failed_run_is_tried_again_an_hour_later_never_every_tick(monkeypatch, tmp_path):
     from tradingagents import v4_daily
 

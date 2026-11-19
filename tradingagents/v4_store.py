@@ -173,6 +173,10 @@ def _rows_of(path: Path):
     del d
 
 
+# how long the finished build waits for a program reading the old store to let go before it fails
+SWAP_BUDGET_S = 120.0
+
+
 def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike | None = None,
           sources=SOURCES, log=print) -> dict:
     """File every skill strategy and every trade into a NEW database, then swap it in whole - the
@@ -299,7 +303,16 @@ def build(folder: str | os.PathLike | None = None, *, target: str | os.PathLike 
     for p in (Path(str(out) + "-wal"), Path(str(out) + "-shm")):
         if p.exists():
             p.unlink()
-    os.replace(tmp, out)
+    # A READER ON THE OLD FILE IS WAITED FOR (RCA-2026-11-18-B): Windows refuses to rename onto a file
+    # another program has open - the site reads rows.db for every Backtest v4 page (a window, 5-6 s) -
+    # and one refusal on Nov 18, 2026 threw away a whole build. Past SWAP_BUDGET_S it fails by name
+    from tradingagents import portable
+
+    try:
+        portable.replace_retry(tmp, out, SWAP_BUDGET_S)
+    except PermissionError as exc:
+        raise RuntimeError(f"a program still had {out} open after {SWAP_BUDGET_S:g} s, so the new store could "
+                           f"not replace it ({exc}); the store of before is kept") from exc
     log(f"v4: {sid:,} strategies, {meta['trades']:,} trades, {time.time() - t0:.0f}s")
     return meta
 

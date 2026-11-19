@@ -1,6 +1,7 @@
 """Backtest v4 (Nov 10, 2026): the Claude skills' strategies with every trade, filed in a database of
 their own and read with the filters of Backtest v2 - win rate, profit, TP/SL ceilings, last N days."""
 import json
+import os
 from datetime import datetime, timezone
 
 import pytest
@@ -296,3 +297,66 @@ def test_a_real_priced_trade_that_lost_more_than_a_trade_can_is_counted_and_name
     v4.build(folder, target=target, sources=(("skilltaall.json", "technical-analysis"),), log=said.append)
     assert v4.meta()["real"]["implausible"] == 2, "-675,994,617 and -200 at real prices; not the pump, not -120"
     assert any("WARNING 2 real-priced trade(s)" in s for s in said)
+
+
+# ------------------------------------------------------------------ the swap waits for a reader (RCA-2026-11-18-B)
+def _second_folder(tmp_path):
+    """A second run's results: one strategy, so the swapped-in store is told apart from the first."""
+    folder = tmp_path / "acs2"
+    folder.mkdir()
+    lines = {"CCC|4h": _line("CCC", "4h", [_pick("bf_momentum", 0.02, 0.04, [1, -1, 1])])}
+    (folder / "skilltaall.json").write_text(json.dumps({"lines": lines}), encoding="utf-8")
+    return folder
+
+
+def test_a_store_held_open_for_a_moment_is_waited_for_never_a_failed_build(db, tmp_path, monkeypatch):
+    """Nov 18, 2026 9:02pm: the daily build filed 220,000+ strategies and its new file could not replace
+    rows.db - "[WinError 5] Access is denied" - because something had the old file open for a moment
+    (the site opens it on every 30-second tick, and on every Backtest v4 page). One refusal threw the
+    whole build away and the rooms' list waited 30 minutes. Windows refuses a rename onto an open file;
+    the swap waits for the reader instead."""
+    real, refused = os.replace, []
+
+    def held(src, dst, *a, **kw):
+        if str(dst) == str(db) and len(refused) < 5:
+            refused.append(dst)
+            raise PermissionError(13, "Access is denied")       # the refusal Windows gives under a reader
+        return real(src, dst, *a, **kw)
+
+    monkeypatch.setattr(os, "replace", held)
+    v4.build(_second_folder(tmp_path), target=db, sources=(("skilltaall.json", "technical-analysis"),),
+             log=lambda *_: None)
+    assert len(refused) == 5, "the reader refused the swap five times"
+    assert v4.meta()["strategies"] == 1, "the new store is in place once the reader let go"
+    assert not db.with_name(db.name + ".building").exists()
+
+
+def test_a_reader_that_never_lets_go_fails_the_build_by_name_and_keeps_the_old_store(db, tmp_path, monkeypatch):
+    real = os.replace
+
+    def held(src, dst, *a, **kw):
+        if str(dst) == str(db):
+            raise PermissionError(13, "Access is denied")
+        return real(src, dst, *a, **kw)
+
+    monkeypatch.setattr(v4, "SWAP_BUDGET_S", 0.2)
+    monkeypatch.setattr(os, "replace", held)
+    with pytest.raises(RuntimeError, match=r"still had .*rows\.db open after 0\.2 s"):
+        v4.build(_second_folder(tmp_path), target=db, sources=(("skilltaall.json", "technical-analysis"),),
+                 log=lambda *_: None)
+    assert v4.meta()["strategies"] == 3, "the store of before is untouched and still reads"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="only Windows refuses a rename onto a file a reader holds")
+def test_a_real_sqlite_reader_on_the_old_store_does_not_fail_the_build(db, tmp_path):
+    """The production refusal itself: a read-only SQLite connection on rows.db (what v4_store._con,
+    the picker lab's tick and the forecast's names all open) while the build swaps."""
+    import sqlite3
+    import threading
+
+    con = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True, check_same_thread=False)
+    con.execute("SELECT COUNT(*) FROM strat").fetchone()
+    threading.Timer(0.5, con.close).start()
+    v4.build(_second_folder(tmp_path), target=db, sources=(("skilltaall.json", "technical-analysis"),),
+             log=lambda *_: None)
+    assert v4.meta()["strategies"] == 1

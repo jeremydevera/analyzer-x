@@ -922,12 +922,14 @@ def due(now_s: float | None = None) -> str | None:
     now_s = time.time() if now_s is None else now_s
     if running():
         return None
-    end_s = store_end()
-    if not end_s or end_s <= newest_run_end():
-        return None
+    # the refresh's phase FIRST: opening the live store while the daily build is about to replace it
+    # held the file every 30 seconds through the swap (RCA-2026-11-18-B)
     phase = v4_daily.status().get("phase")
     if phase not in v4_daily.IDLE:
         return None                       # still measuring, building or writing the day's list
+    end_s = store_end()
+    if not end_s or end_s <= newest_run_end():
+        return None
     st = _status()
     if st.get("tried_end_s") == end_s:
         # the last try on THIS store failed, or started and never ended (killed, or died before it

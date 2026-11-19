@@ -663,7 +663,7 @@ def daily_line(coin: str, tf: str, df, pinned: dict | None, *, fee: float, slip:
 
 def gh_line(coin: str, tf: str, df, *, fee: float, slip: float, funding: "Funding | None" = None,
             bar_ms: int = 0, fine: "Fine | None" = None, book: "Book | None" = None,
-            combos: list[dict] | None = None) -> dict:
+            combos: list[dict] | None = None, closed_skip: bool = False) -> dict:
     """One coin-timeframe of the reviewed GitHub repos' strategies (gh_strats, Nov 18, 2026), in
     `pair(k=None)`'s shape so the every-strategy page reads it as it reads ta_all: EVERY strategy x
     setting x stop, with its older-70% and newest-30% statistics (by the candle a trade OPENED in,
@@ -671,11 +671,23 @@ def gh_line(coin: str, tf: str, df, *, fee: float, slip: float, funding: "Fundin
     daily set: funding over the hold, stops and targets settled by the minute, fills at the recorded
     order book. A trade still open at the frame's end (`why` END) is never a finished trade (CLAUDE.md,
     skill rooms): it is left out and counted (`open_at_end`). A strategy whose signals raise is left out
-    of THIS coin-timeframe and named in `errors`, never ending the line."""
+    of THIS coin-timeframe and named in `errors`, never ending the line.
+    `closed_skip` (market_sweep.closed_rule: a contract Gate lists as a stock) refuses an entry on a
+    candle where nothing traded, as Backtest v2 does (auto_trader.closed_market) - without its
+    exemption for a minute holding the app's own book. Bought by the first gh run (Nov 18, 2026):
+    MDT and VRTX printed flat zero-volume candles at a placeholder price (0.01287, 0.1601) for days
+    before they really listed (86.40, 521.90), and an entry there booked +$719,692 and +$310,809 on a
+    $100 trade. Each refused entry is counted (`closed_skipped`)."""
+    from dataclasses import replace
+
+    import numpy as np
+
     from tradingagents import gh_strats
 
     ms = _ms(df.index)
     split_ms = int(ms[int(len(df) * SPLIT)])
+    dead = (df["volume"].to_numpy() == 0) if closed_skip else None
+    closed_skipped = 0
     tally: dict = {}
     sig_of: dict = {}
     errors: dict = {}
@@ -689,6 +701,14 @@ def gh_line(coin: str, tf: str, df, *, fee: float, slip: float, funding: "Fundin
             except Exception as exc:                               # noqa: BLE001
                 sig_of[key] = None
                 errors[c["strategy"]] = f"{type(exc).__name__}: {str(exc)[:160]}"
+            if sig_of[key] is not None and dead is not None and dead.any():
+                sigs = list(sig_of[key])
+                for i in np.flatnonzero(dead):
+                    s = sigs[i]
+                    if s is not None and getattr(s, "entry", False):
+                        sigs[i] = replace(s, entry=False, direction=None)
+                        closed_skipped += 1
+                sig_of[key] = sigs
         if sig_of[key] is None:
             continue
         tr = walk(df, sig_of[key], stop=c["stop"], fee=fee, slip=slip, target=c.get("target"),
@@ -713,7 +733,8 @@ def gh_line(coin: str, tf: str, df, *, fee: float, slip: float, funding: "Fundin
     out = {"coin": coin, "tf": tf, "fee": fee, "slip": slip, "bars": len(df), "combos": len(rows),
            "split_ms": split_ms, "start_ms": int(ms[0]), "end_ms": int(ms[-1]),
            "bar": sum(s["profit"] for s in newer) / n_tr if n_tr else None, "picks": rows,
-           "open_at_end": open_at_end, "errors": errors}
+           "open_at_end": open_at_end, "errors": errors, "closed_skip": bool(closed_skip),
+           "closed_skipped": closed_skipped}
     if fine is not None:
         out["exits"] = {"minute": int(tally.get("minute", 0)), "candle": int(tally.get("candle", 0)),
                         "unclear": int(tally.get("unclear", 0)), "from_ms": fine.from_ms}

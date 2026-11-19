@@ -41,6 +41,7 @@ import sweep_shard as ss  # noqa: E402
 
 import tradingagents.auto_trader as at  # noqa: E402
 from tradingagents import backtest_report as br, skill_bt as sb, skill_ta as sta  # noqa: E402
+from tradingagents import market_sweep as msw  # noqa: E402  (closed_rule: the gh set's stock-token rule)
 from tradingagents.dataflows import exchange as fx  # noqa: E402
 from tradingagents.skill_frames import BARS, frame  # noqa: E402,F401  (the candle frame lives there)
 
@@ -126,6 +127,8 @@ def main() -> int:
             try:
                 fee, slip, gap = costs(sym)
                 frames, funding, fine, book = {}, None, None, None
+                # a stock token's candle where nothing traded takes no entry (gh only; market_sweep.closed_rule)
+                closed = SET == "gh" and msw.closed_rule(sym)
                 if WALKED:
                     frames["1d"] = frame(sym, "1d")
                     funding = funding_of(sym, sb._ms(frames["1d"].index)[0] if len(frames["1d"]) else (time.time() - 730 * 86400) * 1000)
@@ -156,7 +159,8 @@ def main() -> int:
                             n += 1
                         elif SET == "gh":
                             out.write(json.dumps({**sb.gh_line(coin, tf, df, fee=fee, slip=slip, funding=funding,
-                                                               bar_ms=br.TFS[tf][1] * 1000, fine=fine, book=book),
+                                                               bar_ms=br.TFS[tf][1] * 1000, fine=fine, book=book,
+                                                               closed_skip=closed),
                                                   "gap": gap}, separators=(",", ":")) + "\n")
                             n += 1
                         else:

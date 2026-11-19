@@ -183,3 +183,29 @@ def test_collect_files_lines_by_timeframe_a_redo_replaces_and_gaps_are_named(tmp
     note = gh_results.write_note().read_text(encoding="utf-8")
     assert "| gh_random | luck-bar/random-entries |" in note and "failed: BBB 1d: ValueError: boom" in note
     assert "not reached: CCC" in note
+
+
+def test_a_stock_tokens_dead_candle_takes_no_entry():
+    """MDT, the first gh run: flat zero-volume candles at a placeholder 0.01287 before the real
+    listing at 86.40, an entry there booked +$719,692 on a $100 trade. With the stock rule on, no
+    entry is made on a candle where nothing traded, and each refusal is counted."""
+    df = _df(300, freq="1d")
+    df.iloc[:120, df.columns.get_loc("volume")] = 0.0
+    for col in ("open", "high", "low", "close"):
+        df.iloc[:120, df.columns.get_loc(col)] = 0.01287
+    c = {"strategy": "gh_random", "params": {"rate": 0.5, "hold": 3, "seed": 1}, "stop": 0.02, "target": None}
+    dead_until = int(sb._ms(df.index)[120])
+    on = sb.gh_line("MDT", "1d", df, fee=0.00075, slip=0.0003, combos=[c], closed_skip=True)
+    off = sb.gh_line("MDT", "1d", df, fee=0.00075, slip=0.0003, combos=[c], closed_skip=False)
+    assert on["closed_skip"] is True and on["closed_skipped"] > 0
+    assert off["closed_skipped"] == 0
+    all_on = sb.walk(df, sb.signals(df, "gh_random", c["params"]), stop=0.02, fee=0.00075, slip=0.0003)
+    assert any(t["entry_ms"] < dead_until for t in all_on), "without the rule the dead candles are traded"
+    assert max(abs(t[4]) for t in off["picks"][0]["trades"] or [[0, 0, 0, 0, 0]]) < 1e6
+    # with the rule, nothing in the line (newest 30%) or before it opened on a dead candle
+    assert all(t[0] >= dead_until for t in on["picks"][0]["trades"])
+
+
+def test_the_shard_passes_the_stock_rule_for_the_gh_set():
+    shard = (ROOT / ".github/scripts/skill_shard.py").read_text(encoding="utf-8")
+    assert 'closed = SET == "gh" and msw.closed_rule(sym)' in shard and "closed_skip=closed" in shard

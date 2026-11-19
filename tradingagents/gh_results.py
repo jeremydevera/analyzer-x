@@ -266,7 +266,9 @@ WORDS = {"what": "strategies from the reviewed GitHub repos (and random entries,
          "cost_words": "Every trade pays the exchange's 0.075% fee both ways, the recorded order book of its own "
                        "minute where one exists (else the coin's usual gap) and funding over the hold; stops "
                        "and targets are settled by the minute;",
-         "title_h": "Every strategy from the reviewed GitHub repos, every coin and timeframe"}
+         "title_h": "Every strategy from the reviewed GitHub repos, every coin and timeframe",
+         "each_words": "each with every trade of its newest 30% (the days it is judged on)",
+         "src_name": {"skill": "GitHub repo"}}
 
 
 def write_page() -> Path:

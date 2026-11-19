@@ -24,6 +24,14 @@ The few that tested themselves honestly found what we found:
 - **KennethMartin06:** 0 of 15 model-and-stock pairs beat buy-and-hold.
 - **NehrenD:** every rule loses money once a 0.15% cost is charged.
 
+## Backtested on our own market (Nov 18, 2026)
+
+48 strategies from 22 of these repos were ported into the app (`tradingagents/gh_strats`) and run on
+every Gate coin x 15m, 30m, 1h, 4h, 1d with every cost. All 48 lost money on days no setting was chosen
+on (-$0.83 a trade over 10,977,658 trades, random entries -$0.65), and only 7 are above zero even
+before costs. The full table and what it means: `RESULTS.md`; every row with its trades:
+https://claude.ai/artifact/38jHY5XM5u2nuccx3jYYSq
+
 ## Every repo at a glance
 
 "Costs" = does it charge fees and slippage. "Unseen" = does it judge on days it never used for

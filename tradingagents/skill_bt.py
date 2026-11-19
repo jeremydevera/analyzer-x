@@ -91,9 +91,14 @@ def window(params: dict) -> int:
 
 
 def _strategy(name: str):
-    """The backtesting-trading-strategies skill's eight, or the other two skills' (skill_ta.py)."""
+    """The backtesting-trading-strategies skill's eight, the other two skills' (skill_ta.py), or a
+    reviewed GitHub repo's (gh_strats, names starting gh_)."""
     from tradingagents import skill_ta
 
+    if name.startswith("gh_"):
+        from tradingagents import gh_strats
+
+        return gh_strats.STRATEGIES[name]
     return skill_ta.STRATEGIES.get(name) or ss.get_strategy(name)
 
 
@@ -648,6 +653,67 @@ def daily_line(coin: str, tf: str, df, pinned: dict | None, *, fee: float, slip:
     out = {"coin": coin, "tf": tf, "fee": fee, "slip": slip, "bars": len(df), "combos": len(picks),
            "split_ms": int(ms[int(len(df) * SPLIT)]), "start_ms": int(ms[0]), "end_ms": int(ms[-1]),
            "bar": None, "picks": picks}
+    if fine is not None:
+        out["exits"] = {"minute": int(tally.get("minute", 0)), "candle": int(tally.get("candle", 0)),
+                        "unclear": int(tally.get("unclear", 0)), "from_ms": fine.from_ms}
+    if book is not None:
+        out["book"] = {"minutes": book.minutes, "too_wide": book.too_wide, "from_s": REAL_FROM_S}
+    return out
+
+
+def gh_line(coin: str, tf: str, df, *, fee: float, slip: float, funding: "Funding | None" = None,
+            bar_ms: int = 0, fine: "Fine | None" = None, book: "Book | None" = None,
+            combos: list[dict] | None = None) -> dict:
+    """One coin-timeframe of the reviewed GitHub repos' strategies (gh_strats, Nov 18, 2026), in
+    `pair(k=None)`'s shape so the every-strategy page reads it as it reads ta_all: EVERY strategy x
+    setting x stop, with its older-70% and newest-30% statistics (by the candle a trade OPENED in,
+    `older_lost` when the older part did not make money over MIN_OLDER+ trades) - but walked like the
+    daily set: funding over the hold, stops and targets settled by the minute, fills at the recorded
+    order book. A trade still open at the frame's end (`why` END) is never a finished trade (CLAUDE.md,
+    skill rooms): it is left out and counted (`open_at_end`). A strategy whose signals raise is left out
+    of THIS coin-timeframe and named in `errors`, never ending the line."""
+    from tradingagents import gh_strats
+
+    ms = _ms(df.index)
+    split_ms = int(ms[int(len(df) * SPLIT)])
+    tally: dict = {}
+    sig_of: dict = {}
+    errors: dict = {}
+    open_at_end = 0
+    rows = []
+    for c in (combos if combos is not None else gh_strats.combos()):
+        key = (c["strategy"], json.dumps(c["params"], sort_keys=True))
+        if key not in sig_of:
+            try:
+                sig_of[key] = signals(df, c["strategy"], c["params"])
+            except Exception as exc:                               # noqa: BLE001
+                sig_of[key] = None
+                errors[c["strategy"]] = f"{type(exc).__name__}: {str(exc)[:160]}"
+        if sig_of[key] is None:
+            continue
+        tr = walk(df, sig_of[key], stop=c["stop"], fee=fee, slip=slip, target=c.get("target"),
+                  funding=funding, bar_ms=bar_ms, fine=fine, tally=tally, book=book)
+        done = [t for t in tr if t["why"] != "END"]
+        open_at_end += len(tr) - len(done)
+        old = [t for t in done if t["entry_ms"] < split_ms]
+        new = [t for t in done if t["entry_ms"] >= split_ms]
+        # only the NEWEST 30%'s trades ride in the line: they are what the row is judged on, and the
+        # older 70% is kept as its statistics (`older`). Every trade of every combo on every coin was
+        # ~5 GB for the market (BTC 15m + 1h + 1d: 2.6 MB), more than the collect or a page can hold.
+        rows.append({"label": label(c), "strategy": c["strategy"], "params": c["params"], "stop": c["stop"],
+                     "target": c.get("target"), "older": stats(old), "newer": stats(new),
+                     "trades": [[t["entry_ms"], t["exit_ms"], t["side"], t["why"], t["pnl"]]
+                                + ([t.get("at"), t["real"]] if book is not None else [t["at"]] if "at" in t else [])
+                                for t in new]})
+    for r in rows:
+        r["older_lost"] = not (r["older"]["trades"] >= MIN_OLDER and r["older"]["profit"] > 0)
+    rows.sort(key=lambda r: (r["older_lost"], -(r["older"]["expectancy"] if r["older"]["trades"] else -1e9)))
+    newer = [r["newer"] for r in rows if r["newer"]["trades"]]
+    n_tr = sum(s["trades"] for s in newer)
+    out = {"coin": coin, "tf": tf, "fee": fee, "slip": slip, "bars": len(df), "combos": len(rows),
+           "split_ms": split_ms, "start_ms": int(ms[0]), "end_ms": int(ms[-1]),
+           "bar": sum(s["profit"] for s in newer) / n_tr if n_tr else None, "picks": rows,
+           "open_at_end": open_at_end, "errors": errors}
     if fine is not None:
         out["exits"] = {"minute": int(tally.get("minute", 0)), "candle": int(tally.get("candle", 0)),
                         "unclear": int(tally.get("unclear", 0)), "from_ms": fine.from_ms}

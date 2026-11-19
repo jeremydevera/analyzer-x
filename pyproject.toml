@@ -35,6 +35,9 @@ dev = [
     "pytest>=8.0",
     "pytest-subtests>=0.13",
     "tradingagents[api]",
+    # the reviewed GitHub repos' machine-learning strategies (tradingagents/gh_strats/ml.py) and
+    # their tests; skillbt.yml installs it on the machines that run them (Nov 18, 2026)
+    "scikit-learn>=1.4",
     # streamlit went when app.py went (Oct 02, 2026), as this said it would
 ]
 

@@ -115,7 +115,13 @@ def skill_rows(skill: dict) -> tuple[list, list]:
         for c in x["picks"]:
             o, n = c["older"], c["newer"]
             tg = c.get("target")
-            who = skill_ta.SKILL_OF.get(c["strategy"], "backtesting-trading-strategies")
+            gh = c["strategy"].startswith("gh_")
+            if gh:                     # a reviewed GitHub repo's strategy (gh_strats), named by its repo
+                from tradingagents import gh_strats
+
+                who = gh_strats.REPO_OF.get(c["strategy"], "github")
+            else:
+                who = skill_ta.SKILL_OF.get(c["strategy"], "backtesting-trading-strategies")
             name = c["label"] if who == "backtesting-trading-strategies" else f"{who}: {c['label']}"
             rid = br.row_code(x["coin"], x["tf"], c["strategy"], 0, c["stop"] * 100, (tg or 0) * 100, "flat",
                               plan=c["label"], res="skill")
@@ -125,10 +131,13 @@ def skill_rows(skill: dict) -> tuple[list, list]:
                   for t in c["trades"]]
             ts.sort(key=lambda t: (t[1], t[0]))
             rows.append({"id": rid, "src": "skill", "coin": x["coin"], "tf": x["tf"], "strategy": name,
-                         "tp_rule": (f"{tg * 100:g}% (2x the stop, the technical-analysis skill's 2:1), "
-                                     "checked on the close; or the strategy's own exit signal" if tg else
+                         "tp_rule": ((f"{tg * 100:g}% (the repo's own target), settled by the minute; or the "
+                                      "strategy's own exit signal" if gh else
+                                      f"{tg * 100:g}% (2x the stop, the technical-analysis skill's 2:1), "
+                                      "checked on the close; or the strategy's own exit signal") if tg else
                                      "none: out on the strategy's own exit signal"),
-                         "sl_rule": f"{c['stop'] * 100:g}% fixed, checked on the close", "lev": "20x",
+                         "sl_rule": (f"{c['stop'] * 100:g}% fixed, settled by the minute" if gh else
+                                     f"{c['stop'] * 100:g}% fixed, checked on the close"), "lev": "20x",
                          "chosen_on": (("LOST on " if c["older_lost"] else "made money on ")
                                        + f"the older 70% ({fmt_when(x['start_ms'] / 1000)} to "
                                        f"{fmt_when(x['split_ms'] / 1000)}): {o['trades']} trades, "
@@ -325,7 +334,7 @@ CHUNK = 15_000_000                # characters a data file: an artifact text fil
 TFS = ("15m", "30m", "1h", "4h", "1d")
 
 
-def split_payloads(skill: dict) -> tuple[dict, dict]:
+def split_payloads(skill: dict, words: dict | None = None) -> tuple[dict, dict]:
     """EVERY strategy of a skill run (`acs dispatch --skill --set ta_all`, operator Nov 05, 2026:
     "i dont want top 3 show me all 226,380"), one payload per timeframe - 226,380 strategies with all
     their trades do not fit one page, nor one browser tab at once - plus {id: tf} so Find by ID can
@@ -360,19 +369,20 @@ def split_payloads(skill: dict) -> tuple[dict, dict]:
                    "mode": "skill_all", "tf": tf, "all_rows": len(rows), "totals": totals,
                    "pairs": len(skill["lines"]), "combos": meta["combos"] if meta else 0,
                    "missing": [], "failed": [], "not_reached": [], "skill": None, "skill_ta": meta,
-                   "collected_s": skill.get("collected_s"), "v3_names": []}
+                   "collected_s": skill.get("collected_s"), "v3_names": [], **(words or {})}
     if len(ids) != len(rows):
         raise ValueError(f"{len(rows) - len(ids):,} strategies share an id with another")
     return out, ids
 
 
-def write_split(skill_file: str = "skilltaall.json", folder: str = "all-skill-strategies") -> Path:
+def write_split(skill_file: str = "skilltaall.json", folder: str = "all-skill-strategies",
+                title: str = "All Skill Strategies", words: dict | None = None) -> Path:
     """The every-strategy page: index.html + one or more data files per timeframe (each under
     CHUNK characters) + ids; publish the folder's files with the page (Artifact `files`)."""
     from tradingagents import acs
 
     skill = json.loads((acs.home() / skill_file).read_text(encoding="utf-8"))
-    payloads, ids = split_payloads(skill)
+    payloads, ids = split_payloads(skill, words)
     root = acs.home() / folder
     root.mkdir(parents=True, exist_ok=True)
     for f in root.glob("*.txt"):
@@ -392,7 +402,7 @@ def write_split(skill_file: str = "skilltaall.json", folder: str = "all-skill-st
         put(tf, data)
     put("ids", ids)          # never "_...": the artifact service reserves those names
     html = _HTML.read_text(encoding="utf-8").replace("const ZF={};", f"const ZF={json.dumps(zf)};", 1)
-    html = html.replace("<title>All Coins Strategies</title>", "<title>All Skill Strategies</title>", 1)
+    html = html.replace("<title>All Coins Strategies</title>", f"<title>{title}</title>", 1)
     (root / "index.html").write_text(html, encoding="utf-8")
     return root
 

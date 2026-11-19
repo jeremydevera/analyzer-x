@@ -178,7 +178,7 @@ def test_only_a_coin_with_no_recorded_minute_pays_one_reading_and_its_lines_say_
 
 def test_every_line_the_machines_write_carries_where_its_gap_came_from():
     src = (ROOT / ".github" / "scripts" / "skill_shard.py").read_text(encoding="utf-8")
-    assert src.count('"gap": gap}') == 2, "the daily lines and the research lines alike"
+    assert src.count('"gap": gap}') == 3, "the daily lines, the GitHub-repo lines and the research lines alike"
     assert "fee, slip, gap = costs(sym)" in src
     assert src.count("fx.book_cost(") == 1, "one place may look at the book: the coin with no recorded minute"
 

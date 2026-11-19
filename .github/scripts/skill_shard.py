@@ -17,6 +17,11 @@ Since Nov 13, 2026 every fill is priced from the app's own recorded order book o
 one was recorded and published (`skill_bt.Book`, read once a coin over the same stretch as the minutes,
 never from before Oct 17, 2026); a fill with no reading keeps the usual gap, and each trade says how
 many of its two fills were real. Each line says how many readings it was handed (`book`).
+
+SKILL_SET=gh (Nov 18, 2026) runs the reviewed GitHub repos' own strategies (tradingagents/gh_strats,
+knowledge/github-repos/) into skillgh-*.jsonl: EVERY strategy x setting x stop of each coin-timeframe,
+walked like the daily set (funding, minutes, the recorded book), each with its older-70% and
+newest-30% statistics (skill_bt.gh_line).
 """
 # ruff: noqa: E402
 from __future__ import annotations
@@ -40,12 +45,14 @@ from tradingagents.dataflows import exchange as fx  # noqa: E402
 from tradingagents.skill_frames import BARS, frame  # noqa: E402,F401  (the candle frame lives there)
 
 SET = os.environ.get("SKILL_SET", "bt") or "bt"
-if SET not in ("bt", "ta", "ta_all", "daily"):
-    raise SystemExit(f"SKILL_SET must be bt, ta, ta_all or daily, not {SET!r}")
-PREFIX = {"bt": "skill", "ta": "skillta", "ta_all": "skilltaall", "daily": "skilldaily"}[SET]
+if SET not in ("bt", "ta", "ta_all", "daily", "gh"):
+    raise SystemExit(f"SKILL_SET must be bt, ta, ta_all, daily or gh, not {SET!r}")
+PREFIX = {"bt": "skill", "ta": "skillta", "ta_all": "skilltaall", "daily": "skilldaily", "gh": "skillgh"}[SET]
+# gh walks like daily (funding, minutes, the recorded book) and keeps every strategy
+WALKED = SET in ("daily", "gh")
 PINNED_FILE = os.path.join(ROOT, "research", "v4", "bt_pinned.json")
 KEEP = None if SET == "ta_all" else sb.PER_PAIR
-GRID, TARGETS = (None, None) if SET in ("bt", "daily") else (sta.GRID, sta.TARGETS)
+GRID, TARGETS = (None, None) if SET in ("bt", "daily", "gh") else (sta.GRID, sta.TARGETS)
 OUT = os.path.join("out", f"{PREFIX}-{ss.SHARD}.jsonl")
 REPORT_OUT = os.path.join("out", f"{PREFIX}-report-{ss.SHARD}.json")
 COIN_RETRIES = 2
@@ -119,7 +126,7 @@ def main() -> int:
             try:
                 fee, slip, gap = costs(sym)
                 frames, funding, fine, book = {}, None, None, None
-                if SET == "daily":
+                if WALKED:
                     frames["1d"] = frame(sym, "1d")
                     funding = funding_of(sym, sb._ms(frames["1d"].index)[0] if len(frames["1d"]) else (time.time() - 730 * 86400) * 1000)
                     # the minutes, ONCE a coin: a read that raises fails the coin (redone alone) - never a
@@ -145,6 +152,11 @@ def main() -> int:
                                                                   slip=slip, funding=funding,
                                                                   bar_ms=br.TFS[tf][1] * 1000,
                                                                   fine=fine, book=book),
+                                                  "gap": gap}, separators=(",", ":")) + "\n")
+                            n += 1
+                        elif SET == "gh":
+                            out.write(json.dumps({**sb.gh_line(coin, tf, df, fee=fee, slip=slip, funding=funding,
+                                                               bar_ms=br.TFS[tf][1] * 1000, fine=fine, book=book),
                                                   "gap": gap}, separators=(",", ":")) + "\n")
                             n += 1
                         else:
